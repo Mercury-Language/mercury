@@ -437,13 +437,13 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
     globals.get_target(Globals, Target),
     (
         Target = target_csharp,
-        mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+        hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
         % mlds_to_csharp never goes beyond generating C# code.
         mlds_to_csharp(ProgressStream, !.HLDS, MLDS, Succeeded, !IO),
         ExtraObjFiles = []
     ;
         Target = target_java,
-        mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+        hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
         mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded, !IO),
         (
             OpModeCodeGen = opfam_target_code_only,
@@ -472,15 +472,11 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         % Produce the grade independent header file <module>.mh,
         % which contains function prototypes for the procedures
         % named by by foreign_export pragmas.
-        export.get_foreign_export_decls(!.HLDS, ExportDecls),
-        % NOTE Both ExportDecls and ModuleName are derived from !.HLDS,
-        % but this is not true for the output_mh_header_file's other caller.
-        export.output_mh_header_file(ProgressStream, !.HLDS, ExportDecls,
-            ModuleName, !IO),
+        export.output_mh_header_file(ProgressStream, !.HLDS, !IO),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+            hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
             mlds_to_high_level_c(ProgressStream, Globals, MLDS,
                 TargetCodeSucceeded, !IO),
             (
@@ -515,15 +511,38 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
             ExtraObjFiles = []
         ;
             HighLevelCode = no,
-            llds_backend_pass(ProgressStream, ErrorStream, !HLDS,
+            hlds_to_llds(ProgressStream, ErrorStream, !HLDS,
                 GlobalData, LLDS, !DumpInfo, !IO),
-            % llds_output_pass looks up the target_code_only option
-            % to see whether it should generate object code, using the
-            % same logic as the HighLevelCode = yes case above.
-            % XXX Move that logic here, for symmetry.
-            llds_output_pass(ProgressStream, OpModeCodeGen,
-                !.HLDS, GlobalData, LLDS, ModuleName, Succeeded,
-                ExtraObjFiles, !IO)
+            llds_to_c(ProgressStream, !.HLDS, GlobalData, LLDS,
+                TargetCodeSucceeded, !IO),
+            (
+                TargetCodeSucceeded = succeeded,
+                (
+                    OpModeCodeGen = opfam_target_code_only,
+                    Succeeded = succeeded,
+                    ExtraObjFiles = []
+                ;
+                    ( OpModeCodeGen = opfam_target_and_object_code_only
+                    ; OpModeCodeGen = opfam_target_object_and_executable
+                    ),
+                    llds_c_to_obj(ProgressStream, Globals, ModuleName,
+                        CompileSucceeded, !IO),
+                    module_info_get_fact_table_file_names(!.HLDS,
+                        FactTableBaseFiles),
+                    list.map2_foldl(
+                        fact_table_file_to_obj(ProgressStream, Globals),
+                        FactTableBaseFiles, FactTableObjFiles,
+                        FactTableCompileSucceededs, !IO),
+                    ExtraObjFiles = FactTableObjFiles,
+                    Succeeded = and_list([CompileSucceeded |
+                        FactTableCompileSucceededs]),
+                    maybe_set_exit_status(Succeeded, !IO)
+                )
+            ;
+                TargetCodeSucceeded = did_not_succeed,
+                Succeeded = did_not_succeed,
+                ExtraObjFiles = []
+            )
         )
     ),
     (

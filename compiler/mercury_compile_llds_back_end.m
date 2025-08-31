@@ -21,8 +21,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module libs.op_mode.
 :- import_module ll_backend.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
@@ -33,7 +33,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred llds_backend_pass(io.text_output_stream::in, io.text_output_stream::in,
+:- pred hlds_to_llds(io.text_output_stream::in, io.text_output_stream::in,
     module_info::in, module_info::out, global_data::out,
     list(c_procedure)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
@@ -41,10 +41,17 @@
 :- pred map_args_to_regs(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred llds_output_pass(io.text_output_stream::in,
-    op_mode_codegen::in, module_info::in, global_data::in,
-    list(c_procedure)::in, module_name::in,
-    maybe_succeeded::out, list(string)::out, io::di, io::uo) is det.
+:- pred llds_to_c(io.text_output_stream::in, module_info::in,
+    global_data::in, list(c_procedure)::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred llds_c_to_obj(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+:- pred fact_table_file_to_obj(io.text_output_stream::in, globals::in,
+    string::in, string::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -72,7 +79,6 @@
 :- import_module hlds.mark_tail_calls.
 :- import_module libs.dependency_graph.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
@@ -96,7 +102,6 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -116,7 +121,7 @@
 
 %---------------------------------------------------------------------------%
 
-llds_backend_pass(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
+hlds_to_llds(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
         !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
     module_info_get_globals(!.HLDS, Globals),
@@ -668,8 +673,8 @@ maybe_generate_stack_layouts(ProgressStream, HLDS, LLDS, Verbose, Stats,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
-        GlobalData0, Procs, ModuleName, Succeeded, FactTableObjFiles, !IO) :-
+llds_to_c(ProgressStream, HLDS, GlobalData0, Procs,
+        TargetCodeSucceeded, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -716,8 +721,7 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
 
     C_InterfaceInfo = foreign_interface_info(ModuleSymName,
-        C_HeaderCodes0, C_BodyCodes, C_Includes,
-        _C_ExportDecls, C_ExportDefns),
+        C_HeaderCodes0, C_BodyCodes, C_Includes, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
     CModuleName = MangledModuleName ++ "_module",
 
@@ -769,40 +773,7 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
         AllocSites, AllocIdMap, ChunkedModules,
         UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
 
-    output_llds_file(ProgressStream, Globals, CFile, TargetCodeSucceeded, !IO),
-    (
-        TargetCodeSucceeded = succeeded,
-
-        C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-        export.output_mh_header_file(ProgressStream, HLDS, C_ExportDecls,
-            ModuleName, !IO),
-
-        % Finally we invoke the C compiler on the generated C files,
-        % if we were asked to do so.
-        (
-            ( OpModeCodeGen = opfam_target_and_object_code_only
-            ; OpModeCodeGen = opfam_target_object_and_executable
-            ),
-            llds_c_to_obj(ProgressStream, Globals, ModuleName,
-                CompileSucceeded, !IO),
-            module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
-            list.map2_foldl(
-                compile_fact_table_file(ProgressStream, Globals),
-                FactTableBaseFiles, FactTableObjFiles,
-                FactTableCompileSucceededs, !IO),
-            Succeeded =
-                and_list([CompileSucceeded | FactTableCompileSucceededs]),
-            maybe_set_exit_status(Succeeded, !IO)
-        ;
-            OpModeCodeGen = opfam_target_code_only,
-            Succeeded = succeeded,
-            FactTableObjFiles = []
-        )
-    ;
-        TargetCodeSucceeded = did_not_succeed,
-        Succeeded = did_not_succeed,
-        FactTableObjFiles = []
-    ).
+    output_llds_file(ProgressStream, Globals, CFile, TargetCodeSucceeded, !IO).
 
     % Foreign_interface_info holds information used when generating
     % code that uses the foreign language interface.
@@ -817,7 +788,6 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
                 list(fim_spec),
 
                 % Info about stuff exported to C:
-                foreign_export_decls,
                 list(foreign_export_defn)
             ).
 
@@ -858,12 +828,11 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
         WantedForeignBodyCodes, _OtherBodyCodes),
     WantedForeignImports = set.to_sorted_list(
         get_lang_fim_specs(CJCsEFIMs, UseForeignLanguage)),
-    export.get_foreign_export_decls(HLDS, ForeignExportDecls),
     export.get_foreign_export_defns(HLDS, ForeignExportDefns),
 
     ForeignInterfaceInfo = foreign_interface_info(ModuleName,
         WantedForeignDeclCodes, WantedForeignBodyCodes,
-        WantedForeignImports, ForeignExportDecls, ForeignExportDefns).
+        WantedForeignImports, ForeignExportDefns).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 
@@ -928,8 +897,7 @@ output_llds_file(ProgressStream, Globals, LLDS0, Succeeded, !IO) :-
     transform_llds(Globals, LLDS0, LLDS),
     output_llds(ProgressStream, Globals, LLDS, Succeeded, !IO).
 
-:- pred llds_c_to_obj(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
 llds_c_to_obj(ProgressStream, Globals, ModuleName, Succeeded, !IO) :-
     get_linked_target_type_for_c(Globals, LinkedTargetType),
@@ -946,10 +914,7 @@ llds_c_to_obj(ProgressStream, Globals, ModuleName, Succeeded, !IO) :-
     compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
-:- pred compile_fact_table_file(io.text_output_stream::in, globals::in,
-    string::in, string::out, maybe_succeeded::out, io::di, io::uo) is det.
-
-compile_fact_table_file(ProgressStream, Globals, BaseName, O_FileName,
+fact_table_file_to_obj(ProgressStream, Globals, BaseName, O_FileName,
         Succeeded, !IO) :-
     get_linked_target_type_for_c(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),

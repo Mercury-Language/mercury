@@ -30,7 +30,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred mlds_backend(io.text_output_stream::in, module_info::in, mlds::out,
+:- pred hlds_to_mlds(io.text_output_stream::in, module_info::in, mlds::out,
     list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
@@ -79,7 +79,7 @@
 
 %---------------------------------------------------------------------------%
 
-mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
+hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),

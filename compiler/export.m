@@ -21,8 +21,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -56,7 +54,7 @@
     % is output by mlds_output_mih_hdr_file in mlds_to_c_file.m.
     %
 :- pred output_mh_header_file(io.text_output_stream::in, module_info::in,
-    foreign_export_decls::in, module_name::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,7 +103,9 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data_foreign.
@@ -640,8 +640,12 @@ arg_loc_to_string(reg(RegType, RegNum), RegName) :-
 % Code to create the .mh files.
 %
 
-output_mh_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
-        ModuleName, !IO) :-
+output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    export.get_foreign_export_decls(ModuleInfo, ForeignExportDecls),
+    % NOTE Both ExportDecls and ModuleName are derived from !.HLDS,
+    % but this is not true for the output_mh_header_file's other caller.
+
     % We always produce a .mh file because with intermodule optimization
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. So we need to produce a .mh file even if it contains nothing.
