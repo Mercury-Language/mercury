@@ -20,7 +20,6 @@
 :- import_module mdbcomp.trace_counts.
 
 :- import_module io.
-:- import_module map.
 
 
     % write_trace_counts_to_file(FileType, TraceCounts, FileName, Result, !IO):
@@ -41,6 +40,7 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module list.
+:- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
