@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2013 The University of Melbourne.
-% Copyright (C) 2015-2016, 2023-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -64,21 +64,20 @@ main(!IO) :-
     ;       warning(string).
 
 :- pred filter_lines(io.text_input_stream::in, io.text_output_stream::in,
-    filter_result::out,
-    line_info_cache::in, io::di, io::uo) is det.
+    filter_result::out, line_info_cache::in, io::di, io::uo) is det.
 
 filter_lines(InStream, OutStream, Result, !.Cache, !IO) :-
-    io.read_line_as_string(InStream, IOResult, !IO),
+    io.read_line_as_string(InStream, LineReadResult, !IO),
     (
-        IOResult = ok(Line0),
-        filter_line(Result0, Line0, Line, !Cache, !IO),
+        LineReadResult = ok(Line0),
+        filter_line(LineResult, Line0, Line, !Cache, !IO),
         io.write_string(OutStream, Line, !IO),
         filter_lines(InStream, OutStream, ResultLines, !.Cache, !IO),
         (
-            Result0 = ok,
+            LineResult = ok,
             Result = ResultLines
         ;
-            Result0 = error(Error),
+            LineResult = error(Error),
             (
                 ( ResultLines = ok
                 ; ResultLines = warning(_)
@@ -92,10 +91,10 @@ filter_lines(InStream, OutStream, Result, !.Cache, !IO) :-
             )
         )
     ;
-        IOResult = eof,
+        LineReadResult = eof,
         Result = ok
     ;
-        IOResult = error(Error),
+        LineReadResult = error(Error),
         string.format("stdin: %s\n", [s(io.error_message(Error))], ErrorStr),
         Result = error(ErrorStr)
     ).
@@ -115,7 +114,7 @@ filter_line(Result, !Line, !Cache, !IO) :-
         ( if map.search(!.Cache, Filename, MaybeLineInfo) then
             (
                 MaybeLineInfo = yes(LineInfo),
-                translate_and_outpot_line(LineInfo, Filename, LineNo,
+                translate_and_output_line(LineInfo, Filename, LineNo,
                     OtherPartsA, !:Line),
                 Result = ok
             ;
@@ -129,7 +128,7 @@ filter_line(Result, !Line, !Cache, !IO) :-
             (
                 MaybeLineInfoErr = ok(LineInfo),
                 map.det_insert(Filename, yes(LineInfo), !Cache),
-                translate_and_outpot_line(LineInfo, Filename, LineNo,
+                translate_and_output_line(LineInfo, Filename, LineNo,
                     OtherPartsA, !:Line),
                 Result = ok
             ;
@@ -142,10 +141,10 @@ filter_line(Result, !Line, !Cache, !IO) :-
         Result = ok
     ).
 
-:- pred translate_and_outpot_line(list(line_info)::in, string::in, int::in,
+:- pred translate_and_output_line(list(line_info)::in, string::in, int::in,
     list(string)::in, string::out) is det.
 
-translate_and_outpot_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
+translate_and_output_line(LineInfo, Filename, LineNo, RestParts, OutLine) :-
     line_info_translate(LineInfo, Filename, LineNo, MerFileName, MerLineNo),
     Rest = string.join_list(" ", RestParts),
     string.format("%s:%d: %s\n", [s(MerFileName), i(MerLineNo), s(Rest)],
@@ -207,15 +206,14 @@ error_type_string(lie_duplicate_beginning) =
     io::di, io::uo) is det.
 
 maybe_get_line_info(Filename, MaybeInfo, !IO) :-
-    io.open_input(Filename, Res, !IO),
+    io.read_named_file_as_lines_wf(Filename, ReadResult, !IO),
     (
-        Res = ok(FileStream),
-        read_line_marks(FileStream, 1, [], MaybeMarksRev, !IO),
-        io.close_input(FileStream, !IO),
+        ReadResult = ok(FileLines),
+        read_line_marks(FileLines, 1, [], MaybeRevMarks),
         (
-            MaybeMarksRev = ok(MarksRev),
-            list.reverse(MarksRev, Marks),
-            create_line_info(Marks, Filename, [], MaybeInfo0),
+            MaybeRevMarks = ok(RevMarks),
+            list.reverse(RevMarks, Marks),
+            create_line_info(Filename, Marks, [], MaybeInfo0),
             (
                 MaybeInfo0 = ok(Infos),
                 MaybeInfo = ok(Infos)
@@ -223,17 +221,17 @@ maybe_get_line_info(Filename, MaybeInfo, !IO) :-
                 MaybeInfo0 = error(LineInfoError),
                 LineInfoError = line_info_error(ErrFilename, ErrLine, Error),
                 string.format(
-                    "%s:%d: Error understanding line number declration: %s",
+                    "%s:%d: Error understanding line number declaration: %s",
                     [s(ErrFilename), i(ErrLine), s(error_type_string(Error))],
                     StringError),
                 MaybeInfo = error(StringError)
             )
         ;
-            MaybeMarksRev = error(Msg),
+            MaybeRevMarks = error(Msg),
             MaybeInfo = error(format("%s: %s", [s(Filename), s(Msg)]))
         )
     ;
-        Res = error(_Error),
+        ReadResult = error(_Error),
         % We ignore errors here as our parsing of javac's output could cause
         % false errors.
         MaybeInfo = ok([])
@@ -251,50 +249,40 @@ maybe_get_line_info(Filename, MaybeInfo, !IO) :-
     --->    begin_block
     ;       end_block.
 
-:- pred read_line_marks(io.text_input_stream::in, int::in, list(line_mark)::in,
-    maybe_error(list(line_mark))::out, io::di, io::uo) is det.
+:- pred read_line_marks(list(string)::in, int::in, list(line_mark)::in,
+    maybe_error(list(line_mark))::out) is det.
 
-read_line_marks(Stream, JavaLineNo, Marks0, MaybeMarks, !IO) :-
-    read_line_as_string(Stream, Result, !IO),
-    (
-        Result = ok(Line),
-        % The format string in mlds_to_java specifically uses spaces
-        % rather than any other whitespace.
-        Parts = string.split_at_char(' ', strip(Line)),
-        ( if
-            Parts = ["//", Marker, PathLine],
-            (
-                Marker = "MER_FOREIGN_BEGIN",
-                Type = begin_block
-            ;
-                Marker = "MER_FOREIGN_END",
-                Type = end_block
-            ),
-            PartsB = string.split_at_char(':', PathLine),
-            PartsB = [MerFile, MerLineNoStr],
-            string.to_int(MerLineNoStr, MerLineNo)
-        then
-            Mark = line_mark(Type, MerFile, JavaLineNo, MerLineNo),
-            Marks = [Mark | Marks0]
-        else
-            Marks = Marks0
+read_line_marks([], _, RevMarks0, ok(RevMarks0)).
+read_line_marks([Line | Lines], JavaLineNo, RevMarks0, MaybeRevMarks) :-
+    % The format string in mlds_to_java_util.m specifically uses spaces
+    % rather than any other whitespace.
+    Parts = string.split_at_char(' ', strip(Line)),
+    ( if
+        Parts = ["//", Marker, PathLine],
+        (
+            Marker = "MER_FOREIGN_BEGIN",
+            Type = begin_block
+        ;
+            Marker = "MER_FOREIGN_END",
+            Type = end_block
         ),
-        read_line_marks(Stream, JavaLineNo+1, Marks, MaybeMarks, !IO)
-    ;
-        Result = eof,
-        MaybeMarks = ok(Marks0)
-    ;
-        Result = error(Error),
-        MaybeMarks = error(error_message(Error))
-    ).
+        PartsB = string.split_at_char(':', PathLine),
+        PartsB = [MerFile, MerLineNoStr],
+        string.to_int(MerLineNoStr, MerLineNo)
+    then
+        Mark = line_mark(Type, MerFile, JavaLineNo, MerLineNo),
+        RevMarks = [Mark | RevMarks0]
+    else
+        RevMarks = RevMarks0
+    ),
+    read_line_marks(Lines, JavaLineNo + 1, RevMarks, MaybeRevMarks).
 
-:- pred create_line_info(list(line_mark)::in, string::in,
-    list(line_info)::in, maybe_error(list(line_info), line_info_error)::out)
-    is det.
+:- pred create_line_info(string::in, list(line_mark)::in, list(line_info)::in,
+    maybe_error(list(line_info), line_info_error)::out) is det.
 
-create_line_info([], _JavaFile, Infos, ok(InfosRev)) :-
-    list.reverse(Infos, InfosRev).
-create_line_info([Mark | Marks0], JavaFile, Infos0, MaybeInfos) :-
+create_line_info(_JavaFile, [], RevInfos, ok(Infos)) :-
+    list.reverse(RevInfos, Infos).
+create_line_info(JavaFile, [Mark | Marks0], RevInfos0, MaybeInfos) :-
     Mark = line_mark(Type, MerFile, JavaLineNo, MerLineNo),
     (
         Type = begin_block,
@@ -303,21 +291,24 @@ create_line_info([Mark | Marks0], JavaFile, Infos0, MaybeInfos) :-
             InfoEnd = line_info_end(End),
             Delta = MerLineNo - JavaLineNo,
             Info = line_info(JavaLineNo, End, Delta, MerFile),
-            Infos = [Info | Infos0],
-            create_line_info(Marks, JavaFile, Infos, MaybeInfos)
+            RevInfos = [Info | RevInfos0],
+            create_line_info(JavaFile, Marks, RevInfos, MaybeInfos)
         ;
             InfoEnd = line_info_no_end,
-            MaybeInfos = error(line_info_error(JavaFile, JavaLineNo,
-                lie_beginning_without_end))
+            Error = line_info_error(JavaFile, JavaLineNo,
+                lie_beginning_without_end),
+            MaybeInfos = error(Error)
         ;
             InfoEnd = line_info_duplicate_begin(SecondBeginLine),
-            MaybeInfos = error(line_info_error(JavaFile, SecondBeginLine,
-                lie_duplicate_beginning))
+            Error = line_info_error(JavaFile, SecondBeginLine,
+                lie_duplicate_beginning),
+            MaybeInfos = error(Error)
         )
     ;
         Type = end_block,
-        MaybeInfos = error(line_info_error(JavaFile, JavaLineNo,
-            lie_end_without_beginning))
+        Error = line_info_error(JavaFile, JavaLineNo,
+            lie_end_without_beginning),
+        MaybeInfos = error(Error)
     ).
 
 :- type line_info_end
