@@ -2365,7 +2365,7 @@ Intermodule optimization
     PRIVATE OPTION
     --trans-opt-deps-spec <filename>
     --no-trans-opt-deps-spec
-        When constructing e.g. `<module_a>..trans_opt', the compiler is allowed
+        When constructing e.g. `<module_a>.trans_opt', the compiler is allowed
         to read the `.trans_opt' files of only the modules that follow module_a
         in a designated module order. The purpose of this restriction is the
         prevention of circular dependencies between `.trans_opt' files. The

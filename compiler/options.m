@@ -4254,7 +4254,7 @@ optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
     % This option is for developers only for now.
     priv_arg_help("trans-opt-deps-spec", "filename", [
         % XXX This sentence is missing some words.
-        w("When constructing e.g."), file_var("module_a", ".trans_opt", ","),
+        w("When constructing e.g."), file_var("module_a", "trans_opt", ","),
         w("the compiler is allowed to read the"), file(".trans_opt"),
         w("files of only the modules that follow"), var("module_a"),
         w("in a designated module order. The purpose of this restriction"),
