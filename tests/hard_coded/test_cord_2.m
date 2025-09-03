@@ -55,7 +55,7 @@ test_list_and_rev_list(Cord, !IO) :-
 
 :- pred test_folds((cord(int))::in, io::di, io::uo) is det.
 
-test_folds(Cord, !IO) :-
+test_folds(Cord, IO, IO) :-
     List = cord.list(Cord),
     RevList = cord.rev_list(Cord),
 
@@ -71,7 +71,7 @@ test_folds(Cord, !IO) :-
 
 :- pred test_cord_list_funcs(list(cord(int))::in, io::di, io::uo) is det.
 
-test_cord_list_funcs(Cords, !IO) :-
+test_cord_list_funcs(Cords, IO, IO) :-
     List1 = cord_list_to_list(Cords),
     List2 = list(cord_list_to_cord(Cords)),
     List3 = condense(map(list, Cords)),
