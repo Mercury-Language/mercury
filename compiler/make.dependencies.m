@@ -12,16 +12,16 @@
 % Author of current version: zs.
 %
 % This job of this module to find, for a given file T (a target file),
-% which *other* files Si you need in order to build T. Effectively,
-% given a file name T, it finds all the filename Si that occur on the
-% right hand sides of the (implicit) make rules whose left hand side
-% contains T:
+% which *other* Pi (prerequisite files) you need in order to build T.
+% Effectively, given a file name T, it finds all the prerequisites
+% that occur on the right hand sides of the (implicit) make rules
+% whose left hand side contains T:
 %
-%   T:        S1 S2 ...
+%   T:        P1 P2 ...
 %
 % Note that we find only the *direct* prereqs of T. This means that
-% we return e.g. S1, but not the files needed to build S1 itself.
-% (Unless by some very unlikely chance, the files needed to build S1
+% we return e.g. P1, but not the files needed to build P1 itself.
+% (Unless by some unlikely chance, the files needed to build P1
 % are also direct prereqs of T itself.)
 %
 % We should consider returning effectively a tree, whose nodes are file names,
@@ -90,11 +90,11 @@
 
     % find_direct_prereqs_of_target_file(ProgressStream, Globals,
     %   CompilationTaskType, ModuleDepInfo, TargetFile,
-    %   Succeeded, Prereqs, !Info, !IO):
+    %   PrereqsResult, !Info, !IO):
     %
     % The TargetType and ModuleIndexes arguments define a set of make targets.
-    % Add to !Deps the dependency_file_indexes of all the files that
-    % these make targets depend on, and which therefore have to be built
+    % Return in PrereqsResult the dependency_file_indexes of all the files
+    % that these make targets depend on, and which therefore have to be built
     % before we can build those make targets.
     %
 :- pred find_direct_prereqs_of_target_file(io.text_output_stream::in,
@@ -164,21 +164,33 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
      (
         CompilationTaskType = process_module(_),
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
-        NestedSubModules =
-            get_nested_children_list_of_top_module(MaybeTopModule),
-        ModulesToCheck = [ModuleName | NestedSubModules]
+        NestedSubModulesToCheck =
+            get_nested_children_list_of_top_module(MaybeTopModule)
     ;
         ( CompilationTaskType = target_code_to_object_code(_)
         ; CompilationTaskType = fact_table_code_to_object_code(_, _)
         ),
-        ModulesToCheck = [ModuleName]
+        NestedSubModulesToCheck = []
     ),
-    module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
-    ModuleIndexesToCheck = deps_set_to_sorted_list(ModuleIndexesToCheckSet),
     KeepGoing = make_info_get_keep_going(!.Info),
-    find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
-        Globals, TargetType, ModuleIndexesToCheck,
-        succeeded, Succeeded, deps_set_init, PrereqIndexes0, !Info, !IO),
+    (
+        NestedSubModulesToCheck = [],
+        ModulesToCheck = [ModuleName],
+        module_name_to_index(ModuleName, ModuleIndex, !Info),
+        find_direct_prereqs_of_module_target(ProgressStream, KeepGoing,
+            Globals, TargetType, ModuleIndex, Succeeded, PrereqIndexes0,
+            !Info, !IO)
+    ;
+        NestedSubModulesToCheck = [_ | _],
+        ModulesToCheck = [ModuleName | NestedSubModulesToCheck],
+        module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet,
+            !Info),
+        ModuleIndexesToCheck =
+            deps_set_to_sorted_list(ModuleIndexesToCheckSet),
+        find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
+            Globals, TargetType, ModuleIndexesToCheck,
+            succeeded, Succeeded, deps_set_init, PrereqIndexes0, !Info, !IO)
+    ),
     ( if TargetType = module_target_int0 then
         % XXX Simon Taylor's comment, added originally to make.module_target.m
         % on 2002 Apr 23, says:
