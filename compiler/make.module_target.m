@@ -525,7 +525,8 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.text_output_stream::in,
-    pic::in, foreign_code_file::in, maybe_succeeded::out, io::di, io::uo) is det.
+    pic::in, foreign_code_file::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 compile_foreign_code_file(Globals, ProgressStream, PIC, ForeignCodeFile,
         Succeeded, !IO) :-
@@ -586,7 +587,8 @@ cleanup_files(ProgressStream, Globals, MaybeArgFileName, MakeLhsFiles,
 
 %---------------------------------------------------------------------------%
 
-:- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gas::out) is det.
+:- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gas::out)
+    is det.
 
 get_object_extension(Globals, PIC, ExtObj) :-
     globals.get_target(Globals, CompilationTarget),
