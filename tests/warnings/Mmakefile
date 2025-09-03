@@ -92,6 +92,10 @@ ERRORCHECK_PROGS = \
 #
 #	profiling_builtin
 #	time
+#
+# In fact, the mere presence of these files interferes with all the other
+# tests in this directory in grades that use mmc --make, so all their files
+# now have an added lib_dup_ prefix.
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 	ERRORCHECK_PROGS += unused_args_analysis
