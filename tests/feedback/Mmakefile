@@ -54,7 +54,7 @@ FB_REPORT = `if test -e $(FB_REPORT_WS); then \
 %.out: %.feedback
 	$(FB_REPORT) $< > $@
 
-autopar_%.feedback: %/Deep.data %/Deep.procrep
+autopar_%.feedback: %_dir/Deep.data %_dir/Deep.procrep
 	$(FB_CREATE) -v 0 --implicit-parallelism $< $@
 
 %.realclean:
