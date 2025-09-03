@@ -1,18 +1,18 @@
-foreign_type_visibility.m:018: Error: abstract declaration for type `foreign'/0
-foreign_type_visibility.m:018:   has no corresponding definition.
+foreign_type_visibility.m:018: Error: [38;5;87mabstract declaration for type `foreign'/0[39;49m
+foreign_type_visibility.m:018:   [38;5;203mhas no corresponding definition.[39;49m
 foreign_type_visibility.m:022: Error: since the Mercury declaration of
-foreign_type_visibility.m:022:   `foreign'/0 is in the implementation section,
-foreign_type_visibility.m:022:   any foreign type definition for it must be in
-foreign_type_visibility.m:022:   the implementation section as well.
+foreign_type_visibility.m:022:   [38;5;87m`foreign'/0[39;49m [38;5;40mis in the implementation section,[39;49m
+foreign_type_visibility.m:022:   any foreign type definition for it [38;5;203mmust be in[39;49m
+foreign_type_visibility.m:022:   [38;5;203mthe implementation section as well.[39;49m
 foreign_type_visibility.m:018:   That Mercury declaration is here.
 foreign_type_visibility.m:033: Error: since some foreign language definition of
-foreign_type_visibility.m:033:   `foreign2'/0 is in the interface section, all
-foreign_type_visibility.m:033:   other foreign language definitions for it must
-foreign_type_visibility.m:033:   be in the interface section as well.
+foreign_type_visibility.m:033:   [38;5;87m`foreign2'/0[39;49m is in the interface section, [38;5;203mall[39;49m
+foreign_type_visibility.m:033:   [38;5;203mother foreign language definitions for it must[39;49m
+foreign_type_visibility.m:033:   [38;5;203mbe in the interface section as well.[39;49m
 foreign_type_visibility.m:026:   That foreign definition in the interface is
 foreign_type_visibility.m:026:   here.
 foreign_type_visibility.m:035: Error: since the Mercury definition of
-foreign_type_visibility.m:035:   `foreign3'/0 is in the interface section, any
-foreign_type_visibility.m:035:   foreign type definition for it must be in the
-foreign_type_visibility.m:035:   interface section as well.
+foreign_type_visibility.m:035:   [38;5;87m`foreign3'/0[39;49m [38;5;40mis in the interface section,[39;49m any
+foreign_type_visibility.m:035:   foreign type definition for it [38;5;203mmust be in the[39;49m
+foreign_type_visibility.m:035:   [38;5;203minterface section as well.[39;49m
 foreign_type_visibility.m:028:   That Mercury definition is here.

@@ -1,4 +1,4 @@
-bad_fact_table_data.m:036: Error: [38;5;203mno clauses[39;49m for predicate [38;5;87m`table_x'/3.[39;49m
+bad_fact_table_data.m:036: Error: predicate [38;5;87m`table_x'/3[39;49m [38;5;203mhas no clauses.[39;49m
 fact_table_data_file_x:002: Error: fact has wrong number of arguments. Expected
 fact_table_data_file_x:002:   [38;5;40mthree[39;49m arguments, got [38;5;203mfour.[39;49m
 fact_table_data_file_x:003: Error: this clause is [38;5;203mnot[39;49m for predicate

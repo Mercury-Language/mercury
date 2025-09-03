@@ -1,8 +1,7 @@
-pragma_c_code_no_det.m:011: In [38;5;87m`test'(out):[39;49m
-pragma_c_code_no_det.m:011:   warning: determinism declaration could be
-pragma_c_code_no_det.m:011:   tighter.
+pragma_c_code_no_det.m:011: Warning: the determinism declaration for predicate
+pragma_c_code_no_det.m:011:   [38;5;87m`test'/1[39;49m [38;5;203mcould be tighter.[39;49m
 pragma_c_code_no_det.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`erroneous'.[39;49m
-pragma_c_code_no_det.m:026: In `fproc'(out):
-pragma_c_code_no_det.m:026:   error: the procedure specification in this
-pragma_c_code_no_det.m:026:   `:- pragma foreign_proc' declaration is [38;5;203mmissing[39;49m
-pragma_c_code_no_det.m:026:   the final `is <determinism>' part.
+pragma_c_code_no_det.m:026: Error: the procedure specification in this
+pragma_c_code_no_det.m:026:   `:- pragma foreign_proc' declaration for
+pragma_c_code_no_det.m:026:   predicate `fproc'/1 is [38;5;203mmissing[39;49m the final
+pragma_c_code_no_det.m:026:   `is <determinism>' part.
