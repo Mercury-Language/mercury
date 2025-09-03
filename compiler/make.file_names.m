@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -337,14 +337,14 @@ target_type_to_maybe_target_extension(Target, TargetExt) :-
     ).
 
 date_file_extension(ModuleTargetType, Ext) :-
-    % XXX EXT The absence of code handling .trans_opt_date files
-    % would seem to me (zs) to be a bug.
+    % NOTE If we ever want to to support transitive intermodule optimization
+    % with mmc --make, we will need to handle .trans_opt_date files.
     (
         ModuleTargetType = module_target_errors,
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        Ext = ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_misc_err_date)
     ;
         ModuleTargetType = module_target_int0,
         Ext = ext_cur_ngs(ext_cur_ngs_int_date_int0)
