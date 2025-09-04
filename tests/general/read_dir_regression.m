@@ -24,22 +24,34 @@
 :- import_module list.
 
 main(!IO) :-
-    io.open_input(".", FileRes, !IO),
+    io.open_input(".", FileResult, !IO),
     (
-        FileRes = ok(File),
-        read_line(File, LineRes, !IO),
+        FileResult = ok(File),
+        read_line(File, LineResult, !IO),
         (
-            LineRes = ok(_),
+            LineResult = ok(_),
             io.write_string("ok\n", !IO)
         ;
-            LineRes = eof,
+            LineResult = eof,
             io.write_string("eof\n", !IO)
         ;
-            LineRes = error(Error),
+            LineResult = error(Error),
             io.format("read failed: %s\n", [s(error_message(Error))], !IO)
         ),
         io.close_input(File, !IO)
     ;
-        FileRes = error(Error),
-        io.format("open failed: %s\n", [s(error_message(Error))], !IO)
+        FileResult = error(Error),
+        ErrorMsg0 = io.error_message(Error),
+        ( if
+            string.split_at_char('\'', ErrorMsg0) =
+                ["Access to the path ", _, " is denied."]
+        then
+            % Replace an error message that reports a possibly
+            % workspace-specific path with the standard path
+            % in one of the .expN files.
+            ErrorMsg = "Access to the path '.' is denied."
+        else
+            ErrorMsg = ErrorMsg0
+        ),
+        io.format("open failed: %s\n", [s(ErrorMsg)], !IO)
     ).

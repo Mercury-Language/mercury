@@ -842,9 +842,7 @@ get_type_ctor_info(_) = _ :-
 type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    ( if
-        type_ctor_is_variable_arity(TypeCtorInfo)
-    then
+    ( if type_ctor_is_variable_arity(TypeCtorInfo) then
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         TypeArgs = iterate(1, Arity, var_arity_type_info_index_as_ti(TypeInfo))
     else
@@ -1139,14 +1137,21 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = TypeInfo.args.length;
+    if (TypeInfo.args == null) {
+        Arity = 0;
+    } else {
+        Arity = TypeInfo.args.length;
+    }
 ").
-
 :- pragma foreign_proc("C#",
     get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Arity = TypeInfo.args.Length;
+    if (TypeInfo.args == null) {
+        Arity = 0;
+    } else {
+        Arity = TypeInfo.args.Length;
+    }
 ").
 
 get_var_arity_typeinfo_arity(_) = _ :-
@@ -5579,7 +5584,7 @@ unsafe_index(_, _) = _ :-
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    SUCCESS_INDICATOR = ((void *)S == NULL);
+    SUCCESS_INDICATOR = ((void *) S == NULL);
 ").
 :- pragma foreign_proc("C#",
     null(S::in),

@@ -1,0 +1,4 @@
+time.m:005: Warning: this module, `time', has the same name as a module in the
+time.m:005:   Mercury standard library. A third module cannot import both, and
+time.m:005:   you will likely have problems where a third module will want to
+time.m:005:   import one but will get the other.
