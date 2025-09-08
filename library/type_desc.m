@@ -682,7 +682,13 @@ type_ctor_arity(TypeCtor) = Arity :-
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
         case runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
-            tci = new runtime.TypeCtorInfo_Struct(tci, TypeInfo.args.Length);
+            int arity;
+            if (TypeInfo.args == null) {
+                arity = 0;
+            } else {
+                arity = TypeInfo.args.Length;
+            }
+            tci = new runtime.TypeCtorInfo_Struct(tci, arity);
             break;
         default:
             break;
@@ -702,7 +708,13 @@ type_ctor_arity(TypeCtor) = Arity :-
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
         case jmercury.runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
-            tci = new TypeCtorInfo_Struct(tci, TypeInfo.args.length);
+            int arity;
+            if (TypeInfo.args == null) {
+                arity = 0;
+            } else {
+                arity = TypeInfo.args.length;
+            }
+            tci = new TypeCtorInfo_Struct(tci, arity);
             break;
         default:
             break;
