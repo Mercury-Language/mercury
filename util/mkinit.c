@@ -2,7 +2,7 @@
 // vim:sw=4 ts=4 expandtab
 //
 // Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
-// Copyright (C) 2014-2016, 2019, 2020, 2022 The Mercury team.
+// Copyright (C) 2014-2016, 2019-2020, 2022, 2025 The Mercury team.
 // This file may only be copied under the terms of the GNU General
 // Public License - see the file COPYING in the Mercury distribution.
 
@@ -25,10 +25,10 @@
 // NOTE: any changes to this program may need to be reflected in the
 // following places:
 //
-//      - scripts/c2init.in
-//      - compiler/compile_target_code.m
-//          in particular the predicates make_init_obj/7 and
-//          make_standalone_interface/3.
+// - scripts/c2init.in (the c2init scripts calls this program), and
+// - compiler/compile_target_code.m, in particular the predicates
+//      make_init_obj_file/8, and
+//      make_standalone_interface/5.
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -1108,8 +1108,7 @@ output_main(void)
             } else if (*options_str == '\t') {
                 putchar('\\');
                 putchar('t');
-            } else if (*options_str == '"' ||
-                    *options_str == '\\') {
+            } else if (*options_str == '"' || *options_str == '\\') {
                 putchar('\\');
                 putchar(*options_str);
             } else {

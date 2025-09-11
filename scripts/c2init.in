@@ -5,6 +5,7 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008 The University of Melbourne.
+# Copyright (C) 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -15,8 +16,8 @@
 # Type `c2init --help' for usage message.
 #
 # *************************************************************************
-# *** IMPORTANT NOTE: any changes to this file may also require similar ***
-# *** changes to compiler/compile_target_code.m                         ***
+# IMPORTANT NOTE: any changes to this file may also require similar changes
+# in the places listed at the top of util/mkinit.c.
 # *************************************************************************
 
 Usage="\
@@ -26,16 +27,16 @@ Usage:  c2init [options] *.c *.init ..."
 FULLARCH=@FULLARCH@
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
-# include the file `parse_ml_options.sh-subr', which in turn includes
-# the sh-subr files dealing with grades
+# Include the file `parse_ml_options.sh-subr', which in turn includes
+# the sh-subr files dealing with grades.
 @PARSE_ML_OPTIONS@
 
-# include the file `canonical_grade.sh-subr'
+# Include the file `canonical_grade.sh-subr'.
 @CANONICAL_GRADE@
 
-# If you change one of these, or if you add a new one, you will also need
-# to check the following files to see if corresponding changes are needed
-# there as well:
+# If you change one of the following system library names, or if you add
+# a new system library, you will also need to check the following files
+# to see if corresponding changes are needed there as well:
 #
 #   Mmake.workspace
 #   Mmakefile

@@ -752,9 +752,11 @@ invoke_mkinit(Globals, ProgressStream, InitFileStream, Verbosity,
 
 %---------------------------------------------------------------------------%
 
-% WARNING: The code here duplicates the functionality of scripts/c2init.in.
-% Any changes there may also require changes here, and vice versa.
-% The code of make_standalone_interface/5 may also require updating.
+% WARNING: The code here duplicates the functionality of scripts/c2init.in,
+% whose implementation is in util/mkinit.c.
+% Any changes there may also require changes in the places listed in
+% util/mkinit.c, and vice versa. One of those places is
+% make_standalone_interface/5 below.
 
 make_init_obj_file(ProgressStream, Globals, MustCompile,
         ModuleName, ModuleNames, Result, !IO) :-
@@ -1048,22 +1050,23 @@ is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
 % Standalone interfaces.
 %
 
-% NOTE: the following code is similar to that of make_init_obj/7.
-% Any changes here may need to be reflected there.
+% NOTE: the following code is similar to that of make_init_obj_file/8 above.
+% Please see the comment just above the clause of that predicate.
 
 make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
-    make_standalone_int_header(ProgressStream, BaseName, HdrSucceeded, !IO),
+    make_standalone_interface_header(ProgressStream, BaseName,
+        HdrSucceeded, !IO),
     (
         HdrSucceeded = succeeded,
-        make_standalone_int_body(Globals, ProgressStream, BaseName, !IO)
+        make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO)
     ;
         HdrSucceeded = did_not_succeed
     ).
 
-:- pred make_standalone_int_header(io.text_output_stream::in,
+:- pred make_standalone_interface_header(io.text_output_stream::in,
     string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
+make_standalone_interface_header(ProgressStream, BaseName, Succeeded, !IO) :-
     HdrFileName = BaseName ++ ".h",
     io.open_output(HdrFileName, OpenResult, !IO),
     (
@@ -1097,10 +1100,10 @@ make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
         Succeeded = did_not_succeed
     ).
 
-:- pred make_standalone_int_body(globals::in, io.text_output_stream::in,
+:- pred make_standalone_interface_body(globals::in, io.text_output_stream::in,
     string::in, io::di, io::uo) is det.
 
-make_standalone_int_body(Globals, ProgressStream, BaseName, !IO) :-
+make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO) :-
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
     % See the similar code in make_init_target_file for an explanation
     % of why we must remove duplicates from this list.
