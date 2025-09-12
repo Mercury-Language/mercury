@@ -42,7 +42,7 @@ INTERMOD_SPECIAL_MULTIMODULE_PROGS = \
 
 INTERMOD_SPECIAL_SINGLEMODULE_PROGS = \
 	bug214 \
-	test_feature_set \
+	test_feature_set
 
 BORING_MULTIMODULE_PROGS = \
 	bad_exported_mode \
@@ -296,6 +296,7 @@ BORING_SINGLEMODULE_PROGS = \
 	test_may_duplicate \
 	test_may_export_body \
 	test_promise_equivalent_clauses \
+	test_type_spec \
 	trailed_mutable \
 	tricky_assert \
 	try_bad_params \
@@ -360,14 +361,6 @@ BORING_SINGLEMODULE_PROGS = \
 # NOTE We don't support reserving tags anymore.
 # RESERVE_TAG_MODULES = \
 # 	reserve_tag
-#
-# The java and csharp grades compile with num_tag_bits = 0.
-# NOTE We don't support reserving tags anymore.
-# ifneq "$(filter java% csharp%,$(GRADE))" ""
-# 	RESERVE_TAG_PROGS =
-# else
-# 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
-# endif
 
 #-----------------------------------------------------------------------------#
 
@@ -395,15 +388,6 @@ else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
 	SPECIAL_RULE_C_INTERFACE_PROGS=$(SPECIAL_RULE_C_INTERFACE_MODULES)
 endif
-
-#-----------------------------------------------------------------------------#
-
-# The following require that the compiler not ignore `pragma type_spec'
-# declarations.
-TYPE_SPEC_MODULES = \
-	test_type_spec
-
-TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 
 #-----------------------------------------------------------------------------#
 
@@ -465,8 +449,7 @@ endif
 
 NONSPECIAL_SINGLEMODULE_PROGS = \
 	$(SINGLEMODULE_PROGS) \
-	$(C_INTERFACE_PROGS) \
-	$(TYPE_SPEC_PROGS)
+	$(C_INTERFACE_PROGS)
 
 SPECIAL_SINGLEMODULE_PROGS = \
 	$(SPECIAL_RULE_SINGLEMODULE_PROGS) \
