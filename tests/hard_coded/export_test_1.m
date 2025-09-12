@@ -40,11 +40,11 @@ foo(X, X + 1).
     bar(X::in, Y::out),
     [may_call_mercury, promise_pure],
 "
-    Y = export_test.foo(X);
+    Y = export_test_1.foo(X);
 ").
 :- pragma foreign_proc("Java",
     bar(X::in, Y::out),
     [may_call_mercury, promise_pure],
 "
-    Y = export_test.foo(X);
+    Y = export_test_1.foo(X);
 ").
