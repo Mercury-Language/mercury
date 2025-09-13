@@ -84,7 +84,6 @@
             % The first pass of the MLDS backend. As of 2025 sep 13,
             % this is stage 405.
 
-
     % This predicate sets up and maybe runs the simplification pass.
     %
 :- pred maybe_simplify(io.text_output_stream::in,
