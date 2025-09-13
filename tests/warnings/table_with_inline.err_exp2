@@ -1,10 +1,10 @@
-table_with_inline.m:014: Ignoring the `:- pragma memo' declaration for function
-table_with_inline.m:014:   `table_with_inline.foo'/1 mode 0, because tabling is
-table_with_inline.m:014:   [38;5;203mis not compatible with parallel execution.[39;49m
-table_with_inline.m:018: Warning: [38;5;87mfunction `table_with_inline.foo'/1[39;49m has both a
-table_with_inline.m:018:   [38;5;171m`:- pragma memo' declaration[39;49m and a
-table_with_inline.m:018:   [38;5;171m`:- pragma inline' declaration.[39;49m
-table_with_inline.m:018:   The inline pragma [38;5;203mwill be ignored,[39;49m because tabled
-table_with_inline.m:018:   predicates cannot be inlined.
-table_with_inline.m:018:   You can use the `--no-warn-table-with-inline' option
-table_with_inline.m:018:   to suppress this warning.
+table_with_inline.m:015: Ignoring the `:- pragma memo' declaration for function
+table_with_inline.m:015:   `table_with_inline.foo'/1 mode 0, because tabling is
+table_with_inline.m:015:   [38;5;203mis not compatible with parallel execution.[39;49m
+table_with_inline.m:019: Warning: [38;5;87mfunction `table_with_inline.foo'/1[39;49m has both a
+table_with_inline.m:019:   [38;5;171m`:- pragma memo' declaration[39;49m and a
+table_with_inline.m:019:   [38;5;171m`:- pragma inline' declaration.[39;49m
+table_with_inline.m:019:   The inline pragma [38;5;203mwill be ignored,[39;49m because tabled
+table_with_inline.m:019:   predicates cannot be inlined.
+table_with_inline.m:019:   You can use the `--no-warn-table-with-inline' option
+table_with_inline.m:019:   to suppress this warning.

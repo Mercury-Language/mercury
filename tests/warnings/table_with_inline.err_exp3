@@ -1,3 +1,6 @@
+table_with_inline.m:015: Ignoring the `:- pragma memo' declaration for function
+table_with_inline.m:015:   `table_with_inline.foo'/1 mode 0, because tabling is
+table_with_inline.m:015:   [38;5;203mis implemented only on the C backend.[39;49m
 table_with_inline.m:019: Warning: [38;5;87mfunction `table_with_inline.foo'/1[39;49m has both a
 table_with_inline.m:019:   [38;5;171m`:- pragma memo' declaration[39;49m and a
 table_with_inline.m:019:   [38;5;171m`:- pragma inline' declaration.[39;49m
