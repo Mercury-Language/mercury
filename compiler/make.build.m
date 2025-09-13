@@ -263,6 +263,15 @@ open_module_error_stream(ProgressStream, Globals, Info, ModuleName,
         % just the part of the error file that relates to the current command.
         % The contents of this file, filled in by our caller, will be appended
         % to ErrorFileName by close_module_error_stream_handle_errors.
+        %
+        % NOTE Actually, the contents of this file won't be *appended*
+        % to ErrorFileName, it will *overwrite* ErrorFileName. The reason
+        % for this is documented in close_module_error_stream_handle_errors.
+        %
+        % XXX This in turn makes returning MESI = mesi_temp_file(...),
+        % an unnecessary pessimization. The same reasoning would allow us
+        % to delete both the mki_error_file_modules field in the make_info,
+        % and all the operation on that field.
         open_temp_output(TmpErrorFileResult, !IO),
         (
             TmpErrorFileResult = ok({TmpErrorFileName, TmpErrorOutputStream}),
@@ -334,7 +343,35 @@ close_module_error_stream_handle_errors(ProgressStream, Globals, ModuleName,
             ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
             expect(set.contains(ErrorFileModules0, ModuleName),
                 $pred, "ModuleName not in ErrorFileModules0"),
-            io.open_append(ErrorFileName, ErrorFileResult, !IO),
+            % NOTE This used to be io.open_append, not io.open_output.
+            % However, this lead to the failure of many of the test cases
+            % in tests/warnings, because it generated .err files that contained
+            % - the output of mmc --make-interface, AND
+            % - the output of mmc --errorcheck-only,
+            % while the .err_exp files they were compared against
+            % contain only the output of mmc --errorcheck-only.
+            %
+            % When mmc --make was first implemented, the compiler did
+            % not do any checks when invoked to make interface files,
+            % we were appending to empty files. However, the compiler
+            % has been capable of generating both errors and warnings
+            % during such invocations since at least the addition of the
+            % --halt-at-invalid-interface option in 2019 september.
+            %
+            % It is not clear to me (zs) that there was ever any justification
+            % for using io.open_append instead of io.open_output. The initial
+            % post of this code to m-rev by Simon in 2022 february already
+            % included this call to io.open_append, but it was not discussed
+            % during the review, so I don't know for sure why Simon thought
+            % it was necessary. It could have had something to do with the
+            % compiler having traditionally written out each error message as
+            % soon as it was generated, but as far as I know, this writing-out
+            % was always done to an already-open file stream. Prior to the
+            % the initial implementation of mmc --make, I don't think
+            % the compiler ever explicitly opened a .err file at all;
+            % any such redirection would have been done by sh code in
+            % mmake actions.
+            io.open_output(ErrorFileName, ErrorFileResult, !IO),
             (
                 ErrorFileResult = ok(ErrorFileOutputStream),
                 globals.lookup_maybe_int_option(Globals,
