@@ -411,21 +411,20 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
     find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks0),
     SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
 
+    % NOTE: Any changes here may also need to be made to the maybe_simplify
+    % predicate in mercury_compile_front_end.m.
+
+    % Perform constant propagation only if *none* of the
+    % profiling transformations has been applied.
     ConstProp = OptTuple ^ ot_prop_constants,
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
-    ProfTrans = bool.or_list([DeepProf, TSWProf, TSCProf]),
-
-    % Don't run constant propagation if any of the profiling
-    % transformations has been applied.
-    %
-    % NOTE: Any changes here may also need to be made to
-    % mercury_compile.simplify.
-
     ( if
         ConstProp = prop_constants,
-        ProfTrans = no
+        DeepProf = no,
+        TSWProf = no,
+        TSCProf = no
     then
         list.cons(simptask_constant_prop, SimpList0, SimpList1)
     else

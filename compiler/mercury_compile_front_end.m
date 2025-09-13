@@ -36,11 +36,15 @@
 :- import_module list.
 :- import_module maybe.
 
+%---------------------------------------------------------------------------%
+
 :- pred frontend_pass(io.text_output_stream::in, io.text_output_stream::in,
     op_mode_augment::in, qual_info::in, bool::in, bool::in,
     bool::in, bool::out, module_info::in, module_info::out, dump_info::in,
     dump_info::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
     % This type indicates what stage of compilation we are running
     % the simplification pass at. The exact simplifications tasks we run
@@ -48,26 +52,38 @@
     %
 :- type simplify_pass
     --->    simplify_pass_frontend
-            % Immediately after the frontend passes.
+            % Running simplification immediately after all the semantic
+            % analysis passes in the frontend. As of 2025 sep 13,
+            % this is stage 65.
 
     ;       simplify_pass_post_untuple
-            % After the untupling transformation has been applied.
-
-    ;       simplify_pass_pre_prof_transforms
-            % If deep/term-size profiling is enabled then immediately
-            % before the source-to-source transformations that
-            % implement them.
+            % Running simplification after the untupling transformation
+            % has been applied. As of 2025 sep 13, this is stage 133.
 
     ;       simplify_pass_pre_implicit_parallelism
-            % If implicit parallelism is enabled then perform simplification
-            % before it is applied. This helps ensure that the HLDS matches
-            % the feedback data.
+            % Running simplification before the implicit parallelism
+            % transformation, if it is enabled. This helps ensure that
+            % the HLDS matches the feedback data. As of 2025 sep 13,
+            % this is stage 172.
 
-    ;       simplify_pass_ml_backend
-            % The first stage of MLDS code generation.
+    ;       simplify_pass_pre_prof_transforms
+            % Running simplification before either the term size profiling
+            % or the the profiling transformation, if either is enabled.
+            % The reason for this pass is mainly to make up for the fact
+            % that some simplifications that we can do using standard code
+            % before these transforms would require more complex analysis,
+            % if they were possible at all, after these transforms,
+            % due to their introduction of e.g. impure code into the HLDS.
+            % As of 2025 sep 13, this is stage 215.
 
-    ;       simplify_pass_ll_backend.
-            % The first stage of LLDS code generation.
+    ;       simplify_pass_ll_backend
+            % One of the passes of the LLDS backend. As of 2025 sep 13,
+            % this is stage 325.
+
+    ;       simplify_pass_ml_backend.
+            % The first pass of the MLDS backend. As of 2025 sep 13,
+            % this is stage 405.
+
 
     % This predicate sets up and maybe runs the simplification pass.
     %
