@@ -319,8 +319,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             )
         ),
 
-        linked_target_file_name_full_curdir(Globals, MainModuleName,
-        LinkedTargetType,
+        linked_target_file_name_full_curdir(Globals,
+            MainModuleName, LinkedTargetType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         get_file_timestamp(search_auth_cur_dir, FullMainModuleLinkedFileName,
             _SearchDirs, MaybeTimestamp, !Info, !IO),
