@@ -10,7 +10,7 @@ Changes that may break compatibility
 
 * The order of two arguments in the predicates `write_variable/4`,
   `write_variable/5`, `write_variable_with_op_table/4`, and
-  `write_variable_with_op_table/5`in the `term_io` module
+  `write_variable_with_op_table/5` in the `term_io` module
   has been swapped.
 
 * The `io` module is being reorganized. Some predicates have been marked
