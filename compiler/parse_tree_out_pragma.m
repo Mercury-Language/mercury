@@ -70,6 +70,8 @@
     decl_pragma_type_spec_constr_info::in, U::di, U::uo) is det
     <= pt_output(S, U).
 
+:- func mercury_pragma_type_spec_to_string(output_lang,
+    decl_pragma_type_spec_info) = string.
 :- pred mercury_format_pragma_type_spec(S::in, output_lang::in,
     decl_pragma_type_spec_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
@@ -961,6 +963,12 @@ mercury_format_pragma_type_spec_constr(S, _Lang, TypeSpecConstr, !U) :-
     add_list(mercury_format_type_subst_new(IndentStr, TVarSet), ",\n",
         one_or_more_to_list(OoMTypeSubsts), S, !U),
     add_string("\n]).\n", S, !U).
+
+mercury_pragma_type_spec_to_string(Lang, TypeSpec) = Str :-
+    State0 = string.builder.init,
+    mercury_format_pragma_type_spec(string.builder.handle, Lang, TypeSpec,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_pragma_type_spec(S, Lang, TypeSpec, !U) :-
     TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName, _SpecModuleName,

@@ -562,9 +562,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
-    add_decl_pragmas(ProgressStream, DeclPragmas,
+    add_decl_pragmas(DeclPragmas,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas_type_spec_constr(ProgressStream, DeclTypeSpecConstr,
+    add_decl_pragmas_type_spec_constr(DeclTypeSpecConstr,
         !ModuleInfo, !QualInfo, !Specs),
     add_decl_pragmas_type_spec(DeclTypeSpec,
         !ModuleInfo, !QualInfo, !Specs),

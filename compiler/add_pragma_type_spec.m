@@ -15,11 +15,9 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module list.
 
-:- pred add_pragma_type_spec_constr(io.text_output_stream::in,
-    decl_pragma_type_spec_constr_info::in,
+:- pred add_pragma_type_spec_constr(decl_pragma_type_spec_constr_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -73,6 +71,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -88,8 +87,7 @@
 
 %---------------------------------------------------------------------------%
 
-add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
-        !ModuleInfo, !QualInfo, !Specs) :-
+add_pragma_type_spec_constr(TypeSpecConstr, !ModuleInfo, !QualInfo, !Specs) :-
     % The general approach we use to implement type_spec_constrained_preds
     % pragmas is to compute the set of ordinary type_spec pragmas they
     % correspond to, and add *those* to !ModuleInfo.
@@ -144,26 +142,31 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
             Inform = no
         ;
             Inform = yes,
-            trace [io(!IO)] (
-                Context = context(FileName, LineNumber),
-                io.format(ProgressStream,
-                    "%% For the type_spec_constrained_preds pragma" ++
-                        " at %s:%d,\n",
-                    [s(FileName), i(LineNumber)], !IO),
-                io.write_string(ProgressStream,
-                    "% the compiler generated ", !IO),
-                (
-                    SortedPragmas = [],
-                    io.write_string(ProgressStream,
-                        "no type_spec pragmas.\n", !IO)
-                ;
-                    SortedPragmas = [_ | _],
-                    io.write_string(ProgressStream,
-                        "these type_spec pragmas:\n", !IO),
-                    list.foldl(report_generated_pragma(ProgressStream),
-                        SortedPragmas, !IO)
-                )
-            )
+            PragmaStrs = list.map(
+                mercury_pragma_type_spec_to_string(output_mercury),
+                SortedPragmas),
+            Pieces0 =
+                [words("For this type_spec_constrained_preds pragma,"),
+                words("the compiler generated")],
+            PragmaStrToPieces = ( func(S) = [blank_line, words(S)] ),
+            PragmaPieceLists = list.map(PragmaStrToPieces, PragmaStrs),
+            list.condense(PragmaPieceLists, PragmaPieces),
+            (
+                PragmaStrs = [],
+                Pieces = Pieces0 ++ [words("no type_spec pragmas.")]
+            ;
+                PragmaStrs = [_],
+                Pieces = Pieces0 ++ [words("this type_spec pragma:")] ++
+                    PragmaPieces
+            ;
+                PragmaStrs = [_, _ | _],
+                Pieces = Pieces0 ++ [words("these type_spec pragmas:")] ++
+                    PragmaPieces
+            ),
+            Severity =
+                severity_informational(inform_generated_type_spec_pragmas),
+            Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
         ),
         % Actually add the generated type_spec pragmas to !ModuleInfo.
         %

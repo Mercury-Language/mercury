@@ -1299,12 +1299,13 @@ io_set_disable_generate_item_version_numbers(DisableItemVerions, !IO) :-
 :- type compiler_output_stream
     --->    general_stream(io.text_output_stream)
             % A stream such as stdout or stderr, that is open before
-            % the compiler begins running and does not have to closed.
+            % the compiler begins running and does not have to be closed.
     ;       specific_stream(io.text_output_stream)
             % A stream opened for a specific purpose the first time there was
             % a need for it. Must be closed before the compiler exits.
     ;       no_stream.
-            % No stream has been set up for this purpose (yet).
+            % Either no stream has been set up for this purpose (yet),
+            % or it has already been closed.
 
 :- mutable(output_stream_error, compiler_output_stream, no_stream, ground,
     [untrailed, attach_to_io_state]).
@@ -1380,27 +1381,31 @@ get_output_stream(Globals, ModuleName, Option, Get, Set, Stream, !IO) :-
 %---------------------%
 
 close_any_specific_compiler_streams(!IO) :-
-    get_output_stream_error(ErrorStream, !IO),
-    get_output_stream_inference(InferenceStream, !IO),
-    get_output_stream_debug(DebugStream, !IO),
-    get_output_stream_recompile(RecompileStream, !IO),
-    close_compiler_output_stream(ErrorStream, !IO),
-    close_compiler_output_stream(InferenceStream, !IO),
-    close_compiler_output_stream(DebugStream, !IO),
-    close_compiler_output_stream(RecompileStream, !IO).
+    close_compiler_output_stream(
+        get_output_stream_error, set_output_stream_error, !IO),
+    close_compiler_output_stream(
+        get_output_stream_inference, set_output_stream_inference, !IO),
+    close_compiler_output_stream(
+        get_output_stream_debug, set_output_stream_debug, !IO),
+    close_compiler_output_stream(
+        get_output_stream_recompile, set_output_stream_recompile, !IO).
 
-:- pred close_compiler_output_stream(compiler_output_stream::in,
+:- pred close_compiler_output_stream(
+    pred(compiler_output_stream, io, io)::in(pred(out, di, uo) is det),
+    pred(compiler_output_stream, io, io)::in(pred(in, di, uo) is det),
     io::di, io::uo) is det.
 
-close_compiler_output_stream(CompilerStream, !IO) :-
+close_compiler_output_stream(Get, Set, !IO) :-
+    Get(CompilerStream0, !IO),
     (
-        CompilerStream = general_stream(_Stream)
+        CompilerStream0 = general_stream(_Stream)
         % This stream does not need to be closed.
     ;
-        CompilerStream = specific_stream(Stream),
-        io.close_output(Stream, !IO)
+        CompilerStream0 = specific_stream(Stream),
+        io.close_output(Stream, !IO),
+        Set(no_stream, !IO)
     ;
-        CompilerStream = no_stream
+        CompilerStream0 = no_stream
         % There is no stream to close.
     ).
 
