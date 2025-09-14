@@ -44,7 +44,9 @@ SINGLE_MODULE_PROGS = \
 	undef_inst \
 	undef_mode \
 	undef_type_int \
-	undef_type_mod_qual
+	undef_type_mod_qual \
+	unicode_1 \
+	unicode_2
 
 MULTI_MODULE_PROGS = \
 	int_impl_imports \

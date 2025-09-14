@@ -1,0 +1,3 @@
+unicode_1.m:009: Syntax error at token 'int': expected an operator, or `.'.
+unicode_1.m:009: Syntax error: expected only hexadecimal digits in Unicode
+unicode_1.m:009:   escape sequence, got `x'.

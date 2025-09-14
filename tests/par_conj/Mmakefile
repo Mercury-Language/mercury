@@ -8,7 +8,8 @@ MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-# please keep these lists sorted
+# Please keep these lists sorted.
+
 DEP_PAR_CONJ_PROGS = \
 	bug_130_unreachable \
 	bug_130_should_push_signal \
@@ -63,14 +64,20 @@ DEP_PAR_CONJ_PROGS = \
 INDEP_PAR_CONJ_PROGS = \
 	indep_par_append \
 	indep_par_nested \
-	par_fib \
-	threads_hang
+	par_fib
+
+# threads_hang has a predicate that is implemented only for C.
+ifeq "$(filter java% csharp%,$(GRADE))" ""
+	INDEP_PAR_CONJ_C_PROGS = \
+		threads_hang
+else
+	INDEP_PAR_CONJ_C_PROGS =
+endif
 
 ifneq "$(findstring par,$(GRADE))" ""
 	# These tests are to do with explicit threads rather than parallel
 	# conjunction, but the tests require multiple engines to be enabled,
 	# which was already set up in this directory.
-	#
 	THREAD_PROGS = \
 		spawn_many \
 		thread_barrier
@@ -78,12 +85,15 @@ else
 	THREAD_PROGS =
 endif
 
+# XXX What is the point of OBJ_PROGS if it is always empty?
 ifneq "$(findstring decldebug,$(GRADE))" ""
 	OBJ_PROGS =
 	PROGS =
 else
 	OBJ_PROGS =
-	PROGS = $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS) \
+	PROGS = $(DEP_PAR_CONJ_PROGS) \
+		$(INDEP_PAR_CONJ_PROGS) \
+		$(INDEP_PAR_CONJ_C_PROGS) \
 		$(THREAD_PROGS)
 endif
 
@@ -118,7 +128,7 @@ ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 endif
 
 %.out: %
-	{ [ -f $*.inp ] && cat $*.inp; } | $(ENGINES) ./$< > $@ 2>&1 || \
+	{ test -f $*.inp && cat $*.inp; } | $(ENGINES) ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
 ifeq "$(filter hl% java% csharp%,$(GRADE))" ""

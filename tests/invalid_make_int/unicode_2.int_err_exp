@@ -1,0 +1,2 @@
+unicode_2.m:009: Syntax error at token 'int': expected an operator, or `.'.
+unicode_2.m:009: Syntax error: U+FFFFFFFF is not a valid Unicode code point.

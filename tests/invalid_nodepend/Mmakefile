@@ -89,8 +89,6 @@ PROGS = \
 	types \
 	unbound_type_vars \
 	undetermined_existential_data_type \
-	unicode_1 \
-	unicode_2 \
 	unrecognized_pragma \
 	unterminated_octal_escape \
 	uu_type \

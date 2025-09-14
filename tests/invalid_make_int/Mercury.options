@@ -69,3 +69,7 @@ MCFLAGS-undef_type_int                          \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-undef_type_mod_qual                     \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-unicode_1                               \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-unicode_2                               \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
