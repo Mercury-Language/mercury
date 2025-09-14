@@ -19,6 +19,8 @@ MCFLAGS-bad_instance                            \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_mutable_int                         \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_tscp                                \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_type_class_constraint_intermodule   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bug17                                   \
@@ -42,6 +44,8 @@ MCFLAGS-missing_interface_import_test_2         \
 MCFLAGS-missing_parent_import                   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-pragma_export_int                       \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-redundant_import                        \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-sub_c                                   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs

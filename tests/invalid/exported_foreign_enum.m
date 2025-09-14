@@ -9,6 +9,18 @@
 
 :- pred main(io::di, io::uo) is det.
 
+:- type t1
+    --->    f11
+    ;       f12
+    ;       f13(int).
+
+:- type t2
+    --->    f21
+    ;       f22
+    ;       f23.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 main(!IO) :-
@@ -30,7 +42,16 @@ main(!IO) :-
         SUCCESS_INDICATOR = MR_FALSE;
     }
 ").
-
+:- pragma foreign_proc("Java",
+    test(X::in),
+    [will_not_call_mercury, promise_pure],
+"
+    if (X == FOO_bar) {
+        SUCCESS_INDICATOR = true;
+    } else {
+        SUCCESS_INDICATOR = false;
+    }
+").
 :- pragma foreign_proc("C#",
     test(X::in),
     [will_not_call_mercury, promise_pure],
@@ -49,28 +70,39 @@ main(!IO) :-
     ;       bar
     ;       baz.
 
-:- pragma foreign_export_enum("C", foo/0, [prefix("FOO_")]).
+:- pragma foreign_export_enum("C",    foo/0, [prefix("FOO_")]).
+:- pragma foreign_export_enum("Java", foo/0, [prefix("FOO_")]).
+:- pragma foreign_export_enum("C#",   foo/0, [prefix("FOO_")]).
 
 :- pragma foreign_enum("C", foo/0, [
     foo - "400",
     bar - "500",
     baz - "600"
 ]).
-
-% :- pragma reserve_tag(foo/0). This pragma is not supported anymore.
+:- pragma foreign_enum("Java", foo/0, [
+    foo - "400",
+    bar - "500",
+    baz - "600"
+]).
+:- pragma foreign_enum("C#", foo/0, [
+    foo - "400",
+    bar - "500",
+    baz - "600"
+]).
 
 %---------------------------------------------------------------------------%
 
-:- interface.
-
-:- type t1
-    --->    f11
-    ;       f12
-    ;       f13(int).
-
-:- implementation.
-
 :- pragma foreign_enum("C", t1/0, [
+    f11 - "14",
+    f12 - "15",
+    f13 - "16"
+]).
+:- pragma foreign_enum("Java", t1/0, [
+    f11 - "14",
+    f12 - "15",
+    f13 - "16"
+]).
+:- pragma foreign_enum("C#", t1/0, [
     f11 - "14",
     f12 - "15",
     f13 - "16"
@@ -78,16 +110,17 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- interface.
-
-:- type t2
-    --->    f21
-    ;       f22
-    ;       f23.
-
-:- implementation.
-
 :- pragma foreign_enum("C", t2/0, [
+    f21 - "24",
+    f22 - "25",
+    f23 - "26"
+]).
+:- pragma foreign_enum("Java", t2/0, [
+    f21 - "24",
+    f22 - "25",
+    f23 - "26"
+]).
+:- pragma foreign_enum("C#", t2/0, [
     f21 - "24",
     f22 - "25",
     f23 - "26"
@@ -98,6 +131,16 @@ main(!IO) :-
 :- type t3 == t1.
 
 :- pragma foreign_enum("C", t3/0, [
+    f31 - "34",
+    f32 - "35",
+    f33 - "36"
+]).
+:- pragma foreign_enum("Java", t3/0, [
+    f31 - "34",
+    f32 - "35",
+    f33 - "36"
+]).
+:- pragma foreign_enum("C#", t3/0, [
     f31 - "34",
     f32 - "35",
     f33 - "36"

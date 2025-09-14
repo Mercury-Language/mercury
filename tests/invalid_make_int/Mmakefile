@@ -25,6 +25,7 @@ SINGLE_MODULE_PROGS = \
 	bad_initialise_decl_int \
 	bad_instance \
 	bad_mutable_int \
+	bad_tscp \
 	bad_type_class_constraint_intermodule \
 	bug17 \
 	bug499 \

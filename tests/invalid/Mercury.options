@@ -156,7 +156,6 @@ MCFLAGS-unsatisfiable_constraint += --verbose-error-messages
 MCFLAGS-user_eq_dummy           += --verbose-error-messages
 
 MCFLAGS-ambiguous_overloading_error += --warn-unsorted-import-blocks
-MCFLAGS-bad_tscp                += --warn-unsorted-import-blocks
 MCFLAGS-bug10                   += --warn-unsorted-import-blocks
 MCFLAGS-gh72_errors             += --warn-unsorted-import-blocks
 MCFLAGS-ho_default_func_2       += --warn-unsorted-import-blocks

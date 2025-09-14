@@ -1,6 +1,3 @@
-bad_tscp.m:023: Warning: this [38;5;87m`:- import_module' declaration for module[39;49m
-bad_tscp.m:023:   [38;5;87m`stream'[39;49m [38;5;203mis out of order[39;49m with respect to the preceding
-bad_tscp.m:023:   `:- import_module' declaration for module `term'.
 bad_tscp.m:054: In the third argument of a
 bad_tscp.m:054:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:054:   in the second substitution:

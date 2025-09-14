@@ -38,24 +38,24 @@ main(!IO) :-
 %
 % Since all three of these predicates have either a type or a mode
 % that is not allowed in fact tables, the fact table files named below
-% should never actually be accessed. They therefore do not need to exist,
-% and they don't.
+% should never actually be accessed, but they need to exist for Java/C# grades,
+% because mmc --make considers them to be prerequisites.
 %
 
 :- pred table_1(int, bool, int16).
 :- mode table_1(in, out, out) is semidet.
 :- mode table_1(out, in, out) is semidet.
 :- mode table_1(out, out, in) is nondet.
-:- pragma fact_table(pred(table_1/3), "fact_table_data_file_1").
+:- pragma fact_table(pred(table_1/3), "bad_fact_table_decls_1").
 
 :- pred table_2(int, int, int).
 :- mode table_2(in, in, in) is semidet.
 :- mode table_2(in, in, in) is nondet.
-:- pragma fact_table(pred(table_2/3), "fact_table_data_file_2").
+:- pragma fact_table(pred(table_2/3), "bad_fact_table_decls_2").
 
 :- pred table_3(int, int, int).
 :- mode table_3(in, ia, in) is semidet.
 :- mode table_3(in, in, any) is nondet.
-:- pragma fact_table(pred(table_3/3), "fact_table_data_file_3").
+:- pragma fact_table(pred(table_3/3), "bad_fact_table_decls_3").
 
 %---------------------------------------------------------------------------%
