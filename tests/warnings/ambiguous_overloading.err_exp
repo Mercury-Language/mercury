@@ -6,7 +6,7 @@ ambiguous_overloading.m:048: In clause for predicate `ambig_overload1'/1:
 ambiguous_overloading.m:048:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:048:   The following symbol was overloaded in the
 ambiguous_overloading.m:048:   following context.
-ambiguous_overloading.m:048: 
+ambiguous_overloading.m:048:
 ambiguous_overloading.m:048:   The function symbol [38;5;87m`f'/0.[39;49m
 ambiguous_overloading.m:048:   The possible matches are:
 ambiguous_overloading.m:048:     the builtin type constructor [38;5;226m`character',[39;49m
@@ -18,14 +18,14 @@ ambiguous_overloading.m:052: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading.m:052:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:052:   The following symbols were overloaded in the
 ambiguous_overloading.m:052:   following contexts.
-ambiguous_overloading.m:052: 
+ambiguous_overloading.m:052:
 ambiguous_overloading.m:052:   The function symbol [38;5;87m`a1'/0.[39;49m
 ambiguous_overloading.m:052:   The possible matches are:
 ambiguous_overloading.m:052:     the type constructor
 ambiguous_overloading.m:052:     [38;5;226m`ambiguous_overloading.baz'/0,[39;49m
 ambiguous_overloading.m:052:     the type constructor
 ambiguous_overloading.m:052:     [38;5;226m`ambiguous_overloading.qux'/0.[39;49m
-ambiguous_overloading.m:052: 
+ambiguous_overloading.m:052:
 ambiguous_overloading.m:052:   The function symbol [38;5;87m`a2'/0.[39;49m
 ambiguous_overloading.m:052:   The possible matches are:
 ambiguous_overloading.m:052:     the type constructor
@@ -36,7 +36,7 @@ ambiguous_overloading.m:063: In clause for predicate `test_lt'/1:
 ambiguous_overloading.m:063:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:063:   The following symbol was overloaded in the
 ambiguous_overloading.m:063:   following contexts.
-ambiguous_overloading.m:057: 
+ambiguous_overloading.m:057:
 ambiguous_overloading.m:057:   The predicate symbol [38;5;87m`<'/2.[39;49m
 ambiguous_overloading.m:057:   The possible matches are:
 ambiguous_overloading.m:057:     predicate [38;5;226m`float.<'/2,[39;49m
@@ -51,7 +51,7 @@ ambiguous_overloading.m:084:   `set_browser_param_from_option_table'/3:
 ambiguous_overloading.m:084:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:084:   The following symbol was overloaded in the
 ambiguous_overloading.m:084:   following contexts.
-ambiguous_overloading.m:079: 
+ambiguous_overloading.m:079:
 ambiguous_overloading.m:079:   The function symbol [38;5;87m`lookup_bool_option'/2.[39;49m
 ambiguous_overloading.m:079:   The possible matches are:
 ambiguous_overloading.m:079:     [38;5;226mpredicate `getopt.lookup_bool_option'/3,[39;49m

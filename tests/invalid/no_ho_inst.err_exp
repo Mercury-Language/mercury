@@ -9,7 +9,7 @@ no_ho_inst.m:044:   determinism of the predicate that `AppHandler' represents.
 no_ho_inst.m:044:   The insts of higher order values should contain this
 no_ho_inst.m:044:   information, but [38;5;203m`ground',[39;49m which is the inst of
 no_ho_inst.m:044:   `AppHandler' at this point, [38;5;203mdoes not.[39;49m
-no_ho_inst.m:044: 
+no_ho_inst.m:044:
 no_ho_inst.m:044:   The fix for this error is to add this information. For
 no_ho_inst.m:044:   example, given a higher order type such as
 no_ho_inst.m:044:     :- type callback_t == (pred(world, world, io, io)).
@@ -21,7 +21,7 @@ no_ho_inst.m:044:   determinism of a predicate. Search for `higher order inst'
 no_ho_inst.m:044:   in the Mercury language reference manual's chapter for
 no_ho_inst.m:044:   higher order programming for a corresponding example for
 no_ho_inst.m:044:   functions.
-no_ho_inst.m:044: 
+no_ho_inst.m:044:
 no_ho_inst.m:044:   You can then tell the compiler that a value of type
 no_ho_inst.m:044:   callback_t has inst callback_i by specifying either the
 no_ho_inst.m:044:   mode `in(callback_i)' (when taking a value of type

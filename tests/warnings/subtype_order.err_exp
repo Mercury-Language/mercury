@@ -3,7 +3,7 @@ subtype_order.m:030:   [38;5;203mdifferent order[39;49m to its supertype [38;
 subtype_order.m:030:   differences between the order of function symbols in the
 subtype_order.m:030:   subtype, and the order of the same function symbols in
 subtype_order.m:030:   the supertype, are as follows.
-subtype_order.m:030: 
+subtype_order.m:030:
 subtype_order.m:030:   @@ -1,5 +1,5 @@
 subtype_order.m:030:   [38;5;40m-lemon/0[39;49m
 subtype_order.m:030:   [38;5;203m+pomelo/0[39;49m

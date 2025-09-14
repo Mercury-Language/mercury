@@ -637,15 +637,17 @@ write_msg_pieces(Stream, ColorDb, MaybeMaxWidth, MsgPieces, !IO) :-
     (
         MaybeContext = yes(Context),
         % ContextStr will include a space after the context itself.
-        ContextStr = context_to_string(Context)
+        ContextStr = context_to_string(Context),
+        NoSpaceContextStr = no_space_context_to_string(Context)
     ;
         MaybeContext = no,
-        ContextStr = ""
+        ContextStr = "",
+        NoSpaceContextStr = ""
     ),
     Pieces = one_or_more_to_list(OoMPieces),
-    convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr,
-        TreatAsFirst, Indent, Pieces, PrefixStr, Lines),
-    write_msg_lines(Stream, PrefixStr, Lines, !IO).
+    convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
+        Indent, Pieces, PrefixStr, Lines),
+    write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, Lines, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -2254,22 +2256,24 @@ error_line_len(Line) = LineLen :-
 
 %---------------------%
 
-:- pred write_msg_lines(io.text_output_stream::in, string::in,
+:- pred write_msg_lines(io.text_output_stream::in, string::in, string::in,
     list(error_line)::in, io::di, io::uo) is det.
 
-write_msg_lines(_Stream, _, [], !IO).
-write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
-    write_msg_line(Stream, PrefixStr, Line, !IO),
-    write_msg_lines(Stream, PrefixStr, Lines, !IO).
+write_msg_lines(_Stream, _, _, [], !IO).
+write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, [Line | Lines], !IO) :-
+    write_msg_line(Stream, PrefixStr, NoSpaceContextStr, Line, !IO),
+    write_msg_lines(Stream, PrefixStr, NoSpaceContextStr, Lines, !IO).
 
-:- pred write_msg_line(io.text_output_stream::in, string::in, error_line::in,
-    io::di, io::uo) is det.
+:- pred write_msg_line(io.text_output_stream::in, string::in, string::in,
+    error_line::in, io::di, io::uo) is det.
 
-write_msg_line(Stream, PrefixStr, Line, !IO) :-
+write_msg_line(Stream, PrefixStr, NoSpaceContextStr, Line, !IO) :-
     LineWordsStr = convert_line_words_to_string(Line),
     ( if LineWordsStr = "" then
         % Don't bother to print out indents that are followed by nothing.
-        io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
+        % This includes the single space indent that is always included
+        % at the end of any PrefixStr that is not the empty string.
+        io.format(Stream, "%s\n", [s(NoSpaceContextStr)], !IO)
     else
         LineIndent = Line ^ line_indent_level,
         IndentStr = indent2_string(LineIndent),

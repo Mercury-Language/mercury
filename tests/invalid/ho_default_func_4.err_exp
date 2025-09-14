@@ -3,7 +3,7 @@ ho_default_func_4.m:039:   in call to function `univ.univ'/1:
 ho_default_func_4.m:039:   mode error: the insts of argument [38;5;87m`V_7'[39;49m and the
 ho_default_func_4.m:039:   [38;5;87mreturn value `V_6'[39;49m [38;5;203mdo not match[39;49m any of the three
 ho_default_func_4.m:039:   modes for function `univ.univ'/1.
-ho_default_func_4.m:039: 
+ho_default_func_4.m:039:
 ho_default_func_4.m:039:     The inst of the first argument, [38;5;87m`V_7'[39;49m, which is
 ho_default_func_4.m:039:       [38;5;203m/* unique */ (func([39;49m
 ho_default_func_4.m:039:         [38;5;203min(named inst one[39;49m
@@ -20,7 +20,7 @@ ho_default_func_4.m:039:     (For higher order insts like this, the mismatch is
 ho_default_func_4.m:039:     sometimes caused by the arity of the predicate or
 ho_default_func_4.m:039:     function being different in the inst than in the
 ho_default_func_4.m:039:     type.)
-ho_default_func_4.m:039: 
+ho_default_func_4.m:039:
 ho_default_func_4.m:039:     The inst of the return value [38;5;87m`V_6'[39;49m, which is
 ho_default_func_4.m:039:     [38;5;203m`free',[39;49m does not match the inst required by some
 ho_default_func_4.m:039:     of the modes of the callee, namely the third mode.

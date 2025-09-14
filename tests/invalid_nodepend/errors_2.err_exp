@@ -113,21 +113,21 @@ errors_2.m:085:     Z_2: errors_2.bar_1_type
 errors_2.m:085:     A_3: int
 errors_2.m:085:     B_4: character
 errors_2.m:085:     C_5: string
-errors_2.m:085: 
+errors_2.m:085:
 errors_2.m:085:     Type assignment 2:
 errors_2.m:085:     Y_1: character
 errors_2.m:085:     Z_2: errors_2.bar_1_type
 errors_2.m:085:     A_3: int
 errors_2.m:085:     B_4: character
 errors_2.m:085:     C_5: string
-errors_2.m:085: 
+errors_2.m:085:
 errors_2.m:085:     Type assignment 3:
 errors_2.m:085:     Y_1: errors_2.foo
 errors_2.m:085:     Z_2: errors_2.bar_2_type
 errors_2.m:085:     A_3: character
 errors_2.m:085:     B_4: int
 errors_2.m:085:     C_5: string
-errors_2.m:085: 
+errors_2.m:085:
 errors_2.m:085:     Type assignment 4:
 errors_2.m:085:     Y_1: character
 errors_2.m:085:     Z_2: errors_2.bar_2_type

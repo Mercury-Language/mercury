@@ -1,7 +1,7 @@
 inconsistent_pred_order.m:010: Warning: [38;5;87mthe order of the declarations and[39;49m
 inconsistent_pred_order.m:010:   [38;5;87mdefinitions[39;49m of the nonexported predicates is
 inconsistent_pred_order.m:010:   [38;5;203minconsistent,[39;49m as shown by this diff:
-inconsistent_pred_order.m:010: 
+inconsistent_pred_order.m:010:
 inconsistent_pred_order.m:010:   --- declaration order
 inconsistent_pred_order.m:010:   +++ definition order
 inconsistent_pred_order.m:010:   @@ -1,8 +1,8 @@

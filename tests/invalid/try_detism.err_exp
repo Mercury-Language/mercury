@@ -2,7 +2,7 @@ try_detism.m:016: Error: the determinism declaration for predicate [38;5;87m`p'
 try_detism.m:016:   [38;5;203msatisfied.[39;49m
 try_detism.m:016:   Declared [38;5;40m`cc_multi',[39;49m inferred [38;5;203m`cc_nondet'.[39;49m
 try_detism.m:016:   The reason for the difference is the following.
-try_detism.m:023: 
+try_detism.m:023:
 try_detism.m:023:   In argument 1 of call to predicate `try_detism.q'/3:
 try_detism.m:023:   unification with [38;5;87m`X'[39;49m [38;5;203mcan fail.[39;49m
 try_detism.m:022: Error: call to predicate [38;5;87m`exception.magic_exception_result'/1[39;49m
@@ -15,7 +15,7 @@ try_detism.m:022:   mode error: the insts of arguments [38;5;87m`TryLambda'[39
 try_detism.m:022:   [38;5;87m`TryResult'[39;49m, [38;5;87m`STATE_VARIABLE_IO_1'[39;49m and [38;5;87m`TryIOOutput'[39;49m [38;5;203mdo not[39;49m
 try_detism.m:022:   [38;5;203mmatch[39;49m either of the two modes of predicate
 try_detism.m:022:   `exception.try_io'/4.
-try_detism.m:022: 
+try_detism.m:022:
 try_detism.m:022:     The inst of the first argument, [38;5;87m`TryLambda'[39;49m, which is
 try_detism.m:022:       [38;5;203m/* unique */ (pred(out, di, uo) is semidet),[39;49m
 try_detism.m:022:     does not match any of the required insts.

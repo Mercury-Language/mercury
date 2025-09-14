@@ -3,7 +3,7 @@ any_passed_as_ground.m:029:   in call to predicate `list.member'/2:
 any_passed_as_ground.m:029:   mode error: the insts of arguments [38;5;87m`V_10'[39;49m and
 any_passed_as_ground.m:029:   [38;5;87m`Xs'[39;49m [38;5;203mdo not match[39;49m either of the two modes of
 any_passed_as_ground.m:029:   predicate `list.member'/2.
-any_passed_as_ground.m:029: 
+any_passed_as_ground.m:029:
 any_passed_as_ground.m:029:     The inst of the second argument, [38;5;87m`Xs'[39;49m, which is
 any_passed_as_ground.m:029:     [38;5;203m`any',[39;49m does not match any of the required
 any_passed_as_ground.m:029:     insts.

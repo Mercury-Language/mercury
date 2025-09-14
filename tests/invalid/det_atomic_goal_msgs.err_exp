@@ -2,21 +2,21 @@ det_atomic_goal_msgs.m:011: Error: the determinism declaration for predicate
 det_atomic_goal_msgs.m:011:   [38;5;87m`det_calls_failure'/2[39;49m [38;5;203mis not satisfied.[39;49m
 det_atomic_goal_msgs.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`failure'.[39;49m
 det_atomic_goal_msgs.m:011:   The reason for the difference is the following.
-det_atomic_goal_msgs.m:018: 
+det_atomic_goal_msgs.m:018:
 det_atomic_goal_msgs.m:018:   This call to predicate
 det_atomic_goal_msgs.m:018:   [38;5;87m`det_atomic_goal_msgs.failure_pred'/1[39;49m [38;5;203mcan fail.[39;49m
 det_atomic_goal_msgs.m:012: Error: the determinism declaration for predicate
 det_atomic_goal_msgs.m:012:   [38;5;87m`det_calls_semidet'/2[39;49m [38;5;203mis not satisfied.[39;49m
 det_atomic_goal_msgs.m:012:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_atomic_goal_msgs.m:012:   The reason for the difference is the following.
-det_atomic_goal_msgs.m:019: 
+det_atomic_goal_msgs.m:019:
 det_atomic_goal_msgs.m:019:   This call to predicate
 det_atomic_goal_msgs.m:019:   [38;5;87m`det_atomic_goal_msgs.semidet_pred'/1[39;49m [38;5;203mcan fail.[39;49m
 det_atomic_goal_msgs.m:013: Error: the determinism declaration for predicate
 det_atomic_goal_msgs.m:013:   [38;5;87m`det_calls_multi'/1[39;49m [38;5;203mis not satisfied.[39;49m
 det_atomic_goal_msgs.m:013:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`multi'.[39;49m
 det_atomic_goal_msgs.m:013:   The reason for the difference is the following.
-det_atomic_goal_msgs.m:020: 
+det_atomic_goal_msgs.m:020:
 det_atomic_goal_msgs.m:020:   This call to predicate
 det_atomic_goal_msgs.m:020:   [38;5;87m`det_atomic_goal_msgs.multi_pred'/1[39;49m [38;5;203mcan succeed[39;49m
 det_atomic_goal_msgs.m:020:   [38;5;203mmore than once.[39;49m
@@ -24,7 +24,7 @@ det_atomic_goal_msgs.m:014: Error: the determinism declaration for predicate
 det_atomic_goal_msgs.m:014:   [38;5;87m`det_calls_nondet'/2[39;49m [38;5;203mis not satisfied.[39;49m
 det_atomic_goal_msgs.m:014:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_atomic_goal_msgs.m:014:   The reason for the difference is the following.
-det_atomic_goal_msgs.m:021: 
+det_atomic_goal_msgs.m:021:
 det_atomic_goal_msgs.m:021:   This call to predicate
 det_atomic_goal_msgs.m:021:   [38;5;87m`det_atomic_goal_msgs.nondet_pred'/2[39;49m [38;5;203mcan fail[39;49m and
 det_atomic_goal_msgs.m:021:   [38;5;203mcan succeed more than once.[39;49m

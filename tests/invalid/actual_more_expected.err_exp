@@ -14,7 +14,7 @@ actual_more_expected.m:029:     D_4: list.list(actual_more_expected.dir)
 actual_more_expected.m:029:     S_5: int
 actual_more_expected.m:029:     F_6: int
 actual_more_expected.m:029:     V_7: pred(int, actual_more_expected.dir, int)
-actual_more_expected.m:029: 
+actual_more_expected.m:029:
 actual_more_expected.m:029:     Type assignment 2, derived from predicate
 actual_more_expected.m:029:     `list.foldl'/4:
 actual_more_expected.m:029:     D_4: list.list(actual_more_expected.dir)

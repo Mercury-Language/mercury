@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -115,6 +115,7 @@
     % (at the moment, just the line number) in a form suitable for the
     % beginning of an error message.
     %
+:- func no_space_context_to_string(prog_context) = string.
 :- func context_to_string(prog_context) = string.
 :- pred write_context(io.text_output_stream::in, prog_context::in,
     io::di, io::uo) is det.
@@ -345,9 +346,16 @@ mercury_format_foreign_language_string(Lang, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
+no_space_context_to_string(Context) = ContextStr :-
+    Context = context(FileName, LineNumber),
+    ( if FileName = "" then
+        ContextStr = ""
+    else
+        string.format("%s:%03d:", [s(FileName), i(LineNumber)], ContextStr)
+    ).
+
 context_to_string(Context) = ContextStr :-
-    FileName = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
+    Context = context(FileName, LineNumber),
     ( if FileName = "" then
         ContextStr = ""
     else

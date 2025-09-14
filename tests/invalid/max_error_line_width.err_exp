@@ -3,7 +3,7 @@ max_error_line_width.m:056:   error: excessively ambiguous overloading.
 max_error_line_width.m:056:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:056:   understand.
 max_error_line_width.m:056:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:054: 
+max_error_line_width.m:054:
 max_error_line_width.m:054:   The function symbol [38;5;87m`f'/0.[39;49m
 max_error_line_width.m:054:   The possible matches are:
 max_error_line_width.m:054:     the builtin type constructor [38;5;226m`character',[39;49m
@@ -16,12 +16,12 @@ max_error_line_width.m:059:   warning: highly ambiguous overloading.
 max_error_line_width.m:059:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:059:   understand.
 max_error_line_width.m:059:   The following symbols were overloaded in the following contexts.
-max_error_line_width.m:059: 
+max_error_line_width.m:059:
 max_error_line_width.m:059:   The function symbol [38;5;87m`a1'/0.[39;49m
 max_error_line_width.m:059:   The possible matches are:
 max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.baz'/0,[39;49m
 max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.qux'/0.[39;49m
-max_error_line_width.m:059: 
+max_error_line_width.m:059:
 max_error_line_width.m:059:   The function symbol [38;5;87m`a2'/0.[39;49m
 max_error_line_width.m:059:   The possible matches are:
 max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.baz'/0,[39;49m
@@ -31,7 +31,7 @@ max_error_line_width.m:113:   error: excessively ambiguous overloading.
 max_error_line_width.m:113:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:113:   understand.
 max_error_line_width.m:113:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:064: 
+max_error_line_width.m:064:
 max_error_line_width.m:064:   The function symbol [38;5;87m`unchecked_left_shift'/2.[39;49m
 max_error_line_width.m:064:   The possible matches are:
 max_error_line_width.m:064:     [38;5;226mfunction `int.unchecked_left_shift'/2,[39;49m
@@ -52,7 +52,7 @@ max_error_line_width.m:123:   warning: highly ambiguous overloading.
 max_error_line_width.m:123:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:123:   understand.
 max_error_line_width.m:123:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:118: 
+max_error_line_width.m:118:
 max_error_line_width.m:118:   The function symbol [38;5;87m`lookup_bool_option'/2.[39;49m
 max_error_line_width.m:118:   The possible matches are:
 max_error_line_width.m:118:     [38;5;226mpredicate `getopt.lookup_bool_option'/3,[39;49m
