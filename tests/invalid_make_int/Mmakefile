@@ -39,6 +39,7 @@ SINGLE_MODULE_PROGS = \
 	test_type_spec_int \
 	type_arity \
 	type_vars_int \
+	unbalanced \
 	unbound_type_vars_int \
 	undef_inst \
 	undef_mode \

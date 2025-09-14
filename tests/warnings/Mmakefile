@@ -97,8 +97,20 @@ ERRORCHECK_PROGS = \
 # tests in this directory in grades that use mmc --make, so all their files
 # now have an added lib_dup_ prefix.
 
+# The "unused_args_analysis.err: unused_args_analysis_helper_1.c" rule below
+# requires the compiler (usually from stage 2 of a bootcheck) to be built
+# in a C grade. If it was built for any other language, the foreign_procs
+# in the library .opt files will be for the wrong language, and the compiler
+# will report a HUGE list of *those* errors, and will exit before it gets
+# to the code that generates the warnings we are looking for.
+#
+# Since we do bootchecks with mmc --make only in non-C grades,
+# during bootchecks, one or the other of these two tests will prevent us
+# from adding unused_args_analysis to ERRORCHECK_PROGS.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+ifeq "$(filter java% csharp%,$(GRADE))" ""
 	ERRORCHECK_PROGS += unused_args_analysis
+endif
 endif
 
 PROGS = $(ERRORCHECK_PROGS) help_opt_levels help_text up_to_date

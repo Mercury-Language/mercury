@@ -87,7 +87,6 @@ PROGS = \
 	typeclass_test_2 \
 	typeclass_test_3 \
 	types \
-	unbalanced \
 	unbound_type_vars \
 	undetermined_existential_data_type \
 	unicode_1 \
