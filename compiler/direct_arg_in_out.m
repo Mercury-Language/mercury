@@ -2032,9 +2032,10 @@ generate_error_if_cloned_proc_is_exported(ModuleInfo, DirectArgProcMap,
     prog_context::in, error_spec::out) is det.
 
 generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
-    Pieces = [words("Error: the C code for"),
-        unqual_pf_sym_name_pred_form_arity(PFSNA),
-        words("cannot be exported to C as"), quote(ExportedName), suffix(","),
+    Pieces = [words("Error: the definition of")] ++
+        color_as_subject([unqual_pf_sym_name_pred_form_arity(PFSNA)]) ++
+        color_as_incorrect([words("cannot be exported to C")]) ++
+        [words("as"), quote(ExportedName), suffix(","),
         words("because"), unqual_pf_sym_name_pred_form_arity(PFSNA),
         words("has a nonstandard and undocumented calling convention"),
         words("due to interactions between its use of"),
@@ -2084,9 +2085,9 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
         DirectArgProc = direct_arg_clone_proc(OoMCloneArgs),
         OoMCloneArgs = one_or_more(HeadCloneArg, TailCloneArgs),
         Pieces = StartPieces ++
-            args_violate_prohibition_pieces(OfProcDescPieces,
+            args_violate_prohibition_pieces(OfProcDescPieces, [suffix(".")],
                 HeadCloneArg, TailCloneArgs) ++
-            [suffix("."), nl]
+            [nl]
     ;
         DirectArgProc = direct_arg_problem_proc(OoMProblemArgs, CloneArgs),
         OoMProblemArgs = one_or_more(HeadProblemArg, TailProblemArgs),
@@ -2094,16 +2095,16 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
             CloneArgs = [],
             Pieces = StartPieces ++
                 args_may_violate_prohibition_pieces(OfProcDescPieces,
-                    HeadProblemArg, TailProblemArgs) ++
-                [suffix("."), nl]
+                    [suffix(".")], HeadProblemArg, TailProblemArgs) ++
+                [nl]
         ;
             CloneArgs = [HeadCloneArg | TailCloneArgs],
             Pieces = StartPieces ++
                 args_violate_prohibition_pieces(OfProcDescPieces,
-                    HeadCloneArg, TailCloneArgs) ++
-                [suffix(","), words("and"), lower_case_next_if_not_first] ++
+                    [suffix(",")], HeadCloneArg, TailCloneArgs) ++
+                [words("and"), lower_case_next_if_not_first] ++
                 args_may_violate_prohibition_pieces(OfProcDescPieces,
-                    HeadProblemArg, TailProblemArgs) ++
+                    [], HeadProblemArg, TailProblemArgs) ++
                 [words("as well."), nl]
         )
     ),
@@ -2113,41 +2114,45 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
         Context, Pieces).
 
 :- func args_violate_prohibition_pieces(list(format_piece),
-    int, list(int)) = list(format_piece).
+    list(format_piece), int, list(int)) = list(format_piece).
 
-args_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
-        = Pieces :-
+args_violate_prohibition_pieces(OfProcDescPieces, SuffixPieces,
+        HeadArg, TailArgs) = Pieces :-
     (
         TailArgs = [],
         Pieces =
             [words("Argument"), int_fixed(HeadArg)] ++ OfProcDescPieces ++
-            [words("violates this prohibition")]
+            color_as_incorrect([words("violates this prohibition") |
+                SuffixPieces])
     ;
         TailArgs = [_ | _],
         ArgPieces = list.map((func(N) = int_fixed(N)), [HeadArg | TailArgs]),
         ArgsPieces = piece_list_to_pieces("and", ArgPieces),
         Pieces =
             [words("Arguments")] ++ ArgsPieces ++ OfProcDescPieces ++
-            [words("violate this prohibition")]
+            color_as_incorrect([words("violate this prohibition") |
+                SuffixPieces])
     ).
 
 :- func args_may_violate_prohibition_pieces(list(format_piece),
-    int, list(int)) = list(format_piece).
+    list(format_piece), int, list(int)) = list(format_piece).
 
-args_may_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
-        = Pieces :-
+args_may_violate_prohibition_pieces(OfProcDescPieces, SuffixPieces,
+        HeadArg, TailArgs) = Pieces :-
     (
         TailArgs = [],
         Pieces =
             [words("Argument"), int_fixed(HeadArg)] ++ OfProcDescPieces ++
-            [words("may violate this prohibition")]
+            color_as_incorrect([words("may violate this prohibition") |
+                SuffixPieces])
     ;
         TailArgs = [_ | _],
         ArgPieces = list.map((func(N) = int_fixed(N)), [HeadArg | TailArgs]),
         ArgsPieces = piece_list_to_pieces("and", ArgPieces),
         Pieces =
             [words("Arguments")] ++ ArgsPieces ++ OfProcDescPieces ++
-            [words("may violate this prohibition")]
+            color_as_incorrect([words("may violate this prohibition") |
+                SuffixPieces])
     ).
 
 %---------------------------------------------------------------------------%

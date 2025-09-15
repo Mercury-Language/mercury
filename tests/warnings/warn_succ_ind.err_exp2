@@ -6,4 +6,3 @@ warn_succ_ind.m:085: Warning: the C# code for predicate `bar'/2 [38;5;171mdoes 
 warn_succ_ind.m:085:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
 warn_succ_ind.m:106: Warning: the C# code for predicate `bar2'/2 [38;5;171mdoes not[39;49m
 warn_succ_ind.m:106:   [38;5;171mappear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
-mkinit: error opening file `warn_succ_ind.c': No such file or directory
