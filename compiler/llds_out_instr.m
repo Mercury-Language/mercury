@@ -89,10 +89,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.optimization_options.
+:- import_module ll_backend.foreign_proc_gen.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
-:- import_module ll_backend.pragma_c_gen.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

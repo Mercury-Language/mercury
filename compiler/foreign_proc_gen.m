@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: pragma_c_gen.m
+% File: foreign_proc_gen.m
 % Main authors: dgj, conway, zs.
 %
 % The code in this module generates code for call_foreign_proc goals.
@@ -21,7 +21,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend.pragma_c_gen.
+:- module ll_backend.foreign_proc_gen.
 :- interface.
 
 :- import_module hlds.
@@ -1216,5 +1216,5 @@ foreign_proc_struct_name(ModuleName, PredName, Arity, ProcId) =
 foreign_proc_succ_ind_name = "MercurySuccessIndicator".
 
 %---------------------------------------------------------------------------%
-:- end_module ll_backend.pragma_c_gen.
+:- end_module ll_backend.foreign_proc_gen.
 %---------------------------------------------------------------------------%

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2003-2009, 2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2022 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
         :- include_module unify_gen_util.
         :- include_module closure_gen.
     :- include_module call_gen.
-    :- include_module pragma_c_gen.
+    :- include_module foreign_proc_gen.
     :- include_module ite_gen.
     :- include_module disj_gen.
     :- include_module switch_gen.

@@ -17,8 +17,8 @@
 % for commits by commit_gen, for if-then-elses and negations by ite_gen,
 % for switches by switch_gen and its subsidiary modules, for disjunctions
 % by disj_gen, for parallel conjunctions by par_conj_gen, and for foreign_procs
-% by pragma_c_gen. The only goals handled directly by code_gen are sequential
-% conjunctions.
+% by foreign_proc_gen. The only goals handled directly by code_gen
+% are sequential conjunctions.
 %
 %---------------------------------------------------------------------------%
 
@@ -54,10 +54,10 @@
 :- import_module ll_backend.call_gen.
 :- import_module ll_backend.commit_gen.
 :- import_module ll_backend.disj_gen.
+:- import_module ll_backend.foreign_proc_gen.
 :- import_module ll_backend.ite_gen.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.par_conj_gen.
-:- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.switch_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module ll_backend.unify_gen_construct.

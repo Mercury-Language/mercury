@@ -12,21 +12,8 @@
 %
 % Code generation - convert from HLDS to LLDS.
 %
-% The two main tasks of this module are
-%
-% 1 to look after the aspects of generating code for a procedure
-%   that do not involve generating code for a specific goal, and
-%
-% 2 to provide a generic predicate that can be called from anywhere in
-%   the code generator to generate code for a goal.
-%
-% Code_gen forwards most of the actual construction of code for particular
-% goals to other modules. The generation of code for unifications is done
-% by unify_gen, for calls, higher-order calls and method calls by call_gen,
-% for commits by commit_gen, for if-then-elses and negations by ite_gen,
-% for switches by switch_gen and its subsidiary modules, for disjunctions
-% by disj_gen, and for pragma_c_codes by pragma_c_gen. The only kind of goal
-% handled directly by code_gen is the conjunction.
+% The task of this module is to look after the aspects of generating code
+% for a procedure that do not involve generating code for a specific goal.
 %
 %---------------------------------------------------------------------------%
 
