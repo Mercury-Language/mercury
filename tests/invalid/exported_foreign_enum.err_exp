@@ -1,52 +1,64 @@
-exported_foreign_enum.m:073: In `:- pragma foreign_export_enum' declaration for
-exported_foreign_enum.m:073:   type `exported_foreign_enum.foo'/0:
-exported_foreign_enum.m:073:   error: [38;5;87m`exported_foreign_enum.foo'/0[39;49m is [38;5;203mnot an[39;49m
-exported_foreign_enum.m:073:   [38;5;203menumeration type.[39;49m
-exported_foreign_enum.m:073:   It has this non-zero arity constructor:
-exported_foreign_enum.m:073:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:074: In `:- pragma foreign_export_enum' declaration for
-exported_foreign_enum.m:074:   type `exported_foreign_enum.foo'/0:
-exported_foreign_enum.m:074:   error: [38;5;87m`exported_foreign_enum.foo'/0[39;49m is [38;5;203mnot an[39;49m
-exported_foreign_enum.m:074:   [38;5;203menumeration type.[39;49m
-exported_foreign_enum.m:074:   It has this non-zero arity constructor:
-exported_foreign_enum.m:074:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:075: In `:- pragma foreign_export_enum' declaration for
-exported_foreign_enum.m:075:   type `exported_foreign_enum.foo'/0:
-exported_foreign_enum.m:075:   error: [38;5;87m`exported_foreign_enum.foo'/0[39;49m is [38;5;203mnot an[39;49m
-exported_foreign_enum.m:075:   [38;5;203menumeration type.[39;49m
-exported_foreign_enum.m:075:   It has this non-zero arity constructor:
-exported_foreign_enum.m:075:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:077: Error: the Mercury definition of [38;5;87m`foo'/0[39;49m is not an
+exported_foreign_enum.m:073: Error: the Mercury definition of
+exported_foreign_enum.m:073:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
+exported_foreign_enum.m:073:   enumeration type, so [38;5;203mthere must not be any[39;49m
+exported_foreign_enum.m:073:   [38;5;203m`:- pragma foreign_export_enum' declarations for[39;49m
+exported_foreign_enum.m:073:   [38;5;203mit.[39;49m
+exported_foreign_enum.m:068:   That Mercury definition is here.
+exported_foreign_enum.m:068:   It has this non-zero arity constructor:
+exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
+exported_foreign_enum.m:074: Error: the Mercury definition of
+exported_foreign_enum.m:074:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
+exported_foreign_enum.m:074:   enumeration type, so [38;5;203mthere must not be any[39;49m
+exported_foreign_enum.m:074:   [38;5;203m`:- pragma foreign_export_enum' declarations for[39;49m
+exported_foreign_enum.m:074:   [38;5;203mit.[39;49m
+exported_foreign_enum.m:068:   That Mercury definition is here.
+exported_foreign_enum.m:068:   It has this non-zero arity constructor:
+exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
+exported_foreign_enum.m:075: Error: the Mercury definition of
+exported_foreign_enum.m:075:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
+exported_foreign_enum.m:075:   enumeration type, so [38;5;203mthere must not be any[39;49m
+exported_foreign_enum.m:075:   [38;5;203m`:- pragma foreign_export_enum' declarations for[39;49m
+exported_foreign_enum.m:075:   [38;5;203mit.[39;49m
+exported_foreign_enum.m:068:   That Mercury definition is here.
+exported_foreign_enum.m:068:   It has this non-zero arity constructor:
+exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
+exported_foreign_enum.m:077: Error: the Mercury definition of
+exported_foreign_enum.m:077:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
 exported_foreign_enum.m:077:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:077:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:068:   That Mercury definition is here.
 exported_foreign_enum.m:068:   It has this non-zero arity constructor:
 exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:082: Error: the Mercury definition of [38;5;87m`foo'/0[39;49m is not an
+exported_foreign_enum.m:082: Error: the Mercury definition of
+exported_foreign_enum.m:082:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
 exported_foreign_enum.m:082:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:082:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:068:   That Mercury definition is here.
 exported_foreign_enum.m:068:   It has this non-zero arity constructor:
 exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:087: Error: the Mercury definition of [38;5;87m`foo'/0[39;49m is not an
+exported_foreign_enum.m:087: Error: the Mercury definition of
+exported_foreign_enum.m:087:   [38;5;87m`exported_foreign_enum.foo'/0[39;49m is not an
 exported_foreign_enum.m:087:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:087:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:068:   That Mercury definition is here.
 exported_foreign_enum.m:068:   It has this non-zero arity constructor:
 exported_foreign_enum.m:068:     [38;5;203m`foo'/1.[39;49m
-exported_foreign_enum.m:095: Error: the Mercury definition of [38;5;87m`t1'/0[39;49m is not an
+exported_foreign_enum.m:095: Error: the Mercury definition of
+exported_foreign_enum.m:095:   [38;5;87m`exported_foreign_enum.t1'/0[39;49m is not an
 exported_foreign_enum.m:095:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:095:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:012:   That Mercury definition is here.
 exported_foreign_enum.m:012:   It has this non-zero arity constructor:
 exported_foreign_enum.m:012:     [38;5;203m`f13'/1.[39;49m
-exported_foreign_enum.m:100: Error: the Mercury definition of [38;5;87m`t1'/0[39;49m is not an
+exported_foreign_enum.m:100: Error: the Mercury definition of
+exported_foreign_enum.m:100:   [38;5;87m`exported_foreign_enum.t1'/0[39;49m is not an
 exported_foreign_enum.m:100:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:100:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:012:   That Mercury definition is here.
 exported_foreign_enum.m:012:   It has this non-zero arity constructor:
 exported_foreign_enum.m:012:     [38;5;203m`f13'/1.[39;49m
-exported_foreign_enum.m:105: Error: the Mercury definition of [38;5;87m`t1'/0[39;49m is not an
+exported_foreign_enum.m:105: Error: the Mercury definition of
+exported_foreign_enum.m:105:   [38;5;87m`exported_foreign_enum.t1'/0[39;49m is not an
 exported_foreign_enum.m:105:   enumeration type, so [38;5;203mthere must not be any[39;49m
 exported_foreign_enum.m:105:   [38;5;203m`:- pragma foreign_enum' declarations for it.[39;49m
 exported_foreign_enum.m:012:   That Mercury definition is here.

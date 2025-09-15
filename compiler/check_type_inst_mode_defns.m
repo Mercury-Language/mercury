@@ -19,6 +19,8 @@
 :- interface.
 
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -61,10 +63,26 @@
     type_ctor_foreign_enum_map::in, type_ctor_checked_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
+    %   EnumContext, !Specs)
+    %
+    % Report a foreign_enum or foreign_export_enum declaration
+    % for a non-enum du type.
+    %
+    % Exported for add_foreign_enum.m.
+    %
+:- pred report_not_enum_type_du(for_fe_or_fee::in, type_ctor::in,
+    prog_context::in, list(sym_name_arity)::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred create_inst_ctor_checked_map(maybe_insist_on_defn::in,
     inst_ctor_defn_map::in, inst_ctor_defn_map::in,
     inst_ctor_checked_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred create_mode_ctor_checked_map(maybe_insist_on_defn::in,
     mode_ctor_defn_map::in, mode_ctor_defn_map::in,
@@ -84,13 +102,12 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_repn.
 
 :- import_module bimap.
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -108,7 +125,7 @@ create_type_ctor_checked_map(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
     map.keys_as_set(ImpTypeDefnMap, ImpDefnTypeCtors),
     % Foreign_enum items are not allowed in interface sections.
     map.keys_as_set(ImpForeignEnumMap, ImpEnumTypeCtors),
-    % This union operation depends on the type_ctors in all four maps
+    % This union operation depends on the type_ctors in all three maps
     % being qualified exactly the same way. We could require the type_ctor keys
     % to be all fully qualified or all fully unqualified; we chose the former.
     TypeCtors = set.to_sorted_list(
@@ -475,11 +492,16 @@ check_type_ctor_defns(InsistOnDefn,
                 ImpEnums = []
             ;
                 ImpEnums = [_ | _],
-                find_non_enum_ctors([HeadCtor | TailCtors], NonEnumSNAs),
+                find_non_enum_ctors([HeadCtor | TailCtors],
+                    cord.init, NonEnumSNAsCord),
+                NonEnumSNAs = cord.to_list(NonEnumSNAsCord),
+                DuDefnContext = DuDefn ^ td_context,
+                ImpEnumContexts =
+                    list.map((func(IFE) = IFE ^ fe_context), ImpEnums),
                 list.foldl(
-                    non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn,
-                        NonEnumSNAs),
-                    ImpEnums, !Specs)
+                    report_not_enum_type_du(for_foreign_enum, TypeCtor,
+                        DuDefnContext, NonEnumSNAs),
+                    ImpEnumContexts, !Specs)
             ),
             CheckedStdDefn =
                 std_mer_type_du_not_all_plain_constants(Status, DuDefn,
@@ -1004,52 +1026,58 @@ build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet,
         MaybeCheckedForeignEnum = error1(Specs)
     ).
 
+    % Please keep in sync with find_non_enum_ctors_build_valid_ctor_names
+    % in add_foreign_enum.m.
+    %
 :- pred find_non_enum_ctors(list(constructor)::in,
-    list(sym_name_arity)::out) is det.
+    cord(sym_name_arity)::in, cord(sym_name_arity)::out) is det.
 
-find_non_enum_ctors([], []).
-find_non_enum_ctors([Ctor | Ctors], NonEnumSNAs) :-
-    find_non_enum_ctors(Ctors, NonEnumSNAsTail),
+find_non_enum_ctors([], !NonEnumSNAs).
+find_non_enum_ctors([Ctor | Ctors], !NonEnumSNAs) :-
     CtorSymName = Ctor ^ cons_name,
     CtorArity = Ctor ^ cons_num_args,
     ( if CtorArity = 0 then
-        NonEnumSNAs = NonEnumSNAsTail
+        true
     else
         CtorSNA = sym_name_arity(CtorSymName, CtorArity),
-        NonEnumSNAs = [CtorSNA | NonEnumSNAsTail]
-    ).
+        cord.snoc(CtorSNA, !NonEnumSNAs)
+    ),
+    find_non_enum_ctors(Ctors, !NonEnumSNAs).
 
-:- pred non_enum_du_report_any_foreign_enum(type_ctor::in,
-    item_type_defn_info_du::in, list(sym_name_arity)::in,
-    item_foreign_enum_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, NonEnumSNAs,
-        Enum, !Specs) :-
+report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
+        EnumContext, !Specs) :-
     (
         NonEnumSNAs = [],
-        CtorPieces = []
+        NonEnumCtorPieces = []
     ;
         NonEnumSNAs = [_ | _],
-        NonEnumSNAPieces = list.map(func(SNA) = unqual_sym_name_arity(SNA),
-            NonEnumSNAs),
-        SNAPieces = piece_list_to_color_pieces(color_incorrect, "and",
-            [suffix(".")], NonEnumSNAPieces),
+        % NOTE Sorting would put the non-constant constructors into
+        % alphabetical order; without sorting, they are in declaration order.
+        % Printing them in declaration order seems more useful to me -zs.
+        NonEnumSNAPieces =
+            list.map(func(SNA) = unqual_sym_name_arity(SNA), NonEnumSNAs),
+        NonEnumSNAsPieces =
+            piece_list_to_color_pieces(color_incorrect, "and",
+                [suffix(".")], NonEnumSNAPieces),
         ItHasThese = choose_number(NonEnumSNAs,
             words("It has this non-zero arity constructor:"),
             words("It has these non-zero arity constructors:")),
-        CtorPieces = [ItHasThese, nl_indent_delta(1)] ++ SNAPieces ++
+        NonEnumCtorPieces =
+            [ItHasThese, nl_indent_delta(1)] ++ NonEnumSNAsPieces ++
             [nl_indent_delta(-1)]
     ),
+    ( ForWhat = for_foreign_enum,        PragmaName = "foreign_enum"
+    ; ForWhat = for_foreign_export_enum, PragmaName = "foreign_export_enum"
+    ),
     EnumPieces = [words("Error: the Mercury definition of")] ++
-        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        color_as_subject([qual_type_ctor(TypeCtor)]) ++
         [words("is not an enumeration type, so")] ++
         color_as_incorrect([words("there must not be any"),
-        pragma_decl("foreign_enum"), words("declarations for it.")]) ++ [nl],
-    DuPieces = [words("That Mercury definition is here."), nl | CtorPieces],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
-        [msg(Enum ^ fe_context, EnumPieces),
-        msg(DuDefn ^ td_context, DuPieces)]),
+            pragma_decl(PragmaName), words("declarations for it.")]) ++ [nl],
+    TypePieces = [words("That Mercury definition is here."), nl] ++
+        NonEnumCtorPieces,
+    Spec = error_spec($pred, severity_error, phase_pt2h,
+        [msg(EnumContext, EnumPieces), msg(TypeDefnContext, TypePieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred subtype_report_any_foreign_type(type_ctor::in,

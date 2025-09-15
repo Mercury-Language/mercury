@@ -2,19 +2,21 @@ ee_invalid.m:039: Error: `:- pragma foreign_export_enum' declarations [38;5;203
 ee_invalid.m:039:   [38;5;203mallowed[39;49m for builtin types such as [38;5;87m`int'/0.[39;49m
 ee_invalid.m:043: In `:- pragma foreign_export_enum' declaration:
 ee_invalid.m:043:   error: the type [38;5;87m`undefined_type'/0[39;49m is [38;5;203mundefined.[39;49m
-ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
-ee_invalid.m:047:   `ee_invalid.foo'/1:
-ee_invalid.m:047:   error: [38;5;87m`ee_invalid.foo'/1[39;49m is [38;5;203mnot an enumeration type.[39;49m
-ee_invalid.m:047:   It has this non-zero arity constructor:
-ee_invalid.m:047:     [38;5;203m`foo'/1.[39;49m
-ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for type
-ee_invalid.m:051:   `ee_invalid.bar'/0:
-ee_invalid.m:051:   error: [38;5;87m`ee_invalid.bar'/0[39;49m is [38;5;203mnot an enumeration type;[39;49m it is
-ee_invalid.m:051:   an equivalence type.
-ee_invalid.m:058: In `:- pragma foreign_export_enum' declaration for type
-ee_invalid.m:058:   `ee_invalid.baz'/0:
-ee_invalid.m:058:   error: [38;5;87m`ee_invalid.baz'/0[39;49m is [38;5;203mnot an enumeration type;[39;49m it is
-ee_invalid.m:058:   a foreign type.
+ee_invalid.m:047: Error: the Mercury definition of [38;5;87m`ee_invalid.foo'/1[39;49m is not an
+ee_invalid.m:047:   enumeration type, so [38;5;203mthere must not be any[39;49m
+ee_invalid.m:047:   [38;5;203m`:- pragma foreign_export_enum' declarations for it.[39;49m
+ee_invalid.m:010:   That Mercury definition is here.
+ee_invalid.m:010:   It has this non-zero arity constructor:
+ee_invalid.m:010:     [38;5;203m`foo'/1.[39;49m
+ee_invalid.m:051: Error: the Mercury definition of [38;5;87m`ee_invalid.bar'/0[39;49m is an
+ee_invalid.m:051:   equivalence type, not an enumeration type, so [38;5;203mthere must[39;49m
+ee_invalid.m:051:   [38;5;203mnot be any `:- pragma foreign_export_enum' declarations for[39;49m
+ee_invalid.m:051:   [38;5;203mit.[39;49m
+ee_invalid.m:013:   That Mercury definition is here.
+ee_invalid.m:058: Error: the Mercury definition of [38;5;87m`ee_invalid.baz'/0[39;49m is a
+ee_invalid.m:058:   foreign type, not an enumeration type, so [38;5;203mthere must not be[39;49m
+ee_invalid.m:058:   [38;5;203many `:- pragma foreign_export_enum' declarations for it.[39;49m
+ee_invalid.m:020:   That Mercury definition is here.
 ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   error: the following symbol is [38;5;203mnot a constructor[39;49m of the
