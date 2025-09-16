@@ -534,7 +534,7 @@ get_argument_declaration(ModuleInfo, NameThem, ArgNum, ArgInfo, Type,
     TypeString0 = maybe_foreign_type_to_c_string(Type, MaybeForeignType),
     (
         Mode = top_out,
-        % output variables are passed as pointers
+        % We pass output variables as pointers.
         TypeString = TypeString0 ++ " *"
     ;
         ( Mode = top_in
@@ -597,7 +597,7 @@ retrieve_output_args(ModuleInfo, LastArgNum, [AT | ATs], RetrieveOutputArgs) :-
         convert_type_from_mercury(ArgLoc, ArgLocString0, Type, ArgLocString),
         MaybeForeignType = is_this_a_foreign_type(ModuleInfo, Type),
         % We need to unbox non-word-sized foreign types
-        % before returning them to C code
+        % before returning them to C code.
         (
             MaybeForeignType = yes(ForeignType),
             CType = foreign_type_to_c_string(ForeignType),
@@ -848,8 +848,7 @@ convert_type_to_mercury(RvalStr, Type, TargetArgLoc, ConvertedRvalStr) :-
         ;
             BuiltinType = builtin_type_char,
             % We need to explicitly cast to MR_UnsignedChar
-            % to avoid problems with C compilers for which `char'
-            % is signed.
+            % to avoid problems with C compilers for which `char' is signed.
             ConvertedRvalStr = "(MR_UnsignedChar) " ++ RvalStr
         ;
             BuiltinType = builtin_type_int(IntType),
@@ -942,7 +941,7 @@ convert_type_from_mercury(SourceArgLoc, RvalStr, Type, ConvertedRvalStr) :-
 % Code for writing out foreign exported enumerations.
 %
 
-% For C/C++ we emit a #defined constant for constructors exported from an
+% For C, we emit a #defined constant for constructors exported from an
 % enumeration.
 
 :- pred exported_enum_is_for_c(exported_enum_info::in) is semidet.
@@ -973,7 +972,7 @@ output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     % enum constructor with the foreign tag of that constructor.
     % The tag will either be an integer (for enumerations whose
     % representations are decided by the Mercury compiler) or strings
-    % (for enumerations whose representations are decide by a
+    % (for enumerations whose representations are decided by a
     % foreign_enum pragma).
     %
 :- type exported_enum_name_and_tag_rep
@@ -1054,7 +1053,7 @@ foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
         ),
         unexpected($pred, "enum constant requires an int tag")
     ),
-    !:NamesAndTagsCord = cord.snoc(!.NamesAndTagsCord, NameAndTag).
+    cord.snoc(NameAndTag, !NamesAndTagsCord).
 
 %-----------------------------------------------------------------------------%
 
