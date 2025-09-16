@@ -4,7 +4,7 @@
 % The .err_exp{,2,3} files are for targeting C, Java and C# respectively.
 %---------------------------------------------------------------------------%
 
-:- module pragma_c_code_no_det.
+:- module foreign_proc_no_det.
 
 :- interface.
 

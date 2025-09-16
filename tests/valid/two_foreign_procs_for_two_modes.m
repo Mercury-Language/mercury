@@ -2,10 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% A test for the case where we have pragma(c_code, ...) decs for different
-% modes of the same pred.
+% A test for the case where we have foreign_procs for
+% different modes of the same predicate.
+%
 
-:- module two_pragma_c_codes.
+:- module two_foreign_procs_for_two_modes.
 
 :- interface.
 

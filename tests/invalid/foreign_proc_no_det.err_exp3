@@ -1,0 +1,7 @@
+foreign_proc_no_det.m:011: Warning: the determinism declaration for predicate
+foreign_proc_no_det.m:011:   [38;5;87m`test'/1[39;49m [38;5;203mcould be tighter.[39;49m
+foreign_proc_no_det.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`erroneous'.[39;49m
+foreign_proc_no_det.m:032: Error: the procedure specification in this
+foreign_proc_no_det.m:032:   `:- pragma foreign_proc' declaration for predicate
+foreign_proc_no_det.m:032:   `fproc'/1 is [38;5;203mmissing[39;49m the final `is <determinism>'
+foreign_proc_no_det.m:032:   part.

@@ -317,7 +317,6 @@ ORDINARY_PROGS = \
 	ppc_bug \
 	pprint_test_1 \
 	pprint_test_2 \
-	pragma_c_code \
 	pragma_export \
 	pragma_foreign_export \
 	pragma_inline \
@@ -397,9 +396,9 @@ ORDINARY_PROGS = \
 	string_case \
 	string_char_list_ilseq \
 	string_class \
-	string_code_unit \
 	string_code_point \
 	string_code_point_offset_ilseq \
+	string_code_unit \
 	string_compare_substrings \
 	string_contains_char \
 	string_contains_match \
@@ -455,6 +454,7 @@ ORDINARY_PROGS = \
 	test_cord_1 \
 	test_cord_2 \
 	test_cord_3 \
+	test_foreign_proc \
 	test_imported_no_tag \
 	test_infinity \
 	test_int_hash \

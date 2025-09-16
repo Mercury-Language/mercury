@@ -7,6 +7,7 @@ THIS_DIR = invalid_purity
 MAYBE_J1 =
 
 STD_PROGS = \
+	foreign_proc_and_mercury \
 	impure_func_t2 \
 	impure_func_t3 \
 	impure_func_t4 \
@@ -17,7 +18,6 @@ STD_PROGS = \
 	impure_pred_t1 \
 	impure_pred_t1_fixed \
 	impure_pred_t2 \
-	pragma_c_and_mercury \
 	purity \
 	purity_nonsense_1 \
 	purity_type_error

@@ -302,7 +302,7 @@ OTHER_PROGS = \
 	tricky_assert \
 	tricky_ite \
 	tuple_eqv \
-	two_pragma_c_codes \
+	two_foreign_procs_for_two_modes \
 	two_way_unif \
 	type_inf_ambig_test \
 	typeclass_inlining_bug \

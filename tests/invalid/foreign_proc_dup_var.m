@@ -9,7 +9,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module pragma_c_code_dup_var.
+:- module foreign_proc_dup_var.
 
 :- interface.
 

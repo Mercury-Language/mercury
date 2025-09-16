@@ -1,0 +1,3 @@
+foreign_proc_and_mercury.m:013: Error: predicate [38;5;87m`c_int_unify'/2[39;49m is [38;5;203mimpure.[39;49m It
+foreign_proc_and_mercury.m:013:   must either be [38;5;40mdeclared impure,[39;49m or [38;5;40mpromised[39;49m
+foreign_proc_and_mercury.m:013:   [38;5;40mpure.[39;49m

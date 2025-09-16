@@ -3,8 +3,9 @@
 %---------------------------------------------------------------------------%
 %
 % A test of the C interface.
+%
 
-:- module pragma_c_code.
+:- module test_foreign_proc.
 :- interface.
 :- import_module io.
 
@@ -19,13 +20,13 @@
 
 main(!IO) :-
     c_write_string("Hello, world\n", !IO),
-    % test integer and multiple output args handling
+    % Test integer and multiple output args handling.
     c_incr_and_decr(42, Y1, Y2),
     c_write_integer(Y1, !IO),
     c_write_integer(Y2, !IO),
-    c_get_meaning_of_life(Z), % test floats
+    c_get_meaning_of_life(Z), % Test floats.
     c_write_float(Z, !IO),
-    c_write_cosine(Z, !IO).   % test foreign_decl for C
+    c_write_cosine(Z, !IO).   % Test foreign_decl for C.
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
