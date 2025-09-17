@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: make.dependencies.m.
+% File: make.prereqs.m.
 % Original author: stayl.
 % Author of current version: zs.
 %
@@ -67,7 +67,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module make.dependencies.
+:- module make.prereqs.
 :- interface.
 
 :- import_module libs.
@@ -112,11 +112,11 @@
 :- import_module libs.file_util.
 :- import_module libs.maybe_util.
 :- import_module libs.options.
-:- import_module make.deps_cache.
-:- import_module make.deps_set.
 :- import_module make.file_names.
 :- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
+:- import_module make.index_set.
+:- import_module make.prereqs_cache.
 :- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -1339,5 +1339,5 @@ dependency_file_to_debug_string(Prefix, Suffix, DepFile) = Str :-
     Str = Prefix ++ Str0 ++ Suffix.
 
 %---------------------------------------------------------------------------%
-:- end_module make.dependencies.
+:- end_module make.prereqs.
 %---------------------------------------------------------------------------%

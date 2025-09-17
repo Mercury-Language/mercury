@@ -52,8 +52,8 @@
 :- import_module backend_libs.link_target_code.
 :- import_module libs.options.
 :- import_module libs.timestamp.
-:- import_module make.deps_set.
 :- import_module make.hash.
+:- import_module make.index_set.
 :- import_module make.module_target.
 :- import_module make.program_target.
 :- import_module make.timestamp.

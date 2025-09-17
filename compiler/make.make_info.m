@@ -23,9 +23,9 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module make.build.
-:- import_module make.deps_cache.
-:- import_module make.deps_set.
+:- import_module make.index_set.
 :- import_module make.options_file.
+:- import_module make.prereqs_cache.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -254,7 +254,6 @@
 :- func make_info_get_dep_file_index_map(make_info) =
     dependency_file_index_map.
 :- func make_info_get_dep_file_status_map(make_info) = dep_file_status_map.
-:- func make_info_get_error_file_modules(make_info) = set(module_name).
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
 :- func make_info_get_mi_read_module_maps(make_info) = have_parse_tree_maps.
@@ -294,8 +293,6 @@
 :- pred make_info_set_dep_file_index_map(dependency_file_index_map::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_dep_file_status_map(dep_file_status_map::in,
-    make_info::in, make_info::out) is det.
-:- pred make_info_set_error_file_modules(set(module_name)::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_importing_module(maybe(import_or_include)::in,
     make_info::in, make_info::out) is det.
@@ -410,10 +407,6 @@
 
                 mki_dep_file_status_map     :: dep_file_status_map,
 
-                % Modules for which we have redirected output
-                % to a `.err' file during this invocation of mmc.
-                mki_error_file_modules      :: set(module_name),
-
                 % Used for reporting which module imported or included
                 % a nonexistent module.
                 %
@@ -477,7 +470,6 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
     map.init(ModuleDependencies),
     map.init(FileTimestamps),
     ShouldRebuildModuleDeps = do_rebuild_module_deps,
-    set.init(ErrorFileModules),
     MaybeImportingModule = maybe.no,
     MaybeStdoutLock = maybe.no,
     MakeInfo = make_info(
@@ -495,7 +487,6 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         ModuleIndexMap,
         DepIndexMap,
         DepStatusMap,
-        ErrorFileModules,
         MaybeImportingModule,
         MaybeStdoutLock,
         init_have_parse_tree_maps,
@@ -537,8 +528,6 @@ make_info_get_dep_file_index_map(Info) = X :-
     X = Info ^ mki_dep_file_index_map.
 make_info_get_dep_file_status_map(Info) = X :-
     X = Info ^ mki_dep_file_status_map.
-make_info_get_error_file_modules(Info) = X :-
-    X = Info ^ mki_error_file_modules.
 make_info_get_importing_module(Info) = X :-
     X = Info ^ mki_importing_module.
 make_info_get_maybe_stdout_lock(Info) = X :-
@@ -582,8 +571,6 @@ make_info_set_dep_file_index_map(X, !Info) :-
     !Info ^ mki_dep_file_index_map := X.
 make_info_set_dep_file_status_map(X, !Info) :-
     !Info ^ mki_dep_file_status_map := X.
-make_info_set_error_file_modules(X, !Info) :-
-    !Info ^ mki_error_file_modules := X.
 make_info_set_importing_module(X, !Info) :-
     !Info ^ mki_importing_module := X.
 make_info_set_maybe_stdout_lock(X, !Info) :-

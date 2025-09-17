@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,9 +19,9 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module make.deps_cache.
-:- import_module make.deps_set.
+:- import_module make.index_set.
 :- import_module make.make_info.
+:- import_module make.prereqs_cache.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 

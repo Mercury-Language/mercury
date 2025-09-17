@@ -2,12 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2020-2023 The Mercury team.
+% Copyright (C) 2020-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: make.deps_set.m.
+% File: make.index_set.m.
 %
 % Dependency computation does a lot of unions so we use a set representation
 % suited to that purpose, namely bitsets. We can't store module_names and
@@ -20,7 +20,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module make.deps_set.
+:- module make.index_set.
 :- interface.
 
 :- import_module libs.
@@ -362,5 +362,5 @@ acc_dependency_file_index_set_to_plain_set(Info, DepIndex, List0, List) :-
     List = [DepFile | List0].
 
 %---------------------------------------------------------------------------%
-:- end_module make.deps_set.
+:- end_module make.index_set.
 %---------------------------------------------------------------------------%

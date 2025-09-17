@@ -360,7 +360,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                     AllModules, ObjModules, CompilationTarget, PIC,
                     ShouldRebuildLhs, Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
-                    Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
+                    Globals, MESI, ErrorStream, !.Info, !IO)
             ),
             CleanupPred = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, LinkedTargetType,
@@ -865,7 +865,7 @@ linked_target_cleanup(ProgressStream, Globals,
 
 make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
         Succeeded, !Info, !IO) :-
-    out_of_date_java_modules(ProgressStream, Globals,
+    find_out_of_date_java_modules(ProgressStream, Globals,
         ObjModules, OutOfDateModules, !Info, !IO),
     (
         OutOfDateModules = [],
@@ -873,7 +873,7 @@ make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
     ;
         OutOfDateModules = [_ | _],
         build_java_files(ProgressStream, Globals,
-            MainModuleName, OutOfDateModules, Succeeded, !Info, !IO),
+            MainModuleName, OutOfDateModules, Succeeded, !.Info, !IO),
         % javac might write more `.class' files than we anticipated (though
         % it probably won't) so clear out all the timestamps which might be
         % affected.
@@ -886,18 +886,18 @@ make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
             !Info)
     ).
 
-:- pred out_of_date_java_modules(io.text_output_stream::in, globals::in,
+:- pred find_out_of_date_java_modules(io.text_output_stream::in, globals::in,
     list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-out_of_date_java_modules(ProgressStream, Globals, ObjModules, OutOfDateModules,
-        !Info, !IO) :-
+find_out_of_date_java_modules(ProgressStream, Globals,
+        ObjModules, OutOfDateModules, !Info, !IO) :-
     (
         ObjModules = [],
         OutOfDateModules = []
     ;
         ObjModules = [ModuleName | ModuleNames],
-        out_of_date_java_modules(ProgressStream, Globals,
+        find_out_of_date_java_modules(ProgressStream, Globals,
             ModuleNames, OutOfDateModules0, !Info, !IO),
         JavaTarget = target_file(ModuleName, module_target_java_code),
         ClassTarget = target_file(ModuleName, module_target_java_class_code),
@@ -918,10 +918,10 @@ out_of_date_java_modules(ProgressStream, Globals, ObjModules, OutOfDateModules,
 
 :- pred build_java_files(io.text_output_stream::in, globals::in,
     module_name::in, list(module_name)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    make_info::in, io::di, io::uo) is det.
 
 build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
-        Succeeded, !Info, !IO) :-
+        Succeeded, Info, !IO) :-
     verbose_make_one_part_msg(Globals, "Making Java class files", MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
     % XXX FILE_NAMES
@@ -931,7 +931,7 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, _JavaFilesProposed, !IO),
     % We redirect errors to a file named after the main module.
-    open_module_error_stream(ProgressStream, Globals, !.Info, MainModuleName,
+    open_module_error_stream(ProgressStream, Globals, Info, MainModuleName,
         MaybeErrorStream, !IO),
     (
         MaybeErrorStream = es_error_already_reported,
@@ -940,7 +940,7 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
         MaybeErrorStream = es_ok(MESI, ErrorStream),
         build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded, !IO),
         close_module_error_stream_handle_errors(ProgressStream, Globals,
-            MainModuleName, MESI, ErrorStream, !Info, !IO)
+            MESI, ErrorStream, Info, !IO)
     ).
 
 :- pred build_java_files_2(io.text_output_stream::in, globals::in,

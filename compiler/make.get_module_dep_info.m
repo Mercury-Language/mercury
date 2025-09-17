@@ -662,7 +662,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
     record_made_target(ProgressStream, Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
     close_module_error_stream_handle_errors(ProgressStream, Globals,
-        ModuleName, MESI, ErrorStream, !Info, !IO).
+        MESI, ErrorStream, !.Info, !IO).
 
 :- pred make_info_add_burdened_module_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.

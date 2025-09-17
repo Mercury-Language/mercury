@@ -91,9 +91,9 @@
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.check_up_to_date.
-:- import_module make.dependencies.
 :- import_module make.file_names.
 :- import_module make.get_module_dep_info.
+:- import_module make.prereqs.
 :- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -364,7 +364,7 @@ build_target(ProgressStream, Globals, CompilationTask,
                     Task, ModuleName, ModuleDepInfo,
                     MaybeArgFileName, AllOptionArgs, Succeeded0, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
-                    Globals, ModuleName, MESI, ErrorStream, !Info, !IO)
+                    Globals, MESI, ErrorStream, !.Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),

@@ -1,24 +1,24 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: make.deps_cache.m.
+% File: make.prereqs_cache.m.
 %
-% This module defines the types of the caches used by make.dependencies.m.
+% This module defines the types of the caches used by make.prereqs.m.
 % The caches themselves are stored in make_infos.
 %
 %---------------------------------------------------------------------------%
 
-:- module make.deps_cache.
+:- module make.prereqs_cache.
 :- interface.
 
 :- import_module libs.
 :- import_module libs.maybe_util.
-:- import_module make.deps_set.
+:- import_module make.index_set.
 :- import_module make.make_info.
 
 :- import_module io.
@@ -141,8 +141,8 @@ init_trans_deps_cache = map.init.
 
 search_direct_imports_non_intermod_cache(Info, ModuleIndex, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -155,8 +155,8 @@ search_direct_imports_non_intermod_cache(Info, ModuleIndex, Result) :-
 
 add_to_direct_imports_non_intermod_cache(ModuleIndex, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -170,8 +170,8 @@ add_to_direct_imports_non_intermod_cache(ModuleIndex, Result, !Info) :-
 
 search_direct_imports_intermod_cache(Info, ModuleIndex, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -184,8 +184,8 @@ search_direct_imports_intermod_cache(Info, ModuleIndex, Result) :-
 
 add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -201,8 +201,8 @@ add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
 
 % search_indirect_imports_non_intermod_cache(Info, ModuleIndex, Result) :-
 %     trace [
-%         compile_time(flag("deps_cache_stats")),
-%         run_time(env("DEPS_CACHE_STATS")),
+%         compile_time(flag("prereqs_cache_stats")),
+%         run_time(env("PREREQS_CACHE_STATS")),
 %         io(!TIO)
 %     ] (
 %         get_deps_cache_stats(Stats0, !TIO),
@@ -215,8 +215,8 @@ add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
 %
 % add_to_indirect_imports_non_intermod_cache(ModuleIndex, Result, !Info) :-
 %     trace [
-%         compile_time(flag("deps_cache_stats")),
-%         run_time(env("DEPS_CACHE_STATS")),
+%         compile_time(flag("prereqs_cache_stats")),
+%         run_time(env("PREREQS_CACHE_STATS")),
 %         io(!TIO)
 %     ] (
 %         get_deps_cache_stats(Stats0, !TIO),
@@ -230,8 +230,8 @@ add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
 
 search_indirect_imports_intermod_cache(Info, ModuleIndex, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -244,8 +244,8 @@ search_indirect_imports_intermod_cache(Info, ModuleIndex, Result) :-
 
 add_to_indirect_imports_intermod_cache(ModuleIndex, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -261,8 +261,8 @@ add_to_indirect_imports_intermod_cache(ModuleIndex, Result, !Info) :-
 
 search_foreign_imports_non_intermod_trans_cache(Info, ModuleIndex, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -275,8 +275,8 @@ search_foreign_imports_non_intermod_trans_cache(Info, ModuleIndex, Result) :-
 
 add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -292,8 +292,8 @@ add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
 
 % search_anc0_dir1_indir2_non_intermod_cache(Info, Key, Result) :-
 %     trace [
-%         compile_time(flag("deps_cache_stats")),
-%         run_time(env("DEPS_CACHE_STATS")),
+%         compile_time(flag("prereqs_cache_stats")),
+%         run_time(env("PREREQS_CACHE_STATS")),
 %         io(!TIO)
 %     ] (
 %         get_deps_cache_stats(Stats0, !TIO),
@@ -306,8 +306,8 @@ add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
 %
 % add_to_anc0_dir1_indir2_non_intermod_cache(Key, Result, !Info) :-
 %     trace [
-%         compile_time(flag("deps_cache_stats")),
-%         run_time(env("DEPS_CACHE_STATS")),
+%         compile_time(flag("prereqs_cache_stats")),
+%         run_time(env("PREREQS_CACHE_STATS")),
 %         io(!TIO)
 %     ] (
 %         get_deps_cache_stats(Stats0, !TIO),
@@ -321,8 +321,8 @@ add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
 
 search_anc0_dir1_indir2_intermod_cache(Info, Key, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -335,8 +335,8 @@ search_anc0_dir1_indir2_intermod_cache(Info, Key, Result) :-
 
 add_to_anc0_dir1_indir2_intermod_cache(Key, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -352,8 +352,8 @@ add_to_anc0_dir1_indir2_intermod_cache(Key, Result, !Info) :-
 
 search_trans_deps_cache(Info, DepsRoot, Result) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -366,8 +366,8 @@ search_trans_deps_cache(Info, DepsRoot, Result) :-
 
 add_to_trans_deps_cache(DepsRoot, Result, !Info) :-
     trace [
-        compile_time(flag("deps_cache_stats")),
-        run_time(env("DEPS_CACHE_STATS")),
+        compile_time(flag("prereqs_cache_stats")),
+        run_time(env("PREREQS_CACHE_STATS")),
         io(!TIO)
     ] (
         get_deps_cache_stats(Stats0, !TIO),
@@ -385,7 +385,7 @@ add_to_trans_deps_cache(DepsRoot, Result, !Info) :-
 % The results of a bootcheck in csharp grade on 2023 oct 16
 % were as follows. The zero hit rate of the indirect_imports_non_intermod
 % and anc0_dir1_indir2_non_intermod caches is why their code is commented out,
-% here, in make.make_info, and in make.dependencies.m.
+% here, in make.make_info, and in make.prereqs.m.
 %
 % number of lookups:           2012939
 % number of hits:              1962569
@@ -467,7 +467,7 @@ record_make_deps_cache_stats(!IO) :-
     ( if DescsStr = "" then
         true
     else
-        io.open_append("/tmp/MAKE_DEPS_CACHE_STATS", Result, !IO),
+        io.open_append("/tmp/MAKE_PREREQS_CACHE_STATS", Result, !IO),
         (
             Result = error(_)
         ;
@@ -487,5 +487,5 @@ desc_cache_stat({Name, Acc, Miss}, Desc) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module make.deps_cache.
+:- end_module make.prereqs_cache.
 %---------------------------------------------------------------------------%

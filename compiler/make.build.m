@@ -106,9 +106,8 @@
     %   allowed by the options.
     %
 :- pred close_module_error_stream_handle_errors(io.text_output_stream::in,
-    globals::in, module_name::in,
-    module_error_stream_info::in, io.text_output_stream::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    globals::in, module_error_stream_info::in, io.text_output_stream::in,
+    make_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -246,189 +245,82 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
 %---------------------------------------------------------------------------%
 
 :- type module_error_stream_info
-    --->    mesi_temp_file(string, string)
-            % The name of the temp file, and the name of the .err file.
-    ;       mesi_err_file(string).
+    --->    mesi_err_file(string).
             % The name of the .err file.
 
 open_module_error_stream(ProgressStream, Globals, Info, ModuleName,
         MaybeErrorStream, !IO) :-
+    % Write the output directly to the module's .err file.
+    %
+    % Note that I (zs) cannot see a convincing argument for the proposition
+    % that no compiler execution will "nest" call pairs to
+    % open_module_error_stream and close_module_error_stream_handle_errors
+    % like this, with the numbers representing time:
+    %
+    % 1     open_module_error_stream
+    % 2         open_module_error_stream
+    % 3         close_module_error_stream_handle_errors
+    % 4     close_module_error_stream_handle_errors
+    %
+    % In such a call sequence, or in sequences with deeper and/or more
+    % complex nesting, the inner call pairs will write to the module's
+    % .err file, and all but the last write's effect will be undone
+    % by the later writes. However, I believe this is OK, because
+    %
+    % - each call pair effectively operates atomically, in the sense that
+    %   mmc --make actions always invoke the other mmc --make actions
+    %   that they depend on *before* they start generating any
+    %   warnings and/or errors,
+    %
+    % - if any of call pairs put a severity_error message into the .err
+    %   file, then mmc --make should stop pursuing any target that would
+    %   overwrite this .err file, including any targets whose calls to
+    %   open_module_error_stream have already executed, and
+    %
+    % - having any messages with severity *below* severity_error from
+    %   earlier call pairs be overwritten by later call pairs is ok,
+    %   since the messages emitted by those later call pairs should be
+    %   a superset of the messages emitted by the earlier ones.
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err), ModuleName,
         ErrorFileName, _ErrorFileNameProposed, !IO),
-    ErrorFileModules0 = make_info_get_error_file_modules(Info),
-    ( if set.contains(ErrorFileModules0, ModuleName) then
-        % Write the output to a temporary file first, to allow us to print
-        % just the part of the error file that relates to the current command.
-        % The contents of this file, filled in by our caller, will be appended
-        % to ErrorFileName by close_module_error_stream_handle_errors.
-        %
-        % NOTE Actually, the contents of this file won't be *appended*
-        % to ErrorFileName, it will *overwrite* ErrorFileName. The reason
-        % for this is documented in close_module_error_stream_handle_errors.
-        %
-        % XXX This in turn makes returning MESI = mesi_temp_file(...),
-        % an unnecessary pessimization. The same reasoning would allow us
-        % to delete both the mki_error_file_modules field in the make_info,
-        % and all the operation on that field.
-        open_temp_output(TmpErrorFileResult, !IO),
-        (
-            TmpErrorFileResult = ok({TmpErrorFileName, TmpErrorOutputStream}),
-            MESI = mesi_temp_file(TmpErrorFileName, ErrorFileName),
-            MaybeErrorStream = es_ok(MESI, TmpErrorOutputStream)
-        ;
-            TmpErrorFileResult = error(ErrorMsg),
-            with_locked_stdout(Info,
-                write_error_creating_temp_file(ProgressStream, ErrorMsg),
-                !IO),
-            MaybeErrorStream = es_error_already_reported
-        )
-    else
-        % Write the output directly to the module's .err file.
-        %
-        % Note that I (zs) cannot see a convincing argument for the proposition
-        % that no compiler execution will "nest" call pairs to
-        % open_module_error_stream and close_module_error_stream_handle_errors
-        % like this, with the numbers representing time:
-        %
-        % 1     open_module_error_stream
-        % 2         open_module_error_stream
-        % 3         close_module_error_stream_handle_errors
-        % 4     close_module_error_stream_handle_errors
-        %
-        % In such a call sequence, or in sequences with deeper and/or more
-        % complex nesting, the inner call pairs will write to the module's
-        % .err file, and all but the last write's effect will be undone
-        % by the later writes. However, I believe this is OK, because
-        %
-        % - each call pair effectively operates atomically, in the sense that
-        %   mmc --make actions always invoke the other mmc --make actions
-        %   that they depend on *before* they start generating any
-        %   warnings and/or errors,
-        %
-        % - if any of call pairs put a severity_error message into the .err
-        %   file, then mmc --make should stop pursuing any target that would
-        %   overwrite this .err file, including any targets whose calls to
-        %   open_module_error_stream have already executed, and
-        %
-        % - having any messages with severity *below* severity_error from
-        %   earlier call pairs be overwritten by later call pairs is ok,
-        %   since the messages emitted by those later call pairs should be
-        %   a superset of the messages emitted by the earlier ones.
-        io.open_output(ErrorFileName, ErrorFileResult, !IO),
-        (
-            ErrorFileResult = ok(ErrFileStream),
-            MESI = mesi_err_file(ErrorFileName),
-            MaybeErrorStream = es_ok(MESI, ErrFileStream)
-        ;
-            ErrorFileResult = error(ErrorMsg),
-            io.error_message(ErrorMsg, ErrorMsgStr),
-            with_locked_stdout(Info,
-                write_error_creating_temp_file(ProgressStream, ErrorMsgStr),
-                !IO),
-            MaybeErrorStream = es_error_already_reported
-        )
+    io.open_output(ErrorFileName, ErrorFileResult, !IO),
+    (
+        ErrorFileResult = ok(ErrFileStream),
+        MESI = mesi_err_file(ErrorFileName),
+        MaybeErrorStream = es_ok(MESI, ErrFileStream)
+    ;
+        ErrorFileResult = error(ErrorMsg),
+        io.error_message(ErrorMsg, ErrorMsgStr),
+        with_locked_stdout(Info,
+            write_error_creating_temp_file(ProgressStream, ErrorMsgStr),
+            !IO),
+        MaybeErrorStream = es_error_already_reported
     ).
 
-close_module_error_stream_handle_errors(ProgressStream, Globals, ModuleName,
-        MESI, ErrorOutputStream, !Info, !IO) :-
+close_module_error_stream_handle_errors(ProgressStream, Globals,
+        MESI, ErrorOutputStream, Info, !IO) :-
     io.close_output(ErrorOutputStream, !IO),
+    MESI = mesi_err_file(ErrorFileName),
+    % NOTE We could check for MaybeLinesToWrite being yes(0),
+    % and not even read ErrorFileName in that case, but that setting
+    % is probably vanishingly rare.
+    io.read_named_file_as_lines(ErrorFileName, ErrorLinesResult, !IO),
     (
-        MESI = mesi_temp_file(TmpErrorFileName, ErrorFileName),
-        io.read_named_file_as_lines(TmpErrorFileName,
-            TmpErrorLinesResult, !IO),
-        (
-            TmpErrorLinesResult = ok(ErrorLines),
-            ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
-            expect(set.contains(ErrorFileModules0, ModuleName),
-                $pred, "ModuleName not in ErrorFileModules0"),
-            % NOTE This used to be io.open_append, not io.open_output.
-            % However, this lead to the failure of many of the test cases
-            % in tests/warnings, because it generated .err files that contained
-            % - the output of mmc --make-interface, AND
-            % - the output of mmc --errorcheck-only,
-            % while the .err_exp files they were compared against
-            % contain only the output of mmc --errorcheck-only.
-            %
-            % When mmc --make was first implemented, the compiler did
-            % not do any checks when invoked to make interface files,
-            % we were appending to empty files. However, the compiler
-            % has been capable of generating both errors and warnings
-            % during such invocations since at least the addition of the
-            % --halt-at-invalid-interface option in 2019 september.
-            %
-            % It is not clear to me (zs) that there was ever any justification
-            % for using io.open_append instead of io.open_output. The initial
-            % post of this code to m-rev by Simon in 2022 february already
-            % included this call to io.open_append, but it was not discussed
-            % during the review, so I don't know for sure why Simon thought
-            % it was necessary. It could have had something to do with the
-            % compiler having traditionally written out each error message as
-            % soon as it was generated, but as far as I know, this writing-out
-            % was always done to an already-open file stream. Prior to the
-            % the initial implementation of mmc --make, I don't think
-            % the compiler ever explicitly opened a .err file at all;
-            % any such redirection would have been done by sh code in
-            % mmake actions.
-            io.open_output(ErrorFileName, ErrorFileResult, !IO),
-            (
-                ErrorFileResult = ok(ErrorFileOutputStream),
-                globals.lookup_maybe_int_option(Globals,
-                    output_compile_error_lines, MaybeLinesToWrite),
-                list.foldl(write_line_nl(ErrorFileOutputStream),
-                    ErrorLines, !IO),
-                with_locked_stdout(!.Info,
-                    copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
-                        ErrorFileName, ProgressStream),
-                    !IO),
-                io.close_output(ErrorFileOutputStream, !IO)
-            ;
-                ErrorFileResult = error(Error),
-                with_locked_stdout(!.Info,
-                    write_error_opening_file(ProgressStream, TmpErrorFileName,
-                        Error),
-                    !IO)
-            )
-        ;
-            TmpErrorLinesResult = error(Error),
-            with_locked_stdout(!.Info,
-                write_error_opening_file(ProgressStream, TmpErrorFileName,
-                    Error),
-                !IO)
-        ),
-        io.file.remove_file(TmpErrorFileName, _, !IO)
+        ErrorLinesResult = ok(ErrorLines),
+        globals.lookup_maybe_int_option(Globals,
+            output_compile_error_lines, MaybeLinesToWrite),
+        with_locked_stdout(Info,
+            copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
+                ErrorFileName, ProgressStream),
+            !IO)
     ;
-        MESI = mesi_err_file(ErrorFileName),
-        % NOTE We could check for MaybeLinesToWrite being yes(0),
-        % and not even read ErrorFileName in that case, but that setting
-        % is probably vanishingly rare.
-        io.read_named_file_as_lines(ErrorFileName, ErrorLinesResult, !IO),
-        (
-            ErrorLinesResult = ok(ErrorLines),
-            ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
-            expect_not(set.contains(ErrorFileModules0, ModuleName),
-                $pred, "ModuleName in ErrorFileModules0"),
-            globals.lookup_maybe_int_option(Globals,
-                output_compile_error_lines, MaybeLinesToWrite),
-            with_locked_stdout(!.Info,
-                copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
-                    ErrorFileName, ProgressStream),
-                !IO),
-            % XXX Consider adding ModuleName to ErrorFileModules0
-            % only if ErrorLines is not [], since having the next call
-            % to open_module_error_stream for this module overwrite
-            % the empty .err file that our caller just created
-            % would generate the same result as avoiding that overwrite.
-            set.insert(ModuleName, ErrorFileModules0, ErrorFileModules),
-            make_info_set_error_file_modules(ErrorFileModules, !Info)
-        ;
-            ErrorLinesResult = error(Error),
-            with_locked_stdout(!.Info,
-                write_error_opening_file(ProgressStream, ErrorFileName,
-                    Error),
-                !IO)
-        )
+        ErrorLinesResult = error(Error),
+        with_locked_stdout(Info,
+            write_error_opening_file(ProgressStream, ErrorFileName,
+                Error),
+            !IO)
     ).
 
 :- pred copy_selected_output_lines(list(string)::in, maybe(int)::in,
