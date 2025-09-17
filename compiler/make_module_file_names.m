@@ -59,7 +59,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred record_write_deps_file_cache_stats(io::di, io::uo) is det.
+:- pred record_module_ext_cache_stats(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -366,7 +366,7 @@ record_ext_cache_hit(Ext, !IO) :-
 
 %---------------------%
 
-record_write_deps_file_cache_stats(!IO) :-
+record_module_ext_cache_stats(!IO) :-
     get_module_name_cache_stats(ModuleNameStats, !IO),
     ModuleNameStats = cache_stats(MNLookups, MNMisses),
     get_ext_cache_stats(ExtMap, !IO),
@@ -377,7 +377,7 @@ record_write_deps_file_cache_stats(!IO) :-
     then
         true
     else
-        io.open_append("/tmp/WRITE_DEPS_FILE_CACHE_STATS", Result, !IO),
+        io.open_append("/tmp/MODULE_EXT_CACHE_STATS", Result, !IO),
         (
             Result = error(_)
         ;

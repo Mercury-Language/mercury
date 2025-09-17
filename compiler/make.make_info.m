@@ -271,7 +271,7 @@
 %     module_to_dep_file_set_cache.
 :- func make_info_get_anc0_dir1_indir2_intermod_cache(make_info) =
     module_to_dep_file_set_cache.
-:- func make_info_get_trans_deps_cache(make_info) = trans_deps_cache.
+:- func make_info_get_trans_prereqs_cache(make_info) = trans_prereqs_cache.
 
 :- pred make_info_set_option_args(list(string)::in,
     make_info::in, make_info::out) is det.
@@ -319,7 +319,7 @@
 :- pred make_info_set_anc0_dir1_indir2_intermod_cache(
     module_to_dep_file_set_cache::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_trans_deps_cache(trans_deps_cache::in,
+:- pred make_info_set_trans_prereqs_cache(trans_prereqs_cache::in,
     make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -460,7 +460,7 @@
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
                 % XXX zs: What sets?
-                mki_trans_deps_cache        :: trans_deps_cache
+                mki_trans_prereqs_cache     :: trans_prereqs_cache
             ).
 
 init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
@@ -497,7 +497,7 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         init_module_to_module_set_cache,
 %       init_module_to_dep_file_set_cache,
         init_module_to_dep_file_set_cache,
-        init_trans_deps_cache
+        init_trans_prereqs_cache
     ).
 
 make_info_get_env_optfile_variables(Info) = X :-
@@ -548,8 +548,8 @@ make_info_get_foreign_imports_non_intermod_trans_cache(Info) = X :-
 %     X = Info ^ mki_anc0_dir1_indir2_non_intermod_cache.
 make_info_get_anc0_dir1_indir2_intermod_cache(Info) = X :-
     X = Info ^ mki_anc0_dir1_indir2_intermod_cache.
-make_info_get_trans_deps_cache(Info) = X :-
-    X = Info ^ mki_trans_deps_cache.
+make_info_get_trans_prereqs_cache(Info) = X :-
+    X = Info ^ mki_trans_prereqs_cache.
 
 make_info_set_option_args(X, !Info) :-
     !Info ^ mki_option_args := X.
@@ -589,8 +589,8 @@ make_info_set_foreign_imports_non_intermod_trans_cache(X, !Info) :-
 %     !Info ^ mki_anc0_dir1_indir2_non_intermod_cache := X.
 make_info_set_anc0_dir1_indir2_intermod_cache(X, !Info) :-
     !Info ^ mki_anc0_dir1_indir2_intermod_cache := X.
-make_info_set_trans_deps_cache(X, !Info) :-
-    !Info ^ mki_trans_deps_cache := X.
+make_info_set_trans_prereqs_cache(X, !Info) :-
+    !Info ^ mki_trans_prereqs_cache := X.
 
 %---------------------------------------------------------------------------%
 :- end_module make.make_info.

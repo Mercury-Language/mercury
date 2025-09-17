@@ -40,7 +40,7 @@
 :- pred find_transitive_module_dependencies(io.text_output_stream::in,
     globals::in, transitive_dependencies_type::in,
     process_modules_where::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -74,40 +74,40 @@ find_reachable_local_modules(ProgressStream, Globals, ModuleName, Succeeded,
 find_transitive_module_dependencies(ProgressStream, Globals, WhichDeps,
         ProcessModulesWhere, ModuleIndex, Succeeded, ModuleIndexSet,
         !Info, !IO) :-
-    Key = trans_deps_key(ModuleIndex, WhichDeps, ProcessModulesWhere),
-    ( if search_trans_deps_cache(!.Info, Key, Result0) then
+    Key = trans_prereqs_key(ModuleIndex, WhichDeps, ProcessModulesWhere),
+    ( if search_trans_prereqs_cache(!.Info, Key, Result0) then
         Result0 = deps_result(Succeeded, ModuleIndexSet)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
         find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
             WhichDeps, ProcessModulesWhere, Globals, ModuleIndex,
-            Succeeded, deps_set_init, ModuleIndexSet, !Info, !IO),
+            Succeeded, index_set_init, ModuleIndexSet, !Info, !IO),
         Result = deps_result(Succeeded, ModuleIndexSet),
-        add_to_trans_deps_cache(Key, Result, !Info)
+        add_to_trans_prereqs_cache(Key, Result, !Info)
     ).
 
 :- pred find_transitive_module_dependencies_uncached(io.text_output_stream::in,
     maybe_keep_going::in, transitive_dependencies_type::in,
     process_modules_where::in, globals::in,
     module_index::in, maybe_succeeded::out,
-    deps_set(module_index)::in, deps_set(module_index)::out,
+    module_index_set::in, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         WhichDeps, ProcessModulesWhere, Globals, ModuleIndex, Succeeded,
         ModuleIndexSet0, ModuleIndexSet, !Info, !IO) :-
     ( if
-        deps_set_member(ModuleIndex, ModuleIndexSet0)
+        index_set_member(ModuleIndex, ModuleIndexSet0)
     then
         Succeeded = succeeded,
         ModuleIndexSet = ModuleIndexSet0
     else if
-        Key = trans_deps_key(ModuleIndex, WhichDeps,
+        Key = trans_prereqs_key(ModuleIndex, WhichDeps,
             ProcessModulesWhere),
-        search_trans_deps_cache(!.Info, Key, Result0)
+        search_trans_prereqs_cache(!.Info, Key, Result0)
     then
         Result0 = deps_result(Succeeded, ModuleIndexSet1),
-        deps_set_union(ModuleIndexSet0, ModuleIndexSet1, ModuleIndexSet)
+        index_set_union(ModuleIndexSet0, ModuleIndexSet1, ModuleIndexSet)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
         get_maybe_module_dep_info(ProgressStream, Globals,
@@ -145,8 +145,7 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
     io.text_output_stream::in, maybe_keep_going::in,
     transitive_dependencies_type::in, process_modules_where::in, globals::in,
     module_index::in, module_name::in, module_dep_info::in,
-    maybe_succeeded::out,
-    deps_set(module_index)::in, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::in, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
@@ -186,8 +185,8 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         )
     ),
     trace [
-        compile_time(flag("find_trans_deps")),
-        run_time(env("FIND_TRANS_DEPS")),
+        compile_time(flag("find_trans_prereqs")),
+        run_time(env("FIND_TRANS_PREREQS")),
         io(!TIO)
     ] (
         PrintIndentedModuleName =
@@ -209,34 +208,35 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
     module_names_to_index_set(set.to_sorted_list(ToCheckIncludedModuleNames),
         IncludedModuleIndexSet, !Info),
     ToAccImportedModuleIndexes =
-        deps_set_to_sorted_list(ImportedModuleIndexSet),
+        index_set_to_sorted_list(ImportedModuleIndexSet),
     ToAccIncludedModuleIndexes =
-        deps_set_to_sorted_list(IncludedModuleIndexSet),
+        index_set_to_sorted_list(IncludedModuleIndexSet),
 
-    deps_set_insert(ModuleIndex, ModuleIndexSet0, ModuleIndexSet1),
+    index_set_insert(ModuleIndex, ModuleIndexSet0, ModuleIndexSet1),
     OldImportingModule = make_info_get_importing_module(!.Info),
     make_info_set_importing_module(yes(ioi_import(ModuleName)), !Info),
-    acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
+    acc_module_index_trans_prereqs(ProgressStream, Globals, KeepGoing,
         WhichDeps, ProcessModulesWhere,
         ToAccImportedModuleIndexes, succeeded, SucceededImports,
         ModuleIndexSet1, ModuleIndexSet2, !Info, !IO),
     make_info_set_importing_module(yes(ioi_include(ModuleName)), !Info),
-    acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
+    acc_module_index_trans_prereqs(ProgressStream, Globals, KeepGoing,
         WhichDeps, ProcessModulesWhere,
         ToAccIncludedModuleIndexes, succeeded, SucceededIncludes,
         ModuleIndexSet2, ModuleIndexSet, !Info, !IO),
     make_info_set_importing_module(OldImportingModule, !Info),
     Succeeded = SucceededImports `and` SucceededIncludes.
 
-:- pred acc_module_index_trans_deps(io.text_output_stream::in, globals::in,
+:- pred acc_module_index_trans_prereqs(io.text_output_stream::in, globals::in,
     maybe_keep_going::in, transitive_dependencies_type::in,
     process_modules_where::in, list(module_index)::in,
     maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(module_index)::in, deps_set(module_index)::out,
+    module_index_set::in, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-acc_module_index_trans_deps(_, _, _, _, _, [], !Succeeded, !Deps, !Info, !IO).
-acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
+acc_module_index_trans_prereqs(_, _, _, _, _, [],
+        !Succeeded, !Deps, !Info, !IO).
+acc_module_index_trans_prereqs(ProgressStream, Globals, KeepGoing,
         WhichDeps, ProcessModulesWhere, [HeadModuleIndex | TailModuleIndexes],
         !Succeeded, !ModuleIndexSet, !Info, !IO) :-
     find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
@@ -248,7 +248,7 @@ acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
         StopOrContinue = soc_stop
     ;
         StopOrContinue = soc_continue,
-        acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
+        acc_module_index_trans_prereqs(ProgressStream, Globals, KeepGoing,
             WhichDeps, ProcessModulesWhere,
             TailModuleIndexes, !Succeeded, !ModuleIndexSet, !Info, !IO)
     ).

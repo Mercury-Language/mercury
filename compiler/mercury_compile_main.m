@@ -129,8 +129,8 @@ real_main(!IO) :-
         % All the error messages that explain the reason for the failure
         % have already been printed.
     ),
-    record_make_deps_cache_stats(!IO),
-    record_write_deps_file_cache_stats(!IO),
+    record_make_prereqs_cache_stats(!IO),
+    record_module_ext_cache_stats(!IO),
     record_instmap_delta_restrict_stats(!IO),
     close_any_specific_compiler_streams(!IO).
 

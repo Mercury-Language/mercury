@@ -186,10 +186,10 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet,
             !Info),
         ModuleIndexesToCheck =
-            deps_set_to_sorted_list(ModuleIndexesToCheckSet),
+            index_set_to_sorted_list(ModuleIndexesToCheckSet),
         find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
             Globals, TargetType, ModuleIndexesToCheck,
-            succeeded, Succeeded, deps_set_init, PrereqIndexes0, !Info, !IO)
+            succeeded, Succeeded, index_set_init, PrereqIndexes0, !Info, !IO)
     ),
     ( if TargetType = module_target_int0 then
         % XXX Simon Taylor's comment, added originally to make.module_target.m
@@ -218,7 +218,7 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         % cause the problem that it was added to address.
         ToDelete = make_dependency_list(ModulesToCheck, module_target_int0),
         dependency_files_to_index_set(ToDelete, ToDeleteIndexes, !Info),
-        PrereqIndexes = deps_set_difference(PrereqIndexes0, ToDeleteIndexes)
+        PrereqIndexes = index_set_difference(PrereqIndexes0, ToDeleteIndexes)
     else
         ToDelete = [],
         PrereqIndexes = PrereqIndexes0
@@ -264,7 +264,8 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
 :- pred find_direct_prereqs_of_nested_module_targets(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_target_type::in,
     list(module_index)::in, maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in,
+        dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_direct_prereqs_of_nested_module_targets(_, _, _, _, [],
@@ -275,7 +276,7 @@ find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
     find_direct_prereqs_of_module_target(ProgressStream, KeepGoing,
         Globals, TargetType, ModuleIndex, HeadSucceeded, HeadPrereqs,
         !Info, !IO),
-    deps_set_union(HeadPrereqs, !Prereqs),
+    index_set_union(HeadPrereqs, !Prereqs),
     should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
         !Succeeded),
     (
@@ -290,7 +291,7 @@ find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
 :- pred find_direct_prereqs_of_module_target(io.text_output_stream::in,
     maybe_keep_going::in, globals::in,
     module_target_type::in, module_index::in,
-    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    maybe_succeeded::out, dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
@@ -300,7 +301,7 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
         ; TargetType = module_target_track_flags
         ),
         Succeeded = succeeded,
-        Prereqs = deps_set_init
+        Prereqs = index_set_init
     ;
         TargetType = module_target_int3,
         PrereqSpecs = [self(module_target_source)],
@@ -510,11 +511,12 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
 
 :- pred find_prereqs_from_specs(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in, list(prereq_spec)::in,
-    deps_set(dependency_file_index)::out,
+    dependency_file_index_set::out,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_prereqs_from_specs(_, _, _, _, [], deps_set_init, !Succeeded, !Info, !IO).
+find_prereqs_from_specs(_, _, _, _, [], index_set_init,
+        !Succeeded, !Info, !IO).
 find_prereqs_from_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
         [HeadPrereqSpec | TailPrereqSpecs], DepFileIndexSet,
         !Succeeded, !Info, !IO) :-
@@ -531,13 +533,13 @@ find_prereqs_from_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
             ModuleIndex, TailPrereqSpecs, TailDepFileIndexSet,
             !Succeeded, !Info, !IO),
-        deps_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
+        index_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
             DepFileIndexSet)
     ).
 
 :- pred find_prereqs_from_spec(io.text_output_stream::in, maybe_keep_going::in,
     globals::in, module_index::in, prereq_spec::in,
-    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    maybe_succeeded::out, dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
@@ -746,32 +748,33 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
 %---------------------------------------------------------------------------%
 
 :- pred dfmi_target(module_index::in, module_target_type::in,
-    deps_set(dependency_file_index)::out,
+    dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 :- pragma inline(pred(dfmi_target/5)).
 
 dfmi_target(ModuleIndex, TargetType, DepFileIndexSet, !Info) :-
     acc_rev_dfmi_target(TargetType, ModuleIndex,
-        deps_set_init, DepFileIndexSet, !Info).
+        index_set_init, DepFileIndexSet, !Info).
 
-:- pred dfmi_targets(deps_set(module_index)::in, module_target_type::in,
-    deps_set(dependency_file_index)::out,
+:- pred dfmi_targets(module_index_set::in, module_target_type::in,
+    dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 :- pragma inline(pred(dfmi_targets/5)).
 
 dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
-    deps_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
-        deps_set_init, DepFileIndexSet, !Info).
+    index_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
+        index_set_init, DepFileIndexSet, !Info).
 
 :- pred acc_rev_dfmi_target(module_target_type::in, module_index::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in,
+        dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 :- pragma inline(pred(acc_rev_dfmi_target/6)).
 
 acc_rev_dfmi_target(TargetType, ModuleIndex, !DepFileIndexSet, !Info) :-
     TargetFile = dfmi_target(ModuleIndex, TargetType),
     dependency_file_to_index(TargetFile, TargetFileIndex, !Info),
-    deps_set_insert(TargetFileIndex, !DepFileIndexSet).
+    index_set_insert(TargetFileIndex, !DepFileIndexSet).
 
 %---------------------------------------------------------------------------%
 
@@ -780,7 +783,7 @@ acc_rev_dfmi_target(TargetType, ModuleIndex, !DepFileIndexSet, !Info) :-
     %
 :- pred get_direct_imports_non_intermod(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
@@ -798,7 +801,7 @@ get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
 
 :- pred get_direct_imports_non_intermod_uncached(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_direct_imports_non_intermod_uncached(ProgressStream, KeepGoing, Globals,
@@ -822,13 +825,13 @@ get_direct_imports_non_intermod_uncached(ProgressStream, KeepGoing, Globals,
             IntModules, !Info),
         module_names_to_index_set(set.to_sorted_list(ImpModuleNames),
             ImpModules, !Info),
-        deps_set_union(IntModules, ImpModules, Modules0),
+        index_set_union(IntModules, ImpModules, Modules0),
         (
             ModuleName = qualified(ParentModule, _),
             module_name_to_index(ParentModule, ParentIndex, !Info),
             get_direct_imports_non_intermod(ProgressStream, KeepGoing,
                 Globals, ParentIndex, Succeeded, ParentImports, !Info, !IO),
-            deps_set_union(ParentImports, Modules0, Modules)
+            index_set_union(ParentImports, Modules0, Modules)
         ;
             ModuleName = unqualified(_),
             Succeeded = succeeded,
@@ -837,12 +840,12 @@ get_direct_imports_non_intermod_uncached(ProgressStream, KeepGoing, Globals,
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        Modules = deps_set_init
+        Modules = index_set_init
     ).
 
 :- pred get_direct_imports_intermod(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
@@ -859,7 +862,7 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
             KeepGoing = do_not_keep_going
         then
             Succeeded = did_not_succeed,
-            Modules = deps_set_init
+            Modules = index_set_init
         else
             % We also read `.int' files for the modules for which we read
             % `.opt' files, and for the modules imported by those modules.
@@ -870,15 +873,15 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
                 KeepGoing = do_not_keep_going
             then
                 Succeeded = did_not_succeed,
-                Modules = deps_set_init
+                Modules = index_set_init
             else
-                deps_set_union(IntermodModules, Modules0, Modules1),
+                index_set_union(IntermodModules, Modules0, Modules1),
                 fold_find_modules_over_modules(ProgressStream, KeepGoing,
                     Globals, get_direct_imports_non_intermod,
-                    deps_set_to_sorted_list(IntermodModules),
+                    index_set_to_sorted_list(IntermodModules),
                     succeeded, Succeeded2, Modules1, Modules2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2,
-                deps_set_delete(ModuleIndex, Modules2, Modules)
+                index_set_delete(ModuleIndex, Modules2, Modules)
             )
         ),
         Result = deps_result(Succeeded, Modules),
@@ -893,7 +896,7 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
     %
 :- pred get_indirect_imports_non_intermod(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
@@ -919,7 +922,7 @@ get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
     %
 :- pred get_indirect_imports_intermod(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_indirect_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
@@ -940,8 +943,8 @@ get_indirect_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
 
 :- pred get_indirect_imports_uncached(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::in, deps_set(module_index)::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::in, module_index_set::in,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals, ModuleIndex,
@@ -952,15 +955,16 @@ get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals, ModuleIndex,
         KeepGoing = do_not_keep_going
     then
         Succeeded = did_not_succeed,
-        IndirectImports = deps_set_init
+        IndirectImports = index_set_init
     else
         fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals,
             find_transitive_implementation_imports,
-            deps_set_to_sorted_list(DirectImports),
-            succeeded, IndirectSucceeded, deps_set_init, IndirectImports0,
+            index_set_to_sorted_list(DirectImports),
+            succeeded, IndirectSucceeded, index_set_init, IndirectImports0,
             !Info, !IO),
-        deps_set_delete(ModuleIndex, IndirectImports0, IndirectImports1),
-        IndirectImports = deps_set_difference(IndirectImports1, DirectImports),
+        index_set_delete(ModuleIndex, IndirectImports0, IndirectImports1),
+        IndirectImports =
+            index_set_difference(IndirectImports1, DirectImports),
         Succeeded = DirectSucceeded `and` IndirectSucceeded
     ).
 
@@ -970,7 +974,7 @@ get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals, ModuleIndex,
     %
 :- pred get_intermod_imports(io.text_output_stream::in, maybe_keep_going::in,
     globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_intermod_imports(ProgressStream, KeepGoing, Globals, ModuleIndex,
@@ -992,14 +996,14 @@ get_intermod_imports(ProgressStream, KeepGoing, Globals, ModuleIndex,
     ;
         AnyIntermod = no,
         Succeeded = succeeded,
-        Modules = deps_set_init
+        Modules = index_set_init
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred get_foreign_imports_intermod_trans(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_imports_intermod_trans(ProgressStream, KeepGoing, Globals,
@@ -1011,16 +1015,16 @@ get_foreign_imports_intermod_trans(ProgressStream, KeepGoing, Globals,
     LanguagesSet = set.list_to_set(Languages),
     get_intermod_imports(ProgressStream, KeepGoing, Globals, ModuleIndex,
         IntermodSucceeded, IntermodModules, !Info, !IO),
-    deps_set_insert(ModuleIndex, IntermodModules, IntermodSelfModules),
+    index_set_insert(ModuleIndex, IntermodModules, IntermodSelfModules),
     fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals,
         get_foreign_imports_non_intermod_trans(LanguagesSet),
         to_sorted_list(IntermodSelfModules),
-        succeeded, ForeignSucceeded, deps_set_init, Modules, !Info, !IO),
+        succeeded, ForeignSucceeded, index_set_init, Modules, !Info, !IO),
     Succeeded = IntermodSucceeded `and` ForeignSucceeded.
 
 :- pred get_foreign_imports_non_intermod_trans(set(foreign_language)::in,
     io.text_output_stream::in, maybe_keep_going::in, globals::in,
-    module_index::in, maybe_succeeded::out, deps_set(module_index)::out,
+    module_index::in, maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_imports_non_intermod_trans(LangSet, ProgressStream, KeepGoing,
@@ -1040,7 +1044,7 @@ get_foreign_imports_non_intermod_trans(LangSet, ProgressStream, KeepGoing,
             fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals,
                 get_foreign_imports_non_intermod_uncached(LangSet),
                 to_sorted_list(insert(ImportedModules, ModuleIndex)),
-                succeeded, Succeeded, deps_set_init, ForeignModules,
+                succeeded, Succeeded, index_set_init, ForeignModules,
                 !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
             add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex,
@@ -1048,13 +1052,13 @@ get_foreign_imports_non_intermod_trans(LangSet, ProgressStream, KeepGoing,
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed,
-            ForeignModules = deps_set_init
+            ForeignModules = index_set_init
         )
     ).
 
 :- pred get_foreign_imports_non_intermod_uncached(set(foreign_language)::in,
     io.text_output_stream::in, maybe_keep_going::in, globals::in,
-    module_index::in, maybe_succeeded::out, deps_set(module_index)::out,
+    module_index::in, maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_imports_non_intermod_uncached(LangSet, ProgressStream, _KeepGoing,
@@ -1066,23 +1070,23 @@ get_foreign_imports_non_intermod_uncached(LangSet, ProgressStream, _KeepGoing,
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
         set.foldl2(acc_module_index_if_for_lang_in_set(LangSet), FIMSpecs,
-            deps_set_init, ForeignModules, !Info),
+            index_set_init, ForeignModules, !Info),
         Succeeded = succeeded
     ;
         MaybeModuleDepInfo = no_module_dep_info,
-        ForeignModules = deps_set_init,
+        ForeignModules = index_set_init,
         Succeeded = did_not_succeed
     ).
 
 :- pred acc_module_index_if_for_lang_in_set(set(foreign_language)::in,
-    fim_spec::in, deps_set(module_index)::in, deps_set(module_index)::out,
+    fim_spec::in, module_index_set::in, module_index_set::out,
     make_info::in, make_info::out) is det.
 
 acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     ( if set.contains(LangSet, Lang) then
         module_name_to_index(ModuleName, ModuleIndex, !Info),
-        deps_set_insert(ModuleIndex, !DepsSet)
+        index_set_insert(ModuleIndex, !DepsSet)
     else
         true
     ).
@@ -1090,9 +1094,9 @@ acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(
-    io.text_output_stream::in, maybe_keep_going::in, globals::in,
-    module_index::in,
-    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    io.text_output_stream::in, maybe_keep_going::in,
+    globals::in, module_index::in,
+    maybe_succeeded::out, dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
@@ -1104,18 +1108,18 @@ get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
         succeeded, !:Succeeded),
     (
         StopOrContinue = soc_stop,
-        DepFileIndexSet = deps_set_init
+        DepFileIndexSet = index_set_init
     ;
         StopOrContinue = soc_continue,
-        ModuleList1 = deps_set_to_sorted_list(Modules1),
+        ModuleList1 = index_set_to_sorted_list(Modules1),
         fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_intermod, ModuleList1,
-            !Succeeded, deps_set_init, DepFileIndexSet, !Info, !IO)
+            !Succeeded, index_set_init, DepFileIndexSet, !Info, !IO)
     ).
 
 :- pred get_ancestors_of_intermod_imports(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
@@ -1126,16 +1130,16 @@ get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
         succeeded, Succeeded),
     (
         StopOrContinue = soc_stop,
-        ModuleIndexSet = deps_set_init
+        ModuleIndexSet = index_set_init
     ;
         StopOrContinue = soc_continue,
-        ModuleList1 = deps_set_to_sorted_list(Modules1),
+        ModuleList1 = index_set_to_sorted_list(Modules1),
         list.map_foldl(index_get_ancestors,
             ModuleList1, AncestorModuleIndexSets, !Info),
-        ModuleIndexSet = deps_set_union_list(AncestorModuleIndexSets)
+        ModuleIndexSet = index_set_union_list(AncestorModuleIndexSets)
     ).
 
-:- pred index_get_ancestors(module_index::in, deps_set(module_index)::out,
+:- pred index_get_ancestors(module_index::in, module_index_set::out,
     make_info::in, make_info::out) is det.
 
 index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
@@ -1147,8 +1151,8 @@ index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred get_foreign_incl_fact_table_files(io.text_output_stream::in,
-    globals::in, module_index::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::out,
+    globals::in, module_index::in,
+    maybe_succeeded::out, dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
@@ -1175,12 +1179,12 @@ get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        DepFileIndexSet = deps_set_init
+        DepFileIndexSet = index_set_init
     ).
 
 :- pred acc_dep_file_index_for_foreign_include_if_in_langset(
     set(foreign_language)::in, file_name::in, foreign_include_file_info::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in, dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 
 acc_dep_file_index_for_foreign_include_if_in_langset(LangSet, SourceFileName,
@@ -1190,7 +1194,7 @@ acc_dep_file_index_for_foreign_include_if_in_langset(LangSet, SourceFileName,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         DepFile = dfmi_file(IncludePath),
         dependency_file_to_index(DepFile, DepFileIndex, !Info),
-        deps_set_insert(DepFileIndex, !DepFileIndexSet)
+        index_set_insert(DepFileIndex, !DepFileIndexSet)
     else
         true
     ).
@@ -1200,7 +1204,7 @@ acc_dep_file_index_for_foreign_include_if_in_langset(LangSet, SourceFileName,
 
 :- pred find_transitive_implementation_imports(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
+    maybe_succeeded::out, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
@@ -1214,7 +1218,7 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
     find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
         process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
         !Info, !IO),
-    deps_set_insert(ModuleIndex, Modules0, Modules),
+    index_set_insert(ModuleIndex, Modules0, Modules),
     trace [
         compile_time(flag("find_trans_impl_imports")),
         run_time(env("FIND_TRANS_IMPL_IMPORTS")),
@@ -1245,7 +1249,7 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
     %
 :- type find_module_deps(T) ==
     pred(io.text_output_stream, maybe_keep_going, globals, module_index,
-        maybe_succeeded, deps_set(T), make_info, make_info, io, io).
+        maybe_succeeded, index_set(T), make_info, make_info, io, io).
 :- inst find_module_deps ==
     (pred(in, in, in, in, out, out, in, out, di, uo) is det).
 
@@ -1261,9 +1265,8 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
 :- pred fold_find_modules_over_modules(io.text_output_stream::in,
     maybe_keep_going::in, globals::in,
     find_module_deps(module_index)::in(find_module_deps),
-    list(module_index)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(module_index)::in, deps_set(module_index)::out,
+    list(module_index)::in, maybe_succeeded::in, maybe_succeeded::out,
+    module_index_set::in, module_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 fold_find_modules_over_modules(_, _, _, _,
@@ -1272,7 +1275,7 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindModules,
         [MI | MIs], !Succeeded, !ModuleIndexSet, !Info, !IO) :-
     FindModules(ProgressStream, KeepGoing, Globals, MI,
         HeadSucceeded, HeadModuleIndexSet, !Info, !IO),
-    deps_set_union(HeadModuleIndexSet, !ModuleIndexSet),
+    index_set_union(HeadModuleIndexSet, !ModuleIndexSet),
     should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
         !Succeeded),
     (
@@ -1298,7 +1301,7 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindModules,
 :- pred fold_prereq_spec_over_modules(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, prereq_spec::in, list(module_index)::in,
     maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in, dependency_file_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 fold_prereq_spec_over_modules(_, _, _, _,
@@ -1307,7 +1310,7 @@ fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals, PrereqSpec,
         [MI | MIs], !Succeeded, !DepFileIndexSet, !Info, !IO) :-
     find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, MI, PrereqSpec,
         HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
-    deps_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
+    index_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
     should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
         !Succeeded),
     (

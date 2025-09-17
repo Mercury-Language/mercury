@@ -38,38 +38,38 @@
 
     % sparse_bitset is faster than tree_bitset by my tests.
     %
-:- type deps_set(T) == sparse_bitset(T).
-% :- type deps_set(T) == tree_bitset(T).
+:- type index_set(T) == sparse_bitset(T).
+% :- type index_set(T) == tree_bitset(T).
 
-:- func deps_set_init = deps_set(T).
+:- func index_set_init = index_set(T).
 
-:- pred deps_set_insert(T::in, deps_set(T)::in, deps_set(T)::out)
+:- pred index_set_insert(T::in, index_set(T)::in, index_set(T)::out)
      is det <= uenum(T).
-:- pred deps_set_delete(T::in, deps_set(T)::in, deps_set(T)::out)
+:- pred index_set_delete(T::in, index_set(T)::in, index_set(T)::out)
      is det <= uenum(T).
 
-:- func deps_set_union(deps_set(T), deps_set(T)) = deps_set(T).
-:- pred deps_set_union(deps_set(T)::in, deps_set(T)::in, deps_set(T)::out)
+:- func index_set_union(index_set(T), index_set(T)) = index_set(T).
+:- pred index_set_union(index_set(T)::in, index_set(T)::in, index_set(T)::out)
     is det.
 
-:- func deps_set_union_list(list(deps_set(T))) = deps_set(T).
+:- func index_set_union_list(list(index_set(T))) = index_set(T).
 
-:- func deps_set_difference(deps_set(T), deps_set(T)) = deps_set(T).
+:- func index_set_difference(index_set(T), index_set(T)) = index_set(T).
 
-:- func list_to_deps_set(list(T)) = deps_set(T) <= uenum(T).
-:- pred list_to_deps_set(list(T)::in, deps_set(T)::out) is det <= uenum(T).
+:- func list_to_index_set(list(T)) = index_set(T) <= uenum(T).
+:- pred list_to_index_set(list(T)::in, index_set(T)::out) is det <= uenum(T).
 
-:- func deps_set_to_sorted_list(deps_set(T)) = list(T) <= uenum(T).
+:- func index_set_to_sorted_list(index_set(T)) = list(T) <= uenum(T).
 
-:- pred deps_set_foldl(
+:- pred index_set_foldl(
     pred(T, A, A)::in(pred(in, in, out) is det),
-    deps_set(T)::in, A::in, A::out) is det <= uenum(T).
+    index_set(T)::in, A::in, A::out) is det <= uenum(T).
 
-:- pred deps_set_foldl2(
+:- pred index_set_foldl2(
     pred(T, A, A, B, B)::in(pred(in, in, out, in, out) is det),
-    deps_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
+    index_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
 
-:- pred deps_set_member(T::in, deps_set(T)::in) is semidet <= uenum(T).
+:- pred index_set_member(T::in, index_set(T)::in) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 
@@ -78,6 +78,9 @@
 
 :- type dependency_file_index.
 :- instance uenum(dependency_file_index).
+
+:- type module_index_set == index_set(module_index).
+:- type dependency_file_index_set == index_set(dependency_file_index).
 
 %---------------------------------------------------------------------------%
 
@@ -88,8 +91,7 @@
 
     % Convert a list of module_names to a module_index set.
     %
-:- pred module_names_to_index_set(list(module_name)::in,
-    deps_set(module_index)::out,
+:- pred module_names_to_index_set(list(module_name)::in, module_index_set::out,
     make_info::in, make_info::out) is det.
 
     % Convert a module_index to a module_name.
@@ -100,7 +102,7 @@
     % Convert a module_index set to a module_name set.
     %
 :- pred module_index_set_to_plain_set(make_info::in,
-    deps_set(module_index)::in, set(module_name)::out) is det.
+    module_index_set::in, set(module_name)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -113,16 +115,14 @@
     % to a dependency_file_index set.
     %
 :- pred dependency_files_to_index_set(list(dependency_file)::in,
-    deps_set(dependency_file_index)::out, make_info::in, make_info::out)
-    is det.
+    dependency_file_index_set::out, make_info::in, make_info::out) is det.
 :- pred file_names_to_index_set(list(file_name)::in,
-    deps_set(dependency_file_index)::out, make_info::in, make_info::out)
-    is det.
+    dependency_file_index_set::out, make_info::in, make_info::out) is det.
 
     % Convert a dependency_file_index set to a dependency_file set.
     %
 :- pred dependency_file_index_set_to_plain_set(make_info::in,
-    deps_set(dependency_file_index)::in, set(dependency_file)::out) is det.
+    dependency_file_index_set::in, set(dependency_file)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -136,45 +136,45 @@
 
 %---------------------------------------------------------------------------%
 %
-% Operations on deps_sets.
+% Operations on index_sets.
 %
 
-deps_set_init = sparse_bitset.init.
+index_set_init = sparse_bitset.init.
 
-deps_set_insert(X, !Set) :-
+index_set_insert(X, !Set) :-
     sparse_bitset.insert(X, !Set).
 
-deps_set_delete(X, !Set) :-
+index_set_delete(X, !Set) :-
     sparse_bitset.delete(X, !Set).
 
-deps_set_union(SetA, SetB) = Set :-
+index_set_union(SetA, SetB) = Set :-
     Set = sparse_bitset.union(SetA, SetB).
 
-deps_set_union(SetA, SetB, Set) :-
+index_set_union(SetA, SetB, Set) :-
     sparse_bitset.union(SetA, SetB, Set).
 
-deps_set_union_list(Sets) = Set :-
+index_set_union_list(Sets) = Set :-
     Set = sparse_bitset.union_list(Sets).
 
-deps_set_difference(SetA, SetB) = Set :-
+index_set_difference(SetA, SetB) = Set :-
     Set = sparse_bitset.difference(SetA, SetB).
 
-list_to_deps_set(List) = Set :-
+list_to_index_set(List) = Set :-
     Set = sparse_bitset.list_to_set(List).
 
-list_to_deps_set(List, Set) :-
+list_to_index_set(List, Set) :-
     sparse_bitset.list_to_set(List, Set).
 
-deps_set_to_sorted_list(Set) = SortedList :-
+index_set_to_sorted_list(Set) = SortedList :-
     SortedList = sparse_bitset.to_sorted_list(Set).
 
-deps_set_foldl(Pred, Set, !Acc1) :-
+index_set_foldl(Pred, Set, !Acc1) :-
     sparse_bitset.foldl(Pred, Set, !Acc1).
 
-deps_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
+index_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
     sparse_bitset.foldl2(Pred, Set, !Acc1, !Acc2).
 
-deps_set_member(Item, Set) :-
+index_set_member(Item, Set) :-
     sparse_bitset.member(Item, Set).
 
 %---------------------------------------------------------------------------%
@@ -232,16 +232,16 @@ increase_array_size(N) = (if N = 0 then 1 else N * 2).
 
 module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
     module_names_to_index_set_loop(ModuleNames,
-        deps_set_init, IndexSet, !Info).
+        index_set_init, IndexSet, !Info).
 
 :- pred module_names_to_index_set_loop(list(module_name)::in,
-    deps_set(module_index)::in, deps_set(module_index)::out,
+    module_index_set::in, module_index_set::out,
     make_info::in, make_info::out) is det.
 
 module_names_to_index_set_loop([], !IndexSet, !Info).
 module_names_to_index_set_loop([ModuleName | ModuleNames], !Set, !Info) :-
     module_name_to_index(ModuleName, ModuleIndex, !Info),
-    deps_set_insert(ModuleIndex, !Set),
+    index_set_insert(ModuleIndex, !Set),
     module_names_to_index_set_loop(ModuleNames, !Set, !Info).
 
 %---------------------------------------------------------------------------%
@@ -255,7 +255,7 @@ module_index_to_name(Info, Index, ModuleName) :-
 %---------------------%
 
 module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
-    deps_set_foldl(acc_module_index_set_to_plain_set(Info), ModuleIndices,
+    index_set_foldl(acc_module_index_set_to_plain_set(Info), ModuleIndices,
         set.init, Modules).
 
 :- pred acc_module_index_set_to_plain_set(make_info::in, module_index::in,
@@ -294,10 +294,10 @@ dependency_file_to_index(DepFile, Index, !Info) :-
 
 dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
     list.foldl2(acc_dependency_files_to_index_set, DepFiles,
-        deps_set_init, DepIndexSet, !Info).
+        index_set_init, DepIndexSet, !Info).
 
 :- pred acc_dependency_files_to_index_set(dependency_file::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in, dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 
 acc_dependency_files_to_index_set(DepFile0, !Set, !Info) :-
@@ -310,22 +310,22 @@ acc_dependency_files_to_index_set(DepFile0, !Set, !Info) :-
         DepFile = dfmi_file(FileName)
     ),
     dependency_file_to_index(DepFile, DepIndex, !Info),
-    deps_set_insert(DepIndex, !Set).
+    index_set_insert(DepIndex, !Set).
 
 %---------------------%
 
 file_names_to_index_set(FileNames, DepIndexSet, !Info) :-
     list.foldl2(acc_file_names_to_index_set, FileNames,
-        deps_set_init, DepIndexSet, !Info).
+        index_set_init, DepIndexSet, !Info).
 
 :- pred acc_file_names_to_index_set(file_name::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    dependency_file_index_set::in, dependency_file_index_set::out,
     make_info::in, make_info::out) is det.
 
 acc_file_names_to_index_set(FileName, !Set, !Info) :-
     DepFile = dfmi_file(FileName),
     dependency_file_to_index(DepFile, DepIndex, !Info),
-    deps_set_insert(DepIndex, !Set).
+    index_set_insert(DepIndex, !Set).
 
 %---------------------------------------------------------------------------%
 
@@ -349,7 +349,7 @@ index_to_dependency_file(Info, Index, DepFile) :-
 %---------------------%
 
 dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
-    deps_set_foldl(acc_dependency_file_index_set_to_plain_set(Info),
+    index_set_foldl(acc_dependency_file_index_set_to_plain_set(Info),
         DepIndices, [], DepFilesList),
     DepFiles = set.list_to_set(DepFilesList).
 
