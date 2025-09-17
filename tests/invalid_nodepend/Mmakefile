@@ -30,6 +30,7 @@ PROGS = \
 	bad_include \
 	bad_initialise_decl \
 	bad_inst_defn \
+	bad_method_start \
 	bad_mutable \
 	bad_pragma \
 	bad_with_inst \

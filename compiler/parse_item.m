@@ -597,6 +597,18 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
                 PurityAttrs, QuantConstrAttrs, MaybeIOMPrime)
         then
             MaybeIOM = MaybeIOMPrime
+        else if
+            Functor = ":-",
+            IsInClass = decl_is_in_class
+        then
+            Pieces = [words("Error:")] ++
+                color_as_subject([quote(Functor)]) ++
+                color_as_incorrect([words("is not allowed")]) ++
+                [words("at the beginning of a type class method declaration.")] ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt, FunctorContext,
+                Pieces),
+            MaybeIOM = error1([Spec])
         else
             Spec = decl_functor_is_not_valid(Functor, FunctorContext),
             MaybeIOM = error1([Spec])

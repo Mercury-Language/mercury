@@ -1,0 +1,2 @@
+bad_method_start.m:014: Error: [38;5;87m`:-'[39;49m [38;5;203mis not allowed[39;49m at the beginning of a type
+bad_method_start.m:014:   class method declaration.
