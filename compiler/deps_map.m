@@ -76,7 +76,6 @@
 
 generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
         !:DepsMap, !:Specs, !IO) :-
-    SeenModules0 = set_tree234.init,
     (
         FileOrModule = fm_module(ModuleName),
         map.init(!:DepsMap),
@@ -87,6 +86,7 @@ generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
             FileName, ModuleName, !:DepsMap, !:Specs, !IO)
     ),
     CmdLineModuleName = ModuleName,
+    SeenModules0 = set_tree234.init,
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
     ReadModules0 = set_tree234.init,
     UnreadModules0 = set_tree234.init,
@@ -401,8 +401,8 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         MaybeDeps = yes(Deps),
         NewBurdenedModules = []
     else
-        read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-            CmdLineModuleName, ModuleName, ExpectationContexts,
+        read_module_src_file_for_dependency_info(ProgressStream, Globals,
+            Search, CmdLineModuleName, ModuleName, ExpectationContexts,
             NewBurdenedModules, !Specs, !IO),
         (
             NewBurdenedModules = [_ | _],
@@ -459,12 +459,12 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     % and any nested submodules it contains. Return the burdened_module
     % structure for both the named module and each of its nested submodules.
     %
-:- pred read_src_file_for_dependency_info(io.text_output_stream::in,
+:- pred read_module_src_file_for_dependency_info(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, module_name::in,
     expectation_contexts::in, list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_src_file_for_dependency_info(ProgressStream, Globals, Search,
+read_module_src_file_for_dependency_info(ProgressStream, Globals, Search,
         CmdLineModuleName, ModuleName, ExpectationContexts,
         BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
