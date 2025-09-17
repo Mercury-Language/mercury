@@ -271,21 +271,28 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
         FileName = FileNamePrime
     else
         DefaultFileName = default_source_file_name(ModuleName),
-        ( if bimap.reverse_search(SourceFileMap, _, DefaultFileName) then
+        ( if bimap.reverse_search(SourceFileMap, Other, DefaultFileName) then
             io.progname_base("mercury_compile", Progname, !IO),
             Pieces = [fixed(Progname), suffix(":"),
                 words("cannot find out which file contains"),
                 words("module"), qual_sym_name(ModuleName), suffix(","),
                 words("because its name does not appear in Mercury.modules,"),
                 words("and the file whose name is the default file name"),
-                words("for this module name, i.e."), fixed(FileName),
+                words("for this module name, i.e."), fixed(DefaultFileName),
                 suffix(","), words("is recorded in Mercury.options"),
-                words("as containing a different module."), nl],
+                words("as containing a different module, namely"),
+                qual_sym_name(Other), suffix("."), nl],
             ErrorLines = error_pieces_to_std_lines(Pieces),
             ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
-            io.stderr_stream(StdErr, !IO),
-            io.write_string(StdErr, ErrorStr, !IO),
-            unexpected($pred, "cannot continue")
+            % XXX Instead of printing ErrorStr as an abort message,
+            % we should return it to our caller, and have it print it
+            % together with any other diagnostics it has accumulated.
+            % Unfortunately, while I (zs) managed to trigger this abort
+            % while renaming some modules, I couldn't recreate the abort
+            % after the rename was done. This means that I do not know
+            % which of several callers is involved, which in turn means that
+            % I cannot fix the bug along the lines described above :-(
+            unexpected($pred, ErrorStr)
         else
             FileName = DefaultFileName
         )
