@@ -264,7 +264,7 @@ module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
     % We process ClassDecls in three stages.
     %
     % - In the first stage, classify_class_decls classifies each class_decl
-    %   as either pred/func declaration or as a mode declaration. It returns
+    %   as either a pred/func declaration or as a mode declaration. It returns
     %   the pred/func declarations in order, and puts the mode declarations
     %   into a per-pred/func map (ClassModeInfoMap).
     %
