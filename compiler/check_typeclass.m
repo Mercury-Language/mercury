@@ -390,7 +390,7 @@ find_class_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
 
     % In check_instance_declaration_types/4, we check that each type
     % in the instance declaration must be either a type with no arguments,
-    % or a polymorphic type whose arguments are all distinct type variables.
+    % or a polymorphic type whose arguments are all type variables.
     %
 :- pred check_instance_declaration_types(module_info::in,
     list(error_spec)::in, list(error_spec)::out,
