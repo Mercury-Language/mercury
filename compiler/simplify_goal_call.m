@@ -175,8 +175,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % Step 1.
             simplify_do_const_prop(!.Info),
             const_prop.evaluate_call(Globals, VarTable, InstMap0,
-                ModuleName, PredName, ModeNum, Args,
-                EvaluatedGoalExpr, GoalInfo0, EvaluatedGoalInfo)
+                ModuleName, PredName, ModeNum, Args, EvaluatedGoalExpr,
+                GoalInfo0, EvaluatedGoalInfo)
         then
             GoalExpr = EvaluatedGoalExpr,
             GoalInfo = EvaluatedGoalInfo,

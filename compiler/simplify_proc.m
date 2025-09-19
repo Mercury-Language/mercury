@@ -287,7 +287,30 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_top_level_goal(NestedContext0, InstMap0,
-        allow_splitting_switch_arms, Goal0, Goal, Info0, Info),
+        allow_splitting_switch_arms, Goal0, Goal1, Info0, Info1),
+    % Get the list of error_specs to print from the first invocation
+    % of simplify_top_level_goal, ignoring any error_specs added by any
+    % second invocation below. Most of these would probably be duplicates
+    % that end up being ignored, but any non-duplicates would complain
+    % about code that is compiler-generated at least in part, meaning
+    % that not only would those diagnostics be in effect invalid,
+    % users would also have no way of acting on them.
+    simplify_info_get_error_specs(Info1, !:Specs),
+    simplify_info_get_rerun_simplify_no_warn_simple(Info1,
+        RerunSimplifyNoWarnSimple),
+    (
+        RerunSimplifyNoWarnSimple = do_not_rerun_simplify_no_warn_simple,
+        Goal = Goal1,
+        Info = Info1
+    ;
+        RerunSimplifyNoWarnSimple = rerun_simplify_no_warn_simple,
+        simplify_info_get_simplify_tasks(Info1, Tasks1),
+        Tasks2 = Tasks1 ^ do_warn_dodgy_simple_code
+            := do_not_warn_dodgy_simple_code,
+        simplify_info_set_simplify_tasks(Tasks2, Info1, Info2),
+        simplify_top_level_goal(NestedContext0, InstMap0,
+            allow_splitting_switch_arms, Goal1, Goal, Info2, Info)
+    ),
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_var_table(Info, VarTable0),
@@ -331,7 +354,6 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
     set.union(CurDeletedCallCallees, DeletedCallCallees0, DeletedCallCallees),
     proc_info_set_deleted_call_callees(DeletedCallCallees, !ProcInfo),
 
-    simplify_info_get_error_specs(Info, !:Specs),
     !:Specs = FormatSpecs ++ !.Specs,
     simplify_proc_maybe_warn_attribute_conflict(!.ModuleInfo, PredId,
         !.ProcInfo, !Specs),

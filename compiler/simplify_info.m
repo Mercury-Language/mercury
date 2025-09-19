@@ -110,6 +110,10 @@
     --->    do_not_rerun_det
     ;       rerun_det.
 
+:- type maybe_rerun_simplify_no_warn_simple
+    --->    do_not_rerun_simplify_no_warn_simple
+    ;       rerun_simplify_no_warn_simple.
+
 %---------------------------------------------------------------------------%
 
 :- type simplify_info.
@@ -208,6 +212,8 @@
     set(switch_arm)::out) is det.
 :- pred simplify_info_get_defined_where(simplify_info::in,
     defined_where::out) is det.
+:- pred simplify_info_get_rerun_simplify_no_warn_simple(simplify_info::in,
+    maybe_rerun_simplify_no_warn_simple::out) is det.
 
 :- pred simplify_info_set_simplify_tasks(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
@@ -239,6 +245,8 @@
 :- pred simplify_info_set_deleted_call_callees(set(pred_proc_id)::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_switch_arms_to_split(set(switch_arm)::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_rerun_simplify_no_warn_simple(
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -396,7 +404,10 @@
                 ssimp_switch_arms_to_split  :: set(switch_arm),
 
                 % Is the predicate we are simplifying defined in this module?
-                ssimp_defined_where         :: defined_where
+                ssimp_defined_where         :: defined_where,
+
+                ssimp_rerun_simplify         ::
+                                        maybe_rerun_simplify_no_warn_simple
             ).
 
 simplify_info_init(ProgressStream, ModuleInfo, PredId, ProcId, ProcInfo,
@@ -445,10 +456,11 @@ simplify_info_init(ProgressStream, ModuleInfo, PredId, ProcId, ProcInfo,
     ( InThisModule = yes, DefinedWhere = defined_in_this_module
     ; InThisModule = no,  DefinedWhere = defined_in_other_module
     ),
+    RerunSimplify = do_not_rerun_simplify_no_warn_simple,
 
     SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, Specs, CostDelta,
         AllowMsgs, HasParallelConj, FoundContainsTrace, HasUserEvent,
-        TraceGoalProcs, SwitchArmsToSplit, DefinedWhere),
+        TraceGoalProcs, SwitchArmsToSplit, DefinedWhere, RerunSimplify),
 
     % SimplifyTasks
     % ModuleInfo
@@ -560,6 +572,8 @@ simplify_info_get_switch_arms_to_split(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_switch_arms_to_split.
 simplify_info_get_defined_where(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_defined_where.
+simplify_info_get_rerun_simplify_no_warn_simple(Info, X) :-
+    X = Info ^ simp_sub_info ^ ssimp_rerun_simplify.
 
 %---------------------%
 
@@ -642,6 +656,9 @@ simplify_info_set_deleted_call_callees(X, !Info) :-
     ).
 simplify_info_set_switch_arms_to_split(X, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_switch_arms_to_split := X.
+simplify_info_set_rerun_simplify_no_warn_simple(!Info) :-
+    X = rerun_simplify_no_warn_simple,
+    !Info ^ simp_sub_info ^ ssimp_rerun_simplify := X.
 
 % Access stats for the det_info structure, derived on 2017 march 8
 % using the commented-out code below:

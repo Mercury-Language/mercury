@@ -63,6 +63,12 @@
 :- import_module term_context.
 :- import_module uint.
 
+%---------------------------------------------------------------------------%
+
+:- type cons_id_match
+    --->    cons_id_must_match
+    ;       cons_id_cannot_match.
+
 simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
     GoalExpr0 = unify(LHSVar0, RHS0, UnifyMode, Unification0, UnifyContext),
@@ -130,10 +136,98 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !Common, !Info)
         )
     ;
-        RHS0 = rhs_functor(_, _, _),
-        common_optimise_unification(RHS0, UnifyMode, Unification0,
-            UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
-            !Common, !Info)
+        RHS0 = rhs_functor(ConsId, IsExistConstr, RHSArgVars),
+        % If we know the function symbol(s) that LHSVar0 can be bound to,
+        % then compare them to ConsId.
+        instmap_lookup_var(InstMap0, LHSVar0, LHSVarInst0),
+        ( if
+            LHSVarInst0 = bound(_Uniq, _InstResults0, LHSVarBoundFunctors),
+            ( if
+                LHSVarBoundFunctors = [bound_functor(ConsId, [])],
+                RHSArgVars = []
+            then
+                % The unification must succeed; replace it with true.
+                %
+                % NOTE It would be nice to also handle the case where
+                % RHSArgVars is not the empty list, but
+                %
+                % - testing for that would require looking up the insts
+                %   of all the variables in RHSArgVars, and comparing them
+                %   with the argument insts of LHSVarBoundFunctors, and
+                %
+                % - it is very likely that (a) either some of those insts
+                %   would not give us the exact shapes of the terms involved,
+                %   (b) or that some of those shapes would turn out to be
+                %   different between the LHS and the RHS.
+                %
+                % This would mean that these extra tests would probably
+                % succeed only quite rarely, meaning that any performance wins
+                % from optimizing the rare successes would not pay back
+                % the always-paid cost in compilation time.
+                ConsIdMatch = cons_id_must_match
+            else if
+                no_cons_id_can_match(ConsId, RHSArgVars, LHSVarBoundFunctors)
+            then
+                % The unification cannot succeed; replace it with fail.
+                ConsIdMatch = cons_id_cannot_match
+            else
+                fail
+            ),
+            IsExistConstr = is_not_exist_constr,
+            RHSArgVars = []
+        then
+            ( if simplify_do_warn_dodgy_simple_code(!.Info) then
+                % Replacing GoalExpr0/GoalInfo0 with TrueOrFailGoal
+                % can replace non-simple code with simple code, which
+                % in turn can lead to warnings about dodgy simple code
+                % that the user did not write. We therefore do not replace
+                % GoalExpr0/GoalInfo0 with TrueOrFailGoal *yet*. Instead,
+                % we set a flag that asks the top level of the simplification
+                % pass to rerun simplification, this time with warnings
+                % about dodgy simple code disabled. It is this repeated pass
+                % that will replace GoalExpr0/GoalInfo0 with TrueOrFailGoal.
+                %
+                % Note that one place in the compiler where this delay
+                % is needed is the get_target_host_min_word_size predicate
+                % in switch_util.m, which
+                %
+                % - calls int.bits_per_int(HostWordBits), which
+                %   simplify_goal_call.m and const_prop.m effectively replace
+                %   with either HostWordBits = 64 or HostWordBits = 32,
+                %
+                % - and then has an if-then-else chain whose conditions
+                %   test whether HostWordBits is equal to 64 or to 32.
+                %
+                % Regardless of the platform word size, this results in
+                % replacing one condition with true and the other with fail,
+                % resulting in both conditions triggering the warning for
+                % simple dodgy code.
+                %
+                % XXX Should we use this same technique of "don't replace,
+                % but ask for another simplify pass that does replace"
+                % for statically evaluating library calls?
+                simplify_info_set_rerun_simplify_no_warn_simple(!Info),
+                common_optimise_unification(RHS0, UnifyMode, Unification0,
+                    UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+                    !Common, !Info)
+            else
+                Context = goal_info_get_context(GoalInfo0),
+                (
+                    ConsIdMatch = cons_id_must_match,
+                    TrueOrFailGoal = true_goal_with_context(Context)
+                ;
+                    ConsIdMatch = cons_id_cannot_match,
+                    TrueOrFailGoal = fail_goal_with_context(Context)
+                ),
+                TrueOrFailGoal = hlds_goal(GoalExpr, GoalInfo),
+                simplify_info_set_rerun_quant_instmap_delta(!Info),
+                simplify_info_set_rerun_det(!Info)
+            )
+        else
+            common_optimise_unification(RHS0, UnifyMode, Unification0,
+                UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+                !Common, !Info)
+        )
     ).
 
 :- pred process_complicated_unify(prog_var::in, prog_var::in, unify_mode::in,
@@ -243,6 +337,24 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     set_of_var.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred no_cons_id_can_match(cons_id::in, list(prog_var)::in,
+    list(bound_functor)::in) is semidet.
+
+no_cons_id_can_match(_ConsId, _ArgVars, []).
+no_cons_id_can_match(ConsId, ArgVars, [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(BoundConsId, BoundArgInsts),
+    ( if
+        ConsId = BoundConsId,
+        list.same_length(ArgVars, BoundArgInsts)
+    then
+        % BoundFunctor can match the right hand side.
+        fail
+    else
+        no_cons_id_can_match(ConsId, ArgVars, BoundFunctors)
+    ).
 
 %---------------------------------------------------------------------------%
 

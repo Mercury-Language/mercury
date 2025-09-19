@@ -191,20 +191,23 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
 maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
     InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
-    (
-        InsideDuplForSwitch = yes
-        % Do not generate the warning, since it is quite likely to be
-        % spurious: though the condition cannot fail/succeed in this arm
-        % of the switch, it likely can fail/succeed in other arms
-        % that derive from the exact same piece of source code.
-    ;
-        InsideDuplForSwitch = no,
+    ( if
+        simplify_do_warn_dodgy_simple_code(!.Info),
+        % If InsideDuplForSwitch = yes, then not generate the warning,
+        % because it is quite likely to be spurious: though the condition
+        % cannot fail/succeed in this arm of the switch, it likely can
+        % fail/succeed in other arms that derive from the exact same piece
+        % of source code.
+        InsideDuplForSwitch = no
+    then
         Context = goal_info_get_context(GoalInfo0),
         Pieces = [words("Warning: the condition of this if-then-else")] ++
             color_as_incorrect([words(Problem), suffix(".")]) ++ [nl],
         Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
             phase_simplify(report_only_if_in_all_modes), Context, Pieces),
         simplify_info_add_message(Spec, !Info)
+    else
+        true
     ),
     simplify_info_set_rerun_quant_instmap_delta(!Info),
     simplify_info_set_rerun_det(!Info).
@@ -472,10 +475,15 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     % since non-local variables may not be bound within the negation.
     simplify_goal(SubGoal0, SubGoal1, NestedContext0, InstMap0,
         Common0, _Common1, !Info),
-    InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
     Context = goal_info_get_context(GoalInfo0),
-    (
-        InsideDuplForSwitch = no,
+    InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
+    ( if
+        simplify_do_warn_dodgy_simple_code(!.Info),
+        % We don't want to generate either of the warnings below for code
+        % that has been duplicated for a switch, since the warned-about
+        % condition may not (and typically does not) exist in the other copies.
+        InsideDuplForSwitch = no
+    then
         SubGoal1 = hlds_goal(_, SubGoalInfo1),
         Detism = goal_info_get_determinism(SubGoalInfo1),
         determinism_components(Detism, CanFail, MaxSoln),
@@ -484,26 +492,20 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 color_as_incorrect([words("cannot fail.")]) ++
                 [nl],
             Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
-                phase_simplify(report_only_if_in_all_modes),
-                Context, Pieces),
+                phase_simplify(report_only_if_in_all_modes), Context, Pieces),
             simplify_info_add_message(Spec, !Info)
         else if MaxSoln = at_most_zero then
             Pieces = [words("Warning: the negated goal")] ++
                 color_as_incorrect([words("cannot succeed.")]) ++
                 [nl],
             Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
-                phase_simplify(report_only_if_in_all_modes),
-                Context, Pieces),
+                phase_simplify(report_only_if_in_all_modes), Context, Pieces),
             simplify_info_add_message(Spec, !Info)
         else
             true
         )
-    ;
-        InsideDuplForSwitch = yes
-        % We don't want to generate either of the above warnings for code
-        % that has been duplicated for a switch, since the warned-about
-        % condition may not (and typically does not) exist in the other
-        % copies.
+    else
+        true
     ),
     ( if
         % Replace `not true' with `fail'.
