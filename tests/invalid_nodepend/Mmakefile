@@ -76,6 +76,7 @@ PROGS = \
 	require_tailrec_invalid \
 	reserved \
 	reserved_type_name \
+	self_fundep \
 	specified \
 	subtype_invalid_supertype \
 	subtype_syntax \

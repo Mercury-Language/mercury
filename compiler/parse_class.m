@@ -1086,7 +1086,37 @@ parse_fundep(VarSet, Term, Result) :-
         MaybeDomain = ok1(Domain),
         MaybeRange = ok1(Range)
     then
-        Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
+        ( if
+            list_to_set(Domain, DomainSet),
+            list_to_set(Range, RangeSet),
+            set.intersect(DomainSet, RangeSet, CommonTypeVarSet),
+            set.is_non_empty(CommonTypeVarSet)
+        then
+            varset.coerce(VarSet, TVarSet),
+            set.to_sorted_list(CommonTypeVarSet, CommonTypeVars),
+            CommonTypeVarPieces = list.map(var_to_quote_piece(TVarSet),
+                CommonTypeVars),
+            CommonTypeVarsPieces = piece_list_to_color_pieces(color_subject,
+                "and", [], CommonTypeVarPieces),
+            Pieces = [
+                words("Error: type"),
+                words(choose_number(CommonTypeVars, "variable", "variables"))
+            ] ++
+            CommonTypeVarsPieces ++ [
+                words(choose_number(CommonTypeVars, "occurs", "occur")),
+                words("in")
+            ] ++
+            color_as_incorrect([
+                words("both the domain and the range")
+            ]) ++ [
+                words(" of the same functional dependency."),
+                nl
+            ],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            Result = error1([Spec])
+        else
+            Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
+        )
     else
         Specs = get_any_errors1(MaybeDomain) ++ get_any_errors1(MaybeRange),
         Result = error1(Specs)
