@@ -203,9 +203,12 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 % resulting in both conditions triggering the warning for
                 % simple dodgy code.
                 %
-                % XXX Should we use this same technique of "don't replace,
-                % but ask for another simplify pass that does replace"
-                % for statically evaluating library calls?
+                % NOTE Applying this technique of "don't replace, but ask
+                % for another simplify pass that does replace" for statically
+                % evaluating library calls turns out not to make any
+                % difference, as the compiler already does the right thing
+                % (meaning it replaces non-simple with simple code without
+                % generating a spurious warning) without that change.
                 simplify_info_set_rerun_simplify_no_warn_simple(!Info),
                 common_optimise_unification(RHS0, UnifyMode, Unification0,
                     UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
