@@ -53,6 +53,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -228,10 +229,11 @@ make_hlds_fundep(TVars, ProgFunDep) = HLDSFunDep :-
     convert_vars_to_arg_posns(TVars, ProgRange, HLDSRange),
     HLDSFunDep = fundep(HLDSDomain, HLDSRange).
 
-:- pred convert_vars_to_arg_posns(list(tvar)::in, list(tvar)::in,
+:- pred convert_vars_to_arg_posns(list(tvar)::in, one_or_more(tvar)::in,
     set(hlds_class_argpos)::out) is det.
 
-convert_vars_to_arg_posns(ProgTVars, HLDSTVars, ArgPosnsSet) :-
+convert_vars_to_arg_posns(ProgTVars, OoMHLDSTVars, ArgPosnsSet) :-
+    HLDSTVars = one_or_more_to_list(OoMHLDSTVars),
     ArgPosns =
         list.map(list.det_index1_of_first_occurrence(ProgTVars), HLDSTVars),
     set.list_to_set(ArgPosns, ArgPosnsSet).

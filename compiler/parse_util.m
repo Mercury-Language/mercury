@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -193,6 +193,8 @@
 %---------------------------------------------------------------------------%
 
     % terms_to_distinct_vars(VarSet, AAn, ParamKind, Terms, MaybeVars):
+    % terms_to_one_or_more_distinct_vars(VarSet, AAn, ParamKind, ErrorTerm,
+    %   Terms, MaybeVars):
     %
     % Check whether Terms contains a list of distinct variables. If it does,
     % return those variables. If it does not, report an error message for
@@ -205,6 +207,9 @@
     %
 :- pred terms_to_distinct_vars(varset(T)::in, string::in, string::in,
     list(term(T))::in, maybe1(list(var(T)))::out) is det.
+:- pred terms_to_one_or_more_distinct_vars(varset(T)::in,
+    string::in, string::in, term(T)::in,
+    list(term(T))::in, maybe1(one_or_more(var(T)))::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -822,6 +827,31 @@ terms_to_distinct_vars(VarSet, AAn, Kind, Terms, MaybeVars) :-
     (
         Specs = [],
         MaybeVars = ok1(Vars)
+    ;
+        Specs = [_ | _],
+        MaybeVars = error1(Specs)
+    ).
+
+terms_to_one_or_more_distinct_vars(VarSet, AAn, Kind, ConjTerm,
+        Terms, MaybeVars) :-
+    terms_to_distinct_vars_loop(VarSet, AAn, Kind, set.init, Terms,
+        Vars, Specs),
+    (
+        Specs = [],
+        (
+            Vars = [],
+            Pieces = [words("Error: expected one or more variables as"),
+                words(Kind), words("parameters, got")] ++
+                color_as_incorrect([words("none.")]) ++
+                [nl],
+            TermContext = get_term_context(ConjTerm),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                TermContext, Pieces),
+            MaybeVars = error1([Spec])
+        ;
+            Vars = [HeadVar | TailVars],
+            MaybeVars = ok1(one_or_more(HeadVar, TailVars))
+        )
     ;
         Specs = [_ | _],
         MaybeVars = error1(Specs)

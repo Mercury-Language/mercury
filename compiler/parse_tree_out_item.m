@@ -1205,7 +1205,9 @@ mercury_format_fundeps_and_prog_constraint_list(VarSet, VarNamePrint,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_fundep(TypeVarSet, VarNamePrint, FunDep, S, !U) :-
-    FunDep = prog_fundep(Domain, Range),
+    FunDep = prog_fundep(OoMDomain, OoMRange),
+    Domain = one_or_more_to_list(OoMDomain),
+    Range = one_or_more_to_list(OoMRange),
     add_string("(", S, !U),
     add_list(mercury_format_var_vs(TypeVarSet, VarNamePrint), ", ", Domain,
         S, !U),

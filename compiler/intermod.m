@@ -635,11 +635,12 @@ unmake_hlds_class_fundep(TVars, HLDSFunDep) = ParseTreeFunDep :-
     ParseTreeFunDep = prog_fundep(DomainTVars, RangeTVars).
 
 :- func unmake_hlds_class_fundep_arg_posns(list(tvar), set(hlds_class_argpos))
-    = list(tvar).
+    = one_or_more(tvar).
 
-unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = ArgTVars :-
+unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = OoMArgTVars :-
     ArgTVarsSet = set.map(list.det_index1(TVars), ArgPosns),
-    set.to_sorted_list(ArgTVarsSet, ArgTVars).
+    set.to_sorted_list(ArgTVarsSet, ArgTVars),
+    det_list_to_one_or_more(ArgTVars, OoMArgTVars).
 
 %---------------------------------------------------------------------------%
 
