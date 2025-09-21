@@ -297,7 +297,8 @@ tvars_in_fundeps(FunDeps) = list.condense(list.map(tvars_in_fundep, FunDeps)).
 
 :- func tvars_in_fundep(prog_fundep) = list(tvar).
 
-tvars_in_fundep(prog_fundep(Domain, Range)) = Domain ++ Range.
+tvars_in_fundep(prog_fundep(Domain, Range)) =
+    one_or_more_to_list(Domain) ++ one_or_more_to_list(Range).
 
 :- pred parse_superclass_constraints(module_name::in, varset::in, term::in,
     maybe2(list(prog_constraint), list(prog_fundep))::out) is det.
@@ -1086,7 +1087,35 @@ parse_fundep(VarSet, Term, Result) :-
         MaybeDomain = ok1(Domain),
         MaybeRange = ok1(Range)
     then
-        Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
+        list_to_set(one_or_more_to_list(Domain), DomainSet),
+        list_to_set(one_or_more_to_list(Range), RangeSet),
+        set.intersect(DomainSet, RangeSet, CommonTypeVarSet),
+        ( if set.is_non_empty(CommonTypeVarSet) then
+            varset.coerce(VarSet, TVarSet),
+            set.to_sorted_list(CommonTypeVarSet, CommonTypeVars),
+            CommonTypeVarPieces = list.map(var_to_quote_piece(TVarSet),
+                CommonTypeVars),
+            CommonTypeVarsPieces = piece_list_to_color_pieces(color_subject,
+                "and", [], CommonTypeVarPieces),
+            Pieces = [
+                words("Error: type"),
+                words(choose_number(CommonTypeVars, "variable", "variables"))
+            ] ++
+            CommonTypeVarsPieces ++ [
+                words(choose_number(CommonTypeVars, "occurs", "occur")),
+                words("in")
+            ] ++
+            color_as_incorrect([
+                words("both the domain and the range")
+            ]) ++ [
+                words(" of the same functional dependency."),
+                nl
+            ],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            Result = error1([Spec])
+        else
+            Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
+        )
     else
         Specs = get_any_errors1(MaybeDomain) ++ get_any_errors1(MaybeRange),
         Result = error1(Specs)
@@ -1095,13 +1124,14 @@ parse_fundep(VarSet, Term, Result) :-
     % XXX ITEM_LIST Should return maybe1(one_or_more(tvar)).
     %
 :- pred parse_fundep_side(varset::in, string::in, string::in, term::in,
-    maybe1(list(tvar))::out) is det.
+    maybe1(one_or_more(tvar))::out) is det.
 
 parse_fundep_side(VarSet0, AAn, Kind, TypesTerm0, MaybeTypeVars) :-
     VarSet = varset.coerce(VarSet0),
     TypesTerm = term.coerce(TypesTerm0),
     conjunction_to_list(TypesTerm, TypeTerms),
-    terms_to_distinct_vars(VarSet, AAn, Kind, TypeTerms, MaybeTypeVars).
+    terms_to_one_or_more_distinct_vars(VarSet, AAn, Kind, TypesTerm, TypeTerms,
+        MaybeTypeVars).
 
 :- pred classify_types_as_var_ground_or_neither(tvarset::in,
     list(mer_type)::in,

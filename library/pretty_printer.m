@@ -1537,7 +1537,7 @@ initial_formatter_map = !:Formatters :-
     set_formatter("builtin", "uint",      0, fmt_uint,    !Formatters),
     set_formatter("builtin", "uint8",     0, fmt_uint8,   !Formatters),
     set_formatter("builtin", "uint16",    0, fmt_uint16,  !Formatters),
-    set_formatter("builtin", "int32",     0, fmt_uint32,  !Formatters),
+    set_formatter("builtin", "uint32",    0, fmt_uint32,  !Formatters),
     set_formatter("builtin", "uint64",    0, fmt_uint64,  !Formatters),
     set_formatter("builtin", "string",    0, fmt_string,  !Formatters),
     set_formatter("array",   "array",     1, fmt_array,   !Formatters),

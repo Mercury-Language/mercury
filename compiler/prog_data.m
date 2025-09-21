@@ -1171,12 +1171,10 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     % of this class, the binding of the range variables can be uniquely
     % determined from the binding of the domain variables.
     %
-    % XXX Both lists should be one_or_more(tvar).
-    %
 :- type prog_fundep
     --->    prog_fundep(
-                domain          :: list(tvar),
-                range           :: list(tvar)
+                domain          :: one_or_more(tvar),
+                range           :: one_or_more(tvar)
             ).
 
 :- type class_name == sym_name.
