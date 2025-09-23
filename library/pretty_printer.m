@@ -403,10 +403,6 @@
 :- func uint32_to_doc(uint32) = doc.
 :- func uint64_to_doc(uint64) = doc.
 
-    % Convert an array to a doc.
-    %
-:- func array_to_doc(array(T)) = doc.
-
     % Convert a list to a doc.
     %
 :- func list_to_doc(list(T)) = doc.
@@ -418,6 +414,10 @@
     % Convert a 2-3-4 tree to a doc.
     %
 :- func tree234_to_doc(tree234(K, V)) = doc.
+
+    % Convert an array to a doc.
+    %
+:- func array_to_doc(array(T)) = doc.
 
     % Convert a version array to a doc.
     %
@@ -1843,37 +1843,14 @@ uint64_to_doc(U) = str(string.uint64_to_string(U)).
 % XXX The to_doc functions of the compound library types used to put
 % different amounts of indentation at the outermost level.
 %
-% - array_to_doc added one standard indent (two spaces)
 % - list_to_doc added one space as indent
 % - one_or_more_to_doc added one space as indent
 % - tree234_to_doc added one standard indent (two spaces)
+% - array_to_doc added one standard indent (two spaces)
 % - version_array_to_doc added one standard indent (two spaces)
 %
 % We now leave any indentation around the doc returned by all these X_to_doc
 % functions to their caller.
-%---------------------------------------------------------------------------%
-
-array_to_doc(A) =
-    docs([str("array(["), array_to_doc_loop(A, 0), str("])")]).
-
-:- func array_to_doc_loop(array(T), int) = doc.
-
-array_to_doc_loop(A, I) = Doc :-
-    ( if I > array.max(A) then
-        Doc = str("")
-    else
-        array.unsafe_lookup(A, I, Elem),
-        Doc = docs([
-            format_arg(format(Elem)),
-            ( if I = array.max(A) then
-                str("")
-            else
-                group([str(", "), nl])
-            ),
-            format_susp((func) = array_to_doc_loop(A, I + 1))
-        ])
-    ).
-
 %---------------------------------------------------------------------------%
 
 list_to_doc(Xs) = docs([str("["), list_to_doc_loop(Xs), str("]")]).
@@ -1935,6 +1912,29 @@ tree234_elements_to_doc(tll_lazy_cons(K, V, Susp)) = Doc :-
         Doc = docs([
             group([nl, format_arg(format((K -> V))), str(", ")]),
             format_susp((func) = tree234_elements_to_doc(LL))
+        ])
+    ).
+
+%---------------------------------------------------------------------------%
+
+array_to_doc(A) =
+    docs([str("array(["), array_to_doc_loop(A, 0), str("])")]).
+
+:- func array_to_doc_loop(array(T), int) = doc.
+
+array_to_doc_loop(A, I) = Doc :-
+    ( if I > array.max(A) then
+        Doc = str("")
+    else
+        array.unsafe_lookup(A, I, Elem),
+        Doc = docs([
+            format_arg(format(Elem)),
+            ( if I = array.max(A) then
+                str("")
+            else
+                group([str(", "), nl])
+            ),
+            format_susp((func) = array_to_doc_loop(A, I + 1))
         ])
     ).
 
