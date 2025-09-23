@@ -349,9 +349,6 @@
     % The default formatter_map may also be updated by users' modules
     % (e.g. in initialisation goals).
     %
-    % These defaults are thread local, and therefore changes made by one thread
-    % to the default formatter_map will not be visible in another thread.
-    %
 :- pred get_default_formatter_map(formatter_map::out, io::di, io::uo) is det.
 :- pred set_default_formatter_map(formatter_map::in, io::di, io::uo) is det.
 
@@ -372,9 +369,6 @@
     % parameters to the I/O state to become the new default.
     %
     % The initial default parameters are pp_params(78, 100, triangular(100)).
-    %
-    % These defaults are thread local, and therefore changes made by one thread
-    % to the default pp_params will not be visible in another thread.
     %
 :- pred get_default_params(pp_params::out, io::di, io::uo) is det.
 :- pred set_default_params(pp_params::in, io::di, io::uo) is det.
