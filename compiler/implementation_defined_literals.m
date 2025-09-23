@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,11 +122,11 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
                 Goal = Goal0
             )
         ;
-            RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
+                NonLocals, ArgVarsModes, Detism, LambdaGoal0),
             subst_literals_in_goal(Info, LambdaGoal0, LambdaGoal),
-            RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal),
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
+                NonLocals, ArgVarsModes, Detism, LambdaGoal),
             GoalExpr = unify(Var, RHS, Mode, Kind, UnifyContext),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

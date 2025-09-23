@@ -217,7 +217,8 @@ format_instance_defn(Info, InstanceDefn, !State) :-
     ;
         MaybeSubsumedContext = yes(SubsumedContext),
         string.builder.format("%s%% Subsumed context: %s\n",
-            [s(IndentStr), s(context_to_brief_string(SubsumedContext))], !State)
+            [s(IndentStr), s(context_to_brief_string(SubsumedContext))],
+            !State)
     ),
 
     ConstraintStrs =

@@ -1697,8 +1697,8 @@ record_type_specialization(TypeSpecInfo0, PredId, SpecPredId, SpecPredStatus,
     else
         SpecMap = SpecMap0
     ),
-    TypeSpecInfo0 = decl_pragma_type_spec_info(_PFUMM0, SymName, SpecModuleName,
-        _Subst, _TVarSet0, ExpandedItems, Context, SeqNum),
+    TypeSpecInfo0 = decl_pragma_type_spec_info(_PFUMM0, SymName,
+        SpecModuleName, _Subst, _TVarSet0, ExpandedItems, Context, SeqNum),
     TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, SymName, SpecModuleName,
         RenamedSubst, TVarSet, ExpandedItems, Context, SeqNum),
     one_or_more_map.add(PredId, TypeSpecInfo, PragmaMap0, PragmaMap),

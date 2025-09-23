@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -428,7 +428,8 @@ construct_created_spec_name_status(ModuleInfo, Request, PredInfo0,
 
 %---------------------%
 
-:- pred higher_order_record_new_specialized_pred(pred_proc_id::in, new_pred::in,
+:- pred higher_order_record_new_specialized_pred(pred_proc_id::in,
+    new_pred::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 higher_order_record_new_specialized_pred(CalleePPId, NewPred, !GlobalInfo) :-

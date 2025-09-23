@@ -398,7 +398,8 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
 
 %---------------------%
 
-:- pred format_constructors(tvarset::in, constructor::in, list(constructor)::in,
+:- pred format_constructors(tvarset::in,
+    constructor::in, list(constructor)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_constructors(TVarSet, HeadCtor, TailCtors, !State) :-

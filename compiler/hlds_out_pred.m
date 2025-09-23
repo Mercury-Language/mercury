@@ -885,7 +885,8 @@ format_rtti_varmaps(VarNamePrint, TVarSet, VarTable, RttiVarMaps, !State) :-
     string.builder.append_string("% typeclass_info varmap:\n", !State),
     rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
     list.foldl(
-        format_typeclass_info_var(VarNamePrint, TVarSet, VarTable, RttiVarMaps),
+        format_typeclass_info_var(VarNamePrint, TVarSet, VarTable,
+            RttiVarMaps),
         Constraints, !State),
     string.builder.append_string("% rtti_var_info:\n", !State),
     rtti_varmaps_rtti_prog_vars(RttiVarMaps, ProgVars),

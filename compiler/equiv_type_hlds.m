@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1074,7 +1074,8 @@ type_may_occur_in_inst(Inst) = MayOccur :-
                         MayOccur = OldMayOccur
                     ;
                         Found = no,
-                        MayOccur = type_may_occur_in_bound_functors(BoundInsts),
+                        MayOccur =
+                            type_may_occur_in_bound_functors(BoundInsts),
                         impure record_inst_may_occur(Inst, MayOccur)
                     )
                 )

@@ -411,8 +411,8 @@ generate_deconstruct_tagword_unify_args(NonLocals, LHSRval,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth, ArgMode,
-        FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
+generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth,
+        ArgMode, FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     get_module_info(CI, ModuleInfo),
     get_var_table(CI, VarTable),

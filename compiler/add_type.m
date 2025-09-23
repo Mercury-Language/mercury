@@ -1718,7 +1718,8 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         Constraints = []
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints, _, _)
+        ExistConstraints =
+            cons_exist_constraints(ExistQVars, Constraints, _, _)
     ),
     (
         MaybeSuperExistConstraints = no_exist_constraints,

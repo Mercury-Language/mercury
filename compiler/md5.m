@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021, 2023 The Mercury team.
+% Copyright (C) 2021, 2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,8 @@
  * MD5 Message-Digest Algorithm (RFC 1321).
  *
  * Homepage:
- * http://openwall.info/wiki/people/solar/software/public-domain-source-code/md5
+ * http://openwall.info/wiki/people/solar/software/
+ *  public-domain-source-code/md5
  *
  * Author:
  * Alexander Peslyak, better known as Solar Designer <solar at openwall.com>

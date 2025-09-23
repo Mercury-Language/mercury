@@ -768,8 +768,8 @@ check_and_record_non_sub_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
 
 %---------------------%
 
-:- pred check_and_record_non_sub_du_only_functor(repn_target::in, type_ctor::in,
-    prog_context::in, one_or_more(constructor)::in,
+:- pred check_and_record_non_sub_du_only_functor(repn_target::in,
+    type_ctor::in, prog_context::in, one_or_more(constructor)::in,
     gen_du_only_functor_repn::in, maybe_du_type_repn::out) is det.
 
 check_and_record_non_sub_du_only_functor(RepnTarget, TypeCtor, Context,
