@@ -13,9 +13,13 @@ formatter_map_entry("builtin", "uint16", 0)
 formatter_map_entry("builtin", "uint32", 0)
 formatter_map_entry("builtin", "uint64", 0)
 formatter_map_entry("builtin", "uint8", 0)
+formatter_map_entry("fat_sparse_bitset", "fat_sparse_bitset", 1)
+formatter_map_entry("fatter_sparse_bitset", "fatter_sparse_bitset", 1)
 formatter_map_entry("list", "list", 1)
 formatter_map_entry("one_or_more", "one_or_more", 1)
+formatter_map_entry("sparse_bitset", "sparse_bitset", 1)
 formatter_map_entry("tree234", "tree234", 2)
+formatter_map_entry("tree_bitset", "tree_bitset", 1)
 formatter_map_entry("version_array", "version_array", 1)
 
 ints:
@@ -63,4 +67,20 @@ map([(1 -> 1), (2 -> 2), (3 -> 3), (4 -> 4), (5 -> 5), (6 -> 6), (7 -> 7),
 (38 -> 38), (39 -> 39), (40 -> 40), (41 -> 41), (42 -> 42), (43 -> 43), 
 (44 -> 44), (45 -> 45), (46 -> 46), (47 -> 47), (48 -> 48), (49 -> 49), 
 (... -> ...), ...])
+
+sparse_bitset:
+sparse_bitset([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 
+59, 61, 67, 71, 73, 79, 83, 89, 97])
+
+fat_sparse_bitset:
+fat_sparse_bitset([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 
+53, 59, 61, 67, 71, 73, 79, 83, 89, 97])
+
+fatter_sparse_bitset:
+fatter_sparse_bitset([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 
+53, 59, 61, 67, 71, 73, 79, 83, 89, 97])
+
+tree_bitset:
+tree_bitset([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 
+61, 67, 71, 73, 79, 83, 89, 97])
 

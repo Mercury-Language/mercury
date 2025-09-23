@@ -435,11 +435,16 @@
 :- implementation.
 
 :- import_module bool.
+:- import_module fat_sparse_bitset.
+:- import_module fatter_sparse_bitset.
 :- import_module int.
 :- import_module map.
 :- import_module ops.
 :- import_module require.
+:- import_module sparse_bitset.
 :- import_module term_io.
+:- import_module tree_bitset.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1546,7 +1551,15 @@ initial_formatter_map = !:Formatters :-
                                           1, fmt_one_or_more, !Formatters),
     set_formatter("tree234", "tree234",   2, fmt_tree234, !Formatters),
     set_formatter("version_array", "version_array",
-                                          1, fmt_version_array, !Formatters).
+                                          1, fmt_version_array, !Formatters),
+    set_formatter("sparse_bitset", "sparse_bitset",
+                                  1, fmt_sparse_bitset, !Formatters),
+    set_formatter("fat_sparse_bitset", "fat_sparse_bitset",
+                                  1, fmt_fat_sparse_bitset, !Formatters),
+    set_formatter("fatter_sparse_bitset", "fatter_sparse_bitset",
+                                  1, fmt_fatter_sparse_bitset, !Formatters),
+    set_formatter("tree_bitset", "tree_bitset",
+                                  1, fmt_tree_bitset, !Formatters).
 
 %---------------------%
 
@@ -1738,6 +1751,62 @@ fmt_version_array(Univ, ArgDescs) =
         str("?version_array?")
     ).
 
+:- func fmt_sparse_bitset(univ, list(type_desc)) = doc.
+
+fmt_sparse_bitset(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : sparse_bitset(uint))
+    then
+        pretty_printer.sparse_bitset_to_doc(X)
+    else
+        str("?sparse_bitset?")
+    ).
+
+:- func fmt_fat_sparse_bitset(univ, list(type_desc)) = doc.
+
+fmt_fat_sparse_bitset(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : fat_sparse_bitset(uint))
+    then
+        pretty_printer.fat_sparse_bitset_to_doc(X)
+    else
+        str("?fat_sparse_bitset?")
+    ).
+
+:- func fmt_fatter_sparse_bitset(univ, list(type_desc)) = doc.
+
+fmt_fatter_sparse_bitset(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : fatter_sparse_bitset(uint))
+    then
+        pretty_printer.fatter_sparse_bitset_to_doc(X)
+    else
+        str("?sparse_bitset?")
+    ).
+
+:- func fmt_tree_bitset(univ, list(type_desc)) = doc.
+
+fmt_tree_bitset(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : tree_bitset(uint))
+    then
+        pretty_printer.tree_bitset_to_doc(X)
+    else
+        str("?tree_bitset?")
+    ).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1901,6 +1970,68 @@ version_array_to_doc_loop(VA, I) = Doc :-
             format_susp((func) = version_array_to_doc_loop(VA, I + 1))
         ])
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Convert a sparse_bitset, in any one of its forms, to a doc.
+%
+% Unlike all the other X_to_doc functions above, these are not exported.
+% The reason for that is that as far as I (zs) know, the current RTTI
+% system does not support taking a value of type sparse_bitset(T)
+% and converting each element of that set back to a value of type T.
+% That would requiring invoking the from_uint method of T's instance
+% of the uenum type class, and we do not have the data structures
+% we would need to find that method.
+%
+% The best we can do is to print the set elements as uints. (Our callers,
+% fmt_sparse_bitset and its other versions do the required cast from e.g.
+% sparse_bitset(T) to sparse_bitset(uint) for us.) This is not as good
+% as printing the values of type T encoded by the uints, but it is *much*
+% more understandable than e.g. a list of bitset_elems.
+%
+% Note that formatting a list of uints yields a string containing numbers
+% *without* the "u" suffix, because string.uint_to_string does not add one.
+%
+
+:- func sparse_bitset_to_doc(sparse_bitset(uint)) = doc.
+
+sparse_bitset_to_doc(Set) = Doc :-
+    sparse_bitset.to_sorted_list(Set, SortedList),
+    Doc = docs([
+        str("sparse_bitset("),
+        format(SortedList),
+        str(")")
+    ]).
+
+:- func fat_sparse_bitset_to_doc(fat_sparse_bitset(uint)) = doc.
+
+fat_sparse_bitset_to_doc(Set) = Doc :-
+    fat_sparse_bitset.to_sorted_list(Set, SortedList),
+    Doc = docs([
+        str("fat_sparse_bitset("),
+        format(SortedList),
+        str(")")
+    ]).
+
+:- func fatter_sparse_bitset_to_doc(fatter_sparse_bitset(uint)) = doc.
+
+fatter_sparse_bitset_to_doc(Set) = Doc :-
+    fatter_sparse_bitset.to_sorted_list(Set, SortedList),
+    Doc = docs([
+        str("fatter_sparse_bitset("),
+        format(SortedList),
+        str(")")
+    ]).
+
+:- func tree_bitset_to_doc(tree_bitset(uint)) = doc.
+
+tree_bitset_to_doc(Set) = Doc :-
+    tree_bitset.to_sorted_list(Set, SortedList),
+    Doc = docs([
+        str("tree_bitset("),
+        format(SortedList),
+        str(")")
+    ]).
 
 %---------------------------------------------------------------------------%
 :- end_module pretty_printer.
