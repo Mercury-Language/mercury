@@ -650,7 +650,7 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         % was fixed by switching to separate chaining on 2009 mar 26.
         % The replacement code was
         %
-        %   StatusMap = version_hash_table.init_default(dependency_file_hash)
+        %   StatusMap = version_hash_table.init_default(target_id_hash)
         %
         % NOTE that each delete made by remove_target_file_if_grade_dependent
         % will create a new version_hash_table, even though, with the exception
@@ -662,11 +662,11 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         % - convert StatusMap0 to an assoc list;
         % - delete all grade dependent files' entries from this assoc list;
         % - then construct a new version hash table from the result.
-        StatusMap0 = make_info_get_dep_file_status_map(!.Info),
+        StatusMap0 = make_info_get_target_status_map(!.Info),
         version_hash_table.fold(remove_target_file_if_grade_dependent,
             StatusMap0, StatusMap0, StatusMap),
 
-        make_info_set_dep_file_status_map(StatusMap, !Info),
+        make_info_set_target_status_map(StatusMap, !Info),
         make_info_set_option_args(OptionArgs, !Info),
 
         % Reset the target file timestamp cache, as the information it contains
@@ -1601,17 +1601,16 @@ install_file(ProgressStream, Globals, FileName, InstallDir, !Succeeded, !IO) :-
 
 %---------------------%
 
-:- pred remove_target_file_if_grade_dependent(dependency_file::in,
-    dependency_status::in,
-    version_hash_table(dependency_file, dependency_status)::in,
-    version_hash_table(dependency_file, dependency_status)::out) is det.
+:- pred remove_target_file_if_grade_dependent(target_id::in, target_status::in,
+    version_hash_table(target_id, target_status)::in,
+    version_hash_table(target_id, target_status)::out) is det.
 
-remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
+remove_target_file_if_grade_dependent(TargetId, _Status, !StatusMap) :-
     ( if
-        File = dep_target(target_file(_, TargetType)),
+        TargetId = merc_target(target_file(_, TargetType)),
         is_target_grade_dependent(TargetType) = grade_dependent
     then
-        version_hash_table.delete(File, !StatusMap)
+        version_hash_table.delete(TargetId, !StatusMap)
     else
         true
     ).

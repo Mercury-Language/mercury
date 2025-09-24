@@ -75,46 +75,44 @@
 
 %---------------------%
 
-:- type dependency_file
-    --->    dep_target(target_file)
-            % A target which could be made.
+:- type target_id
+    --->    merc_target(target_file)
+            % A target that `mmc --make' knows how to build.
 
-    ;       dep_file(file_name).
-            % An ordinary file which `mmc --make' does not know how to rebuild.
+    ;       non_merc_target(file_name).
+            % An ordinary file that `mmc --make' does not know how to build.
 
-    % Like dependency_file but refers to a module by index instead of by name,
-    % which is more efficient when the name is not required.
+    % This type is like target_id, but refers to each module by its index
+    % instead of by name, which is more efficient. at least in situations
+    % where the name is not required.
     %
-:- type dependency_file_with_module_index
-    --->    dfmi_target(module_index, module_target_type)
-    ;       dfmi_file(file_name).
+:- type target_id_module_index
+    --->    timi_merc(module_index, module_target_type)
+    ;       timi_non_merc(file_name).
 
-:- type dependency_file_index_map
-    --->    dependency_file_index_map(
-                dfim_forward_map        :: version_hash_table(
-                                            dependency_file_with_module_index,
-                                            dependency_file_index),
-                dfim_reverse_map        :: version_array(
-                                            dependency_file_with_module_index),
-                dfim_counter            :: uint
+:- type target_id_index_map
+    --->    target_id_index_map(
+                tiim_fwd_map    :: version_hash_table(target_id_module_index,
+                                    target_id_index),
+                tiim_rev_map    :: version_array(target_id_module_index),
+                tiim_counter    :: uint
             ).
 
 %---------------------%
 
-:- type dependency_status
-    --->    deps_status_not_considered
-    ;       deps_status_being_built
-    ;       deps_status_up_to_date
-    ;       deps_status_error.
+:- type target_status
+    --->    target_status_not_considered
+    ;       target_status_being_built
+    ;       target_status_up_to_date
+    ;       target_status_error.
 
     % An old, previously inappropriately-placed comment says:
     %
     % There should be a definite improvement if we could replace
-    % this hash table indexed by dependency_file terms with an array
-    % indexed by the uints inside values of type dependency_file_index.
+    % this hash table indexed by target_id terms with an array
+    % indexed by the uints inside values of type target_id_index.
     %
-:- type dep_file_status_map ==
-    version_hash_table(dependency_file, dependency_status).
+:- type target_status_map == version_hash_table(target_id, target_status).
 
 %---------------------%
 
@@ -233,8 +231,8 @@
 
 :- func init_make_info(env_optfile_variables, maybe_stdlib_grades,
     maybe_keep_going, list(string), list(string), set(top_target_file), int,
-    target_file_timestamp_map, module_index_map, dependency_file_index_map,
-    dep_file_status_map) = make_info.
+    target_file_timestamp_map, module_index_map, target_id_index_map,
+    target_status_map) = make_info.
 
 :- func make_info_get_env_optfile_variables(make_info) = env_optfile_variables.
 :- func make_info_get_maybe_stdlib_grades(make_info) = maybe_stdlib_grades.
@@ -251,9 +249,8 @@
 :- func make_info_get_target_file_timestamp_map(make_info) =
     target_file_timestamp_map.
 :- func make_info_get_module_index_map(make_info) = module_index_map.
-:- func make_info_get_dep_file_index_map(make_info) =
-    dependency_file_index_map.
-:- func make_info_get_dep_file_status_map(make_info) = dep_file_status_map.
+:- func make_info_get_target_id_index_map(make_info) = target_id_index_map.
+:- func make_info_get_target_status_map(make_info) = target_status_map.
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
 :- func make_info_get_mi_read_module_maps(make_info) = have_parse_tree_maps.
@@ -268,9 +265,9 @@
 :- func make_info_get_foreign_imports_non_intermod_trans_cache(make_info) =
     module_to_module_set_cache.
 % :- func make_info_get_anc0_dir1_indir2_non_intermod_cache(make_info) =
-%     module_to_dep_file_set_cache.
+%     module_to_target_id_set_cache.
 :- func make_info_get_anc0_dir1_indir2_intermod_cache(make_info) =
-    module_to_dep_file_set_cache.
+    module_to_target_id_set_cache.
 :- func make_info_get_trans_prereqs_cache(make_info) = trans_prereqs_cache.
 
 :- pred make_info_set_option_args(list(string)::in,
@@ -290,9 +287,9 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_module_index_map(module_index_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_dep_file_index_map(dependency_file_index_map::in,
+:- pred make_info_set_target_id_index_map(target_id_index_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_dep_file_status_map(dep_file_status_map::in,
+:- pred make_info_set_target_status_map(target_status_map::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_importing_module(maybe(import_or_include)::in,
     make_info::in, make_info::out) is det.
@@ -314,10 +311,10 @@
     module_to_module_set_cache::in,
     make_info::in, make_info::out) is det.
 % :- pred make_info_set_anc0_dir1_indir2_non_intermod_cache(
-%     module_to_dep_file_set_cache::in,
+%     module_to_target_id_set_cache::in,
 %     make_info::in, make_info::out) is det.
 :- pred make_info_set_anc0_dir1_indir2_intermod_cache(
-    module_to_dep_file_set_cache::in,
+    module_to_target_id_set_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_trans_prereqs_cache(trans_prereqs_cache::in,
     make_info::in, make_info::out) is det.
@@ -399,13 +396,13 @@
                 % to a target_file.
                 mki_target_file_timestamp_map :: target_file_timestamp_map,
 
-                % The mapping between module_names and indices.
+                % The mapping between module_names and their index values.
                 mki_module_index_map        :: module_index_map,
 
-                % The mapping between dependency_files and indices.
-                mki_dep_file_index_map      :: dependency_file_index_map,
+                % The mapping between target_ids and their index values.
+                mki_target_id_index_map     :: target_id_index_map,
 
-                mki_dep_file_status_map     :: dep_file_status_map,
+                mki_target_status_map       :: target_status_map,
 
                 % Used for reporting which module imported or included
                 % a nonexistent module.
@@ -453,9 +450,9 @@
                 % This cache holds dependency sets that are a simple
                 % computation (union) on other dependency sets.
 %               mki_anc0_dir1_indir2_non_intermod_cache
-%                                           :: module_to_dep_file_set_cache,
+%                                           :: module_to_target_id_set_cache,
                 mki_anc0_dir1_indir2_intermod_cache
-                                            :: module_to_dep_file_set_cache,
+                                            :: module_to_target_id_set_cache,
 
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
@@ -465,7 +462,7 @@
 
 init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         EnvVarArgs, OptionArgs, CmdLineTargets, AnalysisRepeat,
-        TargetTimestamps, ModuleIndexMap, DepIndexMap, DepStatusMap)
+        TargetTimestamps, ModuleIndexMap, TargetIdIndexMap, TargetStatusMap)
         = MakeInfo :-
     map.init(ModuleDependencies),
     map.init(FileTimestamps),
@@ -485,8 +482,8 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         FileTimestamps,
         TargetTimestamps,
         ModuleIndexMap,
-        DepIndexMap,
-        DepStatusMap,
+        TargetIdIndexMap,
+        TargetStatusMap,
         MaybeImportingModule,
         MaybeStdoutLock,
         init_have_parse_tree_maps,
@@ -495,8 +492,8 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
 %       init_module_to_module_set_cache,
         init_module_to_module_set_cache,
         init_module_to_module_set_cache,
-%       init_module_to_dep_file_set_cache,
-        init_module_to_dep_file_set_cache,
+%       init_module_to_target_id_set_cache,
+        init_module_to_target_id_set_cache,
         init_trans_prereqs_cache
     ).
 
@@ -524,10 +521,10 @@ make_info_get_target_file_timestamp_map(Info) = X :-
     X = Info ^ mki_target_file_timestamp_map.
 make_info_get_module_index_map(Info) = X :-
     X = Info ^ mki_module_index_map.
-make_info_get_dep_file_index_map(Info) = X :-
-    X = Info ^ mki_dep_file_index_map.
-make_info_get_dep_file_status_map(Info) = X :-
-    X = Info ^ mki_dep_file_status_map.
+make_info_get_target_id_index_map(Info) = X :-
+    X = Info ^ mki_target_id_index_map.
+make_info_get_target_status_map(Info) = X :-
+    X = Info ^ mki_target_status_map.
 make_info_get_importing_module(Info) = X :-
     X = Info ^ mki_importing_module.
 make_info_get_maybe_stdout_lock(Info) = X :-
@@ -567,10 +564,10 @@ make_info_set_target_file_timestamp_map(X, !Info) :-
     !Info ^ mki_target_file_timestamp_map := X.
 make_info_set_module_index_map(X, !Info) :-
     !Info ^ mki_module_index_map := X.
-make_info_set_dep_file_index_map(X, !Info) :-
-    !Info ^ mki_dep_file_index_map := X.
-make_info_set_dep_file_status_map(X, !Info) :-
-    !Info ^ mki_dep_file_status_map := X.
+make_info_set_target_id_index_map(X, !Info) :-
+    !Info ^ mki_target_id_index_map := X.
+make_info_set_target_status_map(X, !Info) :-
+    !Info ^ mki_target_status_map := X.
 make_info_set_importing_module(X, !Info) :-
     !Info ^ mki_importing_module := X.
 make_info_set_maybe_stdout_lock(X, !Info) :-

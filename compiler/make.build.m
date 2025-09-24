@@ -131,7 +131,7 @@
     % Targets, stopping at errors unless KeepGoing = do_keep_going.
     %
 :- pred foldl2_make_module_targets(maybe_keep_going::in, list(string)::in,
-    io.text_output_stream::in, globals::in, list(dependency_file)::in,
+    io.text_output_stream::in, globals::in, list(target_id)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -150,7 +150,7 @@
     %
 :- pred foldl2_make_module_targets_maybe_parallel(maybe_keep_going::in,
     list(string)::in, io.text_output_stream::in, globals::in,
-    list(dependency_file)::in, maybe_succeeded::out,
+    list(target_id)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % This predicate does the exact same job as the one above,
@@ -158,7 +158,7 @@
     % higher order type in make.program_target.m.
     %
 :- pred foldl2_make_module_targets_maybe_parallel_build2(maybe_keep_going::in,
-    list(string)::in, globals::in, list(dependency_file)::in,
+    list(string)::in, globals::in, list(target_id)::in,
     io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 

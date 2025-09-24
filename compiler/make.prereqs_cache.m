@@ -26,22 +26,20 @@
 
 %---------------------------------------------------------------------------%
 
-:- type deps_result(T)
-    --->    deps_result(
-                dr_success  :: maybe_succeeded,
-                dr_set      :: index_set(T)
+:- type prereqs_result(T)
+    --->    prereqs_result(
+                pr_success  :: maybe_succeeded,
+                pr_set      :: index_set(T)
             ).
 
-:- type module_deps_result == deps_result(module_index).
-:- type dependency_file_deps_result == deps_result(dependency_file_index).
+:- type module_prereqs_result == prereqs_result(module_index).
+:- type target_id_prereqs_result == prereqs_result(target_id_index).
 
-:- type module_to_module_set_cache
-    == map(module_index, module_deps_result).
-:- type module_to_dep_file_set_cache
-    == map(module_index, dependency_file_deps_result).
+:- type module_to_module_set_cache.
+:- type module_to_target_id_set_cache.
 
 :- func init_module_to_module_set_cache = module_to_module_set_cache.
-:- func init_module_to_dep_file_set_cache = module_to_dep_file_set_cache.
+:- func init_module_to_target_id_set_cache = module_to_target_id_set_cache.
 
 %---------------------------------------------------------------------------%
 
@@ -62,59 +60,59 @@
             % The source file for the module is in the current directory.
     ;       process_modules_anywhere.
 
-:- type trans_prereqs_cache == map(trans_prereqs_key, module_deps_result).
+:- type trans_prereqs_cache == map(trans_prereqs_key, module_prereqs_result).
 
 :- func init_trans_prereqs_cache = trans_prereqs_cache.
 
 %---------------------------------------------------------------------------%
 
 :- pred search_direct_imports_non_intermod_cache(make_info::in,
-    module_index::in, module_deps_result::out) is semidet.
+    module_index::in, module_prereqs_result::out) is semidet.
 :- pred add_to_direct_imports_non_intermod_cache(module_index::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+    module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 :- pred search_direct_imports_intermod_cache(make_info::in,
-    module_index::in, module_deps_result::out) is semidet.
+    module_index::in, module_prereqs_result::out) is semidet.
 :- pred add_to_direct_imports_intermod_cache(module_index::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+    module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
 % :- pred search_indirect_imports_non_intermod_cache(make_info::in,
-%     module_index::in, module_deps_result::out) is semidet.
+%     module_index::in, module_prereqs_result::out) is semidet.
 % :- pred add_to_indirect_imports_non_intermod_cache(module_index::in,
-%     module_deps_result::in, make_info::in, make_info::out) is det.
+%     module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 :- pred search_indirect_imports_intermod_cache(make_info::in,
-    module_index::in, module_deps_result::out) is semidet.
+    module_index::in, module_prereqs_result::out) is semidet.
 :- pred add_to_indirect_imports_intermod_cache(module_index::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+    module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
 :- pred search_foreign_imports_non_intermod_trans_cache(make_info::in,
-    module_index::in, module_deps_result::out) is semidet.
+    module_index::in, module_prereqs_result::out) is semidet.
 :- pred add_to_foreign_imports_non_intermod_trans_cache(module_index::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+    module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
 % :- pred search_anc0_dir1_indir2_non_intermod_cache(make_info::in,
-%     module_index::in, dependency_file_deps_result::out) is semidet.
+%     module_index::in, target_id_prereqs_result::out) is semidet.
 % :- pred add_to_anc0_dir1_indir2_non_intermod_cache(module_index::in,
-%     dependency_file_deps_result::in, make_info::in, make_info::out) is det.
+%     target_id_prereqs_result::in, make_info::in, make_info::out) is det.
 
 :- pred search_anc0_dir1_indir2_intermod_cache(make_info::in,
-    module_index::in, dependency_file_deps_result::out) is semidet.
+    module_index::in, target_id_prereqs_result::out) is semidet.
 :- pred add_to_anc0_dir1_indir2_intermod_cache(module_index::in,
-    dependency_file_deps_result::in, make_info::in, make_info::out) is det.
+    target_id_prereqs_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
 :- pred search_trans_prereqs_cache(make_info::in,
-    trans_prereqs_key::in, module_deps_result::out) is semidet.
+    trans_prereqs_key::in, module_prereqs_result::out) is semidet.
 :- pred add_to_trans_prereqs_cache(trans_prereqs_key::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+    module_prereqs_result::in, make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -131,9 +129,16 @@
 
 %---------------------------------------------------------------------------%
 
+:- type module_to_module_set_cache
+    == map(module_index, module_prereqs_result).
+:- type module_to_target_id_set_cache
+    == map(module_index, target_id_prereqs_result).
+
+%---------------------------------------------------------------------------%
+
 init_module_to_module_set_cache = map.init.
 
-init_module_to_dep_file_set_cache = map.init.
+init_module_to_target_id_set_cache = map.init.
 
 init_trans_prereqs_cache = map.init.
 
@@ -350,7 +355,7 @@ add_to_anc0_dir1_indir2_intermod_cache(Key, Result, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-search_trans_prereqs_cache(Info, DepsRoot, Result) :-
+search_trans_prereqs_cache(Info, Key, Result) :-
     trace [
         compile_time(flag("prereqs_cache_stats")),
         run_time(env("PREREQS_CACHE_STATS")),
@@ -362,9 +367,9 @@ search_trans_prereqs_cache(Info, DepsRoot, Result) :-
         set_prereqs_cache_stats(Stats, !TIO)
     ),
     CacheMap = make_info_get_trans_prereqs_cache(Info),
-    map.search(CacheMap, DepsRoot, Result).
+    map.search(CacheMap, Key, Result).
 
-add_to_trans_prereqs_cache(DepsRoot, Result, !Info) :-
+add_to_trans_prereqs_cache(Key, Result, !Info) :-
     trace [
         compile_time(flag("prereqs_cache_stats")),
         run_time(env("PREREQS_CACHE_STATS")),
@@ -376,7 +381,7 @@ add_to_trans_prereqs_cache(DepsRoot, Result, !Info) :-
         set_prereqs_cache_stats(Stats, !TIO)
     ),
     CacheMap0 = make_info_get_trans_prereqs_cache(!.Info),
-    map.det_insert(DepsRoot, Result, CacheMap0, CacheMap),
+    map.det_insert(Key, Result, CacheMap0, CacheMap),
     make_info_set_trans_prereqs_cache(CacheMap, !Info).
 
 %---------------------------------------------------------------------------%

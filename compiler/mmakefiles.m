@@ -204,8 +204,8 @@
     % several lines just because the action's command was too long to fit
     % on one line, but it could not handle actions that were effectively
     % embedded shell scripts, such as the action for MmakeRuleLibInstallInts
-    % in generate_dep_file_install_targets. That is because the above scheme
-    % generates a block of text with uniform indentation after the first line,
+    % in generate_dep_file_install_targets_legacy. That is because the above
+    % scheme generates text with uniform indentation after the first line,
     % but such scripts want indentation that reflects their nesting structure,
     % which *won't* be uniform. In addition, such scripts may need "; \" at
     % the ends of command lines even if the command fits on one line, simply
@@ -456,8 +456,8 @@ append_mmake_entry(_WriteComments, MmakeEntry, !SB) :-
             append_string(" : ", !SB),
             ( if
                 (
-                    % Always write trans_opt_deps vertically as the list needs
-                    % to be parseable by maybe_read_d_file_for_trans_opt_deps.
+                    % Always write trans_opt_deps vertically, as the list must
+                    % be parseable by maybe_read_d_file_for_trans_opt_deps.
                     RuleName = "trans_opt_deps"
                 ;
                     1 + list.length(TailSourceFiles) > max_horizontal

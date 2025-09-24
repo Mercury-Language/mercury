@@ -75,12 +75,12 @@
 %---------------------------------------------------------------------------%
 
     % must_or_should_we_rebuild_lhs(ProgressStream, Globals,
-    %   TargetFile, TargetFileName, MakeLhsFiles, RhsDepFiles, LhsResult,
+    %   TargetFile, TargetFileName, MakeLhsFiles, RhsTargetIds, LhsResult,
     %   !Info, !IO):
     %
     % The TargetFile and TargetFileName arguments specify the principal
     % target of a make rule in structured and string form respectively,
-    % while MakeLhsFiles and RhsDepFiles specify the full set of the lhs and
+    % while MakeLhsFiles and RhsTargetIds specify the full set of the lhs and
     % rhs files respectively.
     %
     % Decide whether we either
@@ -100,11 +100,11 @@
     %
 :- pred must_or_should_we_rebuild_lhs(io.text_output_stream::in, globals::in,
     target_file::in, file_name::in, make_lhs_files::in,
-    list(dependency_file)::in, lhs_result::out,
+    list(target_id)::in, lhs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
-    %   MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
+    %   MaybeOldestLhsFile, BuildRhsSucceeded, RhsTargetIds, LhsResult,
     %   !Info, !IO):
     %
     % Decide whether we should execute the make action to (re)build
@@ -114,19 +114,20 @@
     % and if they do, what the timestamp of the oldest of these is.
     % TargetFileName is the name of the main target on the lhs of the rule.
     %
-    % RhsDepFiles lists the files on the rhs of the rule.
+    % RhsTargetIds lists the files on the rhs of the rule.
     %
-    % BuildRhsSucceeded says whether the building of RhsDepFiles has succeeded.
+    % BuildRhsSucceeded says whether the building of RhsTargetIds has
+    % succeeded.
     % XXX This argument should not be needed; if it is did_not_succeed, then
     % this predicate should not be called. The only call site of this predicate
     % in must_or_should_we_rebuild_lhs below *does* always pass succeeded,
     % but this is not necessarily true for the calls in make.program_target.m
     % to this predicate, and to should_we_rebuild_lhs_given_timestamps.
     %
-    % XXX This predicate double-checks whether the building of RhsDepFiles
+    % XXX This predicate double-checks whether the building of RhsTargetIds
     % succeeded by looking up their dependency statuses. This should NOT be
     % necessary; BuildRhsSucceeded = succeeded *should* imply that all these
-    % files have deps_status_up_to_date. This is ensured by code before
+    % files have target_status_up_to_date. This is ensured by code before
     % the one call to should_we_rebuild_lhs_given_timestamps in
     % make.program_target.m, but not (as far as I, zs, can see) in the two
     % calls to should_we_rebuild_lhs, in must_or_should_we_rebuild_lhs below,
@@ -139,12 +140,12 @@
     %
 :- pred should_we_rebuild_lhs(io.text_output_stream::in,
     globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
-    list(dependency_file)::in, lhs_result::out,
+    list(target_id)::in, lhs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals,
     %   TargetFileName, MaybeOldestLhsFile, BuildRhsSucceeded,
-    %   RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO):
+    %   RhsTargetStatusTuples, RhsMaybeTimestamps, LhsResult, !IO):
     %
     % A version of the predicate above that
     %
@@ -158,20 +159,20 @@
     %
 :- pred should_we_rebuild_lhs_given_timestamps(io.text_output_stream::in,
     globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
-    list(dependency_status_result)::in, list(maybe_error(timestamp))::in,
+    list(target_status_result)::in, list(maybe_error(timestamp))::in,
     lhs_result::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- type dependency_status_result
-    --->    dependency_status_result(
-                dependency_file,
+:- type target_status_result
+    --->    target_status_result(
+                target_id,
                 maybe(file_name),
-                dependency_status
+                target_status
             ).
 
-:- pred get_dependency_file_status(io.text_output_stream::in, globals::in,
-    dependency_file::in, dependency_status_result::out,
+:- pred get_target_id_status(io.text_output_stream::in, globals::in,
+    target_id::in, target_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -207,7 +208,7 @@
 %---------------------------------------------------------------------------%
 
 must_or_should_we_rebuild_lhs(ProgressStream, Globals,
-        TargetFile, TargetFileName, MakeLhsFiles, RhsDepFiles, LhsResult,
+        TargetFile, TargetFileName, MakeLhsFiles, RhsTargetIds, LhsResult,
         !Info, !IO) :-
     % Check whether all the lhs files exist, because if some are missing,
     % then we need to execute the action.
@@ -263,7 +264,7 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
             % of the rhs files succeeded.
             BuildRhsSucceeded = succeeded,
             should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
-                MaybeOldestLhsTimestamp, BuildRhsSucceeded, RhsDepFiles,
+                MaybeOldestLhsTimestamp, BuildRhsSucceeded, RhsTargetIds,
                 LhsResult, !Info, !IO)
         )
     ).
@@ -342,41 +343,41 @@ find_oldest_lhs_file_loop(LhsMaybeTimestamps, !.OldestLhsTimestamp,
 %---------------------------------------------------------------------------%
 
 should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
-        MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
+        MaybeOldestLhsFile, BuildRhsSucceeded, RhsTargetIds, LhsResult,
         !Info, !IO) :-
-    list.map_foldl2(get_dependency_file_status(ProgressStream, Globals),
-        RhsDepFiles, RhsDepStatusTuples, !Info, !IO),
+    list.map_foldl2(get_target_id_status(ProgressStream, Globals),
+        RhsTargetIds, RhsTargetStatusTuples, !Info, !IO),
     list.filter(
-        ( pred(dependency_status_result(_, _, DepStatus)::in) is semidet :-
-            DepStatus \= deps_status_up_to_date
-        ), RhsDepStatusTuples, UnbuiltRhsDepStatusTuples0),
+        ( pred(target_status_result(_, _, TargetStatus)::in) is semidet :-
+            TargetStatus \= target_status_up_to_date
+        ), RhsTargetStatusTuples, UnbuiltRhsTargetStatusTuples0),
     (
-        UnbuiltRhsDepStatusTuples0 = [_ | _],
-        get_dependency_file_names(Globals,
-            UnbuiltRhsDepStatusTuples0, UnbuiltRhsDepStatusTuples, !IO),
+        UnbuiltRhsTargetStatusTuples0 = [_ | _],
+        get_target_file_names(Globals,
+            UnbuiltRhsTargetStatusTuples0, UnbuiltRhsTargetStatusTuples, !IO),
         debug_make_msg(Globals,
             describe_unbuilt_dependencies(TargetFileName,
-                UnbuiltRhsDepStatusTuples),
+                UnbuiltRhsTargetStatusTuples),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
         LhsResult = rhs_error
     ;
-        UnbuiltRhsDepStatusTuples0 = [],
+        UnbuiltRhsTargetStatusTuples0 = [],
         debug_make_msg(Globals,
             string.format("%s: finished dependencies\n", [s(TargetFileName)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        list.map_foldl2(get_dependency_timestamp(ProgressStream, Globals),
-            RhsDepFiles, RhsMaybeTimestamps, !Info, !IO),
+        list.map_foldl2(get_target_id_timestamp(ProgressStream, Globals),
+            RhsTargetIds, RhsMaybeTimestamps, !Info, !IO),
 
         should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals,
             TargetFileName, MaybeOldestLhsFile, BuildRhsSucceeded,
-            RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO)
+            RhsTargetStatusTuples, RhsMaybeTimestamps, LhsResult, !IO)
     ).
 
 should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals, TargetFileName,
         MaybeOldestLhsFile, BuildRhsSucceeded,
-        RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO) :-
+        RhsTargetStatusTuples, RhsMaybeTimestamps, LhsResult, !IO) :-
     (
         MaybeOldestLhsFile = some_lhs_file_is_missing,
         % The missing file must be rebuilt, even if all other LHS files
@@ -401,22 +402,22 @@ should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals, TargetFileName,
         (
             FoundError = found_error,
             LhsResult = rhs_error,
-            get_dependency_file_names(Globals, RhsDepStatusTuples,
-                FilledInRhsDepStatusTuples, !IO),
+            get_target_file_names(Globals, RhsTargetStatusTuples,
+                FilledInRhsTargetStatusTuples, !IO),
             (
                 BuildRhsSucceeded = succeeded,
                 % Something has gone wrong -- building the target has
                 % succeeded, but there are some files missing.
                 % Report an error.
                 rhs_timestamps_missing_msg(TargetFileName, BuildRhsSucceeded,
-                    FilledInRhsDepStatusTuples,
+                    FilledInRhsTargetStatusTuples,
                     RhsMaybeTimestamps, MissingDepsMsg),
                 io.write_string(ProgressStream, MissingDepsMsg, !IO)
             ;
                 BuildRhsSucceeded = did_not_succeed,
                 debug_make_msg(Globals,
                     rhs_timestamps_missing_msg(TargetFileName,
-                        BuildRhsSucceeded, FilledInRhsDepStatusTuples,
+                        BuildRhsSucceeded, FilledInRhsTargetStatusTuples,
                         RhsMaybeTimestamps),
                     MaybeMissingDepsMsg),
                 maybe_write_msg(ProgressStream, MaybeMissingDepsMsg, !IO)
@@ -436,12 +437,12 @@ should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals, TargetFileName,
                     OldestLhsFileTimestamp, ShouldRebuildLhs),
                 (
                     ShouldRebuildLhs = some_lhs_file_needs_rebuilding,
-                    get_dependency_file_names(Globals,
-                        RhsDepStatusTuples, FilledInRhsDepStatusTuples, !IO),
+                    get_target_file_names(Globals, RhsTargetStatusTuples,
+                        FilledInRhsTargetStatusTuples, !IO),
                     debug_make_msg(Globals,
                         describe_newer_dependencies(TargetFileName,
-                            OldestLhsFileTimestamp, FilledInRhsDepStatusTuples,
-                            RhsTimestamps),
+                            OldestLhsFileTimestamp,
+                            FilledInRhsTargetStatusTuples, RhsTimestamps),
                         DebugMsg),
                     maybe_write_msg(ProgressStream, DebugMsg, !IO)
                 ;
@@ -499,30 +500,32 @@ is_any_rhs_file_newer_than_oldest_lhs(RhsTimestamps, OldestLhsTimestamp,
 
 %---------------------------------------------------------------------------%
 
-get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
+get_target_id_status(ProgressStream, Globals, TargetId, Result, !Info, !IO) :-
     (
-        Dep = dep_file(TargetFileName),
-        DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
-        ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
+        TargetId = non_merc_target(TargetFileName),
+        TargetStatusMap0 = make_info_get_target_status_map(!.Info),
+        ( if
+            version_hash_table.search(TargetStatusMap0, TargetId, StatusPrime)
+        then
             Status = StatusPrime
         else
-            get_dependency_timestamp(ProgressStream, Globals,
-                Dep, MaybeTimestamp, !Info, !IO),
+            get_target_id_timestamp(ProgressStream, Globals,
+                TargetId, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(_),
-                Status = deps_status_up_to_date
+                Status = target_status_up_to_date
             ;
                 MaybeTimestamp = error(Error),
-                Status = deps_status_error,
+                Status = target_status_error,
                 io.format(ProgressStream, "** Error: %s\n", [s(Error)], !IO)
             ),
-            version_hash_table.det_insert(Dep, Status,
-                DepStatusMap0, DepStatusMap),
-            make_info_set_dep_file_status_map(DepStatusMap, !Info)
+            version_hash_table.det_insert(TargetId, Status,
+                TargetStatusMap0, TargetStatusMap),
+            make_info_set_target_status_map(TargetStatusMap, !Info)
         ),
-        Result = dependency_status_result(Dep, yes(TargetFileName), Status)
+        Result = target_status_result(TargetId, yes(TargetFileName), Status)
     ;
-        Dep = dep_target(Target),
+        TargetId = merc_target(Target),
         Target = target_file(ModuleName, FileType),
         (
             ( FileType = module_target_source
@@ -540,8 +543,9 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
                 TargetFileName, !Info, UpToDateMsg),
             maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
             MaybeTargetFileName = yes(TargetFileName),
-            Status = deps_status_up_to_date,
-            Result = dependency_status_result(Dep, MaybeTargetFileName, Status)
+            Status = target_status_up_to_date,
+            Result =
+                target_status_result(TargetId, MaybeTargetFileName, Status)
         ;
             ( FileType = module_target_errors
             ; FileType = module_target_int0
@@ -559,28 +563,29 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             ; FileType = module_target_fact_table_object(_, _)
             ; FileType = module_target_xml_doc
             ),
-            % We pass Dep, which contains Target, which contains ModuleName,
-            % because get_dependency_file_status_main_path needs all of them
-            % and this way, it does not have to rebuild Target or Dep.
-            get_dependency_file_status_main_path(ProgressStream, Globals,
-                Dep, Target, ModuleName, Result, !Info, !IO)
+            % We pass TargetId, which contains Target, which contains
+            % ModuleName, because get_target_id_status_main_path needs
+            % all of them, and this way, it does not have to rebuild
+            % Target or TargetId.
+            get_target_id_status_main_path(ProgressStream, Globals,
+                TargetId, Target, ModuleName, Result, !Info, !IO)
         )
     ).
 
-:- pred get_dependency_file_status_main_path(io.text_output_stream::in,
-    globals::in, dependency_file::in, target_file::in, module_name::in,
-    dependency_status_result::out,
+:- pred get_target_id_status_main_path(io.text_output_stream::in,
+    globals::in, target_id::in, target_file::in, module_name::in,
+    target_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
-:- pragma inline(pred(get_dependency_file_status_main_path/10)).
+:- pragma inline(pred(get_target_id_status_main_path/10)).
 
-get_dependency_file_status_main_path(ProgressStream, Globals,
-        Dep, Target, ModuleName, Result, !Info, !IO) :-
-    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
+get_target_id_status_main_path(ProgressStream, Globals,
+        TargetId, Target, ModuleName, Result, !Info, !IO) :-
+    TargetStatusMap0 = make_info_get_target_status_map(!.Info),
     % XXX The management of dependency file status map here is incorrect.
     %
-    % The code here checks whether Dep is in DepStatusMap0, and if it is
-    % not there, it computes its Status, and then inserts that Status
-    % into DepStatusMap. So far so good. The problem is that
+    % The code here checks whether TargetId is in TargetStatusMap0, and
+    % if it is not there, it computes its Status, and then inserts that Status
+    % into TargetStatusMap. So far so good. The problem is that
     %
     % - the code of the else-part calls get_maybe_module_dep_info
     % - which calls maybe_get_maybe_module_dep_info
@@ -591,7 +596,7 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
     % - which calls update_target_status
     %
     % which adds an entry to the dependency file status map.
-    % This entry CAN be for Dep, and if it is, then the call to
+    % This entry CAN be for TargetId, and if it is, then the call to
     % version_hash_table.det_insert at the end of the else-part
     % will throw an exception that leads to a compiler abort.
     % The command "mmc --make --options-file xyz after_end_module.int3"
@@ -602,7 +607,9 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
     % replacing the version_hash_table.det_insert below with
     % version_hash_table.set would fix this symptom, but I (zs) think
     % that is unlikely to fix the underlying problem.
-    ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
+    ( if
+        version_hash_table.search(TargetStatusMap0, TargetId, StatusPrime)
+    then
         Status = StatusPrime,
         % In this common case, our caller does not need the target file name.
         % Calling get_make_target_file_name to construct the target file name
@@ -618,13 +625,13 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
             MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = no_module_dep_info,
-            Status = deps_status_error
+            Status = target_status_error
         ;
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
             ( if ModuleDir = dir.this_directory then
                 % XXX What is the reason for returning this value here?
-                Status = deps_status_not_considered
+                Status = target_status_not_considered
             else
                 % Targets from libraries are always considered to be
                 % up-to-date if they exist.
@@ -634,10 +641,10 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
                     Target, MaybeTimestamp, !Info, !IO),
                 (
                     MaybeTimestamp = ok(_),
-                    Status = deps_status_up_to_date
+                    Status = target_status_up_to_date
                 ;
                     MaybeTimestamp = error(Error),
-                    Status = deps_status_error,
+                    Status = target_status_error,
                     string.format("** Error: file `%s' not found: %s\n",
                         [s(TargetFileName), s(Error)], ErrorMsg),
                     % Try to write this with one call to avoid
@@ -646,45 +653,45 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
                 )
             )
         ),
-        DepStatusMap1 = make_info_get_dep_file_status_map(!.Info),
-        version_hash_table.det_insert(Dep, Status,
-            DepStatusMap1, DepStatusMap),
-        make_info_set_dep_file_status_map(DepStatusMap, !Info)
+        TargetStatusMap1 = make_info_get_target_status_map(!.Info),
+        version_hash_table.det_insert(TargetId, Status,
+            TargetStatusMap1, TargetStatusMap),
+        make_info_set_target_status_map(TargetStatusMap, !Info)
     ),
-    Result = dependency_status_result(Dep, MaybeTargetFileName, Status).
+    Result = target_status_result(TargetId, MaybeTargetFileName, Status).
 
 %---------------------%
 
-    % This type is similar to dependency_status_result, but its second argument
+    % This type is similar to target_status_result, but its second argument
     % has type file_name, not maybe(file_name).
-:- type dependency_status_known_file
-    --->    dependency_status_known_file(
-                dependency_file,
+:- type target_status_known_file
+    --->    target_status_known_file(
+                target_id,
                 file_name,
-                dependency_status
+                target_status
             ).
 
-:- pred get_dependency_file_names(globals::in,
-    list(dependency_status_result)::in,
-    list(dependency_status_known_file)::out, io::di, io::uo) is det.
+:- pred get_target_file_names(globals::in,
+    list(target_status_result)::in,
+    list(target_status_known_file)::out, io::di, io::uo) is det.
 
-get_dependency_file_names(Globals, Tuples0, Tuples, !IO) :-
-    list.map_foldl(get_dependency_file_name(Globals), Tuples0, Tuples, !IO).
+get_target_file_names(Globals, Tuples0, Tuples, !IO) :-
+    list.map_foldl(get_target_file_name(Globals), Tuples0, Tuples, !IO).
 
-:- pred get_dependency_file_name(globals::in, dependency_status_result::in,
-    dependency_status_known_file::out, io::di, io::uo) is det.
+:- pred get_target_file_name(globals::in, target_status_result::in,
+    target_status_known_file::out, io::di, io::uo) is det.
 
-get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
-    Tuple0 = dependency_status_result(Dep, MaybeTargetFileName, Status),
+get_target_file_name(Globals, Tuple0, Tuple, !IO) :-
+    Tuple0 = target_status_result(TargetId, MaybeTargetFileName, Status),
     (
         MaybeTargetFileName = yes(TargetFileName)
     ;
         MaybeTargetFileName = no,
         % XXX LEGACY
-        dependency_file_to_file_name(Globals, Dep,
+        target_id_to_file_name(Globals, TargetId,
             TargetFileName, _TargetFileNameProposed, !IO)
     ),
-    Tuple = dependency_status_known_file(Dep, TargetFileName, Status).
+    Tuple = target_status_known_file(TargetId, TargetFileName, Status).
 
 %---------------------------------------------------------------------------%
 %
@@ -692,18 +699,18 @@ get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
 %
 
 :- pred rhs_timestamps_missing_msg(file_name::in,
-    maybe_succeeded::in, list(dependency_status_known_file)::in,
+    maybe_succeeded::in, list(target_status_known_file)::in,
     list(maybe_error(timestamp))::in, string::out) is det.
 
 rhs_timestamps_missing_msg(TargetFileName, BuildRhsSucceeded,
-        RhsDepStatusTuples, RhsTimestamps, Msg) :-
-    assoc_list.from_corresponding_lists(RhsDepStatusTuples, RhsTimestamps,
+        RhsTargetStatusTuples, RhsTimestamps, Msg) :-
+    assoc_list.from_corresponding_lists(RhsTargetStatusTuples, RhsTimestamps,
         RhsTimestampAL),
     list.filter_map(
         ( pred(Pair::in, Tuple::out) is semidet :-
             Pair = Tuple - error(_)
         ), RhsTimestampAL, ErrorRhsStatusTuples),
-    GetFileName = (func(dependency_status_known_file(_, FN, _)) = FN),
+    GetFileName = (func(target_status_known_file(_, FN, _)) = FN),
     ErrorFileNames = list.map(GetFileName, ErrorRhsStatusTuples),
     list.sort(ErrorFileNames, SortedErrorFileNames),
     SortedErrorFileNamesStr = string.join_list(", ", SortedErrorFileNames),
@@ -725,7 +732,7 @@ rhs_timestamps_missing_msg(TargetFileName, BuildRhsSucceeded,
 %
 
 :- pred describe_unbuilt_dependencies(file_name::in,
-    list(dependency_status_known_file)::in, string::out) is det.
+    list(target_status_known_file)::in, string::out) is det.
 
 describe_unbuilt_dependencies(TargetFileName, UnbuiltDependencies,
         UnbuiltDependenciesDesc) :-
@@ -736,55 +743,56 @@ describe_unbuilt_dependencies(TargetFileName, UnbuiltDependencies,
     string.append_list([Header | UnbuiltDependencyDescs],
         UnbuiltDependenciesDesc).
 
-:- pred describe_target_dependency_status(dependency_status_known_file::in,
+:- pred describe_target_dependency_status(target_status_known_file::in,
     string::out) is det.
 
-describe_target_dependency_status(DepTuple, Desc) :-
-    DepTuple = dependency_status_known_file(_, DepTargetFileName, DepStatus),
+describe_target_dependency_status(TargetTuple, Desc) :-
+    TargetTuple =
+        target_status_known_file(_, TargetFileName, TargetStatus),
     (
-        DepStatus = deps_status_not_considered,
-        DepStatusStr = "deps_status_not_considered"
+        TargetStatus = target_status_not_considered,
+        TargetStatusStr = "target_status_not_considered"
     ;
-        DepStatus = deps_status_being_built,
-        DepStatusStr = "deps_status_being_built"
+        TargetStatus = target_status_being_built,
+        TargetStatusStr = "target_status_being_built"
     ;
-        DepStatus = deps_status_up_to_date,
-        DepStatusStr = "deps_status_up_to_date"
+        TargetStatus = target_status_up_to_date,
+        TargetStatusStr = "target_status_up_to_date"
     ;
-        DepStatus = deps_status_error,
-        DepStatusStr = "deps_status_error"
+        TargetStatus = target_status_error,
+        TargetStatusStr = "target_status_error"
     ),
-    string.format("\t%s - %s\n", [s(DepTargetFileName), s(DepStatusStr)],
+    string.format("\t%s - %s\n", [s(TargetFileName), s(TargetStatusStr)],
         Desc).
 
 %---------------------%
 
 :- pred describe_newer_dependencies(string::in, timestamp::in,
-    list(dependency_status_known_file)::in, list(timestamp)::in,
+    list(target_status_known_file)::in, list(timestamp)::in,
     string::out) is det.
 
 describe_newer_dependencies(TargetFileName, OldestLhsFileTimestamp,
-        RhsDepStatusTuples, RhsTimestamps, Desc) :-
+        RhsTargetStatusTuples, RhsTimestamps, Desc) :-
     string.format("%s [%s]: newer dependencies:\n",
         [s(TargetFileName), s(string(OldestLhsFileTimestamp))], Header),
-    assoc_list.from_corresponding_lists(RhsDepStatusTuples, RhsTimestamps,
+    assoc_list.from_corresponding_lists(RhsTargetStatusTuples, RhsTimestamps,
         RhsTimestampAL),
     list.filter(
-        ( pred((_DepStatusTuple - RhsTimestamp)::in) is semidet :-
+        ( pred((_TargetStatusTuple - RhsTimestamp)::in) is semidet :-
             compare((>), RhsTimestamp, OldestLhsFileTimestamp)
         ), RhsTimestampAL, NewerRhsTimestampAL),
     list.sort(NewerRhsTimestampAL, SortedNewerRhsTimestampAL),
-    list.map(describe_dependency_file_and_timestamp, SortedNewerRhsTimestampAL,
+    list.map(describe_target_file_and_timestamp, SortedNewerRhsTimestampAL,
         NewerDescs),
     string.append_list([Header | NewerDescs], Desc).
 
-:- pred describe_dependency_file_and_timestamp(
-    pair(dependency_status_known_file, timestamp)::in, string::out) is det.
+:- pred describe_target_file_and_timestamp(
+    pair(target_status_known_file, timestamp)::in, string::out) is det.
 
-describe_dependency_file_and_timestamp(DepStatusTuple - Timestamp, Desc) :-
-    DepStatusTuple = dependency_status_known_file(DepFile, DepFileName, _),
+describe_target_file_and_timestamp(TargetStatusTuple - Timestamp, Desc) :-
+    TargetStatusTuple = target_status_known_file(TargetId, TargetFileName, _),
     string.format("\t%s %s %s\n",
-        [s(string(DepFile)), s(DepFileName), s(string(Timestamp))], Desc).
+        [s(string(TargetId)), s(TargetFileName), s(string(Timestamp))], Desc).
 
 %---------------------------------------------------------------------------%
 :- end_module make.check_up_to_date.

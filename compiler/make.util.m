@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,8 +68,8 @@
 :- func make_target_file_list(list(module_name), module_target_type) =
     list(target_file).
 
-:- func make_dependency_list(list(module_name), module_target_type)
-    = list(dependency_file).
+:- func make_target_id_list(list(module_name), module_target_type)
+    = list(target_id).
 
 %---------------------------------------------------------------------------%
 
@@ -292,8 +292,8 @@ make_target_file_list(ModuleNames, TargetType) =
     list.map((func(ModuleName) = target_file(ModuleName, TargetType)),
         ModuleNames).
 
-make_dependency_list(ModuleNames, TargetType) =
-    list.map((func(Module) = dep_target(target_file(Module, TargetType))),
+make_target_id_list(ModuleNames, TargetType) =
+    list.map((func(Module) = merc_target(target_file(Module, TargetType))),
         ModuleNames).
 
 %---------------------------------------------------------------------------%

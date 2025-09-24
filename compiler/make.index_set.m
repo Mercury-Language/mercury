@@ -11,10 +11,10 @@
 %
 % Dependency computation does a lot of unions so we use a set representation
 % suited to that purpose, namely bitsets. We can't store module_names and
-% dependency_files in those sets, so we keep two maps
+% target_ids in those sets, so we keep two maps
 %
-%   module_name     <-> module_index, and
-%   dependency_file <-> dependency_file_index
+%   module_name <-> module_index, and
+%   target_id   <-> target_id_index
 %
 % in the make_info structure, and work with sets of indices instead.
 %
@@ -76,11 +76,11 @@
 :- type module_index.
 :- instance uenum(module_index).
 
-:- type dependency_file_index.
-:- instance uenum(dependency_file_index).
+:- type target_id_index.
+:- instance uenum(target_id_index).
 
 :- type module_index_set == index_set(module_index).
-:- type dependency_file_index_set == index_set(dependency_file_index).
+:- type target_id_index_set == index_set(target_id_index).
 
 %---------------------------------------------------------------------------%
 
@@ -106,23 +106,22 @@
 
 %---------------------------------------------------------------------------%
 
-    % Convert a dependency file to a dependency_file_index.
+    % Convert a target id to a target_id_index.
     %
-:- pred dependency_file_to_index(dependency_file_with_module_index::in,
-    dependency_file_index::out, make_info::in, make_info::out) is det.
+:- pred target_id_to_index(target_id_module_index::in, target_id_index::out,
+    make_info::in, make_info::out) is det.
 
-    % Convert a list of dependency files, or raw filenames,
-    % to a dependency_file_index set.
+    % Convert a list of target ids, or raw filenames, to a target_id_index set.
     %
-:- pred dependency_files_to_index_set(list(dependency_file)::in,
-    dependency_file_index_set::out, make_info::in, make_info::out) is det.
-:- pred file_names_to_index_set(list(file_name)::in,
-    dependency_file_index_set::out, make_info::in, make_info::out) is det.
+:- pred target_ids_to_index_set(list(target_id)::in, target_id_index_set::out,
+    make_info::in, make_info::out) is det.
+:- pred file_names_to_index_set(list(file_name)::in, target_id_index_set::out,
+    make_info::in, make_info::out) is det.
 
-    % Convert a dependency_file_index set to a dependency_file set.
+    % Convert a target_id_index set to a target_id set.
     %
-:- pred dependency_file_index_set_to_plain_set(make_info::in,
-    dependency_file_index_set::in, set(dependency_file)::out) is det.
+:- pred target_id_index_set_to_plain_set(make_info::in,
+    target_id_index_set::in, set(target_id)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -190,12 +189,12 @@ index_set_member(Item, Set) :-
     from_uint(U, module_index(U))
 ].
 
-:- type dependency_file_index
-    --->    dependency_file_index(uint).
+:- type target_id_index
+    --->    target_id_index(uint).
 
-:- instance uenum(dependency_file_index) where [
-    to_uint(dependency_file_index(U)) = U,
-    from_uint(U, dependency_file_index(U))
+:- instance uenum(target_id_index) where [
+    to_uint(target_id_index(U)) = U,
+    from_uint(U, target_id_index(U))
 ].
 
 %---------------------------------------------------------------------------%
@@ -267,99 +266,99 @@ acc_module_index_set_to_plain_set(Info, ModuleIndex, !Set) :-
 
 %---------------------------------------------------------------------------%
 
-dependency_file_to_index(DepFile, Index, !Info) :-
-    Map0 = make_info_get_dep_file_index_map(!.Info),
-    Map0 = dependency_file_index_map(ForwardMap0, _ReverseMap0, _USize0),
-    ( if version_hash_table.search(ForwardMap0, DepFile, Index0) then
+target_id_to_index(TargetId, Index, !Info) :-
+    Map0 = make_info_get_target_id_index_map(!.Info),
+    Map0 = target_id_index_map(ForwardMap0, _ReverseMap0, _USize0),
+    ( if version_hash_table.search(ForwardMap0, TargetId, Index0) then
         Index = Index0
     else
-        Map0 = dependency_file_index_map(_ForwardMap0, ReverseMap0, USize0),
+        Map0 = target_id_index_map(_ForwardMap0, ReverseMap0, USize0),
         Slot = USize0,
-        Index = dependency_file_index(USize0),
+        Index = target_id_index(USize0),
         USize = USize0 + 1u,
-        version_hash_table.det_insert(DepFile, Index, ForwardMap0, ForwardMap),
+        version_hash_table.det_insert(TargetId, Index,
+            ForwardMap0, ForwardMap),
         RevSize0 = version_array.size(ReverseMap0),
         ( if uint.cast_to_int(USize) > RevSize0 then
             RevSize = increase_array_size(RevSize0),
-            version_array.resize(RevSize, DepFile, ReverseMap0, ReverseMap)
+            version_array.resize(RevSize, TargetId, ReverseMap0, ReverseMap)
         else
-            version_array.set(uint.cast_to_int(Slot), DepFile,
+            version_array.set(uint.cast_to_int(Slot), TargetId,
                 ReverseMap0, ReverseMap)
         ),
-        Map = dependency_file_index_map(ForwardMap, ReverseMap, USize),
-        make_info_set_dep_file_index_map(Map, !Info)
+        Map = target_id_index_map(ForwardMap, ReverseMap, USize),
+        make_info_set_target_id_index_map(Map, !Info)
     ).
 
 %---------------------%
 
-dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
-    list.foldl2(acc_dependency_files_to_index_set, DepFiles,
-        index_set_init, DepIndexSet, !Info).
+target_ids_to_index_set(TargetIds, TargetIdIndexSet, !Info) :-
+    list.foldl2(acc_target_ids_to_index_set, TargetIds,
+        index_set_init, TargetIdIndexSet, !Info).
 
-:- pred acc_dependency_files_to_index_set(dependency_file::in,
-    dependency_file_index_set::in, dependency_file_index_set::out,
+:- pred acc_target_ids_to_index_set(target_id::in,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out) is det.
 
-acc_dependency_files_to_index_set(DepFile0, !Set, !Info) :-
+acc_target_ids_to_index_set(TargetId, !TargetIdIndexSet, !Info) :-
     (
-        DepFile0 = dep_target(target_file(ModuleName, TargetType)),
+        TargetId = merc_target(target_file(ModuleName, TargetType)),
         module_name_to_index(ModuleName, ModuleIndex, !Info),
-        DepFile = dfmi_target(ModuleIndex, TargetType)
+        TargetIdMI = timi_merc(ModuleIndex, TargetType)
     ;
-        DepFile0 = dep_file(FileName),
-        DepFile = dfmi_file(FileName)
+        TargetId = non_merc_target(FileName),
+        TargetIdMI = timi_non_merc(FileName)
     ),
-    dependency_file_to_index(DepFile, DepIndex, !Info),
-    index_set_insert(DepIndex, !Set).
+    target_id_to_index(TargetIdMI, TargetIdIndex, !Info),
+    index_set_insert(TargetIdIndex, !TargetIdIndexSet).
 
 %---------------------%
 
-file_names_to_index_set(FileNames, DepIndexSet, !Info) :-
+file_names_to_index_set(FileNames, TargetIdIndexSet, !Info) :-
     list.foldl2(acc_file_names_to_index_set, FileNames,
-        index_set_init, DepIndexSet, !Info).
+        index_set_init, TargetIdIndexSet, !Info).
 
 :- pred acc_file_names_to_index_set(file_name::in,
-    dependency_file_index_set::in, dependency_file_index_set::out,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out) is det.
 
-acc_file_names_to_index_set(FileName, !Set, !Info) :-
-    DepFile = dfmi_file(FileName),
-    dependency_file_to_index(DepFile, DepIndex, !Info),
-    index_set_insert(DepIndex, !Set).
+acc_file_names_to_index_set(FileName, !TargetIdIndexSet, !Info) :-
+    TargetId = timi_non_merc(FileName),
+    target_id_to_index(TargetId, TargetIdIndex, !Info),
+    index_set_insert(TargetIdIndex, !TargetIdIndexSet).
 
 %---------------------------------------------------------------------------%
 
-:- pred index_to_dependency_file(make_info::in, dependency_file_index::in,
-    dependency_file::out) is det.
+:- pred index_to_target_id(make_info::in, target_id_index::in,
+    target_id::out) is det.
 
-index_to_dependency_file(Info, Index, DepFile) :-
-    make_info_get_dep_file_index_map(Info) =
-        dependency_file_index_map(_ForwardMap, ReverseMap, _Size),
-    Index = dependency_file_index(I),
-    version_array.lookup(ReverseMap, cast_to_int(I), DepFile0),
+index_to_target_id(Info, Index, TargetId) :-
+    make_info_get_target_id_index_map(Info) =
+        target_id_index_map(_ForwardMap, ReverseMap, _Size),
+    Index = target_id_index(I),
+    version_array.lookup(ReverseMap, cast_to_int(I), TargetId0),
     (
-        DepFile0 = dfmi_target(ModuleIndex, FileType),
+        TargetId0 = timi_merc(ModuleIndex, FileType),
         module_index_to_name(Info, ModuleIndex, ModuleName),
-        DepFile = dep_target(target_file(ModuleName, FileType))
+        TargetId = merc_target(target_file(ModuleName, FileType))
     ;
-        DepFile0 = dfmi_file(FileName),
-        DepFile = dep_file(FileName)
+        TargetId0 = timi_non_merc(FileName),
+        TargetId = non_merc_target(FileName)
     ).
 
 %---------------------%
 
-dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
-    index_set_foldl(acc_dependency_file_index_set_to_plain_set(Info),
-        DepIndices, [], DepFilesList),
-    DepFiles = set.list_to_set(DepFilesList).
+target_id_index_set_to_plain_set(Info, TargetIdIndexes, TargetIds) :-
+    index_set_foldl(acc_target_id_index_set_to_plain_set(Info),
+        TargetIdIndexes, [], TargetIdsList),
+    TargetIds = set.list_to_set(TargetIdsList).
 
-:- pred acc_dependency_file_index_set_to_plain_set(make_info::in,
-    dependency_file_index::in,
-    list(dependency_file)::in, list(dependency_file)::out) is det.
+:- pred acc_target_id_index_set_to_plain_set(make_info::in,
+    target_id_index::in, list(target_id)::in, list(target_id)::out) is det.
 
-acc_dependency_file_index_set_to_plain_set(Info, DepIndex, List0, List) :-
-    index_to_dependency_file(Info, DepIndex, DepFile),
-    List = [DepFile | List0].
+acc_target_id_index_set_to_plain_set(Info, TargetIndex, !TargetIds) :-
+    index_to_target_id(Info, TargetIndex, TargetId),
+    !:TargetIds = [TargetId | !.TargetIds].
 
 %---------------------------------------------------------------------------%
 :- end_module make.index_set.

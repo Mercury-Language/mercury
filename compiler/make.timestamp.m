@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,10 +34,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % Find the timestamp for the given dependency file.
+    % Find the timestamp for the given target.
     %
-:- pred get_dependency_timestamp(io.text_output_stream::in, globals::in,
-    dependency_file::in, maybe_error(timestamp)::out,
+:- pred get_target_id_timestamp(io.text_output_stream::in, globals::in,
+    target_id::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -106,14 +106,14 @@ init_target_file_timestamp_map =
 
 %---------------------------------------------------------------------------%
 
-get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
+get_target_id_timestamp(ProgressStream, Globals, TargetId,
         MaybeTimestamp, !Info, !IO) :-
     (
-        DependencyFile = dep_file(FileName),
+        TargetId = non_merc_target(FileName),
         get_file_timestamp(search_auth_cur_dir, FileName,
             _SearchDirs, MaybeTimestamp, !Info, !IO)
     ;
-        DependencyFile = dep_target(Target),
+        TargetId = merc_target(Target),
         get_target_timestamp_search(ProgressStream, Globals, Target,
             MaybeTimestamp0, !Info, !IO),
         ( if

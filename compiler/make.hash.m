@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,10 +27,10 @@
 
 :- pred module_name_hash(module_name::in, int::out) is det.
 
-:- pred dependency_file_hash(dependency_file::in, int::out) is det.
+:- pred target_id_hash(target_id::in, int::out) is det.
 
-:- pred dependency_file_with_module_index_hash(
-    dependency_file_with_module_index::in, int::out) is det.
+:- pred target_id_module_index_hash(target_id_module_index::in,
+    int::out) is det.
 
 :- pred target_file_hash(target_file::in, int::out) is det.
 
@@ -59,23 +59,23 @@ module_name_hash(SymName, Hash) :-
         Hash = string.hash(Name)
     ).
 
-dependency_file_hash(DepFile, Hash) :-
+target_id_hash(TargetId, Hash) :-
     (
-        DepFile = dep_target(TargetFile),
+        TargetId = merc_target(TargetFile),
         target_file_hash(TargetFile, Hash)
     ;
-        DepFile = dep_file(FileName),
+        TargetId = non_merc_target(FileName),
         Hash = string.hash(FileName)
     ).
 
-dependency_file_with_module_index_hash(DepFile, Hash) :-
+target_id_module_index_hash(TargetId, Hash) :-
     (
-        DepFile = dfmi_target(ModuleIndex, Type),
+        TargetId = timi_merc(ModuleIndex, Type),
         Hash0 = cast_to_int(to_uint(ModuleIndex)),
         Hash1 = module_target_type_to_nonce(Type),
         Hash = mix(Hash0, Hash1)
     ;
-        DepFile = dfmi_file(FileName),
+        TargetId = timi_non_merc(FileName),
         Hash = string.hash(FileName)
     ).
 

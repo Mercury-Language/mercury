@@ -232,9 +232,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         WriteDFile = do_not_write_d_file
     ;
         WriteDFile = write_d_file,
-        % The original Baggage0 will do just fine for write_dependency_file,
-        % since it accesses only the parts of Baggage0 that identify
-        % the properties of the source file containing the module.
+        % The original Baggage0 will do just fine for
+        % generate_and_write_d_file_hlds, since it accesses only the parts
+        % of Baggage0 that identify the properties of the source file
+        % containing the module.
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
         module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
         (
@@ -413,12 +414,11 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans), ModuleName,
                 TransOptDateFileName, _TransOptDateFileNameProposed),
             SearchPattern = TransOptDateFileName ++ " :",
-            read_dependency_file_find_start(DFileInStream, SearchPattern,
+            read_d_file_find_start(DFileInStream, SearchPattern,
                 FindResult, !IO),
             (
                 FindResult = yes,
-                read_dependency_file_get_modules(DFileInStream,
-                    TransOptDeps, !IO),
+                read_d_file_get_modules(DFileInStream, TransOptDeps, !IO),
                 MaybeDFileTransOptDeps = yes(TransOptDeps)
             ;
                 FindResult = no,
@@ -445,10 +445,10 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
     % Read lines from the dependency file (module.d) until one is found
     % which begins with SearchPattern.
     %
-:- pred read_dependency_file_find_start(io.text_input_stream::in, string::in,
+:- pred read_d_file_find_start(io.text_input_stream::in, string::in,
     bool::out, io::di, io::uo) is det.
 
-read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
+read_d_file_find_start(InStream, SearchPattern, Success, !IO) :-
     io.read_line_as_string(InStream, Result, !IO),
     (
         Result = ok(Line),
@@ -456,8 +456,7 @@ read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
             % Have found the start.
             Success = yes
         else
-            read_dependency_file_find_start(InStream, SearchPattern,
-                Success, !IO)
+            read_d_file_find_start(InStream, SearchPattern, Success, !IO)
         )
     ;
         ( Result = error(_)
@@ -471,10 +470,10 @@ read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
     % ending from all the words which are read in and return the resulting
     % list of modules.
     %
-:- pred read_dependency_file_get_modules(io.text_input_stream::in,
+:- pred read_d_file_get_modules(io.text_input_stream::in,
     list(module_name)::out, io::di, io::uo) is det.
 
-read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
+read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
     io.read_line(InStream, Result, !IO),
     ( if
         Result = ok(CharList0),
@@ -491,7 +490,7 @@ read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
             ModuleFileName = FileName
         ),
         file_name_to_module_name(ModuleFileName, Module),
-        read_dependency_file_get_modules(InStream, TransOptDeps0, !IO),
+        read_d_file_get_modules(InStream, TransOptDeps0, !IO),
         TransOptDeps = [Module | TransOptDeps0]
     else
         TransOptDeps = []

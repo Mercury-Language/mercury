@@ -102,12 +102,12 @@ make_process_compiler_args(ProgressStream, Globals,
         ReverseMI = version_array.empty,
         ModuleIndexMap = module_index_map(ForwardMI, ReverseMI, 0u),
 
-        HashPredDI = dependency_file_with_module_index_hash,
+        HashPredDI = target_id_module_index_hash,
         ForwardDI = version_hash_table.init_default(HashPredDI),
         ReverseDI = version_array.empty,
-        DepIndexMap = dependency_file_index_map(ForwardDI, ReverseDI, 0u),
+        TargetIndexMap = target_id_index_map(ForwardDI, ReverseDI, 0u),
 
-        DepStatusMap = version_hash_table.init_default(dependency_file_hash),
+        TargetStatusMap = version_hash_table.init_default(target_id_hash),
 
         % Accept and ignore `.depend' targets. `mmc --make' does not need
         % a separate make depend step. The dependencies for each module
@@ -126,7 +126,7 @@ make_process_compiler_args(ProgressStream, Globals,
         MakeInfo0 = init_make_info(EnvOptFileVariables, MaybeStdLibGrades,
             KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
             AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
-            DepIndexMap, DepStatusMap),
+            TargetIndexMap, TargetStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
@@ -247,7 +247,7 @@ make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
             make_module_target([], ProgressStream, Globals,
-                dep_target(TargetFile), Succeeded, !Info, !IO)
+                merc_target(TargetFile), Succeeded, !Info, !IO)
         ;
             TargetType = linked_target(LinkedTargetType),
             LinkedTargetFile =

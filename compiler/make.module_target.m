@@ -42,7 +42,7 @@
     % ExtraOpts must be the first argument, because we curry it.
     %
 :- pred make_module_target(list(string)::in, io.text_output_stream::in,
-    globals::in, dependency_file::in, maybe_succeeded::out,
+    globals::in, target_id::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % record_made_target(ProgressStream, Globals, TargetFile,
@@ -118,34 +118,34 @@
 
 %---------------------------------------------------------------------------%
 
-make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
+make_module_target(ExtraOptions, ProgressStream, Globals, TargetId, Succeeded,
         !Info, !IO) :-
-    get_dependency_file_status(ProgressStream, Globals, Dep, StatusResult,
+    get_target_id_status(ProgressStream, Globals, TargetId, StatusResult,
         !Info, !IO),
-    StatusResult = dependency_status_result(_Dep, _DepFileName, Status),
+    StatusResult = target_status_result(_TargetId, _TargetFileName, Status),
     (
-        Status = deps_status_error,
+        Status = target_status_error,
         Succeeded = did_not_succeed
     ;
-        Status = deps_status_up_to_date,
+        Status = target_status_up_to_date,
         Succeeded = succeeded
     ;
-        Status = deps_status_not_considered,
+        Status = target_status_not_considered,
         (
-            Dep = dep_file(_),
+            TargetId = non_merc_target(_),
             Succeeded = succeeded
         ;
-            Dep = dep_target(TargetFile),
+            TargetId = merc_target(TargetFile),
             TargetFile = target_file(ModuleName, TargetType),
             get_maybe_module_dep_info(ProgressStream, Globals,
                 ModuleName, MaybeModuleDepInfo, !Info, !IO),
             (
                 MaybeModuleDepInfo = no_module_dep_info,
                 Succeeded = did_not_succeed,
-                DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
-                version_hash_table.set(Dep, deps_status_error,
-                    DepStatusMap0, DepStatusMap),
-                make_info_set_dep_file_status_map(DepStatusMap, !Info)
+                TargetStatusMap0 = make_info_get_target_status_map(!.Info),
+                version_hash_table.set(TargetId, target_status_error,
+                    TargetStatusMap0, TargetStatusMap),
+                make_info_set_target_status_map(TargetStatusMap, !Info)
             ;
                 MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
                 get_compilation_task_and_options(TargetType,
@@ -166,7 +166,7 @@ make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
                         target_file(SourceFileModuleName, TargetType),
                     % Recursive call. We should not recurse more than once.
                     make_module_target(ExtraOptions, ProgressStream, Globals,
-                        dep_target(MainTargetFile), Succeeded, !Info, !IO)
+                        merc_target(MainTargetFile), Succeeded, !Info, !IO)
                 else
                     make_module_target_file_main_path(ExtraOptions,
                         ProgressStream, Globals, TargetFile,
@@ -176,12 +176,12 @@ make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
             )
         )
     ;
-        Status = deps_status_being_built,
+        Status = target_status_being_built,
         (
-            Dep = dep_file(_),
+            TargetId = non_merc_target(_),
             Succeeded = succeeded
         ;
-            Dep = dep_target(_),
+            TargetId = merc_target(_),
             unexpected($pred, "target being built, circular dependencies?")
         )
     ).
@@ -208,9 +208,9 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         CompilationTaskType, MakeLhsFiles, !Info, !IO),
     MakeLhsFiles =
         make_lhs_files(DatelessLhsTargetFiles, DatedLhsTargetFiles, _, _),
-    list.foldl(update_target_status(deps_status_being_built),
+    list.foldl(update_target_status(target_status_being_built),
         DatelessLhsTargetFiles, !Info),
-    list.foldl(update_target_status(deps_status_being_built),
+    list.foldl(update_target_status(target_status_being_built),
         DatedLhsTargetFiles, !Info),
 
     debug_make_msg(Globals,
@@ -229,14 +229,14 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     then
         LhsResult = rhs_error
     else
-        ( RhsResult = could_not_find_some_prereqs(RhsDepFileSet)
-        ; RhsResult = found_all_prereqs(RhsDepFileSet)
+        ( RhsResult = could_not_find_some_prereqs(RhsTargetIdSet)
+        ; RhsResult = found_all_prereqs(RhsTargetIdSet)
         ),
         % XXX MAKE sort
-        RhsDepFiles = set.to_sorted_list(RhsDepFileSet),
+        RhsTargetIds = set.to_sorted_list(RhsTargetIdSet),
         % Build the files on the rhs.
         foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
-            RhsDepFiles, MakeRhsFilesSucceeded, !Info, !IO),
+            RhsTargetIds, MakeRhsFilesSucceeded, !Info, !IO),
         (
             MakeRhsFilesSucceeded = did_not_succeed,
             debug_make_msg(Globals,
@@ -247,13 +247,13 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
             LhsResult = rhs_error
         ;
             MakeRhsFilesSucceeded = succeeded,
-            % We succeeded in making RhsDepFiles. However, if there are
+            % We succeeded in making RhsTargetIds. However, if there are
             % prerequisities that we could not find, then we cannot build
             % the lhs files.
             (
                 RhsResult = found_all_prereqs(_),
                 must_or_should_we_rebuild_lhs(ProgressStream, Globals,
-                    TargetFile, TargetFileName, MakeLhsFiles, RhsDepFiles,
+                    TargetFile, TargetFileName, MakeLhsFiles, RhsTargetIds,
                     LhsResult, !Info, !IO)
             ;
                 RhsResult = could_not_find_some_prereqs(_),
@@ -265,7 +265,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         LhsResult = rhs_error,
         Succeeded = did_not_succeed,
         LhsTargetFiles = DatelessLhsTargetFiles ++ DatedLhsTargetFiles,
-        list.foldl(update_target_status(deps_status_error),
+        list.foldl(update_target_status(target_status_error),
             LhsTargetFiles, !Info)
     ;
         LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding),
@@ -288,7 +288,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         maybe_write_msg(ProgressStream, UpToDateDebugMsg, !IO),
         Succeeded = succeeded,
         LhsTargetFiles = DatelessLhsTargetFiles ++ DatedLhsTargetFiles,
-        list.foldl(update_target_status(deps_status_up_to_date),
+        list.foldl(update_target_status(target_status_up_to_date),
             [TargetFile | LhsTargetFiles], !Info)
     ).
 
@@ -719,10 +719,10 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
         Succeeded, TargetFile, TargetFileName, MakeLhsFiles, !Info, !IO) :-
     (
         Succeeded = succeeded,
-        TargetStatus = deps_status_up_to_date
+        TargetStatus = target_status_up_to_date
     ;
         Succeeded = did_not_succeed,
-        TargetStatus = deps_status_error,
+        TargetStatus = target_status_error,
         file_error_msg(TargetFileName, ErrorMsg),
         maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
     ),
@@ -779,14 +779,15 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
         TargetFileTimestampMap1, TargetFileTimestampMap),
     make_info_set_target_file_timestamp_map(TargetFileTimestampMap, !Info).
 
-:- pred update_target_status(dependency_status::in, target_file::in,
+:- pred update_target_status(target_status::in, target_file::in,
     make_info::in, make_info::out) is det.
 
 update_target_status(TargetStatus, TargetFile, !Info) :-
-    Dep = dep_target(TargetFile),
-    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
-    version_hash_table.set(Dep, TargetStatus, DepStatusMap0, DepStatusMap),
-    make_info_set_dep_file_status_map(DepStatusMap, !Info).
+    TargetId = merc_target(TargetFile),
+    TargetStatusMap0 = make_info_get_target_status_map(!.Info),
+    version_hash_table.set(TargetId, TargetStatus,
+        TargetStatusMap0, TargetStatusMap),
+    make_info_set_target_status_map(TargetStatusMap, !Info).
 
 :- pred delete_analysis_registry_timestamps(io.text_output_stream::in,
     globals::in, string::in, {list(dir_name), maybe_error(timestamp)}::in,

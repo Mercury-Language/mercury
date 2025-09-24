@@ -248,8 +248,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         filter_out_nested_modules(ProgressStream, Globals,
             ObjModules, ObjModulesNonnested, !Info, !IO),
         IntermediateTargetsNonnested =
-            make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
-        ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
+            make_target_id_list(ObjModulesNonnested, IntermediateTargetType),
+        ObjTargets = make_target_id_list(ObjModules, ObjectTargetType),
 
         list.map_foldl2(
             get_foreign_object_targets(ProgressStream, Globals, PIC),
@@ -472,7 +472,7 @@ collect_nested_modules(ProgressStream, Globals, ModuleName,
 %---------------------%
 
 :- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
-    pic::in, module_name::in, list(dependency_file)::out,
+    pic::in, module_name::in, list(target_id)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_object_targets(ProgressStream, Globals, PIC,
@@ -499,7 +499,7 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
         CompilationTarget = target_c,
         FactFileToTarget =
             ( func(FactFile) =
-                dep_target(target_file(ModuleName,
+                merc_target(target_file(ModuleName,
                     module_target_fact_table_object(PIC, FactFile)))
             ),
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
@@ -591,15 +591,15 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName,
 
     % Report errors if any of the extra objects aren't present.
     ObjectsToCheck = InitObjects ++ LinkObjects,
-    ObjectsToCheckDepFiles = list.map((func(F) = dep_file(F)), ObjectsToCheck),
+    ObjectsToCheckDepFiles =
+        list.map((func(F) = non_merc_target(F)), ObjectsToCheck),
     list.map_foldl2(
-        get_dependency_file_status(ProgressStream, NoLinkObjsGlobals),
+        get_target_id_status(ProgressStream, NoLinkObjsGlobals),
         ObjectsToCheckDepFiles, ExtraObjDepStatuses, !Info, !IO),
     ( if
         some [ExtraObjDepStatus] (
             list.member(ExtraObjDepStatus, ExtraObjDepStatuses),
-            ExtraObjDepStatus =
-                dependency_status_result(_, _, deps_status_error)
+            ExtraObjDepStatus = target_status_result(_, _, target_status_error)
         )
     then
         ExtraObjSucceeded = did_not_succeed
@@ -1081,8 +1081,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             then
                 Succeeded = did_not_succeed
             else
-                Targets =
-                    make_dependency_list(TargetModules, ModuleTargetType),
+                Targets = make_target_id_list(TargetModules, ModuleTargetType),
                 maybe_with_analysis_cache_dir_2(ProgressStream, Globals,
                     foldl2_make_module_targets_maybe_parallel_build2(KeepGoing,
                         [], Globals, Targets),
@@ -1140,7 +1139,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             Succeeded = did_not_succeed
         else
             XmlDocs =
-                make_dependency_list(TargetModules, module_target_xml_doc),
+                make_target_id_list(TargetModules, module_target_xml_doc),
             foldl2_make_module_targets(KeepGoing, [],
                 ProgressStream, Globals, XmlDocs, Succeeded1, !Info, !IO),
             Succeeded = Succeeded0 `and` Succeeded1
@@ -1164,13 +1163,13 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
     get_nonnested_and_parent_modules(ProgressStream, Globals, AllModules0,
         NonnestedModules, ParentModules, !Info, !IO),
 
-    Int3s = make_dependency_list(NonnestedModules, module_target_int3),
-    Int0s = make_dependency_list(ParentModules, module_target_int0),
-    Int1s = make_dependency_list(NonnestedModules, module_target_int1),
+    Int3s = make_target_id_list(NonnestedModules, module_target_int3),
+    Int0s = make_target_id_list(ParentModules, module_target_int0),
+    Int1s = make_target_id_list(NonnestedModules, module_target_int1),
     globals.get_any_intermod(Globals, AnyIntermod),
     (
         AnyIntermod = yes,
-        Opts = make_dependency_list(NonnestedModules, module_target_opt)
+        Opts = make_target_id_list(NonnestedModules, module_target_opt)
     ;
         AnyIntermod = no,
         Opts = []
@@ -1441,7 +1440,7 @@ build_analysis_files_2(ProgressStream, Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
     Registries =
-        make_dependency_list(TargetModules, module_target_analysis_registry),
+        make_target_id_list(TargetModules, module_target_analysis_registry),
     foldl2_make_module_targets(KeepGoing, LocalModulesOpts, ProgressStream,
         Globals, Registries, Succeeded1, !Info, !IO),
     % Maybe we should have an option to reanalyse cliques before moving
@@ -1532,10 +1531,10 @@ get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.condense(SccLists, Modules).
 
     % add_module_relations(LookupModuleImports, ModuleName,
-    %   !IntDepsRel, !ImplDepsRel)
+    %   !IntDepsRel, !ImpDepsRel)
     %
     % Add a module's interface and implementation dependencies to IntDepsRel
-    % and ImplDepsRel respectively. Dependencies are found using the
+    % and ImpDepsRel respectively. Dependencies are found using the
     % LookupModuleImports function.
     %
 :- pred add_module_relations(lookup_module_dep_info_func::in, module_name::in,
@@ -1543,10 +1542,10 @@ get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     digraph(module_name)::in, digraph(module_name)::out) is det.
 
 add_module_relations(LookupModuleImportsFunc, ModuleName,
-        !IntDepsGraph, !ImplDepsGraph) :-
+        !IntDepsGraph, !ImpDepsGraph) :-
     ModuleDepInfo = LookupModuleImportsFunc(ModuleName),
     add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImportsFunc,
-        !IntDepsGraph, !ImplDepsGraph).
+        !IntDepsGraph, !ImpDepsGraph).
 
 %---------------------------------------------------------------------------%
 
@@ -1597,11 +1596,12 @@ modules_needing_reanalysis(ReanalyseSuboptimal, Globals, [Module | Modules],
     make_info::in, make_info::out) is det.
 
 reset_analysis_registry_dependency_status(ModuleName, !Info) :-
-    Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)),
-    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
-    version_hash_table.set(Dep, deps_status_not_considered,
-        DepStatusMap0, DepStatusMap),
-    make_info_set_dep_file_status_map(DepStatusMap, !Info).
+    TargetFile = target_file(ModuleName, module_target_analysis_registry),
+    TargetId = merc_target(TargetFile),
+    TargetStatusMap0 = make_info_get_target_status_map(!.Info),
+    version_hash_table.set(TargetId, target_status_not_considered,
+        TargetStatusMap0, TargetStatusMap),
+    make_info_set_target_status_map(TargetStatusMap, !Info).
 
 %---------------------------------------------------------------------------%
 
