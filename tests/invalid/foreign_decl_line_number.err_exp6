@@ -1,0 +1,3 @@
+   24 | #error Error in foreign decl
+   28 | #error Error in foreign code
+   44 | #error Error in foreign proc
