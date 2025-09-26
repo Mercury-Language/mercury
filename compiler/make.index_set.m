@@ -36,50 +36,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % sparse_bitset is faster than tree_bitset by my tests.
-    %
-:- type index_set(T) == sparse_bitset(T).
-% :- type index_set(T) == tree_bitset(T).
-
-:- func index_set_init = index_set(T).
-
-:- pred index_set_insert(T::in, index_set(T)::in, index_set(T)::out)
-     is det <= uenum(T).
-:- pred index_set_delete(T::in, index_set(T)::in, index_set(T)::out)
-     is det <= uenum(T).
-
-:- func index_set_union(index_set(T), index_set(T)) = index_set(T).
-:- pred index_set_union(index_set(T)::in, index_set(T)::in, index_set(T)::out)
-    is det.
-
-:- func index_set_union_list(list(index_set(T))) = index_set(T).
-
-:- func index_set_difference(index_set(T), index_set(T)) = index_set(T).
-
-:- func list_to_index_set(list(T)) = index_set(T) <= uenum(T).
-:- pred list_to_index_set(list(T)::in, index_set(T)::out) is det <= uenum(T).
-
-:- func index_set_to_sorted_list(index_set(T)) = list(T) <= uenum(T).
-
-:- pred index_set_foldl(
-    pred(T, A, A)::in(pred(in, in, out) is det),
-    index_set(T)::in, A::in, A::out) is det <= uenum(T).
-
-:- pred index_set_foldl2(
-    pred(T, A, A, B, B)::in(pred(in, in, out, in, out) is det),
-    index_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
-
-:- pred index_set_member(T::in, index_set(T)::in) is semidet <= uenum(T).
-
-%---------------------------------------------------------------------------%
-
 :- type module_index.
 :- instance uenum(module_index).
 
 :- type target_id_index.
 :- instance uenum(target_id_index).
 
-:- type module_index_set == index_set(module_index).
+:- type module_index_set    == index_set(module_index).
 :- type target_id_index_set == index_set(target_id_index).
 
 %---------------------------------------------------------------------------%
@@ -124,6 +87,65 @@
     target_id_index_set::in, set(target_id)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- type index_set(T) == sparse_bitset(T).
+
+%---------------------%
+%
+% Creation, insertion, deletion.
+%
+
+:- func index_set_init = index_set(T).
+
+:- pred index_set_insert(T::in, index_set(T)::in, index_set(T)::out)
+     is det <= uenum(T).
+:- pred index_set_delete(T::in, index_set(T)::in, index_set(T)::out)
+     is det <= uenum(T).
+
+%---------------------%
+%
+% Membership test.
+%
+
+:- pred index_set_member(T::in, index_set(T)::in) is semidet <= uenum(T).
+
+%---------------------%
+%
+% Union and difference.
+%
+
+:- func index_set_union(index_set(T), index_set(T)) = index_set(T).
+:- pred index_set_union(index_set(T)::in, index_set(T)::in, index_set(T)::out)
+    is det.
+
+:- func index_set_union_list(list(index_set(T))) = index_set(T).
+
+:- func index_set_difference(index_set(T), index_set(T)) = index_set(T).
+
+%---------------------%
+%
+% Conversion from and to lists.
+%
+
+:- func list_to_index_set(list(T)) = index_set(T) <= uenum(T).
+:- pred list_to_index_set(list(T)::in, index_set(T)::out) is det <= uenum(T).
+
+:- func index_set_to_sorted_list(index_set(T)) = list(T) <= uenum(T).
+
+%---------------------%
+%
+% Folds.
+%
+
+:- pred index_set_foldl(
+    pred(T, A, A)::in(pred(in, in, out) is det),
+    index_set(T)::in, A::in, A::out) is det <= uenum(T).
+
+:- pred index_set_foldl2(
+    pred(T, A, A, B, B)::in(pred(in, in, out, in, out) is det),
+    index_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -135,50 +157,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Operations on index_sets.
-%
-
-index_set_init = sparse_bitset.init.
-
-index_set_insert(X, !Set) :-
-    sparse_bitset.insert(X, !Set).
-
-index_set_delete(X, !Set) :-
-    sparse_bitset.delete(X, !Set).
-
-index_set_union(SetA, SetB) = Set :-
-    Set = sparse_bitset.union(SetA, SetB).
-
-index_set_union(SetA, SetB, Set) :-
-    sparse_bitset.union(SetA, SetB, Set).
-
-index_set_union_list(Sets) = Set :-
-    Set = sparse_bitset.union_list(Sets).
-
-index_set_difference(SetA, SetB) = Set :-
-    Set = sparse_bitset.difference(SetA, SetB).
-
-list_to_index_set(List) = Set :-
-    Set = sparse_bitset.list_to_set(List).
-
-list_to_index_set(List, Set) :-
-    sparse_bitset.list_to_set(List, Set).
-
-index_set_to_sorted_list(Set) = SortedList :-
-    SortedList = sparse_bitset.to_sorted_list(Set).
-
-index_set_foldl(Pred, Set, !Acc1) :-
-    sparse_bitset.foldl(Pred, Set, !Acc1).
-
-index_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
-    sparse_bitset.foldl2(Pred, Set, !Acc1, !Acc2).
-
-index_set_member(Item, Set) :-
-    sparse_bitset.member(Item, Set).
-
-%---------------------------------------------------------------------------%
-%
-% Bitset indices.
+% Bitset index types.
 %
 
 :- type module_index
@@ -212,7 +191,7 @@ module_name_to_index(ModuleName, Index, !Info) :-
         version_hash_table.det_insert(ModuleName, Index,
             ForwardMap0, ForwardMap),
         RevSize0 = version_array.size(ReverseMap0),
-        ( if cast_to_int(USize) > RevSize0 then
+        ( if uint.cast_to_int(USize) > RevSize0 then
             RevSize = increase_array_size(RevSize0),
             version_array.resize(RevSize, ModuleName, ReverseMap0, ReverseMap)
         else
@@ -243,13 +222,13 @@ module_names_to_index_set_loop([ModuleName | ModuleNames], !Set, !Info) :-
     index_set_insert(ModuleIndex, !Set),
     module_names_to_index_set_loop(ModuleNames, !Set, !Info).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 module_index_to_name(Info, Index, ModuleName) :-
     make_info_get_module_index_map(Info) =
         module_index_map(_ForwardMap, ReverseMap, _Size),
-    Index = module_index(I),
-    ModuleName = version_array.lookup(ReverseMap, uint.cast_to_int(I)).
+    Index = module_index(U),
+    ModuleName = version_array.lookup(ReverseMap, uint.cast_to_int(U)).
 
 %---------------------%
 
@@ -327,25 +306,6 @@ acc_file_names_to_index_set(FileName, !TargetIdIndexSet, !Info) :-
     target_id_to_index(TargetId, TargetIdIndex, !Info),
     index_set_insert(TargetIdIndex, !TargetIdIndexSet).
 
-%---------------------------------------------------------------------------%
-
-:- pred index_to_target_id(make_info::in, target_id_index::in,
-    target_id::out) is det.
-
-index_to_target_id(Info, Index, TargetId) :-
-    make_info_get_target_id_index_map(Info) =
-        target_id_index_map(_ForwardMap, ReverseMap, _Size),
-    Index = target_id_index(I),
-    version_array.lookup(ReverseMap, cast_to_int(I), TargetId0),
-    (
-        TargetId0 = timi_merc(ModuleIndex, FileType),
-        module_index_to_name(Info, ModuleIndex, ModuleName),
-        TargetId = merc_target(target_file(ModuleName, FileType))
-    ;
-        TargetId0 = timi_non_merc(FileName),
-        TargetId = non_merc_target(FileName)
-    ).
-
 %---------------------%
 
 target_id_index_set_to_plain_set(Info, TargetIdIndexes, TargetIds) :-
@@ -359,6 +319,76 @@ target_id_index_set_to_plain_set(Info, TargetIdIndexes, TargetIds) :-
 acc_target_id_index_set_to_plain_set(Info, TargetIndex, !TargetIds) :-
     index_to_target_id(Info, TargetIndex, TargetId),
     !:TargetIds = [TargetId | !.TargetIds].
+
+:- pred index_to_target_id(make_info::in, target_id_index::in,
+    target_id::out) is det.
+
+index_to_target_id(Info, Index, TargetId) :-
+    make_info_get_target_id_index_map(Info) =
+        target_id_index_map(_ForwardMap, ReverseMap, _Size),
+    Index = target_id_index(U),
+    version_array.lookup(ReverseMap, uint.cast_to_int(U), TargetId0),
+    (
+        TargetId0 = timi_merc(ModuleIndex, FileType),
+        module_index_to_name(Info, ModuleIndex, ModuleName),
+        TargetId = merc_target(target_file(ModuleName, FileType))
+    ;
+        TargetId0 = timi_non_merc(FileName),
+        TargetId = non_merc_target(FileName)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Operations on index_sets.
+%
+
+index_set_init = sparse_bitset.init.
+
+%---------------------%
+
+index_set_insert(X, !Set) :-
+    sparse_bitset.insert(X, !Set).
+
+index_set_delete(X, !Set) :-
+    sparse_bitset.delete(X, !Set).
+
+%---------------------%
+
+index_set_member(Item, Set) :-
+    sparse_bitset.member(Item, Set).
+
+%---------------------%
+
+index_set_union(SetA, SetB) = Set :-
+    Set = sparse_bitset.union(SetA, SetB).
+
+index_set_union(SetA, SetB, Set) :-
+    sparse_bitset.union(SetA, SetB, Set).
+
+index_set_union_list(Sets) = Set :-
+    Set = sparse_bitset.union_list(Sets).
+
+index_set_difference(SetA, SetB) = Set :-
+    Set = sparse_bitset.difference(SetA, SetB).
+
+%---------------------%
+
+list_to_index_set(List) = Set :-
+    sparse_bitset.list_to_set(List, Set).
+
+list_to_index_set(List, Set) :-
+    sparse_bitset.list_to_set(List, Set).
+
+index_set_to_sorted_list(Set) = SortedList :-
+    SortedList = sparse_bitset.to_sorted_list(Set).
+
+%---------------------%
+
+index_set_foldl(Pred, Set, !Acc1) :-
+    sparse_bitset.foldl(Pred, Set, !Acc1).
+
+index_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
+    sparse_bitset.foldl2(Pred, Set, !Acc1, !Acc2).
 
 %---------------------------------------------------------------------------%
 :- end_module make.index_set.
