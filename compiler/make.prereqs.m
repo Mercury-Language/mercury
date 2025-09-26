@@ -126,6 +126,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module sparse_bitset.
 :- import_module string.
 
@@ -336,9 +337,42 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             !Info, !IO)
     ;
         TargetType = module_target_java_class_code,
-        PrereqSpec = self(module_target_java_code),
-        find_prereqs_from_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpec, Succeeded, Prereqs, !Info, !IO)
+        % Generating the .class file of a module obviously requires
+        % its .java file. However, it also seems to need the .java files
+        % of the modules it imports, directly or indirectly.
+        %
+        % For modules in other directories, such as standard library modules,
+        % we don't need to make them now, since they have been made by
+        % mmc --make invocations in those other directories.
+        % For the modules in the current directory, we want to make them now.
+        % This extra set of prerequisites fixes a whole bunch of test case
+        % failures in tests/{valid,valid_seq} in the java grade.
+        %
+        % XXX I (zs) don't know whether doing s/non_intermod/intermod/ on
+        % the specifications below would prevent any more test case failures.
+        % This is because for me the difference is moot, due to java bootchecks
+        % being slow enough that I don't usually do them with intermodule
+        % optimization enabled.
+        %
+        % NOTE When making executables or libraries in a java grade,
+        % make.program_target.m does NOT make the program's .class files
+        % one-by-one using this target. Instead, it gives all the .java files
+        % that do not have an up-to-date corresponding .class file to the
+        % Java compiler all in one invocation. The reason for this is that
+        % the Java compiler will generate .class code not just for the
+        % .java files on its command line, but also for any other reachable
+        % .java files that define classes that the command-line files refer to
+        % but do not define. This means that compiling the .java files
+        % of the program separately, one-by-one, could, about probably would,
+        % recompile many .java files many times.
+        PrereqSpecs = [
+            self(module_target_java_code),
+            direct_imports_non_intermod_local(module_target_java_code),
+            indirect_imports_non_intermod_local(module_target_java_code)
+        ],
+        find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         TargetType = module_target_fact_table_object(PIC, _),
         globals.get_target(Globals, CompilationTarget),
@@ -482,13 +516,32 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
     % a set of target_ids (actually, target_id_indexes).
     % The "indirect" part is there because they actually represent
     % a specification of a task for find_prereqs_from_spec, which will compute
-    % that set of dependency file indexes when given a prereq_spec.
+    % that set of target_id_indexes when given a prereq_spec.
+    %
+    % NOTE I (zs) considered using a local_modules_only wrapper around
+    % a prereq_spec to replace {direct,indirect}_imports_non_intermod_local,
+    % but this turns out to be a bad idea for two reasons.
+    %
+    % - First, the local-modules-only filter must be applied *between*
+    %   determining a set of maybe-local-or-maybe-not modules, and
+    %   converting the local module names' indexes to target_ids by adding
+    %   a target_type, which means that applying the filter *after* having
+    %   find_prereqs_from_spec return a target_id_index_set requires
+    %   first effectively converting each target_id_index back to
+    %   a module_index.
+    %
+    % - Second, one of the prereq_specs, self_foreign_incl_fact_table_files,
+    %   specifies target_ids that do not *have* a module name component,
+    %   and such targets therefore cannot reasonably be considered as
+    %   either having, or not having, a local Mercury source module.
     %
 :- type prereq_spec
     --->    self(module_target_type)
     ;       ancestors(module_target_type)
+    ;       direct_imports_non_intermod_local(module_target_type)
     ;       direct_imports_non_intermod(module_target_type)
     ;       direct_imports_intermod(module_target_type)
+    ;       indirect_imports_non_intermod_local(module_target_type)
     ;       indirect_imports_non_intermod(module_target_type)
     ;       indirect_imports_intermod(module_target_type)
     ;       intermod_imports(module_target_type)
@@ -571,6 +624,14 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
         module_names_to_index_set(Ancestors, ModuleIndexSet, !Info),
         timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
+        PrereqSpec = direct_imports_non_intermod_local(TargetType),
+        get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, Succeeded, ModuleIndexSet0, !Info, !IO),
+        ModuleIndexes0 = index_set_to_sorted_list(ModuleIndexSet0),
+        find_local_modules(ProgressStream, ModuleIndexes0,
+            index_set_init, ModuleIndexSet, !Info, !IO),
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
+    ;
         PrereqSpec = direct_imports_non_intermod(TargetType),
         get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
@@ -579,6 +640,14 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
         PrereqSpec = direct_imports_intermod(TargetType),
         get_direct_imports_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
+    ;
+        PrereqSpec = indirect_imports_non_intermod_local(TargetType),
+        get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, Succeeded, ModuleIndexSet0, !Info, !IO),
+        ModuleIndexes0 = index_set_to_sorted_list(ModuleIndexSet0),
+        find_local_modules(ProgressStream, ModuleIndexes0,
+            index_set_init, ModuleIndexSet, !Info, !IO),
         timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = indirect_imports_non_intermod(TargetType),
@@ -1210,8 +1279,9 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
     % from a directory far down a search path to create a reference
     % to a module that exists in the *current* directory, if its name
     % duplicates the name of a module in the .module_dep file's directory.
-    % This causes the failure of e.g. the warnings/bug311 test case,
-    % with the module in the current directory being time.m.
+    % This caused the failure of e.g. the warnings/bug311 test case,
+    % with the module in the current directory being time.m (until
+    % that module was renamed specially in order to avoid such failures).
     find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
         process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
         !Info, !IO),
@@ -1234,6 +1304,42 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
         io.write_string(ProgressStream,
             "trans impl imports list ends\n\n", !TIO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_local_modules(io.text_output_stream::in, list(module_index)::in,
+    module_index_set::in, module_index_set::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_local_modules(_ProgressStream, [], !LocalModuleIndexSet, !Info, !IO).
+find_local_modules(ProgressStream, [ModuleIndex | ModuleIndexes],
+        !LocalModuleIndexSet, !Info, !IO) :-
+    SrcIsLocalMap0 = make_info_get_module_src_is_local_map(!.Info),
+    ( if map.search(SrcIsLocalMap0, ModuleIndex, IsLocal0) then
+        (
+            IsLocal0 = src_is_in_cur_dir,
+            index_set_insert(ModuleIndex, !LocalModuleIndexSet)
+        ;
+            IsLocal0 = src_is_not_in_cur_dir
+        )
+    else
+        module_index_to_name(!.Info, ModuleIndex, ModuleName),
+        module_name_to_source_file_name(ModuleName, FileName, !IO),
+        io.open_input(FileName, OpenResult, !IO),
+        (
+            OpenResult = ok(InputStream),
+            io.close_input(InputStream, !IO),
+            index_set_insert(ModuleIndex, !LocalModuleIndexSet),
+            IsLocal = src_is_in_cur_dir
+        ;
+            OpenResult = error(_),
+            IsLocal = src_is_not_in_cur_dir
+        ),
+        map.det_insert(ModuleIndex, IsLocal, SrcIsLocalMap0, SrcIsLocalMap),
+        make_info_set_module_src_is_local_map(SrcIsLocalMap, !Info)
+    ),
+    find_local_modules(ProgressStream, ModuleIndexes,
+        !LocalModuleIndexSet, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

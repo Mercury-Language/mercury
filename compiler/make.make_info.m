@@ -227,6 +227,23 @@
 
 %---------------------------------------------------------------------------%
 
+    % Does the Mercury source file of a module exist in the current directory?
+    %
+    % NOTE Our current test will return src_is_in_cur_dir for any module
+    % which has its location recorded in Mercury.modules, even if its
+    % actual location is in a directory other than the current directory.
+    % However, the rest of the Mercury system does not handle such modules
+    % properly. (For example, when invoked on programs with such modules,
+    % mmake fails to create .d and .int* files for the non-current-directory
+    % modules.) Until this is fixed, we can assume that non-current-directory
+    % locations will not appear in Mercury.modules files in practice.
+    %
+:- type src_cur_dir
+    --->    src_is_not_in_cur_dir
+    ;       src_is_in_cur_dir.
+
+%---------------------------------------------------------------------------%
+
 :- type make_info.
 
 :- func init_make_info(env_optfile_variables, maybe_stdlib_grades,
@@ -269,6 +286,8 @@
 :- func make_info_get_anc0_dir1_indir2_intermod_cache(make_info) =
     module_to_target_id_set_cache.
 :- func make_info_get_trans_prereqs_cache(make_info) = trans_prereqs_cache.
+:- func make_info_get_module_src_is_local_map(make_info) =
+    map(module_index, src_cur_dir).
 
 :- pred make_info_set_option_args(list(string)::in,
     make_info::in, make_info::out) is det.
@@ -317,6 +336,9 @@
     module_to_target_id_set_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_trans_prereqs_cache(trans_prereqs_cache::in,
+    make_info::in, make_info::out) is det.
+:- pred make_info_set_module_src_is_local_map(
+    map(module_index, src_cur_dir)::in,
     make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -457,7 +479,11 @@
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
                 % XXX zs: What sets?
-                mki_trans_prereqs_cache     :: trans_prereqs_cache
+                mki_trans_prereqs_cache     :: trans_prereqs_cache,
+
+                % Maps modules for which we have tested whether their source
+                % file is the current module to the result of that test.
+                mki_module_src_is_local_map :: map(module_index, src_cur_dir)
             ).
 
 init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
@@ -469,6 +495,7 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
     ShouldRebuildModuleDeps = do_rebuild_module_deps,
     MaybeImportingModule = maybe.no,
     MaybeStdoutLock = maybe.no,
+    map.init(SrcCurDirMap),
     MakeInfo = make_info(
         EnvOptFileVariables,
         MaybeStdLibGrades,
@@ -494,7 +521,8 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         init_module_to_module_set_cache,
 %       init_module_to_target_id_set_cache,
         init_module_to_target_id_set_cache,
-        init_trans_prereqs_cache
+        init_trans_prereqs_cache,
+        SrcCurDirMap
     ).
 
 make_info_get_env_optfile_variables(Info) = X :-
@@ -547,6 +575,8 @@ make_info_get_anc0_dir1_indir2_intermod_cache(Info) = X :-
     X = Info ^ mki_anc0_dir1_indir2_intermod_cache.
 make_info_get_trans_prereqs_cache(Info) = X :-
     X = Info ^ mki_trans_prereqs_cache.
+make_info_get_module_src_is_local_map(Info) = X :-
+    X = Info ^ mki_module_src_is_local_map.
 
 make_info_set_option_args(X, !Info) :-
     !Info ^ mki_option_args := X.
@@ -588,6 +618,8 @@ make_info_set_anc0_dir1_indir2_intermod_cache(X, !Info) :-
     !Info ^ mki_anc0_dir1_indir2_intermod_cache := X.
 make_info_set_trans_prereqs_cache(X, !Info) :-
     !Info ^ mki_trans_prereqs_cache := X.
+make_info_set_module_src_is_local_map(X, !Info) :-
+    !Info ^ mki_module_src_is_local_map := X.
 
 %---------------------------------------------------------------------------%
 :- end_module make.make_info.
