@@ -102,8 +102,7 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         Succeeded = succeeded,
         ModuleIndexSet = ModuleIndexSet0
     else if
-        Key = trans_prereqs_key(ModuleIndex, WhichDeps,
-            ProcessModulesWhere),
+        Key = trans_prereqs_key(ModuleIndex, WhichDeps, ProcessModulesWhere),
         search_trans_prereqs_cache(!.Info, Key, Result0)
     then
         Result0 = prereqs_result(Succeeded, ModuleIndexSet1),
