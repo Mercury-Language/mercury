@@ -1,8 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-
+%
 % Test the parsing of numeric literals from strings.
+%
+% The .exp file is for C grades.
+% The .exp2 file is for Java grades.
+% The .exp3 file is for C# grades.
+%
+%---------------------------------------------------------------------------%
 
 :- module parse_number_from_string.
 :- interface.
