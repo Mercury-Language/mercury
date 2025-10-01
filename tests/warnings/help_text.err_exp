@@ -3697,6 +3697,7 @@ Options for developers only
     --unused-statevar-warn-2025-05-16
     --allow-non-contig-for-2025-06-01
     --subtype-int2-2025-07-07
+    --inrange-2025-10-01
         Is the compiler sufficiently recent to contain the new feature or
         bugfix referred to by each name?
 

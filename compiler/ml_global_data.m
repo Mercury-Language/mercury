@@ -572,6 +572,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = logical_or
         ; Op = int_cmp(_, _)
         ; Op = int_as_uint_cmp(_)
+        ; Op = in_range
         ; Op = float_cmp(_)
         ; Op = str_cmp(_)
         ; Op = offset_str_eq(_, _)

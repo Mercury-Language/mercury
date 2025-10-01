@@ -705,7 +705,12 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         mlds_output_bracketed_rval(Opts, Stream, Y, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = int_as_uint_cmp(CmpOp),
+        (
+            Op = int_as_uint_cmp(CmpOp)
+        ;
+            Op = in_range,
+            CmpOp = lt
+        ),
         OpStr = cmp_op_c_operator(coerce(CmpOp)),
         io.write_string(Stream, "(((MR_Unsigned) ", !IO),
         mlds_output_rval_as_unsigned_op_arg(Opts, Stream, 2147483647, X, !IO),

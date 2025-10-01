@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -504,9 +504,14 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         ),
         output_int_misc_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
     ;
-        Op = int_as_uint_cmp(CmpOp),
-        ( CmpOp = lt, OpStr = "<"
-        ; CmpOp = le, OpStr = "<="
+        (
+            Op = int_as_uint_cmp(CmpOp),
+            ( CmpOp = lt, OpStr = "<"
+            ; CmpOp = le, OpStr = "<="
+            )
+        ;
+            Op = in_range,
+            OpStr = "<"
         ),
         io.write_string(Stream, "((uint) ", !IO),
         output_rval_for_csharp(Info, X, Stream, !IO),

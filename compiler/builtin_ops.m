@@ -155,6 +155,16 @@
             % binary(int_as_uint_cmp_op(le), int_const(1), int_const(-1))
             % returns true, since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
+    ;       in_range
+            % Tests for "0 =< Index, Index < Range". On Java, that is its
+            % implementation, while for C and C#, it is implemented the same
+            % as int_as_uint_cmp_op(lt). The reason for the difference is
+            % that in C and C#, the int->uint cast is free, while in Java
+            % it requires masking both operands. That makes it unclear
+            % which approach to range tests is faster in Java. The only way
+            % to decide is to benchmark both approaches, which requires
+            % both to be implemented.
+
     ;       float_arith(float_arith_op)
     ;       float_cmp(cmp_op)
             % Note that we do not have primitive operations in library/float.m
@@ -411,6 +421,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         ;
             ( PredName = "unsigned_lt",       CmpOp = int_as_uint_cmp(lt)
             ; PredName = "unsigned_le",       CmpOp = int_as_uint_cmp(le)
+            ; PredName = "in_range",          CmpOp = in_range
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary_test(CmpOp, X, Y))

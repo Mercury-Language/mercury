@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1790,6 +1790,7 @@ binop_return_type(offset_str_eq(_, _), lt_bool).
 binop_return_type(str_cmp(_), lt_bool).
 binop_return_type(str_nzp, lt_int(int_type_int)).
 binop_return_type(int_as_uint_cmp(_), lt_bool).
+binop_return_type(in_range, lt_bool).
 binop_return_type(float_arith(_), lt_float).
 binop_return_type(float_cmp(_), lt_bool).
 binop_return_type(float_from_dword,  lt_float).

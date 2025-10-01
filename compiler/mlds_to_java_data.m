@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -550,6 +550,15 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             output_rval_for_java(Info, Y, Stream, !IO),
             io.write_string(Stream, " & 0xffffffffL))", !IO)
         )
+    ;
+        Op = in_range,
+        io.write_string(Stream, "((0 <= ", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") && (", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, " < ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
     ;
         ( Op = logical_and,             OpStr = "&&"
         ; Op = logical_or,              OpStr = "||"
