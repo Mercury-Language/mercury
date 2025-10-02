@@ -156,7 +156,7 @@
     --->    header_mh    % For `:- pragma foreign_export' declarations.
     ;       header_mih.  % Declarations for hlc grades, for compiler use only.
 
-% :- type linked_target_type is in compile_target_code.m.
+% :- type linked_target_type is in link_target_code.m.
 
 :- type misc_target_type
     --->    misc_target_clean
