@@ -2046,6 +2046,13 @@ is_empty(Array) :-
 
 in_bounds(Array, Index) :-
     array.bounds(Array, Min, Max),
+    % We cannot apply private_builtin.in_range directly because
+    % the minimum index value is not zero.
+    %
+    % We *could* apply private_builtin.in_range indirectly
+    % by subtracting Min from both Index and Max, but two subtractions
+    % and an unsigned comparison is not that likely to be faster than two
+    % comparisons.
     Min =< Index, Index =< Max.
 
 %---------------------------------------------------------------------------%

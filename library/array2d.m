@@ -277,9 +277,11 @@ bounds(array2d(NumRows, NumColumns, _A), NumRows, NumColumns).
 
 %---------------------------------------------------------------------------%
 
+:- pragma inline(pred(in_bounds/3)).
+
 in_bounds(array2d(NumRows, NumColumns, _A), R, C) :-
-    0 =< R, R < NumRows,
-    0 =< C, C < NumColumns.
+    private_builtin.in_range(R, NumRows),
+    private_builtin.in_range(C, NumColumns).
 
 %---------------------------------------------------------------------------%
 
