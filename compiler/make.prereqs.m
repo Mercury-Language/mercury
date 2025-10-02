@@ -1317,10 +1317,10 @@ find_local_modules(ProgressStream, [ModuleIndex | ModuleIndexes],
     SrcIsLocalMap0 = make_info_get_module_src_is_local_map(!.Info),
     ( if map.search(SrcIsLocalMap0, ModuleIndex, IsLocal0) then
         (
-            IsLocal0 = src_is_in_cur_dir,
+            IsLocal0 = src_is_local,
             index_set_insert(ModuleIndex, !LocalModuleIndexSet)
         ;
-            IsLocal0 = src_is_not_in_cur_dir
+            IsLocal0 = src_is_not_local
         )
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
@@ -1330,10 +1330,10 @@ find_local_modules(ProgressStream, [ModuleIndex | ModuleIndexes],
             OpenResult = ok(InputStream),
             io.close_input(InputStream, !IO),
             index_set_insert(ModuleIndex, !LocalModuleIndexSet),
-            IsLocal = src_is_in_cur_dir
+            IsLocal = src_is_local
         ;
             OpenResult = error(_),
-            IsLocal = src_is_not_in_cur_dir
+            IsLocal = src_is_not_local
         ),
         map.det_insert(ModuleIndex, IsLocal, SrcIsLocalMap0, SrcIsLocalMap),
         make_info_set_module_src_is_local_map(SrcIsLocalMap, !Info)

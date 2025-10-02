@@ -227,20 +227,38 @@
 
 %---------------------------------------------------------------------------%
 
-    % Does the Mercury source file of a module exist in the current directory?
+    % Does the Mercury source file of a module exist either
     %
-    % NOTE Our current test will return src_is_in_cur_dir for any module
-    % which has its location recorded in Mercury.modules, even if its
-    % actual location is in a directory other than the current directory.
-    % However, the rest of the Mercury system does not handle such modules
-    % properly. (For example, when invoked on programs with such modules,
-    % mmake fails to create .d and .int* files for the non-current-directory
-    % modules.) Until this is fixed, we can assume that non-current-directory
-    % locations will not appear in Mercury.modules files in practice.
+    % - in Mercury.modules, or
+    % - in the current directory?
     %
-:- type src_cur_dir
-    --->    src_is_not_in_cur_dir
-    ;       src_is_in_cur_dir.
+    % Given a module named say module_a, we use values of this type to decide,
+    % for each module imported by module_a, directly or indirectly, whether
+    % we should require its .java file to be built before we compile
+    % module_a.java to module_a.class. The idea is that it *the responsibility
+    % to build module_b.java* that is local to this invocation of mmc --make.
+    % We assume that src_is_not_local modules are in libraries that we are
+    % now using, meaning that their .java files should have been built
+    % when the library itself was built.
+    %
+    % We do not normally build .class files one by one. In java grades,
+    % the make_linked_target_2 predicate in make.program_target.m invokes
+    % make_class_files_for_all_program_modules, which first (re)builds
+    % all java files in the program, and then compiles them to .class files.
+    % The only situation in which values of this type come into play is
+    % when a java grade compilation wants to generate .class files but
+    % does not want to proceed to build an executable or library.
+    % This happens e.g. when we execute the test cases in tests/valid.
+    %
+    % NOTE The mmake script cannot handle properly situations in which
+    % Mercury.options contains references to modules whose sources are
+    % in a directory other than the current directory. For example, when
+    % invoked on programs with such modules, mmake fails to create .d
+    % and .int* files for the non-current-directory modules.
+    %
+:- type is_src_local
+    --->    src_is_not_local
+    ;       src_is_local.
 
 %---------------------------------------------------------------------------%
 
@@ -287,7 +305,7 @@
     module_to_target_id_set_cache.
 :- func make_info_get_trans_prereqs_cache(make_info) = trans_prereqs_cache.
 :- func make_info_get_module_src_is_local_map(make_info) =
-    map(module_index, src_cur_dir).
+    map(module_index, is_src_local).
 
 :- pred make_info_set_option_args(list(string)::in,
     make_info::in, make_info::out) is det.
@@ -338,7 +356,7 @@
 :- pred make_info_set_trans_prereqs_cache(trans_prereqs_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_module_src_is_local_map(
-    map(module_index, src_cur_dir)::in,
+    map(module_index, is_src_local)::in,
     make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -483,7 +501,7 @@
 
                 % Maps modules for which we have tested whether their source
                 % file is the current module to the result of that test.
-                mki_module_src_is_local_map :: map(module_index, src_cur_dir)
+                mki_module_src_is_local_map :: map(module_index, is_src_local)
             ).
 
 init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,

@@ -275,9 +275,9 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 BuildDepsSucceeded0 = succeeded,
                 (
                     ObjectTargetType = module_target_java_class_code,
-                    make_class_files_for_all_program_modules(ProgressStream, Globals,
-                        MainModuleName, ProgModules, BuildJavaSucceeded,
-                        !Info, !IO),
+                    make_class_files_for_all_program_modules(ProgressStream,
+                        Globals, MainModuleName, ProgModules,
+                        BuildJavaSucceeded, !Info, !IO),
                     (
                         BuildJavaSucceeded = succeeded,
                         % Disable the `--rebuild' option during this pass,
