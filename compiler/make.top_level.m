@@ -304,73 +304,6 @@ classify_extstr_target(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
             TopTargetFile)
     ).
 
-:- pred mapped_extension_top_target_file(globals::in, string::in, string::in,
-    top_target_file::out) is semidet.
-
-mapped_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
-        TopTargetFile) :-
-    get_linked_target_ext_map(Globals, LinkedtargetExtMap),
-    map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
-    LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
-    % target_type_to_maybe_target_extension and the following code represent
-    % the same relationship between targets and suffixes, but in different
-    % directions, and for slightly different sets of targets. (For example,
-    % there is no extension that generates module_target_fact_table_object
-    % as a target.) Where they talk about the same targets, their codes
-    % should be kept in sync.
-    (
-        (
-            LinkedTargetKind = ltk_object_file,
-            ModuleTargetType = module_target_object_code(non_pic)
-        ;
-            LinkedTargetKind = ltk_pic_object_file,
-            ModuleTargetType = module_target_object_code(pic)
-        ),
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = module_target(ModuleTargetType)
-    ;
-        (
-            LinkedTargetKind = ltk_all_object_file,
-            ModuleTargetType = module_target_object_code(non_pic)
-        ;
-            LinkedTargetKind = ltk_all_pic_object_file,
-            ModuleTargetType = module_target_object_code(pic)
-        ),
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_build_all(ModuleTargetType))
-    ;
-        LinkedTargetKind = ltk_executable,
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = linked_target(get_executable_type(Globals))
-    ;
-        (
-            LinkedTargetKind = ltk_static_library,
-            TargetType = linked_target(static_library)
-        ;
-            LinkedTargetKind = ltk_shared_library,
-            TargetType = linked_target(shared_library)
-        ;
-            LinkedTargetKind = ltk_library_install,
-            TargetType = misc_target(misc_target_install_library)
-        ;
-            LinkedTargetKind = ltk_library_install_gs_gas,
-            TargetType = misc_target(misc_target_install_library_gs_gas)
-        ),
-        string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
-    ),
-    file_name_to_module_name(ModuleNameStr, ModuleName),
-    TopTargetFile = top_target_file(ModuleName, TargetType).
-
-:- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
-
-search_backwards_for_dot(String, Index, DotIndex) :-
-    string.unsafe_prev_index(String, Index, CharIndex, Char),
-    ( if Char = ('.') then
-        DotIndex = CharIndex
-    else
-        search_backwards_for_dot(String, CharIndex, DotIndex)
-    ).
-
 :- pred fixed_extension_top_target_file(string::in, string::in,
     top_target_file::out) is semidet.
 
@@ -588,6 +521,75 @@ fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
     ),
     file_name_to_module_name(ModuleNameStr, ModuleName),
     TopTargetFile = top_target_file(ModuleName, TargetType).
+
+:- pred mapped_extension_top_target_file(globals::in, string::in, string::in,
+    top_target_file::out) is semidet.
+
+mapped_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
+        TopTargetFile) :-
+    get_linked_target_ext_map(Globals, LinkedtargetExtMap),
+    map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
+    LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
+    % target_type_to_maybe_target_extension and the following code represent
+    % the same relationship between targets and suffixes, but in different
+    % directions, and for slightly different sets of targets. (For example,
+    % there is no extension that generates module_target_fact_table_object
+    % as a target.) Where they talk about the same targets, their codes
+    % should be kept in sync.
+    (
+        (
+            LinkedTargetKind = ltk_object_file,
+            ModuleTargetType = module_target_object_code(non_pic)
+        ;
+            LinkedTargetKind = ltk_pic_object_file,
+            ModuleTargetType = module_target_object_code(pic)
+        ),
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = module_target(ModuleTargetType)
+    ;
+        (
+            LinkedTargetKind = ltk_all_object_file,
+            ModuleTargetType = module_target_object_code(non_pic)
+        ;
+            LinkedTargetKind = ltk_all_pic_object_file,
+            ModuleTargetType = module_target_object_code(pic)
+        ),
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = misc_target(misc_target_build_all(ModuleTargetType))
+    ;
+        LinkedTargetKind = ltk_executable,
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = linked_target(get_executable_type(Globals))
+    ;
+        (
+            LinkedTargetKind = ltk_static_library,
+            TargetType = linked_target(static_library)
+        ;
+            LinkedTargetKind = ltk_shared_library,
+            TargetType = linked_target(shared_library)
+        ;
+            LinkedTargetKind = ltk_library_install,
+            TargetType = misc_target(misc_target_install_library)
+        ;
+            LinkedTargetKind = ltk_library_install_gs_gas,
+            TargetType = misc_target(misc_target_install_library_gs_gas)
+        ),
+        string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
+    ),
+    file_name_to_module_name(ModuleNameStr, ModuleName),
+    TopTargetFile = top_target_file(ModuleName, TargetType).
+
+%---------------------------------------------------------------------------%
+
+:- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
+
+search_backwards_for_dot(String, Index, DotIndex) :-
+    string.unsafe_prev_index(String, Index, CharIndex, Char),
+    ( if Char = ('.') then
+        DotIndex = CharIndex
+    else
+        search_backwards_for_dot(String, CharIndex, DotIndex)
+    ).
 
 :- func get_executable_type(globals) = linked_target_type.
 
