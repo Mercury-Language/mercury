@@ -2104,7 +2104,7 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
             ;
                 OpModeFrontAndMiddle = opfam_target_and_object_code_only,
                 disable_smart_recompilation(ProgressStream,
-                    "making target language files", !Globals, !IO)
+                    "compiling target language files", !Globals, !IO)
             ;
                 OpModeFrontAndMiddle = opfam_target_object_and_executable,
                 disable_smart_recompilation(ProgressStream,
