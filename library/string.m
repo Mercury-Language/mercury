@@ -2614,7 +2614,7 @@ duplicate_char(Char, Count, String) :-
 
 index(Str, Index, Char) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index, Len) then
+    ( if private_builtin.in_range(Index, Len) then
         unsafe_index(Str, Index, Char)
     else
         fail
@@ -2683,7 +2683,7 @@ index_next(Str, Index, NextIndex, Char) :-
 
 index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index, Len) then
+    ( if private_builtin.in_range(Index, Len) then
         unsafe_index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced)
     else
         fail
@@ -2777,7 +2777,7 @@ prev_index(Str, Index, PrevIndex, Char) :-
 
 prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index - 1, Len) then
+    ( if private_builtin.in_range(Index - 1, Len) then
         unsafe_prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced)
     else
         fail
@@ -2880,35 +2880,6 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
 
 %---------------------%
 
-    % XXX We should consider making this routine a compiler built-in.
-    %
-:- pred string_index_is_in_bounds(int::in, int::in) is semidet.
-
-:- pragma foreign_proc("C",
-    string_index_is_in_bounds(Index::in, Length::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    // We do not test for negative values of Index because (a) MR_Unsigned
-    // is unsigned and hence a negative argument will appear as a very large
-    // positive one after the cast and (b) anybody dealing with the case
-    // where strlen(Str) > MAXINT is clearly barking mad (and one may well get
-    // an integer overflow error in this case).
-    SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
-").
-:- pragma foreign_proc("C#",
-    string_index_is_in_bounds(Index::in, Length::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = ((uint) Index < (uint) Length);
-").
-
-string_index_is_in_bounds(Index, Length) :-
-    Index >= 0,
-    Index < Length.
-
-%---------------------%
-
 :- pragma foreign_proc("C",
     unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2944,7 +2915,7 @@ set_char(Char, Index, Str0, Str) :-
         unexpected($pred, "surrogate code point")
     else
         Len0 = string.count_code_units(Str0),
-        ( if string_index_is_in_bounds(Index, Len0) then
+        ( if private_builtin.in_range(Index, Len0) then
             unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
         else
             fail

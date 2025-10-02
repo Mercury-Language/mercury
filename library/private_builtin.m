@@ -147,8 +147,17 @@
 :- pred builtin_uint64_lt(uint64::in, uint64::in) is semidet.
 :- pred builtin_uint64_gt(uint64::in, uint64::in) is semidet.
 
+    % Compare two integers after casting both to unsigned.
+    %
 :- pred unsigned_lt(int::in, int::in) is semidet.
 :- pred unsigned_le(int::in, int::in) is semidet.
+
+    % in_range(X, Max) is true if and only if 0 <= X, X < Max.
+    %
+    % Implemented as the above test when targeting Java,
+    % and as unsigned_lt(X, Max) when targeting C or C#.
+    %
+:- pred in_range(int::in, int::in) is semidet.
 
     % A "typed" version of unify/2 -- i.e. one that can handle arguments
     % of different types. It first unifies their types, and then (if the types
