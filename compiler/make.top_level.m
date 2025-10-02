@@ -295,7 +295,7 @@ classify_target(Globals, TargetName, TopTargetFile) :-
 
 classify_extstr_target(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
     ( if
-        fixed_extension_top_target_file(ModuleNameStr0, ExtStr,
+        fixed_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
             TopTargetFilePrime)
     then
         TopTargetFile = TopTargetFilePrime
@@ -304,10 +304,11 @@ classify_extstr_target(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
             TopTargetFile)
     ).
 
-:- pred fixed_extension_top_target_file(string::in, string::in,
+:- pred fixed_extension_top_target_file(globals::in, string::in, string::in,
     top_target_file::out) is semidet.
 
-fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
+fixed_extension_top_target_file(Globals, ModuleNameStr, ExtStr,
+        TopTargetFile) :-
     (
         (
             ExtStr = ".m",
@@ -357,6 +358,9 @@ fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
             ExtStr = ".class",
             ModuleTarget = module_target_java_class_code
         ;
+            ExtStr = ".target",
+            grade_specific_target_type(Globals, ModuleTarget)
+        ;
             ExtStr = ".track_flags",
             ModuleTarget = module_target_track_flags
         ;
@@ -393,6 +397,8 @@ fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
         ; ExtStr = ".javas"
         ; ExtStr = ".all_classs"
         ; ExtStr = ".classs"
+        ; ExtStr = ".targets"
+        ; ExtStr = ".all_targets"
         ; ExtStr = ".all_track_flagss"
         ; ExtStr = ".track_flagss"
         ; ExtStr = ".all_xmls"
@@ -481,6 +487,11 @@ fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
             ),
             ModuleTarget = module_target_java_class_code
         ;
+            ( ExtStr = ".targets"
+            ; ExtStr = ".all_targets"
+            ),
+            grade_specific_target_type(Globals, ModuleTarget)
+        ;
             ( ExtStr = ".all_track_flagss"
             ; ExtStr = ".track_flagss"
             ),
@@ -521,6 +532,36 @@ fixed_extension_top_target_file(ModuleNameStr, ExtStr, TopTargetFile) :-
     ),
     file_name_to_module_name(ModuleNameStr, ModuleName),
     TopTargetFile = top_target_file(ModuleName, TargetType).
+
+    % XXX This predicate is intended to allow the tests in the recompilation
+    % directory to build target files *without* compiling or linking them,
+    % thus avoiding the disabling of smart recompilation by the
+    % maybe_disable_smart_recompilation predicate in handle_options.m.
+    % However, that would be worthwhile only *after* the infrastructure
+    % of that test directory has been converted to use mmc --make directly,
+    % *without* going through mmake.
+    %
+    % The extensions that this predicate is used for will need to be documented
+    % only when that actually happens.
+    %
+    % For more info, see the comment in tests/recompilation/Mmakefile
+    % on the code that disables all the tests there in Java and C# grades.
+    %
+:- pred grade_specific_target_type(globals::in, module_target_type::out)
+    is det.
+
+grade_specific_target_type(Globals, ModuleTargetType) :-
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        ModuleTargetType = module_target_c_code
+    ;
+        Target = target_java,
+        ModuleTargetType = module_target_java_code
+    ;
+        Target = target_csharp,
+        ModuleTargetType = module_target_csharp_code
+    ).
 
 :- pred mapped_extension_top_target_file(globals::in, string::in, string::in,
     top_target_file::out) is semidet.

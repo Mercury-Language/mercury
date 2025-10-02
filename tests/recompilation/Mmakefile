@@ -51,7 +51,35 @@ PROGS = \
 	$(NO_PARALLEL_MAKE_TESTS) \
 	$(TESTS_SHOULD_FAIL)
 
-TESTS = $(sort $(PROGS:%=%-nodepend))
+# Disable all the tests in this directory in C# and Java grades.
+# The reason for this is that
+#
+# - these grades *have* to use mmc --make;
+#
+# - mmc --make builds object files and executables by invoking the target
+#   language compiler and the linker from mmc, while mmake builds them
+#   by invoking the target language compiler and the linker from make actions;
+#
+# - this means that with mmc --make, the op_mode of compiler invocations
+#   that build executables is opfam_target_object_and_executable;
+#
+# - maybe_disable_smart_recompilation in handle_options.m explicitly disables
+#   smart recompilation for such op_modes; and
+#
+# - testing smart recompilation after it has been disabled is futile.
+#
+# The root cause seems to be that although smart recompilation was intended
+# to be used with mmc --make, its test infrastructure uses mmake, and was
+# never updated to use mmc --make directly.
+#
+# In that update, the use of modulename.targets, instead of e.g.
+# modulename.javas, could help.
+
+ifeq "$(filter csharp% java%,$(GRADE))" ""
+	TESTS = $(sort $(PROGS:%=%-nodepend))
+else
+	TESTS =
+endif
 include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they
