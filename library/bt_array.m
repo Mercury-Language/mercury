@@ -117,8 +117,7 @@
     %
 :- pred bounds(bt_array(_T)::in, int::out, int::out) is det.
 
-    % in_bounds checks whether an index is in the bounds
-    % of a bt_array.
+    % in_bounds checks whether an index is in the bounds of a bt_array.
     %
 :- pred in_bounds(bt_array(_T)::in, int::in) is semidet.
 
@@ -156,8 +155,7 @@
     % time proportional to the larger of the two bt_arrays.
     %
 :- func shrink(bt_array(T), int, int) = bt_array(T).
-:- pred shrink(int::in, int::in, bt_array(T)::in, bt_array(T)::out)
-    is det.
+:- pred shrink(int::in, int::in, bt_array(T)::in, bt_array(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -172,9 +170,8 @@
 :- func from_list(int, list(T)) = bt_array(T).
 :- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.
 
-    % to_list takes a bt_array and returns a list containing
-    % the elements of the bt_array in the same order that they occurred
-    % in the bt_array.
+    % to_list takes a bt_array and returns a list containing the elements
+    % of the bt_array in the same order that they occurred in the bt_array.
     %
 :- func to_list(bt_array(T)) = list(T).
 :- pred to_list(bt_array(T)::in, list(T)::out) is det.
@@ -210,9 +207,6 @@
 :- type bt_array(T)
     --->    bt_array(int, int, ra_list(T)).
             % The lower bound, the upper bound, and the elements.
-            %
-            % The ra_list (short for random-access list) type is defined
-            % at the bottom of this module.
 
 :- pred actual_position(int::in, int::in, int::in, int::out) is det.
 :- pragma inline(pred(actual_position/4)).
@@ -487,8 +481,7 @@ bsearch_loop(A, Lo, Hi, SearchX, Compare, I) :-
         % We calculate Mid this way to avoid overflow, and because it works
         % even if Lo, and maybe Hi, is negative.
         Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
-        % The right shift by one bit is a fast implementation
-        % of division by 2.
+        % The right shift by one bit is a fast implementation of division by 2.
         lookup(A, Mid, MidX),
         Compare(MidX, SearchX, Comp),
         (
