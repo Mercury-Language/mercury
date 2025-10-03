@@ -14,8 +14,8 @@
 % http://pracrand.sourceforge.net/
 %
 % From the above:
-% "[A] good small chaotic RNG driven by a bad smaller linear RNG. The
-% combination gives it the strengths of each - good chaotic behavior,
+% "[A] good small chaotic RNG driven by a bad smaller linear RNG.
+% The combination gives it the strengths of each - good chaotic behavior,
 % but enough structure to avoid short cycles."
 %
 %---------------------------------------------------------------------------%
@@ -32,8 +32,8 @@
 
 :- instance random(random).
 
-    % Initialise a 16-bit SFC generator with the default seed. The
-    % resulting generator produces the same sequence every time.
+    % Initialise a 16-bit SFC generator with the default seed.
+    % The resulting generator produces the same sequence every time.
     %
 :- func init = random.
 
