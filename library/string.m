@@ -1626,6 +1626,10 @@
 % Converting values of builtin types to strings.
 %
 
+%---------------------%
+% Converting chars to strings.
+
+
     % char_to_string(Char, String):
     %
     % Converts a character to a string, or vice versa.
@@ -1647,15 +1651,10 @@
     %
 :- func from_char(char::in) = (string::uo) is det.
 
-    % Convert an integer to a string in base 10.
-    % See int_to_base_string for the string format.
-    %
-:- func int_to_string(int::in) = (string::uo) is det.
-:- pred int_to_string(int::in, string::uo) is det.
+%---------------------%
+% Converting integers to strings.
 
-    % A synonym for int_to_string/1.
-    %
-:- func from_int(int::in) = (string::uo) is det.
+% The more complex conversions that build on the simpler conversions below.
 
     % int_to_base_string(Int, Base, String):
     %
@@ -1689,6 +1688,18 @@
     %
 :- func int_to_base_string_group(int, int, int, string) = string.
 :- mode int_to_base_string_group(in, in, in, in) = uo is det.
+
+% The simpler conversions.
+
+    % Convert an integer to a string in base 10.
+    % See int_to_base_string for the string format.
+    %
+:- func int_to_string(int::in) = (string::uo) is det.
+:- pred int_to_string(int::in, string::uo) is det.
+
+    % A synonym for int_to_string/1.
+    %
+:- func from_int(int::in) = (string::uo) is det.
 
     % Convert an unsigned integer to a string in base 10.
     %
@@ -1735,6 +1746,9 @@
     %
 :- func uint64_to_octal_string(uint64::in) = (string::uo) is det.
 
+%---------------------%
+% Converting floats to strings.
+
     % Convert a float to a string.
     % In the current implementation, the resulting float will be in the form
     % that it was printed using the format string "%#.<prec>g".
@@ -1749,6 +1763,9 @@
     % A synonym for float_to_string/1.
     %
 :- func from_float(float::in) = (string::uo) is det.
+
+%---------------------%
+% Converting c_pointers to strings.
 
     % Convert a c_pointer to a string. The format is "c_pointer(0xXXXX)"
     % where XXXX is the hexadecimal representation of the pointer.
@@ -6241,54 +6258,6 @@ from_char(Char) = char_to_string(Char).
 
 %---------------------%
 
-:- pragma foreign_proc("C",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing, may_not_export_body],
-"
-    int         num_digits;
-    MR_Unsigned U;
-    if (I < 0) {
-        U = (MR_Unsigned) -I;
-#ifdef MR_MERCURY_IS_64_BITS
-        get_num_decimal_digits_in_uint64(U, num_digits);
-#else
-        get_num_decimal_digits_in_uint32(U, num_digits);
-#endif
-        fill_string_with_negative_unsigned_decimal(S, U, num_digits,
-            MR_ALLOC_ID);
-    } else {
-        U = (MR_Unsigned) I;
-#ifdef MR_MERCURY_IS_64_BITS
-        get_num_decimal_digits_in_uint64(U, num_digits);
-#else
-        get_num_decimal_digits_in_uint32(U, num_digits);
-#endif
-        fill_string_with_unsigned_decimal(S, U, num_digits, MR_ALLOC_ID);
-    }
-").
-
-:- pragma foreign_proc("C#",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S = I.ToString();
-").
-
-:- pragma foreign_proc("Java",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S = java.lang.Integer.toString(I);
-").
-
-int_to_string(N, Str) :-
-    Str = int_to_string(N).
-
-from_int(N) = int_to_string(N).
-
-%---------------------%
-
 int_to_base_string(N1, N2) = S2 :-
     int_to_base_string(N1, N2, S2).
 
@@ -6329,6 +6298,8 @@ int_to_base_string_loop(NegN, Base, !RevChars) :-
         int_to_base_string_loop(NegN1, Base, !RevChars),
         !:RevChars = [DigitChar | !.RevChars]
     ).
+
+%---------------------%
 
 int_to_string_thousands(N) =
     int_to_base_string_group(N, 10, 3, ",").
@@ -6386,6 +6357,54 @@ int_to_base_string_group_loop(NegN, Base, Curr, GroupLength, Sep, Str) :-
             string.append(Str1, DigitString, Str)
         )
     ).
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
+"
+    int         num_digits;
+    MR_Unsigned U;
+    if (I < 0) {
+        U = (MR_Unsigned) -I;
+#ifdef MR_MERCURY_IS_64_BITS
+        get_num_decimal_digits_in_uint64(U, num_digits);
+#else
+        get_num_decimal_digits_in_uint32(U, num_digits);
+#endif
+        fill_string_with_negative_unsigned_decimal(S, U, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U = (MR_Unsigned) I;
+#ifdef MR_MERCURY_IS_64_BITS
+        get_num_decimal_digits_in_uint64(U, num_digits);
+#else
+        get_num_decimal_digits_in_uint32(U, num_digits);
+#endif
+        fill_string_with_unsigned_decimal(S, U, num_digits, MR_ALLOC_ID);
+    }
+").
+
+:- pragma foreign_proc("C#",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = I.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Integer.toString(I);
+").
+
+int_to_string(N, Str) :-
+    Str = int_to_string(N).
+
+from_int(N) = int_to_string(N).
 
 %---------------------%
 
