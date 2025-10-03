@@ -251,7 +251,7 @@
     % This happens e.g. when we execute the test cases in tests/valid.
     %
     % NOTE The mmake script cannot handle properly situations in which
-    % Mercury.options contains references to modules whose sources are
+    % Mercury.modules contains references to modules whose sources are
     % in a directory other than the current directory. For example, when
     % invoked on programs with such modules, mmake fails to create .d
     % and .int* files for the non-current-directory modules.
