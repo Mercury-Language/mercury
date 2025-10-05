@@ -1502,7 +1502,7 @@
     %
     % This predicate considers the length of a string to be the number of
     % code points in the string. Note that this is only an approximation:
-    % it will be unaccurate in the presence of e.g. combining characters.
+    % it will be inaccurate in the presence of e.g. combining characters.
     %
     % This predicate requires all the columns to contain the same number
     % of strings, and throws an exception if this is not the case.
