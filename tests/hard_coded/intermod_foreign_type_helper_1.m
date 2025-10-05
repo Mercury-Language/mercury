@@ -17,8 +17,6 @@
 
 :- implementation.
 
-:- import_module std_util.
-
 :- pragma foreign_decl("C#", "
 public class coord {
     public int x;
@@ -51,7 +49,11 @@ public class coord {
 
 %---------------------------------------------------------------------------%
 
-% Mercury implementation
+% C# implementation.
+
+:- pragma foreign_type("C#", coord, "coord").
+
+% Mercury implementation.
 
 :- type coord
     --->    coord(x :: int, y :: int).
