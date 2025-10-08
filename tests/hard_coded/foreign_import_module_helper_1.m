@@ -20,7 +20,7 @@ foo(X, X+1).
 
 :- pragma foreign_code("C#",
 "
-    static void foo2(int X, ref int Y)
+    public static void foo2(int X, ref int Y)
     {
         Y = X + 1;
     }

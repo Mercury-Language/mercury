@@ -7,6 +7,7 @@
 %   Ends:   2 am EST (Eastern Standard Time) on 28 March   2004
 % At start of daylight saving period, move clock forward one hour.
 % At end of daylight saving period, move clock back one hour.
+%
 
 :- module dst_test.
 :- interface.
@@ -17,14 +18,14 @@
 
 :- implementation.
 
+:- import_module list.
 :- import_module maybe.
+:- import_module string.
 :- import_module time.
 
 main(!IO) :-
     difftest(!IO),
-    io.nl(!IO),
-    local_vs_gm_test(!IO),
-    io.nl(!IO).
+    local_vs_gm_test(!IO).
 
 :- pred difftest(io::di, io::uo) is det.
 
@@ -42,7 +43,7 @@ difftest(!IO) :-
         io.write_string("start DST failed\n", !IO)
     ),
 
-    % Sunday 2004-02-28 02:30:00 (occurs twice)
+    % Sunday 2004-03-28 02:30:00 (occurs twice)
     mktime(tm(104, 2, 28, 2, 30, 0, 87, 0, yes(daylight_time)),
         BeforeEnd, !IO),
     mktime(tm(104, 2, 28, 2, 30, 0, 87, 0, yes(standard_time)),
@@ -52,36 +53,38 @@ difftest(!IO) :-
         io.write_string("end DST succeeded\n", !IO)
     else
         io.write_string("end DST failed\n", !IO)
-    ).
+    ),
+    io.nl(!IO).
 
 :- pred local_vs_gm_test(io::di, io::uo) is det.
 
 local_vs_gm_test(!IO) :-
     local_vs_gm(tm(103, 9, 26, 1, 59, 0, 298, 0, yes(standard_time)), !IO),
-    local_vs_gm(tm(103, 9, 26, 3, 0, 0, 298, 0, yes(daylight_time)), !IO),
-    local_vs_gm(tm(103, 9, 26, 3, 1, 0, 298, 0, yes(daylight_time)), !IO),
+    local_vs_gm(tm(103, 9, 26, 3, 0,  0, 298, 0, yes(daylight_time)), !IO),
+    local_vs_gm(tm(103, 9, 26, 3, 1,  0, 298, 0, yes(daylight_time)), !IO),
     io.nl(!IO),
 
     local_vs_gm(tm(104, 2, 28, 1, 59, 0, 87, 0, yes(daylight_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 2, 0, 0, 87, 0, yes(daylight_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 2, 1, 0, 87, 0, yes(daylight_time)), !IO),
+    local_vs_gm(tm(104, 2, 28, 2, 0,  0, 87, 0, yes(daylight_time)), !IO),
+    local_vs_gm(tm(104, 2, 28, 2, 1,  0, 87, 0, yes(daylight_time)), !IO),
     io.nl(!IO),
 
     local_vs_gm(tm(104, 2, 28, 2, 59, 0, 87, 0, yes(daylight_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 2, 0, 0, 87, 0, yes(standard_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 2, 1, 0, 87, 0, yes(standard_time)), !IO),
+    local_vs_gm(tm(104, 2, 28, 2, 0,  0, 87, 0, yes(standard_time)), !IO),
+    local_vs_gm(tm(104, 2, 28, 2, 1,  0, 87, 0, yes(standard_time)), !IO),
     io.nl(!IO),
 
     local_vs_gm(tm(104, 2, 28, 2, 59, 0, 87, 0, yes(standard_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 3, 0, 0, 87, 0, yes(standard_time)), !IO),
-    local_vs_gm(tm(104, 2, 28, 3, 1, 0, 87, 0, yes(standard_time)), !IO).
+    local_vs_gm(tm(104, 2, 28, 3, 0,  0, 87, 0, yes(standard_time)), !IO),
+    local_vs_gm(tm(104, 2, 28, 3, 1,  0, 87, 0, yes(standard_time)), !IO),
+    io.nl(!IO).
 
 :- pred local_vs_gm(tm::in, io::di, io::uo) is det.
 
 local_vs_gm(TM, !IO) :-
     mktime(TM, Time, !IO),
-    io.write_string("Local:\t", !IO),
     localtime(Time, LocalTM, !IO),
-    io.write_string(asctime(LocalTM), !IO),
-    io.write_string("GMT:\t", !IO),
-    io.write_string(asctime(gmtime(Time)), !IO).
+    LocalTimeStr = asctime(LocalTM),
+    GmtTimeStr = asctime(gmtime(Time)),
+    io.format("Local:\t%s", [s(LocalTimeStr)], !IO),
+    io.format("GMT:\t %s", [s(GmtTimeStr)], !IO).
