@@ -28,10 +28,10 @@ Once upon a time, it could also translate
 a (smaller or larger) subset of Mercury to Aditi, to Erlang, to .NET's IL,
 and to bytecode for a once-planned but never implemented bytecode interpreter.
 <p>
-The top-level of the compiler is in the file mercury_compile.m.
+The main module of the compiler is in the file mercury_compile.m.
 This forwards all of the work to the file mercury_compiler_main.m,
 which is a submodule of the top_level.m package.
-The basic design is that compilation is broken into the following stages:
+The basic design is that compilation is broken into the following steps:
 
 <ul>
 <li>
@@ -61,21 +61,20 @@ For example, elimination of assignments to dead variables
 is done in mode analysis;
 middle-recursion optimization is done during code generation;
 and a few low-level optimizations are done
-in llds_out_instr.m as we are spitting out the C code.
+in llds_out_instr.m as we are spitting out C code.
 <p>
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
 <p>
 mercury_compile_main.m starts by
-invoking mercury_compile_args.m to process mmc's arguments.
-It then fully implements the simpler op_modes,
-such as those that ask for reports.
-The remaining op_modes are implemented by mercury_compile_augment.m.
-<li>
-mercury_compile_args.m does argument and option processing,
-which is complicated by the fact that
-options can come from Mercury.options files,
-as well as from files named by other options.
+invoking mercury_compile_args.m to process mmc's options and other arguments.
+(Note that options can come from Mercury.options files,
+as well as from files named by other options.)
+mercury_compile_main.m then fully implements the simpler op_modes,
+such as those that ask for reports,
+and invokes mercury_compile_augment.m
+to implement the more complex ones.
+<ul>
 <li>
 Step 1, the conversion of parse trees to the initial version of the HLDS,
 is managed by mercury_compile_make_hlds.m.
@@ -88,10 +87,10 @@ is managed by done mercury_compile_middle_passes.m.
 <li>
 Steps 4, 5 and 6, code generation, optimization and output,
 are all managed by
-<ul>
-<li> mercury_compile_llds_backend.m for the LLDS backend, and
-<li> mercury_compile_mlds_backend.m for the MLDS backend.
-</ul>
+    <ul>
+    <li> mercury_compile_llds_backend.m for the LLDS backend, and
+    <li> mercury_compile_mlds_backend.m for the MLDS backend.
+    </ul>
 </ul>
 <p>
 The LLDS backend is so named because
@@ -239,8 +238,8 @@ both before the HLDS is built and after it is no longer needed.
 <p>
 After we have processed the options,
 the rest of the action is co-ordinated
-either from mercury_compile.m or from make.m,
-depending on whether the `--make' option is in effect.
+either from make.m, if the `--make' option is in effect,
+or from the mercury_compile_*.m modules, otherwise.
 <p>
 The rest of this document contains
 a brief introduction each module of the compiler.
