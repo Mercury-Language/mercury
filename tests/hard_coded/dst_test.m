@@ -87,4 +87,4 @@ local_vs_gm(TM, !IO) :-
     LocalTimeStr = asctime(LocalTM),
     GmtTimeStr = asctime(gmtime(Time)),
     io.format("Local:\t%s", [s(LocalTimeStr)], !IO),
-    io.format("GMT:\t %s", [s(GmtTimeStr)], !IO).
+    io.format("GMT:\t%s", [s(GmtTimeStr)], !IO).
