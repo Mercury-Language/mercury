@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -136,8 +136,7 @@
 :- implementation.
 
 :- import_module backend_libs.string_encoding.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 

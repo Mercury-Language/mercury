@@ -211,7 +211,6 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
@@ -224,6 +223,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

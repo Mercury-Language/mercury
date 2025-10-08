@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,22 +110,22 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

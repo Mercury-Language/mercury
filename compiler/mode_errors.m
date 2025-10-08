@@ -442,8 +442,6 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_error_util.
@@ -453,6 +451,8 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_test.
+:- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.

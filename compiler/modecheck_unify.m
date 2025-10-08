@@ -41,29 +41,29 @@
 :- implementation.
 
 :- import_module check_hlds.inst_abstract_unify.
-:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_top_functor.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism_lambda.
 :- import_module check_hlds.proc_requests.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_refs.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
+:- import_module hlds.inst_util.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

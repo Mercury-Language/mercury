@@ -68,7 +68,6 @@
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.format_call.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
@@ -78,6 +77,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.passes_aux.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module libs.options.

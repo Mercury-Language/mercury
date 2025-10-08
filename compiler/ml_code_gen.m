@@ -501,9 +501,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.instmap.
+:- import_module hlds.type_util.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_commit_gen.

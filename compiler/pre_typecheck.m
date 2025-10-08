@@ -57,7 +57,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_vars.
 :- import_module hlds.headvar_names.
@@ -70,6 +69,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.mode_util.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.

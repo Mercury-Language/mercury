@@ -77,18 +77,18 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.types_into_modes.
 :- import_module hlds.goal_contains.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.inst_mode_type_prop.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module hlds.var_origins.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.

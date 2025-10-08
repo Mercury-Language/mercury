@@ -58,11 +58,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_contains.
 :- import_module hlds.goal_util.
@@ -75,9 +73,11 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

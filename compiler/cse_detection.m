@@ -96,20 +96,20 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.switch_detection.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

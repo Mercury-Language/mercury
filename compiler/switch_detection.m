@@ -79,16 +79,16 @@
 :- implementation.
 
 :- import_module check_hlds.det_util.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.

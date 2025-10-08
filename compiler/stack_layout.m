@@ -105,13 +105,12 @@
 :- import_module backend_libs.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

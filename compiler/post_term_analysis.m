@@ -38,14 +38,13 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.

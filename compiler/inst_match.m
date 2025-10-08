@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -189,12 +189,12 @@
 :- implementation.
 
 :- import_module check_hlds.inst_abstract_unify.
-:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_merge.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
+:- import_module hlds.inst_util.
+:- import_module hlds.mode_util.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

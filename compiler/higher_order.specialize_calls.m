@@ -45,7 +45,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
@@ -59,6 +58,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.

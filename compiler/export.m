@@ -89,8 +89,6 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -98,6 +96,7 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.

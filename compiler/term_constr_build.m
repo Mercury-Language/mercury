@@ -63,7 +63,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
@@ -71,6 +70,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.

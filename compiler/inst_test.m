@@ -17,10 +17,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.inst_test.
+:- module hlds.inst_test.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
@@ -211,11 +210,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_util.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
+:- import_module hlds.type_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module io.
@@ -1586,5 +1585,5 @@ ho_inst_info_contains_higher_order(HOInstInfo) = ContainsHO :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.inst_test.
+:- end_module hlds.inst_test.
 %-----------------------------------------------------------------------------%

@@ -44,7 +44,6 @@
 :- import_module check_hlds.polymorphism_lambda.
 :- import_module check_hlds.polymorphism_type_class_info.
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
@@ -54,6 +53,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

@@ -46,7 +46,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_error_undef.
 :- import_module check_hlds.typecheck_error_unify.
 :- import_module check_hlds.typecheck_error_util.
@@ -58,6 +57,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.

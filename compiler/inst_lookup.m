@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015, 2021, 2023-2024 The Mercury team.
+% Copyright (C) 2015, 2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,10 +15,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.inst_lookup.
+:- module hlds.inst_lookup.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -168,8 +167,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.inst_mode_type_prop.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_to_term.
@@ -505,5 +504,5 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.inst_lookup.
+:- end_module hlds.inst_lookup.
 %---------------------------------------------------------------------------%

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury Team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,10 +46,8 @@
 :- implementation.
 
 :- import_module check_hlds.build_mode_constraints.
-:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.ordering_mode_constraints.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
@@ -60,6 +58,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_graph.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.var_table_hlds.

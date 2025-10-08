@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,12 +51,12 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.

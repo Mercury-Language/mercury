@@ -101,9 +101,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.

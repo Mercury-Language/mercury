@@ -97,7 +97,6 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
@@ -109,6 +108,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

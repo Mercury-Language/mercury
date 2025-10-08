@@ -26,7 +26,6 @@
     :- include_module resolve_unify_functor.
     :- include_module type_constraints.
     :- include_module type_assign.
-    :- include_module type_util.
     :- include_module typecheck.
     :- include_module typecheck_clauses.
     :- include_module typecheck_coerce.
@@ -75,19 +74,14 @@
    % on the idea of abstract interpretation.
    :- include_module delay_info.
    :- include_module inst_abstract_unify.
-   :- include_module inst_lookup.
    :- include_module inst_match.
    :- include_module inst_merge.
-   :- include_module inst_mode_type_prop.
-   :- include_module inst_test.
-   :- include_module inst_util.
    :- include_module mode_comparison.
    :- include_module mode_debug.
    :- include_module mode_errors.
    :- include_module mode_info.
    :- include_module mode_test.
    :- include_module mode_top_functor.
-   :- include_module mode_util.
    :- include_module modecheck_call.
    :- include_module modecheck_coerce.
    :- include_module modecheck_conj.

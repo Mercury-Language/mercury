@@ -125,10 +125,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_detism.

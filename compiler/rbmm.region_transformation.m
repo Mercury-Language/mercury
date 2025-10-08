@@ -74,7 +74,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_transform.
@@ -83,6 +82,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

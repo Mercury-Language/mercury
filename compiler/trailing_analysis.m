@@ -80,8 +80,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_error_util.
@@ -89,6 +87,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

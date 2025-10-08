@@ -37,7 +37,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
@@ -50,6 +49,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.indent.

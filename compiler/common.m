@@ -163,14 +163,14 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_util.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.maybe_util.

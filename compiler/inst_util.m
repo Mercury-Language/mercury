@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,10 +14,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.inst_util.
+:- module hlds.inst_util.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -94,11 +93,13 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_lookup.
+% XXX Undesirable dependency on the check_hlds package.
+:- import_module check_hlds.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
@@ -469,5 +470,5 @@ no_type_available = Type :-
     Type = type_variable(Var, kind_star).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.inst_util.
+:- end_module hlds.inst_util.
 %---------------------------------------------------------------------------%

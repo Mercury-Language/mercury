@@ -119,9 +119,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

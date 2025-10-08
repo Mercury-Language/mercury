@@ -72,12 +72,12 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.inst_test.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.var_table_hlds.

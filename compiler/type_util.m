@@ -18,15 +18,14 @@
 % Put the contents of this type into meaningful groups.
 % XXX TYPE_REPN
 % Consider which of these predicates are used only during semantic checking,
-% and which are used afterwards as well. Consider moving the latter
-% to a new module in the hlds (as opposed to the check_hlds) package.
+% and which are used afterwards as well. Consider moving the former
+% to a new module in the check_hlds (as opposed to the hlds) package.
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.type_util.
+:- module hlds.type_util.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
@@ -2000,5 +1999,5 @@ apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
         !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.type_util.
+:- end_module hlds.type_util.
 %-----------------------------------------------------------------------------%

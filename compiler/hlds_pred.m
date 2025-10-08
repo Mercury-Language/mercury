@@ -66,12 +66,12 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
+:- import_module hlds.type_util.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_type.

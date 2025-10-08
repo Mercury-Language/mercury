@@ -14,10 +14,10 @@
 :- module check_hlds.types_into_modes.
 :- interface.
 
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_mode_type_prop.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.

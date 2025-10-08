@@ -180,8 +180,6 @@
 :- implementation.
 
 :- import_module check_hlds.det_check_goal.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_transform.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -190,6 +188,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_test.
+:- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

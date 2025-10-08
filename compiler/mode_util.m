@@ -14,10 +14,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.mode_util.
+:- module hlds.mode_util.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
@@ -149,8 +148,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.inst_test.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -364,5 +363,5 @@ mode_is_free_of_uniqueness(ModuleInfo, Mode) :-
     inst_is_not_partly_unique(ModuleInfo, FinalInst).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.mode_util.
+:- end_module hlds.mode_util.
 %---------------------------------------------------------------------------%

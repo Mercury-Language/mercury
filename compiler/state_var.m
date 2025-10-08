@@ -399,14 +399,10 @@
 
 :- implementation.
 
-% XXX Having hlds.make_hlds.state_var depend on the check_hlds
-% is undesirable. Maybe inst_util and mode_util, and maybe inst_test and
-% mode_test, should be moved to the hlds package.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

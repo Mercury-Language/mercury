@@ -2702,8 +2702,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.

@@ -33,16 +33,16 @@
 :- implementation.
 
 :- import_module check_hlds.inst_abstract_unify.
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.type_util.
 :- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

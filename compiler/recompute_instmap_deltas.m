@@ -59,9 +59,9 @@
 
 :- import_module check_hlds.inst_abstract_unify.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.mode_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

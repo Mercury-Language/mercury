@@ -134,7 +134,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.typeclasses.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
@@ -146,6 +145,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
