@@ -65,6 +65,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_make.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.hlds_cons.

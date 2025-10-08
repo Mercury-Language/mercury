@@ -75,6 +75,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_make.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
@@ -86,7 +87,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_lookup.
-:- import_module hlds.inst_util.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.mode_util.

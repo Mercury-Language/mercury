@@ -74,6 +74,7 @@
    % on the idea of abstract interpretation.
    :- include_module delay_info.
    :- include_module inst_abstract_unify.
+   :- include_module inst_make.
    :- include_module inst_match.
    :- include_module inst_merge.
    :- include_module mode_comparison.
