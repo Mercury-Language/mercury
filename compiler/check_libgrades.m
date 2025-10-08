@@ -60,8 +60,8 @@
     % Installing a user library using mmake (*not* mmc --make) works
     % differently, because in that case, it is mmake that has to decide
     % the set of grades we want to install. That decision is currently done
-    % by having the configure script put the configured set of installed
-    % grades into the Mmake.vars file.
+    % by having the configure script put the configured set of grades to
+    % install into the Mmake.vars file as the value of $(LIBGRADES).
     %
     % This method is less flexible than the one used by mmc --make, in that
     % only the latter can handle having the Mercury standard library installed
@@ -69,7 +69,18 @@
     %
     % XXX We should probably change installs using mmake to invoke
     % "mmc --output-libgrades" instead of consulting the configured set
-    % of grades in Mmake.vars.
+    % of grades in Mmake.vars. However, we can do that *only* if we
+    % separate out two related but nevertheless distinct notions:
+    %
+    % - the set of grades in which we should install the Mercury standard
+    %   library, and
+    %
+    % - the set of grades in which we should install any other library.
+    %
+    % The distinction is important because mmc--output-libgrades works
+    % by looking for installed grades, and there simply won't be any
+    % when Mercury is being installed on a machine for the first time.
+    % In that case, we will still need to know the configured set of grades.
     %
 :- pred detect_stdlib_grades(io.text_output_stream::in, globals::in,
     maybe1(set(string))::out, io::di, io::uo) is det.

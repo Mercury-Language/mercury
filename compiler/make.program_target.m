@@ -1006,26 +1006,13 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
 
 make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         Succeeded, !Info, !Specs, !IO) :-
-    % Don't rebuild .module_dep files when cleaning up.
-    RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
-    ( if
-        ( TargetType = misc_target_clean
-        ; TargetType = misc_target_realclean
-        )
-    then
-        make_info_set_rebuild_module_deps(do_not_rebuild_module_deps, !Info)
-    else
-        true
-    ),
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        Succeeded0, AllModulesSet, !Info, !IO),
-    make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info),
-    AllModules = set.to_sorted_list(AllModulesSet),
+    find_reachable_local_modules_for_misc(ProgressStream, Globals,
+        MainModuleName, TargetType, Succeeded0, AllModuleNames, !Info, !IO),
     (
         TargetType = misc_target_clean,
         Succeeded = succeeded,
         list.foldl2(make_module_clean(ProgressStream, Globals),
-            AllModules, !Info, !IO),
+            AllModuleNames, !Info, !IO),
         remove_init_files(ProgressStream, Globals, very_verbose,
             MainModuleName, !Info, !IO)
     ;
@@ -1033,12 +1020,12 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         Succeeded = succeeded,
         make_main_module_realclean(ProgressStream, Globals, MainModuleName,
             !Info, !IO),
-        list.foldl2(make_module_realclean(ProgressStream, Globals), AllModules,
-            !Info, !IO)
+        list.foldl2(make_module_realclean(ProgressStream, Globals),
+            AllModuleNames, !Info, !IO)
     ;
         TargetType = misc_target_build_all(ModuleTargetType),
         get_target_modules(ProgressStream, Globals, ModuleTargetType,
-            AllModules, TargetModules, !Info, !IO),
+            AllModuleNames, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
@@ -1057,17 +1044,17 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             ;
                 ModuleTargetType = module_target_int0,
                 build_int_opt_files(ProgressStream, Globals,
-                    build_int3s, AllModules, Succeeded1, !Info, !IO)
+                    build_int3s, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_int1
                 ; ModuleTargetType = module_target_int2
                 ),
                 build_int_opt_files(ProgressStream, Globals,
-                    build_int3s_int0s, AllModules, Succeeded1, !Info, !IO)
+                    build_int3s_int0s, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ModuleTargetType = module_target_opt,
                 build_int_opt_files(ProgressStream, Globals,
-                    build_all_ints, AllModules, Succeeded1, !Info, !IO)
+                    build_all_ints, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_errors
                 ; ModuleTargetType = module_target_analysis_registry
@@ -1081,7 +1068,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 ; ModuleTargetType = module_target_xml_doc
                 ),
                 build_int_opt_files(ProgressStream, Globals,
-                    build_all_ints_opts, AllModules, Succeeded1, !Info, !IO)
+                    build_all_ints_opts, AllModuleNames, Succeeded1, !Info, !IO)
             ),
             ( if
                 Succeeded1 = did_not_succeed,
@@ -1101,16 +1088,16 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         TargetType = misc_target_build_analyses,
         maybe_with_analysis_cache_dir_2(ProgressStream, Globals,
             build_analysis_files(Globals, MainModuleName,
-                AllModules, Succeeded0),
+                AllModuleNames, Succeeded0),
             Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
         build_int_opt_files(ProgressStream, Globals, build_all_ints_opts,
-            AllModules, IntSucceeded, !Info, !IO),
+            AllModuleNames, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = succeeded,
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,
-                build_library(MainModuleName, AllModules, Globals),
+                build_library(MainModuleName, AllModuleNames, Globals),
                 Succeeded, !Info, !Specs, !IO)
         ;
             IntSucceeded = did_not_succeed,
@@ -1123,25 +1110,26 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         make_misc_target(ProgressStream, Globals,
             MainModuleName - misc_target_build_library, LibSucceeded,
             !Info, !Specs, !IO),
+        SucceededSoFar = Succeeded0 `and` LibSucceeded,
         (
-            LibSucceeded = succeeded,
+            SucceededSoFar = succeeded,
             (
                 TargetType = misc_target_install_library,
                 install_library(ProgressStream, Globals,
-                    MainModuleName, Succeeded, !Info, !IO)
+                    MainModuleName, AllModuleNames, Succeeded, !Info, !IO)
             ;
                 TargetType = misc_target_install_library_gs_gas,
                 install_library_gs_gas(ProgressStream, Globals,
-                    MainModuleName, Succeeded, !Info, !IO)
+                    MainModuleName, AllModuleNames, Succeeded, !Info, !IO)
             )
         ;
-            LibSucceeded = did_not_succeed,
+            SucceededSoFar = did_not_succeed,
             Succeeded = did_not_succeed
         )
     ;
         TargetType = misc_target_build_xml_docs,
         get_target_modules(ProgressStream, Globals, module_target_xml_doc,
-            AllModules, TargetModules, !Info, !IO),
+            AllModuleNames, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
@@ -1153,6 +1141,36 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ).
+
+:- pred find_reachable_local_modules_for_misc(io.text_output_stream::in,
+    globals::in, module_name::in, misc_target_type::in,
+    maybe_succeeded::out, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_reachable_local_modules_for_misc(ProgressStream, Globals,
+        MainModuleName, TargetType, Succeeded, AllModuleNames, !Info, !IO) :-
+    (
+        ( TargetType = misc_target_clean
+        ; TargetType = misc_target_realclean
+        ),
+        % Don't rebuild .module_dep files when cleaning up.
+        RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
+        make_info_set_rebuild_module_deps(do_not_rebuild_module_deps, !Info),
+        find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
+            Succeeded, AllModuleNamesSet, !Info, !IO),
+        make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info)
+    ;
+        ( TargetType = misc_target_build_all(_)
+        ; TargetType = misc_target_build_analyses
+        ; TargetType = misc_target_build_library
+        ; TargetType = misc_target_install_library
+        ; TargetType = misc_target_install_library_gs_gas
+        ; TargetType = misc_target_build_xml_docs
+        ),
+        find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
+            Succeeded, AllModuleNamesSet, !Info, !IO)
+    ),
+    AllModuleNames = set.to_sorted_list(AllModuleNamesSet).
 
 %---------------------------------------------------------------------------%
 
@@ -1221,25 +1239,25 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
 
 %---------------------------------------------------------------------------%
 
-:- type build2(Info) == pred(io.text_output_stream, maybe_succeeded,
-    Info, Info, io, io).
+:- type build2 == pred(io.text_output_stream, maybe_succeeded,
+    make_info, make_info, io, io).
 :- inst build2 == (pred(in, out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
-    % After P is finished, remove the cache directory completely.
+    % After Pred is finished, remove the cache directory completely.
     %
 :- pred maybe_with_analysis_cache_dir_2(io.text_output_stream::in, globals::in,
-    build2(make_info)::in(build2), maybe_succeeded::out,
+    build2::in(build2), maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
+maybe_with_analysis_cache_dir_2(ProgressStream, Globals, Pred, Succeeded,
         !Info, !IO) :-
     should_we_use_analysis_cache_dir(ProgressStream, Globals, !.Info,
         UseAnalysisCacheDir, !IO),
     (
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
-        P(ProgressStream, Succeeded, !Info, !IO)
+        Pred(ProgressStream, Succeeded, !Info, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
@@ -1248,7 +1266,7 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
         make_info_set_option_args(NewOptionArgs, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, TaskSucceeded, !Info, !IO),
+        Pred(ProgressStream, TaskSucceeded, !Info, !IO),
         CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
@@ -1261,26 +1279,25 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
 
 %---------------------%
 
-:- type build3(Info) == pred(io.text_output_stream, maybe_succeeded,
-    Info, Info, list(error_spec), list(error_spec), io, io).
+:- type build3 == pred(io.text_output_stream, maybe_succeeded,
+    make_info, make_info, list(error_spec), list(error_spec), io, io).
 :- inst build3 == (pred(in, out, in, out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
-    % After P is finished, remove the cache directory completely.
+    % After Pred is finished, remove the cache directory completely.
     %
 :- pred maybe_with_analysis_cache_dir_3(io.text_output_stream::in, globals::in,
-    build3(make_info)::in(build3), maybe_succeeded::out,
-    make_info::in, make_info::out,
+    build3::in(build3), maybe_succeeded::out, make_info::in, make_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
+maybe_with_analysis_cache_dir_3(ProgressStream, Globals, Pred, Succeeded,
         !Info, !Specs, !IO) :-
     should_we_use_analysis_cache_dir(ProgressStream, Globals, !.Info,
         UseAnalysisCacheDir, !IO),
     (
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
-        P(ProgressStream, Succeeded, !Info, !Specs, !IO)
+        Pred(ProgressStream, Succeeded, !Info, !Specs, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
@@ -1289,7 +1306,7 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
         make_info_set_option_args(NewOptionArgs, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
+        Pred(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
         CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
@@ -1310,6 +1327,8 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files.
     %
+    % XXX This oversimplifies the logic in the code.
+    %
 :- pred should_we_use_analysis_cache_dir(io.text_output_stream::in,
     globals::in, make_info::in, maybe_use_analysis_cache_dir::out,
     io::di, io::uo) is det.
@@ -1328,9 +1347,14 @@ should_we_use_analysis_cache_dir(ProgressStream, Globals, Info,
             Caching = no
         ;
             % Cache directory given on command line.
+            % XXX I (zs) find it strange to take the cache directory's name
+            % being specified on the command line as a sign that
+            % we should NOT use an analysis cache directory,
+            % but that is what we do.
             CacheDir0 \= ""
         ;
             % Analysis file cache directory already set up in a parent call.
+            % XXX The comment just above applies here as well.
             list.member(CacheDirOption, make_info_get_option_args(Info))
         )
     then

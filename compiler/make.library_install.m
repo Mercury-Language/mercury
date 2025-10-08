@@ -24,11 +24,12 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % install_library(ProgressStream, Globals, MainModuleName, Succeeded,
-    %   !Info, !IO):
+    % install_library(ProgressStream, Globals, MainModuleName,
+    %   AllModuleNames, Succeeded, !Info, !IO):
     %
     % Install
     %
@@ -44,11 +45,11 @@
     % install directory structure *if* the --experiment4 option is given.
     %
 :- pred install_library(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out,
+    module_name::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % install_library_gs_gas(ProgressStream, Globals, MainModuleName,
-    %   Succeeded, !Info, !IO):
+    %   AllModuleNames, Succeeded, !Info, !IO):
     %
     % Install
     %
@@ -69,7 +70,7 @@
     % that structure.
     %
 :- pred install_library_gs_gas(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out,
+    module_name::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -86,7 +87,6 @@
 :- import_module libs.system_cmds.
 :- import_module libs.timestamp.
 :- import_module make.clean.
-:- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
 :- import_module make.options_file.
 :- import_module make.program_target.   % for make_misc_target
@@ -103,7 +103,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -114,38 +113,20 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
-        !Info, !IO) :-
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
-    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
-    (
-        DepsSucceeded = succeeded,
-        install_library_non_grade_specific_files(ProgressStream, Globals,
-            AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO),
-        install_library_grade_specific_files_for_all_libgrades(ProgressStream,
-            Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
-            !Succeeded, !Info, !IO)
-    ;
-        DepsSucceeded = did_not_succeed,
-        !:Succeeded = did_not_succeed
-    ).
+install_library(ProgressStream, Globals, MainModuleName, AllModuleNames,
+        !:Succeeded, !Info, !IO) :-
+    install_library_non_grade_specific_files(ProgressStream, Globals,
+        AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO),
+    install_library_grade_specific_files_for_all_libgrades(ProgressStream,
+        Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO).
 
-install_library_gs_gas(ProgressStream, Globals, MainModuleName, !:Succeeded,
-        !Info, !IO) :-
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
-    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
-    (
-        DepsSucceeded = succeeded,
-        globals.get_grade_dir(Globals, CurGrade),
-        proposed_install_library_grade_specific_files_for_grade(ProgressStream,
-            Globals, CurGrade, MainModuleName, AllModuleNames,
-            succeeded, !:Succeeded, !Info, !IO)
-    ;
-        DepsSucceeded = did_not_succeed,
-        !:Succeeded = did_not_succeed
-    ).
+install_library_gs_gas(ProgressStream, Globals, MainModuleName, AllModuleNames,
+        !:Succeeded, !Info, !IO) :-
+    globals.get_grade_dir(Globals, CurGrade),
+    proposed_install_library_grade_specific_files_for_grade(ProgressStream,
+        Globals, CurGrade, MainModuleName, AllModuleNames,
+        succeeded, !:Succeeded, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 %
