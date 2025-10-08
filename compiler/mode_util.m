@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -139,6 +139,10 @@
     %
 :- pred constructors_to_bound_any_insts(module_info::in, uniqueness::in,
     type_ctor::in, list(constructor)::in, list(bound_functor)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred mode_is_free_of_uniqueness(module_info::in, mer_mode::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -351,6 +355,13 @@ constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
 ctor_arg_list_to_inst_list([], _, []).
 ctor_arg_list_to_inst_list([_ | Args], Inst, [Inst | Insts]) :-
     ctor_arg_list_to_inst_list(Args, Inst, Insts).
+
+%---------------------------------------------------------------------------%
+
+mode_is_free_of_uniqueness(ModuleInfo, Mode) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    inst_is_not_partly_unique(ModuleInfo, InitInst),
+    inst_is_not_partly_unique(ModuleInfo, FinalInst).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.mode_util.

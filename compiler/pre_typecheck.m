@@ -57,7 +57,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_vars.
@@ -539,13 +538,6 @@ proc_args_are_free_of_declared_uniqueness(ModuleInfo, InitArgNum, FinalArgNum,
         mode_is_free_of_uniqueness(ModuleInfo, FinalArgMode)
     ).
 
-:- pred mode_is_free_of_uniqueness(module_info::in, mer_mode::in) is semidet.
-
-mode_is_free_of_uniqueness(ModuleInfo, Mode) :-
-    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
-    inst_is_not_partly_unique(ModuleInfo, InitInst),
-    inst_is_not_partly_unique(ModuleInfo, FinalInst).
-
 %---------------------%
 
 :- pred warn_about_unneeded_final_statevar(pred_info::in, prog_context::in,
@@ -589,7 +581,7 @@ warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
     InitArgPieces = arg_num_pieces(PredInfo, InitArgNum),
     FinalArgPieces = arg_num_pieces(PredInfo, FinalArgNum),
     % Please keep this wording in sync with the code of the
-    % XXX not yet written predicate in state_var.m.
+    % report_unneeded_svar_in_lambda predicate in state_var.m.
     Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
         words("warning:")] ++ InitArgPieces ++ [words("and")]
         ++ FinalArgPieces ++ [suffix(",")] ++

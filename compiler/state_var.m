@@ -26,6 +26,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 :- import_module map.
@@ -202,9 +203,9 @@
 
     % Finish processing a lambda expression.
     %
-:- pred svar_finish_lambda_body(prog_context::in, new_statevar_map::in,
-    map(svar, prog_var)::in, list(hlds_goal)::in, hlds_goal::out,
-    svar_state::in, svar_state::in,
+:- pred svar_finish_lambda_body(prog_context::in, list(mer_mode)::in,
+    new_statevar_map::in, map(svar, prog_var)::in, goal::in,
+    list(hlds_goal)::in, hlds_goal::out, svar_state::in, svar_state::in,
     unravel_info::in, unravel_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -398,6 +399,11 @@
 
 :- implementation.
 
+% XXX Having hlds.make_hlds.state_var depend on the check_hlds
+% is undesirable. Maybe inst_util and mode_util, and maybe inst_test and
+% mode_test, should be moved to the hlds package.
+:- import_module check_hlds.
+:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.make_goal.
@@ -407,7 +413,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
@@ -991,14 +996,15 @@ svar_finish_clause_body(Context, NewSVars, FinalMap,
     VarSet = !.UrInfo ^ ui_varset,
     find_unused_statevar_args(VarSet, NewSVars, LastIdMap, UnusedSVarDescs).
 
-svar_finish_lambda_body(Context, NewSVars, FinalMap, Goals0, Goal,
-        InitialSVarState, FinalSVarState, !UrInfo) :-
+svar_finish_lambda_body(Context, Modes, NewSVars, FinalMap, ParseTreeGoal,
+        Goals0, Goal, InitialSVarState, FinalSVarState, !UrInfo) :-
     svar_finish_body(Context, FinalMap, Goals0, Goal,
         InitialSVarState, FinalSVarState, !UrInfo),
     VarSet = !.UrInfo ^ ui_varset,
     LastIdMap = !.UrInfo ^ ui_state_var_store ^ store_last_id_map,
     find_unused_statevar_args(VarSet, NewSVars, LastIdMap, UnusedSVarDescs),
-    report_any_unused_svars_in_lambda(Context, UnusedSVarDescs, !UrInfo).
+    report_any_unneeded_svars_in_lambda(Context, Modes, ParseTreeGoal, Goal,
+        UnusedSVarDescs, !UrInfo).
 
 :- pred svar_finish_body(prog_context::in, map(svar, prog_var)::in,
     list(hlds_goal)::in, hlds_goal::out, svar_state::in, svar_state::in,
@@ -2768,45 +2774,110 @@ record_statevar_if_unused(VarSet, LastIdMap, SVar, OoMArgPos,
 
 %---------------------------------------------------------------------------%
 
-:- pred report_any_unused_svars_in_lambda(prog_context::in,
-    unused_statevar_arg_map::in, unravel_info::in, unravel_info::out) is det.
+:- pred report_any_unneeded_svars_in_lambda(prog_context::in,
+    list(mer_mode)::in, goal::in, hlds_goal::in, unused_statevar_arg_map::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_any_unused_svars_in_lambda(Context, UnusedSVarArgMap, !UrInfo) :-
-    map.foldl(report_unused_svar_in_lambda(Context),
-        UnusedSVarArgMap, !UrInfo).
+report_any_unneeded_svars_in_lambda(Context, Modes, ParseTreeGoal, Goal,
+        UnusedSVarArgMap, !UrInfo) :-
+    ( if map.is_empty(UnusedSVarArgMap) then
+        true
+    else
+        VarSet = !.UrInfo ^ ui_varset,
+        non_svar_copy_vars_in_goal(Goal, GoalVarsSet),
+        set_of_var.to_sorted_list(GoalVarsSet, GoalVars),
+        list.filter_map(is_prog_var_for_some_state_var(VarSet),
+            GoalVars, GoalVarSVarNames),
+        map.foldl(
+            report_unneeded_svar_in_lambda(Context, Modes,
+                ParseTreeGoal, GoalVarSVarNames),
+            UnusedSVarArgMap, !UrInfo)
+    ).
 
-:- pred report_unused_svar_in_lambda(prog_context::in, uint::in,
-    statevar_arg_desc::in, unravel_info::in, unravel_info::out) is det.
+:- pred report_unneeded_svar_in_lambda(prog_context::in, list(mer_mode)::in,
+    goal::in, list(string)::in, uint::in, statevar_arg_desc::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_unused_svar_in_lambda(Context, _ArgNum, SVarArgDesc, !UrInfo) :-
+report_unneeded_svar_in_lambda(Context, Modes, ParseTreeGoal, GoalVarSVarNames,
+        ArgNum, SVarArgDesc, !UrInfo) :-
     SVarArgDesc = statevar_arg_desc(InitOrFinal, SVarName),
+    % Please keep the wording of the three warnings generated here
+    % in sync with the code of the following predicates in pre_typecheck.m:
+    % - warn_about_any_unneeded_initial_statevars
+    % - warn_about_unneeded_final_statevar
+    % - warn_about_unneeded_initial_final_statevar.
     (
         ( InitOrFinal = init_arg_only,  Prefix = "!."
         ; InitOrFinal = final_arg_only, Prefix = "!:"
         ),
-        % Please keep this wording in sync with the code of the
-        % warn_about_any_unused_statevars predicate in pre_typecheck.m.
         Pieces = [words("Warning: the state variable")] ++
             color_as_subject([quote(Prefix ++ SVarName)]) ++ [words("is")] ++
             color_as_incorrect([words("never updated")]) ++
             [words("in this lambda expressions, so it should be"),
             words("replaced with an ordinary variable."), nl],
         Severity = severity_warning(warn_unneeded_initial_statevars_lambda),
-        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces)
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+        add_unravel_spec(Spec, !UrInfo)
     ;
         InitOrFinal = init_and_final_arg(_),
         % Please keep this wording in sync with the code of the
-        % warn_about_nonupdated_statevar predicate in pre_typecheck.m.
-        Pieces = [words("Warning: the argument")] ++
-            color_as_subject([quote("!:" ++ SVarName)]) ++
-            [words("in this lambda expression")] ++
-            color_as_incorrect([words("could be deleted,")]) ++
-            [words("because its value"),
-            words("is always the same as its initial value."), nl],
-        Severity = severity_warning(warn_unneeded_final_statevars_lambda),
-        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces)
-    ),
-    add_unravel_spec(Spec, !UrInfo).
+        % warn_about_unneeded_final_statevar predicate in pre_typecheck.m.
+        InitOrFinal = init_and_final_arg(FinalArgNum),
+        ( if list.member(SVarName, GoalVarSVarNames) then
+            % The initial version of SVarName is used by user-written code
+            % in the lambda goal, so only the final version of SVarName
+            % is unneeded.
+            ModuleInfo = !.UrInfo ^ ui_module_info,
+            FinalArgNumI = uint.cast_to_int(FinalArgNum),
+            InitArgNumI = uint.cast_to_int(ArgNum),
+            list.det_index1(Modes, InitArgNumI, InitArgMode),
+            list.det_index1(Modes, FinalArgNumI, FinalArgMode),
+            ( if
+                % See the comments in warn_about_any_unneeded_statevars
+                % for the reasoning behind this test.
+                %
+                % Note that we cannot test the HLDS goal from which our caller
+                % derived GoalVarSVarNames, because that contains the
+                % unifications implicitly added by the state variable
+                % transformation itself. We need the goal from *before*
+                % that transformation.
+                not ( ParseTreeGoal = true_expr(_) ),
+                % See the comments in maybe_warn_about_unneeded_final_statevar
+                % for the reasoning behind this test.
+                mode_is_free_of_uniqueness(ModuleInfo, InitArgMode),
+                mode_is_free_of_uniqueness(ModuleInfo, FinalArgMode)
+            then
+                Pieces = [words("Warning: the argument")] ++
+                    color_as_subject([quote("!:" ++ SVarName)]) ++
+                    [words("in this lambda expression")] ++
+                    color_as_incorrect([words("could be deleted,")]) ++
+                    [words("because its value"),
+                    words("is always the same as its initial value."), nl],
+                Severity =
+                    severity_warning(warn_unneeded_final_statevars_lambda),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+                add_unravel_spec(Spec, !UrInfo)
+            else
+                true
+            )
+        else
+            % The initial version of SVarName is NOT used by user-written code
+            % in the lambda goal, so both the initial and final versions
+            % of SVarName are unneeded.
+            Pieces = [words("Warning: the arguments")] ++
+                color_as_subject([quote("!." ++ SVarName)]) ++
+                [words("and")] ++
+                color_as_subject([quote("!:" ++ SVarName)]) ++
+                [words("in this lambda expression")] ++
+                color_as_incorrect([words("could be deleted,")]) ++
+                [words("because they are not used in the lambda goal,"),
+                words("and because the final value"),
+                words("is always the same as the initial value."), nl],
+            Severity = severity_warning(warn_unneeded_final_statevars_lambda),
+            Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+            add_unravel_spec(Spec, !UrInfo)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.state_var.

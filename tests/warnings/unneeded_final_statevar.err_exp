@@ -1,6 +1,15 @@
-unneeded_final_statevar.m:041: In predicate `p3'/2:
-unneeded_final_statevar.m:041:   warning: the first argument and the second
-unneeded_final_statevar.m:041:   argument, represented by the state variable
-unneeded_final_statevar.m:041:   [38;5;87m`!State',[39;49m [38;5;203mcould be deleted,[39;49m because they are
-unneeded_final_statevar.m:041:   not used, and because the final value is
-unneeded_final_statevar.m:041:   always the same as the initial value.
+unneeded_final_statevar.m:063: In predicate `p3'/2:
+unneeded_final_statevar.m:063:   warning: the first argument and the second
+unneeded_final_statevar.m:063:   argument, represented by the state variable
+unneeded_final_statevar.m:063:   [38;5;87m`!State',[39;49m [38;5;203mcould be deleted,[39;49m because they are
+unneeded_final_statevar.m:063:   not used, and because the final value is
+unneeded_final_statevar.m:063:   always the same as the initial value.
+unneeded_final_statevar.m:083: In predicate `q2'/4:
+unneeded_final_statevar.m:083:   warning: the first argument and the second
+unneeded_final_statevar.m:083:   argument, represented by the state variable
+unneeded_final_statevar.m:083:   [38;5;87m`!State',[39;49m [38;5;203mcould be deleted,[39;49m because they are
+unneeded_final_statevar.m:083:   not used, and because the final value is
+unneeded_final_statevar.m:083:   always the same as the initial value.
+unneeded_final_statevar.m:088: Warning: the argument [38;5;87m`!:Sum'[39;49m in this lambda
+unneeded_final_statevar.m:088:   expression [38;5;203mcould be deleted,[39;49m because its value
+unneeded_final_statevar.m:088:   is always the same as its initial value.

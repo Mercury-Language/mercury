@@ -839,8 +839,8 @@ build_lambda_expression(LHSVar, UnificationPurity,
 
             % Fix up any state variable unifications.
             FinalSVarState = !.SVarState,
-            svar_finish_lambda_body(Context, NewSVars, FinalSVarMap,
-                [HeadBefore, Body, HeadAfter], HLDS_Goal0,
+            svar_finish_lambda_body(Context, Modes, NewSVars, FinalSVarMap,
+                BodyGoal, [HeadBefore, Body, HeadAfter], HLDS_Goal0,
                 InitialSVarState, FinalSVarState, !UrInfo),
 
             % Figure out which variables we need to explicitly existentially
