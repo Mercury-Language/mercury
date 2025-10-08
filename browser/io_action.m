@@ -83,8 +83,10 @@ io_action_to_browser_term(IoAction) = Term :-
     ),
     Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
 
-:- pred pickup_io_action(int::in, maybe(io_action)::out, io::di, io::uo)
-    is det.
+%---------------------%
+
+:- pred pickup_io_action(int::in, maybe(io_action)::out,
+    io::di, io::uo) is det.
 :- pragma no_determinism_warning(pred(pickup_io_action/4)).
 
 :- pragma foreign_proc("C",
@@ -104,7 +106,7 @@ io_action_to_browser_term(IoAction) = Term :-
         &have_arg_infos, &args);
     MR_restore_transient_hp();
 
-    /* cast away const */
+    // Cast away const.
     ProcName = (MR_String) (MR_Integer) proc_name;
     if (io_action_tabled && have_arg_infos) {
         MaybeIOAction = MR_IO_ACTION_make_yes_io_action(ProcName, is_func,
@@ -116,6 +118,8 @@ io_action_to_browser_term(IoAction) = Term :-
 
 pickup_io_action(_, _, _, _) :-
     private_builtin.sorry("pickup_io_action").
+
+%---------------------%
 
 :- func make_no_io_action = maybe(io_action).
 :- pragma foreign_export("C", make_no_io_action = out,

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -369,15 +369,14 @@ get_mdb_dir(Res, !IO) :-
 :- pred save_term_to_file_web(string::in, browser_term::in, string::in,
     io.res(io.text_output_stream)::out, io::di, io::uo) is cc_multi.
 
-save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
-        !IO) :-
-    io.open_output(FileName, FileStreamRes, !IO),
+save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamResult, !IO) :-
+    io.open_output(FileName, FileStreamResult, !IO),
     (
-        FileStreamRes = ok(OutputStream),
+        FileStreamResult = ok(OutputStream),
         term_to_html.write_html_doc(OutputStream, BrowserTerm, MdbDir, _, !IO),
         io.close_output(OutputStream, !IO)
     ;
-        FileStreamRes = error(_)
+        FileStreamResult = error(_)
     ).
 
 :- pred launch_web_browser(io.text_output_stream::in,

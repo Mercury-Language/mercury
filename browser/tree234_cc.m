@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997,1999-2000,2002,2004,2006 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -179,10 +179,10 @@ split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 
 %---------------------------------------------------------------------------%
 
-% set is implemented using the simple top-down approach
-% described in eg Sedgewick which splits 4 nodes into two 2 nodes on the
-% downward traversal of the tree as we search for the right place to
-% insert the new key-value pair. We know we have the right place if the
+% Set is implemented using the simple top-down approach
+% described in e.g. Sedgewick, which splits 4 nodes into two 2 nodes
+% on the downward traversal of the tree as we search for the right place
+% to insert the new key-value pair. We know we have the right place if the
 % subtrees of the node are empty (in which case we expand the node - which
 % will always work because we already split 4 nodes into 2 nodes), or if
 % the tree itself is empty. This algorithm is O(lgN).

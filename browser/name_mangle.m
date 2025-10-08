@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2000,2002, 2005-2006 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -272,6 +272,7 @@ convert_to_valid_c_identifier_2(String, Name) :-
 %---------------------------------------------------------------------------%
 
 :- pred use_asm_labels is semidet.
+:- pragma no_determinism_warning(pred(use_asm_labels/0)).
 
 :- pragma foreign_proc("C",
     use_asm_labels,
@@ -283,10 +284,14 @@ convert_to_valid_c_identifier_2(String, Name) :-
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
 use_asm_labels :-
     private_builtin.sorry("use_asm_labels").
 
+%---------------------%
+
 :- pred system_is_osx is semidet.
+:- pragma no_determinism_warning(pred(system_is_osx/0)).
 
 :- pragma foreign_proc("C",
     system_is_osx,
@@ -299,7 +304,13 @@ use_asm_labels :-
 #endif
 ").
 
+system_is_osx :-
+    unexpected($pred, "not_yet_supported").
+
+%---------------------%
+
 :- pred high_level_code is semidet.
+:- pragma no_determinism_warning(pred(high_level_code/0)).
 
 :- pragma foreign_proc("C",
     high_level_code,
@@ -311,6 +322,7 @@ use_asm_labels :-
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
 high_level_code :-
     private_builtin.sorry("high_level_code").
 

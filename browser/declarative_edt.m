@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2019, 2021-2022 The Mercury team.
+% Copyright (C) 2015, 2017-2019, 2021-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -46,7 +46,7 @@
 % portions of the EDT, resulting in the situation where the combined weight of
 % the children of a suspect exceeds the parent's weight. If this happens then
 % an "excess weight" may be specified along with the normal weight which will
-% be added to all the ancestor's of the overweight suspect. For example if the
+% be added to all the ancestors of the overweight suspect. For example, if the
 % number of events in descendant suspects is being used as a weight, then for a
 % FAIL node some events may be repeated in siblings of the FAIL node. In this
 % case the duplicate events might not have been included in the ancestor's
@@ -1971,6 +1971,8 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
     ).
 
 :- pred should_check_search_space_consistency is semidet.
+:- pragma no_determinism_warning(
+    pred(should_check_search_space_consistency/0)).
 
 :- pragma foreign_proc("C",
     should_check_search_space_consistency,
@@ -1982,6 +1984,9 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
         SUCCESS_INDICATOR = MR_FALSE;
     #endif
 ").
+
+should_check_search_space_consistency :-
+    unexpected($pred, "not yet supported").
 
     % Try to find an inconsistency in the weights of the suspects.
     % If one is found, output an error message; otherwise fail.

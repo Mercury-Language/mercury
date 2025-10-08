@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury team.
+% Copyright (C) 2014-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1189,9 +1189,8 @@ count_tabled_io_actions(io_action_range(Start, End), NumTabled,
     count_tabled_io_actions_2(Start, End, 0, NumTabled, 0,
         NumUntabled, !IO).
 
-:- pred count_tabled_io_actions_2(io_seq_num::in,
-    io_seq_num::in, int::in, int::out, int::in, int::out, io::di, io::uo)
-    is det.
+:- pred count_tabled_io_actions_2(io_seq_num::in, io_seq_num::in,
+    int::in, int::out, int::in, int::out, io::di, io::uo) is det.
 
 count_tabled_io_actions_2(Cur, End, PrevTabled, Tabled,
         PrevUntabled, Untabled, !IO) :-

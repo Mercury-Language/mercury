@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2015-2018, 2021-2024 The Mercury team.
+% Copyright (C) 2015-2018, 2021-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -689,6 +689,13 @@ cleanup_query(_Options, !IO) :-
 cleanup_file(Prefix, Suffix, !IO) :-
     io.file.remove_file(Prefix ++ query_module_name ++ Suffix, _, !IO).
 
+:- pragma foreign_decl("C", "
+    #include ""mercury_grade.h""
+    #include ""mercury_string.h""
+").
+
+%---------------------%
+
     % `grade_option' returns MR_GRADE_OPT, which is defined in
     % runtime/mercury_grade.h. This is a string containing the grade
     % that the current executable was compiled in, in a form suitable for
@@ -696,10 +703,6 @@ cleanup_file(Prefix, Suffix, !IO) :-
     %
 :- func grade_option = string.
 
-:- pragma foreign_decl("C", "
-    #include ""mercury_grade.h""
-    #include ""mercury_string.h""
-").
 :- pragma foreign_proc("C",
     grade_option = (GradeOpt::out),
     [promise_pure, thread_safe, will_not_call_mercury],
@@ -709,6 +712,8 @@ cleanup_file(Prefix, Suffix, !IO) :-
 
 grade_option = _ :-
     private_builtin.sorry("grade_option").
+
+%---------------------%
 
 :- func verbose = bool.
 
@@ -957,13 +962,14 @@ report_exception(OutputStream, Excp, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% dl.mercury_sym returns a higher-order term with inst `ground'.  We need to
-% cast it to the right higher-order inst before we can actually call it.  The
-% functions inst_cast_*/1 defined below do that.
+% dl.mercury_sym returns a higher-order term with inst `ground'.
+% We must cast it to the right higher-order inst before we can actually
+% call it. The functions inst_cast_*/1 defined below do that.
 %
 
 :- func inst_cast_normal(run_normal_pred) = run_normal_pred.
 :- mode inst_cast_normal(in) = out(run_normal_pred) is det.
+:- pragma no_determinism_warning(func(inst_cast_normal/1)).
 
 :- pragma foreign_proc("C",
     inst_cast_normal(X::in) = (Y::out(run_normal_pred)),
@@ -975,8 +981,11 @@ report_exception(OutputStream, Excp, !IO) :-
 inst_cast_normal(_) = _ :-
     private_builtin.sorry("inst_cast_normal").
 
+%---------------------%
+
 :- func inst_cast_cc(run_cc_pred) = run_cc_pred.
 :- mode inst_cast_cc(in) = out(run_cc_pred) is det.
+:- pragma no_determinism_warning(func(inst_cast_cc/1)).
 
 :- pragma foreign_proc("C",
     inst_cast_cc(X::in) = (Y::out(run_cc_pred)),
@@ -988,8 +997,11 @@ inst_cast_normal(_) = _ :-
 inst_cast_cc(_) = _ :-
     private_builtin.sorry("inst_cast_cc").
 
+%---------------------%
+
 :- func inst_cast_io(run_io_pred) = run_io_pred.
 :- mode inst_cast_io(in) = out(run_io_pred) is det.
+:- pragma no_determinism_warning(func(inst_cast_io/1)).
 
 :- pragma foreign_proc("C",
     inst_cast_io(X::in) = (Y::out(run_io_pred)),
@@ -1008,7 +1020,11 @@ inst_cast_io(_) = _ :-
 shlib_extension =
    ( if system_is_darwin then ".dylib" else ".so" ).
 
+%---------------------%
+
 :- pred system_is_darwin is semidet.
+:- pragma no_determinism_warning(pred(system_is_darwin/0)).
+
 :- pragma foreign_proc("C",
     system_is_darwin,
     [promise_pure, will_not_call_mercury, thread_safe],
@@ -1019,6 +1035,9 @@ shlib_extension =
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
+system_is_darwin :-
+    unexpected($pred, "noyt yet supported").
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.interactive_query.

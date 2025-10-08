@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2000, 2003, 2005-2006 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -103,10 +103,11 @@ hglue(LeftFrame, RightFrame) = GluedFrame :-
         RightFrameNew = RightFrame
     ),
     frame_right_pad(LeftFrameNew, PaddedLeftFrameNew),
-    util.zip_with(
-        (pred(S1::in, S2::in, S3::out) is det :-
+    AppendPred =
+        ( pred(S1::in, S2::in, S3::out) is det :-
             string.append(S1, S2, S3)
-        ), PaddedLeftFrameNew, RightFrameNew, GluedFrame).
+        ),
+    util.zip_with(AppendPred, PaddedLeftFrameNew, RightFrameNew, GluedFrame).
 
     % Add right padding. That is, add whitespace on right so that
     % lines are all equal length.

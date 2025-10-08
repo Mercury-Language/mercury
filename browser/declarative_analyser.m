@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2019, 2021-2023  The Mercury team.
+% Copyright (C) 2014-2015, 2017-2019, 2021-2023, 2025  The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -76,8 +76,7 @@
     % and the current search mode for the analyser.
     %
 :- pred set_analyser_fallback_search_mode(S::in, search_mode::in,
-    analyser_state(T)::in, analyser_state(T)::out)
-    is det <= mercury_edt(S, T).
+    analyser_state(T)::in, analyser_state(T)::out) is det <= mercury_edt(S, T).
 
 :- type analysis_type(T)
     --->    new_tree(T)
@@ -318,8 +317,8 @@ top_down_search_mode = analyser_top_down.
                 last_search_question    :: maybe(suspect_and_reason),
 
                 % This field is present only to make it easier to debug
-                % the dependency tracking algorithm; if bound to yes, it
-                % records the result of the invocation of that algorithm
+                % the dependency tracking algorithm; if bound to yes,
+                % it records the result of the invocation of that algorithm
                 % on the last analysis step.
                 debug_origin            :: maybe(subterm_origin(T))
         ).
@@ -333,8 +332,7 @@ top_down_search_mode = analyser_top_down.
             % referenced by the suspect_id.
 
     ;       explicit_supertree.
-            % Generate a new explicit tree above the current
-            % explicit tree.
+            % Generate a new explicit tree above the current explicit tree.
 
 analyser_state_init(Analyser) :-
     Analyser = analyser(empty_search_space, no,

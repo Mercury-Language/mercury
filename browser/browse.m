@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020-2023 The Mercury team.
+% Copyright (C) 2017-2018, 2020-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -473,6 +473,7 @@ run_browse_cmd_memory_addr(Debugger, Info, MaybePath, !IO) :-
     ).
 
 :- pred get_value_representation(T::in, int::out) is cc_multi.
+:- pragma no_determinism_warning(pred(get_value_representation/2)).
 
 :- pragma foreign_proc("C",
     get_value_representation(Value::in, Addr::out),
@@ -481,11 +482,8 @@ run_browse_cmd_memory_addr(Debugger, Info, MaybePath, !IO) :-
     Addr = (MR_Integer) Value;
 ").
 
-% Java doesn't support converting addresses to integers, so we just
-% return zero. For backends other than C the debugger doesn't yet work,
-% so it doesn't matter what we return.
-get_value_representation(_Value, X) :-
-    cc_multi_equal(0, X).
+get_value_representation(_, _) :-
+    unexpected($pred, "not yet supported").
 
 %---------------------------------------------------------------------------%
 

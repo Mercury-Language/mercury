@@ -1,16 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2022 The Mercury team.
+% Copyright (C) 2017-2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: percent_encoding.m.
 % Main author: wangp.
 %
-% This module performs percent-encoding.
-%
-% XXX What is percent-encoding, and what is its purpose?
+% This module performs percent-encoding for term_to_html.m.
+% This encoding and its purpose are both described by
+% https://en.wikipedia.org/wiki/Percent-encoding.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

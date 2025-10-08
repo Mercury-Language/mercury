@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2019, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2019, 2021-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -516,12 +516,10 @@ call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
         MaybeProcDefnRep = no
     ).
 
+%---------------------%
+
 :- pred call_node_bytecode_layout(label_layout::in, proc_layout::out)
     is semidet.
-
-    % Default version for backends other than C or Java.
-call_node_bytecode_layout(_, _) :-
-    semidet_fail.
 
 :- pragma foreign_proc("C",
     call_node_bytecode_layout(CallLabelLayout::in, ProcLayout::out),
@@ -541,26 +539,13 @@ call_node_bytecode_layout(_, _) :-
     }
 ").
 
-:- pragma foreign_proc("C#",
-    call_node_bytecode_layout(_CallLabelLayout::in, _ProcLayout::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    if (1 == 1) throw new System.Exception(\"not supported in csharp grade\");
-").
+call_node_bytecode_layout(_, _) :-
+    unexpected($pred, "not yet supported").
 
-:- pragma foreign_proc("Java",
-    call_node_bytecode_layout(_CallLabelLayout::in, _ProcLayout::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    if (1 == 1) throw new Error(\"not supported in java grade\");
-").
+%---------------------%
 
 :- semipure pred have_cached_proc_defn_rep(proc_layout::in, proc_defn_rep::out)
     is semidet.
-
-    % Default version for backends other than C or Java.
-have_cached_proc_defn_rep(_, _) :-
-    semidet_fail.
 
 :- pragma foreign_proc("C",
     have_cached_proc_defn_rep(ProcLayout::in, ProcDefnRep::out),
@@ -580,24 +565,12 @@ have_cached_proc_defn_rep(_, _) :-
     }
 ").
 
-:- pragma foreign_proc("C#",
-    have_cached_proc_defn_rep(_ProcLayout::in, _ProcDefnRep::out),
-    [will_not_call_mercury, thread_safe, promise_semipure],
-"
-    if (1 == 1) throw new System.Exception(\"not supported in csharp grade\");
-").
+have_cached_proc_defn_rep(_, _) :-
+    unexpected($pred, "not yet supported").
 
-:- pragma foreign_proc("Java",
-    have_cached_proc_defn_rep(_ProcLayout::in, _ProcDefnRep::out),
-    [will_not_call_mercury, thread_safe, promise_semipure],
-"
-    if (1 == 1) throw new Error(\"not supported in java grade\");
-").
+%---------------------%
 
 :- impure pred cache_proc_defn_rep(proc_layout::in, proc_defn_rep::in) is det.
-
-    % Default version for non-C backends.
-cache_proc_defn_rep(_, _).
 
 :- pragma foreign_proc("C",
     cache_proc_defn_rep(ProcLayout::in, ProcDefnRep::in),
@@ -608,6 +581,9 @@ cache_proc_defn_rep(_, _).
 #endif
     MR_insert_proc_defn_rep(ProcLayout, ProcDefnRep);
 ").
+
+cache_proc_defn_rep(_, _) :-
+    unexpected($pred, "not yet supported").
 
 %---------------------------------------------------------------------------%
 
@@ -879,6 +855,8 @@ disj_node_from_id(Store, NodeId, Node) :-
 :- type trace_node_id
     --->    id(c_pointer).
 
+%---------------------%
+
 :- pred search_trace_node_store(trace_node_store::in, trace_node_id::in,
     trace_node(trace_node_id)::out) is semidet.
 :- pragma no_determinism_warning(pred(search_trace_node_store/3)).
@@ -894,6 +872,8 @@ disj_node_from_id(Store, NodeId, Node) :-
 
 search_trace_node_store(_, _, _) :-
     private_builtin.sorry("search_trace_node_store").
+
+%---------------------------------------------------------------------------%
 
     % Following are some predicates that are useful for manipulating
     % the above instance in C code.
@@ -913,7 +893,6 @@ call_node_get_last_interface(Call) = Last :-
 
 :- func call_node_set_last_interface(trace_node(trace_node_id)::di,
     trace_node_id::di) = (trace_node(trace_node_id)::out) is det.
-
 :- pragma foreign_export("C", call_node_set_last_interface(di, di) = out,
     "MR_DD_call_node_set_last_interface").
 
@@ -930,7 +909,6 @@ call_node_set_last_interface(Call0, Last) = Call :-
 
 :- func call_node_update_implicit_tree_info(trace_node(trace_node_id)::di,
     int::di) = (trace_node(trace_node_id)::out) is det.
-
 :- pragma foreign_export("C",
     call_node_update_implicit_tree_info(di, di) = out,
     "MR_DD_call_node_update_implicit_tree_info").
@@ -947,7 +925,6 @@ call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
     set_trace_node_arg(Call1, 5, yes(implicit_tree_info(IdealDepth)), Call).
 
 :- func get_implicit_tree_ideal_depth(trace_node(trace_node_id)) = int.
-
 :- pragma foreign_export("C",
     get_implicit_tree_ideal_depth(in) = out,
     "MR_DD_get_implicit_tree_ideal_depth").
@@ -967,7 +944,6 @@ get_implicit_tree_ideal_depth(Call) = IdealDepth :-
 
 :- func cond_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
     = (trace_node(trace_node_id)::out) is det.
-
 :- pragma foreign_export("C", cond_node_set_status(di, di) = out,
     "MR_DD_cond_node_set_status").
 
@@ -983,7 +959,6 @@ cond_node_set_status(Cond0, Status) = Cond :-
 
 :- func neg_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
     = (trace_node(trace_node_id)::out) is det.
-
 :- pragma foreign_export("C", neg_node_set_status(di, di) = out,
     "MR_DD_neg_node_set_status").
 
@@ -997,8 +972,10 @@ neg_node_set_status(Neg0, Status) = Neg :-
     % (since argument numbers start from 0).
     set_trace_node_arg(Neg1, 2, Status, Neg).
 
+%---------------------------------------------------------------------------%
+
 :- pred set_trace_node_arg(trace_node(trace_node_id)::di, int::in, T::di,
-        trace_node(trace_node_id)::out) is det.
+    trace_node(trace_node_id)::out) is det.
 
 set_trace_node_arg(Node0, FieldNum, Val, Node) :-
     store.init(S0),
@@ -1053,7 +1030,6 @@ get_trace_node_label(node_neg_fail(_, _, Label)) = Label.
 
 :- pred trace_node_seqno(trace_node_store::in, trace_node(trace_node_id)::in,
     sequence_number::out) is semidet.
-
 :- pragma foreign_export("C", trace_node_seqno(in, in, out),
     "MR_DD_trace_node_seqno").
 
@@ -1068,7 +1044,6 @@ trace_node_seqno(S, Node, SeqNo) :-
 
 :- pred trace_node_call(trace_node_store::in, trace_node(trace_node_id)::in,
     trace_node_id::out) is semidet.
-
 :- pragma foreign_export("C", trace_node_call(in, in, out),
     "MR_DD_trace_node_call").
 
@@ -1081,7 +1056,6 @@ trace_node_call(_, node_excp(_, Call, _, _, _, _, _), Call).
 
 :- pred trace_node_first_disj(trace_node(trace_node_id)::in,
     trace_node_id::out) is semidet.
-
 :- pragma foreign_export("C", trace_node_first_disj(in, out),
     "MR_DD_trace_node_first_disj").
 
@@ -1123,7 +1097,6 @@ find_prev_contour_store(Store, Id) = Prev :-
     %
 :- pred print_trace_node(io.text_output_stream::in,
     trace_node(trace_node_id)::in, io::di, io::uo) is det.
-
 :- pragma foreign_export("C", print_trace_node(in, in, di, uo),
     "MR_DD_print_trace_node").
 
@@ -1301,6 +1274,8 @@ construct_neg_succ_node(Preceding, Neg, Label) =
 construct_neg_fail_node(Preceding, Neg, Label) =
     node_neg_fail(Preceding, Neg, Label).
 
+%---------------------%
+
 :- pred null_trace_node_id(trace_node_id::out) is det.
 :- pragma no_determinism_warning(pred(null_trace_node_id/1)).
 
@@ -1313,6 +1288,8 @@ construct_neg_fail_node(Preceding, Neg, Label) =
 
 null_trace_node_id(_) :-
     private_builtin.sorry("null_trace_node_id").
+
+%---------------------%
 
 :- func init_trace_atom_args = list(trace_atom_arg).
 
@@ -1360,9 +1337,9 @@ c_bool_to_merc_bool(ProgVis) =
 
 %---------------------------------------------------------------------------%
 
-    % The most important property of this instance is that it
-    % can be written to or read in from a stream easily. It
-    % is not as efficient to use as the earlier instance, though.
+    % The most important property of this instance is that
+    % it can be written to or read in from a stream easily.
+    % It is not as efficient to use as the earlier instance, though.
     %
 :- instance annotated_trace(trace_node_map, trace_node_key) where [
     pred(trace_node_from_id/3) is search_trace_node_map
@@ -1431,6 +1408,8 @@ node_map(Store, NodeId, map(Map0), Map) :-
         Map = map(Map0)
     ).
 
+%---------------------%
+
 :- pred node_id_to_key(trace_node_id::in, trace_node_key::out) is det.
 :- pragma no_determinism_warning(pred(node_id_to_key/2)).
 
@@ -1443,6 +1422,8 @@ node_map(Store, NodeId, map(Map0), Map) :-
 
 node_id_to_key(_, _) :-
     private_builtin.sorry("node_id_to_key").
+
+%---------------------%
 
 :- pred convert_node(trace_node(trace_node_id)::in,
     trace_node(trace_node_key)::out) is det.
@@ -1457,6 +1438,8 @@ node_id_to_key(_, _) :-
 
 convert_node(_, _) :-
     private_builtin.sorry("convert_node").
+
+%---------------------%
 
     % Given a node in an annotated trace, return a reference to the preceding
     % node in the trace, or a NULL reference if it is the first.
@@ -1548,8 +1531,7 @@ head_var_num_to_arg_num([Arg | Args], SearchUserHeadVarNum, CurArgNum,
     int::out) is det.
 
 arg_num_to_head_var_num([], _, _, _) :-
-    throw(internal_error("arg_num_to_head_var_num",
-        "nonexistent arg num")).
+    throw(internal_error("arg_num_to_head_var_num", "nonexistent arg num")).
 arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
     Arg = arg_info(UserVis, _, _),
     (
