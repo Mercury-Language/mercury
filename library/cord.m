@@ -10,16 +10,20 @@
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: high.
 %
-% A cord is a sequence type supporting O(1) consing and concatenation.
-% A cord is essentially a tree structure with data stored in the leaf nodes.
-% Joining two cords together to construct a new cord is therefore an O(1)
-% operation.
+% Like lists, cords contain a sequence of elements. The difference is that
+% many operations that construct cord (such as appending two cords together,
+% or adding a new element to the end of a cord) are O(1) operations, not O(N).
+% In general, if you want to construct a list in any order other than
+% strictly back-to-front, then you should consider constructing a cord instead,
+% and then converting the final cord to a list.
 %
-% This data type is intended for situations where efficient, linearised
-% collection of data is required.
+% The reason why such lower asymptotic complexities are possible for many
+% operations is that cords are essentially binary trees that store elements
+% in their leaf nodes.
 %
-% While this data type presents a list-like interface, calls to list/1 and
-% head_tail/3 in particular are O(n) in the size of the cord.
+% The price of lower complexity for cord-construction operations is
+% (a) higher complexity for some inspection operations, such as head_tail/3,
+% and (b) higher constant factors for most operations.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -31,12 +35,17 @@
 
 %---------------------------------------------------------------------------%
 
-    % Cords that contain the same members in the same order will not
-    % necessarily have the same representation and will, therefore,
-    % not necessarily either unify or compare as equal.
+    % Conceptually, a cord contains a list of elements of type T.
+    %
+    % Cords that contain the same elements in the same order will not
+    % necessarily have the same representation. Therefore it is possible
+    % that they may not unify, and that comparing them may return a result
+    % other than "equal".
     %
     % The exception to this rule is that the empty cord does have a
     % unique representation.
+    %
+    % You can test two cords for equality using the cord.equal predicate below.
     %
 :- type cord(T).
 
@@ -110,8 +119,8 @@
     %
 :- func cord_list_to_cord(list(cord(T))) = cord(T).
 
-    % Reverse the given list (of cords), and then append together
-    % the resulting list of cords.
+    % Reverse the given list (of cords), and then
+    % append together the resulting list of cords.
     %
 :- func rev_cord_list_to_cord(list(cord(T))) = cord(T).
 
@@ -144,29 +153,56 @@
 % Getting single elements out of cords.
 %
 
-    %     head_tail(C0, X, C)  =>  list(C0) = [X | list(C)]
-    % not head_tail(C0, _, _)  =>  C0 = empty
-    % An O(n) operation, although traversing an entire cord with
-    % head_tail/3 gives O(1) amortized cost for each call.
+    % head(Cord, Head):
+    % get_first(Cord, Head):
     %
-:- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
-
-    %     head(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
-    % not head(C0, _)  =>  C0 = empty
+    % Return just the first element in Cord, if Cord contains any elements.
+    % Otherwise, fail.
     %
-    % get_first is a synonym for head.
+    %     head(Cord, Head)  =>  some [Tail]: list(Cord) = [Head] ++ Tail.
+    % not head(Cord, _)     =>  Cord = empty
+    %
+    % This is an O(n) operation.
     %
 :- pred head(cord(T)::in, T::out) is semidet.
 :- pred get_first(cord(T)::in, T::out) is semidet.
 
-    %     get_last(C0, X)  =>  some [C]: list(C0) = C ++ [X].
-    % not get_last(C0, _)  =>  C0 = empty
+    % head_tail(Cord, Head, Tail):
+    %
+    % If the cord Cord is not empty, then return its first element as Head,
+    % and the cord containing all the remaining elements as T.
+    % If the cord is empty, then fail.
+    %
+    %     head_tail(Cord, Head, Tail)  =>  list(Cord) = [Head | list(Tail)]
+    % not head_tail(Cord, _, _)        =>  Cord = empty
+    %
+    % This is an O(n) operation, although traversing an entire cord with
+    % head_tail/3 gives O(1) amortized cost for each call.
+    %
+:- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
+
+    % get_last(Cord, Last):
+    %
+    % Return just the last element in Cord, if Cord contains any elements.
+    % Otherwise, fail.
+    %
+    %     get_last(Cord, Lasr)  =>  some [List]: list(Cord) = List ++ [Last].
+    % not get_last(Cord, _)     =>  Cord = empty
+    %
+    % This is an O(n) operation.
     %
 :- pred get_last(cord(T)::in, T::out) is semidet.
 
-    %     split_last(C0, C, X)  =>  list(C0) = C ++ [X].
-    % not split_last(C0, _, _)  =>  C0 = empty
-    % An O(n) operation, although traversing an entire cord with
+    % split_last(Cord, Prev, Last):
+    %
+    % If the cord Cord is not empty, then return its last element as Last,
+    % and the cord containing all the previous elements as Prev.
+    % If the cord is empty, then fail.
+    %
+    %     split_last(Cord, Prev, Last)  =>  list(Cord) = list(Prev) ++ [Last].
+    % not split_last(Cord, _, _)        =>  Cord = empty
+    %
+    % This is an O(n) operation, although traversing an entire cord with
     % split_last/3 gives O(1) amortized cost for each call.
     %
 :- pred split_last(cord(T)::in, cord(T)::out, T::out) is semidet.
@@ -177,7 +213,8 @@
 %
 
     % length(C) = list.length(list(C))
-    % An O(n) operation.
+    %
+    % This is an O(n) operation.
     %
 :- func length(cord(T)) = int.
 
@@ -185,10 +222,15 @@
     %
 :- pred member(T::out, cord(T)::in) is nondet.
 
-    % equal(CA, CB)  <=>  list(CA) = list(CB).
-    % An O(n) operation where n = length(CA) + length(CB).
+    % equal(CA, CB):
     %
+    % Succeed if-and-only-if CA and CB contain the same elements
+    % in the same % order.
+    %
+    % equal(CA, CB)  <=>  list(CA) = list(CB).
     % (Note: the current implementation works exactly this way.)
+    %
+    % This is an O(n) operation where n = length(CA) + length(CB).
     %
 :- pred equal(cord(T)::in, cord(T)::in) is semidet.
 
@@ -197,8 +239,13 @@
 % Converting lists to cords.
 %
 
+    % from_list(List) = Cord:
+    %
+    % Return a cord containing the same elements in the same order as List.
+    %
     % list(from_list(Xs)) = Xs
-    % An O(1) operation.
+    %
+    % This is an O(1) operation.
     %
 :- func from_list(list(T)) = cord(T).
 
@@ -207,6 +254,11 @@
 % Converting cords to lists.
 %
 
+    % list(Cord) = List:
+    % to_list(Cord) = List:
+    %
+    % Return a list containing the same elements in the same order as Cord.
+    %
     % The list of data in a cord:
     %
     %   list(empty        ) = []
@@ -215,24 +267,24 @@
     %   list(TA ++ TB     ) = list(TA) ++ list(TB)
     %
 :- func list(cord(T)) = list(T).
-
-    % A synonym for the list/1.
-    %
 :- func to_list(cord(T)) = list(T).
 
+    % rev_list(Cord) = RevList:
+    % to_rev_list(Cord) = RevList:
+    %
+    % Return a list containing the same elements as Cord,
+    % but in the reverse order.
+    %
     % rev_list(Cord) = list.reverse(list(Cord).
     %
 :- func rev_list(cord(T)) = list(T).
-
-    % A synonym for rev_list/1.
-    %
 :- func to_rev_list(cord(T)) = list(T).
 
     % Append together a list of cords, and return the result as a list.
     %
 :- func cord_list_to_list(list(cord(T))) = list(T).
 
-    % Reverse the given list (of cords), and then append together
+    % Reverse the given list (of cords), append together
     % the resulting list of cords, and return it as a list.
     %
 :- func rev_cord_list_to_list(list(cord(T))) = list(T).
@@ -242,34 +294,50 @@
 % Some standard higher order operations.
 %
 
-    % find_first_match(Pred, List, FirstMatch) takes a closure with one
-    % input argument. It returns the first element X of the cord (if any)
-    % for which Pred(X) is true.
+    % find_first_match(Pred, Cord, FirstMatch):
+    %
+    % Return as FirstMatch the first element E in Cord
+    % for which Pred(E) is true. If there is no such element, fail.
     %
 :- pred find_first_match(pred(T)::in(pred(in) is semidet),
     cord(T)::in, T::out) is semidet.
 
-    % list(map(F, C)) = list.map(F, list(C))
+    % map(Func, Cord) = MappedCord:
+    %
+    % Apply Func to every element of Cord, and return the result.
+    %
+    % list(map(Func, Cord)) = list.map(Func, list(Cord))
     %
 :- func map(func(T) = U, cord(T)) = cord(U).
+
+    % map_pred(Pred, Cord, MappedCord):
+    %
+    % Apply Pred to every element of Cord, and return the result.
+    %
+    % cord.map_pred(Pred, Cord, MappedCord), MappedList = cord.list(MappedCord)
+    % is equivalent to
+    % list.map(Pred, cord.list(Cord), MappedList)
+    %
 :- pred map_pred(pred(T, U)::in(pred(in, out) is det),
     cord(T)::in, cord(U)::out) is det.
 
     % filter(Pred, Cord, TrueCord):
     %
-    % Pred is a closure with one input argument.
-    % For each member X of Cord,
-    % - if Pred(X) is true, then X is included in TrueCord.
+    % For each member E of Cord,
+    % - if Pred(E) is true, then include E in TrueCord.
+    %
+    % The order of the included elements is preserved.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     cord(T)::in, cord(T)::out) is det.
 
     % filter(Pred, Cord, TrueCord, FalseCord):
     %
-    % Pred is a closure with one input argument.
-    % For each member X of Cord,
-    % - if Pred(X) is true, then X is included in TrueCord.
-    % - if Pred(X) is false, then X is included in FalseCord.
+    % For each member E of Cord,
+    % - if Pred(E) is true, then include E in TrueCord.
+    % - if Pred(E) is false, then include E in FalseCord.
+    %
+    % The order of the included elements is preserved.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     cord(T)::in, cord(T)::out, cord(T)::out) is det.
@@ -437,7 +505,7 @@
 % The original implementation of the cord/1 type had four function symbols
 % in one type: empty, unit, node and branch. However, this representation
 % requires code to handle the "empty" case when we look at *every* part
-% of the cord. This code is both annoying to write and to read, and the
+% of the cord. This code is annoying to write, annoying to read, and the
 % tests for empty at these points also reduce performance.
 
 :- type cord(T)
@@ -541,6 +609,26 @@ is_singleton(C, X) :-
 
 %---------------------------------------------------------------------------%
 
+head(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
+
+get_first(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
+
+:- pred get_first_node(cord_node(T)::in, T::out) is det.
+
+get_first_node(Node, Head) :-
+    (
+        Node = unit_node(Head)
+    ;
+        Node = list_node(Head, _)
+    ;
+        Node = branch_node(A, _),
+        get_first_node(A, Head)
+    ).
+
+%---------------------%
+
 head_tail(nonempty_cord(N), H, T) :-
     head_tail_node(N, H, T).
 
@@ -570,26 +658,6 @@ head_tail_node(Node, Head, Tail) :-
             AC = nonempty_cord(A),
             Tail = nonempty_cord(branch_node(A, B))
         )
-    ).
-
-%---------------------%
-
-head(nonempty_cord(N), Head) :-
-    get_first_node(N, Head).
-
-get_first(nonempty_cord(N), Head) :-
-    get_first_node(N, Head).
-
-:- pred get_first_node(cord_node(T)::in, T::out) is det.
-
-get_first_node(Node, Head) :-
-    (
-        Node = unit_node(Head)
-    ;
-        Node = list_node(Head, _)
-    ;
-        Node = branch_node(A, _),
-        get_first_node(A, Head)
     ).
 
 %---------------------%
