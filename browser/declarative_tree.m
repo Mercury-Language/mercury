@@ -1757,6 +1757,7 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
 %---------------------------------------------------------------------------%
 
 :- pred is_traced_grade(bool::out) is det.
+:- pragma no_determinism_warning(pred(is_traced_grade/1)).
 
 :- pragma foreign_proc("C",
     is_traced_grade(TracingOn::out),
@@ -1768,6 +1769,9 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         TracingOn = MR_NO;
     #endif
 ").
+
+is_traced_grade(_) :-
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 

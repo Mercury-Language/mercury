@@ -1986,7 +1986,7 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
 ").
 
 should_check_search_space_consistency :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
     % Try to find an inconsistency in the weights of the suspects.
     % If one is found, output an error message; otherwise fail.

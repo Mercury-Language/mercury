@@ -135,7 +135,7 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
 ").
 
 cterm_deconstruct(_, _, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -155,7 +155,7 @@ cterm_deconstruct(_, _, _) :-
 ").
 
 cterm_head_tail(_, _, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.cterm.

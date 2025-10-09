@@ -305,7 +305,7 @@ use_asm_labels :-
 ").
 
 system_is_osx :-
-    unexpected($pred, "not_yet_supported").
+    private_builtin.sorry($pred).
 
 %---------------------%
 

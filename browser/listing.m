@@ -224,7 +224,7 @@ list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine, MarkLine,
 ").
 
 mercury_stream_to_c_file_ptr(_) = _ :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -239,7 +239,7 @@ mercury_stream_to_c_file_ptr(_) = _ :-
 ").
 
 write_to_c_file(_, _, _, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -397,7 +397,7 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
 ").
 
 print_lines_in_range_c(_, _, _, _, _, _, _, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -488,7 +488,7 @@ execute_command_with_redirects(Prog, Args, OutStreamC, ErrorStreamC,
 ").
 
 do_posix_spawnp(_, _, _, _, _, _, _, _, _) :-
-    unexpected($pred, "not_yet_supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 

@@ -520,6 +520,7 @@ call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
 
 :- pred call_node_bytecode_layout(label_layout::in, proc_layout::out)
     is semidet.
+:- pragma no_determinism_warning(pred(call_node_bytecode_layout/2)).
 
 :- pragma foreign_proc("C",
     call_node_bytecode_layout(CallLabelLayout::in, ProcLayout::out),
@@ -540,12 +541,13 @@ call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
 ").
 
 call_node_bytecode_layout(_, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
 :- semipure pred have_cached_proc_defn_rep(proc_layout::in, proc_defn_rep::out)
     is semidet.
+:- pragma no_determinism_warning(pred(have_cached_proc_defn_rep/2)).
 
 :- pragma foreign_proc("C",
     have_cached_proc_defn_rep(ProcLayout::in, ProcDefnRep::out),
@@ -571,6 +573,7 @@ have_cached_proc_defn_rep(_, _) :-
 %---------------------%
 
 :- impure pred cache_proc_defn_rep(proc_layout::in, proc_defn_rep::in) is det.
+:- pragma no_determinism_warning(pred(cache_proc_defn_rep/2)).
 
 :- pragma foreign_proc("C",
     cache_proc_defn_rep(ProcLayout::in, ProcDefnRep::in),

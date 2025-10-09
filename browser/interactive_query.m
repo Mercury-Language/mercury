@@ -1037,7 +1037,7 @@ shlib_extension =
 ").
 
 system_is_darwin :-
-    unexpected($pred, "noyt yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.interactive_query.

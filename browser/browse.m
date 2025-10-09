@@ -483,7 +483,7 @@ run_browse_cmd_memory_addr(Debugger, Info, MaybePath, !IO) :-
 ").
 
 get_value_representation(_, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
