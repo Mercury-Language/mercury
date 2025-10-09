@@ -40,15 +40,91 @@
     %
 :- type cord(T).
 
-    % Return the empty cord.
+%---------------------------------------------------------------------------%
+%
+% Constructing a cord from scratch.
+%
+
+    % The init and empty functions do the same job: return the empty cord.
+    %
+    % list(cord(init)) = [].
+    % list(cord(empty)) = [].
     %
 :- func init = cord(T).
-
-    % The unique representation for the empty cord:
-    %
-    %   list(empty) = []
-    %
 :- func empty = cord(T).
+
+    % Return a cord containing just the given element.
+    %
+    % list(cord(singleton(X))) = [X].
+    %
+:- func singleton(T) = cord(T).
+
+%---------------------------------------------------------------------------%
+%
+% Constructing a new cord from one existing cord.
+%
+
+    % cons(X, C0) = C:
+    % cons(X, C0, C):
+    %
+    % Return C, which is the cord you get when you add X to the front of C0.
+    %
+    % list(cons(X, C0)) = [X | list(C0)]
+    %
+    % This is an O(1) operation.
+    %
+:- func cons(T, cord(T)) = cord(T).
+:- pred cons(T::in, cord(T)::in, cord(T)::out) is det.
+
+    % snoc(C0, X) = C:
+    % snoc(X, C0, C):
+    %
+    % Return C, which is the cord you get when you add X to the end of C0.
+    % (The argument order of the predicate version simplifies its use
+    % when the cord is represented by a state variable.)
+    %
+    % list(snoc(C0, X)) = list(C0) ++ [X]
+    %
+    % This is an O(1) operation.
+    %
+:- func snoc(cord(T), T) = cord(T).
+:- pred snoc(T::in, cord(T)::in, cord(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Constructing a new cord from two or more existing cords.
+%
+
+    % CA ++ CB = C:
+    %
+    % Return C, which is the cord you get when you append CB to the end of CA.
+    %
+    % list(CA ++ CB) = list(CA) ++ list(CB)
+    %
+    % This is an O(1) operation.
+    % (With lists, the complexity would be O(len(CA)).)
+    %
+:- func cord(T) ++ cord(T) = cord(T).
+
+    % Append together a list of cords.
+    %
+:- func cord_list_to_cord(list(cord(T))) = cord(T).
+
+    % Reverse the given list (of cords), and then append together
+    % the resulting list of cords.
+    %
+:- func rev_cord_list_to_cord(list(cord(T))) = cord(T).
+
+    % Cord = condense(CordOfCords):
+    %
+    % Cord is the result of concatenating all the elements of CordOfCords.
+    %
+:- func condense(cord(cord(T))) = cord(T).
+
+%---------------------------------------------------------------------------%
+%
+% Simple tests on cords.
+%
 
     % Succeed if-and-only-if the given cord is empty.
     %
@@ -58,18 +134,78 @@
     %
 :- pred is_non_empty(cord(T)::in) is semidet.
 
-    % list(singleton(X)) = [X]
-    %
-:- func singleton(T) = cord(T).
-
-    % is_singleton(C, X) <=> list(C) = [X].
+    % If the given cord contains exactly one element, then return that element.
+    % Otherwise, fail.
     %
 :- pred is_singleton(cord(T)::in, T::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Getting single elements out of cords.
+%
+
+    %     head_tail(C0, X, C)  =>  list(C0) = [X | list(C)]
+    % not head_tail(C0, _, _)  =>  C0 = empty
+    % An O(n) operation, although traversing an entire cord with
+    % head_tail/3 gives O(1) amortized cost for each call.
+    %
+:- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
+
+    %     head(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
+    % not head(C0, _)  =>  C0 = empty
+    %
+    % get_first is a synonym for head.
+    %
+:- pred head(cord(T)::in, T::out) is semidet.
+:- pred get_first(cord(T)::in, T::out) is semidet.
+
+    %     get_last(C0, X)  =>  some [C]: list(C0) = C ++ [X].
+    % not get_last(C0, _)  =>  C0 = empty
+    %
+:- pred get_last(cord(T)::in, T::out) is semidet.
+
+    %     split_last(C0, C, X)  =>  list(C0) = C ++ [X].
+    % not split_last(C0, _, _)  =>  C0 = empty
+    % An O(n) operation, although traversing an entire cord with
+    % split_last/3 gives O(1) amortized cost for each call.
+    %
+:- pred split_last(cord(T)::in, cord(T)::out, T::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on whole cords.
+%
+
+    % length(C) = list.length(list(C))
+    % An O(n) operation.
+    %
+:- func length(cord(T)) = int.
+
+    % member(X, C) <=> list.member(X, list(C)).
+    %
+:- pred member(T::out, cord(T)::in) is nondet.
+
+    % equal(CA, CB)  <=>  list(CA) = list(CB).
+    % An O(n) operation where n = length(CA) + length(CB).
+    %
+    % (Note: the current implementation works exactly this way.)
+    %
+:- pred equal(cord(T)::in, cord(T)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists to cords.
+%
 
     % list(from_list(Xs)) = Xs
     % An O(1) operation.
     %
 :- func from_list(list(T)) = cord(T).
+
+%---------------------------------------------------------------------------%
+%
+% Converting cords to lists.
+%
 
     % The list of data in a cord:
     %
@@ -92,38 +228,6 @@
     %
 :- func to_rev_list(cord(T)) = list(T).
 
-    % Cord = condense(CordOfCords):
-    %
-    % Cord is the result of concatenating all the elements of CordOfCords.
-    %
-:- func condense(cord(cord(T))) = cord(T).
-
-    % list(cons(X, C)) = [X | list(C)]
-    % An O(1) operation.
-    %
-:- func cons(T, cord(T)) = cord(T).
-:- pred cons(T::in, cord(T)::in, cord(T)::out) is det.
-
-    % list(snoc(C, X)) = list(C) ++ [X]
-    % An O(1) operation.
-    %
-:- func snoc(cord(T), T) = cord(T).
-:- pred snoc(T::in, cord(T)::in, cord(T)::out) is det.
-
-    % list(CA ++ CB) = list(CA) ++ list(CB)
-    % An O(1) operation.
-    %
-:- func cord(T) ++ cord(T) = cord(T).
-
-    % Append together a list of cords.
-    %
-:- func cord_list_to_cord(list(cord(T))) = cord(T).
-
-    % Reverse the given list (of cords), and then append together
-    % the resulting list of cords.
-    %
-:- func rev_cord_list_to_cord(list(cord(T))) = cord(T).
-
     % Append together a list of cords, and return the result as a list.
     %
 :- func cord_list_to_list(list(cord(T))) = list(T).
@@ -133,41 +237,17 @@
     %
 :- func rev_cord_list_to_list(list(cord(T))) = list(T).
 
-    %     head_tail(C0, X, C)  =>  list(C0) = [X | list(C)]
-    % not head_tail(C0, _, _)  =>  C0 = empty
-    % An O(n) operation, although traversing an entire cord with
-    % head_tail/3 gives O(1) amortized cost for each call.
-    %
-:- pred head_tail(cord(T)::in, T::out, cord(T)::out) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Some standard higher order operations.
+%
 
-    %     split_last(C0, C, X)  =>  list(C0) = C ++ [X].
-    % not split_last(C0, _, _)  =>  C0 = empty
-    % An O(n) operation, although traversing an entire cord with
-    % split_last/3 gives O(1) amortized cost for each call.
+    % find_first_match(Pred, List, FirstMatch) takes a closure with one
+    % input argument. It returns the first element X of the cord (if any)
+    % for which Pred(X) is true.
     %
-:- pred split_last(cord(T)::in, cord(T)::out, T::out) is semidet.
-
-    %     head(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
-    % not head(C0, _)  =>  C0 = empty
-    %
-    % get_first is a synonym for head.
-    %
-:- pred head(cord(T)::in, T::out) is semidet.
-:- pred get_first(cord(T)::in, T::out) is semidet.
-
-    %     get_last(C0, X)  =>  some [C]: list(C0) = C ++ [X].
-    % not get_last(C0, _)  =>  C0 = empty
-    %
-:- pred get_last(cord(T)::in, T::out) is semidet.
-
-    % length(C) = list.length(list(C))
-    % An O(n) operation.
-    %
-:- func length(cord(T)) = int.
-
-    % member(X, C) <=> list.member(X, list(C)).
-    %
-:- pred member(T::out, cord(T)::in) is nondet.
+:- pred find_first_match(pred(T)::in(pred(in) is semidet),
+    cord(T)::in, T::out) is semidet.
 
     % list(map(F, C)) = list.map(F, list(C))
     %
@@ -193,6 +273,11 @@
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     cord(T)::in, cord(T)::out, cord(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Foldl operations.
+%
 
     % foldl(F, C, A) = list.foldl(F, list(C), A).
     %
@@ -246,6 +331,11 @@
 :- mode foldl3(in(pred(in, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, di, uo) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Foldr operations.
+%
+
     % foldr(F, C, A) = list.foldr(F, list(C), A).
     %
 :- func foldr(func(T, A) = A, cord(T), A) = A.
@@ -298,6 +388,11 @@
 :- mode foldr3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Map_foldl operations.
+%
+
     % map_foldl(P, CA, CB, !Acc):
     %
     % This predicate calls P on each element of the input cord, working
@@ -332,20 +427,6 @@
     cord(T1)::in, cord(T2)::out, A::in, A::out, B::in, B::out, C::in, C::out)
     is det.
 
-    % find_first_match(Pred, List, FirstMatch) takes a closure with one
-    % input argument. It returns the first element X of the cord (if any)
-    % for which Pred(X) is true.
-    %
-:- pred find_first_match(pred(T)::in(pred(in) is semidet),
-    cord(T)::in, T::out) is semidet.
-
-    % equal(CA, CB)  <=>  list(CA) = list(CB).
-    % An O(n) operation where n = length(CA) + length(CB).
-    %
-    % (Note: the current implementation works exactly this way.)
-    %
-:- pred equal(cord(T)::in, cord(T)::in) is semidet.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -374,13 +455,82 @@ init = empty_cord.
 
 empty = empty_cord.
 
-is_empty(empty_cord).
-
-is_non_empty(nonempty_cord(_)).
+singleton(X) = nonempty_cord(unit_node(X)).
 
 %---------------------------------------------------------------------------%
 
-singleton(X) = nonempty_cord(unit_node(X)).
+cons(X, C) = XC :-
+    (
+        C = empty_cord,
+        XC = nonempty_cord(unit_node(X))
+    ;
+        C = nonempty_cord(N),
+        XC = nonempty_cord(branch_node(unit_node(X), N))
+    ).
+
+cons(X, !C) :-
+    !:C = cons(X, !.C).
+
+%---------------------%
+
+snoc(C, X) = CX :-
+    (
+        C = empty_cord,
+        CX = nonempty_cord(unit_node(X))
+    ;
+        C = nonempty_cord(N),
+        CX = nonempty_cord(branch_node(N, unit_node(X)))
+    ).
+
+snoc(X, !C) :-
+    !:C = snoc(!.C, X).
+
+%---------------------------------------------------------------------------%
+
+A ++ B = C :-
+    (
+        A = empty_cord,
+        C = B
+    ;
+        A = nonempty_cord(_),
+        B = empty_cord,
+        C = A
+    ;
+        A = nonempty_cord(AN),
+        B = nonempty_cord(BN),
+        C = nonempty_cord(branch_node(AN, BN))
+    ).
+
+%---------------------%
+
+cord_list_to_cord(Cords) = Cord :-
+    % For tail recursion.
+    list.reverse(Cords, RevCords),
+    Cord = rev_cord_list_to_cord(RevCords).
+
+%---------------------%
+
+rev_cord_list_to_cord(RevCords) = Cord :-
+    Cord = list.foldl(cord.(++), RevCords, empty_cord).
+
+%---------------------%
+
+condense(empty_cord) = empty_cord.
+condense(nonempty_cord(C0)) = condense_2(C0).
+
+:- func condense_2(cord_node(cord(T))) = cord(T).
+
+condense_2(unit_node(C)) = C.
+condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
+condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
+    Left = condense_2(Left0),
+    Right = condense_2(Right0).
+
+%---------------------------------------------------------------------------%
+
+is_empty(empty_cord).
+
+is_non_empty(nonempty_cord(_)).
 
 is_singleton(C, X) :-
     (
@@ -388,6 +538,154 @@ is_singleton(C, X) :-
     ;
         C = nonempty_cord(list_node(X, []))
     ).
+
+%---------------------------------------------------------------------------%
+
+head_tail(nonempty_cord(N), H, T) :-
+    head_tail_node(N, H, T).
+
+:- pred head_tail_node(cord_node(T)::in, T::out, cord(T)::out) is det.
+
+head_tail_node(Node, Head, Tail) :-
+    (
+        Node = unit_node(Head),
+        Tail = empty_cord
+    ;
+        Node = list_node(H, T),
+        Head = H,
+        (
+            T = [],
+            Tail = empty_cord
+        ;
+            T = [TH | TT],
+            Tail = nonempty_cord(list_node(TH, TT))
+        )
+    ;
+        Node = branch_node(A0, B),
+        head_tail_node(A0, Head, AC),
+        (
+            AC = empty_cord,
+            Tail = nonempty_cord(B)
+        ;
+            AC = nonempty_cord(A),
+            Tail = nonempty_cord(branch_node(A, B))
+        )
+    ).
+
+%---------------------%
+
+head(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
+
+get_first(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
+
+:- pred get_first_node(cord_node(T)::in, T::out) is det.
+
+get_first_node(Node, Head) :-
+    (
+        Node = unit_node(Head)
+    ;
+        Node = list_node(Head, _)
+    ;
+        Node = branch_node(A, _),
+        get_first_node(A, Head)
+    ).
+
+%---------------------%
+
+get_last(nonempty_cord(N), Last) :-
+    get_last_node(N, Last).
+
+:- pred get_last_node(cord_node(T)::in, T::out) is det.
+
+get_last_node(Node, Last) :-
+    (
+        Node = unit_node(Last)
+    ;
+        Node = list_node(Head, Tail),
+        (
+            Tail = [],
+            Last = Head
+        ;
+            Tail = [_ | _],
+            list.det_last(Tail, Last)
+        )
+    ;
+        Node = branch_node(_, B),
+        get_last_node(B, Last)
+    ).
+
+%---------------------%
+
+split_last(nonempty_cord(N), AllButLast, Last) :-
+    split_last_node(N, AllButLast, Last).
+
+:- pred split_last_node(cord_node(T)::in, cord(T)::out, T::out) is det.
+
+split_last_node(Node, AllButLast, Last) :-
+    (
+        Node = unit_node(Last),
+        AllButLast = empty_cord
+    ;
+        Node = list_node(H, T),
+        split_list_last(H, T, AllButLastList, Last),
+        (
+            AllButLastList = [],
+            AllButLast = empty_cord
+        ;
+            AllButLastList = [AllButLastHead | AllButLastTail],
+            AllButLast = nonempty_cord(
+                list_node(AllButLastHead, AllButLastTail))
+        )
+    ;
+        Node = branch_node(A, B0),
+        split_last_node(B0, B, Last),
+        AllButLast = nonempty_cord(A) ++ B
+    ).
+
+:- pred split_list_last(T::in, list(T)::in, list(T)::out, T::out) is det.
+
+split_list_last(Prev, [], [], Prev).
+split_list_last(Prev, [H | T], AllButLast, Last) :-
+    split_list_last(H, T, AllButLast0, Last),
+    AllButLast = [Prev | AllButLast0].
+
+%---------------------------------------------------------------------------%
+
+length(C) = foldl(func(_, N) = N + 1, C, 0).
+
+%---------------------%
+
+member(X, nonempty_cord(N)) :-
+    member_node(X, N).
+
+:- pred member_node(T::out, cord_node(T)::in) is nondet.
+
+member_node(X, Node) :-
+    (
+        Node = unit_node(X)
+    ;
+        Node = list_node(H, T),
+        (
+            X = H
+        ;
+            member(X, T)
+        )
+    ;
+        Node = branch_node(A, B),
+        (
+            member_node(X, A)
+        ;
+            member_node(X, B)
+        )
+    ).
+
+%---------------------%
+
+equal(CA, CB) :-
+    % A more efficient algorithm would also be *much* more complex.
+    list(CA) = list(CB).
 
 %---------------------------------------------------------------------------%
 
@@ -427,6 +725,8 @@ to_list_2([N | Ns], L0) = L :-
         L = to_list_2([B, A | Ns], L0)
     ).
 
+%---------------------%
+
 rev_list(C) =
     to_rev_list(C).
 
@@ -462,77 +762,14 @@ list_reverse_2([], L) = L.
 list_reverse_2([X | Xs], L0) =
     list_reverse_2(Xs, [X | L0]).
 
-%---------------------------------------------------------------------------%
-
-condense(empty_cord) = empty_cord.
-condense(nonempty_cord(C0)) = condense_2(C0).
-
-:- func condense_2(cord_node(cord(T))) = cord(T).
-
-condense_2(unit_node(C)) = C.
-condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
-condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
-    Left = condense_2(Left0),
-    Right = condense_2(Right0).
-
-%---------------------------------------------------------------------------%
-
-cons(X, C) = XC :-
-    (
-        C = empty_cord,
-        XC = nonempty_cord(unit_node(X))
-    ;
-        C = nonempty_cord(N),
-        XC = nonempty_cord(branch_node(unit_node(X), N))
-    ).
-
-cons(X, !C) :-
-    !:C = cons(X, !.C).
-
-%---------------------------------------------------------------------------%
-
-snoc(C, X) = CX :-
-    (
-        C = empty_cord,
-        CX = nonempty_cord(unit_node(X))
-    ;
-        C = nonempty_cord(N),
-        CX = nonempty_cord(branch_node(N, unit_node(X)))
-    ).
-
-snoc(X, !C) :-
-    !:C = snoc(!.C, X).
-
-%---------------------------------------------------------------------------%
-
-A ++ B = C :-
-    (
-        A = empty_cord,
-        C = B
-    ;
-        A = nonempty_cord(_),
-        B = empty_cord,
-        C = A
-    ;
-        A = nonempty_cord(AN),
-        B = nonempty_cord(BN),
-        C = nonempty_cord(branch_node(AN, BN))
-    ).
-
-%---------------------------------------------------------------------------%
-
-cord_list_to_cord(Cords) = Cord :-
-    % For tail recursion.
-    list.reverse(Cords, RevCords),
-    Cord = rev_cord_list_to_cord(RevCords).
-
-rev_cord_list_to_cord(RevCords) = Cord :-
-    Cord = list.foldl(cord.(++), RevCords, empty_cord).
+%---------------------%
 
 cord_list_to_list(Cords) = List :-
     % For tail recursion.
     list.reverse(Cords, RevCords),
     List = rev_cord_list_to_list(RevCords).
+
+%---------------------%
 
 rev_cord_list_to_list(RevCords) = List :-
     List = list.foldl(cord_list_to_list_2, RevCords, []).
@@ -544,154 +781,44 @@ cord_list_to_list_2(nonempty_cord(N), L) = to_list_2([N], L).
 
 %---------------------------------------------------------------------------%
 
-head_tail(nonempty_cord(N), H, T) :-
-    head_tail_node(N, H, T).
+find_first_match(P, nonempty_cord(NX), FirstMatch) :-
+    find_first_match_node(P, NX, FirstMatch).
 
-:- pred head_tail_node(cord_node(T)::in, T::out, cord(T)::out) is det.
+:- pred find_first_match_node(pred(T)::in(pred(in) is semidet),
+    cord_node(T)::in, T::out) is semidet.
 
-head_tail_node(Node, Head, Tail) :-
+find_first_match_node(P, Node, FirstMatch) :-
     (
-        Node = unit_node(Head),
-        Tail = empty_cord
-    ;
-        Node = list_node(H, T),
-        Head = H,
-        (
-            T = [],
-            Tail = empty_cord
-        ;
-            T = [TH | TT],
-            Tail = nonempty_cord(list_node(TH, TT))
+        Node = unit_node(X),
+        ( if P(X) then
+            FirstMatch = X
+        else
+            fail
         )
     ;
-        Node = branch_node(A0, B),
-        head_tail_node(A0, Head, AC),
-        (
-            AC = empty_cord,
-            Tail = nonempty_cord(B)
-        ;
-            AC = nonempty_cord(A),
-            Tail = nonempty_cord(branch_node(A, B))
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-split_last(nonempty_cord(N), AllButLast, Last) :-
-    split_last_node(N, AllButLast, Last).
-
-:- pred split_last_node(cord_node(T)::in, cord(T)::out, T::out) is det.
-
-split_last_node(Node, AllButLast, Last) :-
-    (
-        Node = unit_node(Last),
-        AllButLast = empty_cord
-    ;
-        Node = list_node(H, T),
-        split_list_last(H, T, AllButLastList, Last),
-        (
-            AllButLastList = [],
-            AllButLast = empty_cord
-        ;
-            AllButLastList = [AllButLastHead | AllButLastTail],
-            AllButLast = nonempty_cord(
-                list_node(AllButLastHead, AllButLastTail))
+        Node = list_node(XH, XT),
+        ( if P(XH) then
+            FirstMatch = XH
+        else
+            list.find_first_match(P, XT, FirstMatch)
         )
     ;
-        Node = branch_node(A, B0),
-        split_last_node(B0, B, Last),
-        AllButLast = nonempty_cord(A) ++ B
-    ).
-
-:- pred split_list_last(T::in, list(T)::in, list(T)::out, T::out) is det.
-
-split_list_last(Prev, [], [], Prev).
-split_list_last(Prev, [H | T], AllButLast, Last) :-
-    split_list_last(H, T, AllButLast0, Last),
-    AllButLast = [Prev | AllButLast0].
-
-%---------------------------------------------------------------------------%
-
-head(nonempty_cord(N), Head) :-
-    get_first_node(N, Head).
-
-get_first(nonempty_cord(N), Head) :-
-    get_first_node(N, Head).
-
-:- pred get_first_node(cord_node(T)::in, T::out) is det.
-
-get_first_node(Node, Head) :-
-    (
-        Node = unit_node(Head)
-    ;
-        Node = list_node(Head, _)
-    ;
-        Node = branch_node(A, _),
-        get_first_node(A, Head)
-    ).
-
-%---------------------------------------------------------------------------%
-
-get_last(nonempty_cord(N), Last) :-
-    get_last_node(N, Last).
-
-:- pred get_last_node(cord_node(T)::in, T::out) is det.
-
-get_last_node(Node, Last) :-
-    (
-        Node = unit_node(Last)
-    ;
-        Node = list_node(Head, Tail),
-        (
-            Tail = [],
-            Last = Head
-        ;
-            Tail = [_ | _],
-            list.det_last(Tail, Last)
-        )
-    ;
-        Node = branch_node(_, B),
-        get_last_node(B, Last)
-    ).
-
-%---------------------------------------------------------------------------%
-
-length(C) = foldl(func(_, N) = N + 1, C, 0).
-
-%---------------------------------------------------------------------------%
-
-member(X, nonempty_cord(N)) :-
-    member_node(X, N).
-
-:- pred member_node(T::out, cord_node(T)::in) is nondet.
-
-member_node(X, Node) :-
-    (
-        Node = unit_node(X)
-    ;
-        Node = list_node(H, T),
-        (
-            X = H
-        ;
-            member(X, T)
-        )
-    ;
-        Node = branch_node(A, B),
-        (
-            member_node(X, A)
-        ;
-            member_node(X, B)
+        Node = branch_node(XA, XB),
+        ( if find_first_match_node(P, XA, FirstMatchPrime) then
+            FirstMatch = FirstMatchPrime
+        else
+            find_first_match_node(P, XB, FirstMatch)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
 map(_, empty_cord) = empty_cord.
-map(F, nonempty_cord(N)) = nonempty_cord(map_node(F, N)).
+map(F, nonempty_cord(N)) = nonempty_cord(map_func_node(F, N)).
 
-:- func map_node(func(T) = U, cord_node(T)) = cord_node(U).
+:- func map_func_node(func(T) = U, cord_node(T)) = cord_node(U).
 
-map_node(F, Node) = PNode :-
+map_func_node(F, Node) = PNode :-
     (
         Node = unit_node(X),
         PNode = unit_node(F(X))
@@ -700,7 +827,7 @@ map_node(F, Node) = PNode :-
         PNode = list_node(F(H), list.map(F, T))
     ;
         Node = branch_node(A, B),
-        PNode = branch_node(map_node(F, A), map_node(F, B))
+        PNode = branch_node(map_func_node(F, A), map_func_node(F, B))
     ).
 
 map_pred(_, empty_cord, empty_cord).
@@ -1136,44 +1263,6 @@ map_foldl3_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B, !C) :-
 map_foldl3_node(P, branch_node(XA, XB), branch_node(YA, YB), !A, !B, !C) :-
     map_foldl3_node(P, XA, YA, !A, !B, !C),
     map_foldl3_node(P, XB, YB, !A, !B, !C).
-
-%---------------------------------------------------------------------------%
-
-find_first_match(P, nonempty_cord(NX), FirstMatch) :-
-    find_first_match_node(P, NX, FirstMatch).
-
-:- pred find_first_match_node(pred(T)::in(pred(in) is semidet),
-    cord_node(T)::in, T::out) is semidet.
-
-find_first_match_node(P, Node, FirstMatch) :-
-    (
-        Node = unit_node(X),
-        ( if P(X) then
-            FirstMatch = X
-        else
-            fail
-        )
-    ;
-        Node = list_node(XH, XT),
-        ( if P(XH) then
-            FirstMatch = XH
-        else
-            list.find_first_match(P, XT, FirstMatch)
-        )
-    ;
-        Node = branch_node(XA, XB),
-        ( if find_first_match_node(P, XA, FirstMatchPrime) then
-            FirstMatch = FirstMatchPrime
-        else
-            find_first_match_node(P, XB, FirstMatch)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-equal(CA, CB) :-
-    % A more efficient algorithm would also be *much* more complex.
-    list(CA) = list(CB).
 
 %---------------------------------------------------------------------------%
 :- end_module cord.
