@@ -568,7 +568,7 @@ call_node_bytecode_layout(_, _) :-
 ").
 
 have_cached_proc_defn_rep(_, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -586,7 +586,7 @@ have_cached_proc_defn_rep(_, _) :-
 ").
 
 cache_proc_defn_rep(_, _) :-
-    unexpected($pred, "not yet supported").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
