@@ -117,7 +117,7 @@ io_action_to_browser_term(IoAction) = Term :-
 }").
 
 pickup_io_action(_, _, _, _) :-
-    private_builtin.sorry("pickup_io_action").
+    private_builtin.sorry($pred).
 
 %---------------------%
 

@@ -286,7 +286,7 @@ convert_to_valid_c_identifier_2(String, Name) :-
 ").
 
 use_asm_labels :-
-    private_builtin.sorry("use_asm_labels").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -324,7 +324,7 @@ system_is_osx :-
 ").
 
 high_level_code :-
-    private_builtin.sorry("high_level_code").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.name_mangle.

@@ -130,7 +130,7 @@
 ").
 
 is_null(_) :-
-    private_builtin.sorry("is_null").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -170,7 +170,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 }").
 
 dlopen(_, _, _, _, _, _) :-
-    private_builtin.sorry("dlopen").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -196,7 +196,7 @@ dlopen(_, _, _, _, _, _) :-
 }").
 
 make_closure(_) = _ :-
-    private_builtin.sorry("make_closure").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -339,7 +339,7 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 }").
 
 dlsym(_, _, _, _, _) :-
-    private_builtin.sorry("dlsym").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -364,7 +364,7 @@ dlsym(_, _, _, _, _) :-
 }").
 
 dlerror(_, _, _) :-
-    private_builtin.sorry("dlerror").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -391,7 +391,7 @@ close(handle(Handle), Result, !IO) :-
 ").
 
 dlclose(_, _, _) :-
-    private_builtin.sorry("dlclose").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -410,7 +410,7 @@ dlclose(_, _, _) :-
 ").
 
 high_level_code :-
-    private_builtin.sorry("high_level_code").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.dl.

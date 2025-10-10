@@ -874,7 +874,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 ).
 
 search_trace_node_store(_, _, _) :-
-    private_builtin.sorry("search_trace_node_store").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -1290,7 +1290,7 @@ construct_neg_fail_node(Preceding, Neg, Label) =
 ").
 
 null_trace_node_id(_) :-
-    private_builtin.sorry("null_trace_node_id").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -1424,7 +1424,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
 ").
 
 node_id_to_key(_, _) :-
-    private_builtin.sorry("node_id_to_key").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -1440,7 +1440,7 @@ node_id_to_key(_, _) :-
 ").
 
 convert_node(_, _) :-
-    private_builtin.sorry("convert_node").
+    private_builtin.sorry($pred).
 
 %---------------------%
 

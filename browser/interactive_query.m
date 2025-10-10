@@ -711,7 +711,7 @@ cleanup_file(Prefix, Suffix, !IO) :-
 ").
 
 grade_option = _ :-
-    private_builtin.sorry("grade_option").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -979,7 +979,7 @@ report_exception(OutputStream, Excp, !IO) :-
 ").
 
 inst_cast_normal(_) = _ :-
-    private_builtin.sorry("inst_cast_normal").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -995,7 +995,7 @@ inst_cast_normal(_) = _ :-
 ").
 
 inst_cast_cc(_) = _ :-
-    private_builtin.sorry("inst_cast_cc").
+    private_builtin.sorry($pred).
 
 %---------------------%
 
@@ -1011,7 +1011,7 @@ inst_cast_cc(_) = _ :-
 ").
 
 inst_cast_io(_) = _ :-
-    private_builtin.sorry("inst_cast_io").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
