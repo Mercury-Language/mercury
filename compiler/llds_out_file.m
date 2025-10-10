@@ -384,7 +384,7 @@ annotate_c_procedure(Info, Proc, AnnotatedProc,
     ),
     AnnotatedProc = annotated_c_procedure(Proc, LabelOutputInfo),
 
-    !:AllEntryLabels = !.AllEntryLabels ++ cord.from_list(EntryLabels),
+    cord.snoc_list(EntryLabels, !AllEntryLabels),
     !:AllInternalLabels = !.AllInternalLabels ++
         cord.from_list(InternalLabels).
 

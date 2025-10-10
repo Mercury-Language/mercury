@@ -207,6 +207,8 @@ Changes to the Mercury standard library
     - pred `foldr3/8`
     - pred `head/2`
     - pred `is_singleton/2`
+    - pred `cons_list/2`
+    - pred `snoc_list/2`
 
 ### Changes to the `counter` module
 

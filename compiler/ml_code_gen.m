@@ -1282,15 +1282,15 @@ ml_gen_det_conj([HeadGoal | TailGoals],
         HeadVars = []
     ;
         HeadVars = [_ | _],
-        !:VarsCord = !.VarsCord ++ cord.from_list(HeadVars)
+        cord.snoc_list(HeadVars, !VarsCord)
     ),
     (
         HeadFuncs = []
     ;
         HeadFuncs = [_ | _],
-        !:FuncsCord = !.FuncsCord ++ cord.from_list(HeadFuncs)
+        cord.snoc_list(HeadFuncs, !FuncsCord)
     ),
-    !:StmtsCord = !.StmtsCord ++ cord.from_list(HeadStmts),
+    cord.snoc_list(HeadStmts, !StmtsCord),
     ml_gen_det_conj(TailGoals,
         !VarsCord, !FuncsCord, !StmtsCord, !Info).
 

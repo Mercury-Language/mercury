@@ -1280,7 +1280,7 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
         color_as_correct([words("expected arity was") |
             ExpectedAritiesPieces]) ++
         [nl],
-    !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
+    cord.snoc_list(Pieces, !PiecesCord).
 
 :- pred record_mismatch(int::in, bound_functor::in, int::in, int::out,
     cord(format_piece)::in, cord(format_piece)::out) is det.
@@ -1296,7 +1296,7 @@ record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord) :-
     Pieces = [words(InFunctorStr), nl,
         words("function symbol is")] ++
         color_as_incorrect([words(ActualStr)]) ++ [nl],
-    !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
+    cord.snoc_list(Pieces, !PiecesCord).
 
 %---------------------------------------------------------------------------%
 

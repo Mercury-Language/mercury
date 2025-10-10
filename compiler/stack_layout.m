@@ -1452,7 +1452,7 @@ construct_internal_layout(Params, ProcLabel, ProcLayoutName, VarNumMap,
             VarNumSlotNum0),
 
         VarNums0 = !.LabelLayoutInfo ^ lli_user_event_var_nums,
-        VarNums = VarNums0 ++ cord.from_list(UserAttrMaybeVarNums),
+        cord.snoc_list(UserAttrMaybeVarNums, VarNums0, VarNums),
         !LabelLayoutInfo ^ lli_user_event_var_nums := VarNums,
 
         UserEventCounter0 = !.LabelLayoutInfo ^ lli_next_user_event,

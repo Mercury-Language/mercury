@@ -775,10 +775,10 @@ intermod_format_pred_decl(MercInfo, ModuleInfo, OrderPredInfo,
         TypeSpecs, !State),
 
     cord.snoc(PredDecl, !PredDeclsCord),
-    !:ModeDeclsCord = !.ModeDeclsCord ++ cord.from_list(ModeDecls),
-    !:DeclMarkersCord = !.DeclMarkersCord ++ cord.from_list(DeclMarkers),
-    !:ImplMarkersCord = !.ImplMarkersCord ++ cord.from_list(ImplMarkers),
-    !:TypeSpecsCord = !.TypeSpecsCord ++ cord.from_list(TypeSpecs).
+    cord.snoc_list(ModeDecls, !ModeDeclsCord),
+    cord.snoc_list(DeclMarkers, !DeclMarkersCord),
+    cord.snoc_list(ImplMarkers, !ImplMarkersCord),
+    cord.snoc_list(TypeSpecs, !TypeSpecsCord).
 
 :- pred intermod_gather_pred_valid_modes(pred_or_func::in, sym_name::in,
     assoc_list(proc_id, proc_info)::in, list(item_mode_decl_info)::out) is det.
@@ -950,7 +950,7 @@ intermod_format_pred_defns(OutInfo, ModuleInfo,
     string.builder.state::di, string.builder.state::uo) is det.
 
 intermod_format_pred_defn(OutInfo, ModuleInfo, OrderPredInfo,
-        !DeclMarkers, !ImplMarkers, !State) :-
+        !DeclMarkersCord, !ImplMarkersCord, !State) :-
     string.builder.append_string("\n", !State),
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -961,8 +961,8 @@ intermod_format_pred_defn(OutInfo, ModuleInfo, OrderPredInfo,
         coerce(DeclMarkers), !State),
     list.foldl(mercury_format_item_impl_marker(string.builder.handle),
         coerce(ImplMarkers), !State),
-    !:DeclMarkers = !.DeclMarkers ++ cord.from_list(DeclMarkers),
-    !:ImplMarkers = !.ImplMarkers ++ cord.from_list(ImplMarkers),
+    cord.snoc_list(DeclMarkers, !DeclMarkersCord),
+    cord.snoc_list(ImplMarkers, !ImplMarkersCord),
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),

@@ -1823,10 +1823,10 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
             MaybeVars = ok1(Vars),
             (
                 QuantType = quant_type_exist,
-                !:ExistQVars = !.ExistQVars ++ cord.from_list(Vars)
+                cord.snoc_list(Vars, !ExistQVars)
             ;
                 QuantType = quant_type_univ,
-                !:UnivQVars = !.UnivQVars ++ cord.from_list(Vars)
+                cord.snoc_list(Vars, !UnivQVars)
             )
         )
     ;

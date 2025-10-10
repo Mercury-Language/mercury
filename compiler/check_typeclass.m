@@ -2390,7 +2390,7 @@ report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
 
 add_path_element(ClassId, !LaterLines) :-
     Line = [words("<="), qual_class_id(ClassId), nl],
-    !:LaterLines = !.LaterLines ++ cord.from_list(Line).
+    cord.snoc_list(Line, !LaterLines).
 
 %---------------------------------------------------------------------------%
 %

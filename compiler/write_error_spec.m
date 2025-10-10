@@ -458,7 +458,7 @@ collect_msg_components(OptionTable, [Component | Components],
         !PiecesCord, !AlreadyPrintedVerbose, !IO) :-
     (
         Component = always(Pieces),
-        !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces)
+        cord.snoc_list(Pieces, !PiecesCord)
     ;
         Component = verbose_only(AlwaysOrOnce, Pieces),
         getopt.lookup_bool_option(OptionTable, verbose_errors, VerboseErrors),
@@ -466,13 +466,13 @@ collect_msg_components(OptionTable, [Component | Components],
             VerboseErrors = yes,
             (
                 AlwaysOrOnce = verbose_always,
-                !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces)
+                cord.snoc_list(Pieces, !PiecesCord)
             ;
                 AlwaysOrOnce = verbose_once,
                 ( if set.contains(!.AlreadyPrintedVerbose, Pieces) then
                     true
                 else
-                    !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces),
+                    cord.snoc_list(Pieces, !PiecesCord),
                     set.insert(Pieces, !AlreadyPrintedVerbose)
                 )
             )
@@ -485,10 +485,10 @@ collect_msg_components(OptionTable, [Component | Components],
         getopt.lookup_bool_option(OptionTable, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            !:PiecesCord = !.PiecesCord ++ cord.from_list(VerbosePieces)
+            cord.snoc_list(VerbosePieces, !PiecesCord)
         ;
             VerboseErrors = no,
-            !:PiecesCord = !.PiecesCord ++ cord.from_list(NonVerbosePieces),
+            cord.snoc_list(NonVerbosePieces, !PiecesCord),
             set_extra_error_info(some_extra_error_info, !IO)
         )
     ),

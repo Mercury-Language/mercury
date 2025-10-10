@@ -1815,7 +1815,7 @@ lco_transform_variant_rev_conj(ModuleInfo, Transforms0, VariantMap, VarToAddr,
         VarToAddr, RevGoalIMs0, !Conjuncts, TailChanged, !ProcInfo),
     Changed = bool.or(HeadChanged, TailChanged),
     ( if RevGoalExpr = conj(plain_conj, RevGoalSubConjuncts) then
-        !:Conjuncts = !.Conjuncts ++ cord.from_list(RevGoalSubConjuncts)
+        cord.snoc_list(RevGoalSubConjuncts, !Conjuncts)
     else
         cord.snoc(RevGoal, !Conjuncts)
     ).

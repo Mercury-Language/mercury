@@ -295,17 +295,16 @@ start_mmakefile(!:MmakeFile) :-
 %---------------------------------------------------------------------------%
 
 add_mmake_fragment(Fragment, !MmakeFile) :-
-    !:MmakeFile = cord.snoc(!.MmakeFile, Fragment).
+    cord.snoc(Fragment, !MmakeFile).
 
 add_mmake_fragments(Fragments, !MmakeFile) :-
-    !:MmakeFile = !.MmakeFile ++ cord.from_list(Fragments).
+    cord.snoc_list(Fragments, !MmakeFile).
 
 add_mmake_entry(Entry, !MmakeFile) :-
-    !:MmakeFile = cord.snoc(!.MmakeFile, mmake_entry_to_fragment(Entry)).
+    cord.snoc(mmake_entry_to_fragment(Entry), !MmakeFile).
 
 add_mmake_entries(Entries, !MmakeFile) :-
-    !:MmakeFile = !.MmakeFile ++
-        cord.from_list(list.map(mmake_entry_to_fragment, Entries)).
+    cord.snoc_list(list.map(mmake_entry_to_fragment, Entries), !MmakeFile).
 
 mmake_entry_to_fragment(Entry) = mmf_entry(Entry).
 

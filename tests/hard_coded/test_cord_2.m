@@ -18,6 +18,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+:- import_module string.
 :- import_module solutions.
 
 %---------------------------------------------------------------------------%
@@ -26,6 +27,10 @@ main(!IO) :-
     io.write_string("Test list and rev_list\n", !IO),
     solutions(gen_cord3, Cords),
     list.foldl(test_list_and_rev_list, Cords, !IO),
+
+    io.write_string("\nTest cons_list\n", !IO),
+    list.foldl(test_cons_list([111, 222]), Cords, !IO),
+    io.write_string("done.\n", !IO),
 
     io.write_string("\nTest folds\n", !IO),
     list.foldl(test_folds, Cords, !IO),
@@ -52,6 +57,20 @@ test_list_and_rev_list(Cord, !IO) :-
 
     expect(unify(List, reverse(RevList)),
         $module, $pred, "List != reverse(RevList)").
+
+:- pred test_cons_list(list(int)::in, cord(int)::in, io::di, io::uo) is det.
+
+test_cons_list(List, Cord0, !IO) :-
+    CordA = cord.from_list(List) ++ Cord0,
+    cord.cons_list(List, Cord0, CordB),
+    ListA = cord.list(CordA),
+    ListB = cord.list(CordB),
+    ( if ListA = ListB then
+        io.write_line(ListA, !IO)
+    else
+        io.format("disagree: %s vs %s\n",
+            [s(string(ListA)), s(string(ListB))], !IO)
+    ).
 
 :- pred test_folds((cord(int))::in, io::di, io::uo) is det.
 

@@ -1404,13 +1404,13 @@ key_from_chars(Chars, EscapedChars) :-
 key_from_chars_loop([], !EscapedCharsCord).
 key_from_chars_loop([Char | Chars], !EscapedCharsCord) :-
     ( if Char = ('\\') then
-        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', '\\'])
+        cord.snoc_list(['\\', '\\'], !EscapedCharsCord)
     else if Char = ('\n') then
-        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 'n'])
+        cord.snoc_list(['\\', 'n'], !EscapedCharsCord)
     else if Char = (':') then
-        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 'c'])
+        cord.snoc_list(['\\', 'c'], !EscapedCharsCord)
     else if Char = ('~') then
-        !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 't'])
+        cord.snoc_list(['\\', 't'], !EscapedCharsCord)
     else
         cord.snoc(Char, !EscapedCharsCord)
     ),

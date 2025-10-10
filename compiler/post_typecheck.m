@@ -786,7 +786,7 @@ explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars,
         _OriginsMap, Var, Origin, !AnonVarMsgsCord) :-
     ( if set.contains(AnonVars,  Var) then
         explain_var_origin(ModuleInfo, VarTable, Var, Origin, VarOriginMsgs),
-        !:AnonVarMsgsCord = !.AnonVarMsgsCord ++ cord.from_list(VarOriginMsgs)
+        cord.snoc_list(VarOriginMsgs, !AnonVarMsgsCord)
     else
         true
     ).

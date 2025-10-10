@@ -157,7 +157,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
             Impure = yes,
             check_for_impurity_error(Goal0, ScheduledSolverGoals,
                 !ImpurityErrorsCord, !ModeInfo),
-            !:Goals = !.Goals ++ cord.from_list(ScheduledSolverGoals)
+            cord.snoc_list(ScheduledSolverGoals, !Goals)
         ;
             ( Purity = purity_pure
             ; Purity = purity_semipure

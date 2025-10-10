@@ -348,7 +348,7 @@ llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
                 DupProcMap0, DupProcMap),
             !:MaybeDupProcMap = yes(DupProcMap)
         ),
-        !:CProcsCord = !.CProcsCord ++ cord.from_list(CProcs),
+        cord.snoc_list(CProcs, !CProcsCord),
         globals.lookup_bool_option(Globals0, statistics, Stats),
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),

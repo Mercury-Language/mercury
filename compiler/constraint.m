@@ -703,9 +703,8 @@ propagate_conj_constraints([ConstrainedGoal0 | ConstrainedGoals0],
         GoalAndSimpleConstraints, !Info),
     constraint_info_update_goal(Goal, !Info),
     flatten_constraints(ComplexConstraints0, ComplexConstraints),
-    !:GoalsCord = !.GoalsCord
-        ++ cord.from_list(GoalAndSimpleConstraints)
-        ++ cord.from_list(ComplexConstraints),
+    cord.snoc_list(GoalAndSimpleConstraints, !GoalsCord),
+    cord.snoc_list(ComplexConstraints, !GoalsCord),
     propagate_conj_constraints(ConstrainedGoals0, !GoalsCord, !Info).
 
 :- pred filter_complex_constraints(list(constraint)::in,

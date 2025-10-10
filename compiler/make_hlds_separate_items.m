@@ -343,7 +343,7 @@ type_repn_content(ifk_int3) = 1.
 acc_type_repn_map(IntTypeRepns, !Cord) :-
     IntTypeRepns = int_type_ctor_repns(_IntFileKind, TypeCtorRepnMap),
     map.to_sorted_assoc_list(TypeCtorRepnMap, TypeCtorRepnPairs),
-    !:Cord = !.Cord ++ cord.from_list(TypeCtorRepnPairs).
+    cord.snoc_list(TypeCtorRepnPairs, !Cord).
 
 %---------------------------------------------------------------------------%
 
@@ -457,7 +457,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, map.keys(IntFIMSpecMap)),
     ImpFIMs = list.map(fim_spec_to_item, map.keys(ImpFIMSpecMap)),
-    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
+    cord.snoc_list(IntFIMs ++ ImpFIMs, AccFIMs0, AccFIMs),
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
         IntTypeDefns, SubTypeDefns, SubForeignEnums),
     separate_type_defns_abs_mer_for(IntTypeDefns,
@@ -602,7 +602,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
+    cord.snoc_list(IntFIMs ++ ImpFIMs, AccFIMs0, AccFIMs),
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
         IntTypeDefns, ImpTypeDefns, ImpForeignEnums),
     separate_type_defns_abs_mer_for(IntTypeDefns,
@@ -756,7 +756,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
+    cord.snoc_list(IntFIMs ++ ImpFIMs, AccFIMs0, AccFIMs),
     type_ctor_checked_map_get_src_defns(TypeCheckedMap,
         IntTypeDefns, ImpTypeDefns, ImpForeignEnums),
     separate_type_defns_abs_mer_for(IntTypeDefns,
@@ -874,7 +874,7 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
+    cord.snoc_list(IntFIMs ++ ImpFIMs, AccFIMs0, AccFIMs),
     type_ctor_checked_map_get_src_defns(TypeCheckedMap,
         IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
     separate_type_defns_abs_mer_for(IntTypeDefns,
@@ -957,7 +957,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
     OptAvails = use_map_to_item_avails(UseMap),
     acc_ims_avails(ItemMercuryStatus, OptAvails, AccAvails0, AccAvails),
     OptFIMs = list.map(fim_spec_to_item, set.to_sorted_list(FIMSpecs)),
-    AccFIMs = AccFIMs0 ++ cord.from_list(OptFIMs),
+    cord.snoc_list(OptFIMs, AccFIMs0, AccFIMs),
     separate_type_defns_abs_mer_for(TypeDefns,
         [], TypeDefnsAbs, [], TypeDefnsMer, [], TypeDefnsFor),
     acc_sec_list(SectionInfo, TypeDefnsAbs,

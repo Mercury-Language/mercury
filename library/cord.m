@@ -73,31 +73,59 @@
 % Constructing a new cord from one existing cord.
 %
 
-    % cons(X, C0) = C:
-    % cons(X, C0, C):
+    % cons(Element, Cord0) = Cord:
+    % cons(Element, Cord0, Cord):
     %
-    % Return C, which is the cord you get when you add X to the front of C0.
+    % Return Cord, which is the cord you get when you add Element
+    % to the front of Cord0.
     %
-    % list(cons(X, C0)) = [X | list(C0)]
+    % list(cons(Element, Cord0)) = [Element | list(Cord0)]
     %
     % This is an O(1) operation.
     %
 :- func cons(T, cord(T)) = cord(T).
 :- pred cons(T::in, cord(T)::in, cord(T)::out) is det.
 
-    % snoc(C0, X) = C:
-    % snoc(X, C0, C):
+    % cons_list(List, Cord0) = Cord:
+    % cons_list(List, Cord0, Cord):
     %
-    % Return C, which is the cord you get when you add X to the end of C0.
-    % (The argument order of the predicate version simplifies its use
-    % when the cord is represented by a state variable.)
+    % Return Cord, which is the cord you get when you add List
+    % to the front of Cord0.
     %
-    % list(snoc(C0, X)) = list(C0) ++ [X]
+    % list(cons_list(List, Cord0)) = List ++ list(Cord0)
+    %
+    % This is an O(1) operation.
+    %
+:- func cons_list(list(T), cord(T)) = cord(T).
+:- pred cons_list(list(T)::in, cord(T)::in, cord(T)::out) is det.
+
+    % snoc(Cord0, Element) = Cord:
+    % snoc(Element, Cord0, Cord):
+    %
+    % Return Cord, which is the cord you get when you add Element
+    % to the end of Cord0. (The argument order of the predicate version
+    % simplifies its use when the cord is represented by a state variable.)
+    %
+    % list(snoc(Cord0, Element)) = list(Cord0) ++ [Element]
     %
     % This is an O(1) operation.
     %
 :- func snoc(cord(T), T) = cord(T).
 :- pred snoc(T::in, cord(T)::in, cord(T)::out) is det.
+
+    % snoc_list(Cord0, List) = Cord:
+    % snoc_list(List, Cord0, Cord):
+    %
+    % Return Cord, which is the cord you get when you add List
+    % to the end of Cord0. (The argument order of the predicate version
+    % simplifies its use when the cord is represented by a state variable.)
+    %
+    % list(snoc_list(Cord0, List)) = list(Cord0) ++ List
+    %
+    % This is an O(1) operation.
+    %
+:- func snoc_list(cord(T), list(T)) = cord(T).
+:- pred snoc_list(list(T)::in, cord(T)::in, cord(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -541,6 +569,27 @@ cons(X, !C) :-
 
 %---------------------%
 
+cons_list(L, C0) = C :-
+    cons_list(L, C0, C).
+
+cons_list(L, !C) :-
+    (
+        L = []
+    ;
+        L = [H | T],
+        LN = list_node(H, T),
+        (
+            !.C = empty_cord,
+            !:C = nonempty_cord(LN)
+        ;
+            !.C = nonempty_cord(CN0),
+            CN = branch_node(LN, CN0),
+            !:C = nonempty_cord(CN)
+        )
+    ).
+
+%---------------------%
+
 snoc(C, X) = CX :-
     (
         C = empty_cord,
@@ -552,6 +601,27 @@ snoc(C, X) = CX :-
 
 snoc(X, !C) :-
     !:C = snoc(!.C, X).
+
+%---------------------%
+
+snoc_list(C0, L) = C :-
+    snoc_list(L, C0, C).
+
+snoc_list(L, !C) :-
+    (
+        L = []
+    ;
+        L = [H | T],
+        LN = list_node(H, T),
+        (
+            !.C = empty_cord,
+            !:C = nonempty_cord(LN)
+        ;
+            !.C = nonempty_cord(CN0),
+            CN = branch_node(CN0, LN),
+            !:C = nonempty_cord(CN)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
