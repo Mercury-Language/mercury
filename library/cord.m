@@ -11,7 +11,7 @@
 % Stability: high.
 %
 % Like lists, cords contain a sequence of elements. The difference is that
-% many operations that construct cord (such as appending two cords together,
+% many operations that construct cords (such as appending two cords together,
 % or adding a new element to the end of a cord) are O(1) operations, not O(N).
 % In general, if you want to construct a list in any order other than
 % strictly back-to-front, then you should consider constructing a cord instead,
