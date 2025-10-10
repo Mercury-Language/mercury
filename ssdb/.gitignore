@@ -30,6 +30,7 @@ libmer_ssdb.lib
 mer_ssdb.init
 *.module_dep
 Mercury
+mer_ssdb.dll
 mer_ssdb.jar
 .ssdb_tags
 tags
