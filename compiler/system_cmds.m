@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,28 +176,30 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
             )
         ;
             CmdResult = ok(signalled(Signal)),
+            % XXX The code handling signals is repeated below.
             string.format("system command received signal %d.", [i(Signal)],
                 ErrorMsg),
-            report_error(ProgressStream, ErrorMsg, !IO),
+            report_arbitrary_error(ProgressStream, ErrorMsg, !IO),
             % Also report the error to standard output, because if we raise the
             % signal, this error may not ever been seen, the process stops, and
             % the user is confused.
             io.stdout_stream(StdOut, !IO),
-            report_error(StdOut, ErrorMsg, !IO),
+            report_arbitrary_error(StdOut, ErrorMsg, !IO),
 
             % Make sure the current process gets the signal. Some systems (e.g.
             % Linux) ignore SIGINT during a call to system().
             raise_signal(Signal, !IO),
             CommandSucceeded = did_not_succeed
         ;
-            CmdResult = error(Error),
-            report_error(ProgressStream, io.error_message(Error), !IO),
+            CmdResult = error(CmdIOError),
+            CmdErrorMsg = io.error_message(CmdIOError),
+            report_arbitrary_error(ProgressStream, CmdErrorMsg, !IO),
             CommandSucceeded = did_not_succeed
         )
     ;
         TmpFileResult = error(Error),
-        report_error(ProgressStream,
-            "Could not create temporary file: " ++ error_message(Error), !IO),
+        TmpMsg = "Could not create temporary file: " ++ error_message(Error),
+        report_arbitrary_error(ProgressStream, TmpMsg, !IO),
         TmpFile = "",
         CommandSucceeded = did_not_succeed
     ),
@@ -260,20 +262,21 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
                 % Make sure the current process gets the signal. Some systems
                 % (e.g. Linux) ignore SIGINT during a call to system().
                 raise_signal(ProcessOutputSignal, !IO),
-                report_error(ProgressStream,
-                    "system command received signal "
-                    ++ int_to_string(ProcessOutputSignal) ++ ".", !IO),
+                string.format("system command received signal %d.",
+                    [i(ProcessOutputSignal)], OutputSignalMsg),
+                report_arbitrary_error(ProgressStream, OutputSignalMsg, !IO),
                 ProcessOutputSucceeded = did_not_succeed
             ;
                 ProcessOutputResult = error(ProcessOutputError),
                 ProcessOutputErrorMsg = io.error_message(ProcessOutputError),
-                report_error(ProgressStream, ProcessOutputErrorMsg, !IO),
+                report_arbitrary_error(ProgressStream, ProcessOutputErrorMsg,
+                    !IO),
                 ProcessOutputSucceeded = did_not_succeed
             )
         ;
             ProcessedTmpFileResult = error(ProcessTmpError),
             ProcessTmpErrorMsg = io.error_message(ProcessTmpError),
-            report_error(ProgressStream, ProcessTmpErrorMsg, !IO),
+            report_arbitrary_error(ProgressStream, ProcessTmpErrorMsg, !IO),
             ProcessOutputSucceeded = did_not_succeed,
             MaybeProcessedTmpFile = TmpFile
         )
@@ -310,10 +313,9 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
             io.write_string(CmdOutputStream, MaybeProcessedTmpFileStr, !IO)
         ;
             MaybeProcessedTmpFileResult = error(MaybeProcessedTmpFileError),
-            report_error(ProgressStream,
-                "error opening command output: " ++
+            Msg = "error opening command output: " ++
                 io.error_message(MaybeProcessedTmpFileError),
-                !IO)
+            report_arbitrary_error(ProgressStream, Msg, !IO)
         ),
         io.file.remove_file(MaybeProcessedTmpFile, _, !IO)
     ;

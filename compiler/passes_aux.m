@@ -537,10 +537,8 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                 ;
                     OpenDumpFileResult = error(IOError),
                     maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-                    IOErrorMsg = io.error_message(IOError),
-                    string.format("can't open file `%s' for output: %s\n",
-                        [s(HLDSDumpFileName), s(IOErrorMsg)], HLDSErrorMsg),
-                    report_error(ProgressStream, HLDSErrorMsg, !IO)
+                    report_cannot_open_file_for_output(ProgressStream, Globals,
+                        HLDSDumpFileName, IOError, !IO)
                 )
             )
         else
@@ -601,9 +599,8 @@ dump_hlds(ProgressStream, Globals, DumpFile, HLDSStr, !IO) :-
     ;
         DumpFileResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-        string.format("can't open file `%s' for output: %s",
-            [s(DumpFile), s(io.error_message(IOError))], Msg),
-        report_error(ProgressStream, Msg, !IO)
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            DumpFile, IOError, !IO)
     ).
 
 %---------------------------------------------------------------------------%

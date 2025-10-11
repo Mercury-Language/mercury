@@ -148,8 +148,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
         % a .d file that does not include the trans_opt_deps mmake rule,
         % which will require an "mmake depend" before the next rebuild.
-        maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream,
-            Globals, ModuleName, MaybeDFileTransOptDeps, !IO)
+        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
+            ModuleName, MaybeDFileTransOptDeps, !IO)
     ),
 
     maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
@@ -198,11 +198,11 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO),
     bool.or(FoundSemanticError, IntermodError, PreHLDSErrors),
-    maybe_write_definitions(ProgressStream, ErrorStream,
+    maybe_write_definitions(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
-    maybe_write_definition_line_counts(ProgressStream, ErrorStream,
+    maybe_write_definition_line_counts(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
-    maybe_write_definition_extents(ProgressStream, ErrorStream,
+    maybe_write_definition_extents(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
 
     ( if
@@ -385,10 +385,10 @@ maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
     % depend on. Otherwise return `no'.
     %
 :- pred maybe_read_d_file_for_trans_opt_deps(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, module_name::in,
-    maybe(list(module_name))::out, io::di, io::uo) is det.
+    globals::in, module_name::in, maybe(list(module_name))::out,
+    io::di, io::uo) is det.
 
-maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
+maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
         ModuleName, MaybeDFileTransOptDeps, !IO) :-
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
@@ -431,10 +431,8 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
             DFileOpenResult = error(IOError),
             maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
             maybe_flush_output(ProgressStream, Verbose, !IO),
-            io.error_message(IOError, IOErrorMessage),
-            string.format("error opening file `%s for input: %s",
-                [s(DFileName), s(IOErrorMessage)], Message),
-            report_error(ErrorStream, Message, !IO),
+            report_cannot_open_file_for_input(ProgressStream, Globals,
+                DFileName, IOError, !IO),
             MaybeDFileTransOptDeps = no
         )
     ;
@@ -652,11 +650,9 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
 %---------------------%
 
 :- pred maybe_write_definitions(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !IO) :-
+maybe_write_definitions(ProgressStream, Verbose, Stats, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definitions, ShowDefns),
     (
@@ -666,17 +662,16 @@ maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defns,
             ModuleName, DefnsFileName),
-        io.open_output(DefnsFileName, DefnsFileNameOpenResult, !IO),
+        io.open_output(DefnsFileName, DefnsOpenResult, !IO),
         (
-            DefnsFileNameOpenResult = ok(DefnsFileStream),
+            DefnsOpenResult = ok(DefnsFileStream),
             write_hlds_defns(DefnsFileStream, HLDS, !IO),
             io.close_output(DefnsFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            DefnsFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definitions: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            DefnsOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                DefnsFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -684,10 +679,9 @@ maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
     ).
 
 :- pred maybe_write_definition_line_counts(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_write_definition_line_counts(ProgressStream, Verbose, Stats,
         HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definition_line_counts,
@@ -699,17 +693,16 @@ maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defn_lc,
             ModuleName, LcFileName),
-        io.open_output(LcFileName, LcFileNameOpenResult, !IO),
+        io.open_output(LcFileName, LcOpenResult, !IO),
         (
-            LcFileNameOpenResult = ok(LcFileStream),
+            LcOpenResult = ok(LcFileStream),
             write_hlds_defn_line_counts(LcFileStream, HLDS, !IO),
             io.close_output(LcFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            LcFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definition line counts: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            LcOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                LcFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -717,11 +710,9 @@ maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
     ).
 
 :- pred maybe_write_definition_extents(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definition_extents(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !IO) :-
+maybe_write_definition_extents(ProgressStream, Verbose, Stats, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definition_extents, Extents),
     (
@@ -731,17 +722,16 @@ maybe_write_definition_extents(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defn_ext, ModuleName,
             DefnFileName),
-        io.open_output(DefnFileName, DefnFileNameOpenResult, !IO),
+        io.open_output(DefnFileName, DefnOpenResult, !IO),
         (
-            DefnFileNameOpenResult = ok(DefnFileStream),
+            DefnOpenResult = ok(DefnFileStream),
             write_hlds_defn_extents(DefnFileStream, HLDS, !IO),
             io.close_output(DefnFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            DefnFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definition extents: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            DefnOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                DefnFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

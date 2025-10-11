@@ -988,7 +988,8 @@ mlds_output_foreign_literal_or_include(Opts, Stream, LiteralOrInclude,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_output_file_line(Stream, Opts ^ m2co_foreign_line_numbers,
             IncludePath, 1, !IO),
-        write_include_file_contents(Stream, IncludePath, Res, !IO)
+        Globals = Opts ^ m2co_all_globals,
+        write_include_file_contents(Stream, Globals, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO).
 

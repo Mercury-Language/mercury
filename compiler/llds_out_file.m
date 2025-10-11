@@ -919,13 +919,10 @@ output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
         AutoComments = auto_comments,
         ForeignLineNumbers = yes
     then
-        io.write_string(Stream, "/* ", !IO),
-        parse_tree_out_misc.write_context(Stream, Context, !IO),
-        io.write_string(Stream, " pragma ", !IO),
-        io.write_string(Stream, PragmaType, !IO),
-        io.write_string(Stream, "(", !IO),
-        io.write(Stream, Lang, !IO),
-        io.write_string(Stream, ") */\n", !IO)
+        ContextStr = context_to_string(Context),
+        LangStr = string.string(Lang),
+        io.format(Stream, "/* %s pragma %s(%s) */\n",
+            [s(ContextStr), s(PragmaType), s(LangStr)], !IO)
     else
         true
     ),
@@ -940,7 +937,8 @@ output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         output_set_line_num(Stream, ForeignLineNumbers,
             context(IncludePath, 1), !IO),
-        write_include_file_contents(Stream, IncludePath, Res, !IO)
+        Globals = Info ^ lout_globals,
+        write_include_file_contents(Stream, Globals, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO),
     output_reset_line_num(Stream, ForeignLineNumbers, !IO).

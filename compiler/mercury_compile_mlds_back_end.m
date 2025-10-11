@@ -457,9 +457,8 @@ dump_mlds_doc(ProgressStream, Globals, DumpFileName, Doc, !IO) :-
     ;
         OpenResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-        string.format("can't open file `%s' for output: %s",
-            [s(DumpFileName), s(io.error_message(IOError))], ErrorMessage),
-        report_error(ProgressStream, ErrorMessage, !IO)
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            DumpFileName, IOError, !IO)
     ).
 
 %---------------------------------------------------------------------------%

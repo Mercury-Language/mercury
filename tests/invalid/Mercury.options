@@ -43,6 +43,7 @@ MCFLAGS-fe_unmapped_verbose     += --verbose-error-messages
 MCFLAGS-foreign_decl_line_number += --no-errorcheck-only --line-numbers \
                                     --line-numbers-for-c-headers
 MCFLAGS-foreign_enum_invalid    += --verbose-error-messages
+MCFLAGS-foreign_include_file_missing += --canonicalize-error-path-names
 MCFLAGS-foreign_type_line_number += --no-errorcheck-only --line-numbers \
                                     --compile-only
 MCFLAGS-foreign_type_2          += --no-intermodule-optimization

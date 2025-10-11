@@ -716,7 +716,7 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
                     MaybeThisFileName),
                 CExportedEnums, !IO),
             list.map_foldl(
-                output_foreign_decl(FileStream, MaybeSetLineNumbers,
+                output_foreign_decl(FileStream, Globals, MaybeSetLineNumbers,
                     MaybeThisFileName, SourceFileName,
                     yes(foreign_decl_is_exported)),
                 CForeignDeclCodes, CForeignDeclCodeResults, !IO),
@@ -743,7 +743,7 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
             Errors = [_ | _],
             io.file.remove_file(TmpFileName, _, !IO),
             % report_error sets the exit status.
-            list.foldl(report_error(ProgressStream), Errors, !IO)
+            list.foldl(report_arbitrary_error(ProgressStream), Errors, !IO)
         )
     ;
         Result = error(_),
@@ -772,12 +772,12 @@ write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
     ),
     write_export_decls(Stream, ExportDecls, !IO).
 
-:- pred output_foreign_decl(io.text_output_stream::in,
+:- pred output_foreign_decl(io.text_output_stream::in, globals::in,
     maybe_set_line_numbers::in, maybe(string)::in, string::in,
     maybe(foreign_decl_is_local)::in, foreign_decl_code::in, maybe_error::out,
     io::di, io::uo) is det.
 
-output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+output_foreign_decl(Stream, Globals, MaybeSetLineNumbers, MaybeThisFileName,
         SourceFileName, MaybeDesiredIsLocal, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $pred, "Lang != lang_c"),
@@ -789,7 +789,7 @@ output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
             DesiredIsLocal = IsLocal
         )
     then
-        output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
+        output_foreign_literal_or_include(Stream, Globals, MaybeSetLineNumbers,
             MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
             Res, !IO)
     else
@@ -797,11 +797,11 @@ output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     ).
 
 :- pred output_foreign_literal_or_include(io.text_output_stream::in,
-    maybe_set_line_numbers::in, maybe(string)::in, string::in,
+    globals::in, maybe_set_line_numbers::in, maybe(string)::in, string::in,
     foreign_literal_or_include::in, prog_context::in, maybe_error::out,
     io::di, io::uo) is det.
 
-output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
+output_foreign_literal_or_include(Stream, Globals, MaybeSetLineNumbers,
         MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
         Res, !IO) :-
     (
@@ -817,7 +817,7 @@ output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, IncludePath, 1,
             !IO),
-        write_include_file_contents(Stream, IncludePath, Res, !IO)
+        write_include_file_contents(Stream, Globals, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO),
     c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeThisFileName,

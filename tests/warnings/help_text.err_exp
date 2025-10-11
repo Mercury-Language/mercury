@@ -3768,6 +3768,14 @@ Options for developers only
         Disable the gathering of constant structures holding typeinfos and
         typeclass_infos in global_data structures.
 
+    PRIVATE OPTION
+    --canonicalize-error-path-names
+        Canonicalize path names in error messages that report being unable to
+        open files, in two ways. The first is deleting any initial './' or '.'
+        prefix; the second is deleting the directory component of any absolute
+        path name, leaving only the within-directory component. This option
+        considers any string between single quotes to be a path name.
+
   Verbosity options for developers only
 
     PRIVATE OPTION

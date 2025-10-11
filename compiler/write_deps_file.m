@@ -338,7 +338,7 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
     (
         TmpFileNameDResult = error(Error),
         Message = "Could not create temporary file: " ++ error_message(Error),
-        report_error(ProgressStream, Message, !IO)
+        report_arbitrary_error(ProgressStream, Message, !IO)
     ;
         TmpFileNameDResult = ok(TmpFileNameD),
         globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -359,7 +359,7 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening temporary file `%s' for output: %s",
                 [s(TmpFileNameD), s(IOErrorMessage)], Message),
-            report_error(ProgressStream, Message, !IO)
+            report_arbitrary_error(ProgressStream, Message, !IO)
         ;
             Result = ok(DepStream),
             io.write_string(DepStream, FileContentsStrD, !IO),
@@ -380,7 +380,7 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
                     io.error_message(RemoveError, RemoveErrorMsg),
                     string.format("can't remove file `%s': %s",
                         [s(FileNameD), s(RemoveErrorMsg)], Message),
-                    report_error(ProgressStream, Message, !IO)
+                    report_arbitrary_error(ProgressStream, Message, !IO)
                 ;
                     RemoveResult = ok,
                     io.file.rename_file(TmpFileNameD,
@@ -394,7 +394,7 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
                         string.format("can't rename file `%s' as `%s': %s",
                             [s(TmpFileNameD), s(FileNameD),
                             s(RenameErrorMsg)], Message),
-                        report_error(ProgressStream, Message, !IO)
+                        report_arbitrary_error(ProgressStream, Message, !IO)
                     ;
                         SecondRenameResult = ok,
                         maybe_write_string(ProgressStream, Verbose,

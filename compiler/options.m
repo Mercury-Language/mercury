@@ -1102,6 +1102,7 @@
     ;       par_loop_control
     ;       par_loop_control_keep_tail_rec
     ;       optopt_enable_const_struct_poly
+    ;       canonicalize_error_path_names
 
     % Developer verbosity options.
 
@@ -5715,6 +5716,15 @@ optdb(oc_dev_ctrl,  optopt_enable_const_struct_poly,   bool_special,
     unnamed_help([
         w("Disable the gathering of constant structures holding"),
         w("typeinfos and typeclass_infos in global_data structures.")])).
+optdb(oc_dev_ctrl,  canonicalize_error_path_names,     bool(no),
+    priv_help("canonicalize-error-path-names", [
+        w("Canonicalize path names in error messages that report"),
+        w("being unable to open files, in two ways."),
+        w("The first is deleting any initial './' or '.\' prefix;"),
+        w("the second is deleting the directory component of any"),
+        w("absolute path name, leaving only the within-directory component."),
+        w("This option considers any string between single quotes"),
+        w("to be a path name.")])).
 
 %---------------------%
 

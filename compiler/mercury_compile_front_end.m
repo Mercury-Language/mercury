@@ -812,7 +812,7 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
             maybe_dump_hlds(ProgressStream, !.HLDS, 55, "unique_modes",
                 !DumpInfo, !IO),
 
-            maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
+            maybe_write_call_tree(ProgressStream, Verbose, Stats,
                 !.HLDS, !Specs, !IO),
 
             check_stratification(ProgressStream, ErrorStream, Verbose, Stats,
@@ -1260,11 +1260,10 @@ check_unique_modes(ProgressStream, ErrorStream, Verbose, Stats,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_write_call_tree(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
+    bool::in, bool::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !Specs, !IO) :-
+maybe_write_call_tree(ProgressStream, Verbose, Stats, HLDS, !Specs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_local_call_tree, ShowCallTree),
     globals.lookup_accumulating_option(Globals, show_pred_movability,
@@ -1291,43 +1290,38 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
             io.open_output(TreeFileName, TreeResult, !IO),
             (
                 TreeResult = ok(TreeFileStream),
-                TreeErrorMsg = "",
                 io.write_string(TreeFileStream, TreeFileStr, !IO),
                 io.close_output(TreeFileStream, !IO)
             ;
                 TreeResult = error(TreeIOError),
-                string.format("unable to write to %s: %s\n",
-                    [s(TreeFileName), s(io.error_message(TreeIOError))],
-                    TreeErrorMsg),
-                report_error(ErrorStream, TreeErrorMsg, !IO)
+                report_cannot_open_file_for_output(ProgressStream, Globals,
+                    TreeFileName, TreeIOError, !IO)
             ),
             io.open_output(FullFileName, FullResult, !IO),
             (
                 FullResult = ok(FullFileStream),
-                FullErrorMsg = "",
                 io.write_string(FullFileStream, FullFileStr, !IO),
                 io.close_output(FullFileStream, !IO)
             ;
                 FullResult = error(FullIOError),
-                string.format("unable to write to %s: %s\n",
-                    [s(FullFileName), s(io.error_message(FullIOError))],
-                    FullErrorMsg),
-                report_error(ErrorStream, FullErrorMsg, !IO)
+                report_cannot_open_file_for_output(ProgressStream, Globals,
+                    FullFileName, FullIOError, !IO)
             ),
             io.open_output(OrderFileName, OrderResult, !IO),
             (
                 OrderResult = ok(OrderFileStream),
-                OrderErrorMsg = "",
                 io.write_string(OrderFileStream, OrderFileStr, !IO),
                 io.close_output(OrderFileStream, !IO)
             ;
                 OrderResult = error(OrderIOError),
-                string.format("unable to write to %s: %s\n",
-                    [s(OrderFileName), s(io.error_message(OrderIOError))],
-                    OrderErrorMsg),
-                report_error(ErrorStream, OrderErrorMsg, !IO)
+                report_cannot_open_file_for_output(ProgressStream, Globals,
+                    OrderFileName, OrderIOError, !IO)
             ),
-            ( if TreeErrorMsg = "", FullErrorMsg = "", OrderErrorMsg = "" then
+            ( if
+                TreeResult = ok(_),
+                FullResult = ok(_),
+                OrderResult = ok(_)
+            then
                 maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
             else
                 % We have already written out the error message(s).
