@@ -137,6 +137,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 
@@ -150,8 +151,9 @@
     --->    do_not_generate_implicit_stream_warnings
     ;       generate_implicit_stream_warnings.
 
-:- pred analyze_and_optimize_format_calls(module_info::in, pred_info::in,
-    proc_info::in, maybe_generate_implicit_stream_warnings::in,
+:- pred analyze_and_optimize_format_calls(io.text_output_stream::in,
+    maybe_generate_implicit_stream_warnings::in,
+    module_info::in, pred_info::in, proc_info::in,
     hlds_goal::in, maybe(hlds_goal)::out, list(error_spec)::out,
     var_table::in, var_table::out) is det.
 
@@ -567,8 +569,8 @@ is_builtin_format_call_kind_and_vars(WrappedModuleName, Name, ArgVars,
 
 %---------------------------------------------------------------------------%
 
-analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
-        GenImplicitStreamWarnings, Goal0, MaybeGoal, Specs, !VarTable) :-
+analyze_and_optimize_format_calls(ProgressStream, GenImplicitStreamWarnings,
+        ModuleInfo, PredInfo, ProcInfo, Goal0, MaybeGoal, Specs, !VarTable) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
     fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTable, _, Goal0, Goal1),
@@ -579,9 +581,9 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
-        write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
+        VarNameSrc = vns_var_table(!.VarTable),
+        io.write_string(ProgressStream, "\n\nBEFORE TRANSFORM:\n", !IO),
+        write_goal(OutInfo, ProgressStream, ModuleInfo, VarNameSrc,
             print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal1, !IO)
     ),
 
@@ -607,7 +609,8 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
     else
         WarnUnknownFormat = do_not_warn_unknown_format
     ),
-    Params = format_call_traverse_params(ModuleInfo, WarnUnknownFormat),
+    Params = format_call_traverse_params(ModuleInfo, ProgressStream,
+        WarnUnknownFormat),
     format_call_traverse_goal(Params, Goal1, _, [], FormatCallSites,
         Counter0, _Counter, ConjMaps0, ConjMaps, map.init, PredMap,
         set_of_var.init, _),
@@ -647,9 +650,9 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
             NeededVars0, _NeededVars, ToDeleteVars0, _ToDeleteVars,
             ToDeleteGoals0, _ToDeleteGoals),
         trace [io(!IO), compiletime(flag("debug_format_call"))] (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
-            write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
+            VarNameSrc = vns_var_table(!.VarTable),
+            io.write_string(ProgressStream, "\n\nAFTER TRANSFORM:\n", !IO),
+            write_goal(OutInfo, ProgressStream, ModuleInfo, VarNameSrc,
                 print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
@@ -1021,8 +1024,9 @@ format_call_is_checked_in_parent_loop(HeadVars, [FSV | FSVs], VarFS, VarVL) :-
 
 :- type format_call_traverse_params
     --->    format_call_traverse_params(
-                module_info,
-                maybe_warn_unknown_format
+                fctp_module_info            :: module_info,
+                fctp_progress_stream        :: io.text_output_stream,
+                fctp_warn_unknown_format    :: maybe_warn_unknown_format
             ).
 
 :- pred format_call_traverse_goal(format_call_traverse_params::in,
@@ -1111,9 +1115,8 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
             Reason = disable_warnings(HeadWarning, TailWarnings),
             Warnings = [HeadWarning | TailWarnings],
             ( if list.member(goal_warning_unknown_format_calls, Warnings) then
-                Params = format_call_traverse_params(ModuleInfo, _),
-                NewParams = format_call_traverse_params(ModuleInfo,
-                    do_not_warn_unknown_format),
+                NewParams = Params ^ fctp_warn_unknown_format :=
+                    do_not_warn_unknown_format,
                 format_call_traverse_conj(NewParams, [SubGoal], CurId,
                     !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                     !RelevantVars)
@@ -1143,7 +1146,7 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, _ProcId, ArgVars, _, _, _),
-        Params = format_call_traverse_params(ModuleInfo, WarnUnknownFormat),
+        Params = format_call_traverse_params(ModuleInfo, _, WarnUnknownFormat),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
@@ -1173,7 +1176,8 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
                 set_of_var.insert(ArgVarB, !RelevantVars),
                 GoalId = goal_info_get_goal_id(GoalInfo),
                 StringState = string_append(GoalId, ArgVarA, ArgVarB),
-                add_to_string_map(CurId, ResultVar, StringState, !ConjMaps)
+                add_to_string_map(Params, CurId, ResultVar, StringState,
+                    !ConjMaps)
             else if
                 Name = "append_list",
                 ArgVars = [ListSkeletonVar, ResultVar],
@@ -1183,7 +1187,8 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
                 set_of_var.insert(ListSkeletonVar, !RelevantVars),
                 GoalId = goal_info_get_goal_id(GoalInfo),
                 StringState = string_append_list(GoalId, ListSkeletonVar),
-                add_to_string_map(CurId, ResultVar, StringState, !ConjMaps)
+                add_to_string_map(Params, CurId, ResultVar, StringState,
+                    !ConjMaps)
             else
                 true
             )
@@ -1192,8 +1197,8 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
         )
     ;
         GoalExpr = unify(_, RHS, _, Unification, _),
-        format_call_traverse_unify(Unification, GoalInfo, CurId,
-            !ConjMaps, !RelevantVars),
+        format_call_traverse_unify(Params, Unification, GoalInfo,
+            CurId, !ConjMaps, !RelevantVars),
         (
             RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PredFunc,
                 _LambdaNonLocals, _LambdaArgVarsModes,
@@ -1227,11 +1232,12 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
         )
     ).
 
-:- pred format_call_traverse_unify(unification::in, hlds_goal_info::in,
-    conj_id::in, conj_maps::in, conj_maps::out,
+:- pred format_call_traverse_unify(format_call_traverse_params::in,
+    unification::in, hlds_goal_info::in, conj_id::in,
+    conj_maps::in, conj_maps::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-format_call_traverse_unify(Unification, GoalInfo, CurId,
+format_call_traverse_unify(Params, Unification, GoalInfo, CurId,
         !ConjMaps, !RelevantVars) :-
     (
         Unification = assign(TargetVar, SourceVar),
@@ -1250,8 +1256,8 @@ format_call_traverse_unify(Unification, GoalInfo, CurId,
             then
                 expect(unify(ArgVars, []), $pred, "string constant with args"),
                 set_of_var.delete(CellVar, !RelevantVars),
-                add_to_string_map(CurId, CellVar, string_const(StringConst),
-                    !ConjMaps)
+                add_to_string_map(Params, CurId,
+                    CellVar, string_const(StringConst), !ConjMaps)
             else if
                 ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
                 TypeCtor = list_type_ctor
@@ -1276,7 +1282,7 @@ format_call_traverse_unify(Unification, GoalInfo, CurId,
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 set_of_var.insert_list(ArgVars, !RelevantVars),
-                add_to_list_map(CurId, CellVar, List, !ConjMaps)
+                add_to_list_map(Params, CurId, CellVar, List, !ConjMaps)
             else if
                 ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
                 TypeCtor = poly_type_type_ctor
@@ -1337,7 +1343,8 @@ format_call_traverse_unify(Unification, GoalInfo, CurId,
                     unexpected($pred, "poly_type arity mismatch")
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
-                add_to_element_map(CurId, CellVar, VarPolyType, !ConjMaps)
+                add_to_element_map(Params, CurId, CellVar, VarPolyType,
+                    !ConjMaps)
             else
                 true
             )
@@ -1404,17 +1411,16 @@ get_conj_map(ConjMaps, ConjId) = ConjMap :-
         ConjMap = conj_map(map.init, map.init, map.init, map.init)
     ).
 
-:- pred add_to_string_map(conj_id::in, prog_var::in, string_state::in,
-    conj_maps::in, conj_maps::out) is det.
+:- pred add_to_string_map(format_call_traverse_params::in, conj_id::in,
+    prog_var::in, string_state::in, conj_maps::in, conj_maps::out) is det.
 
-add_to_string_map(ConjId, Var, StringState, !ConjMaps) :-
+add_to_string_map(Params, ConjId, Var, StringState, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "adding to string map: ", !IO),
-        io.write(Stream, Var, !IO),
-        io.write_string(Stream, " -> ", !IO),
-        io.write(Stream, StringState, !IO),
-        io.nl(Stream, !IO)
+        ProgressStream = Params ^ fctp_progress_stream,
+        VarStr = string.string(Var),
+        StateStr = string.string(StringState),
+        io.format(ProgressStream, "adding to string map: %s -> %s\n",
+            [s(VarStr), s(StateStr)], !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap0, ListMap, ElementMap, EqvMap),
@@ -1427,17 +1433,17 @@ add_to_string_map(ConjId, Var, StringState, !ConjMaps) :-
         map.det_insert(ConjId, ConjMap, !ConjMaps)
     ).
 
-:- pred add_to_list_map(conj_id::in, prog_var::in, list_skeleton_state::in,
+:- pred add_to_list_map(format_call_traverse_params::in, conj_id::in,
+    prog_var::in, list_skeleton_state::in,
     conj_maps::in, conj_maps::out) is det.
 
-add_to_list_map(ConjId, Var, ListState, !ConjMaps) :-
+add_to_list_map(Params, ConjId, Var, ListState, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "adding to list map: ", !IO),
-        io.write(Stream, Var, !IO),
-        io.write_string(Stream, " -> ", !IO),
-        io.write(Stream, ListState, !IO),
-        io.nl(Stream, !IO)
+        ProgressStream = Params ^ fctp_progress_stream,
+        VarStr = string.string(Var),
+        ListStateStr = string.string(ListState),
+        io.format(ProgressStream, "adding to list map: %s -> %s\n",
+            [s(VarStr), s(ListStateStr)], !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap0, ElementMap, EqvMap),
@@ -1450,17 +1456,17 @@ add_to_list_map(ConjId, Var, ListState, !ConjMaps) :-
         map.det_insert(ConjId, ConjMap, !ConjMaps)
     ).
 
-:- pred add_to_element_map(conj_id::in, prog_var::in, abstract_poly_type::in,
+:- pred add_to_element_map(format_call_traverse_params::in, conj_id::in,
+    prog_var::in, abstract_poly_type::in,
     conj_maps::in, conj_maps::out) is det.
 
-add_to_element_map(ConjId, Var, Element, !ConjMaps) :-
+add_to_element_map(Params, ConjId, Var, Element, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "adding to elemnt map: ", !IO),
-        io.write(Stream, Var, !IO),
-        io.write_string(Stream, " -> ", !IO),
-        io.write(Stream, Element, !IO),
-        io.nl(Stream, !IO)
+        ProgressStream = Params ^ fctp_progress_stream,
+        VarStr = string.string(Var),
+        ElementStr = string.string(Element),
+        io.format(ProgressStream, "adding to element map: %s -> %s\n",
+            [s(VarStr), s(ElementStr)], !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap, ElementMap0, EqvMap),

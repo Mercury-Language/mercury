@@ -257,8 +257,9 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
             SimplifyTasks ^ do_warn_implicit_streams = warn_implicit_streams,
             ImplicitStreamWarnings = generate_implicit_stream_warnings
         ),
-        simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, PredInfo0,
-            ProcId, !ProcInfo, ImplicitStreamWarnings, FormatSpecs)
+        simplify_proc_analyze_and_format_calls(ProgressStream,
+            ImplicitStreamWarnings, !ModuleInfo, PredId, PredInfo0,
+            ProcId, !ProcInfo, FormatSpecs)
     else
         % Either there are no format calls to check, or we don't want to
         % optimize them and would ignore the added messages anyway.
@@ -451,17 +452,17 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify_proc_analyze_and_format_calls(
+:- pred simplify_proc_analyze_and_format_calls(io.text_output_stream::in,
+    maybe_generate_implicit_stream_warnings::in,
     module_info::in, module_info::out, pred_id::in, pred_info::in,
-    proc_id::in, proc_info::in, proc_info::out,
-    maybe_generate_implicit_stream_warnings::in, list(error_spec)::out) is det.
+    proc_id::in, proc_info::in, proc_info::out, list(error_spec)::out) is det.
 
-simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, PredInfo0,
-        ProcId, !ProcInfo, ImplicitStreamWarnings, FormatSpecs) :-
+simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
+        !ModuleInfo, PredId, PredInfo0, ProcId, !ProcInfo, FormatSpecs) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),
-    analyze_and_optimize_format_calls(!.ModuleInfo, PredInfo0, !.ProcInfo,
-        ImplicitStreamWarnings, Goal0, MaybeGoal, FormatSpecs,
+    analyze_and_optimize_format_calls(ProgressStream, ImplicitStreamWarnings,
+        !.ModuleInfo, PredInfo0, !.ProcInfo, Goal0, MaybeGoal, FormatSpecs,
         VarTable0, VarTable),
     (
         MaybeGoal = yes(Goal),

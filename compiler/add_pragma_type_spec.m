@@ -102,7 +102,8 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
     % whether all the type classes named in OoMConstraints actually exist.
     Constraints = one_or_more_to_list(OoMConstraints),
     list.foldl2(
-        build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet),
+        build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
+            PragmaTVarSet),
         Constraints, map.init, ClassConstraintMap, [], ClassSpecs),
     (
         ClassSpecs = [],
@@ -128,8 +129,8 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
         predicate_table_get_pred_id_table(PredTable, PredIdTable),
         map.foldl_values(
-            maybe_generate_pragma_type_specs_for_pred(ModuleName,
-                ClassConstraintMap, PragmaTVarSet, OoMTypeSubsts),
+            maybe_generate_pragma_type_specs_for_pred(ProgressStream,
+                ModuleName, ClassConstraintMap, PragmaTVarSet, OoMTypeSubsts),
             PredIdTable, [], Pragmas),
         % For one reason for why Pragmas may contain duplicates,
         % see the comment about this in build_class_constraint_map.
@@ -205,13 +206,13 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
     % constraints in the first argument of the type_spec_constrained_preds
     % pragma, but may include their projections to their superclasses as well.
     %
-:- pred build_class_constraint_map(class_table::in, maybe_apply_to_supers::in,
-    tvarset::in, var_or_ground_constraint::in,
+:- pred build_class_constraint_map(io.text_output_stream::in, class_table::in,
+    maybe_apply_to_supers::in, tvarset::in, var_or_ground_constraint::in,
     type_spec_constraint_map::in, type_spec_constraint_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
-        Constraint, !ClassConstraintMap, !Specs) :-
+build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
+        PragmaTVarSet, Constraint, !ClassConstraintMap, !Specs) :-
     Constraint =
         var_or_ground_constraint(ClassSymName, VarOrGroundTypes, Context),
     list.length(VarOrGroundTypes, NumTypes),
@@ -245,9 +246,7 @@ build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
         (
             EntryStr = class_constraint_map_entry_to_string(PragmaTVarSet,
                 OldOrNew, ClassId, ArgVector),
-            io.output_stream(Stream, !IO),
-            io.nl(Stream, !IO),
-            io.write_string(Stream, EntryStr, !IO)
+            io.format(ProgressStream, "\n%s", [s(EntryStr)], !IO)
         ),
         (
             ApplyToSupers = do_not_apply_to_supers
@@ -257,8 +256,8 @@ build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
             map.from_corresponding_lists(ClassTVars, VarOrGroundTypes, Subst0),
             Supers = ClassDefn ^ classdefn_supers,
             list.foldl(
-                build_superclass_constraint_map(ClassTable, PragmaTVarSet,
-                    Context, Subst0),
+                build_superclass_constraint_map(ProgressStream, ClassTable,
+                    PragmaTVarSet, Context, Subst0),
                 Supers, !ClassConstraintMap)
         )
     else
@@ -287,12 +286,13 @@ build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
     % any errors we find here are caused by typeclass declarations elsewhere,
     % *not* by the pragma we are processing.
     %
-:- pred build_superclass_constraint_map(class_table::in, tvarset::in,
-    prog_context::in, map(tvar, var_or_ground_type)::in, prog_constraint::in,
+:- pred build_superclass_constraint_map(io.text_output_stream::in,
+    class_table::in, tvarset::in, prog_context::in,
+    map(tvar, var_or_ground_type)::in, prog_constraint::in,
     type_spec_constraint_map::in, type_spec_constraint_map::out) is det.
 
-build_superclass_constraint_map(ClassTable, PragmaTVarSet, Context,
-        Subst0, Constraint, !ClassConstraintMap) :-
+build_superclass_constraint_map(ProgressStream, ClassTable, PragmaTVarSet,
+        Context, Subst0, Constraint, !ClassConstraintMap) :-
     constraint_get_class_id_and_types(Constraint, ClassId, Types),
     ( if map.search(ClassTable, ClassId, ClassDefn) then
         compute_superclass_arg_types(Subst0, Types, VarOrGroundTypes),
@@ -315,16 +315,15 @@ build_superclass_constraint_map(ClassTable, PragmaTVarSet, Context,
         (
             EntryStr = class_constraint_map_entry_to_string(PragmaTVarSet,
                 OldOrNew, ClassId, ArgVector),
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, EntryStr, !IO)
+            io.write_string(ProgressStream, EntryStr, !IO)
         ),
 
         ClassTVars = ClassDefn ^ classdefn_vars,
         map.from_corresponding_lists(ClassTVars, VarOrGroundTypes, Subst),
         Supers = ClassDefn ^ classdefn_supers,
         list.foldl(
-            build_superclass_constraint_map(ClassTable, PragmaTVarSet,
-                Context, Subst),
+            build_superclass_constraint_map(ProgressStream, ClassTable,
+                PragmaTVarSet, Context, Subst),
             Supers, !ClassConstraintMap)
     else
         % The non-existence of the superclass is an error, but it is an error
@@ -354,14 +353,15 @@ compute_superclass_arg_types(Subst, [Type | Types],
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_generate_pragma_type_specs_for_pred(module_name::in,
-    type_spec_constraint_map::in, tvarset::in, one_or_more(type_subst)::in,
-    pred_info::in,
+:- pred maybe_generate_pragma_type_specs_for_pred(io.text_output_stream::in,
+    module_name::in, type_spec_constraint_map::in, tvarset::in,
+    one_or_more(type_subst)::in, pred_info::in,
     list(decl_pragma_type_spec_info)::in,
     list(decl_pragma_type_spec_info)::out) is det.
 
-maybe_generate_pragma_type_specs_for_pred(PragmaModuleName, ClassConstraintMap,
-        PragmaTVarSet, OoMTypeSubsts, PredInfo, !Pragmas) :-
+maybe_generate_pragma_type_specs_for_pred(ProgressStream, PragmaModuleName,
+        ClassConstraintMap, PragmaTVarSet, OoMTypeSubsts, PredInfo,
+        !Pragmas) :-
     pred_info_get_module_name(PredInfo, PredModuleName),
     ( if
         is_same_module_or_submodule(PredModuleName, PragmaModuleName),
@@ -395,16 +395,15 @@ maybe_generate_pragma_type_specs_for_pred(PragmaModuleName, ClassConstraintMap,
             pred_info_get_name(PredInfo, PredName),
             pred_info_get_context(PredInfo, PredContext),
             PredContext = context(File, Line),
-            io.output_stream(Stream, !IO),
-            io.format(Stream,
+            io.format(ProgressStream,
                 "\nProcessing %s at %s:%d\n",
                 [s(PredName), s(File), i(Line)], !IO)
         ),
-        generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet,
-            PredInfo, UnivConstraints, Solns),
+        generate_type_spec_solns_for_pred(ProgressStream, ClassConstraintMap,
+            PragmaTVarSet, PredInfo, UnivConstraints, Solns),
         list.foldl(
-            generate_pragma_type_specs_for_pred_soln(PragmaModuleName,
-                PragmaTVarSet, PredInfo, OoMTypeSubsts),
+            generate_pragma_type_specs_for_pred_soln(ProgressStream,
+                PragmaModuleName, PragmaTVarSet, PredInfo, OoMTypeSubsts),
             Solns, !Pragmas)
     else
         true
@@ -447,12 +446,12 @@ is_pred_origin_type_spec(Origin) = IsTypeSpec :-
     % should be specialized to which types specified in the
     % type_spec_constrained_preds pragma we are processing.
     %
-:- pred generate_type_spec_solns_for_pred(type_spec_constraint_map::in,
-    tvarset::in, pred_info::in, list(prog_constraint)::in,
-    list(subst_soln)::out) is det.
+:- pred generate_type_spec_solns_for_pred(io.text_output_stream::in,
+    type_spec_constraint_map::in, tvarset::in, pred_info::in,
+    list(prog_constraint)::in, list(subst_soln)::out) is det.
 
-generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet, PredInfo,
-        UnivConstraints, Solns) :-
+generate_type_spec_solns_for_pred(ProgressStream, ClassConstraintMap,
+        PragmaTVarSet, PredInfo, UnivConstraints, Solns) :-
     pred_info_get_typevarset(PredInfo, PredTVarSet),
     % Find out the substitutions implied by each constraint that occurs
     % in both the predicate's class context and in the first argument
@@ -463,7 +462,7 @@ generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet, PredInfo,
     % for the same typeclass, record all of the resulting solutions
     % as alternatives for that class.
     list.foldl(
-        acc_class_ground_substs(PragmaTVarSet, PredTVarSet,
+        acc_class_ground_substs(ProgressStream, PragmaTVarSet, PredTVarSet,
             ClassConstraintMap),
         UnivConstraints, map.init, ClassSolnsMap),
     map.to_sorted_assoc_list(ClassSolnsMap, ClassSolnsMapAL),
@@ -479,7 +478,8 @@ generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet, PredInfo,
         % all possible combinations that take one solution from each typeclass,
         % and see whether they are compatible. Return, as SolnSetSet,
         % the resulting combined solutions.
-        find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
+        find_all_ground_subst_combinations(ProgressStream,
+            PragmaTVarSet, PredTVarSet,
             HeadClassSoln, TailClassSolns, SolnSet),
         set.to_sorted_list(SolnSet, Solns)
     ),
@@ -490,10 +490,9 @@ generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet, PredInfo,
     (
         SolnsStr = dump_subst_soln_list(PragmaTVarSet, PredTVarSet, "\n",
             1, Solns),
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "Solns:\n", !IO),
-        io.write_string(Stream, SolnsStr, !IO),
-        io.write_string(Stream, "end Solns\n", !IO)
+        io.write_string(ProgressStream, "Solns:\n", !IO),
+        io.write_string(ProgressStream, SolnsStr, !IO),
+        io.write_string(ProgressStream, "end Solns\n", !IO)
     ).
 
 %---------------------%
@@ -549,28 +548,30 @@ generate_type_spec_solns_for_pred(ClassConstraintMap, PragmaTVarSet, PredInfo,
 
     % Accumulate in !SolnsMap the set of solutions for the given typeclass.
     %
-:- pred acc_class_ground_substs(tvarset::in, tvarset::in,
+:- pred acc_class_ground_substs(io.text_output_stream::in,
+    tvarset::in, tvarset::in,
     type_spec_constraint_map::in, prog_constraint::in,
     class_solns_map::in, class_solns_map::out) is det.
 
-acc_class_ground_substs(PragmaTVarSet, PredTVarSet, ClassConstraintMap,
-        Constraint, !SolnsMap) :-
+acc_class_ground_substs(ProgressStream, PragmaTVarSet, PredTVarSet,
+        ClassConstraintMap, Constraint, !SolnsMap) :-
     constraint_get_class_id_and_types(Constraint, ClassId, Types),
     ( if map.search(ClassConstraintMap, ClassId, OoMClassArgVectors) then
         ClassArgVectors = one_or_more_to_list(OoMClassArgVectors),
-        acc_matching_arg_vectors(PragmaTVarSet, PredTVarSet, ClassId, Types,
-            ClassArgVectors, !SolnsMap)
+        acc_matching_arg_vectors(ProgressStream, PragmaTVarSet, PredTVarSet,
+            ClassId, Types, ClassArgVectors, !SolnsMap)
     else
         true
     ).
 
-:- pred acc_matching_arg_vectors(tvarset::in, tvarset::in,
-    class_id::in, list(mer_type)::in, list(arg_vector)::in,
+:- pred acc_matching_arg_vectors(io.text_output_stream::in,
+    tvarset::in, tvarset::in, class_id::in,
+    list(mer_type)::in, list(arg_vector)::in,
     class_solns_map::in, class_solns_map::out) is det.
 
-acc_matching_arg_vectors(_, _, _, _Types, [], !SolnsMap).
-acc_matching_arg_vectors(PragmaTVarSet, PredTVarSet, ClassId, Types,
-        [ArgVector | ArgVectors], !SolnsMap) :-
+acc_matching_arg_vectors(_, _, _, _, _Types, [], !SolnsMap).
+acc_matching_arg_vectors(ProgressStream, PragmaTVarSet, PredTVarSet,
+        ClassId, Types, [ArgVector | ArgVectors], !SolnsMap) :-
     % Types come from PredTVarSet, ArgVectors come from PragmaTVarSet.
     ArgVector = arg_vector(VarOrGroundTypes),
     ( if
@@ -608,18 +609,19 @@ acc_matching_arg_vectors(PragmaTVarSet, PredTVarSet, ClassId, Types,
             ArgVectorStr = arg_vector_to_string(PragmaTVarSet, ArgVector),
             SolnStr =
                 dump_subst_soln(PragmaTVarSet, PredTVarSet, "", SubstSoln),
-            io.output_stream(Stream, !IO),
-            io.format(Stream, "\nacc_matching_arg_vector for %s\n",
+            io.format(ProgressStream, "\nacc_matching_arg_vector for %s\n",
                 [s(class_id_to_string(ClassId))], !IO),
-            io.format(Stream, "types: %s\n", [s(TypesStr)], !IO),
-            io.format(Stream, "arg_vector: %s\n", [s(ArgVectorStr)], !IO),
-            io.format(Stream, "subst_soln: %s\n", [s(SolnStr)], !IO)
+            io.format(ProgressStream, "types: %s\n", [s(TypesStr)], !IO),
+            io.format(ProgressStream, "arg_vector: %s\n",
+                [s(ArgVectorStr)], !IO),
+            io.format(ProgressStream, "subst_soln: %s\n",
+                [s(SolnStr)], !IO)
         )
     else
         true
     ),
-    acc_matching_arg_vectors(PragmaTVarSet, PredTVarSet, ClassId, Types,
-        ArgVectors, !SolnsMap).
+    acc_matching_arg_vectors(ProgressStream, PragmaTVarSet, PredTVarSet,
+        ClassId, Types, ArgVectors, !SolnsMap).
 
 %---------------------%
 
@@ -734,11 +736,11 @@ is_matching_arg_type(Type, VarOrGroundType, !Subst, !RevTVarMap) :-
     % only very small number of constraints, and because it is very rare
     % for two or more of those constraints to involved the same typeclass.
     %
-:- pred find_all_ground_subst_combinations(tvarset::in, tvarset::in,
-    pair(class_id, set(subst_soln))::in,
+:- pred find_all_ground_subst_combinations(io.text_output_stream::in,
+    tvarset::in, tvarset::in, pair(class_id, set(subst_soln))::in,
     assoc_list(class_id, set(subst_soln))::in, set(subst_soln)::out) is det.
 
-find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
+find_all_ground_subst_combinations(ProgressStream, PragmaTVarSet, PredTVarSet,
         HeadClassId - HeadSubstSolnSet, TailClassIdsSubstSolns,
         FinalSubstSet) :-
     trace [
@@ -746,8 +748,6 @@ find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
         run_time(env("TYPE_SPEC_CONSTR_PREDS")),
         io(!IO)]
     (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "\nfind_all_ground_subst_combinations\n", !IO),
         % Printing HeadClassId here can be slightly misleading, as
         % HeadSubstSolnSet will corresponding to HeadClassId only for the
         % top-level invocation of find_all_ground_subst_combinations.
@@ -757,7 +757,9 @@ find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
         % there is no point in creating a more exact description.
         HeadStr = dump_class_id_subst_soln(PragmaTVarSet, PredTVarSet,
             "head ", "\n", HeadClassId - HeadSubstSolnSet),
-        io.write_string(Stream, HeadStr, !IO)
+        io.write_string(ProgressStream,
+            "\nfind_all_ground_subst_combinations\n", !IO),
+        io.write_string(ProgressStream, HeadStr, !IO)
     ),
     (
         TailClassIdsSubstSolns = [],
@@ -767,8 +769,7 @@ find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
             run_time(env("TYPE_SPEC_CONSTR_PREDS")),
             io(!IO)]
         (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "DONE\n\n", !IO)
+            io.write_string(ProgressStream, "DONE\n\n", !IO)
         )
     ;
         TailClassIdsSubstSolns =
@@ -781,16 +782,15 @@ find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
             HeadTailStr =
                 dump_class_id_subst_soln(PragmaTVarSet, PredTVarSet,
                     "head_tail ", "\n", HeadTailClassIdSubstSoln),
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, HeadTailStr, !IO)
+            io.write_string(ProgressStream, HeadTailStr, !IO)
         ),
         HeadTailClassIdSubstSoln = HeadTailClassId - HeadTailSubstSolnSet,
         set.to_sorted_list(HeadSubstSolnSet, HeadSubstSolns),
         set.to_sorted_list(HeadTailSubstSolnSet, HeadTailSubstSolns),
         unify_two_soln_lists_outer_loop(HeadSubstSolns,
             HeadTailSubstSolns, set.init, NextSubstSolnSet),
-        find_all_ground_subst_combinations(PragmaTVarSet, PredTVarSet,
-            HeadTailClassId - NextSubstSolnSet,
+        find_all_ground_subst_combinations(ProgressStream, PragmaTVarSet,
+            PredTVarSet, HeadTailClassId - NextSubstSolnSet,
             TailTailClassIdsSubstSolns, FinalSubstSet)
     ).
 
@@ -928,28 +928,30 @@ no_pragma_tvar_is_double_mapped(Head, Tail) :-
     % Given some solutions we have computed for a type_spec_constrained_preds
     % pragma, generate an actual type_spec pragma for each.
     %
-:- pred generate_pragma_type_specs_for_pred_soln(module_name::in, tvarset::in,
-    pred_info::in, one_or_more(type_subst)::in, subst_soln::in,
+:- pred generate_pragma_type_specs_for_pred_soln(io.text_output_stream::in,
+    module_name::in, tvarset::in, pred_info::in,
+    one_or_more(type_subst)::in, subst_soln::in,
     list(decl_pragma_type_spec_info)::in,
     list(decl_pragma_type_spec_info)::out) is det.
 
-generate_pragma_type_specs_for_pred_soln(PragmaModuleName, PragmaTVarSet,
-        PredInfo, OoMTypeSubsts, Soln, !Pragmas) :-
+generate_pragma_type_specs_for_pred_soln(ProgressStream, PragmaModuleName,
+        PragmaTVarSet, PredInfo, OoMTypeSubsts, Soln, !Pragmas) :-
     OoMTypeSubsts = one_or_more(HeadTypeSubst, TailTypeSubts),
-    generate_pragma_type_spec(PragmaModuleName, PragmaTVarSet, PredInfo,
-        Soln, HeadTypeSubst, !Pragmas),
+    generate_pragma_type_spec(ProgressStream, PragmaModuleName,
+        PragmaTVarSet, PredInfo, Soln, HeadTypeSubst, !Pragmas),
     list.foldl(
-        generate_pragma_type_spec(PragmaModuleName, PragmaTVarSet, PredInfo,
-            Soln),
+        generate_pragma_type_spec(ProgressStream, PragmaModuleName,
+            PragmaTVarSet, PredInfo, Soln),
         TailTypeSubts, !Pragmas).
 
-:- pred generate_pragma_type_spec(module_name::in, tvarset::in, pred_info::in,
+:- pred generate_pragma_type_spec(io.text_output_stream::in,
+    module_name::in, tvarset::in, pred_info::in,
     subst_soln::in, type_subst::in,
     list(decl_pragma_type_spec_info)::in,
     list(decl_pragma_type_spec_info)::out) is det.
 
-generate_pragma_type_spec(PragmaModuleName, PragmaTVarSet, PredInfo,
-        Soln, TypeSubst, !Pragmas) :-
+generate_pragma_type_spec(ProgressStream, PragmaModuleName,
+        PragmaTVarSet, PredInfo, Soln, TypeSubst, !Pragmas) :-
     UserArity = pred_info_user_arity(PredInfo),
     MoA = moa_arity(UserArity),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -1001,20 +1003,19 @@ generate_pragma_type_spec(PragmaModuleName, PragmaTVarSet, PredInfo,
         EffTypeSubstStr = dump_type_subst(PragmaTVarSet, "\n", EffTypeSubst),
         NewPragmaTypeSubstStr = dump_type_subst(PragmaTVarSet, "\n",
             NewPragmaTypeSubst),
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "\ngenerate_pragma_type_spec:\n", !IO),
-        io.write_string(Stream, "PragmaTVarSet:\n", !IO),
-        io.write_string(Stream, PragmaTVarSetStr, !IO),
-        io.write_string(Stream, "PredTVarSet:\n", !IO),
-        io.write_string(Stream, PredTVarSetStr, !IO),
-        io.write_string(Stream, "Soln:\n", !IO),
-        io.write_string(Stream, SolnStr, !IO),
-        io.write_string(Stream, "EffTypeSubst:\n", !IO),
-        io.write_string(Stream, EffTypeSubstStr, !IO),
-        io.write_string(Stream, "NewPragmaTypeSubst:\n", !IO),
-        io.write_string(Stream, NewPragmaTypeSubstStr, !IO),
-        io.write_string(Stream, "Pragma:\n", !IO),
-        report_generated_pragma(Stream, Pragma, !IO)
+        io.write_string(ProgressStream, "\ngenerate_pragma_type_spec:\n", !IO),
+        io.write_string(ProgressStream, "PragmaTVarSet:\n", !IO),
+        io.write_string(ProgressStream, PragmaTVarSetStr, !IO),
+        io.write_string(ProgressStream, "PredTVarSet:\n", !IO),
+        io.write_string(ProgressStream, PredTVarSetStr, !IO),
+        io.write_string(ProgressStream, "Soln:\n", !IO),
+        io.write_string(ProgressStream, SolnStr, !IO),
+        io.write_string(ProgressStream, "EffTypeSubst:\n", !IO),
+        io.write_string(ProgressStream, EffTypeSubstStr, !IO),
+        io.write_string(ProgressStream, "NewPragmaTypeSubst:\n", !IO),
+        io.write_string(ProgressStream, NewPragmaTypeSubstStr, !IO),
+        io.write_string(ProgressStream, "Pragma:\n", !IO),
+        report_generated_pragma(ProgressStream, Pragma, !IO)
     ).
 
 :- pred build_pragma_to_pred_tvar_map(pragma_to_pred_tvar::in,
