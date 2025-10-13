@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2024 The Mercury team.
+% Copyright (C) 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1139,7 +1139,8 @@ mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
         c_output_context(Stream, LineNumbers, InitContext, !IO),
         io.write_string(Stream, CodeString, !IO),
         io.write_string(Stream, "\n", !IO),
-        c_reset_context(Stream, LineNumbers, !IO)
+        OutputFileName = Opts ^ m2co_output_filename,
+        c_reset_context(Stream, LineNumbers, OutputFileName, !IO)
     ;
         TargetCode = raw_target_code(CodeString),
         io.write_string(Stream, CodeString, !IO)

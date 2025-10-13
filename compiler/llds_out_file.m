@@ -123,20 +123,22 @@ output_llds(ProgressStream, Globals, CFile, Succeeded, !IO) :-
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
         FileName, _FileNameProposed, !IO),
     output_to_file_stream(ProgressStream, Globals, FileName,
-        output_llds_2(Globals, CFile), Succeeded, !IO).
+        output_llds_2(Globals, FileName, CFile), Succeeded, !IO).
 
-:- pred output_llds_2(globals::in, c_file::in, io.text_output_stream::in,
-    list(string)::out, io::di, io::uo) is det.
+:- pred output_llds_2(globals::in, file_name::in, c_file::in,
+    io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-output_llds_2(Globals, CFile, Stream, Errors, !IO) :-
+output_llds_2(Globals, FileName, CFile, Stream, Errors, !IO) :-
     decl_set_init(DeclSet0),
-    output_single_c_file(Globals, Stream, CFile, Errors, DeclSet0, _, !IO).
+    output_single_c_file(Globals, Stream, FileName, CFile, Errors,
+        DeclSet0, _, !IO).
 
 :- pred output_single_c_file(globals::in, io.text_output_stream::in,
-    c_file::in, list(string)::out,
+    file_name::in, c_file::in, list(string)::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_single_c_file(Globals, Stream, CFile, Errors, !DeclSet, !IO) :-
+output_single_c_file(Globals, Stream, OutputFileName, CFile, Errors,
+        !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, ForeignBodyCodes, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
@@ -154,9 +156,9 @@ output_single_c_file(Globals, Stream, CFile, Errors, !DeclSet, !IO) :-
     output_c_file_intro_and_grade(Globals, Stream, SourceFileName,
         Version, Fullarch, !IO),
 
-    Info = init_llds_out_info(ModuleName, SourceFileName, Globals,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
-        AllocSiteMap),
+    Info = init_llds_out_info(ModuleName, SourceFileName, OutputFileName,
+        Globals, InternalLabelToLayoutMap, EntryLabelToLayoutMap,
+        TableIoEntryMap, AllocSiteMap),
     annotate_c_modules(Info, Modules, AnnotatedModules,
         cord.init, EntryLabelsCord, cord.init, InternalLabelsCord,
         set.init, EnvVarNameSet),
@@ -912,7 +914,7 @@ output_foreign_header_include_line(Info, Stream, Decl, Res,
     maybe_error::out, io::di, io::uo) is det.
 
 output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
-        Context, Res, !IO) :-
+        Context, Result, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     ForeignLineNumbers = Info ^ lout_foreign_line_numbers,
     ( if
@@ -930,7 +932,7 @@ output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
         LiteralOrInclude = floi_literal(Code),
         output_set_line_num(Stream, ForeignLineNumbers, Context, !IO),
         io.write_string(Stream, Code, !IO),
-        Res = ok
+        Result = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ lout_source_file_name,
@@ -938,10 +940,11 @@ output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
         output_set_line_num(Stream, ForeignLineNumbers,
             context(IncludePath, 1), !IO),
         Globals = Info ^ lout_globals,
-        write_include_file_contents(Stream, Globals, IncludePath, Res, !IO)
+        write_include_file_contents(Stream, Globals, IncludePath, Result, !IO)
     ),
     io.nl(Stream, !IO),
-    output_reset_line_num(Stream, ForeignLineNumbers, !IO).
+    OutputFileName = Info ^ lout_output_file_name,
+    output_reset_line_num(Stream, ForeignLineNumbers, OutputFileName, !IO).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
     io.text_output_stream::in, list(label)::in, list(label)::in,

@@ -112,48 +112,48 @@ output_c_mlds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
     % we generate say that the header file depends on the source file.
     % If we wrote them out in the other order, we would get an unnecessary
     % recompilation next time mmake is run.
-    ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-    Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    output_c_src_file_opts(ProgressStream, MLDS, Opts, Suffix,
-        Succeeded0, !IO),
+    output_c_src_file_opts(ProgressStream, Globals, TargetOrDump, MLDS,
+        Suffix, SrcOpts, Succeeded0, !IO),
     (
         Succeeded0 = succeeded,
-        output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+        output_c_mih_header_file_opts(ProgressStream, MLDS, SrcOpts, Suffix,
             Succeeded, !IO)
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred output_c_src_file_opts(io.text_output_stream::in, mlds::in,
-    mlds_to_c_opts::in, string::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred output_c_src_file_opts(io.text_output_stream::in, globals::in,
+    target_or_dump::in, mlds::in, string::in,
+    mlds_to_c_opts::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-output_c_src_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
+output_c_src_file_opts(ProgressStream, Globals, TargetOrDump, MLDS, Suffix,
+        SrcOpts, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    Globals = Opts ^ m2co_all_globals,
+    module_name_to_source_file_name(ModuleName, MercSourceFileName, !IO),
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-        ModuleName, SourceFileName0, _SourceFileNameProposed0, !IO),
-    SourceFileName = SourceFileName0 ++ Suffix,
+        ModuleName, CSourceFileName, _SourceFileNameProposed0, !IO),
+    SrcOpts = init_mlds_to_c_opts(Globals, MercSourceFileName, CSourceFileName,
+        TargetOrDump),
+    SuffixCSourceFileName = CSourceFileName ++ Suffix,
     Indent = 0u,
-    output_to_file_stream(ProgressStream, Globals, SourceFileName,
-        mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
+    output_to_file_stream(ProgressStream, Globals, SuffixCSourceFileName,
+        mlds_output_src_file(SrcOpts, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_c_mih_header_file_opts(io.text_output_stream::in, mlds::in,
     mlds_to_c_opts::in, string::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+output_c_mih_header_file_opts(ProgressStream, MLDS, SrcOpts, Suffix,
         !:Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
     % `copy_dot_tmp_to_base_file_report_any_error' to move the
     % <module>.mih.tmp file to <module>.mih. This avoids updating
     % the timestamp on the `.mih' file if it has not changed.
     ModuleName = mlds_get_module_name(MLDS),
-    Globals = Opts ^ m2co_all_globals,
+    Globals = SrcOpts ^ m2co_all_globals,
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
@@ -162,7 +162,8 @@ output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
     TmpMihSuffixFileName = MihSuffixFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
         LineNumbersForCHdrs),
-    HdrOpts = ((Opts
+    HdrOpts = (((SrcOpts
+        ^ m2co_output_filename := MihFileName)
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0u,
@@ -181,11 +182,12 @@ output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
 output_c_dump_preds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
         DumpPredNames, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-    Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
+    module_name_to_source_file_name(ModuleName, MercSourceFileName, !IO),
     module_name_to_cur_dir_file_name(ext_cur_user_mlds_dump, ModuleName,
         DumpBaseName),
     DumpFileName = DumpBaseName ++ Suffix,
+    Opts = init_mlds_to_c_opts(Globals, MercSourceFileName, DumpFileName,
+        TargetOrDump),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
     list.filter(func_defn_has_name_in_list(DumpPredNames), ProcDefns,

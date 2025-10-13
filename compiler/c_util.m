@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,7 +29,6 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 %
@@ -59,7 +58,7 @@
 :- pred always_set_line_num(io.text_output_stream::in, string::in, int::in,
     io::di, io::uo) is det.
 
-    % maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO):
+    % maybe_reset_line_num(Stream, MaybeSetLineNumbers, FileName, !IO):
     %
     % If MaybeSetLineNumbers = set_line_numbers, emit a #line directive
     % to Stream to cancel the effect of any previous #line directives,
@@ -76,12 +75,18 @@
     % yes("modname.suffix") as MaybeFileName.
     %
 :- pred maybe_reset_line_num(io.text_output_stream::in,
-    maybe_set_line_numbers::in, maybe(string)::in, io::di, io::uo) is det.
+    maybe_set_line_numbers::in, string::in, io::di, io::uo) is det.
 
-    % As maybe_reset_line_num, but always generate a #line directive.
+    % always_reset_line_num(Stream, FileName, !IO):
     %
-:- pred always_reset_line_num(io.text_output_stream::in,
-    maybe(string)::in, io::di, io::uo) is det.
+    % As maybe_reset_line_num, but always generate a #line directive.
+    % FileName should be the final name of the file we are writing to.
+    % This means that if we are actually writing to xyz.mih.tmp, but we
+    % intend to rename it to xyz.mih, then the filename we should put into
+    % the #line directive is xyz.mih, not xyz.mih.tmp.)
+    %
+:- pred always_reset_line_num(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -382,8 +387,7 @@ always_set_line_num(Stream, FileName, LineNumber, !IO) :-
                 [i(LineNumber), s(quote_string_c(FileName))], !IO)
         )
     else
-        % XXX What is the point of this call?
-        always_reset_line_num(Stream, no, !IO)
+        true
     ).
 
 %---------------------%
@@ -398,16 +402,10 @@ maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
 
 %---------------------%
 
-always_reset_line_num(Stream, MaybeFileName, !IO) :-
+always_reset_line_num(Stream, FileName, !IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
     io.get_output_line_number(Stream, LineNumber, !IO),
-    (
-        MaybeFileName = yes(FileName)
-    ;
-        MaybeFileName = no,
-        io.output_stream_name(Stream, FileName, !IO)
-    ),
     ( if
         LineNumber > 0,
         FileName \= ""

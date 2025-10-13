@@ -1871,8 +1871,9 @@ output_foreign_proc_component(Info, Stream, Component, !IO) :-
                     Context, !IO),
                 io.write_string(Stream, C_Code, !IO),
                 io.write_string(Stream, ";}\n", !IO),
+                OutputFileName = Info ^ lout_output_file_name,
                 output_reset_line_num(Stream, Info ^ lout_foreign_line_numbers,
-                    !IO)
+                    OutputFileName, !IO)
             ;
                 MaybeContext = no,
                 io.format(Stream, "{\n%s;}\n", [s(C_Code)], !IO)
