@@ -571,23 +571,20 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
         LastContextWord = lcw_none
     ;
         MainContext = umc_head(ArgNum),
-        start_in_message_to_pieces(!.First, !Pieces),
-        !:First = is_not_first,
         LastContextWord = lcw_argument,
         ArgNumStr = int_to_string(ArgNum),
-        !:Pieces = !.Pieces ++
-            [words("argument"), fixed(ArgNumStr), words("of clause head:"), nl]
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words("argument"), fixed(ArgNumStr), words("of clause head:"),
+            nl],
+        !:First = is_not_first
     ;
         MainContext = umc_head_result,
-        start_in_message_to_pieces(!.First, !Pieces),
-        !:First = is_not_first,
         LastContextWord = lcw_result,
-        !:Pieces = !.Pieces ++
-            [words("function result term of clause head:"), nl]
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words("function result term of clause head:"), nl],
+        !:First = is_not_first
     ;
         MainContext = umc_call(CallId, ArgNum),
-        start_in_message_to_pieces(!.First, !Pieces),
-        !:First = is_not_first,
         LastContextWord = lcw_call,
         % The markers argument below is used only for type class method
         % implementations defined using the named syntax rather than
@@ -599,13 +596,16 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
         init_markers(Markers),
         ArgIdPieces = call_arg_id_to_pieces(print_ho_var_name, CallId,
             ArgNum, Markers),
-        !:Pieces = !.Pieces ++ ArgIdPieces ++ [suffix(":"), nl]
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            ArgIdPieces ++ [suffix(":"), nl],
+        !:First = is_not_first
     ;
         MainContext = umc_implicit(Source),
         LastContextWord = lcw_none,
-        start_in_message_to_pieces(!.First, !Pieces),
         string.format("implicit %s unification:", [s(Source)], Msg),
-        !:Pieces = !.Pieces ++ [words(Msg), nl]
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words(Msg), nl],
+        !:First = is_not_first
     ).
 
 :- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
@@ -619,18 +619,19 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
         contexts_describe_list_element([SubContext | SubContexts],
             0, ElementNum, AfterContexts)
     then
-        in_element_to_pieces(!.First, ElementNum, !Pieces),
-        !:First = is_not_first,
+        element_to_pieces(ElementNum, HeadPieces),
         !:LastContextWord = lcw_element,
-        unify_sub_contexts_to_pieces(!First, AfterContexts,
-            !LastContextWord, !Pieces)
+        NextContexts = AfterContexts
     else
-        in_argument_to_pieces(!.First, SubContext, !Pieces),
-        !:First = is_not_first,
+        argument_to_pieces(SubContext, HeadPieces),
         !:LastContextWord = lcw_argument,
-        unify_sub_contexts_to_pieces(!First, SubContexts,
-            !LastContextWord, !Pieces)
-    ).
+        NextContexts = SubContexts
+    ),
+    !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+        HeadPieces ++ [suffix(":"), nl],
+    !:First = is_not_first,
+    unify_sub_contexts_to_pieces(!First, NextContexts,
+        !LastContextWord, !Pieces).
 
 :- pred contexts_describe_list_element(list(unify_sub_context)::in,
     int::in, int::out, list(unify_sub_context)::out) is semidet.
@@ -658,40 +659,35 @@ contexts_describe_list_element([SubContext | SubContexts],
             NumElementsBefore + 1, ElementNum, AfterContexts)
     ).
 
-:- pred in_argument_to_pieces(is_first::in, unify_sub_context::in,
-    list(format_piece)::in, list(format_piece)::out) is det.
+:- pred argument_to_pieces(unify_sub_context::in,
+    list(format_piece)::out) is det.
 
-in_argument_to_pieces(First, SubContext, !Pieces) :-
-    start_in_message_to_pieces(First, !Pieces),
+argument_to_pieces(SubContext, Pieces) :-
     SubContext = unify_sub_context(ConsId, ArgNum),
     ArgNumStr = int_to_string(ArgNum),
     % XXX Using cons_id_and_arity_to_string here results in the
     % quotes being in the wrong place.
     ConsIdStr = cons_id_and_arity_to_string(ConsId),
-    !:Pieces = !.Pieces ++ [words("argument"), fixed(ArgNumStr),
-        words("of functor"), quote(ConsIdStr), suffix(":"), nl].
+    Pieces = [words("argument"), fixed(ArgNumStr),
+        words("of functor"), quote(ConsIdStr)].
 
-:- pred in_element_to_pieces(is_first::in, int::in,
-    list(format_piece)::in, list(format_piece)::out) is det.
+:- pred element_to_pieces(int::in, list(format_piece)::out) is det.
 
-in_element_to_pieces(First, ElementNum, !Pieces) :-
-    start_in_message_to_pieces(First, !Pieces),
+element_to_pieces(ElementNum, Pieces) :-
     ElementNumStr = int_to_string(ElementNum),
-    !:Pieces = !.Pieces ++ [words("list element"),
-        prefix("#"), fixed(ElementNumStr), suffix(":"), nl].
+    Pieces = [words("list element"), prefix("#"), fixed(ElementNumStr)].
 
-:- pred start_in_message_to_pieces(is_first::in,
-    list(format_piece)::in, list(format_piece)::out) is det.
+:- func start_in_message_to_pieces(is_first) = list(format_piece).
 
-start_in_message_to_pieces(First, !Pieces) :-
+start_in_message_to_pieces(First) = Pieces :-
     (
         First = is_first,
         % It is possible for First to be yes and !.Pieces to be nonempty,
         % since !.Pieces may contain stuff from before the unify context.
-        !:Pieces = !.Pieces ++ [words("In")]
+        Pieces = [words("In")]
     ;
         First = is_not_first,
-        !:Pieces = !.Pieces ++ [words("in")]
+        Pieces = [words("in")]
     ).
 
 %---------------------------------------------------------------------------%
