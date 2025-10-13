@@ -628,7 +628,7 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
         MainContext = umc_implicit(Source),
         LastContextWord = lcw_none,
         start_in_message_to_pieces(!.First, !Pieces),
-        string.format("implicit %s unification:\n", [s(Source)], Msg),
+        string.format("implicit %s unification:", [s(Source)], Msg),
         !:Pieces = !.Pieces ++ [words(Msg), nl]
     ).
 
