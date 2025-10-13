@@ -50,9 +50,8 @@
 
 :- import_module check_hlds.typecheck_error_builtin.
 :- import_module hlds.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
