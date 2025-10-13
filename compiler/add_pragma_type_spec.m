@@ -15,9 +15,11 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
-:- pred add_pragma_type_spec_constr(decl_pragma_type_spec_constr_info::in,
+:- pred add_pragma_type_spec_constr(io.text_output_stream::in,
+    decl_pragma_type_spec_constr_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -71,7 +73,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -87,7 +88,8 @@
 
 %---------------------------------------------------------------------------%
 
-add_pragma_type_spec_constr(TypeSpecConstr, !ModuleInfo, !QualInfo, !Specs) :-
+add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
+        !ModuleInfo, !QualInfo, !Specs) :-
     % The general approach we use to implement type_spec_constrained_preds
     % pragmas is to compute the set of ordinary type_spec pragmas they
     % correspond to, and add *those* to !ModuleInfo.
@@ -110,11 +112,12 @@ add_pragma_type_spec_constr(TypeSpecConstr, !ModuleInfo, !QualInfo, !Specs) :-
             run_time(env("TYPE_SPEC_CONSTR_PREDS")),
             io(!IO)]
         (
-            io.output_stream(Stream, !IO),
             ClassConstraintMapAL =
                 one_or_more_map.to_flat_assoc_list(ClassConstraintMap),
-            io.nl(Stream, !IO),
-            list.foldl(write_class_constraint_map_entry(Stream, PragmaTVarSet),
+            io.nl(ProgressStream, !IO),
+            list.foldl(
+                write_class_constraint_map_entry(ProgressStream,
+                    PragmaTVarSet),
                 ClassConstraintMapAL, !IO)
         ),
         % Check all predicates defined in either ModuleName or its submodules
