@@ -401,24 +401,8 @@ argument_name_to_pieces_lc(VarSet, LastContextWord, Var) = Pieces :-
     ).
 
 argument_name_to_pieces_uc(VarSet, LastContextWord, Var) = Pieces :-
-    ( if varset.search_name(VarSet, Var, _) then
-        Pieces = [words("Variable"),
-            quote(mercury_var_to_name_only_vs(VarSet, Var))]
-    else
-        (
-            ( LastContextWord = lcw_none
-            ; LastContextWord = lcw_call
-            ; LastContextWord = lcw_argument
-            ),
-            Pieces = [words("Argument")]
-        ;
-            LastContextWord = lcw_result,
-            Pieces = [words("Result")]
-        ;
-            LastContextWord = lcw_element,
-            Pieces = [words("Element")]
-        )
-    ).
+    Pieces0 = argument_name_to_pieces_lc(VarSet, LastContextWord, Var),
+    Pieces = [upper_case_next | Pieces0].
 
 %---------------------------------------------------------------------------%
 
