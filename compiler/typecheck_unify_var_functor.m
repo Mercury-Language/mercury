@@ -223,8 +223,7 @@ typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
         true
     ),
 
-    % Check that the type of the functor matches the type of the
-    % variable.
+    % Check that the type of the functor matches the type of the variable.
     typecheck_var_functor_types(LHSVar, ConsTypeAssignSet,
         [], ArgsTypeAssignSet),
     ( if
