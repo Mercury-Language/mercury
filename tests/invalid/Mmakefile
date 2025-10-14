@@ -220,6 +220,7 @@ BORING_SINGLEMODULE_PROGS = \
 	merge_ground_any \
 	merge_inst_error \
 	method_impl \
+	missing_closure_arg \
 	missing_concrete_instance \
 	missing_det_decls \
 	mixed_up_streams \
