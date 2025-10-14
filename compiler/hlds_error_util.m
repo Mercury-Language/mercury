@@ -208,6 +208,13 @@
     unify_context::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
+    % Succeed iff the given cons_id either *does* represent list.[|],
+    % or (before typechecking has finished) *may* represent list.[|].
+    %
+:- pred cons_id_may_be_list_cons(cons_id::in) is semidet.
+
+:- func argument_to_pieces(unify_sub_context) = list(format_piece).
+
 %---------------------------------------------------------------------------%
 
     % When a higher order call uses either P(A, B, C) or C = F(A, B) syntax,
@@ -619,11 +626,11 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
         contexts_describe_list_element([SubContext | SubContexts],
             0, ElementNum, AfterContexts)
     then
-        element_to_pieces(ElementNum, HeadPieces),
+        HeadPieces = element_to_pieces(ElementNum),
         !:LastContextWord = lcw_element,
         NextContexts = AfterContexts
     else
-        argument_to_pieces(SubContext, HeadPieces),
+        HeadPieces = argument_to_pieces(SubContext),
         !:LastContextWord = lcw_argument,
         NextContexts = SubContexts
     ),
@@ -639,14 +646,7 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
 contexts_describe_list_element([SubContext | SubContexts],
         NumElementsBefore, ElementNum, AfterContexts) :-
     SubContext = unify_sub_context(ConsId, ArgNum),
-    ConsId = du_data_ctor(du_ctor(Functor, 2, _TypeCtor)),
-    % We ignore _TypeCtor since it may not have been set yet.
-    (
-        Functor = unqualified("[|]")
-    ;
-        Functor = qualified(ModuleSymName, "[|]"),
-        is_std_lib_module_name(ModuleSymName, "list")
-    ),
+    cons_id_may_be_list_cons(ConsId),
     (
         ArgNum = 1,
         % If there were zero elements before this element,
@@ -659,10 +659,18 @@ contexts_describe_list_element([SubContext | SubContexts],
             NumElementsBefore + 1, ElementNum, AfterContexts)
     ).
 
-:- pred argument_to_pieces(unify_sub_context::in,
-    list(format_piece)::out) is det.
+cons_id_may_be_list_cons(ConsId) :-
+    ConsId = du_data_ctor(DuCtor),
+    DuCtor = du_ctor(DuCtorSymName, 2, _TypeCtor),
+    % We ignore _TypeCtor since it may not have been set yet.
+    (
+        DuCtorSymName = unqualified("[|]")
+    ;
+        DuCtorSymName = qualified(ModuleSymName, "[|]"),
+        is_std_lib_module_name(ModuleSymName, "list")
+    ).
 
-argument_to_pieces(SubContext, Pieces) :-
+argument_to_pieces(SubContext) = Pieces :-
     SubContext = unify_sub_context(ConsId, ArgNum),
     ArgNumStr = int_to_string(ArgNum),
     % XXX Using cons_id_and_arity_to_string here results in the
@@ -671,9 +679,9 @@ argument_to_pieces(SubContext, Pieces) :-
     Pieces = [words("argument"), fixed(ArgNumStr),
         words("of functor"), quote(ConsIdStr)].
 
-:- pred element_to_pieces(int::in, list(format_piece)::out) is det.
+:- func element_to_pieces(int) = list(format_piece).
 
-element_to_pieces(ElementNum, Pieces) :-
+element_to_pieces(ElementNum) = Pieces :-
     ElementNumStr = int_to_string(ElementNum),
     Pieces = [words("list element"), prefix("#"), fixed(ElementNumStr)].
 

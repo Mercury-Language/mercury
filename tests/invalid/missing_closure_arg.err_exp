@@ -8,73 +8,73 @@ missing_closure_arg.m:027:   Arity mismatch for the predicate: expected [38;5;4
 missing_closure_arg.m:027:   [38;5;40marguments,[39;49m got [38;5;203mfour.[39;49m
 missing_closure_arg.m:027: In clause for predicate `main'/2:
 missing_closure_arg.m:027:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:027:   in argument 2 of functor `foo/4':
-missing_closure_arg.m:027:   type error in unification of argument
+missing_closure_arg.m:027:   type error in unification of argument 2 of functor
+missing_closure_arg.m:027:   `foo/4'
 missing_closure_arg.m:027:   and constant `43.2'.
-missing_closure_arg.m:027:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:027:   [38;5;87mArgument 2 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:027:     [38;5;203mlist.list(bool.bool),[39;49m
 missing_closure_arg.m:027:   [38;5;87mconstant `43.2'[39;49m has type
 missing_closure_arg.m:027:     [38;5;40mfloat.[39;49m
 missing_closure_arg.m:027: In clause for predicate `main'/2:
 missing_closure_arg.m:027:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:027:   in argument 3 of functor `foo/4':
-missing_closure_arg.m:027:   type error in unification of argument
+missing_closure_arg.m:027:   type error in unification of argument 3 of functor
+missing_closure_arg.m:027:   `foo/4'
 missing_closure_arg.m:027:   and constant `a'.
-missing_closure_arg.m:027:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:027:   [38;5;87mArgument 3 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:027:     [38;5;203mint,[39;49m
 missing_closure_arg.m:027:   [38;5;87mconstant `a'[39;49m has type
 missing_closure_arg.m:027:     [38;5;40mcharacter.[39;49m
 missing_closure_arg.m:027: In clause for predicate `main'/2:
 missing_closure_arg.m:027:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:027:   in argument 4 of functor `foo/4':
-missing_closure_arg.m:027:   type error in unification of argument
+missing_closure_arg.m:027:   type error in unification of argument 4 of functor
+missing_closure_arg.m:027:   `foo/4'
 missing_closure_arg.m:027:   and constant `"x"'.
-missing_closure_arg.m:027:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:027:   [38;5;87mArgument 4 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:027:     [38;5;203mfloat,[39;49m
 missing_closure_arg.m:027:   [38;5;87mconstant `"x"'[39;49m has type
 missing_closure_arg.m:027:     [38;5;40mstring.[39;49m
 missing_closure_arg.m:028: In clause for predicate `main'/2:
 missing_closure_arg.m:028:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:028:   in argument 1 of functor `foo/5':
-missing_closure_arg.m:028:   type error in unification of argument
+missing_closure_arg.m:028:   type error in unification of argument 1 of functor
+missing_closure_arg.m:028:   `foo/5'
 missing_closure_arg.m:028:   and functor `[|]'/2.
-missing_closure_arg.m:028:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:028:   [38;5;87mArgument 1 of functor `foo/5'[39;49m has type
 missing_closure_arg.m:028:     [38;5;203mbool.bool,[39;49m
 missing_closure_arg.m:028:   [38;5;87mfunctor `[|]'/2[39;49m has type
 missing_closure_arg.m:028:     [38;5;40m[|](T, list.list(T)): list.list(T).[39;49m
 missing_closure_arg.m:028: In clause for predicate `main'/2:
 missing_closure_arg.m:028:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:028:   in argument 2 of functor `foo/5':
-missing_closure_arg.m:028:   type error in unification of argument
+missing_closure_arg.m:028:   type error in unification of argument 2 of functor
+missing_closure_arg.m:028:   `foo/5'
 missing_closure_arg.m:028:   and constant `42'.
-missing_closure_arg.m:028:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:028:   [38;5;87mArgument 2 of functor `foo/5'[39;49m has type
 missing_closure_arg.m:028:     [38;5;203mlist.list(bool.bool),[39;49m
 missing_closure_arg.m:028:   [38;5;87mconstant `42'[39;49m has type
 missing_closure_arg.m:028:     [38;5;40mint.[39;49m
 missing_closure_arg.m:028: In clause for predicate `main'/2:
 missing_closure_arg.m:028:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:028:   in argument 3 of functor `foo/5':
-missing_closure_arg.m:028:   type error in unification of argument
+missing_closure_arg.m:028:   type error in unification of argument 3 of functor
+missing_closure_arg.m:028:   `foo/5'
 missing_closure_arg.m:028:   and constant `43.2'.
-missing_closure_arg.m:028:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:028:   [38;5;87mArgument 3 of functor `foo/5'[39;49m has type
 missing_closure_arg.m:028:     [38;5;203mint,[39;49m
 missing_closure_arg.m:028:   [38;5;87mconstant `43.2'[39;49m has type
 missing_closure_arg.m:028:     [38;5;40mfloat.[39;49m
 missing_closure_arg.m:028: In clause for predicate `main'/2:
 missing_closure_arg.m:028:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:028:   in argument 4 of functor `foo/5':
-missing_closure_arg.m:028:   type error in unification of argument
+missing_closure_arg.m:028:   type error in unification of argument 4 of functor
+missing_closure_arg.m:028:   `foo/5'
 missing_closure_arg.m:028:   and constant `a'.
-missing_closure_arg.m:028:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:028:   [38;5;87mArgument 4 of functor `foo/5'[39;49m has type
 missing_closure_arg.m:028:     [38;5;203mfloat,[39;49m
 missing_closure_arg.m:028:   [38;5;87mconstant `a'[39;49m has type
 missing_closure_arg.m:028:     [38;5;40mcharacter.[39;49m
 missing_closure_arg.m:028: In clause for predicate `main'/2:
 missing_closure_arg.m:028:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:028:   in argument 5 of functor `foo/5':
-missing_closure_arg.m:028:   type error in unification of argument
+missing_closure_arg.m:028:   type error in unification of argument 5 of functor
+missing_closure_arg.m:028:   `foo/5'
 missing_closure_arg.m:028:   and constant `"x"'.
-missing_closure_arg.m:028:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:028:   [38;5;87mArgument 5 of functor `foo/5'[39;49m has type
 missing_closure_arg.m:028:     [38;5;203mcharacter,[39;49m
 missing_closure_arg.m:028:   [38;5;87mconstant `"x"'[39;49m has type
 missing_closure_arg.m:028:     [38;5;40mstring.[39;49m
@@ -88,37 +88,37 @@ missing_closure_arg.m:029:   Arity mismatch for the predicate: expected [38;5;4
 missing_closure_arg.m:029:   [38;5;40marguments,[39;49m got [38;5;203mfour.[39;49m
 missing_closure_arg.m:029: In clause for predicate `main'/2:
 missing_closure_arg.m:029:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:029:   in argument 1 of functor `foo/4':
-missing_closure_arg.m:029:   type error in unification of argument
+missing_closure_arg.m:029:   type error in unification of argument 1 of functor
+missing_closure_arg.m:029:   `foo/4'
 missing_closure_arg.m:029:   and constant `42'.
-missing_closure_arg.m:029:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:029:   [38;5;87mArgument 1 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:029:     [38;5;203mbool.bool,[39;49m
 missing_closure_arg.m:029:   [38;5;87mconstant `42'[39;49m has type
 missing_closure_arg.m:029:     [38;5;40mint.[39;49m
 missing_closure_arg.m:029: In clause for predicate `main'/2:
 missing_closure_arg.m:029:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:029:   in argument 2 of functor `foo/4':
-missing_closure_arg.m:029:   type error in unification of argument
+missing_closure_arg.m:029:   type error in unification of argument 2 of functor
+missing_closure_arg.m:029:   `foo/4'
 missing_closure_arg.m:029:   and constant `43.2'.
-missing_closure_arg.m:029:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:029:   [38;5;87mArgument 2 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:029:     [38;5;203mlist.list(bool.bool),[39;49m
 missing_closure_arg.m:029:   [38;5;87mconstant `43.2'[39;49m has type
 missing_closure_arg.m:029:     [38;5;40mfloat.[39;49m
 missing_closure_arg.m:029: In clause for predicate `main'/2:
 missing_closure_arg.m:029:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:029:   in argument 3 of functor `foo/4':
-missing_closure_arg.m:029:   type error in unification of argument
+missing_closure_arg.m:029:   type error in unification of argument 3 of functor
+missing_closure_arg.m:029:   `foo/4'
 missing_closure_arg.m:029:   and constant `a'.
-missing_closure_arg.m:029:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:029:   [38;5;87mArgument 3 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:029:     [38;5;203mint,[39;49m
 missing_closure_arg.m:029:   [38;5;87mconstant `a'[39;49m has type
 missing_closure_arg.m:029:     [38;5;40mcharacter.[39;49m
 missing_closure_arg.m:029: In clause for predicate `main'/2:
 missing_closure_arg.m:029:   in argument 1 of call to predicate `list.foldl'/4:
-missing_closure_arg.m:029:   in argument 4 of functor `foo/4':
-missing_closure_arg.m:029:   type error in unification of argument
+missing_closure_arg.m:029:   type error in unification of argument 4 of functor
+missing_closure_arg.m:029:   `foo/4'
 missing_closure_arg.m:029:   and constant `"x"'.
-missing_closure_arg.m:029:   [38;5;87mArgument[39;49m has type
+missing_closure_arg.m:029:   [38;5;87mArgument 4 of functor `foo/4'[39;49m has type
 missing_closure_arg.m:029:     [38;5;203mfloat,[39;49m
 missing_closure_arg.m:029:   [38;5;87mconstant `"x"'[39;49m has type
 missing_closure_arg.m:029:     [38;5;40mstring.[39;49m

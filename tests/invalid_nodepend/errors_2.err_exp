@@ -53,10 +53,10 @@ errors_2.m:047:     Y_2: string
 errors_2.m:062: In clause for predicate `type_error_4'/0:
 errors_2.m:062:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:062: In clause for predicate `type_error_4'/0:
-errors_2.m:062:   in argument 3 of functor `foo_functor/3':
-errors_2.m:062:   type error in unification of argument
+errors_2.m:062:   type error in unification of argument 3 of functor
+errors_2.m:062:   `foo_functor/3'
 errors_2.m:062:   and constant `1.0'.
-errors_2.m:062:   [38;5;87mArgument[39;49m has type
+errors_2.m:062:   [38;5;87mArgument 3 of functor `foo_functor/3'[39;49m has type
 errors_2.m:062:     [38;5;203mstring,[39;49m
 errors_2.m:062:   [38;5;87mconstant `1.0'[39;49m has type
 errors_2.m:062:     [38;5;40mfloat.[39;49m
@@ -68,10 +68,10 @@ errors_2.m:062:     V_4: string
 errors_2.m:072: In clause for predicate `type_error_5'/0:
 errors_2.m:072:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:072: In clause for predicate `type_error_5'/0:
-errors_2.m:072:   in argument 3 of functor `foo_functor/3':
-errors_2.m:072:   type error in unification of argument
+errors_2.m:072:   type error in unification of argument 3 of functor
+errors_2.m:072:   `foo_functor/3'
 errors_2.m:072:   and constant `1.0'.
-errors_2.m:072:   [38;5;87mArgument[39;49m has type
+errors_2.m:072:   [38;5;87mArgument 3 of functor `foo_functor/3'[39;49m has type
 errors_2.m:072:     [38;5;203mstring,[39;49m
 errors_2.m:072:   [38;5;87mconstant `1.0'[39;49m has type
 errors_2.m:072:     [38;5;40mfloat.[39;49m
@@ -83,10 +83,10 @@ errors_2.m:072:     V_4: string
 errors_2.m:078: In clause for predicate `type_error_6'/0:
 errors_2.m:078:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:078: In clause for predicate `type_error_6'/0:
-errors_2.m:078:   in argument 3 of functor `bar_functor/3':
-errors_2.m:078:   type error in unification of argument
+errors_2.m:078:   type error in unification of argument 3 of functor
+errors_2.m:078:   `bar_functor/3'
 errors_2.m:078:   and constant `1.0'.
-errors_2.m:078:   [38;5;87mArgument[39;49m has type
+errors_2.m:078:   [38;5;87mArgument 3 of functor `bar_functor/3'[39;49m has type
 errors_2.m:078:     [38;5;203mstring,[39;49m
 errors_2.m:078:   [38;5;87mconstant `1.0'[39;49m has type
 errors_2.m:078:     [38;5;40mfloat.[39;49m

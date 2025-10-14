@@ -1,8 +1,8 @@
 impure_pred_t1.m:027: In clause for predicate `main'/2:
-impure_pred_t1.m:027:   in argument 1 of functor `foo/1':
-impure_pred_t1.m:027:   type error in unification of argument
+impure_pred_t1.m:027:   type error in unification of argument 1 of functor
+impure_pred_t1.m:027:   `foo/1'
 impure_pred_t1.m:027:   and constant `get_counter'.
-impure_pred_t1.m:027:   [38;5;87mArgument[39;49m has type
+impure_pred_t1.m:027:   [38;5;87mArgument 1 of functor `foo/1'[39;49m has type
 impure_pred_t1.m:027:     [38;5;203mpred(int, int),[39;49m
 impure_pred_t1.m:027:   [38;5;87mconstant `get_counter'[39;49m has type
 impure_pred_t1.m:027:     [38;5;40mimpure pred(int, int).[39;49m

@@ -189,8 +189,48 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, Arity, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, LastContextWord,
-        InClauseForPieces, ContextPieces),
+    ( if varset.search_name(VarSet, Var, _) then
+        unify_context_to_pieces(UnifyContext, _LastContextWord,
+            InClauseForPieces, ContextPieces),
+        VarName = mercury_var_to_name_only_vs(VarSet, Var),
+        VarDescPieces = [words("variable"), quote(VarName)]
+    else
+        UnifyContext = unify_context(MainContext, BottomUpSubContexts),
+        ( if
+            BottomUpSubContexts = [BottomSubContext | NonBottomSubContexts],
+            BottomSubContext = unify_sub_context(ConsId, _ArgNum),
+            not cons_id_may_be_list_cons(ConsId),
+            UnifyContextToUse =
+                unify_context(MainContext, NonBottomSubContexts),
+            unify_context_to_pieces(UnifyContextToUse, LastContextWord,
+                InClauseForPieces, ContextPiecesPrime),
+            ( LastContextWord = lcw_none
+            ; LastContextWord = lcw_call
+            ; LastContextWord = lcw_argument
+            )
+        then
+            % Instead of printing something like:
+            %
+            %   <initial context>
+            %   in argument N of functor F:
+            %   type error in unification of argument
+            %   and <other term's top functor>:
+            %   Argument has type ...
+            %
+            % print
+            %
+            %   <initial context>
+            %   type error in unification of argument N of functor F
+            %   and <other term's top functor>:
+            %   Argument N of functor F has type ...
+            ContextPieces = ContextPiecesPrime,
+            VarDescPieces = argument_to_pieces(BottomSubContext)
+        else
+            unify_context_to_pieces(UnifyContext, LastContextWord,
+                InClauseForPieces, ContextPieces),
+            VarDescPieces = last_context_word_to_string_lc(LastContextWord)
+        )
+    ),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -204,13 +244,11 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
     % we should be able to print the diff between the two types,
     % including pointers such as the arity we expected vs what we got.
 
-    MainPieces = [words("type error in unification of")] ++
-        argument_name_to_pieces_lc(VarSet, LastContextWord, Var) ++
+    MainPieces = [words("type error in unification of")] ++ VarDescPieces ++
         [nl, words("and")] ++
         functor_name_to_pieces(Functor, Arity) ++ [suffix("."), nl] ++
 
-        color_as_subject(
-            argument_name_to_pieces_uc(VarSet, LastContextWord, Var)) ++
+        color_as_subject([upper_case_next | VarDescPieces]) ++
         VarTypePieces ++ [nl] ++
 
         color_as_subject(functor_name_to_pieces(Functor, Arity)) ++

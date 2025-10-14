@@ -94,6 +94,11 @@
 
 %---------------------------------------------------------------------------%
 
+:- func last_context_word_to_string_lc(last_context_word)
+    = list(format_piece).
+:- func last_context_word_to_string_uc(last_context_word)
+    = list(format_piece).
+
 :- func argument_name_to_pieces_lc(prog_varset, last_context_word, prog_var)
     = list(format_piece).
 :- func argument_name_to_pieces_uc(prog_varset, last_context_word, prog_var)
@@ -378,24 +383,31 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
+last_context_word_to_string_lc(LastContextWord) = Pieces :-
+    (
+        ( LastContextWord = lcw_none
+        ; LastContextWord = lcw_call
+        ; LastContextWord = lcw_argument
+        ),
+        Pieces = [words("argument")]
+    ;
+        LastContextWord = lcw_result,
+        Pieces = [words("result")]
+    ;
+        LastContextWord = lcw_element,
+        Pieces = [words("element")]
+    ).
+
+last_context_word_to_string_uc(LastContextWord) = Pieces :-
+    Pieces0 = last_context_word_to_string_lc(LastContextWord),
+    Pieces = [upper_case_next | Pieces0].
+
 argument_name_to_pieces_lc(VarSet, LastContextWord, Var) = Pieces :-
     ( if varset.search_name(VarSet, Var, _) then
         Pieces = [words("variable"),
             quote(mercury_var_to_name_only_vs(VarSet, Var))]
     else
-        (
-            ( LastContextWord = lcw_none
-            ; LastContextWord = lcw_call
-            ; LastContextWord = lcw_argument
-            ),
-            Pieces = [words("argument")]
-        ;
-            LastContextWord = lcw_result,
-            Pieces = [words("result")]
-        ;
-            LastContextWord = lcw_element,
-            Pieces = [words("element")]
-        )
+        Pieces = last_context_word_to_string_lc(LastContextWord)
     ).
 
 argument_name_to_pieces_uc(VarSet, LastContextWord, Var) = Pieces :-
