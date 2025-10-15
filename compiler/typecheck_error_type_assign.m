@@ -81,6 +81,14 @@
 :- pred get_all_transformed_type_stuffs((func(type_stuff) = T)::in,
     type_assign_set::in, prog_var::in, list(T)::out) is det.
 
+    % Given a type assignment set and a variable, return the accumulated
+    % result of invoking the specified predicate on each of the possible
+    % different types for the variable in turn.
+    %
+:- pred acc_transformed_type_stuffs(
+    pred(type_stuff, Acc, Acc)::in(pred(in, in, out) is det),
+    type_assign_set::in, prog_var::in, Acc::in, Acc::out) is det.
+
 :- type arg_type_stuff
     --->    arg_type_stuff(
                 arg_type_stuff_var_type             :: mer_type,
@@ -440,6 +448,8 @@ get_all_type_stuffs_remove_dups([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         TypeStuffs = [TypeStuff | TailTypeStuffs]
     ).
 
+%---------------------%
+
     % Given a type assignment set and a variable, return the list of possible
     % different types for the variable. The returned list may contain
     % duplicates.
@@ -456,12 +466,24 @@ get_all_type_stuffs([TypeAssign | TypeAssigns], Var,
     get_type_stuff(TypeAssign, Var, TypeStuff),
     get_all_type_stuffs(TypeAssigns, Var, TypeStuffs).
 
+%---------------------%
+
 get_all_transformed_type_stuffs(_TransformFunc, [], _Var, []).
 get_all_transformed_type_stuffs(TransformFunc, [TypeAssign | TypeAssigns], Var,
         [Result | Results]) :-
     get_type_stuff(TypeAssign, Var, TypeStuff),
     Result = TransformFunc(TypeStuff),
     get_all_transformed_type_stuffs(TransformFunc, TypeAssigns, Var, Results).
+
+%---------------------%
+
+acc_transformed_type_stuffs(_AccPred, [], _Var, !Acc).
+acc_transformed_type_stuffs(AccPred, [TypeAssign | TypeAssigns], Var, !Acc) :-
+    get_type_stuff(TypeAssign, Var, TypeStuff),
+    AccPred(TypeStuff, !Acc),
+    acc_transformed_type_stuffs(AccPred, TypeAssigns, Var, !Acc).
+
+%---------------------%
 
     % Given a type assignment and a variable, return information about
     % the type of that variable in that type assignment.
