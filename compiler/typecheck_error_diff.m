@@ -187,6 +187,28 @@ generate_type_diff_pieces(ContextPieces, ExistQTVars, MaybeTopLevel,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
+:- func report_type_ctor_arity_mismatch(list(format_piece), arity, arity)
+    = list(format_piece).
+
+report_type_ctor_arity_mismatch(TypeCtorPieces, ActualNumArgs, ExpectedNumArgs)
+        = Pieces :-
+    ( if ExpectedNumArgs = 1 then
+        ArgumentS = "argument"
+    else
+        ArgumentS = "arguments"
+    ),
+    Pieces =
+        [words("Arity mismatch for")] ++ TypeCtorPieces ++ [suffix(":"),
+        words("expected")] ++
+        color_as_correct([int_name(ExpectedNumArgs),
+            words(ArgumentS), suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([int_name(ActualNumArgs), suffix(".")]).
+
+%---------------------------------------------------------------------------%
+
     % Return a description of any differences between the given
     % actual and expected argument types. The caller need not have ensured
     % that the two lists are the same length; we detect and report any
@@ -212,23 +234,42 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
         DiffPieces = wrap_diff_pieces(ContextPieces, CausePieces)
     ).
 
-:- func report_type_ctor_arity_mismatch(list(format_piece), arity, arity)
+    % Return a description of any differences between the given
+    % actual and expected argument types. The caller should have ensured
+    % that the two lists are the same length.
+    %
+:- func arg_type_list_diff_pieces_loop(list(format_piece),
+    list(format_piece), arity, list(tvar), int, list(mer_type), list(mer_type))
     = list(format_piece).
 
-report_type_ctor_arity_mismatch(TypeCtorPieces, ActualNumArgs, ExpectedNumArgs)
-        = Pieces :-
-    ( if ExpectedNumArgs = 1 then
-        ArgumentS = "argument"
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [], []) = [].
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [], [_ | _]) = _ :-
+    unexpected($pred, "list length mismatch").
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [_ | _], []) = _ :-
+    unexpected($pred, "list length mismatch").
+arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces, TypeCtorArity,
+        ExistQTVars, CurArgNum, [ActualArgType | ActualArgTypes],
+        [ExpectedArgType | ExpectedArgTypes]) = DiffPieces :-
+    TailDiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
+        TypeCtorPieces, TypeCtorArity, ExistQTVars, CurArgNum + 1,
+        ActualArgTypes, ExpectedArgTypes),
+    ( if ActualArgType = ExpectedArgType then
+        DiffPieces = TailDiffPieces
     else
-        ArgumentS = "arguments"
-    ),
-    Pieces =
-        [words("Arity mismatch for")] ++ TypeCtorPieces ++ [suffix(":"),
-        words("expected")] ++
-        color_as_correct([int_name(ExpectedNumArgs),
-            words(ArgumentS), suffix(",")]) ++
-        [words("got")] ++
-        color_as_incorrect([int_name(ActualNumArgs), suffix(".")]).
+        ( if TypeCtorArity = 1 then
+            ArgNumOfPieces = [words("only argument of")]
+        else
+            ArgNumOfPieces = [nth_fixed(CurArgNum), words("argument of")]
+        ),
+        ArgContextPieces = [treat_next_as_first | ContextPieces] ++
+            [lower_case_next_if_not_first, words("In the")] ++
+            ArgNumOfPieces ++ TypeCtorPieces ++ [suffix(":"), nl],
+        HeadDiffPieces = generate_type_diff_pieces(ArgContextPieces,
+            ExistQTVars, not_top_level, ActualArgType, ExpectedArgType),
+        DiffPieces = HeadDiffPieces ++ TailDiffPieces
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- func higher_order_diff_pieces(list(format_piece), list(tvar),
     pred_or_func, pred_or_func, list(mer_type), list(mer_type),
@@ -400,41 +441,6 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
             % inadequacy than the programmer's :-(
             true
         )
-    ).
-
-    % Return a description of any differences between the given
-    % actual and expected argument types. The caller should have ensured
-    % that the two lists are the same length.
-    %
-:- func arg_type_list_diff_pieces_loop(list(format_piece),
-    list(format_piece), arity, list(tvar), int, list(mer_type), list(mer_type))
-    = list(format_piece).
-
-arg_type_list_diff_pieces_loop(_, _, _, _, _, [], []) = [].
-arg_type_list_diff_pieces_loop(_, _, _, _, _, [], [_ | _]) = _ :-
-    unexpected($pred, "list length mismatch").
-arg_type_list_diff_pieces_loop(_, _, _, _, _, [_ | _], []) = _ :-
-    unexpected($pred, "list length mismatch").
-arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces, TypeCtorArity,
-        ExistQTVars, CurArgNum, [ActualArgType | ActualArgTypes],
-        [ExpectedArgType | ExpectedArgTypes]) = DiffPieces :-
-    TailDiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
-        TypeCtorPieces, TypeCtorArity, ExistQTVars, CurArgNum + 1,
-        ActualArgTypes, ExpectedArgTypes),
-    ( if ActualArgType = ExpectedArgType then
-        DiffPieces = TailDiffPieces
-    else
-        ( if TypeCtorArity = 1 then
-            ArgNumOfPieces = [words("only argument of")]
-        else
-            ArgNumOfPieces = [nth_fixed(CurArgNum), words("argument of")]
-        ),
-        ArgContextPieces = [treat_next_as_first | ContextPieces] ++
-            [lower_case_next_if_not_first, words("In the")] ++
-            ArgNumOfPieces ++ TypeCtorPieces ++ [suffix(":"), nl],
-        HeadDiffPieces = generate_type_diff_pieces(ArgContextPieces,
-            ExistQTVars, not_top_level, ActualArgType, ExpectedArgType),
-        DiffPieces = HeadDiffPieces ++ TailDiffPieces
     ).
 
 :- pred add_to_diff_pieces(list(format_piece)::in, list(format_piece)::in,
