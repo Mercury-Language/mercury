@@ -53,7 +53,7 @@
     % acc_builtin_types_in_cons_type_infos(ConsTypeInfos, !BuiltinTypes):
     %
     % Add to !BuiltinTypes any builtin types that appear in any of the
-    % ConsTypeInfos, either as argument types or as result tyoes.
+    % ConsTypeInfos, either as argument types or as result types.
     %
 :- pred acc_builtin_types_in_cons_type_infos(list(cons_type_info)::in,
     set(builtin_type)::in, set(builtin_type)::out) is det.
