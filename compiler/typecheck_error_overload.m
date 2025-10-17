@@ -59,7 +59,6 @@
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -72,53 +71,55 @@
 
 report_warning_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
-    Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-        OverloadedSymbolMap, no),
+    InitPieces = [words("warning: highly ambiguous overloading."), nl],
+    VerbosePieces =
+        [words("This may cause type-checking to be very slow."),
+        words("It may also make your code difficult to understand."), nl],
+    FirstMsg = create_first_msg(ClauseContext, Context,
+        InitPieces, VerbosePieces),
+    LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+        OverloadedSymbolMap),
     Spec = error_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
-        phase_type_check, Msgs).
+        phase_type_check, [FirstMsg | LaterMsgs]).
 
 report_error_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
-    Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-        OverloadedSymbolMap, yes),
-    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
+    InitPieces = [words("error: excessively ambiguous overloading."), nl],
+    VerbosePieces =
+        [words("This caused the type checker to exceed its limits."),
+        words("It may also make your code difficult to understand."), nl],
+    FirstMsg = create_first_msg(ClauseContext, Context,
+        InitPieces, VerbosePieces),
+    LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+        OverloadedSymbolMap),
+    Spec = error_spec($pred, severity_error,
+        phase_type_check, [FirstMsg | LaterMsgs]).
 
-:- func too_much_overloading_to_msgs(type_error_clause_context, prog_context,
-    overloaded_symbol_map, bool) = list(error_msg).
+%---------------------------------------------------------------------------%
 
-too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
-        IsError) = Msgs :-
+:- func create_first_msg(type_error_clause_context, prog_context,
+    list(format_piece), list(format_piece)) = error_msg.
+
+create_first_msg(ClauseContext, Context, InitPieces,  VerbosePieces)
+        = FirstMsg :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    (
-        IsError = no,
-        InitPieces = InClauseForPieces ++
-            [words("warning: highly ambiguous overloading."), nl],
-        InitComponent = always(InitPieces),
+    InitComponent = always(InClauseForPieces ++ InitPieces),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces),
+    FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]).
 
-        VerbosePieces =
-            [words("This may cause type-checking to be very slow."),
-            words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
-    ;
-        IsError = yes,
-        InitPieces = InClauseForPieces ++
-            [words("error: excessively ambiguous overloading."), nl],
-        InitComponent = always(InitPieces),
+%---------------------------------------------------------------------------%
 
-        VerbosePieces =
-            [words("This caused the type checker to exceed its limits."),
-            words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
-    ),
+:- func describe_overloaded_symbols(type_error_clause_context, prog_context,
+    overloaded_symbol_map) = list(error_msg).
 
-    FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]),
-
+describe_overloaded_symbols(ClauseContext, Context, OverloadedSymbolMap)
+        = Msgs :-
     map.to_assoc_list(OverloadedSymbolMap, OverloadedSymbols),
     OverloadedSymbolsSortedContexts =
         assoc_list.map_values_only(sort_and_remove_dups, OverloadedSymbols),
     (
         OverloadedSymbolsSortedContexts = [],
-        Msgs = [FirstMsg]
+        Msgs = []
     ;
         (
             OverloadedSymbolsSortedContexts = [_ - Contexts],
@@ -127,27 +128,27 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
                 unexpected($pred, "no contexts")
             ;
                 Contexts = [_],
-                SecondPieces =
+                WasOverloadedPieces =
                     [words("The following symbol was overloaded"),
                     words("in the following context."), nl]
             ;
                 Contexts = [_, _ | _],
-                SecondPieces =
+                WasOverloadedPieces =
                     [words("The following symbol was overloaded"),
                     words("in the following contexts."), nl]
             )
         ;
             OverloadedSymbolsSortedContexts = [_, _ | _],
-            SecondPieces =
+            WasOverloadedPieces =
                 [words("The following symbols were overloaded"),
                 words("in the following contexts."), nl]
         ),
-        SecondMsg = msg(Context, SecondPieces),
+        WasOverloadedMsg = msg(Context, WasOverloadedPieces),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
         list.condense(DetailMsgsList, DetailMsgs),
-        Msgs = [FirstMsg, SecondMsg | DetailMsgs]
+        Msgs = [WasOverloadedMsg | DetailMsgs]
     ).
 
 :- func describe_overloaded_symbol(module_info,
@@ -206,8 +207,9 @@ context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
 report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    ErrorPieces =
-        [words("error: ambiguous overloading causes type ambiguity."), nl],
+    InitPieces = [words("error: unresolved type ambiguity."), nl],
+    FirstMsg = simple_msg(Context, [always(InClauseForPieces ++ InitPieces)]),
+
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
     type_assign_get_var_types(TypeAssign1, VarTypes1),
@@ -218,25 +220,30 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
     list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
     (
         VarAssignPiecesList = [],
-        Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-            OverloadedSymbolMap, no)
+        LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+            OverloadedSymbolMap)
     ;
         VarAssignPiecesList = [_ | TailVarAssignPiecesList],
         list.condense(VarAssignPiecesList, VarAssignPieces),
         (
             TailVarAssignPiecesList = [],
-            AmbiguityIntro = "The following variable has an ambiguous type:"
+            % We could have gere a singular version of the PreVarPieces in the
+            % nonempty tail case, but that would be overkill. But we do want
+            % to make clear that the entity we are reporting on is a variable,
+            % which is why we have this prefix on the first and only
+            % VarAssignPieceList.
+            PreVarPieces = [words("The variable")]
         ;
             TailVarAssignPiecesList = [_ | _],
-            AmbiguityIntro = "The following variables have ambiguous types:"
+            PreVarPieces =
+                [words("The following variables have ambiguous types."), nl]
         ),
-        AlwaysPieces = InClauseForPieces ++ ErrorPieces ++
-            [words(AmbiguityIntro), nl | VarAssignPieces],
-        VerboseComponents =
-            [verbose_only(verbose_once, add_qualifiers_reminder)],
-        Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
-        Msgs = [Msg]
+        VarPieces = PreVarPieces ++ VarAssignPieces,
+        VerboseComponent = verbose_only(verbose_once, add_qualifiers_reminder),
+        VarMsg = simple_msg(Context, [always(VarPieces), VerboseComponent]),
+        LaterMsgs = [VarMsg]
     ),
+    Msgs = [FirstMsg | LaterMsgs],
     Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
 
 :- func add_qualifiers_reminder = list(format_piece).
@@ -259,11 +266,12 @@ var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
         TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
     NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
     (
-        ( NameNumPiecesList = []
-        ; NameNumPiecesList = [_]
-        ),
-        % Either we have no info about Var (which I, zs, think should not
-        % happen), or Var has an unambiguous type.
+        NameNumPiecesList = [],
+        % We have no info about Var (which I, zs, think should NOT happen).
+        Pieces = []
+    ;
+        NameNumPiecesList = [_],
+        % Var has an unambiguous type.
         Pieces = []
     ;
         NameNumPiecesList = [_, _ | _],
@@ -282,7 +290,7 @@ var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
         ;
             NameOnlyPiecesList = [_, _ | _],
             % Var has an ambiguous type, and this is apparent even from
-            % from NameOnlyPiecesList.
+            % just NameOnlyPiecesList.
             PossibleTypePiecesList = NameOnlyPiecesList
         ),
         VarPiece = var_to_quote_piece(VarSet, Var),
@@ -292,10 +300,10 @@ var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
             EitherAny = "any"
         ),
         Pieces =
-            [words("The variable")] ++ color_as_subject([VarPiece]) ++
+            % ZZZ [words("The variable")] ++
+            color_as_subject([VarPiece]) ++
             [words("can have"), words(EitherAny),
-            words("of the following types:"),
-            nl_indent_delta(1)] ++
+            words("of the following types:"), nl_indent_delta(1)] ++
             pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
                 PossibleTypePiecesList) ++
             [nl_indent_delta(-1)]
