@@ -109,6 +109,136 @@ create_first_msg(ClauseContext, Context, InitPieces,  VerbosePieces)
 
 %---------------------------------------------------------------------------%
 
+report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
+        TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    InitPieces = [words("error: unresolved type ambiguity."), nl],
+    FirstMsg = simple_msg(Context, [always(InClauseForPieces ++ InitPieces)]),
+
+    VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
+    type_assign_get_var_types(TypeAssign1, VarTypes1),
+    vartypes_vars(VarTypes1, Vars1),
+    AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
+    VarAssignPiecesList0 = list.map(
+        var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
+    list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
+    (
+        VarAssignPiecesList = [],
+        LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+            OverloadedSymbolMap)
+    ;
+        VarAssignPiecesList = [_ | TailVarAssignPiecesList],
+        list.condense(VarAssignPiecesList, VarAssignPieces),
+        (
+            TailVarAssignPiecesList = [],
+            % We could have gere a singular version of the PreVarPieces in the
+            % nonempty tail case, but that would be overkill. But we do want
+            % to make clear that the entity we are reporting on is a variable,
+            % which is why we have this prefix on the first and only
+            % VarAssignPieceList.
+            PreVarPieces = [words("The variable")]
+        ;
+            TailVarAssignPiecesList = [_ | _],
+            PreVarPieces =
+                [words("The following variables have ambiguous types."), nl]
+        ),
+        VarPieces = PreVarPieces ++ VarAssignPieces,
+        VerboseComponent = verbose_only(verbose_once, add_qualifiers_reminder),
+        VarMsg = simple_msg(Context, [always(VarPieces), VerboseComponent]),
+        LaterMsgs = [VarMsg]
+    ),
+    Msgs = [FirstMsg | LaterMsgs],
+    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
+
+:- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
+    prog_var) = list(format_piece).
+
+var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
+    list.foldl2(gather_type_pieces_for_var_in_type_assign(InstVarSet, Var),
+        TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
+    NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
+    (
+        NameNumPiecesList = [],
+        % We have no info about Var (which I, zs, think should NOT happen).
+        Pieces = []
+    ;
+        NameNumPiecesList = [_],
+        % Var has an unambiguous type.
+        Pieces = []
+    ;
+        NameNumPiecesList = [_, _ | _],
+        % Var has an ambiguous type.
+        NameOnlyPiecesList = set.to_sorted_list(NameOnlyPiecesSet),
+        (
+            NameOnlyPiecesList = [],
+            % NameOnlyPiecesSet can be empty if and *only if*
+            % NameNumPiecesSet is also empty.
+            unexpected($pred, "NameOnlyPiecesList = []")
+        ;
+            NameOnlyPiecesList = [_],
+            % Var has an ambiguous type, but this is apparent *only*
+            % from NameNumPiecesList.
+            PossibleTypePiecesList = NameNumPiecesList
+        ;
+            NameOnlyPiecesList = [_, _ | _],
+            % Var has an ambiguous type, and this is apparent even from
+            % just NameOnlyPiecesList.
+            PossibleTypePiecesList = NameOnlyPiecesList
+        ),
+        VarPiece = var_to_quote_piece(VarSet, Var),
+        ( if list.length(PossibleTypePiecesList) = 2 then
+            EitherAny = "either"
+        else
+            EitherAny = "any"
+        ),
+        Pieces =
+            % ZZZ [words("The variable")] ++
+            color_as_subject([VarPiece]) ++
+            [words("can have"), words(EitherAny),
+            words("of the following types:"), nl_indent_delta(1)] ++
+            pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
+                PossibleTypePiecesList) ++
+            [nl_indent_delta(-1)]
+    ).
+
+:- pred gather_type_pieces_for_var_in_type_assign(inst_varset::in,
+    prog_var::in, type_assign::in,
+    set(list(format_piece))::in, set(list(format_piece))::out,
+    set(list(format_piece))::in, set(list(format_piece))::out) is det.
+
+gather_type_pieces_for_var_in_type_assign(InstVarSet, Var, TypeAssign,
+        !NameOnlyPiecesSet, !NameNumPiecesSet) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    ( if search_var_type(VarTypes, Var, Type0) then
+        type_assign_get_type_bindings(TypeAssign, TypeBindings),
+        type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
+        type_assign_get_typevarset(TypeAssign, TVarSet),
+        apply_rec_subst_to_type(TypeBindings, Type0, Type),
+        NameOnlyPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_only, do_not_add_quotes, ExistQTVars, Type),
+        NameNumPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_and_num, do_not_add_quotes, ExistQTVars, Type),
+        set.insert(NameOnlyPieces, !NameOnlyPiecesSet),
+        set.insert(NameNumPieces, !NameNumPiecesSet)
+    else
+        true
+    ).
+
+:- func add_qualifiers_reminder = list(format_piece).
+
+add_qualifiers_reminder = [
+    words("You will need to add an explicit type qualification"),
+    words("to resolve the type ambiguity."),
+    words("The way to add an explicit type qualification"),
+    words("is to use \"with_type\"."),
+    words("For details see the"), fixed("\"Explicit type qualification\""),
+    words(" sub-section of the \"Data-terms\" section of the"),
+    words("\"Syntax\" chapter of the Mercury language reference manual.")
+].
+
+%---------------------------------------------------------------------------%
+
 :- func describe_overloaded_symbols(type_error_clause_context, prog_context,
     overloaded_symbol_map) = list(error_msg).
 
@@ -201,136 +331,6 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
 :- func context_to_error_msg(list(format_piece), prog_context) = error_msg.
 
 context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
-
-%---------------------------------------------------------------------------%
-
-report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
-        TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
-    InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    InitPieces = [words("error: unresolved type ambiguity."), nl],
-    FirstMsg = simple_msg(Context, [always(InClauseForPieces ++ InitPieces)]),
-
-    VarSet = ClauseContext ^ tecc_varset,
-    get_inst_varset(ClauseContext, InstVarSet),
-    type_assign_get_var_types(TypeAssign1, VarTypes1),
-    vartypes_vars(VarTypes1, Vars1),
-    AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
-    VarAssignPiecesList0 = list.map(
-        var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
-    list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
-    (
-        VarAssignPiecesList = [],
-        LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
-            OverloadedSymbolMap)
-    ;
-        VarAssignPiecesList = [_ | TailVarAssignPiecesList],
-        list.condense(VarAssignPiecesList, VarAssignPieces),
-        (
-            TailVarAssignPiecesList = [],
-            % We could have gere a singular version of the PreVarPieces in the
-            % nonempty tail case, but that would be overkill. But we do want
-            % to make clear that the entity we are reporting on is a variable,
-            % which is why we have this prefix on the first and only
-            % VarAssignPieceList.
-            PreVarPieces = [words("The variable")]
-        ;
-            TailVarAssignPiecesList = [_ | _],
-            PreVarPieces =
-                [words("The following variables have ambiguous types."), nl]
-        ),
-        VarPieces = PreVarPieces ++ VarAssignPieces,
-        VerboseComponent = verbose_only(verbose_once, add_qualifiers_reminder),
-        VarMsg = simple_msg(Context, [always(VarPieces), VerboseComponent]),
-        LaterMsgs = [VarMsg]
-    ),
-    Msgs = [FirstMsg | LaterMsgs],
-    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
-
-:- func add_qualifiers_reminder = list(format_piece).
-
-add_qualifiers_reminder = [
-    words("You will need to add an explicit type qualification"),
-    words("to resolve the type ambiguity."),
-    words("The way to add an explicit type qualification"),
-    words("is to use \"with_type\"."),
-    words("For details see the"), fixed("\"Explicit type qualification\""),
-    words(" sub-section of the \"Data-terms\" section of the"),
-    words("\"Syntax\" chapter of the Mercury language reference manual.")
-].
-
-:- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
-    prog_var) = list(format_piece).
-
-var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
-    list.foldl2(gather_type_pieces_for_var_in_type_assign(InstVarSet, Var),
-        TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
-    NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
-    (
-        NameNumPiecesList = [],
-        % We have no info about Var (which I, zs, think should NOT happen).
-        Pieces = []
-    ;
-        NameNumPiecesList = [_],
-        % Var has an unambiguous type.
-        Pieces = []
-    ;
-        NameNumPiecesList = [_, _ | _],
-        % Var has an ambiguous type.
-        NameOnlyPiecesList = set.to_sorted_list(NameOnlyPiecesSet),
-        (
-            NameOnlyPiecesList = [],
-            % NameOnlyPiecesSet can be empty if and *only if*
-            % NameNumPiecesSet is also empty.
-            unexpected($pred, "NameOnlyPiecesList = []")
-        ;
-            NameOnlyPiecesList = [_],
-            % Var has an ambiguous type, but this is apparent *only*
-            % from NameNumPiecesList.
-            PossibleTypePiecesList = NameNumPiecesList
-        ;
-            NameOnlyPiecesList = [_, _ | _],
-            % Var has an ambiguous type, and this is apparent even from
-            % just NameOnlyPiecesList.
-            PossibleTypePiecesList = NameOnlyPiecesList
-        ),
-        VarPiece = var_to_quote_piece(VarSet, Var),
-        ( if list.length(PossibleTypePiecesList) = 2 then
-            EitherAny = "either"
-        else
-            EitherAny = "any"
-        ),
-        Pieces =
-            % ZZZ [words("The variable")] ++
-            color_as_subject([VarPiece]) ++
-            [words("can have"), words(EitherAny),
-            words("of the following types:"), nl_indent_delta(1)] ++
-            pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
-                PossibleTypePiecesList) ++
-            [nl_indent_delta(-1)]
-    ).
-
-:- pred gather_type_pieces_for_var_in_type_assign(inst_varset::in,
-    prog_var::in, type_assign::in,
-    set(list(format_piece))::in, set(list(format_piece))::out,
-    set(list(format_piece))::in, set(list(format_piece))::out) is det.
-
-gather_type_pieces_for_var_in_type_assign(InstVarSet, Var, TypeAssign,
-        !NameOnlyPiecesSet, !NameNumPiecesSet) :-
-    type_assign_get_var_types(TypeAssign, VarTypes),
-    ( if search_var_type(VarTypes, Var, Type0) then
-        type_assign_get_type_bindings(TypeAssign, TypeBindings),
-        type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
-        type_assign_get_typevarset(TypeAssign, TVarSet),
-        apply_rec_subst_to_type(TypeBindings, Type0, Type),
-        NameOnlyPieces = type_to_pieces(TVarSet, InstVarSet,
-            print_name_only, do_not_add_quotes, ExistQTVars, Type),
-        NameNumPieces = type_to_pieces(TVarSet, InstVarSet,
-            print_name_and_num, do_not_add_quotes, ExistQTVars, Type),
-        set.insert(NameOnlyPieces, !NameOnlyPiecesSet),
-        set.insert(NameNumPieces, !NameNumPiecesSet)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_error_overload.
