@@ -42,9 +42,9 @@
                 maybe(actual_expected_types)
             ).
 
-% The two main difference between the next two functions is that
-% - the first takes a type_assign_set and explicit specifies the expected
-%   type, while
+% The two main differences between the next two functions are that
+% - the first takes a type_assign_set, and explicitly specifies
+%   the expected type, while
 % - the second takes an args_type_assign_set, and gets a separate
 %   expected type from each args_type_assign in the set.
 
