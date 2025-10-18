@@ -694,7 +694,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         VarTable = ClausesInfo ^ cli_var_table,
         compute_var_origins_in_pred(
             explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars),
-            PredInfo, _OriginMap, cord.init, AnonVarMsgsCord0),
+            ModuleInfo, PredInfo, _OriginMap, cord.init, AnonVarMsgsCord0),
         AnonVarMsgs0 = cord.list(AnonVarMsgsCord0),
         list.sort_and_remove_dups(AnonVarMsgs0, AnonVarMsgs)
     ),
