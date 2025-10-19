@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2009 The University of Melbourne.
-% Copyright (C) 2014-2016, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2016, 2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,6 +15,9 @@
 :- interface.
 
 :- include_module mercury_compile_main.
+
+:- implementation.
+
 :- include_module mercury_compile_args.
 :- include_module mercury_compile_augment.
 :- include_module mercury_compile_make_hlds.

@@ -32,27 +32,14 @@
 
 % The parser.
 :- include_module parse_module.
-   :- include_module parse_dcg_goal.
-   :- include_module parse_error.
-   :- include_module parse_goal.
-   :- include_module parse_inst_mode_defn.
-   :- include_module parse_inst_mode_name.
-   :- include_module parse_item.
-   :- include_module parse_mutable.
-   :- include_module parse_pragma.
-   :- include_module parse_pragma_analysis.
-   :- include_module parse_pragma_foreign.
-   :- include_module parse_pragma_tabling.
-   :- include_module parse_sym_name.
-   :- include_module parse_type_defn.
-   :- include_module parse_type_name.
-   :- include_module parse_type_repn.
-   :- include_module parse_class.
-   :- include_module parse_vars.
-
    :- include_module find_module.
-   :- include_module parse_goal_util.
-   :- include_module parse_types.
+   :- include_module parse_dcg_goal.
+   :- include_module parse_goal.
+   :- include_module parse_inst_mode_name.
+   :- include_module parse_sym_name.
+   :- include_module parse_type_name.
+
+   :- include_module parse_error.
    :- include_module parse_util.
 
 % Parser/pretty-printer/utility routines for the ctgc related types.
@@ -60,18 +47,19 @@
 
 % Pretty-printers.
 :- include_module parse_tree_out.
-:- include_module parse_tree_out_clause.
-:- include_module parse_tree_out_cons_id.
-:- include_module parse_tree_out_inst.
-:- include_module parse_tree_out_item.
-:- include_module parse_tree_out_misc.
-:- include_module parse_tree_out_pragma.
-:- include_module parse_tree_out_pred_decl.
-:- include_module parse_tree_out_sym_name.
-:- include_module parse_tree_out_term.
-:- include_module parse_tree_out_type.
-:- include_module parse_tree_out_type_repn.
-:- include_module parse_tree_out_info.
+    :- include_module parse_tree_out_clause.
+    :- include_module parse_tree_out_cons_id.
+    :- include_module parse_tree_out_inst.
+    :- include_module parse_tree_out_item.
+    :- include_module parse_tree_out_misc.
+    :- include_module parse_tree_out_pragma.
+    :- include_module parse_tree_out_pred_decl.
+    :- include_module parse_tree_out_sym_name.
+    :- include_module parse_tree_out_term.
+    :- include_module parse_tree_out_type.
+    :- include_module parse_tree_out_type_repn.
+
+    :- include_module parse_tree_out_info.
 :- include_module parse_tree_output.
 :- include_module parse_tree_to_term.
 
@@ -142,9 +130,6 @@
 :- include_module d_file_deps.
 :- include_module generate_mmakefile_fragments.
 :- include_module make_module_file_names.
-:- include_module opt_deps_spec.
-:- include_module output_imports_graph.
-:- include_module warn_unread_modules.
 :- include_module write_deps_file.
 
 % Java and C# related utilities.
@@ -155,6 +140,31 @@
 % of the HLDS transformations package.)
 % :- include_module intermod.
 % :- include_module trans_opt.
+
+%-----------------------------------------------------------------------------%
+:- implementation.
+%-----------------------------------------------------------------------------%
+
+% The parser.
+   :- include_module parse_inst_mode_defn.
+   :- include_module parse_item.
+   :- include_module parse_mutable.
+   :- include_module parse_pragma.
+   :- include_module parse_pragma_analysis.
+   :- include_module parse_pragma_foreign.
+   :- include_module parse_pragma_tabling.
+   :- include_module parse_type_defn.
+   :- include_module parse_type_repn.
+   :- include_module parse_class.
+   :- include_module parse_vars.
+
+   :- include_module parse_goal_util.
+   :- include_module parse_types.
+
+% Constructing .d, .dv and .dep files.
+:- include_module opt_deps_spec.
+:- include_module output_imports_graph.
+:- include_module warn_unread_modules.
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.
