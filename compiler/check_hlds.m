@@ -29,6 +29,7 @@
     :- include_module typecheck.
     :- include_module typecheck_clauses.
     :- include_module typecheck_coerce.
+    :- include_module typecheck_cons_infos.
     :- include_module typecheck_debug.
     :- include_module typecheck_errors.
     :- include_module typecheck_error_arg_vector.

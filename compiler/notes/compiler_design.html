@@ -330,7 +330,8 @@ This part produces the parse_tree.m data structure,
 which is intended to match up as closely as possible with the source code,
 so that it is suitable for tasks such as pretty-printing.
 <p>
-We transform the results of lexical analysis (done by library/mercury_term_lexer.m)
+We transform the results of lexical analysis
+(done by library/mercury_term_lexer.m)
 into the Mercury parse tree in two stages:
 
 <ul>
@@ -1081,7 +1082,14 @@ The type checker consists of several modules.
     and in resolve_unify_functor.m for function calls).
     <li>
     typecheck_unify_var_functor.m does typechecking
-    Jof unifications of the form X = f(Y1, ..., Yn).
+    of unifications of the form X = f(Y1, ..., Yn).
+    <li>
+    typecheck_cons_infos.m provides the data needed by
+    typecheck_unify_var_functor.m about the various kinds of cons_ids
+    that may play the role of the `f' in its unifications.
+    Besides the data constructors in discriminated union types,
+    they may also be the data constructors of builtin types,
+    the tuple constructor, user-defined functions and field access functions.
     <li>
     typecheck_coerce.m typecheck coerce goals.
     <li>
