@@ -31,13 +31,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_unify_var_functor_builtin(unify_context::in,
-    prog_context::in, prog_var::in, cons_id::in, builtin_type::in, string::in,
-    type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-:- pred typecheck_unify_var_functor_std(unify_context::in, prog_context::in,
-    prog_var::in, cons_id::in, list(prog_var)::in, goal_id::in,
+:- pred typecheck_unify_var_functor(unify_context::in, prog_context::in,
+    goal_id::in, prog_var::in, cons_id::in, list(prog_var)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
@@ -81,6 +76,44 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+typecheck_unify_var_functor(UnifyContext, Context, GoalId,
+        LHSVar, ConsId, ArgVars, !TypeAssignSet, !Info) :-
+    ( if cons_id_must_be_builtin(ConsId, BuiltinType, BuiltinTypeName) then
+        % All cons_ids of all builtin types are constants, which is why
+        % we can ignore ArgVars.
+        typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar,
+            ConsId, BuiltinType, BuiltinTypeName, !TypeAssignSet, !Info)
+    else
+        typecheck_unify_var_functor_non_builtin(UnifyContext, Context, GoalId,
+            LHSVar, ConsId, ArgVars, !TypeAssignSet, !Info)
+    ).
+
+:- pred cons_id_must_be_builtin(cons_id::in, builtin_type::out,
+    string::out) is semidet.
+
+cons_id_must_be_builtin(ConsId, BuiltinType, BuiltinTypeName) :-
+    (
+        ConsId = some_int_const(IntConst),
+        BuiltinType = builtin_type_int(type_of_int_const(IntConst)),
+        BuiltinTypeName = type_name_of_int_const(IntConst)
+    ;
+        ConsId = float_const(_),
+        BuiltinTypeName = "float",
+        BuiltinType = builtin_type_float
+    ;
+        ConsId = string_const(_),
+        BuiltinTypeName = "string",
+        BuiltinType = builtin_type_string
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_unify_var_functor_builtin(unify_context::in,
+    prog_context::in, prog_var::in, cons_id::in, builtin_type::in, string::in,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar, ConsId,
         BuiltinType, BuiltinTypeName, TypeAssignSet0, TypeAssignSet, !Info) :-
@@ -148,8 +181,13 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar, ConsId, ArgVars,
-        GoalId, TypeAssignSet0, TypeAssignSet, !Info) :-
+:- pred typecheck_unify_var_functor_non_builtin(unify_context::in,
+    prog_context::in, goal_id::in, prog_var::in, cons_id::in,
+    list(prog_var)::in, type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_unify_var_functor_non_builtin(UnifyContext, Context, GoalId,
+        LHSVar, ConsId, ArgVars, TypeAssignSet0, TypeAssignSet, !Info) :-
     % Get the list of possible constructors that match this functor/arity.
     % If there aren't any, report an undefined constructor error.
     list.length(ArgVars, Arity),

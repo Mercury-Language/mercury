@@ -163,7 +163,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,
-    typecheck_vars_have_types(ArgVectorKind, Context, HeadVars, ArgTypes,
+    typecheck_arg_vector(ArgVectorKind, Context, HeadVars, ArgTypes,
         !TypeAssignSet, !Info),
     typecheck_goal(Body0, Body, Context, !TypeAssignSet, !Info),
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -614,15 +614,15 @@ typecheck_plain_or_foreign_call_pred_id(ArgVectorKind, Context, GoalId,
         PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
-    % Rename apart the type variables in the called predicate's arg types
-    % and then unify the types of the call arguments with the called
-    % predicates' arg types. Optimize the common case of a non-polymorphic,
+    % Rename apart the type variables in the called predicate's arg types,
+    % and then unify the types of the call arguments with the callee's
+    % arg types. Optimize the common case of a non-polymorphic,
     % non-constrained predicate.
     ( if
         varset.is_empty(PredTypeVarSet),
         PredClassContext = univ_exist_constraints([], [])
     then
-        typecheck_vars_have_types(ArgVectorKind, Context, ArgVars,
+        typecheck_arg_vector(ArgVectorKind, Context, ArgVars,
             PredArgTypes, !TypeAssignSet, !Info)
     else
         module_info_get_class_table(ModuleInfo, ClassTable),
@@ -648,7 +648,7 @@ typecheck_plain_call_overloaded(SymName, Context, GoalId, PredIds,
 
     % Let the new arg_type_assign_set be the cross-product of the current
     % type_assign_set and the set of possible lists of argument types
-    % for the overloaded predicate, suitable renamed apart.
+    % for the overloaded predicate, suitably renamed apart.
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -721,7 +721,7 @@ typecheck_event_call(Context, EventName, ArgVars, !TypeAssignSet, !Info) :-
         list.length(EventArgTypes, NumEventArgTypes),
         ( if NumArgVars = NumEventArgTypes then
             ArgVectorKind = arg_vector_event(EventName),
-            typecheck_vars_have_types(ArgVectorKind, Context,
+            typecheck_arg_vector(ArgVectorKind, Context,
                 ArgVars, EventArgTypes, !TypeAssignSet, !Info)
         else
             Spec = report_error_undef_event_arity(Context,
@@ -752,15 +752,8 @@ typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
         RHS = RHS0
     ;
         RHS0 = rhs_functor(ConsId, _ExistConstraints, ArgVars),
-        ( if
-            cons_id_must_be_builtin_type(ConsId, BuiltinType, BuiltinTypeName)
-        then
-            typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar,
-                ConsId, BuiltinType, BuiltinTypeName, !TypeAssignSet, !Info)
-        else
-            typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar,
-                ConsId, ArgVars, GoalId, !TypeAssignSet, !Info)
-        ),
+        typecheck_unify_var_functor(UnifyContext, Context, GoalId,
+            LHSVar, ConsId, ArgVars, !TypeAssignSet, !Info),
         perform_context_reduction(Context, !TypeAssignSet, !Info),
         RHS = RHS0
     ;
@@ -859,26 +852,6 @@ type_assign_unify_var_var(TypeAssign0, X, Y, !TypeAssignSet) :-
             type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred cons_id_must_be_builtin_type(cons_id::in, builtin_type::out,
-    string::out) is semidet.
-
-cons_id_must_be_builtin_type(ConsId, BuiltinType, BuiltinTypeName) :-
-    (
-        ConsId = some_int_const(IntConst),
-        BuiltinType = builtin_type_int(type_of_int_const(IntConst)),
-        BuiltinTypeName = type_name_of_int_const(IntConst)
-    ;
-        ConsId = float_const(_),
-        BuiltinTypeName = "float",
-        BuiltinType = builtin_type_float
-    ;
-        ConsId = string_const(_),
-        BuiltinTypeName = "string",
-        BuiltinType = builtin_type_string
     ).
 
 %---------------------------------------------------------------------------%
@@ -1085,12 +1058,12 @@ typecheck_var_has_arg_type_in_args_type_assign(ArgNum, Var, ArgsTypeAssign0,
     % Given a list of variables and a list of types, ensure that
     % each variable has the corresponding type.
     %
-:- pred typecheck_vars_have_types(arg_vector_kind::in,
+:- pred typecheck_arg_vector(arg_vector_kind::in,
     prog_context::in, list(prog_var)::in, list(mer_type)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
+typecheck_arg_vector(ArgVectorKind, Context, Vars, Types,
         !TypeAssignSet, !Info) :-
     typecheck_vars_have_types_in_arg_vector(!.Info, Context, ArgVectorKind, 1,
         Vars, Types, !TypeAssignSet,
@@ -1103,7 +1076,7 @@ typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
             ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
         typecheck_info_add_error(AllArgsSpec, !Info)
     else
-        list.foldl(typecheck_info_add_error, Specs, !Info)
+        typecheck_info_add_errors(Specs, !Info)
     ).
 
 :- pred typecheck_vars_have_types_in_arg_vector(typecheck_info::in,
@@ -1174,6 +1147,8 @@ typecheck_var_has_type_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
     else
         TypeAssignSet = TypeAssignSet1
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_var_has_stm_atomic_type(prog_context::in, prog_var::in,
     type_assign_set::in, type_assign_set::out,

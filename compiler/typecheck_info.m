@@ -180,6 +180,8 @@
 
 :- pred typecheck_info_add_error(error_spec::in,
     typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_info_add_errors(list(error_spec)::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
 :- pred typecheck_info_get_all_errors(typecheck_info::in,
     list(error_spec)::out) is det.
@@ -438,9 +440,14 @@ typecheck_info_add_nosuffix_integer_var(Var, !Info) :-
     set_tree234.insert(Var, NoSuffixIntegerMap0, NoSuffixIntegerMap),
     typecheck_info_set_nosuffix_integer_vars(NoSuffixIntegerMap, !Info).
 
-typecheck_info_add_error(Error, !Info) :-
+typecheck_info_add_error(NewError, !Info) :-
     typecheck_info_get_non_overload_errors(!.Info, Errors0),
-    Errors = [Error | Errors0],
+    Errors = [NewError | Errors0],
+    typecheck_info_set_non_overload_errors(Errors, !Info).
+
+typecheck_info_add_errors(NewErrors, !Info) :-
+    typecheck_info_get_non_overload_errors(!.Info, Errors0),
+    Errors = NewErrors ++ Errors0,
     typecheck_info_set_non_overload_errors(Errors, !Info).
 
 typecheck_info_get_all_errors(Info, Errors) :-
