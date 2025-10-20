@@ -81,23 +81,27 @@
 
 typecheck_info_construct_all_cons_infos(Info, ConsId, Arity, GoalId,
         ConsInfoResult) :-
-    typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
+    typecheck_info_get_is_field_access_function(Info, InFieldAccessFunc),
     ( if
         % If we are typechecking the clause added for a field access function
         % for which the user has supplied type or mode declarations, the goal
         % should only contain an application of the field access function,
         % not constructor applications or function calls. The clauses in
         % `.opt' files will already have been expanded into unifications.
-        IsFieldAccessFunc = yes(PredStatus),
+        InFieldAccessFunc = yes(PredStatus),
         PredStatus \= pred_status(status_opt_imported)
     then
+        UserArity = user_arity(Arity),
         ( if
             ConsId = du_data_ctor(DuCtor),
-            builtin_field_access_function_type(Info, GoalId,
-                DuCtor, Arity, FieldAccessConsInfos)
+            is_du_ctor_synonym_for_field_access_function(Info, DuCtor,
+                UserArity, DuCtorSymName, AccessType, FieldSymName, FieldDefns)
         then
-            split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors),
-            ConsInfoResult = cons_info_du_ctor(DuCtor, ConsInfos, ConsErrors)
+            get_auto_generated_field_access_func_cons_infos(Info, GoalId,
+                DuCtorSymName, UserArity, AccessType, FieldSymName,
+                FieldDefns, FieldAccessConsInfos, FieldAccessConsErrors),
+            ConsInfoResult = cons_info_du_ctor(DuCtor,
+                FieldAccessConsInfos, FieldAccessConsErrors)
         else
             ConsInfoResult = cons_info_field_access_func
         )
@@ -215,11 +219,13 @@ typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
 
     % Check whether DuCtor is a field access function for which the user
     % has not supplied a declaration.
+    UserArity = user_arity(Arity),
     ( if
-        builtin_field_access_function_type(Info, GoalId, DuCtor, Arity,
-            FieldAccessMaybeConsInfosPrime)
+        is_du_ctor_synonym_for_field_access_function(Info, DuCtor, UserArity,
+            DuCtorSymName, AccessType, FieldSymName, FieldDefns)
     then
-        split_cons_errors(FieldAccessMaybeConsInfosPrime,
+        get_auto_generated_field_access_func_cons_infos(Info, GoalId,
+            DuCtorSymName, UserArity, AccessType, FieldSymName, FieldDefns,
             FieldAccessConsInfos, FieldAccessConsErrors)
     else
         FieldAccessConsInfos = [],
@@ -227,7 +233,12 @@ typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
     ),
 
     % Check whether DuCtor is of a builtin type. It can be of only one
-    % builtin type: "character".
+    % builtin type: "character". (The values of all the other builtin types
+    % have their own kinds of cons_ids, and none of them is a du_ctor.)
+    % Type "character" also has its own kind of cons_id, char_const/1,
+    % but we also accept single-code-point strings as character constants.
+    % We shouldn't do that, but there no point in breaking backward
+    % compatibility (which goes back to Prolog) on this point.
     DuCtor = du_ctor(SymName, _Arity, _TypeCtor),
     ( if
         Arity = 0,
@@ -249,9 +260,7 @@ typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
     ),
 
     % Check whether DuCtor is the name of a predicate which takes at least
-    % Arity arguments. If so, insert the resulting cons_type_info
-    % at the start of the list.
-    % XXX We insert it, but NOT at the start.
+    % Arity arguments. If so, add the resulting cons_type_info to the list.
     builtin_pred_type(Info, DuCtor, Arity, GoalId, PredConsInfos),
 
     % Check for higher-order function calls.
@@ -277,8 +286,9 @@ typecheck_info_get_du_cons_ctor_list(Info, DuCtor, GoalId,
     % Check if ConsId has been defined as a constructor in some
     % discriminated union type or types.
     ( if search_cons_table(ConsTable, DuCtor, ConsDefns) then
-        convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
-            DuCtor, ConsDefns, PlainConsInfos, PlainConsErrors)
+        hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId,
+            do_not_flip_constraints, DuCtor, ConsDefns,
+            PlainConsInfos, PlainConsErrors)
     else
         PlainConsInfos = [],
         PlainConsErrors = []
@@ -307,8 +317,8 @@ typecheck_info_get_du_cons_ctor_list(Info, DuCtor, GoalId,
         OrigDuCtor = du_ctor(OrigName, Arity, ConsIdTypeCtor),
         search_cons_table(ConsTable, OrigDuCtor, ExistQConsDefns)
     then
-        convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
-            OrigDuCtor, ExistQConsDefns,
+        hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId,
+            flip_constraints_for_new, OrigDuCtor, ExistQConsDefns,
             UnivQuantConsInfos, UnivQuantConsErrors),
         ConsInfos = PlainConsInfos ++ UnivQuantConsInfos,
         ConsErrors = PlainConsErrors ++ UnivQuantConsErrors
@@ -343,21 +353,22 @@ split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
     ;       flip_constraints_for_new
     ;       flip_constraints_for_field_set.
 
-:- pred convert_cons_defn_list(typecheck_info, goal_id,
+:- pred hlds_cons_defns_to_cons_type_infos_and_errors(typecheck_info, goal_id,
     cons_constraints_action, du_ctor, list(hlds_cons_defn),
     list(cons_type_info), list(cons_error)).
-:- mode convert_cons_defn_list(in, in, in(bound(do_not_flip_constraints)),
-    in, in, out, out) is det.
-:- mode convert_cons_defn_list(in, in, in(bound(flip_constraints_for_new)),
-    in, in, out, out) is det.
+:- mode hlds_cons_defns_to_cons_type_infos_and_errors(in, in,
+    in(bound(do_not_flip_constraints)), in, in, out, out) is det.
+:- mode hlds_cons_defns_to_cons_type_infos_and_errors(in, in,
+    in(bound(flip_constraints_for_new)), in, in, out, out) is det.
 
-convert_cons_defn_list(_Info, _GoalId, _Action, _DuCtor, [], [], []).
-convert_cons_defn_list(Info, GoalId, Action, DuCtor,
-        [ConsDefn | ConsDefns], ConsTypeInfos, ConsErrors) :-
-    convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn,
-        HeadMaybeConsTypeInfo),
-    convert_cons_defn_list(Info, GoalId, Action, DuCtor, ConsDefns,
-        TailConsTypeInfos, TailConsErrors),
+hlds_cons_defns_to_cons_type_infos_and_errors(_Info, _GoalId, _Action,
+        _DuCtor, [], [], []).
+hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId, Action,
+        DuCtor, [ConsDefn | ConsDefns], ConsTypeInfos, ConsErrors) :-
+    hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, Action,
+        DuCtor, ConsDefn, HeadMaybeConsTypeInfo),
+    hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId, Action,
+        DuCtor, ConsDefns, TailConsTypeInfos, TailConsErrors),
     (
         HeadMaybeConsTypeInfo = ok(HeadConsTypeInfo),
         ConsTypeInfos = [HeadConsTypeInfo | TailConsTypeInfos],
@@ -368,23 +379,23 @@ convert_cons_defn_list(Info, GoalId, Action, DuCtor,
         ConsErrors = [HeadConsError | TailConsErrors]
     ).
 
-:- pred convert_cons_defn(typecheck_info, goal_id,
-    cons_constraints_action, du_ctor, hlds_cons_defn,
-    maybe_cons_type_info).
-:- mode convert_cons_defn(in, in, in(bound(do_not_flip_constraints)),
+:- pred hlds_cons_defn_to_maybe_cons_type_info(typecheck_info, goal_id,
+    cons_constraints_action, du_ctor, hlds_cons_defn, maybe_cons_type_info).
+:- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
+    in(bound(do_not_flip_constraints)), in, in, out) is det.
+:- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
+    in(bound(flip_constraints_for_field_set)),
     in, in, out) is det.
-:- mode convert_cons_defn(in, in, in(bound(flip_constraints_for_field_set)),
-    in, in, out) is det.
-:- mode convert_cons_defn(in, in, in,
-    in, in, out) is det.
+:- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
+    in, in, in, out) is det.
 % The last mode should be
 %
-% :- mode convert_cons_defn(in, in, in(bound(flip_constraints_for_new)),
-%     in, in, out) is det.
+% :- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
+%     in(bound(flip_constraints_for_new)), in, in, out) is det.
 %
 % However, as of 2024 03 04, this generates a spurious mode error:
 %
-%    In clause for `convert_cons_defn(in, in,
+%    In clause for `hlds_cons_defn_to_maybe_cons_type_info(in, in,
 %      in(bound(flip_constraints_for_new)), in, in, out)':
 %      mode mismatch in disjunction.
 %      The variable `ExistQVars0' is ground in some
@@ -392,7 +403,8 @@ convert_cons_defn_list(Info, GoalId, Action, DuCtor,
 %        In this branch, `ExistQVars0' is free.
 %        In this branch, `ExistQVars0' is ground.
 
-convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn, ConsTypeInfo) :-
+hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, Action, DuCtor,
+        ConsDefn, MaybeConsTypeInfo) :-
     % XXX We should investigate whether the job done by this predicate
     % on demand and therefore possibly lots of times for the same type,
     % would be better done just once, either by invoking it (at least with
@@ -439,7 +451,7 @@ convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn, ConsTypeInfo) :-
         not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then
-        ConsTypeInfo =
+        MaybeConsTypeInfo =
             error(other_lang_foreign_type_constructor(TypeCtor, TypeDefn))
     else if
         % Do not allow constructors for abstract_imported types unless
@@ -449,13 +461,13 @@ convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn, ConsTypeInfo) :-
         not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then
-        ConsTypeInfo = error(abstract_imported_type)
+        MaybeConsTypeInfo = error(abstract_imported_type)
     else if
         Action = flip_constraints_for_new,
         MaybeExistConstraints = no_exist_constraints
     then
         % Do not allow 'new' constructors except on existential types.
-        ConsTypeInfo = error(new_on_non_existential_type(TypeCtor))
+        MaybeConsTypeInfo = error(new_on_non_existential_type(TypeCtor))
     else
         prog_type.var_list_to_type_list(ConsTypeKinds, ConsTypeParams,
             ConsTypeArgs),
@@ -497,8 +509,9 @@ convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn, ConsTypeInfo) :-
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
             GoalId, ProgConstraints, Constraints),
-        ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars, ConsType,
-            ArgTypes, Constraints, source_type(TypeCtor, DuCtor)))
+        ConsTypeInfo = cons_type_info(ConsTypeVarSet, ExistQVars, ConsType,
+            ArgTypes, Constraints, source_type(TypeCtor, DuCtor)),
+        MaybeConsTypeInfo = ok(ConsTypeInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -545,33 +558,123 @@ builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
 
 %---------------------%
 
-    % builtin_field_access_function_type(Info, GoalId, DuCtor,
-    %   Arity, ConsTypeInfos):
+    % is_du_ctor_synonym_for_field_access_function(Info, DuCtor, Arity,
+    %   AccessType, FieldName, FieldDefns):
+    %
+    % Does DuCtor have the same name and arity as one or more of the
+    % automatically generated field access functions?
+    %
+    % If yes, succeed, and return whether it is a get or set function,
+    % the full sym_name of the field, and the definition(s) of those fields.
+    % There may be more than one, ever since we allowed the same field name
+    % to be defined more than once in a module (they do have to be
+    % in different types).
+    %
+:- pred is_du_ctor_synonym_for_field_access_function(typecheck_info::in,
+    du_ctor::in, user_arity::in,
+    sym_name::out, field_access_type::out, sym_name::out,
+    list(hlds_ctor_field_defn)::out) is semidet.
+
+is_du_ctor_synonym_for_field_access_function(Info, DuCtor, UserArity,
+        DuCtorSymName, AccessType, FieldSymName, FieldDefns) :-
+    DuCtor = du_ctor(DuCtorSymName, DuCtorArity, _),
+    % Since we do not allow taking the address of an automatically generated
+    % field access function, we don't have to consider the case of a reference
+    % to such a function with an arity that differs between the definition
+    % of the function (DuCtorArity, if this du_ctor refers to that function)
+    % and the reference to that function (UserArity).
+    %
+    % A curried reference could specify a lower arity, if this were allowed.
+    UserArity = user_arity(DuCtorArity),
+    (
+        DuCtorArity = 1,
+        FieldSymName = DuCtorSymName,
+        AccessType = get
+    ;
+        DuCtorArity = 2,
+        remove_sym_name_suffix(DuCtorSymName, " :=", FieldSymName),
+        AccessType = set
+    ),
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
+    map.search(CtorFieldTable, FieldSymName, FieldDefns).
+
+    % get_auto_generated_field_access_func_cons_infos(Info, GoalId, DuCtor,
+    %   Arity, ConsTypeInfos, ConsErrors):
     %
     % Succeed if DuCtor is the name of one the automatically generated
     % field access functions (fieldname, '<fieldname> :=').
     %
-:- pred builtin_field_access_function_type(typecheck_info::in, goal_id::in,
-    du_ctor::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
+:- pred get_auto_generated_field_access_func_cons_infos(typecheck_info::in,
+    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
+    sym_name::in, list(hlds_ctor_field_defn)::in,
+    list(cons_type_info)::out, list(cons_error)::out) is det.
 
-builtin_field_access_function_type(Info, GoalId, DuCtor, Arity,
-        MaybeConsTypeInfos) :-
-    % Taking the address of automatically generated field access functions
-    % is not allowed, so currying does have to be considered here.
-    % XXX zs: shouldn't that be "does NOT have to be considered"?
-    DuCtor = du_ctor(Name, Arity, _),
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
-        FieldName),
-
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map.search(CtorFieldTable, FieldName, FieldDefns),
-
-    UserArity = user_arity(Arity),
+get_auto_generated_field_access_func_cons_infos(Info, GoalId, DuCtorSymName,
+        UserArity, AccessType, FieldSymName, FieldDefns,
+        ConsTypeInfos, ConsErrors) :-
     list.filter_map(
-        make_field_access_function_cons_type_info(Info, GoalId, Name,
-            UserArity, AccessType, FieldName),
-        FieldDefns, MaybeConsTypeInfos).
+        make_field_access_function_cons_type_info(Info, GoalId, DuCtorSymName,
+            UserArity, AccessType, FieldSymName),
+        FieldDefns, MaybeConsTypeInfos),
+    split_cons_errors(MaybeConsTypeInfos, ConsTypeInfos, ConsErrors).
+
+:- pred make_field_access_function_cons_type_info(typecheck_info::in,
+    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
+    sym_name::in, hlds_ctor_field_defn::in,
+    maybe_cons_type_info::out) is semidet.
+
+make_field_access_function_cons_type_info(Info, GoalId, FuncSymName, UserArity,
+        AccessType, FieldSymName, FieldDefn, MaybeConsTypeInfo) :-
+    get_field_access_constructor(Info, GoalId, FuncSymName, UserArity,
+        AccessType, FieldDefn, OrigExistTVars, MaybeFunctorConsTypeInfo),
+    (
+        MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
+        typecheck_info_get_module_info(Info, ModuleInfo),
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        convert_field_access_cons_type_info(ClassTable, AccessType,
+            FieldSymName, FieldDefn, FunctorConsTypeInfo,
+            OrigExistTVars, MaybeConsTypeInfo)
+    ;
+        MaybeFunctorConsTypeInfo = error(_),
+        MaybeConsTypeInfo = MaybeFunctorConsTypeInfo
+    ).
+
+:- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
+    sym_name::in, user_arity::in, field_access_type::in,
+    hlds_ctor_field_defn::in,
+    existq_tvars::out, maybe_cons_type_info::out) is semidet.
+
+get_field_access_constructor(Info, GoalId, FuncSymName, UserArity, AccessType,
+        FieldDefn, OrigExistTVars, MaybeFunctorConsTypeInfo) :-
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    typecheck_info_get_is_field_access_function(Info, InFieldAccessFunc),
+    are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
+        FuncSymName, UserArity, AccessType, FieldDefn, TypeCtor, DuCtor),
+
+    require_det (
+        module_info_get_cons_table(ModuleInfo, ConsTable),
+        lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
+        MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
+        (
+            MaybeExistConstraints = no_exist_constraints,
+            OrigExistTVars = []
+        ;
+            MaybeExistConstraints = exist_constraints(ExistConstraints),
+            ExistConstraints = cons_exist_constraints(OrigExistTVars, _, _, _)
+        ),
+        (
+            AccessType = get,
+            ConsAction = do_not_flip_constraints,
+            hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, ConsAction,
+                DuCtor, ConsDefn, MaybeFunctorConsTypeInfo)
+        ;
+            AccessType = set,
+            ConsAction = flip_constraints_for_field_set,
+            hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, ConsAction,
+                DuCtor, ConsDefn, MaybeFunctorConsTypeInfo)
+        )
+    ).
 
 :- pred is_field_access_function_for_type_ctor(module_info::in,
     field_access_type::in, type_ctor::in, pred_id::in) is semidet.
@@ -592,78 +695,35 @@ is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
         type_to_ctor(ResultType, TypeCtor)
     ).
 
-:- pred make_field_access_function_cons_type_info(typecheck_info::in,
-    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
-    sym_name::in, hlds_ctor_field_defn::in,
-    maybe_cons_type_info::out) is semidet.
-
-make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
-        AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
-    get_field_access_constructor(Info, GoalId, FuncName, UserArity,
-        AccessType, FieldDefn, OrigExistTVars, MaybeFunctorConsTypeInfo),
-    (
-        MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
-        typecheck_info_get_module_info(Info, ModuleInfo),
-        module_info_get_class_table(ModuleInfo, ClassTable),
-        convert_field_access_cons_type_info(ClassTable, AccessType,
-            FieldName, FieldDefn, FunctorConsTypeInfo,
-            OrigExistTVars, ConsTypeInfo)
-    ;
-        MaybeFunctorConsTypeInfo = error(_),
-        ConsTypeInfo = MaybeFunctorConsTypeInfo
-    ).
-
-:- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
-    sym_name::in, user_arity::in, field_access_type::in,
-    hlds_ctor_field_defn::in,
-    existq_tvars::out, maybe_cons_type_info::out) is semidet.
-
-get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
-        FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
-    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, DuCtor, _),
-    TypeCtor = type_ctor(qualified(TypeModule, _), _),
-
     % If the user has supplied a declaration for a field access function
     % of the same name and arity, operating on the same type constructor,
     % we use that instead of the automatically generated version,
     % unless we are typechecking the clause introduced for the
     % user-supplied declaration itself.
+    %
     % The user-declared version will be picked up by builtin_pred_type.
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    module_info_get_predicate_table(ModuleInfo, PredTable),
-    UnqualFuncName = unqualify_name(FuncName),
-    typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
+    %
+:- pred are_we_in_an_effective_field_access_function(module_info::in,
+    maybe(pred_status)::in, sym_name::in, user_arity::in,
+    field_access_type::in, hlds_ctor_field_defn::in,
+    type_ctor::out, du_ctor::out) is semidet.
+
+are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
+        FuncSymName, UserArity, AccessType, FieldDefn, TypeCtor, DuCtor) :-
+    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, DuCtor, _),
+    TypeCtor = type_ctor(qualified(TypeModule, _), _),
     (
-        IsFieldAccessFunc = no,
+        InFieldAccessFunc = no,
+        module_info_get_predicate_table(ModuleInfo, PredTable),
+        FuncName = unqualify_name(FuncSymName),
         predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
-            TypeModule, UnqualFuncName, UserArity, PredIds),
+            TypeModule, FuncName, UserArity, PredIds),
         list.all_false(
             is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
                 TypeCtor),
             PredIds)
     ;
-        IsFieldAccessFunc = yes(_)
-    ),
-    module_info_get_cons_table(ModuleInfo, ConsTable),
-    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
-    MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
-    (
-        MaybeExistConstraints = no_exist_constraints,
-        OrigExistTVars = []
-    ;
-        MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(OrigExistTVars, _, _, _)
-    ),
-    (
-        AccessType = get,
-        ConsAction = do_not_flip_constraints,
-        convert_cons_defn(Info, GoalId, ConsAction, DuCtor, ConsDefn,
-            FunctorConsTypeInfo)
-    ;
-        AccessType = set,
-        ConsAction = flip_constraints_for_field_set,
-        convert_cons_defn(Info, GoalId, ConsAction, DuCtor, ConsDefn,
-            FunctorConsTypeInfo)
+        InFieldAccessFunc = yes(_)
     ).
 
 :- type maybe_cons_type_info
