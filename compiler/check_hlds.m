@@ -74,7 +74,6 @@
    :- include_module mode_info.
    :- include_module mode_test.
    :- include_module mode_top_functor.
-   :- include_module modecheck_util.
    :- include_module modes.
    :- include_module proc_requests.
    :- include_module recompute_instmap_deltas.
@@ -186,6 +185,7 @@
    :- include_module modecheck_conj.
    :- include_module modecheck_goal.
    :- include_module modecheck_unify.
+   :- include_module modecheck_util.
 % :- end_module mode_analysis.
 
 % Determinism analysis.

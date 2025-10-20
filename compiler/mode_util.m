@@ -118,6 +118,12 @@
 :- pred get_arg_lives(module_info::in, list(mer_mode)::in, list(is_live)::out)
     is det.
 
+    % Given a list of variables, and a list of livenesses,
+    % select the live variables.
+    %
+:- pred get_live_vars(list(prog_var)::in, list(is_live)::in,
+    list(prog_var)::out) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Constructing bound_functors.
@@ -140,6 +146,15 @@
     type_ctor::in, list(constructor)::in, list(bound_functor)::out) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Miscellaneous operations.
+%
+
+    % Return a map of all the inst variables in the given modes,
+    % and the sub-insts to which they are constrained.
+    %
+:- pred get_constrained_inst_vars(module_info::in, list(mer_mode)::in,
+    head_inst_vars::out) is det.
 
 :- pred mode_is_free_of_uniqueness(module_info::in, mer_mode::in) is semidet.
 
@@ -149,6 +164,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.inst_lookup.
 :- import_module hlds.inst_test.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -157,6 +173,8 @@
 
 :- import_module map.
 :- import_module require.
+:- import_module set.
+:- import_module set_tree234.
 :- import_module term.
 :- import_module varset.
 
@@ -321,6 +339,21 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
     ),
     get_arg_lives(ModuleInfo, Modes, IsLives).
 
+get_live_vars([], [], []).
+get_live_vars([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
+get_live_vars([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
+    (
+        IsLive = is_live,
+        LiveVars = [Var | LiveVars0]
+    ;
+        IsLive = is_dead,
+        LiveVars = LiveVars0
+    ),
+    get_live_vars(Vars, IsLives, LiveVars0).
+
 %---------------------------------------------------------------------------%
 
 constructors_to_bound_functors(ModuleInfo, Uniq, TypeCtor, Constructors,
@@ -354,6 +387,117 @@ constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
 ctor_arg_list_to_inst_list([], _, []).
 ctor_arg_list_to_inst_list([_ | Args], Inst, [Inst | Insts]) :-
     ctor_arg_list_to_inst_list(Args, Inst, Insts).
+
+%---------------------------------------------------------------------------%
+
+:- type inst_expansions == set_tree234(inst_name).
+
+get_constrained_inst_vars(ModuleInfo, Modes, Map) :-
+    list.foldl2(get_constrained_insts_in_mode(ModuleInfo), Modes,
+        map.init, Map, set_tree234.init, _Expansions).
+
+:- pred get_constrained_insts_in_mode(module_info::in, mer_mode::in,
+    head_inst_vars::in, head_inst_vars::out,
+    inst_expansions::in, inst_expansions::out) is det.
+
+get_constrained_insts_in_mode(ModuleInfo, Mode, !Map, !Expansions) :-
+    mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+    get_constrained_insts_in_inst(ModuleInfo, InitialInst, !Map, !Expansions),
+    get_constrained_insts_in_inst(ModuleInfo, FinalInst, !Map, !Expansions).
+
+:- pred get_constrained_insts_in_inst(module_info::in, mer_inst::in,
+    head_inst_vars::in, head_inst_vars::out,
+    inst_expansions::in, inst_expansions::out) is det.
+
+get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
+    (
+        ( Inst = free
+        ; Inst = not_reached
+        )
+    ;
+        Inst = bound(_, InstResults, BoundFunctors),
+        (
+            InstResults = inst_test_results_fgtc
+        ;
+            InstResults = inst_test_results(_, _, _, InstVarsResult, _, _),
+            ( if
+                InstVarsResult =
+                    inst_result_contains_inst_vars_known(InstVars),
+                set.is_empty(InstVars)
+            then
+                true
+            else
+                list.foldl2(get_constrained_insts_in_bound_functor(ModuleInfo),
+                    BoundFunctors, !Map, !Expansions)
+            )
+        ;
+            InstResults = inst_test_no_results,
+            list.foldl2(get_constrained_insts_in_bound_functor(ModuleInfo),
+                BoundFunctors, !Map, !Expansions)
+        )
+    ;
+        ( Inst = any(_, HOInstInfo)
+        ; Inst = ground(_, HOInstInfo)
+        ),
+        (
+            HOInstInfo = none_or_default_func
+        ;
+            HOInstInfo = higher_order(PredInstInfo),
+            get_constrained_insts_in_ho_inst(ModuleInfo, PredInstInfo,
+                !Map, !Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(InstVars, _),
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo,
+            Inst, SubInst),
+        set.fold(add_constrained_inst(SubInst), InstVars, !Map)
+    ;
+        Inst = defined_inst(InstName),
+        ( if insert_new(InstName, !Expansions) then
+            inst_lookup(ModuleInfo, InstName, ExpandedInst),
+            get_constrained_insts_in_inst(ModuleInfo, ExpandedInst,
+                !Map, !Expansions)
+        else
+            true
+        )
+    ;
+        Inst = inst_var(_),
+        unexpected($pred, "inst_var")
+    ).
+
+:- pred get_constrained_insts_in_bound_functor(module_info::in,
+    bound_functor::in, head_inst_vars::in, head_inst_vars::out,
+    inst_expansions::in, inst_expansions::out) is det.
+
+get_constrained_insts_in_bound_functor(ModuleInfo, BoundFunctor,
+        !Map, !Expansions) :-
+    BoundFunctor = bound_functor(_ConsId, Insts),
+    list.foldl2(get_constrained_insts_in_inst(ModuleInfo), Insts,
+        !Map, !Expansions).
+
+:- pred get_constrained_insts_in_ho_inst(module_info::in, pred_inst_info::in,
+    head_inst_vars::in, head_inst_vars::out,
+    inst_expansions::in, inst_expansions::out) is det.
+
+get_constrained_insts_in_ho_inst(ModuleInfo, PredInstInfo,
+        !Map, !Expansions) :-
+    PredInstInfo = pred_inst_info(_, Modes, _, _),
+    list.foldl2(get_constrained_insts_in_mode(ModuleInfo), Modes,
+        !Map, !Expansions).
+
+:- pred add_constrained_inst(mer_inst::in, inst_var::in,
+    head_inst_vars::in, head_inst_vars::out) is det.
+
+add_constrained_inst(SubInst, InstVar, !Map) :-
+    ( if map.search(!.Map, InstVar, SubInst0) then
+        ( if SubInst0 = SubInst then
+            true
+        else
+            unexpected($pred, "SubInst differs")
+        )
+    else
+        map.det_insert(InstVar, SubInst, !Map)
+    ).
 
 %---------------------------------------------------------------------------%
 
