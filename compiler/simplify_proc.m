@@ -85,8 +85,8 @@
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.common.
-:- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.simplify.mark_trace_goals.
+:- import_module check_hlds.simplify.opt_format_call.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module check_hlds.simplify.split_switch_arms.

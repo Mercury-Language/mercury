@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: fact_table.m.
+% File: fact_table_gen.m.
 % Main author: dmo.
 %
 % This module handles compilation of fact tables contained in external files
@@ -49,7 +49,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend.fact_table.
+:- module ll_backend.fact_table_gen.
 :- interface.
 
 :- import_module hlds.
@@ -3933,5 +3933,5 @@ get_maybe_progress_output_stream(ModuleInfo, ProgressStream,
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module ll_backend.fact_table.
+:- end_module ll_backend.fact_table_gen.
 %---------------------------------------------------------------------------%

@@ -785,7 +785,7 @@ add_pragma.m adds the easiest-to-implement kinds of pragmas to the HLDS,
 i.e. those that don't need their own module.
 </ul>
 
-Fact table pragmas are handled by fact_table.m
+Fact table pragmas are handled by fact_table_gen.m
 (which is part of the ll_backend.m package).
 That module also reads the facts from the declared file
 and compiles them into a separate C file
@@ -1514,9 +1514,9 @@ simplify.m is a package of submodules.
     mark_trace_goals.m ensures that goals have the contains_trace_goal feature
     if and only if they actually contain trace goals.
     <li>
-    format_call.m looks for calls to predicates
+    opt_format_call.m looks for calls to predicates
     such as string.format and io.format.
-    It uses the facilities of format_call_errors.m to report calls
+    It uses the facilities of opt_format_call_errors.m to report calls
     in which the types of the values to be printed
     disagree with the format string,
     and/or calls in which the agreement cannot be established.

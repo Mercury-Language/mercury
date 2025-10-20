@@ -42,7 +42,7 @@
     :- include_module continuation_info.
 
 % An alternative HLDS->LLDS code generator for fact tables.
-:- include_module fact_table.
+:- include_module fact_table_gen.
 
 % LLDS->LLDS optimization passes.
 :- include_module optimize.

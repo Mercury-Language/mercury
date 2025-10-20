@@ -9,12 +9,12 @@
 % File: format_call_errors.m.
 % Author: zs.
 %
-% This module constructs any diagnostics we generate when format_call.m
-% find that one of its semantic checks has failed.
+% This module constructs any diagnostics we generate when opt_format_call.m
+% finds that one of its semantic checks has failed.
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.simplify.format_call_errors.
+:- module check_hlds.simplify.opt_format_call_errors.
 :- interface.
 
 :- import_module hlds.
@@ -421,5 +421,5 @@ acceptable_specifier_chars_for_poly_kind_msg(Kind, ValDesc,
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.simplify.format_call_errors.
+:- end_module check_hlds.simplify.opt_format_call_errors.
 %---------------------------------------------------------------------------%

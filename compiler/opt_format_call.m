@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: format_call.m.
+% File: opt_format_call.m.
 % Author: zs.
 %
 % This module has two related jobs.
@@ -125,7 +125,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.simplify.format_call.
+:- module check_hlds.simplify.opt_format_call.
 :- interface.
 
 :- import_module hlds.
@@ -162,7 +162,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.simplify.format_call_errors.
+:- import_module check_hlds.simplify.opt_format_call_errors.
 :- import_module check_hlds.simplify.parse_string_format.
 :- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module hlds.goal_path.
@@ -2597,5 +2597,5 @@ make_di_uo_instmap_delta(InVar, OutVar, InstMapDelta) :-
         [InVar - Clobbered, OutVar - Uniq]).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.simplify.format_call.
+:- end_module check_hlds.simplify.opt_format_call.
 %---------------------------------------------------------------------------%

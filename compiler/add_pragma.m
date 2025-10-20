@@ -122,7 +122,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
-:- import_module ll_backend.fact_table.
+:- import_module ll_backend.fact_table_gen.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
