@@ -73,7 +73,6 @@
    :- include_module mode_errors.
    :- include_module mode_info.
    :- include_module mode_test.
-   :- include_module mode_top_functor.
    :- include_module modes.
    :- include_module proc_requests.
    :- include_module recompute_instmap_deltas.

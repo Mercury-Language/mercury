@@ -64,8 +64,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_transform.
@@ -78,6 +76,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_top_functor.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.

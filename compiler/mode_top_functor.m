@@ -13,10 +13,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.mode_top_functor.
+:- module hlds.mode_top_functor.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
@@ -190,5 +189,5 @@ modes_to_top_functor_modes(ModuleInfo, [Mode | Modes], [Type | Types],
     modes_to_top_functor_modes(ModuleInfo, Modes, Types, TopFunctorModes).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.mode_top_functor.
+:- end_module hlds.mode_top_functor.
 %---------------------------------------------------------------------------%

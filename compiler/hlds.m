@@ -99,6 +99,7 @@
 :- include_module make_goal.
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
+:- include_module mode_top_functor.
 :- include_module mode_util.
 :- include_module passes_aux.
 :- include_module pred_name.
