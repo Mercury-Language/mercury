@@ -607,9 +607,9 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         CtorExistConstraints = cons_exist_constraints(CtorExistQVars,
             CtorExistentialConstraints,
             _CtorUnconstrainedExistQVars, _CtorConstrainedExistQVars),
-        apply_variable_renaming_to_tvar_list(CtorToParentRenaming,
+        apply_renaming_to_tvars(CtorToParentRenaming,
             CtorExistQVars, ParentExistQVars),
-        apply_variable_renaming_to_prog_constraint_list(CtorToParentRenaming,
+        apply_renaming_to_prog_constraints(CtorToParentRenaming,
             CtorExistentialConstraints, ParentExistentialConstraints),
         list.length(ParentExistentialConstraints, NumExistentialConstraints),
 
@@ -620,19 +620,18 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
             ParentExistConstrainedTVars),
         list.delete_elems(ParentExistQVars, ParentExistConstrainedTVars,
             ParentUnconstrainedExistQVars),
-        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedExistQVars, ActualExistentialTypes)
     ;
         CtorMaybeExistConstraints = no_exist_constraints,
         NumExistentialConstraints = 0,
         ActualExistentialTypes = []
     ),
-    apply_variable_renaming_to_tvar_kind_map(CtorToParentRenaming,
+    apply_renaming_to_tvar_kind_map(CtorToParentRenaming,
         CtorKindMap, ParentKindMap),
-    apply_variable_renaming_to_type_list(CtorToParentRenaming,
+    apply_renaming_to_types(CtorToParentRenaming,
         CtorArgTypes, ParentArgTypes),
-    apply_variable_renaming_to_type(CtorToParentRenaming, CtorRetType,
-        ParentRetType),
+    apply_renaming_to_type(CtorToParentRenaming, CtorRetType, ParentRetType),
     poly_info_set_typevarset(TypeVarSet, !Info),
 
     % Compute the type bindings resulting from the functor's actual argument
@@ -803,12 +802,12 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         % This merge might be a performance bottleneck?
         tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet,
             PredToParentTypeRenaming),
-        apply_variable_renaming_to_type_list(PredToParentTypeRenaming,
+        apply_renaming_to_types(PredToParentTypeRenaming,
             PredArgTypes, ParentArgTypes),
         type_vars_in_types(ParentArgTypes, ParentTVars),
-        apply_variable_renaming_to_tvar_kind_map(PredToParentTypeRenaming,
+        apply_renaming_to_tvar_kind_map(PredToParentTypeRenaming,
             PredKindMap, ParentKindMap),
-        apply_variable_renaming_to_tvar_list(PredToParentTypeRenaming,
+        apply_renaming_to_tvars(PredToParentTypeRenaming,
             PredExistQVars, ParentExistQVars)
     ),
 
@@ -834,8 +833,8 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Compute which "parent" type variables are constrained
         % by the type class constraints.
-        apply_variable_renaming_to_univ_exist_constraints(
-            PredToParentTypeRenaming, PredClassContext, ParentClassContext),
+        apply_renaming_to_univ_exist_constraints(PredToParentTypeRenaming,
+            PredClassContext, ParentClassContext),
         ParentClassContext = univ_exist_constraints(ParentUnivConstraints,
             ParentExistConstraints),
         constraint_list_get_tvars(ParentUnivConstraints,
@@ -866,7 +865,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         list.length(ParentUnivConstraints, NumUnivConstraints),
         lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumUnivConstraints, ActualUnivConstraints),
-        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentExistQVars, ActualExistQVarTypes),
         ( if
             prog_type.type_list_to_var_list(ActualExistQVarTypes,
@@ -891,7 +890,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Make variables to hold typeinfos for unconstrained universal type
         % vars.
-        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
         polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
             Context, ExtraUnivTypeInfoVarsMCAs,
@@ -901,7 +900,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Make variables to hold typeinfos for unconstrained existential type
         % vars.
-        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
         polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
             Context, ExtraExistTypeInfoVarsMCAs,
@@ -966,7 +965,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     % Work out the bindings of type variables in the call.
     tvarset_merge_renaming(TVarSet0, PredTVarSet, TVarSet,
         PredToParentRenaming),
-    apply_variable_renaming_to_type_list(PredToParentRenaming,
+    apply_renaming_to_types(PredToParentRenaming,
         OrigPredArgTypes, OrigParentArgTypes),
     type_list_subsumes_det(OrigParentArgTypes, ActualArgTypes0,
         ParentToActualTSubst),
@@ -991,10 +990,10 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
             )
         ),
     list.map(GetTypeInfoTypes, CalleeExtraHeadVars, PredTypeInfoTypes),
-    apply_variable_renaming_to_type_list(PredToParentRenaming,
+    apply_renaming_to_types(PredToParentRenaming,
         PredTypeInfoTypes, ParentTypeInfoTypes),
-    apply_rec_subst_to_type_list(ParentToActualTSubst, ParentTypeInfoTypes,
-        ActualTypeInfoTypes),
+    apply_rec_subst_to_types(ParentToActualTSubst,
+        ParentTypeInfoTypes, ActualTypeInfoTypes),
 
     % Construct goals to make the required type_infos.
     Ctxt = term_context.dummy_context,

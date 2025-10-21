@@ -150,8 +150,8 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
     set(string)::out) is det.
 
 unproven_constraints_to_string_set(TypeAssign, UnprovenConstraintStrSet) :-
-    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
-    UnprovenHldsConstraints = Constraints ^ hcs_unproven,
+    type_assign_get_constraint_db(TypeAssign, ConstraintDb),
+    UnprovenHldsConstraints = ConstraintDb ^ hcd_unproven,
     (
         UnprovenHldsConstraints = [],
         set.init(UnprovenConstraintStrSet)
@@ -162,7 +162,7 @@ unproven_constraints_to_string_set(TypeAssign, UnprovenConstraintStrSet) :-
 
         type_assign_get_typevarset(TypeAssign, TVarSet),
         type_assign_get_type_bindings(TypeAssign, Bindings),
-        apply_rec_subst_to_prog_constraint_list(Bindings,
+        apply_rec_subst_to_prog_constraints(Bindings,
             UnprovenConstraints0, UnprovenConstraints1),
         list.sort_and_remove_dups(UnprovenConstraints1,
             UnprovenConstraints),

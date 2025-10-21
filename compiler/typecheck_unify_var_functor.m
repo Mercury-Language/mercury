@@ -125,7 +125,8 @@ typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar, ConsId,
             TypeAssignSet0 = [_ | _],
             varset.init(ConsTypeVarSet),
             ConsTypeInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-                empty_hlds_constraints, source_builtin_type(BuiltinTypeName)),
+                empty_hlds_constraint_db,
+                source_builtin_type(BuiltinTypeName)),
             ConsIdSpec = report_error_unify_var_functor_result(!.Info,
                 UnifyContext, Context, LHSVar, [ConsTypeInfo],
                 ConsId, 0, TypeAssignSet0),
@@ -350,7 +351,7 @@ get_cons_type_assigns_for_cons_defn(ConsTypeInfo, [TypeAssign | TypeAssigns],
 
 get_cons_type_assign(ConsTypeInfo, TypeAssign0, ConsTypeAssign) :-
     ConsTypeInfo = cons_type_info(ConsTypeVarSet, ConsExistQVars0,
-        ConsType0, ArgTypes0, ClassConstraints0, Source),
+        ConsType0, ArgTypes0, ClassConstraintDb0, Source),
 
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
@@ -359,16 +360,16 @@ get_cons_type_assign(ConsTypeInfo, TypeAssign0, ConsTypeAssign) :-
         ConsType = ConsType0,
         ArgTypes = ArgTypes0,
         TypeAssign2 = TypeAssign0,
-        ConstraintsToAdd = ClassConstraints0
+        ConstraintDbToAdd = ClassConstraintDb0
     else
         type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
             TypeAssign1, Renaming),
-        apply_variable_renaming_to_type(Renaming, ConsType0, ConsType),
-        apply_variable_renaming_to_type_list(Renaming, ArgTypes0, ArgTypes),
-        apply_variable_renaming_to_tvar_list(Renaming,
+        apply_renaming_to_type(Renaming, ConsType0, ConsType),
+        apply_renaming_to_types(Renaming, ArgTypes0, ArgTypes),
+        apply_renaming_to_tvars(Renaming,
             ConsExistQVars0, ConsExistQVars),
-        apply_variable_renaming_to_constraints(Renaming,
-            ClassConstraints0, ConstraintsToAdd),
+        apply_renaming_to_constraint_db(Renaming,
+            ClassConstraintDb0, ConstraintDbToAdd),
         type_assign_get_existq_tvars(TypeAssign1, ExistQTVars0),
         ExistQTVars = ConsExistQVars ++ ExistQTVars0,
         type_assign_set_existq_tvars(ExistQTVars, TypeAssign1, TypeAssign2)
@@ -381,9 +382,10 @@ get_cons_type_assign(ConsTypeInfo, TypeAssign0, ConsTypeAssign) :-
     % For functors which are data constructors, the fact that we don't take
     % the dual corresponds to assuming that they will be used as deconstructors
     % rather than as constructors.
-    type_assign_get_typeclass_constraints(TypeAssign2, OldConstraints),
-    merge_hlds_constraints(ConstraintsToAdd, OldConstraints, ClassConstraints),
-    type_assign_set_typeclass_constraints(ClassConstraints,
+    type_assign_get_constraint_db(TypeAssign2, OldConstraintDb),
+    merge_hlds_constraint_dbs(ConstraintDbToAdd, OldConstraintDb,
+        ClassConstraintDb),
+    type_assign_set_constraint_db(ClassConstraintDb,
         TypeAssign2, TypeAssign),
     ConsTypeAssign = cons_type_assign(TypeAssign, ConsType, ArgTypes, Source).
 
@@ -427,7 +429,7 @@ typecheck_var_functor_type(Var, ConsTypeAssign0, !ArgsTypeAssignSet) :-
             % The constraints are empty here because none are added by
             % unification with a functor.
             ArgsTypeAssign = args_type_assign(TypeAssign,
-                ConsArgTypes, empty_hlds_constraints, atas_cons(Source0)),
+                ConsArgTypes, empty_hlds_constraint_db, atas_cons(Source0)),
             !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
         else
             true
@@ -438,7 +440,7 @@ typecheck_var_functor_type(Var, ConsTypeAssign0, !ArgsTypeAssignSet) :-
         % The constraints are empty here because none are added by
         % unification with a functor.
         ArgsTypeAssign = args_type_assign(TypeAssign,
-            ConsArgTypes, empty_hlds_constraints, atas_cons(Source0)),
+            ConsArgTypes, empty_hlds_constraint_db, atas_cons(Source0)),
         !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
     ).
 

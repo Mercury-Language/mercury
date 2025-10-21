@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -77,7 +77,7 @@
 :- pred delete_sorted_var_types(list(prog_var)::in,
     vartypes::in, vartypes::out) is det.
 
-:- pred apply_variable_renaming_to_vartypes(tvar_renaming::in,
+:- pred rename_vars_in_vartypes(tvar_renaming::in,
     vartypes::in, vartypes::out) is det.
 
 :- pred apply_subst_to_vartypes(tsubst::in, vartypes::in, vartypes::out)
@@ -179,8 +179,8 @@ delete_var_types(Vars, !VarTypes) :-
 delete_sorted_var_types(SortedVars, !VarTypes) :-
     map.delete_sorted_list(SortedVars, !VarTypes).
 
-apply_variable_renaming_to_vartypes(Renaming, !VarTypes) :-
-    transform_var_types(apply_variable_renaming_to_type(Renaming), !VarTypes).
+rename_vars_in_vartypes(Renaming, !VarTypes) :-
+    transform_var_types(apply_renaming_to_type(Renaming), !VarTypes).
 
 apply_subst_to_vartypes(Subst, !VarTypes) :-
     transform_var_types(apply_subst_to_type(Subst), !VarTypes).

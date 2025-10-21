@@ -1597,8 +1597,7 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     % Merge type variables in the subtype and supertype definitions into a
     % common tvarset.
     tvarset_merge_renaming(TVarSet0, SuperTVarSet, NewTVarSet, Renaming),
-    apply_variable_renaming_to_tvar_list(Renaming, SuperTypeParams0,
-        SuperTypeParams),
+    apply_renaming_to_tvars(Renaming, SuperTypeParams0, SuperTypeParams),
 
     % Create a substitution from the supertype's type parameters to the
     % argument types in the declared supertype part of the subtype definition.
@@ -1785,7 +1784,7 @@ build_existq_tvars_mapping(VarA, VarB, !ExistQVarsMapping) :-
 check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         ExistQVarsMapping, Constraints, SuperConstraints0, Result) :-
     ExistQVarsRenaming = bimap.forward_map(ExistQVarsMapping),
-    apply_variable_renaming_to_prog_constraint_list(ExistQVarsRenaming,
+    apply_renaming_to_prog_constraints(ExistQVarsRenaming,
         SuperConstraints0, SuperConstraints),
     ( if Constraints = SuperConstraints then
         Result = ok1(ExistQVarsMapping)
@@ -1892,8 +1891,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
             hlds_data.get_type_defn_tvarset(TypeDefnA, TVarSetA),
             hlds_data.get_type_defn_tparams(TypeDefnA, TypeParamsA0),
             tvarset_merge_renaming(TVarSet0, TVarSetA, TVarSet, RenamingA),
-            apply_variable_renaming_to_tvar_list(RenamingA,
-                TypeParamsA0, TypeParamsA),
+            apply_renaming_to_tvars(RenamingA, TypeParamsA0, TypeParamsA),
             map.from_corresponding_lists(TypeParamsA, ArgTypesA, TSubstA),
 
             % Apply the substitution to t(T1, ..., Tk) to give
@@ -2102,18 +2100,15 @@ rename_and_rec_subst_in_exist_constraints(Renaming, TSubst,
     ExistConstraints0 = cons_exist_constraints(ExistQVars0, Constraints0,
         UnconstrainedExistQVars0, ConstrainedExistQVars0),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
-        ExistQVars0, ExistQVars),
+    apply_renaming_to_tvars(Renaming, ExistQVars0, ExistQVars),
 
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
-        Constraints0, Constraints1),
-    apply_rec_subst_to_prog_constraint_list(TSubst,
-        Constraints1, Constraints),
+    apply_renaming_to_prog_constraints(Renaming, Constraints0, Constraints1),
+    apply_rec_subst_to_prog_constraints(TSubst, Constraints1, Constraints),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
+    apply_renaming_to_tvars(Renaming,
         UnconstrainedExistQVars0, UnconstrainedExistQVars),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
+    apply_renaming_to_tvars(Renaming,
         ConstrainedExistQVars0, ConstrainedExistQVars),
 
     ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
@@ -2131,7 +2126,7 @@ rename_and_rec_subst_in_constructor_arg(Renaming, TSubst, Arg0, Arg) :-
     mer_type::in, mer_type::out) is det.
 
 rename_and_rec_subst_in_type(Renaming, TSubst, Type0, Type) :-
-    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_renaming_to_type(Renaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type).
 
 %---------------------------------------------------------------------------%

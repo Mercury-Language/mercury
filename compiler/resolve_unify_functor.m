@@ -425,7 +425,7 @@ translate_get_function(ModuleInfo, FieldName, UnifyContext,
         lookup_var_type(!.VarTable, FieldVar, FieldType),
         list.det_index1(ArgTypes0, FieldNumber, FieldArgType),
         type_subsumes_det(FieldArgType, FieldType, FieldSubst),
-        apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
+        apply_rec_subst_to_types(FieldSubst, ArgTypes0, ArgTypes)
     ;
         ExistQVars = [],
         ArgTypes = ArgTypes0
@@ -541,9 +541,9 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
         pred_info_set_typevarset(TVarSet, !PredInfo),
         map.from_corresponding_lists(ConsExistQVars, ParentExistQVars,
             ConsToParentRenaming),
-        apply_variable_renaming_to_type_list(ConsToParentRenaming,
+        apply_renaming_to_types(ConsToParentRenaming,
             ConsArgTypes, ParentArgTypes),
-        apply_variable_renaming_to_prog_constraint_list(ConsToParentRenaming,
+        apply_renaming_to_prog_constraints(ConsToParentRenaming,
             ConsConstraints, ParentConstraints),
 
         % Constrained existentially quantified tvars will have already been
@@ -557,12 +557,12 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
             NumConstraints, ActualConstraints),
         constraint_list_subsumes_det(ParentConstraints, ActualConstraints,
             ExistTSubst),
-        apply_rec_subst_to_type_list(ExistTSubst, ParentArgTypes,
+        apply_rec_subst_to_types(ExistTSubst, ParentArgTypes,
             ActualArgTypes0),
 
         % The kinds will be ignored when the types are converted back to tvars.
         map.init(KindMap),
-        apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
+        apply_rec_subst_to_tvars(KindMap, ExistTSubst, ParentExistQVars,
             ActualExistQVarTypes),
         ( if
             type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0)
@@ -574,7 +574,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
     ),
     type_to_ctor_and_args_det(TermType, _, TypeArgs),
     map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst),
-    apply_subst_to_type_list(UnivTSubst, ActualArgTypes0, ActualArgTypes).
+    apply_subst_to_types(UnivTSubst, ActualArgTypes0, ActualArgTypes).
 
 :- pred constraint_list_subsumes_det(list(prog_constraint)::in,
     list(prog_constraint)::in, tsubst::out) is det.

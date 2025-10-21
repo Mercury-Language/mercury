@@ -184,7 +184,7 @@
 :- pred var_table_select(set(prog_var)::in,
     var_table::in, var_table::out) is det.
 
-:- pred apply_variable_renaming_to_var_table(tvar_renaming::in,
+:- pred rename_vars_in_var_table(tvar_renaming::in,
     var_table::in, var_table::out) is det.
 
 :- pred apply_subst_to_var_table((func(mer_type) = is_dummy_type)::in,
@@ -466,16 +466,16 @@ var_table_select(SelectedVars, !VarTable) :-
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_var_table(Renaming, !VarTable) :-
-    transform_var_table(apply_variable_renaming_to_type_in_vte(Renaming),
+rename_vars_in_var_table(Renaming, !VarTable) :-
+    transform_var_table(apply_renaming_to_type_in_vte(Renaming),
         !VarTable).
 
-:- pred apply_variable_renaming_to_type_in_vte(tvar_renaming::in,
+:- pred apply_renaming_to_type_in_vte(tvar_renaming::in,
     var_table_entry::in, var_table_entry::out) is det.
 
-apply_variable_renaming_to_type_in_vte(Renaming, Entry0, Entry) :-
+apply_renaming_to_type_in_vte(Renaming, Entry0, Entry) :-
     Type0 = Entry0 ^ vte_type,
-    apply_variable_renaming_to_type(Renaming, Type0, Type),
+    apply_renaming_to_type(Renaming, Type0, Type),
     Entry = Entry0 ^ vte_type := Type.
 
 %---------------------%

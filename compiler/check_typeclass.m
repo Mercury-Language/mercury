@@ -359,7 +359,7 @@ find_class_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles,
     find_class_cycles_2(Path, ClassId, ClassParamTVars, NewFunDepAncestors0,
         !ClassTable, !Visited, !Cycles),
     map.from_corresponding_lists(ClassParamTVars, ArgTypes, Binding),
-    apply_subst_to_prog_constraint_list(Binding,
+    apply_subst_to_prog_constraints(Binding,
         NewFunDepAncestors0, NewFunDepAncestors),
     !:FunDepAncestors = NewFunDepAncestors ++ !.FunDepAncestors.
 
@@ -1179,15 +1179,14 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
 
     % Rename the instance variables apart from the class variables.
     tvarset_merge_renaming(TVarSet0, InstanceTVarSet, TVarSet1, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
-        InstanceTypes1),
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_types(Renaming, InstanceTypes0, InstanceTypes1),
+    apply_renaming_to_prog_constraints(Renaming,
         InstanceConstraints0, InstanceConstraints1),
 
     % Work out what the type variables are bound to for this
     % instance, and update the class types appropriately.
     map.from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
-    apply_subst_to_type_list(TypeSubst, ArgTypes0, ArgTypes1),
+    apply_subst_to_types(TypeSubst, ArgTypes0, ArgTypes1),
     apply_subst_to_univ_exist_constraints(TypeSubst, ClassMethodClassContext0,
         ClassMethodClassContext1),
 
@@ -1205,13 +1204,12 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
 
     % Project away the unwanted type variables.
     varset.squash(TVarSet1, VarsToKeep, TVarSet2, SquashSubst),
-    apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
-    apply_variable_renaming_to_univ_exist_constraints(SquashSubst,
+    apply_renaming_to_types(SquashSubst, ArgTypes1, ArgTypes),
+    apply_renaming_to_univ_exist_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
     apply_partial_map_to_list(SquashSubst, ExistQVars0, ExistQVars),
-    apply_variable_renaming_to_type_list(SquashSubst, InstanceTypes1,
-        InstanceTypes),
-    apply_variable_renaming_to_prog_constraint_list(SquashSubst,
+    apply_renaming_to_types(SquashSubst, InstanceTypes1, InstanceTypes),
+    apply_renaming_to_prog_constraints(SquashSubst,
         InstanceConstraints1, InstanceConstraints),
 
     % Add the constraints from the instance declaration to the constraints
@@ -1339,11 +1337,11 @@ check_instance_for_superclass_conformance(ModuleInfo, ClassId, ClassTVarSet,
         Renaming),
 
     % Make the constraints in terms of the instance variables.
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         ProgSuperClasses0, ProgSuperClasses),
 
     % Now handle the class variables.
-    apply_variable_renaming_to_tvar_list(Renaming, ClassVars0, ClassVars),
+    apply_renaming_to_tvars(Renaming, ClassVars0, ClassVars),
 
     % Calculate the bindings.
     map.from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
@@ -1362,16 +1360,16 @@ check_instance_for_superclass_conformance(ModuleInfo, ClassId, ClassTVarSet,
     %
     init_hlds_constraint_list(ProgSuperClasses, SuperClasses),
     init_hlds_constraint_list(InstanceProgConstraints, InstanceConstraints),
-    make_hlds_constraints(ClassTable, InstanceTVarSet1, SuperClasses,
-        InstanceConstraints, Constraints0),
+    make_hlds_constraint_db(ClassTable, InstanceTVarSet1, SuperClasses,
+        InstanceConstraints, ConstraintDb0),
 
     % Try to reduce the superclass constraints, using the declared instance
     % constraints and the usual context reduction rules.
     map.init(ConstraintMap0),
     typeclasses.reduce_context_by_rule_application(ClassTable, InstanceTable,
         ClassVars, TypeSubst, _, InstanceTVarSet1, InstanceTVarSet2,
-        Proofs0, Proofs1, ConstraintMap0, _, Constraints0, Constraints),
-    UnprovenConstraints = Constraints ^ hcs_unproven,
+        Proofs0, Proofs1, ConstraintMap0, _, ConstraintDb0, ConstraintDb),
+    UnprovenConstraints = ConstraintDb ^ hcd_unproven,
 
     (
         UnprovenConstraints = [],
@@ -1478,10 +1476,10 @@ check_for_overlapping_nonidentical_instance(ClassId,
     tvarset_merge_renaming(TVarSetB, TVarSetB, _MergedTVarSetBA, RenamingBA),
     ( if
         (
-            apply_variable_renaming_to_type_list(RenamingAB, TypesB, TypesBR),
+            apply_renaming_to_types(RenamingAB, TypesB, TypesBR),
             type_list_subsumes(TypesA, TypesBR, _)
         ;
-            apply_variable_renaming_to_type_list(RenamingBA, TypesA, TypesAR),
+            apply_renaming_to_types(RenamingBA, TypesA, TypesAR),
             type_list_subsumes(TypesB, TypesAR, _)
         )
     then
@@ -1743,12 +1741,12 @@ check_that_instance_constraints_match(ClassId,
 constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
         Vars, VarSet, Constraints) :-
     tvarset_merge_renaming(VarSet, OldVarSet, _, Renaming),
-    apply_variable_renaming_to_prog_constraint_list(Renaming, OldConstraints0,
-        OldConstraints1),
-    apply_variable_renaming_to_tvar_list(Renaming, OldVars0,  OldVars),
+    apply_renaming_to_prog_constraints(Renaming,
+        OldConstraints0, OldConstraints1),
+    apply_renaming_to_tvars(Renaming, OldVars0,  OldVars),
 
     map.from_corresponding_lists(OldVars, Vars, VarRenaming),
-    apply_variable_renaming_to_prog_constraint_list(VarRenaming,
+    apply_renaming_to_prog_constraints(VarRenaming,
         OldConstraints1, OldConstraints),
     OldConstraints = Constraints.
 
@@ -1907,7 +1905,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 
     TypesA = InstanceA ^ instdefn_types,
     TypesB0 = InstanceB ^ instdefn_types,
-    apply_variable_renaming_to_type_list(Renaming, TypesB0, TypesB),
+    apply_renaming_to_types(Renaming, TypesB0, TypesB),
 
     FunDep = fundep(Domain, Range),
     DomainA = restrict_list_elements(Domain, TypesA),
@@ -1916,8 +1914,8 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     ( if type_unify_list(DomainA, DomainB, [], map.init, Subst) then
         RangeA0 = restrict_list_elements(Range, TypesA),
         RangeB0 = restrict_list_elements(Range, TypesB),
-        apply_rec_subst_to_type_list(Subst, RangeA0, RangeA),
-        apply_rec_subst_to_type_list(Subst, RangeB0, RangeB),
+        apply_rec_subst_to_types(Subst, RangeA0, RangeA),
+        apply_rec_subst_to_types(Subst, RangeB0, RangeB),
         ( if RangeA = RangeB then
             true
         else
@@ -2266,13 +2264,11 @@ acc_induced_fundeps_for_constraint(ClassTable, TVarSet, Constraint,
         % variables that appear in the head of the declaration.)
 
         tvarset_merge_renaming(TVarSet, ClassTVarSet, _, Renaming),
-        apply_variable_renaming_to_prog_constraint_list(Renaming,
+        apply_renaming_to_prog_constraints(Renaming,
             ClassAncestors, RenamedAncestors),
-        apply_variable_renaming_to_tvar_list(Renaming, ClassParams,
-            RenamedParams),
+        apply_renaming_to_tvars(Renaming, ClassParams, RenamedParams),
         map.from_corresponding_lists(RenamedParams, Args, Subst),
-        apply_subst_to_prog_constraint_list(Subst, RenamedAncestors,
-            Ancestors),
+        apply_subst_to_prog_constraints(Subst, RenamedAncestors, Ancestors),
         list.foldl(induced_fundeps_3(ClassTable), Ancestors, !FunDeps)
     ).
 

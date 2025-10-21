@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018, 2023-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,12 +24,12 @@
 % Type substitutions.
 %
 
-:- pred apply_variable_renaming_to_tvar_kind_map(tvar_renaming::in,
+:- pred apply_renaming_to_tvar_kind_map(tvar_renaming::in,
     tvar_kind_map::in, tvar_kind_map::out) is det.
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_tvar(tvar_renaming::in,
+:- pred apply_renaming_to_tvar(tvar_renaming::in,
     tvar::in, tvar::out) is det.
 
 :- pred apply_subst_to_tvar(tvar_kind_map::in, tsubst::in,
@@ -40,18 +40,18 @@
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_tvar_list(tvar_renaming::in,
+:- pred apply_renaming_to_tvars(tvar_renaming::in,
     list(tvar)::in, list(tvar)::out) is det.
 
-:- pred apply_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
+:- pred apply_subst_to_tvars(tvar_kind_map::in, tsubst::in,
     list(tvar)::in, list(mer_type)::out) is det.
 
-:- pred apply_rec_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
+:- pred apply_rec_subst_to_tvars(tvar_kind_map::in, tsubst::in,
     list(tvar)::in, list(mer_type)::out) is det.
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_type(tvar_renaming::in,
+:- pred apply_renaming_to_type(tvar_renaming::in,
     mer_type::in, mer_type::out) is det.
 
 :- pred apply_subst_to_type(tsubst::in, mer_type::in, mer_type::out) is det.
@@ -61,13 +61,13 @@
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_type_list(tvar_renaming::in,
+:- pred apply_renaming_to_types(tvar_renaming::in,
     list(mer_type)::in, list(mer_type)::out) is det.
 
-:- pred apply_subst_to_type_list(tsubst::in,
+:- pred apply_subst_to_types(tsubst::in,
     list(mer_type)::in, list(mer_type)::out) is det.
 
-:- pred apply_rec_subst_to_type_list(tsubst::in,
+:- pred apply_rec_subst_to_types(tsubst::in,
     list(mer_type)::in, list(mer_type)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
 % Utility predicates dealing with typeclass constraints.
 %
 
-:- pred apply_variable_renaming_to_prog_constraint(tvar_renaming::in,
+:- pred apply_renaming_to_prog_constraint(tvar_renaming::in,
     prog_constraint::in, prog_constraint::out) is det.
 
 :- pred apply_subst_to_prog_constraint(tsubst::in, prog_constraint::in,
@@ -86,18 +86,18 @@
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_prog_constraint_list(tvar_renaming::in,
+:- pred apply_renaming_to_prog_constraints(tvar_renaming::in,
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
-:- pred apply_subst_to_prog_constraint_list(tsubst::in,
+:- pred apply_subst_to_prog_constraints(tsubst::in,
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
-:- pred apply_rec_subst_to_prog_constraint_list(tsubst::in,
+:- pred apply_rec_subst_to_prog_constraints(tsubst::in,
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_univ_exist_constraints(tvar_renaming::in,
+:- pred apply_renaming_to_univ_exist_constraints(tvar_renaming::in,
     univ_exist_constraints::in, univ_exist_constraints::out) is det.
 
 :- pred apply_subst_to_univ_exist_constraints(tsubst::in,
@@ -116,20 +116,20 @@
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap) :-
-    map.foldl(apply_variable_renaming_to_tvar_kind_map_2(Renaming),
+apply_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap) :-
+    map.foldl(apply_renaming_to_tvar_kind_map_2(Renaming),
         KindMap0, map.init, KindMap).
 
-:- pred apply_variable_renaming_to_tvar_kind_map_2(tvar_renaming::in, tvar::in,
+:- pred apply_renaming_to_tvar_kind_map_2(tvar_renaming::in, tvar::in,
     kind::in, tvar_kind_map::in, tvar_kind_map::out) is det.
 
-apply_variable_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
-    apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
+apply_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
+    apply_renaming_to_tvar(Renaming, TVar0, TVar),
     map.det_insert(TVar, Kind, !KindMap).
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_tvar(Renaming, TVar0, TVar) :-
+apply_renaming_to_tvar(Renaming, TVar0, TVar) :-
     ( if map.search(Renaming, TVar0, TVar1) then
         TVar = TVar1
     else
@@ -154,45 +154,45 @@ apply_rec_subst_to_tvar(KindMap, Subst, TVar, Type) :-
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_tvar_list(Renaming, TVars0, TVars) :-
-    list.map(apply_variable_renaming_to_tvar(Renaming), TVars0, TVars).
+apply_renaming_to_tvars(Renaming, TVars0, TVars) :-
+    list.map(apply_renaming_to_tvar(Renaming), TVars0, TVars).
 
-apply_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
+apply_subst_to_tvars(KindMap, Subst, TVars, Types) :-
     list.map(apply_subst_to_tvar(KindMap, Subst), TVars, Types).
 
-apply_rec_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
+apply_rec_subst_to_tvars(KindMap, Subst, TVars, Types) :-
     list.map(apply_rec_subst_to_tvar(KindMap, Subst), TVars, Types).
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_type(Renaming, Type0, Type) :-
+apply_renaming_to_type(Renaming, Type0, Type) :-
     (
         Type0 = type_variable(TVar0, Kind),
-        apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
+        apply_renaming_to_tvar(Renaming, TVar0, TVar),
         Type = type_variable(TVar, Kind)
     ;
         Type0 = defined_type(Name, Args0, Kind),
-        apply_variable_renaming_to_type_list(Renaming, Args0, Args),
+        apply_renaming_to_types(Renaming, Args0, Args),
         Type = defined_type(Name, Args, Kind)
     ;
         Type0 = builtin_type(_),
         Type = Type0
     ;
         Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity),
-        apply_variable_renaming_to_type_list(Renaming, Args0, Args),
+        apply_renaming_to_types(Renaming, Args0, Args),
         Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
     ;
         Type0 = tuple_type(Args0, Kind),
-        apply_variable_renaming_to_type_list(Renaming, Args0, Args),
+        apply_renaming_to_types(Renaming, Args0, Args),
         Type = tuple_type(Args, Kind)
     ;
         Type0 = apply_n_type(TVar0, Args0, Kind),
-        apply_variable_renaming_to_type_list(Renaming, Args0, Args),
-        apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
+        apply_renaming_to_types(Renaming, Args0, Args),
+        apply_renaming_to_tvar(Renaming, TVar0, TVar),
         Type = apply_n_type(TVar, Args, Kind)
     ;
         Type0 = kinded_type(BaseType0, Kind),
-        apply_variable_renaming_to_type(Renaming, BaseType0, BaseType),
+        apply_renaming_to_type(Renaming, BaseType0, BaseType),
         Type = kinded_type(BaseType, Kind)
     ).
 
@@ -206,22 +206,22 @@ apply_subst_to_type(Subst, Type0, Type) :-
         )
     ;
         Type0 = defined_type(Name, Args0, Kind),
-        apply_subst_to_type_list(Subst, Args0, Args),
+        apply_subst_to_types(Subst, Args0, Args),
         Type = defined_type(Name, Args, Kind)
     ;
         Type0 = builtin_type(_),
         Type = Type0
     ;
         Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity),
-        apply_subst_to_type_list(Subst, Args0, Args),
+        apply_subst_to_types(Subst, Args0, Args),
         Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
     ;
         Type0 = tuple_type(Args0, Kind),
-        apply_subst_to_type_list(Subst, Args0, Args),
+        apply_subst_to_types(Subst, Args0, Args),
         Type = tuple_type(Args, Kind)
     ;
         Type0 = apply_n_type(TVar, Args0, Kind),
-        apply_subst_to_type_list(Subst, Args0, Args),
+        apply_subst_to_types(Subst, Args0, Args),
         ( if map.search(Subst, TVar, AppliedType) then
             apply_type_args(AppliedType, Args, Type)
         else
@@ -244,22 +244,22 @@ apply_rec_subst_to_type(Subst, Type0, Type) :-
         )
     ;
         Type0 = defined_type(Name, Args0, Kind),
-        apply_rec_subst_to_type_list(Subst, Args0, Args),
+        apply_rec_subst_to_types(Subst, Args0, Args),
         Type = defined_type(Name, Args, Kind)
     ;
         Type0 = builtin_type(_),
         Type = Type0
     ;
         Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity),
-        apply_rec_subst_to_type_list(Subst, Args0, Args),
+        apply_rec_subst_to_types(Subst, Args0, Args),
         Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
     ;
         Type0 = tuple_type(Args0, Kind),
-        apply_rec_subst_to_type_list(Subst, Args0, Args),
+        apply_rec_subst_to_types(Subst, Args0, Args),
         Type = tuple_type(Args, Kind)
     ;
         Type0 = apply_n_type(TVar, Args0, Kind),
-        apply_rec_subst_to_type_list(Subst, Args0, Args),
+        apply_rec_subst_to_types(Subst, Args0, Args),
         ( if map.search(Subst, TVar, AppliedType0) then
             apply_rec_subst_to_type(Subst, AppliedType0, AppliedType),
             apply_type_args(AppliedType, Args, Type)
@@ -274,13 +274,13 @@ apply_rec_subst_to_type(Subst, Type0, Type) :-
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_type_list(Renaming, Types0, Types) :-
-    list.map(apply_variable_renaming_to_type(Renaming), Types0, Types).
+apply_renaming_to_types(Renaming, Types0, Types) :-
+    list.map(apply_renaming_to_type(Renaming), Types0, Types).
 
-apply_subst_to_type_list(Subst, Types0, Types) :-
+apply_subst_to_types(Subst, Types0, Types) :-
     list.map(apply_subst_to_type(Subst), Types0, Types).
 
-apply_rec_subst_to_type_list(Subst, Types0, Types) :-
+apply_rec_subst_to_types(Subst, Types0, Types) :-
     list.map(apply_rec_subst_to_type(Subst), Types0, Types).
 
 %---------------------------------------------------------------------------%
@@ -360,54 +360,54 @@ ensure_type_has_kind(Kind, Type0, Type) :-
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_prog_constraint(Renaming, !Constraint) :-
+apply_renaming_to_prog_constraint(Renaming, !Constraint) :-
     !.Constraint = constraint(ClassName, ClassArgTypes0),
-    apply_variable_renaming_to_type_list(Renaming,
+    apply_renaming_to_types(Renaming,
         ClassArgTypes0, ClassArgTypes),
     !:Constraint = constraint(ClassName, ClassArgTypes).
 
 apply_subst_to_prog_constraint(Subst, !Constraint) :-
     !.Constraint = constraint(ClassName, Types0),
-    apply_subst_to_type_list(Subst, Types0, Types),
+    apply_subst_to_types(Subst, Types0, Types),
     !:Constraint = constraint(ClassName, Types).
 
 apply_rec_subst_to_prog_constraint(Subst, !Constraint) :-
     !.Constraint = constraint(ClassName, Types0),
-    apply_rec_subst_to_type_list(Subst, Types0, Types),
+    apply_rec_subst_to_types(Subst, Types0, Types),
     !:Constraint = constraint(ClassName, Types).
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_prog_constraint_list(Renaming, !Constraints) :-
-    list.map(apply_variable_renaming_to_prog_constraint(Renaming),
+apply_renaming_to_prog_constraints(Renaming, !Constraints) :-
+    list.map(apply_renaming_to_prog_constraint(Renaming),
         !Constraints).
 
-apply_subst_to_prog_constraint_list(Subst, !Constraints) :-
+apply_subst_to_prog_constraints(Subst, !Constraints) :-
     list.map(apply_subst_to_prog_constraint(Subst), !Constraints).
 
-apply_rec_subst_to_prog_constraint_list(Subst, !Constraints) :-
+apply_rec_subst_to_prog_constraints(Subst, !Constraints) :-
     list.map(apply_rec_subst_to_prog_constraint(Subst), !Constraints).
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_univ_exist_constraints(Renaming, !Constraints) :-
+apply_renaming_to_univ_exist_constraints(Renaming, !Constraints) :-
     !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         UnivCs0, UnivCs),
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         ExistCs0, ExistCs),
     !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 apply_subst_to_univ_exist_constraints(Subst, !Constraints) :-
     !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
-    apply_subst_to_prog_constraint_list(Subst, UnivCs0, UnivCs),
-    apply_subst_to_prog_constraint_list(Subst, ExistCs0, ExistCs),
+    apply_subst_to_prog_constraints(Subst, UnivCs0, UnivCs),
+    apply_subst_to_prog_constraints(Subst, ExistCs0, ExistCs),
     !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 apply_rec_subst_to_univ_exist_constraints(Subst, !Constraints) :-
     !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
-    apply_rec_subst_to_prog_constraint_list(Subst, UnivCs0, UnivCs),
-    apply_rec_subst_to_prog_constraint_list(Subst, ExistCs0, ExistCs),
+    apply_rec_subst_to_prog_constraints(Subst, UnivCs0, UnivCs),
+    apply_rec_subst_to_prog_constraints(Subst, ExistCs0, ExistCs),
     !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 %---------------------------------------------------------------------------%

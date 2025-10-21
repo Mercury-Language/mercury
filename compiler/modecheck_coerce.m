@@ -924,7 +924,7 @@ get_ctor_arg_types_do_subst(ModuleInfo, Type, DuCtor, CtorArgTypes) :-
             ;
                 TypeParams = [_ | _],
                 map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
-                apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
+                apply_subst_to_types(Subst, CtorArgTypes0, CtorArgTypes)
             )
         )
     ).

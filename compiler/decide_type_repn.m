@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2024 The Mercury team.
+% Copyright (C) 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2379,9 +2379,9 @@ expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
     then
         varset.merge_renaming(TVarSet0, NotagTVarSet0, TVarSet1,
             RenamingNotagTo1),
-        apply_variable_renaming_to_tvar_list(RenamingNotagTo1,
+        apply_renaming_to_tvars(RenamingNotagTo1,
             NotagParams0, NotagParams1),
-        apply_variable_renaming_to_type(RenamingNotagTo1,
+        apply_renaming_to_type(RenamingNotagTo1,
             NotagFunctorArgType0, NotagFunctorArgType1),
         % The length of both ArgTypes0 and NotagParams1 should match
         % is the arity recorded in TypeCtor0, which means that the two lists

@@ -242,7 +242,7 @@ get_type_substitution(ModuleInfo, PPId, CallerArgTypes, CallerTypeVarSet,
     % typevarset.
     tvarset_merge_renaming(CallerTypeVarSet, CalleeTypeVarSet, _TypeVarSet,
         CalleeTypeVarRenaming),
-    apply_variable_renaming_to_type_list(CalleeTypeVarRenaming,
+    apply_renaming_to_types(CalleeTypeVarRenaming,
         CalleeArgTypes0, CalleeArgTypes),
 
     compute_caller_callee_type_substitution(CalleeArgTypes, CallerArgTypes,
@@ -263,8 +263,8 @@ get_type_substitution(ModuleInfo, PPId, CallerArgTypes, CallerTypeVarSet,
     tsubst::in, tsubst::out) is det.
 
 reverse_renaming(RevSubst, K0, V0, !Acc) :-
-    apply_variable_renaming_to_tvar(RevSubst, K0, K),
-    apply_variable_renaming_to_type(RevSubst, V0, V),
+    apply_renaming_to_tvar(RevSubst, K0, K),
+    apply_renaming_to_type(RevSubst, V0, V),
     map.det_insert(K, V, !Acc).
 
 %---------------------------------------------------------------------------%

@@ -469,8 +469,7 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
     % Rename apart type variables.
     tvarset_merge_renaming(RequestTVarSet, VersionTVarSet, _, TVarRenaming),
     assoc_list.values(VersionArgsTypes0, VersionArgTypes0),
-    apply_variable_renaming_to_type_list(TVarRenaming,
-        VersionArgTypes0, VersionArgTypes),
+    apply_renaming_to_types(TVarRenaming, VersionArgTypes0, VersionArgTypes),
     assoc_list.keys_and_values(ArgsTypes0, Args0, ArgTypes),
 
     type_list_subsumes(VersionArgTypes, ArgTypes, TypeSubn),
@@ -484,11 +483,10 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         % we assume all tvars have kind `star'
 
         map.init(KindMap),
-        apply_variable_renaming_to_tvar_kind_map(TVarRenaming, KindMap,
-            RenamedKindMap),
-        apply_variable_renaming_to_tvar_list(TVarRenaming,
+        apply_renaming_to_tvar_kind_map(TVarRenaming, KindMap, RenamedKindMap),
+        apply_renaming_to_tvars(TVarRenaming,
             VersionExtraTypeInfoTVars, ExtraTypeInfoTVars0),
-        apply_rec_subst_to_tvar_list(RenamedKindMap, TypeSubn,
+        apply_rec_subst_to_tvars(RenamedKindMap, TypeSubn,
             ExtraTypeInfoTVars0, ExtraTypeInfoTypes),
         get_extra_arguments(HigherOrderArgs, Args0, Args),
 

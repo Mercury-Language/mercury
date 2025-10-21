@@ -1073,8 +1073,8 @@ construct_pragma_tvarset_components(PredTVarSet, RevTVarMap,
 
 construct_pragma_tvar_subst(Renaming, VoGTVarSubst, PragmaTVarSubst) :-
     VoGTVarSubst = tvar_subst(VoGTVar, VoGType),
-    apply_variable_renaming_to_tvar(Renaming, VoGTVar, PragmaTVar),
-    apply_variable_renaming_to_type(Renaming, VoGType, PragmaType),
+    apply_renaming_to_tvar(Renaming, VoGTVar, PragmaTVar),
+    apply_renaming_to_type(Renaming, VoGType, PragmaType),
     PragmaTVarSubst = tvar_subst(PragmaTVar, PragmaType).
 
 %---------------------------------------------------------------------------%
@@ -1451,7 +1451,7 @@ check_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
                     ), RenamedVarsToSub, SubExistQVars),
                 (
                     SubExistQVars = [],
-                    apply_variable_renaming_to_type_list(TVarRenaming,
+                    apply_renaming_to_types(TVarRenaming,
                         SubstTypes0, SubstTypes),
                     assoc_list.from_corresponding_lists(RenamedVarsToSub,
                         SubstTypes, SubAL),
@@ -1460,7 +1460,7 @@ check_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
                     % Apply the substitution.
                     pred_info_get_arg_types(PredInfo0, Types0),
                     pred_info_get_class_context(PredInfo0, ClassContext0),
-                    apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
+                    apply_rec_subst_to_types(TypeSubst, Types0, Types),
                     apply_rec_subst_to_univ_exist_constraints(TypeSubst,
                         ClassContext0, ClassContext),
                     PairToTVarSubst =

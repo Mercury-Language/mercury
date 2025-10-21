@@ -181,7 +181,7 @@ typecheck_info_construct_builtin_cons_info(BuiltinTypeName, ConsInfo) :-
     construct_type(TypeCtor, [], ConsType),
     varset.init(ConsTypeVarSet),
     ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-        empty_hlds_constraints, source_builtin_type(BuiltinTypeName)).
+        empty_hlds_constraint_db, source_builtin_type(BuiltinTypeName)).
 
 %---------------------%
 
@@ -203,7 +203,7 @@ typecheck_info_construct_tuple_cons_info(TupleArity, ConsInfo) :-
     % Tuples can't have existentially typed arguments.
     TupleExistQVars = [],
     ConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
-        TupleConsType, TupleArgTypes, empty_hlds_constraints,
+        TupleConsType, TupleArgTypes, empty_hlds_constraint_db,
         source_builtin_type("tuple")).
 
 %---------------------%
@@ -366,7 +366,7 @@ hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId, Action,
     --->    source_type(type_ctor, du_ctor).
 :- type du_cons_type_info =< cons_type_info
     --->    cons_type_info(tvarset, existq_tvars, mer_type,
-                list(mer_type), hlds_constraints, du_cons_type_info_source).
+                list(mer_type), hlds_constraint_db, du_cons_type_info_source).
 :- type maybe_du_cons_type_info =< maybe_cons_type_info
     --->    ok(du_cons_type_info)
     ;       error(cons_error).
@@ -497,10 +497,10 @@ hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, Action, DuCtor,
             ExistQVars = ExistQVars0
         ),
         module_info_get_class_table(ModuleInfo, ClassTable),
-        make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
-            GoalId, ProgConstraints, Constraints),
+        make_body_hlds_constraint_db(ClassTable, ConsTypeVarSet,
+            GoalId, ProgConstraints, ConstraintDb),
         ConsTypeInfo = cons_type_info(ConsTypeVarSet, ExistQVars, ConsType,
-            ArgTypes, Constraints, source_type(TypeCtor, DuCtor)),
+            ArgTypes, ConstraintDb, source_type(TypeCtor, DuCtor)),
         MaybeConsTypeInfo = ok(ConsTypeInfo)
     ).
 
@@ -775,9 +775,9 @@ functor_to_field_access_function_cons_type_info(ClassTable, AccessType,
                 varset.new_vars(NumNewTVars, NewTVars, TVarSet0, TVarSet),
                 map.from_corresponding_lists(TVarsOnlyInField,
                     NewTVars, TVarRenaming),
-                apply_variable_renaming_to_type(TVarRenaming, FieldType,
+                apply_renaming_to_type(TVarRenaming, FieldType,
                     RenamedFieldType),
-                apply_variable_renaming_to_type(TVarRenaming, FunctorType,
+                apply_renaming_to_type(TVarRenaming, FunctorType,
                     OutputFunctorType),
                 % Rename the class constraints, projecting the constraints
                 % onto the set of type variables occurring in the types of the
@@ -842,7 +842,7 @@ builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
         ArgTypes, RetType),
     ExistQVars = [],
     ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], empty_hlds_constraints,
+        [FuncType | ArgTypes], empty_hlds_constraint_db,
         source_apply(ApplyNameToUse))].
 
 %---------------------%
@@ -915,10 +915,10 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
         list.det_split_list(FuncArity, CompleteArgTypes,
             ArgTypes, PredTypeParams),
         construct_higher_order_pred_type(Purity, PredTypeParams, PredType),
-        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-            GoalId, PredClassContext, PredConstraints),
+        make_body_hlds_constraint_db(ClassTable, PredTypeVarSet,
+            GoalId, PredClassContext, PredConstraintDb),
         ConsTypeInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
-            PredType, ArgTypes, PredConstraints, source_pred(PredId)),
+            PredType, ArgTypes, PredConstraintDb, source_pred(PredId)),
         !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
     else if
         IsPredOrFunc = pf_function,
@@ -943,10 +943,10 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
             construct_higher_order_func_type(Purity,
                 FuncArgTypeParams, FuncReturnTypeParam, FuncType)
         ),
-        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-            GoalId, PredClassContext, PredConstraints),
+        make_body_hlds_constraint_db(ClassTable, PredTypeVarSet,
+            GoalId, PredClassContext, PredConstraintDb),
         ConsTypeInfo = cons_type_info(PredTypeVarSet,
-            PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
+            PredExistQVars, FuncType, FuncArgTypes, PredConstraintDb,
             source_pred(PredId)),
         !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
     else
@@ -963,11 +963,11 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
     %
 :- pred project_and_rename_constraints(class_table::in, tvarset::in,
     set(tvar)::in, tvar_renaming::in,
-    hlds_constraints::in, hlds_constraints::out) is det.
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
 project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
-        !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed,
+        !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed,
         Redundant0, Ancestors),
 
     % Project the constraints down onto the list of tvars in the call.
@@ -977,7 +977,8 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
     update_redundant_constraints(ClassTable, TVarSet, NewUnproven,
         Redundant0, Redundant),
     list.append(NewUnproven, Unproven0, Unproven),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
 :- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
 
@@ -997,7 +998,7 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
         type_list_contains_var(ArgTypes0, Var),
         map.contains(TVarRenaming, Var)
     ),
-    apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes0, ArgTypes),
+    apply_renaming_to_types(TVarRenaming, ArgTypes0, ArgTypes),
     Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %---------------------------------------------------------------------------%

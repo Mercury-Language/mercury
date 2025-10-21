@@ -526,21 +526,20 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
     proc_info_get_var_table(!.NewProcInfo, VarTable0),
     tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
         TypeRenaming),
-    apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
-    apply_variable_renaming_to_var_table(TypeRenaming, VarTable0, VarTable1),
-    apply_variable_renaming_to_type_list(TypeRenaming,
+    apply_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
+    rename_vars_in_var_table(TypeRenaming, VarTable0, VarTable1),
+    apply_renaming_to_types(TypeRenaming,
         OriginalArgTypes0, OriginalArgTypes1),
 
     % The real set of existentially quantified variables may be smaller,
     % but this is OK.
-    apply_variable_renaming_to_tvar_list(TypeRenaming,
-        ExistQVars0, ExistQVars1),
+    apply_renaming_to_tvars(TypeRenaming, ExistQVars0, ExistQVars1),
 
     assoc_list.keys_and_values(CallArgsTypes0, CallArgs, CallerArgTypes0),
     compute_caller_callee_type_substitution(OriginalArgTypes1, CallerArgTypes0,
         CallerHeadParams, ExistQVars1, TypeSubn),
 
-    apply_rec_subst_to_tvar_list(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
+    apply_rec_subst_to_tvars(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
     list.filter_map(
         ( pred(ExistQType::in, ExistQVar::out) is semidet :-
             ExistQType = type_variable(ExistQVar, _)
@@ -548,8 +547,7 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
 
     apply_rec_subst_to_var_table(is_type_a_dummy(ModuleInfo), TypeSubn,
         VarTable1, VarTable2),
-    apply_rec_subst_to_type_list(TypeSubn,
-        OriginalArgTypes1, OriginalArgTypes),
+    apply_rec_subst_to_types(TypeSubn, OriginalArgTypes1, OriginalArgTypes),
     proc_info_set_var_table(VarTable2, !NewProcInfo),
 
     % XXX kind inference: we assume vars have kind `star'.
@@ -568,7 +566,7 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
         % we may need to bind type variables in the caller.
         list.map(substitute_higher_order_arg(TypeSubn), HOArgs0, HOArgs),
 
-        apply_rec_subst_to_type_list(TypeSubn, ExtraTypeInfoTVarTypes0,
+        apply_rec_subst_to_types(TypeSubn, ExtraTypeInfoTVarTypes0,
             ExtraTypeInfoTVarTypes),
         % The substitution should never bind any of the type variables
         % for which extra typeinfos are needed, otherwise it would not be
@@ -704,8 +702,8 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
         lookup_var_types(VarTable7, HeadVars0, OriginalHeadTypes),
         type_list_subsumes_det(OriginalArgTypes, OriginalHeadTypes,
             ExistentialSubn),
-        apply_rec_subst_to_type_list(ExistentialSubn, ExtraHeadVarTypes0,
-            ExtraHeadVarTypes),
+        apply_rec_subst_to_types(ExistentialSubn,
+            ExtraHeadVarTypes0, ExtraHeadVarTypes),
         assoc_list.from_corresponding_lists(ExtraHeadVars,
             ExtraHeadVarTypes, ExtraHeadVarsAndTypes),
         list.foldl(update_var_types(ModuleInfo), ExtraHeadVarsAndTypes,
@@ -926,7 +924,7 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     CurriedArgTypes0 = !.HOArg ^ hoa_curry_type_in_caller,
     CurriedRttiTypes0 = !.HOArg ^ hoa_curry_rtti_type,
     CurriedHOArgs0 = !.HOArg ^ hoa_known_curry_args,
-    apply_rec_subst_to_type_list(Subn, CurriedArgTypes0, CurriedArgTypes),
+    apply_rec_subst_to_types(Subn, CurriedArgTypes0, CurriedArgTypes),
     list.map(substitute_rtti_var_info(Subn),
         CurriedRttiTypes0, CurriedRttiTypes),
     list.map(substitute_higher_order_arg(Subn), CurriedHOArgs0, CurriedHOArgs),

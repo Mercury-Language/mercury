@@ -394,7 +394,7 @@
 % Predicates for doing renamings and substitutions on HLDS data structures.
 %
 
-:- pred apply_variable_renaming_to_constraint(tvar_renaming::in,
+:- pred apply_renaming_to_constraint(tvar_renaming::in,
     hlds_constraint::in, hlds_constraint::out) is det.
 
 :- pred apply_subst_to_constraint(tsubst::in, hlds_constraint::in,
@@ -405,29 +405,29 @@
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_list(tvar_renaming::in,
+:- pred apply_renaming_to_constraints(tvar_renaming::in,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-:- pred apply_subst_to_constraint_list(tsubst::in, list(hlds_constraint)::in,
+:- pred apply_subst_to_constraints(tsubst::in, list(hlds_constraint)::in,
     list(hlds_constraint)::out) is det.
 
-:- pred apply_rec_subst_to_constraint_list(tsubst::in,
+:- pred apply_rec_subst_to_constraints(tsubst::in,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraints(tvar_renaming::in,
-    hlds_constraints::in, hlds_constraints::out) is det.
+:- pred apply_renaming_to_constraint_db(tvar_renaming::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
-:- pred apply_subst_to_constraints(tsubst::in, hlds_constraints::in,
-    hlds_constraints::out) is det.
+:- pred apply_subst_to_constraint_db(tsubst::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
-:- pred apply_rec_subst_to_constraints(tsubst::in, hlds_constraints::in,
-    hlds_constraints::out) is det.
+:- pred apply_rec_subst_to_constraint_db(tsubst::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_proof_map(tvar_renaming::in,
+:- pred apply_renaming_to_constraint_proof_map(tvar_renaming::in,
     constraint_proof_map::in, constraint_proof_map::out) is det.
 
 :- pred apply_subst_to_constraint_proof_map(tsubst::in,
@@ -438,7 +438,7 @@
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_map(tvar_renaming::in,
+:- pred apply_renaming_to_constraint_map(tvar_renaming::in,
     constraint_map::in, constraint_map::out) is det.
 
 :- pred apply_subst_to_constraint_map(tsubst::in,
@@ -1068,12 +1068,11 @@ get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
         hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
         tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
-        apply_variable_renaming_to_tvar_list(Renaming,
-            TypeParams0, TypeParams),
+        apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
         map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
 
         % Apply substitution to the declared supertype.
-        apply_variable_renaming_to_type(Renaming, SuperType0, SuperType1),
+        apply_renaming_to_type(Renaming, SuperType0, SuperType1),
         apply_rec_subst_to_type(TSubst, SuperType1, SuperType)
     ).
 
@@ -1557,7 +1556,7 @@ get_user_data_arg_types_2(EQVarAction, ModuleInfo, Type, DuCtor,
 
             map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
             ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-            apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes)
+            apply_subst_to_types(TSubst, ArgTypes0, ArgTypes)
         else
             ArgTypes = []
         )
@@ -1605,7 +1604,7 @@ get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs, Ctor,
 
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-    apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes),
+    apply_subst_to_types(TSubst, ArgTypes0, ArgTypes),
     Name = unqualify_name(SymName).
 
 type_is_du_type(ModuleInfo, Type) :-
@@ -1799,36 +1798,36 @@ var_is_introduced_type_info_type(VarTable, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint(Renaming, !Constraint) :-
+apply_renaming_to_constraint(Renaming, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_variable_renaming_to_type_list(Renaming, ArgTypes0, ArgTypes),
+    apply_renaming_to_types(Renaming, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_subst_to_constraint(Subst, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    apply_subst_to_types(Subst, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_rec_subst_to_constraint(Subst, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_rec_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    apply_rec_subst_to_types(Subst, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
-    list.map(apply_variable_renaming_to_constraint(Renaming), !Constraints).
+apply_renaming_to_constraints(Renaming, !Constraints) :-
+    list.map(apply_renaming_to_constraint(Renaming), !Constraints).
 
-apply_subst_to_constraint_list(Subst, !Constraints) :-
+apply_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_subst_to_constraint(Subst), !Constraints).
 
-apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
+apply_rec_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_rec_subst_to_constraint(Subst), !Constraints).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_renaming_to_constraint_db(Renaming, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
     % Most of the time, !.Constraints contains nothing. Even when some
     % of its fields are not empty, some others may be.
@@ -1840,18 +1839,15 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     then
         true
     else
-        apply_variable_renaming_to_constraint_list(Renaming,
-            Unproven0, Unproven),
-        apply_variable_renaming_to_constraint_list(Renaming,
-            Assumed0, Assumed),
+        apply_renaming_to_constraints(Renaming, Unproven0, Unproven),
+        apply_renaming_to_constraints(Renaming, Assumed0, Assumed),
         ( if map.is_empty(Redundant0) then
             Redundant = Redundant0
         else
             Pred =
                 ( pred(C0::in, C::out) is det :-
                     set.to_sorted_list(C0, L0),
-                    apply_variable_renaming_to_constraint_list(Renaming,
-                        L0, L),
+                    apply_renaming_to_constraints(Renaming, L0, L),
                     set.list_to_set(L, C)
                 ),
             map.map_values_only(Pred, Redundant0, Redundant)
@@ -1861,61 +1857,62 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
         else
             map.keys(Ancestors0, AncestorsKeys0),
             map.values(Ancestors0, AncestorsValues0),
-            apply_variable_renaming_to_prog_constraint_list(Renaming,
+            apply_renaming_to_prog_constraints(Renaming,
                 AncestorsKeys0, AncestorsKeys),
-            list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
+            list.map(apply_renaming_to_prog_constraints(Renaming),
                 AncestorsValues0, AncestorsValues),
             map.from_corresponding_lists(AncestorsKeys, AncestorsValues,
                 Ancestors)
         ),
-        !:Constraints =
-            hlds_constraints(Unproven, Assumed, Redundant, Ancestors)
+        !:ConstraintDb =
+            hlds_constraint_db(Unproven, Assumed, Redundant, Ancestors)
     ).
 
-apply_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_subst_to_constraint_db(Subst, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
-    apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
-    apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
+    apply_subst_to_constraints(Subst, Unproven0, Unproven),
+    apply_subst_to_constraints(Subst, Assumed0, Assumed),
     Pred =
         ( pred(C0::in, C::out) is det :-
             set.to_sorted_list(C0, L0),
-            apply_subst_to_constraint_list(Subst, L0, L),
+            apply_subst_to_constraints(Subst, L0, L),
             set.list_to_set(L, C)
         ),
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0, AncestorsKeys),
-    list.map(apply_subst_to_prog_constraint_list(Subst),
+    apply_subst_to_prog_constraints(Subst, AncestorsKeys0, AncestorsKeys),
+    list.map(apply_subst_to_prog_constraints(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
-apply_rec_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_rec_subst_to_constraint_db(Subst, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
-    apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
-    apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
+    apply_rec_subst_to_constraints(Subst, Unproven0, Unproven),
+    apply_rec_subst_to_constraints(Subst, Assumed0, Assumed),
     Pred =
         ( pred(C0::in, C::out) is det :-
             set.to_sorted_list(C0, L0),
-            apply_rec_subst_to_constraint_list(Subst, L0, L),
+            apply_rec_subst_to_constraints(Subst, L0, L),
             set.list_to_set(L, C)
         ),
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_rec_subst_to_prog_constraint_list(Subst,
-        AncestorsKeys0, AncestorsKeys),
-    list.map(apply_rec_subst_to_prog_constraint_list(Subst),
+    apply_rec_subst_to_prog_constraints(Subst, AncestorsKeys0, AncestorsKeys),
+    list.map(apply_rec_subst_to_prog_constraints(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_proof_map(Renaming,
+apply_renaming_to_constraint_proof_map(Renaming,
         ProofMap0, ProofMap) :-
     ( if map.is_empty(ProofMap0) then
         % Optimize the simple case.
@@ -1923,7 +1920,7 @@ apply_variable_renaming_to_constraint_proof_map(Renaming,
     else
         map.keys(ProofMap0, Keys0),
         map.values(ProofMap0, Values0),
-        apply_variable_renaming_to_prog_constraint_list(Renaming, Keys0, Keys),
+        apply_renaming_to_prog_constraints(Renaming, Keys0, Keys),
         list.map(rename_constraint_proof(Renaming), Values0, Values),
         map.from_corresponding_lists(Keys, Values, ProofMap)
     ).
@@ -1939,7 +1936,7 @@ rename_constraint_proof(TSubst, Proof0, Proof) :-
         Proof = Proof0
     ;
         Proof0 = superclass(ClassConstraint0),
-        apply_variable_renaming_to_prog_constraint(TSubst,
+        apply_renaming_to_prog_constraint(TSubst,
             ClassConstraint0, ClassConstraint),
         Proof = superclass(ClassConstraint)
     ).
@@ -1987,8 +1984,8 @@ apply_rec_subst_to_constraint_proof_map_2(Subst, Constraint0, Proof0,
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
-    map.map_values_only(apply_variable_renaming_to_prog_constraint(Renaming),
+apply_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
+    map.map_values_only(apply_renaming_to_prog_constraint(Renaming),
         !ConstraintMap).
 
 apply_subst_to_constraint_map(Subst, !ConstraintMap) :-

@@ -2805,9 +2805,9 @@ get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType) :-
 merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
         TVarSet0, TypeParams0, Type0, Type) :-
     tvarset_merge_renaming(TVarSet, TVarSet0, _MergedTVarSet, Renaming),
-    apply_variable_renaming_to_tvar_list(Renaming, TypeParams0, TypeParams),
+    apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_renaming_to_type(Renaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type).
 
 %---------------------------------------------------------------------------%

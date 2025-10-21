@@ -369,17 +369,17 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
                 list(mer_type)
             ).
 
-:- type hlds_constraints
-    --->    hlds_constraints(
+:- type hlds_constraint_db
+    --->    hlds_constraint_db(
                 % Unproven constraints. These are the constraints that we must
                 % prove (that is, universal constraints from the goal being
                 % checked, or existential constraints on the head).
-                hcs_unproven    :: list(hlds_constraint),
+                hcd_unproven    :: list(hlds_constraint),
 
                 % Assumed constraints. These are constraints we can use in
                 % proofs (that is, existential constraints from the goal being
                 % checked, or universal constraints on the head).
-                hcs_assumed     :: list(hlds_constraint),
+                hcd_assumed     :: list(hlds_constraint),
 
                 % Constraints that are known to be redundant. This includes
                 % constraints that have already been proved as well as
@@ -387,13 +387,13 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
                 % or redundant constraints. Not all such constraints are
                 % included, only those which may be used for the purposes
                 % of improvement.
-                hcs_redundant   :: redundant_constraints,
+                hcd_redundant   :: redundant_constraints,
 
                 % Ancestors of assumed constraints.
-                hcs_ancestors   :: ancestor_constraints
+                hcd_ancestors   :: ancestor_constraints
             ).
 
-    % Redundant constraints are partitioned by class, which helps us
+    % We partition redundant constraints by class, which helps us
     % process them more efficiently.
     %
 :- type redundant_constraints == map(class_id, set(hlds_constraint)).
@@ -443,13 +443,13 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
 :- pred init_hlds_constraint_list(list(prog_constraint)::in,
     list(hlds_constraint)::out) is det.
 
-:- pred make_head_hlds_constraints(class_table::in, tvarset::in,
-    univ_exist_constraints::in, hlds_constraints::out) is det.
+:- pred make_head_hlds_constraint_db(class_table::in, tvarset::in,
+    univ_exist_constraints::in, hlds_constraint_db::out) is det.
 
-:- pred make_body_hlds_constraints(class_table::in, tvarset::in, goal_id::in,
-    univ_exist_constraints::in, hlds_constraints::out) is det.
+:- pred make_body_hlds_constraint_db(class_table::in, tvarset::in, goal_id::in,
+    univ_exist_constraints::in, hlds_constraint_db::out) is det.
 
-    % make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
+    % make_hlds_constraint_db(ClassTable, TVarSet, UnprovenConstraints,
     %   AssumedConstraints, Constraints):
     %
     % ClassTable is the class_table for the module. TVarSet is the tvarset
@@ -460,17 +460,18 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
     % (that is, existential constraints in the body or universal constraints
     % in the head).
     %
-:- pred make_hlds_constraints(class_table::in, tvarset::in,
+:- pred make_hlds_constraint_db(class_table::in, tvarset::in,
     list(hlds_constraint)::in, list(hlds_constraint)::in,
-    hlds_constraints::out) is det.
+    hlds_constraint_db::out) is det.
 
 :- pred make_hlds_constraint_list(list(prog_constraint)::in,
     constraint_type::in, goal_id::in, list(hlds_constraint)::out) is det.
 
-:- pred merge_hlds_constraints(hlds_constraints::in, hlds_constraints::in,
-    hlds_constraints::out) is det.
+:- pred merge_hlds_constraint_dbs(
+    hlds_constraint_db::in, hlds_constraint_db::in,
+    hlds_constraint_db::out) is det.
 
-:- pred retrieve_univ_exist_constraints(hlds_constraints::in,
+:- pred retrieve_univ_exist_constraints(hlds_constraint_db::in,
     univ_exist_constraints::out) is det.
 
 :- pred retrieve_prog_constraint_list(list(hlds_constraint)::in,
@@ -511,8 +512,8 @@ init_hlds_constraint(Constraint, HLDSConstraint) :-
     Constraint = constraint(ClassName, ArgTypes),
     HLDSConstraint = hlds_constraint([], ClassName, ArgTypes).
 
-make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
-        Constraints) :-
+make_head_hlds_constraint_db(ClassTable, TVarSet, ProgConstraints,
+        ConstraintDb) :-
     ProgConstraints =
         univ_exist_constraints(UnivConstraints, ExistConstraints),
     GoalId = goal_id_for_head_constraints,
@@ -520,28 +521,29 @@ make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         AssumedConstraints),
     make_hlds_constraint_list(ExistConstraints, unproven, GoalId,
         UnprovenConstraints),
-    make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
-        AssumedConstraints, Constraints).
+    make_hlds_constraint_db(ClassTable, TVarSet, UnprovenConstraints,
+        AssumedConstraints, ConstraintDb).
 
-make_body_hlds_constraints(ClassTable, TVarSet, GoalId, ProgConstraints,
-        Constraints) :-
+make_body_hlds_constraint_db(ClassTable, TVarSet, GoalId, ProgConstraints,
+        ConstraintDb) :-
     ProgConstraints =
         univ_exist_constraints(UnivConstraints, ExistConstraints),
     make_hlds_constraint_list(UnivConstraints, unproven, GoalId,
         UnprovenConstraints),
     make_hlds_constraint_list(ExistConstraints, assumed, GoalId,
         AssumedConstraints),
-    make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
-        AssumedConstraints, Constraints).
+    make_hlds_constraint_db(ClassTable, TVarSet, UnprovenConstraints,
+        AssumedConstraints, ConstraintDb).
 
-make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
+make_hlds_constraint_db(ClassTable, TVarSet, Unproven, Assumed,
+        ConstraintDb) :-
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
         Unproven, map.init, Redundant0),
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
         Assumed, Redundant0, Redundant),
     list.foldl(update_ancestor_constraints(ClassTable, TVarSet),
         Assumed, map.init, Ancestors),
-    Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    ConstraintDb = hlds_constraint_db(Unproven, Assumed, Redundant, Ancestors).
 
 make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalId,
         Constraints) :-
@@ -561,16 +563,16 @@ make_hlds_constraint_list_2([ProgConstraint | ProgConstraints], ConstraintType,
     make_hlds_constraint_list_2(ProgConstraints, ConstraintType,
         GoalId, CurArgNum + 1, HLDSConstraints).
 
-merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
-    ConstraintsA = hlds_constraints(UnprovenA, AssumedA,
+merge_hlds_constraint_dbs(ConstraintDbA, ConstraintDbB, ConstraintDb) :-
+    ConstraintDbA = hlds_constraint_db(UnprovenA, AssumedA,
         RedundantA, AncestorsA),
-    ConstraintsB = hlds_constraints(UnprovenB, AssumedB,
+    ConstraintDbB = hlds_constraint_db(UnprovenB, AssumedB,
         RedundantB, AncestorsB),
     Unproven = UnprovenA ++ UnprovenB,
     Assumed = AssumedA ++ AssumedB,
     map.union(set.union, RedundantA, RedundantB, Redundant),
     map.union(pick_shorter_list, AncestorsA, AncestorsB, Ancestors),
-    Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    ConstraintDb = hlds_constraint_db(Unproven, Assumed, Redundant, Ancestors).
 
 :- pred pick_shorter_list(list(T)::in, list(T)::in, list(T)::out) is det.
 
@@ -587,8 +589,8 @@ is_shorter([], _).
 is_shorter([_ | As], [_ | Bs]) :-
     is_shorter(As, Bs).
 
-retrieve_univ_exist_constraints(Constraints, UnivExistConstraints) :-
-    Constraints = hlds_constraints(Unproven, Assumed, _, _),
+retrieve_univ_exist_constraints(ConstraintDb, UnivExistConstraints) :-
+    ConstraintDb = hlds_constraint_db(Unproven, Assumed, _, _),
     retrieve_prog_constraint_list(Unproven, UnivProgConstraints),
     retrieve_prog_constraint_list(Assumed, ExistProgConstraints),
     UnivExistConstraints =
@@ -659,12 +661,10 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
         % variables that appear in the head of the declaration.)
 
         tvarset_merge_renaming(TVarSet, ClassTVarSet, _, Renaming),
-        apply_variable_renaming_to_constraint_list(Renaming,
-            ClassAncestors, RenamedAncestors),
-        apply_variable_renaming_to_tvar_list(Renaming, ClassParams,
-            RenamedParams),
+        apply_renaming_to_constraints(Renaming, ClassAncestors, RenamedAncestors),
+        apply_renaming_to_tvars(Renaming, ClassParams, RenamedParams),
         map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
-        apply_subst_to_constraint_list(Subst, RenamedAncestors, Ancestors),
+        apply_subst_to_constraints(Subst, RenamedAncestors, Ancestors),
         list.foldl(add_redundant_constraint, Ancestors, !Redundant)
     ).
 
@@ -747,12 +747,12 @@ update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
 
     tvarset_merge_renaming(TVarSet, ClassDefn ^ classdefn_tvarset, _,
         Renaming),
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         ClassDefn ^ classdefn_supers, RenamedSupers),
-    apply_variable_renaming_to_tvar_list(Renaming, ClassDefn ^ classdefn_vars,
+    apply_renaming_to_tvars(Renaming, ClassDefn ^ classdefn_vars,
         RenamedParams),
     map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
-    apply_subst_to_prog_constraint_list(Subst, RenamedSupers, Supers),
+    apply_subst_to_prog_constraints(Subst, RenamedSupers, Supers),
 
     Descendants = [Constraint | Descendants0],
     list.foldl(update_ancestor_constraints_3(ClassTable, TVarSet, Descendants),

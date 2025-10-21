@@ -920,8 +920,7 @@ do_inline_call(ModuleInfo, ExternalTypeParams, CallContext,
 
     tvarset_merge_renaming(TypeVarSet0, CalleeTypeVarSet, TypeVarSet,
         TypeRenaming),
-    apply_variable_renaming_to_var_table(TypeRenaming,
-        CalleeVarTable0, CalleeVarTable1),
+    rename_vars_in_var_table(TypeRenaming, CalleeVarTable0, CalleeVarTable1),
 
     % Next, compute the type substitution and then apply it.
 

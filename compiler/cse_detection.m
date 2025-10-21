@@ -1139,7 +1139,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    apply_variable_renaming_to_var_table(Renaming, VarTable0, VarTable),
+    rename_vars_in_var_table(Renaming, VarTable0, VarTable),
 
     !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
     !CseInfo ^ csei_var_table := VarTable.

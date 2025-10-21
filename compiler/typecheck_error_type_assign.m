@@ -307,7 +307,7 @@ type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, MaybeSource, MaybeSeq)
     ),
     type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
+    type_assign_get_constraint_db(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
@@ -389,17 +389,17 @@ type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
         Type1, Type),
     Str = mercury_type_to_string(TypeVarSet, print_name_only, Type).
 
-:- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
+:- func type_assign_hlds_constraints_to_pieces(hlds_constraint_db,
     tsubst, tvarset) = list(format_piece).
 
-type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
+type_assign_hlds_constraints_to_pieces(ConstraintDb, TypeBindings, TypeVarSet)
         = Pieces1 ++ Pieces2 :-
-    Constraints =
-        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
+    ConstraintDb =
+        hlds_constraint_db(UnprovenConstraints, AssumedConstraints, _, _),
     PiecesList1 = type_assign_constraints_to_pieces_list("&",
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",
-        ConstraintsToProve, TypeBindings, TypeVarSet, no),
+        UnprovenConstraints, TypeBindings, TypeVarSet, no),
     LinePieces1 = pieces_list_to_line_pieces(PiecesList1),
     LinePieces2 = pieces_list_to_line_pieces(PiecesList2),
     Pieces1 = add_suffix_if_nonempty(LinePieces1, [nl]),

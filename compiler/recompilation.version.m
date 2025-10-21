@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1647,11 +1647,11 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
     % XXX kind inference: we assume all tvars have kind `star'.
 
     map.init(KindMap2),
-    apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap2,
+    apply_renaming_to_tvar_kind_map(Renaming, KindMap2,
         RenamedKindMap2),
-    apply_variable_renaming_to_tvar_list(Renaming, ExistQVars2,
+    apply_renaming_to_tvars(Renaming, ExistQVars2,
         RenamedExistQVars2),
-    apply_rec_subst_to_tvar_list(RenamedKindMap2, Types2ToTypes1Subst,
+    apply_rec_subst_to_tvars(RenamedKindMap2, Types2ToTypes1Subst,
         RenamedExistQVars2, SubstExistQTypes2),
     ( if
         prog_type.type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2)
@@ -1662,7 +1662,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
     ),
 
     % Check that the class constraints are identical.
-    apply_variable_renaming_to_univ_exist_constraints(Renaming,
+    apply_renaming_to_univ_exist_constraints(Renaming,
         Constraints2, RenamedConstraints2),
     apply_rec_subst_to_univ_exist_constraints(Types2ToTypes1Subst,
         RenamedConstraints2, SubstConstraints2),
@@ -1768,7 +1768,7 @@ is_type_subst_changed(TVarSet1, TVarSet2, TypeSubst1, TypeSubst2, Changed) :-
 type_list_is_unchanged(TVarSet1, TVarSet2, Types1, Types2,
         TVarSet, Renaming, Types2ToTypes1Subst) :-
     tvarset_merge_renaming(TVarSet1, TVarSet2, TVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, Types2, SubstTypes2),
+    apply_renaming_to_types(Renaming, Types2, SubstTypes2),
 
     % Check that the types are equivalent.
     type_list_subsumes(SubstTypes2, Types1, Types2ToTypes1Subst),

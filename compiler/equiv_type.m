@@ -143,7 +143,7 @@
     tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
-:- pred replace_in_prog_constraint_list(type_eqv_map::in,
+:- pred replace_in_prog_constraints(type_eqv_map::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out)
     is det.
@@ -1348,7 +1348,7 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     list.length(Vars, Arity),
     maybe_start_recording_expanded_items(ModuleName, ClassName, !.RecompInfo,
         ExpandedItems0),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         Constraints0, Constraints, TVarSet0, TVarSet,
         ExpandedItems0, ExpandedItems1, !UsedModules),
     (
@@ -1382,7 +1382,7 @@ replace_in_abstract_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap,
     list.length(Vars, Arity),
     maybe_start_recording_expanded_items(ModuleName, ClassName, !.RecompInfo,
         ExpandedItems0),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         Constraints0, Constraints, TVarSet0, TVarSet,
         ExpandedItems0, ExpandedItems, !UsedModules),
     Specs = [],
@@ -1420,7 +1420,7 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
     else
         UsedTypeCtors0 = eqv_expand_info(ModuleName, set.init)
     ),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         Constraints0, Constraints, TVarSet0, TVarSet1,
         UsedTypeCtors0, UsedTypeCtors1, !UsedModules),
     replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, Types0, Types,
@@ -1468,7 +1468,7 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
     else
         UsedTypeCtors0 = eqv_expand_info(ModuleName, set.init)
     ),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         Constraints0, Constraints, TVarSet0, TVarSet1,
         UsedTypeCtors0, UsedTypeCtors1, !UsedModules),
     replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, Types0, Types,
@@ -2078,7 +2078,7 @@ replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
 
         !:Changed = changed,
         map.apply_to_list(Args0, Renaming, Args),
-        apply_variable_renaming_to_type(Renaming, Body0, Body1),
+        apply_renaming_to_type(Renaming, Body0, Body1),
         TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
         record_expanded_item(recomp_item_id(recomp_type_name, TypeCtorItem),
             !EquivTypeInfo),
@@ -2226,24 +2226,24 @@ replace_in_univ_exist_constraints(TypeEqvMap, Cs0, Cs,
 replace_in_univ_exist_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs,
         !TVarSet, !EquivTypeInfo, !UsedModules) :-
     Cs0 = univ_exist_constraints(UnivCs0, ExistCs0),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         UnivCs0, UnivCs, !TVarSet, !EquivTypeInfo, !UsedModules),
-    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         ExistCs0, ExistCs, !TVarSet, !EquivTypeInfo, !UsedModules),
     Cs = univ_exist_constraints(UnivCs, ExistCs).
 
-replace_in_prog_constraint_list(TypeEqvMap,
+replace_in_prog_constraints(TypeEqvMap,
         !Constraints, !TVarSet, !EquivTypeInfo) :-
-    replace_in_prog_constraint_list_location(do_not_record_sym_name_use,
+    replace_in_prog_constraints_location(do_not_record_sym_name_use,
         TypeEqvMap, !Constraints,
         !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
-:- pred replace_in_prog_constraint_list_location(maybe_record_sym_name_use::in,
+:- pred replace_in_prog_constraints_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(prog_constraint)::in, list(prog_constraint)::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         !Constraints, !TVarSet, !EquivTypeInfo, !UsedModules) :-
     list.map_foldl3(
         replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap),
@@ -2441,7 +2441,7 @@ replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
         MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
         ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
             UnconstrainedExistQTVars, ConstrainedExistQTVars),
-        replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+        replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
             Constraints0, Constraints, !TVarSet, !EquivTypeInfo, !UsedModules),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             UnconstrainedExistQTVars, ConstrainedExistQTVars),

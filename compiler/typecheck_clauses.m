@@ -626,7 +626,7 @@ typecheck_plain_or_foreign_call_pred_id(ArgVectorKind, Context, GoalId,
             PredArgTypes, !TypeAssignSet, !Info)
     else
         module_info_get_class_table(ModuleInfo, ClassTable),
-        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
+        make_body_hlds_constraint_db(ClassTable, PredTypeVarSet,
             GoalId, PredClassContext, PredConstraints),
         typecheck_vars_have_polymorphic_type_list(atas_pred(PredId),
             var_vector_args(ArgVectorKind), Context, ArgVars,
@@ -677,7 +677,7 @@ get_overloaded_pred_arg_types(PredTable, ClassTable, GoalId,
         PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    make_body_hlds_constraints(ClassTable, TVarSet, GoalId,
+    make_body_hlds_constraint_db(ClassTable, TVarSet, GoalId,
         PredClassContext, PredConstraints),
     add_renamed_apart_arg_type_assigns(atas_pred(PredId), PredTypeVarSet,
         PredExistQVars, PredArgTypes, PredConstraints,
@@ -703,7 +703,7 @@ typecheck_higher_order_call(GenericCall, Context, PredVar, Purity, ArgVars,
     ExistQVars = [],
     typecheck_vars_have_polymorphic_type_list(atas_higher_order_call(PredVar),
         VarVectorKind, Context, [PredVar | ArgVars], TypeVarSet, ExistQVars,
-        [PredVarType | ArgTypes], empty_hlds_constraints,
+        [PredVarType | ArgTypes], empty_hlds_constraint_db,
         !TypeAssignSet, !Info).
 
 %---------------------------------------------------------------------------%
@@ -928,37 +928,36 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     %
 :- pred typecheck_vars_have_polymorphic_type_list(args_type_assign_source::in,
     var_vector_kind::in, prog_context::in, list(prog_var)::in, tvarset::in,
-    existq_tvars::in, list(mer_type)::in, hlds_constraints::in,
+    existq_tvars::in, list(mer_type)::in, hlds_constraint_db::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_vars_have_polymorphic_type_list(Source, VarVectorKind, Context,
-        ArgVars, PredTypeVarSet, PredExistQVars, PredArgTypes, PredConstraints,
-        TypeAssignSet0, TypeAssignSet, !Info) :-
+        ArgVars, PredTypeVarSet, PredExistQVars, PredArgTypes,
+        PredConstraintDb, TypeAssignSet0, TypeAssignSet, !Info) :-
     add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet, PredExistQVars,
-        PredArgTypes, PredConstraints, TypeAssignSet0, [], ArgsTypeAssignSet0),
+        PredArgTypes, PredConstraintDb, TypeAssignSet0,
+        [], ArgsTypeAssignSet0),
     typecheck_vars_have_arg_types(VarVectorKind, Context, 1, ArgVars,
         ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info),
     TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet).
 
 :- pred add_renamed_apart_arg_type_assigns(args_type_assign_source::in,
-    tvarset::in, existq_tvars::in, list(mer_type)::in, hlds_constraints::in,
+    tvarset::in, existq_tvars::in, list(mer_type)::in, hlds_constraint_db::in,
     type_assign_set::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
 add_renamed_apart_arg_type_assigns(_, _, _, _, _, [], !ArgsTypeAssigns).
 add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet, PredExistQVars,
-        PredArgTypes, PredConstraints, [TypeAssign0 | TypeAssigns0],
+        PredArgTypes, PredConstraintDb, [TypeAssign0 | TypeAssigns0],
         !ArgsTypeAssigns) :-
     % Rename everything apart.
     type_assign_rename_apart(TypeAssign0, PredTypeVarSet,
         TypeAssign1, Renaming),
-    apply_variable_renaming_to_type_list(Renaming,
-        PredArgTypes, ParentArgTypes),
-    apply_variable_renaming_to_tvar_list(Renaming,
-        PredExistQVars, ParentExistQVars),
-    apply_variable_renaming_to_constraints(Renaming,
-        PredConstraints, ParentConstraints),
+    apply_renaming_to_types(Renaming, PredArgTypes, ParentArgTypes),
+    apply_renaming_to_tvars(Renaming, PredExistQVars, ParentExistQVars),
+    apply_renaming_to_constraint_db(Renaming,
+        PredConstraintDb, ParentConstraintDb),
 
     % Insert the existentially quantified type variables for the called
     % predicate into HeadTypeParams (which holds the set of type
@@ -969,10 +968,10 @@ add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet, PredExistQVars,
 
     % Save the results and recurse.
     NewArgsTypeAssign = args_type_assign(TypeAssign, ParentArgTypes,
-        ParentConstraints, Source),
+        ParentConstraintDb, Source),
     !:ArgsTypeAssigns = [NewArgsTypeAssign | !.ArgsTypeAssigns],
     add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet,
-        PredExistQVars, PredArgTypes, PredConstraints, TypeAssigns0,
+        PredExistQVars, PredArgTypes, PredConstraintDb, TypeAssigns0,
         !ArgsTypeAssigns).
 
 %---------------------------------------------------------------------------%
@@ -1245,7 +1244,7 @@ compute_headvar_types_in_type_assign(HeadVars, TypeAssign, HeadTypes) :-
     type_assign_get_var_types(TypeAssign, VarTypes),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     lookup_var_types(VarTypes, HeadVars, HeadTypes0),
-    apply_rec_subst_to_type_list(TypeBindings, HeadTypes0, HeadTypes).
+    apply_rec_subst_to_types(TypeBindings, HeadTypes0, HeadTypes).
 
 :- pred all_identical_up_to_renaming(list(mer_type)::in,
     list(list(mer_type))::in) is semidet.
@@ -1277,7 +1276,7 @@ ensure_vars_have_a_type(VarVectorKind, Context, Vars, !TypeAssignSet, !Info) :-
         prog_type.var_list_to_type_list(map.init, TypeVars, Types),
         typecheck_vars_have_polymorphic_type_list(atas_ensure_have_a_type,
             VarVectorKind, Context, Vars, TypeVarSet, [], Types,
-            empty_hlds_constraints, !TypeAssignSet, !Info)
+            empty_hlds_constraint_db, !TypeAssignSet, !Info)
     ).
 
     % Ensure that each variable in Vars has been assigned a single type.
@@ -1302,7 +1301,7 @@ ensure_vars_have_a_single_type(VarVectorKind, Context, Vars,
         list.duplicate(NumVars, Type, Types),
         typecheck_vars_have_polymorphic_type_list(atas_ensure_have_a_type,
             VarVectorKind, Context, Vars, TypeVarSet, [], Types,
-            empty_hlds_constraints, !TypeAssignSet, !Info)
+            empty_hlds_constraint_db, !TypeAssignSet, !Info)
     ).
 
 %---------------------------------------------------------------------------%

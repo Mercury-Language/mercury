@@ -238,7 +238,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !QualInfo, !Specs) :-
 
     % Apply the updated renaming to convert type variables in
     % the clause to type variables in the tvarset.
-    apply_variable_renaming_to_type(TVarRenaming, Type1, Type2),
+    apply_renaming_to_type(TVarRenaming, Type1, Type2),
 
     % Expand equivalence types.
     % We don't need to record the expanded types for smart recompilation

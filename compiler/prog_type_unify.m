@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -435,11 +435,11 @@ arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
         CalleeTVarSet, PredKindMap, PredExistQVars, PredArgTypes) :-
     % Rename the type variables in the callee's argument types.
     tvarset_merge_renaming(TVarSet, CalleeTVarSet, _TVarSet1, Renaming),
-    apply_variable_renaming_to_tvar_kind_map(Renaming, PredKindMap,
+    apply_renaming_to_tvar_kind_map(Renaming, PredKindMap,
         ParentKindMap),
-    apply_variable_renaming_to_type_list(Renaming, PredArgTypes,
+    apply_renaming_to_types(Renaming, PredArgTypes,
         ParentArgTypes),
-    apply_variable_renaming_to_tvar_list(Renaming, PredExistQVars,
+    apply_renaming_to_tvars(Renaming, PredExistQVars,
         ParentExistQVars),
 
     % Check that the types of the candidate predicate/function
@@ -470,7 +470,7 @@ arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
         % Optimize common case.
     ;
         ParentExistQVars = [_ | _],
-        apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualSubst,
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualSubst,
             ParentExistQVars, ActualExistQTypes),
         all [T] (
             list.member(T, ActualExistQTypes)
