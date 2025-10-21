@@ -809,7 +809,31 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
             get_known_pred_info_names(PredicateTable, pf_function,
                 KnownFuncNames0),
             set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
-            set.union(ConsTableNameSet, KnownFuncNamesSet0, KnownFuncNamesSet),
+            set.union(ConsTableNameSet,
+                KnownFuncNamesSet0, KnownFuncNamesSet1),
+            % While you are not allowed to curry (and thus reduce the
+            % apparent arity) of an automatically-generated field access
+            % function, you *are* allowed to curry a user-defined function
+            % that has the same name. However, using "abcd :=" as a
+            % suggested replacement for "abcdef" is probably a bad idea,
+            % In fact, suggesting replacing anything with " :=" is a bad idea.
+            ( if
+                Arity = 1
+            then
+                get_all_field_names(ModuleInfo, FieldNames),
+                set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
+            else if
+                Arity = 2,
+                % Allow suggestions that add back a missing space
+                % before the ":=".
+                string.suffix(BaseName, ":=")
+            then
+                get_all_field_names(ModuleInfo, FieldNames0),
+                FieldNames = set.map(string.add_suffix(" :="), FieldNames0),
+                set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
+            else
+                KnownFuncNamesSet = KnownFuncNamesSet1
+            ),
             set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
             maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
                 DidYouMeanPieces),
@@ -905,6 +929,21 @@ accumulate_matching_cons_module_names(FunctorSymName, ConsDefn,
             true
         )
     ).
+
+:- pred get_all_field_names(module_info::in, set(string)::out) is det.
+
+get_all_field_names(ModuleInfo, FieldNameSet) :-
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
+    map.foldl(accumulate_field_names, CtorFieldTable, [], FieldNames),
+    set.list_to_set(FieldNames, FieldNameSet).
+
+:- pred accumulate_field_names(sym_name::in, list(hlds_ctor_field_defn)::in,
+    list(string)::in, list(string)::out) is det.
+
+accumulate_field_names(FieldSymName, _FieldDefns, !FieldNames) :-
+    !:FieldNames = [unqualify_name(FieldSymName) | !.FieldNames].
+
+%---------------------------------------------------------------------------%
 
 :- func report_cons_error(prog_context, cons_error) = list(error_msg).
 
