@@ -44,8 +44,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred type_assign_rename_apart(type_assign::in, tvarset::in,
-    list(mer_type)::in, type_assign::out, list(mer_type)::out,
-    tvar_renaming::out) is det.
+    type_assign::out, tvar_renaming::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -88,7 +87,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_construct.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.vartypes.
 
@@ -123,12 +121,10 @@ type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
 
 %---------------------------------------------------------------------------%
 
-type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
-        TypeAssign, ParentArgTypes, Renaming) :-
+type_assign_rename_apart(TypeAssign0, PredTypeVarSet,
+        TypeAssign, Renaming) :-
     type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
     tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, PredArgTypes,
-        ParentArgTypes),
     type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign).
 
 %---------------------------------------------------------------------------%

@@ -951,12 +951,14 @@ add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, [TypeAssign0 | TypeAssigns0],
         !ArgsTypeAssigns) :-
     % Rename everything apart.
-    type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
-        TypeAssign1, ParentArgTypes, Renaming),
-    apply_variable_renaming_to_tvar_list(Renaming, PredExistQVars,
-        ParentExistQVars),
-    apply_variable_renaming_to_constraints(Renaming, PredConstraints,
-        ParentConstraints),
+    type_assign_rename_apart(TypeAssign0, PredTypeVarSet,
+        TypeAssign1, Renaming),
+    apply_variable_renaming_to_type_list(Renaming,
+        PredArgTypes, ParentArgTypes),
+    apply_variable_renaming_to_tvar_list(Renaming,
+        PredExistQVars, ParentExistQVars),
+    apply_variable_renaming_to_constraints(Renaming,
+        PredConstraints, ParentConstraints),
 
     % Insert the existentially quantified type variables for the called
     % predicate into HeadTypeParams (which holds the set of type

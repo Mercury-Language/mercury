@@ -304,13 +304,14 @@ typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
     % Iterate over all the different possible pairings of all the
     % constructor definitions and all the type assignments.
     % For each constructor definition in ConsTypeInfos and type assignment
-    % in TypeAssignSet, produce a pair
+    % in TypeAssignSet, produce
     %
     %   TypeAssign - cons_type(Type, ArgTypes)
+    %   cons_type_assign(TypeAssign, ConsType, ArgTypes, Source).
     %
-    % where `cons_type(Type, ArgTypes)' records one of the possible types for
-    % the constructor in ConsTypeInfos, and where TypeAssign is the type
-    % assignment renamed apart from the types of the constructors.
+    % ArgTypes->ConsType is one of the possible types for the constructor
+    % in ConsTypeInfos, and where TypeAssign is the type assignment
+    % renamed apart from the types of the constructors.
     %
     % This predicate iterates over the cons_type_infos;
     % get_cons_type_assigns_for_cons_defn iterates over the type_assigns.
@@ -354,30 +355,23 @@ get_cons_type_assign(ConsTypeInfo, TypeAssign0, ConsTypeAssign) :-
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
     % (Optimize the common case of a non-polymorphic type.)
-    ( if
-        varset.is_empty(ConsTypeVarSet)
-    then
+    ( if varset.is_empty(ConsTypeVarSet) then
         ConsType = ConsType0,
         ArgTypes = ArgTypes0,
         TypeAssign2 = TypeAssign0,
         ConstraintsToAdd = ClassConstraints0
-    else if
+    else
         type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
-            [ConsType0 | ArgTypes0], TypeAssign1, [ConsType1 | ArgTypes1],
-            Renaming)
-    then
+            TypeAssign1, Renaming),
+        apply_variable_renaming_to_type(Renaming, ConsType0, ConsType),
+        apply_variable_renaming_to_type_list(Renaming, ArgTypes0, ArgTypes),
         apply_variable_renaming_to_tvar_list(Renaming,
             ConsExistQVars0, ConsExistQVars),
         apply_variable_renaming_to_constraints(Renaming,
             ClassConstraints0, ConstraintsToAdd),
         type_assign_get_existq_tvars(TypeAssign1, ExistQTVars0),
         ExistQTVars = ConsExistQVars ++ ExistQTVars0,
-        type_assign_set_existq_tvars(ExistQTVars, TypeAssign1, TypeAssign2),
-
-        ConsType = ConsType1,
-        ArgTypes = ArgTypes1
-    else
-        unexpected($pred, "type_assign_rename_apart failed")
+        type_assign_set_existq_tvars(ExistQTVars, TypeAssign1, TypeAssign2)
     ),
 
     % Add the constraints for this functor to the current constraint set.
