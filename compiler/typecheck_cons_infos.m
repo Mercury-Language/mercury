@@ -71,7 +71,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -371,7 +370,10 @@ hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId, Action,
         DuCtor, ConsDefns, TailConsTypeInfos, TailConsErrors),
     (
         HeadMaybeConsTypeInfo = ok(HeadConsTypeInfo),
-        ConsTypeInfos = [HeadConsTypeInfo | TailConsTypeInfos],
+        % One of the callers of hlds_cons_defn_to_maybe_cons_type_info
+        % cares about HeadConsTypeInfo being for a source_type or not,
+        % but the callers of this predicate do not.
+        ConsTypeInfos = [coerce(HeadConsTypeInfo) | TailConsTypeInfos],
         ConsErrors = TailConsErrors
     ;
         HeadMaybeConsTypeInfo = error(HeadConsError),
@@ -379,15 +381,22 @@ hlds_cons_defns_to_cons_type_infos_and_errors(Info, GoalId, Action,
         ConsErrors = [HeadConsError | TailConsErrors]
     ).
 
+:- type du_cons_type_info_source =< cons_type_info_source
+    --->    source_type(type_ctor, du_ctor).
+:- type du_cons_type_info =< cons_type_info
+    --->    cons_type_info(tvarset, existq_tvars, mer_type,
+                list(mer_type), hlds_constraints, du_cons_type_info_source).
+:- type maybe_du_cons_type_info =< maybe_cons_type_info
+    --->    ok(du_cons_type_info)
+    ;       error(cons_error).
+
 :- pred hlds_cons_defn_to_maybe_cons_type_info(typecheck_info, goal_id,
-    cons_constraints_action, du_ctor, hlds_cons_defn, maybe_cons_type_info).
+    cons_constraints_action, du_ctor, hlds_cons_defn, maybe_du_cons_type_info).
 :- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
     in(bound(do_not_flip_constraints)), in, in, out) is det.
 :- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
-    in(bound(flip_constraints_for_field_set)),
-    in, in, out) is det.
-:- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
-    in, in, in, out) is det.
+    in(bound(flip_constraints_for_field_set)), in, in, out) is det.
+:- mode hlds_cons_defn_to_maybe_cons_type_info(in, in, in, in, in, out) is det.
 % The last mode should be
 %
 % :- mode hlds_cons_defn_to_maybe_cons_type_info(in, in,
@@ -621,8 +630,8 @@ get_auto_generated_field_access_func_cons_infos(Info, GoalId, DuCtorSymName,
 
 :- pred make_field_access_function_cons_type_info(typecheck_info::in,
     goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
-    sym_name::in, hlds_ctor_field_defn::in,
-    maybe_cons_type_info::out) is semidet.
+    sym_name::in, hlds_ctor_field_defn::in, maybe_cons_type_info::out)
+    is semidet.
 
 make_field_access_function_cons_type_info(Info, GoalId, FuncSymName, UserArity,
         AccessType, FieldSymName, FieldDefn, MaybeConsTypeInfo) :-
@@ -632,18 +641,18 @@ make_field_access_function_cons_type_info(Info, GoalId, FuncSymName, UserArity,
         MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
         typecheck_info_get_module_info(Info, ModuleInfo),
         module_info_get_class_table(ModuleInfo, ClassTable),
-        convert_field_access_cons_type_info(ClassTable, AccessType,
+        functor_to_field_access_function_cons_type_info(ClassTable, AccessType,
             FieldSymName, FieldDefn, FunctorConsTypeInfo,
             OrigExistTVars, MaybeConsTypeInfo)
     ;
-        MaybeFunctorConsTypeInfo = error(_),
-        MaybeConsTypeInfo = MaybeFunctorConsTypeInfo
+        MaybeFunctorConsTypeInfo = error(ConsError),
+        MaybeConsTypeInfo = error(ConsError)
     ).
 
 :- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
     sym_name::in, user_arity::in, field_access_type::in,
     hlds_ctor_field_defn::in,
-    existq_tvars::out, maybe_cons_type_info::out) is semidet.
+    existq_tvars::out, maybe_du_cons_type_info::out) is semidet.
 
 get_field_access_constructor(Info, GoalId, FuncSymName, UserArity, AccessType,
         FieldDefn, OrigExistTVars, MaybeFunctorConsTypeInfo) :-
@@ -674,25 +683,6 @@ get_field_access_constructor(Info, GoalId, FuncSymName, UserArity, AccessType,
             hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, ConsAction,
                 DuCtor, ConsDefn, MaybeFunctorConsTypeInfo)
         )
-    ).
-
-:- pred is_field_access_function_for_type_ctor(module_info::in,
-    field_access_type::in, type_ctor::in, pred_id::in) is semidet.
-
-is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
-        PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    require_complete_switch [AccessType]
-    (
-        AccessType = get,
-        ArgTypes = [ArgType, _ResultType],
-        type_to_ctor(ArgType, TypeCtor)
-    ;
-        AccessType = set,
-        ArgTypes = [ArgType, _FieldType, ResultType],
-        type_to_ctor(ArgType, TypeCtor),
-        type_to_ctor(ResultType, TypeCtor)
     ).
 
     % If the user has supplied a declaration for a field access function
@@ -726,38 +716,49 @@ are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
         InFieldAccessFunc = yes(_)
     ).
 
+:- pred is_field_access_function_for_type_ctor(module_info::in,
+    field_access_type::in, type_ctor::in, pred_id::in) is semidet.
+
+is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
+        PredId) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    require_complete_switch [AccessType]
+    (
+        AccessType = get,
+        ArgTypes = [ArgType, _ResultType],
+        type_to_ctor(ArgType, TypeCtor)
+    ;
+        AccessType = set,
+        ArgTypes = [ArgType, _FieldType, ResultType],
+        type_to_ctor(ArgType, TypeCtor),
+        type_to_ctor(ResultType, TypeCtor)
+    ).
+
 :- type maybe_cons_type_info
     --->    ok(cons_type_info)
     ;       error(cons_error).
 
-:- pred convert_field_access_cons_type_info(class_table::in,
+:- pred functor_to_field_access_function_cons_type_info(class_table::in,
     field_access_type::in, sym_name::in, hlds_ctor_field_defn::in,
-    cons_type_info::in, existq_tvars::in, maybe_cons_type_info::out) is det.
+    du_cons_type_info::in, existq_tvars::in, maybe_cons_type_info::out) is det.
 
-convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
-        FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
+functor_to_field_access_function_cons_type_info(ClassTable, AccessType,
+        FieldSymName, FieldDefn, FunctorConsTypeInfo, OrigExistTVars,
+        MaybeConsTypeInfo) :-
     FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
         FunctorType, ConsArgTypes, Constraints0, Source0),
-    (
-        Source0 = source_type(SourceType, ConsId)
-    ;
-        ( Source0 = source_builtin_type(_)
-        ; Source0 = source_field_access(_, _, _, _)
-        ; Source0 = source_apply(_)
-        ; Source0 = source_pred(_)
-        ),
-        unexpected($pred, "not type")
-    ),
+    Source0 = source_type(SourceType, ConsId),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
     list.det_index1(ConsArgTypes, FieldNumber, FieldType),
     FieldName = unqualify_name(FieldSymName),
     (
         AccessType = get,
         Source = source_field_access(get, SourceType, ConsId, FieldName),
-        RetType = FieldType,
+        ReturnType = FieldType,
         ArgTypes = [FunctorType],
-        ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
-            RetType, ArgTypes, Constraints0, Source))
+        MaybeConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+            ReturnType, ArgTypes, Constraints0, Source))
     ;
         AccessType = set,
         Source = source_field_access(set, SourceType, ConsId, FieldName),
@@ -783,7 +784,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
             ArgTypes = [FunctorType, FieldType],
             % None of the constraints are affected by the updated field,
             % so the constraints are unchanged.
-            ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+            MaybeConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
                 RetType, ArgTypes, Constraints0, Source))
         ;
             TVarsInField = [_ | _],
@@ -836,7 +837,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
                     TVarRenaming, Constraints0, Constraints),
                 RetType = OutputFunctorType,
                 ArgTypes = [FunctorType, RenamedFieldType],
-                ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
+                MaybeConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
                     RetType, ArgTypes, Constraints, Source))
             else
                 % This field cannot be set. Pass out some information so that
@@ -845,7 +846,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
                 % caught by typecheck_functor_arg_types.
                 set.to_sorted_list(ExistQVarsInFieldAndOthers,
                     ExistQVarsInFieldAndOthers1),
-                ConsTypeInfo = error(invalid_field_update(FieldSymName,
+                MaybeConsTypeInfo = error(invalid_field_update(FieldSymName,
                     FieldDefn, TVarSet0, ExistQVarsInFieldAndOthers1))
             )
         )
