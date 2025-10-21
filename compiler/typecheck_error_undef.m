@@ -708,14 +708,9 @@ syntax_functor_components(FunctorName, Arity, Components) :-
 
 report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
         ConsErrors, Spec) :-
-    (
-        ConsErrors = [],
-        ConsMsgs = []
-    ;
-        ConsErrors = [_ | _],
-        ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
-        list.condense(ConsMsgLists, ConsMsgs)
-    ),
+    ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
+    list.condense(ConsMsgLists, ConsMsgs),
+
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_cons_table(ModuleInfo, ConsTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -750,101 +745,15 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
         QualSuggestionMsgs = []
     ;
         OtherConsFuncArities = [],
-        ConsIdPiece = qual_cons_id_and_maybe_arity(du_data_ctor(DuCtor)),
-        UndefSymbolPieces = [words("error:")] ++
-            color_as_incorrect([words("undefined")]) ++
-            [words("symbol")] ++
-            color_as_subject([ConsIdPiece, suffix(".")]) ++
-            [nl],
-        ( if
-            SymName = qualified(ModQual, _)
-        then
-            maybe_report_missing_import_addendum(ClauseContext, ModQual,
-                AddeddumPieces, MissingImportModules)
-        else if
-            SymName = unqualified("[|]"),
-            Arity = 2
-        then
-            maybe_report_missing_import_addendum(ClauseContext,
-                unqualified("list"), AddeddumPieces, MissingImportModules)
-        else if
-            SymName = unqualified("coerce")
-        then
-            AddeddumPieces = [words("(The builtin")] ++
-                color_as_subject([words("coerce")]) ++
-                [words("operator expects")] ++
-                color_as_correct([words("one")]) ++
-                [words("argument, not")] ++
-                color_as_incorrect([int_name(Arity), suffix(".")]) ++
-                [suffix(")"), nl],
-            MissingImportModules = []
-        else
-            AddeddumPieces = [],
-            MissingImportModules = []
-        ),
-        ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
-        BaseName = unqualify_name(SymName),
-        return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
-        list.foldl(accumulate_matching_cons_module_names(SymName),
-            ConsDefns, [], ConsModuleNames),
-        PredModuleNames =
-            find_possible_pf_missing_module_qualifiers(PredicateTable,
-                pf_predicate, SymName),
-        FuncModuleNames =
-            find_possible_pf_missing_module_qualifiers(PredicateTable,
-                pf_function, SymName),
-        ModuleNames = ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
-        set.list_to_set(ModuleNames, ModuleNamesSet0),
-        set.delete_list(MissingImportModules, ModuleNamesSet0, ModuleNamesSet),
-        QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
-            Context, "symbol", ModuleNamesSet),
+        maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
+            ConsFuncComps, QualMsgs),
         ( if
             ConsMsgs = [],
             QualMsgs = []
         then
-            % It seems that the reference is to the wrong name.
-            % See if we can mention some similar names that could be
-            % the one they intended.
-            cons_table_names(ConsTable, ConsTableNameSet),
-            get_known_pred_info_names(PredicateTable, pf_function,
-                KnownFuncNames0),
-            set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
-            set.union(ConsTableNameSet,
-                KnownFuncNamesSet0, KnownFuncNamesSet1),
-            % While you are not allowed to curry (and thus reduce the
-            % apparent arity) of an automatically-generated field access
-            % function, you *are* allowed to curry a user-defined function
-            % that has the same name. However, using "abcd :=" as a
-            % suggested replacement for "abcdef" is probably a bad idea,
-            % In fact, suggesting replacing anything with " :=" is a bad idea.
-            ( if
-                Arity = 1
-            then
-                get_all_field_names(ModuleInfo, FieldNames),
-                set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
-            else if
-                Arity = 2,
-                % Allow suggestions that add back a missing space
-                % before the ":=".
-                string.suffix(BaseName, ":=")
-            then
-                get_all_field_names(ModuleInfo, FieldNames0),
-                FieldNames = set.map(string.add_suffix(" :="), FieldNames0),
-                set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
-            else
-                KnownFuncNamesSet = KnownFuncNamesSet1
-            ),
-            set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
-            maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
-                DidYouMeanPieces),
-            (
-                DidYouMeanPieces = [],
-                QualSuggestionMsgs = []
-            ;
-                DidYouMeanPieces = [_ | _],
-                DidyouMeanMsg = msg(Context, DidYouMeanPieces),
-                QualSuggestionMsgs = [DidyouMeanMsg]
-            )
+            maybe_construct_did_you_mean_msg(ModuleInfo, Context, DuCtor,
+                DidYouMeanMsgs),
+            QualSuggestionMsgs = DidYouMeanMsgs
         else
             QualSuggestionMsgs = QualMsgs
         )
@@ -1100,6 +1009,123 @@ report_closure_arities(PredOrFunc, Arities, Pieces) :-
             Pieces = [words("the"), p_or_f(PredOrFunc), suffix("s"),
                 words("with this name have arities")] ++ AritiesPieces
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_construct_missing_qualifier_msg(type_error_clause_context::in,
+    prog_context::in, du_ctor::in,
+    list(error_msg_component)::out, list(error_msg)::out) is det.
+
+maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
+        ConsFuncComps, QualMsgs) :-
+    ModuleInfo = ClauseContext ^ tecc_module_info,
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    module_info_get_predicate_table(ModuleInfo, PredicateTable),
+
+    ConsIdPiece = qual_cons_id_and_maybe_arity(du_data_ctor(DuCtor)),
+    UndefSymbolPieces = [words("error:")] ++
+        color_as_incorrect([words("undefined")]) ++
+        [words("symbol")] ++
+        color_as_subject([ConsIdPiece, suffix(".")]) ++
+        [nl],
+    DuCtor = du_ctor(SymName, Arity, _),
+    ( if
+        SymName = qualified(ModQual, _)
+    then
+        maybe_report_missing_import_addendum(ClauseContext, ModQual,
+            AddeddumPieces, MissingImportModules)
+    else if
+        SymName = unqualified("[|]"),
+        Arity = 2
+    then
+        maybe_report_missing_import_addendum(ClauseContext,
+            unqualified("list"), AddeddumPieces, MissingImportModules)
+    else if
+        SymName = unqualified("coerce")
+    then
+        AddeddumPieces = [words("(The builtin")] ++
+            color_as_subject([words("coerce")]) ++
+            [words("operator expects")] ++
+            color_as_correct([words("one")]) ++
+            [words("argument, not")] ++
+            color_as_incorrect([int_name(Arity), suffix(".")]) ++
+            [suffix(")"), nl],
+        MissingImportModules = []
+    else
+        AddeddumPieces = [],
+        MissingImportModules = []
+    ),
+    ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
+    BaseName = unqualify_name(SymName),
+    return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
+    list.foldl(accumulate_matching_cons_module_names(SymName),
+        ConsDefns, [], ConsModuleNames),
+    PredModuleNames =
+        find_possible_pf_missing_module_qualifiers(PredicateTable,
+            pf_predicate, SymName),
+    FuncModuleNames =
+        find_possible_pf_missing_module_qualifiers(PredicateTable,
+            pf_function, SymName),
+    ModuleNames = ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
+    set.list_to_set(ModuleNames, ModuleNamesSet0),
+    set.delete_list(MissingImportModules, ModuleNamesSet0, ModuleNamesSet),
+    QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+        Context, "symbol", ModuleNamesSet).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_construct_did_you_mean_msg(module_info::in, prog_context::in,
+    du_ctor::in, list(error_msg)::out) is det.
+
+maybe_construct_did_you_mean_msg(ModuleInfo, Context, DuCtor,
+        DidYouMeanMsgs) :-
+    % It seems that the reference is to the wrong name.
+    % See if we can mention some similar names that could be
+    % the one they intended.
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    cons_table_names(ConsTable, ConsTableNameSet),
+    module_info_get_predicate_table(ModuleInfo, PredicateTable),
+    get_known_pred_info_names(PredicateTable, pf_function,
+        KnownFuncNames0),
+    set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
+    set.union(ConsTableNameSet,
+        KnownFuncNamesSet0, KnownFuncNamesSet1),
+    % While you are not allowed to curry (and thus reduce the
+    % apparent arity) of an automatically-generated field access
+    % function, you *are* allowed to curry a user-defined function
+    % that has the same name. However, using "abcd :=" as a
+    % suggested replacement for "abcdef" is probably a bad idea,
+    % In fact, suggesting replacing anything with " :=" is a bad idea.
+    DuCtor = du_ctor(SymName, Arity, _),
+    BaseName = unqualify_name(SymName),
+    ( if
+        Arity = 1
+    then
+        get_all_field_names(ModuleInfo, FieldNames),
+        set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
+    else if
+        Arity = 2,
+        % Allow suggestions that add back a missing space
+        % before the ":=".
+        string.suffix(BaseName, ":=")
+    then
+        get_all_field_names(ModuleInfo, FieldNames0),
+        FieldNames = set.map(string.add_suffix(" :="), FieldNames0),
+        set.union(FieldNames, KnownFuncNamesSet1, KnownFuncNamesSet)
+    else
+        KnownFuncNamesSet = KnownFuncNamesSet1
+    ),
+    set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
+    maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
+        DidYouMeanPieces),
+    (
+        DidYouMeanPieces = [],
+        DidYouMeanMsgs = []
+    ;
+        DidYouMeanPieces = [_ | _],
+        DidyouMeanMsg = msg(Context, DidYouMeanPieces),
+        DidYouMeanMsgs = [DidyouMeanMsg]
     ).
 
 %---------------------------------------------------------------------------%
