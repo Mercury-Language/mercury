@@ -526,47 +526,6 @@ hlds_cons_defn_to_maybe_cons_type_info(Info, GoalId, Action, DuCtor,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % builtin_apply_type(Info, DuCtor, Arity, ConsTypeInfos):
-    %
-    % Succeed if DuCtor is the builtin apply/N or ''/N (N>=2),
-    % which is used to invoke higher-order functions.
-    % If so, bind ConsTypeInfos to a singleton list containing
-    % the appropriate type for apply/N of the specified Arity.
-    %
-:- pred builtin_apply_type(typecheck_info::in, du_ctor::in, int::in,
-    list(cons_type_info)::out) is semidet.
-
-builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
-    DuCtor = du_ctor(unqualified(ApplyName), _, _),
-    % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
-    (
-        ApplyName = "apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_pure
-    ;
-        ApplyName = "",
-        ApplyNameToUse = "apply",
-        Purity = purity_pure
-    ;
-        ApplyName = "impure_apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_impure
-    ;
-        ApplyName = "semipure_apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_semipure
-    ),
-    Arity >= 1,
-    Arity1 = Arity - 1,
-    higher_order_func_type(Purity, Arity1, TypeVarSet, FuncType,
-        ArgTypes, RetType),
-    ExistQVars = [],
-    ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], empty_hlds_constraints,
-        source_apply(ApplyNameToUse))].
-
-%---------------------%
-
     % is_du_ctor_synonym_for_field_access_function(Info, DuCtor, Arity,
     %   AccessType, FieldName, FieldDefns):
     %
@@ -607,6 +566,8 @@ is_du_ctor_synonym_for_field_access_function(Info, DuCtor, UserArity,
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     map.search(CtorFieldTable, FieldSymName, FieldDefns).
+
+%---------------------------------------------------------------------------%
 
     % get_auto_generated_field_access_func_cons_infos(Info, GoalId, DuCtor,
     %   Arity, ConsTypeInfos, ConsErrors):
@@ -851,6 +812,47 @@ functor_to_field_access_function_cons_type_info(ClassTable, AccessType,
             )
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+    % builtin_apply_type(Info, DuCtor, Arity, ConsTypeInfos):
+    %
+    % Succeed if DuCtor is the builtin apply/N or ''/N (N>=2),
+    % which is used to invoke higher-order functions.
+    % If so, bind ConsTypeInfos to a singleton list containing
+    % the appropriate type for apply/N of the specified Arity.
+    %
+:- pred builtin_apply_type(typecheck_info::in, du_ctor::in, int::in,
+    list(cons_type_info)::out) is semidet.
+
+builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
+    DuCtor = du_ctor(unqualified(ApplyName), _, _),
+    % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
+    (
+        ApplyName = "apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_pure
+    ;
+        ApplyName = "",
+        ApplyNameToUse = "apply",
+        Purity = purity_pure
+    ;
+        ApplyName = "impure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_impure
+    ;
+        ApplyName = "semipure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_semipure
+    ),
+    Arity >= 1,
+    Arity1 = Arity - 1,
+    higher_order_func_type(Purity, Arity1, TypeVarSet, FuncType,
+        ArgTypes, RetType),
+    ExistQVars = [],
+    ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
+        [FuncType | ArgTypes], empty_hlds_constraints,
+        source_apply(ApplyNameToUse))].
 
 %---------------------%
 
