@@ -82,8 +82,8 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
@@ -1155,7 +1155,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     % Field names must be unique within a type.
     ( if
         map.search(!.FieldNameTable, FieldName, ExistingDefns),
-        list.find_first_match(is_conflicting_field_defn(FieldDefn),
+        one_or_more.find_first_match(is_conflicting_field_defn(FieldDefn),
             ExistingDefns, _ConflictingDefn)
     then
         % check_type_inst_mode_defns has already generated an error message
@@ -1168,7 +1168,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % if appropriate.
         (
             NeedQual = may_be_unqualified,
-            multi_map.set(unqualified(UnqualFieldName), FieldDefn,
+            one_or_more_map.set(unqualified(UnqualFieldName), FieldDefn,
                 !FieldNameTable)
         ;
             NeedQual = must_be_qualified
@@ -1192,7 +1192,7 @@ is_conflicting_field_defn(FieldDefnA, FieldDefnB) :-
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
-    multi_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
+    one_or_more_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
         !FieldNameTable).
 
 %---------------------------------------------------------------------------%

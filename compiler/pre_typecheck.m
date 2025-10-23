@@ -167,7 +167,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
     ( if
-        pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+        pred_info_is_field_access_function(ModuleInfo, !.PredInfo, _, _, _),
         clause_list_is_empty(ClausesRep0) = yes,
         pred_status_defined_in_this_module(PredStatus) = yes
     then

@@ -61,34 +61,53 @@
 %---------------------------------------------------------------------------%
 
 typecheck_unify_var_functor(UnifyContext, Context, GoalId,
-        LHSVar, ConsId, ArgVars, !TypeAssignSet, !Info) :-
-    ( if cons_id_must_be_builtin(ConsId, BuiltinType, BuiltinTypeName) then
-        % All cons_ids of all builtin types are constants, which is why
-        % we can ignore ArgVars.
-        typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar,
-            ConsId, BuiltinType, BuiltinTypeName, !TypeAssignSet, !Info)
-    else
-        typecheck_unify_var_functor_non_builtin(UnifyContext, Context, GoalId,
-            LHSVar, ConsId, ArgVars, !TypeAssignSet, !Info)
-    ).
-
-:- pred cons_id_must_be_builtin(cons_id::in, builtin_type::out,
-    string::out) is semidet.
-
-cons_id_must_be_builtin(ConsId, BuiltinType, BuiltinTypeName) :-
+        LHSVar, ConsId, ArgVars, TypeAssignSet0, TypeAssignSet, !Info) :-
+    % Get the list of possible constructors that match this functor/arity.
+    % If there aren't any, report an undefined constructor error.
+    list.length(ArgVars, Arity),
+    typecheck_info_construct_all_cons_infos(!.Info, ConsId, Arity, GoalId,
+        ConsInfoResult),
     (
-        ConsId = some_int_const(IntConst),
-        BuiltinType = builtin_type_int(type_of_int_const(IntConst)),
-        BuiltinTypeName = type_name_of_int_const(IntConst)
+        ConsInfoResult = cons_info_builtin_const(BuiltinType, BuiltinTypeName),
+        typecheck_unify_var_functor_builtin(UnifyContext, Context,
+            LHSVar, ConsId, BuiltinType, BuiltinTypeName,
+            TypeAssignSet0, TypeAssignSet, !Info)
     ;
-        ConsId = float_const(_),
-        BuiltinTypeName = "float",
-        BuiltinType = builtin_type_float
+        ConsInfoResult = cons_info_tuple(ConsTypeInfo),
+        typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
+            ConsId, Arity, ArgVars, [ConsTypeInfo],
+            TypeAssignSet0, TypeAssignSet, !Info)
     ;
-        ConsId = string_const(_),
-        BuiltinTypeName = "string",
-        BuiltinType = builtin_type_string
+        ConsInfoResult = cons_info_du_ctor(DuCtor, ConsTypeInfos, ConsErrors),
+        (
+            ConsTypeInfos = [],
+            TypeAssignSet = TypeAssignSet0,
+            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+            GoalContext = type_error_in_unify(UnifyContext),
+            % Note that ConsErrors may be [], but the fact that there are
+            % no ConsTypeInfos is itself an error.
+            Spec = report_error_undef_du_ctor(ClauseContext, GoalContext,
+                Context, DuCtor, ConsErrors),
+            typecheck_info_add_error(Spec, !Info)
+        ;
+            ConsTypeInfos = [_ | _],
+            typecheck_unify_var_functor_cons_infos(UnifyContext, Context,
+                LHSVar, ConsId, Arity, ArgVars, ConsTypeInfos,
+                TypeAssignSet0, TypeAssignSet, !Info)
+        )
+    ;
+        ( ConsInfoResult = cons_info_field_access_func
+        ; ConsInfoResult = cons_info_comp_gen_cons_id
+        ),
+        TypeAssignSet = TypeAssignSet0,
+        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+        GoalContext = type_error_in_unify(UnifyContext),
+        Spec = report_error_undef_non_du_ctor(ClauseContext, GoalContext,
+            Context, ConsId),
+        typecheck_info_add_error(Spec, !Info)
     ).
+
+%---------------------------------------------------------------------------%
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -163,55 +182,6 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred typecheck_unify_var_functor_non_builtin(unify_context::in,
-    prog_context::in, goal_id::in, prog_var::in, cons_id::in,
-    list(prog_var)::in, type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-typecheck_unify_var_functor_non_builtin(UnifyContext, Context, GoalId,
-        LHSVar, ConsId, ArgVars, TypeAssignSet0, TypeAssignSet, !Info) :-
-    % Get the list of possible constructors that match this functor/arity.
-    % If there aren't any, report an undefined constructor error.
-    list.length(ArgVars, Arity),
-    typecheck_info_construct_all_cons_infos(!.Info, ConsId, Arity, GoalId,
-        ConsInfoResult),
-    (
-        ConsInfoResult = cons_info_non_du_ctor(ConsTypeInfo),
-        typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
-            ConsId, Arity, ArgVars, [ConsTypeInfo],
-            TypeAssignSet0, TypeAssignSet, !Info)
-    ;
-        ConsInfoResult = cons_info_du_ctor(DuCtor, ConsTypeInfos, ConsErrors),
-        (
-            ConsTypeInfos = [],
-            TypeAssignSet = TypeAssignSet0,
-            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-            GoalContext = type_error_in_unify(UnifyContext),
-            % Note that ConsErrors may be [], but the fact that there are
-            % no ConsTypeInfos is itself an error.
-            Spec = report_error_undef_du_ctor(ClauseContext, GoalContext,
-                Context, DuCtor, ConsErrors),
-            typecheck_info_add_error(Spec, !Info)
-        ;
-            ConsTypeInfos = [_ | _],
-            typecheck_unify_var_functor_cons_infos(UnifyContext, Context,
-                LHSVar, ConsId, Arity, ArgVars, ConsTypeInfos,
-                TypeAssignSet0, TypeAssignSet, !Info)
-        )
-    ;
-        ( ConsInfoResult = cons_info_field_access_func
-        ; ConsInfoResult = cons_info_comp_gen_cons_id
-        ),
-        TypeAssignSet = TypeAssignSet0,
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        GoalContext = type_error_in_unify(UnifyContext),
-        Spec = report_error_undef_non_du_ctor(ClauseContext, GoalContext,
-            Context, ConsId),
-        typecheck_info_add_error(Spec, !Info)
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- pred typecheck_unify_var_functor_cons_infos(unify_context::in,

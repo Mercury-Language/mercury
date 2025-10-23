@@ -38,6 +38,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
@@ -103,6 +104,26 @@
     --->    has_no_rhs_lambda
     ;       has_rhs_lambda.
 
+    % Does the pred_info we are doing typechecking in
+    % represent a field access function?
+:- type maybe_in_field_access_func
+    --->    not_in_field_access_func
+    ;       in_field_access_func(
+                % The status of the function.
+                pred_status,
+
+                % Is the access function a get or a set function?
+                field_access_type,
+
+                % The name of the field the access function is for.
+                sym_name,
+
+                % The definition of the field (or sometimes fields) it is for.
+                % There can be more than one if the same field name is
+                % defined more than once in the same module.
+                one_or_more(hlds_ctor_field_defn)
+            ).
+
 %-----------------------------------------------------------------------------%
 
 :- type typecheck_debug_info
@@ -136,8 +157,8 @@
     is_fully_qualified::out) is det.
 :- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
     int::out) is det.
-:- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
-    maybe(pred_status)::out) is det.
+:- pred typecheck_info_get_in_field_access_function(typecheck_info::in,
+    maybe_in_field_access_func::out) is det.
 :- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
     list(error_spec)::out) is det.
 :- pred typecheck_info_get_overload_error(typecheck_info::in,
@@ -245,7 +266,7 @@
                 % applications, and we will need to know the predicate's
                 % import status, so we don't generate errors when the function
                 % is opt-imported into other modules.
-                tcsi_is_field_access_function   :: maybe(pred_status),
+                tcsi_in_field_access_function   :: maybe_in_field_access_func,
 
                 % The list of errors found so far (if any), with one exception:
                 % any errors about overloading are in the overload_error field.
@@ -273,10 +294,14 @@
 typecheck_info_init(ProgressStream, ModuleInfo, PredId, PredInfo, ClauseVarSet,
         Status, PredMarkers, NonOverloadErrors, Info) :-
     CallsAreFullyQualified = calls_are_fully_qualified(PredMarkers),
-    ( if pred_info_is_field_access_function(ModuleInfo, PredInfo) then
-        MaybeFieldAccessFunctionStatus = yes(Status)
+    ( if
+        pred_info_is_field_access_function(ModuleInfo, PredInfo,
+            AccessType, FieldName, OoMFieldDefns)
+    then
+        MaybeInFieldAccessFunc = in_field_access_func(Status, AccessType,
+            FieldName, OoMFieldDefns)
     else
-        MaybeFieldAccessFunctionStatus = no
+        MaybeInFieldAccessFunc = not_in_field_access_func
     ),
     OverloadErrors = no,
     module_info_get_globals(ModuleInfo, Globals),
@@ -308,7 +333,7 @@ typecheck_info_init(ProgressStream, ModuleInfo, PredId, PredInfo, ClauseVarSet,
         )
     ),
     SubInfo = typecheck_sub_info(Verbose, CallsAreFullyQualified,
-        AmbiguityErrorLimit, MaybeFieldAccessFunctionStatus,
+        AmbiguityErrorLimit, MaybeInFieldAccessFunc,
         NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap,
         has_no_rhs_lambda, DebugInfo),
     ClauseNum = 0,
@@ -343,8 +368,8 @@ typecheck_info_get_calls_are_fully_qualified(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_calls_are_fully_qualified.
 typecheck_info_get_ambiguity_error_limit(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_ambiguity_error_limit.
-typecheck_info_get_is_field_access_function(Info, X) :-
-    X = Info ^ tci_sub_info ^ tcsi_is_field_access_function.
+typecheck_info_get_in_field_access_function(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_in_field_access_function.
 typecheck_info_get_non_overload_errors(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_non_overload_errors.
 typecheck_info_get_overload_error(Info, X) :-

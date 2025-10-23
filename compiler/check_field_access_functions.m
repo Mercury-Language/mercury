@@ -50,8 +50,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
-:- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module term_context.
 :- import_module varset.
 
@@ -91,26 +91,29 @@ maybe_check_field_access_function(ModuleInfo, FuncSymName, UserArity,
     ( if
         % XXX ARITY Make this take UserArity, not UserArityInt.
         is_field_access_function_name(ModuleInfo, FuncSymName, UserArityInt,
-            AccessType, FieldName)
+            AccessType, FieldName, OoMFieldDefns)
     then
-        check_field_access_function(ModuleInfo, AccessType, FieldName,
-            FuncSymName, UserArity, FuncStatus, Context, !Specs)
+        check_field_access_function(Context, FuncSymName, UserArity,
+            FuncStatus, AccessType, FieldName, OoMFieldDefns, !Specs)
     else
         true
     ).
 
-:- pred check_field_access_function(module_info::in, field_access_type::in,
-    sym_name::in, sym_name::in, user_arity::in, pred_status::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_field_access_function(prog_context::in,
+    sym_name::in, user_arity::in, pred_status::in,
+    field_access_type::in, sym_name::in, one_or_more(hlds_ctor_field_defn)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncSymName,
-        UserArity, FuncStatus, Context, !Specs) :-
+check_field_access_function(Context, FuncSymName, UserArity,
+        FuncStatus, _AccessType, _FieldName, OoMFieldDefns, !Specs) :-
     % Check that a function applied to an exported type is also exported.
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     ( if
         % Abstract types have status `abstract_exported', so errors won't be
         % reported for local field access functions for them.
-        map.search(CtorFieldTable, FieldName, [FieldDefn]),
+        % XXX This check is effectively disabled if the module contains
+        % two or more definitions of the field name that this access function
+        % is for.
+        OoMFieldDefns = one_or_more(FieldDefn, []),
         FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
         DefnStatus = type_status(status_exported),
         FuncStatus \= pred_status(status_exported)

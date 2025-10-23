@@ -92,6 +92,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -846,10 +847,11 @@ get_all_field_names(ModuleInfo, FieldNameSet) :-
     map.foldl(accumulate_field_names, CtorFieldTable, [], FieldNames),
     set.list_to_set(FieldNames, FieldNameSet).
 
-:- pred accumulate_field_names(sym_name::in, list(hlds_ctor_field_defn)::in,
+:- pred accumulate_field_names(sym_name::in,
+    one_or_more(hlds_ctor_field_defn)::in,
     list(string)::in, list(string)::out) is det.
 
-accumulate_field_names(FieldSymName, _FieldDefns, !FieldNames) :-
+accumulate_field_names(FieldSymName, _OoMFieldDefns, !FieldNames) :-
     !:FieldNames = [unqualify_name(FieldSymName) | !.FieldNames].
 
 %---------------------------------------------------------------------------%

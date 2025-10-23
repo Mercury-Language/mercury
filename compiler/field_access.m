@@ -263,7 +263,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 construct_field_access_function_call(AccessType, Context,
         MainContext, SubContext, FieldName, RetArg, Args, Purity, Functor,
         Goal, !QualInfo) :-
-    field_access_function_name(AccessType, FieldName, FuncName),
+    construct_field_access_function_name(AccessType, FieldName, FuncName),
     list.length(Args, Arity),
     Functor = du_data_ctor(du_ctor(FuncName, Arity, cons_id_dummy_type_ctor)),
     make_atomic_unification(RetArg,

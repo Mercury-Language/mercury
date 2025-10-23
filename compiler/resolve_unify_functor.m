@@ -156,7 +156,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % We don't do this for the clause introduced by the compiler for
             % a field access function -- that needs to be expanded into
             % unifications below.
-            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo,
+                _, _, _),
 
             % Check if any of the candidate functions have argument/return
             % types which subsume the actual argument/return types of this
@@ -199,7 +200,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % We don't do this for the clause introduced by the compiler
             % for a field access function -- that needs to be expanded
             % into unifications below.
-            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo,
+                _, _, _),
 
             % Find the pred_id of the constant.
             lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
@@ -256,7 +258,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % to check that the types match for functions calls and
             % higher-order terms.
             is_field_access_function_name(ModuleInfo, SymName0, Arity,
-                AccessType, FieldName),
+                AccessType, FieldName, _OoMFieldDefns),
             Arity = Arity0,
 
             % We don't do this for compiler-generated predicates --

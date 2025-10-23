@@ -29,10 +29,40 @@
 :- import_module list.
 
 :- type cons_info_result
-    --->    cons_info_non_du_ctor(cons_type_info)
+    --->    cons_info_builtin_const(builtin_type, string)
+            % The id and the user-visible name of the builtin type,
+            % whose values are all constants.
+    ;       cons_info_tuple(cons_type_info)
+            % The cons_id is a tuple_cons. Such types have only one definition
+            % for any given arity (and cannot be curried).
+            % Note that at this stage of compilation, a tuple may
+            % still be represented as a du_ctor named "{}".
     ;       cons_info_du_ctor(du_ctor, list(cons_type_info), list(cons_error))
+            % The cons_id is the du_ctor given by the first argument.
+            % The second argument has an entry for all the possible
+            % entities that this du_ctor can refer to, including what
+            % arg_type_vector->result_type function they represent,
+            % any existential quantification that apply to them and
+            % any typeclass constraints on them.
+            %
+            % The entities can be
+            %
+            % - data constructors (the most common entity),
+            % - character constants (if the name has a single code point),
+            % - tuples (if the name is "{}"),
+            % - get or set field access functions (either user-declared
+            %   or declared automatically by the compiler),
+            % - closures containing function applications, or
+            % - closures containing predicate invocations.
+            %
+            % XXX Document the exact meaning of the third argument.
     ;       cons_info_field_access_func
+            % This cons_id occurs inside a field access function, but
+            % is NOT the du_ctor that the field access function is FOR.
     ;       cons_info_comp_gen_cons_id.
+            % This cons_id is one that should not occur here, because
+            % it is introduced only by compiler passes that execute
+            % *after* typechecking.
 
     % Note: changes here may require changes to
     %
@@ -67,6 +97,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -80,54 +111,27 @@
 
 typecheck_info_construct_all_cons_infos(Info, ConsId, Arity, GoalId,
         ConsInfoResult) :-
-    typecheck_info_get_is_field_access_function(Info, InFieldAccessFunc),
-    ( if
-        % If we are typechecking the clause added for a field access function
-        % for which the user has supplied type or mode declarations, the goal
-        % should only contain an application of the field access function,
-        % not constructor applications or function calls. The clauses in
-        % `.opt' files will already have been expanded into unifications.
-        InFieldAccessFunc = yes(PredStatus),
-        PredStatus \= pred_status(status_opt_imported)
-    then
-        UserArity = user_arity(Arity),
-        ( if
-            ConsId = du_data_ctor(DuCtor),
-            is_du_ctor_synonym_for_field_access_function(Info, DuCtor,
-                UserArity, DuCtorSymName, AccessType, FieldSymName, FieldDefns)
-        then
-            get_auto_generated_field_access_func_cons_infos(Info, GoalId,
-                DuCtorSymName, UserArity, AccessType, FieldSymName,
-                FieldDefns, FieldAccessConsInfos, FieldAccessConsErrors),
-            ConsInfoResult = cons_info_du_ctor(DuCtor,
-                FieldAccessConsInfos, FieldAccessConsErrors)
-        else
-            ConsInfoResult = cons_info_field_access_func
-        )
-    else
-        typecheck_info_construct_std_cons_infos(Info, ConsId, Arity, GoalId,
-            ConsInfoResult)
-    ).
-
-%---------------------%
-
-:- pred typecheck_info_construct_std_cons_infos(typecheck_info::in,
-    cons_id::in, arity::in, goal_id::in, cons_info_result::out) is det.
-
-typecheck_info_construct_std_cons_infos(Info, ConsId, Arity, GoalId,
-        ConsInfoResult) :-
     (
         (
             ConsId = some_int_const(IntConst),
+            BuiltinType = builtin_type_int(type_of_int_const(IntConst)),
             TypeName = type_name_of_int_const(IntConst)
         ;
             ConsId = float_const(_),
+            BuiltinType = builtin_type_float,
             TypeName = "float"
         ;
             ConsId = char_const(_),
+            % char_const cons_ids won't appear in our input, because
+            % they are introduced in the post-typecheck pass, by
+            % resolve_unify_functor. Including this code here is
+            % trivial future-proofing against potential future changes
+            % that could cause typechecking to be repeated.
+            BuiltinType = builtin_type_char,
             TypeName = "character"
         ;
             ConsId = string_const(_),
+            BuiltinType = builtin_type_string,
             TypeName = "string"
         ;
             ConsId = impl_defined_const(IDCKind),
@@ -137,22 +141,56 @@ typecheck_info_construct_std_cons_infos(Info, ConsId, Arity, GoalId,
                 ; IDCKind = idc_pred
                 ; IDCKind = idc_grade
                 ),
+                BuiltinType = builtin_type_string,
                 TypeName = "string"
             ;
                 IDCKind = idc_line,
+                BuiltinType = builtin_type_int(int_type_int),
                 TypeName = "int"
             )
         ),
-        typecheck_info_construct_builtin_cons_info(TypeName, ConsInfo),
-        ConsInfoResult = cons_info_non_du_ctor(ConsInfo)
+        ConsInfoResult = cons_info_builtin_const(BuiltinType, TypeName)
     ;
         ConsId = tuple_cons(_TupleArity),
         typecheck_info_construct_tuple_cons_info(Arity, ConsInfo),
-        ConsInfoResult = cons_info_non_du_ctor(ConsInfo)
+        ConsInfoResult = cons_info_tuple(ConsInfo)
     ;
         ConsId = du_data_ctor(DuCtor),
-        typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
-            ConsInfoResult)
+        typecheck_info_get_in_field_access_function(Info, InFieldAccessFunc),
+        ( if
+            % If we are typechecking the clause added for a field access
+            % function for which the user has supplied type or mode
+            % declarations, the goal should only contain an application
+            % of the field access function, not constructor applications
+            % or function calls. The clauses we get from elsewhere,
+            % meaning from `.opt' files, will already have been expanded
+            % into unifications.
+            InFieldAccessFunc = in_field_access_func(PredStatus,
+                _InAccessType, _InFieldSymName, _InOoMFieldDefns),
+            pred_status_defined_in_this_module(PredStatus) = yes
+            % We ignore the other fields of in_field_access_func, because
+            % they refer to the field access function we are in, and NOT
+            % (necessarily) the field access function (if any) that
+            % DuCtor is for.
+        then
+            UserArity = user_arity(Arity),
+            ( if
+                is_du_ctor_synonym_for_field_access_function(Info, DuCtor,
+                    UserArity, DuCtorSymName, AccessType, FieldSymName,
+                    FieldDefns)
+            then
+                get_auto_generated_field_access_func_cons_infos(Info, GoalId,
+                    DuCtorSymName, UserArity, AccessType, FieldSymName,
+                    FieldDefns, FieldAccessConsInfos, FieldAccessConsErrors),
+                ConsInfoResult = cons_info_du_ctor(DuCtor,
+                    FieldAccessConsInfos, FieldAccessConsErrors)
+            else
+                ConsInfoResult = cons_info_field_access_func
+            )
+        else
+            typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
+                ConsInfoResult)
+        )
     ;
         ( ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = closure_cons(_)
@@ -546,7 +584,8 @@ is_du_ctor_synonym_for_field_access_function(Info, DuCtor, UserArity,
     ),
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map.search(CtorFieldTable, FieldSymName, FieldDefns).
+    map.search(CtorFieldTable, FieldSymName, OoMFieldDefns),
+    FieldDefns = one_or_more_to_list(OoMFieldDefns).
 
 %---------------------------------------------------------------------------%
 
@@ -569,7 +608,7 @@ get_auto_generated_field_access_func_cons_infos(Info, GoalId,
         DuCtorSymName, UserArity, AccessType, FieldSymName,
         FieldDefns, TailConsTypeInfos, TailConsErrors),
     typecheck_info_get_module_info(Info, ModuleInfo),
-    typecheck_info_get_is_field_access_function(Info, InFieldAccessFunc),
+    typecheck_info_get_in_field_access_function(Info, InFieldAccessFunc),
     ( if
         are_we_in_an_effective_field_access_function(ModuleInfo,
             InFieldAccessFunc, DuCtorSymName, UserArity, AccessType,
@@ -644,7 +683,7 @@ get_auto_generated_field_access_func_cons_info(Info, GoalId,
     % The user-declared version will be picked up by builtin_pred_type.
     %
 :- pred are_we_in_an_effective_field_access_function(module_info::in,
-    maybe(pred_status)::in, sym_name::in, user_arity::in,
+    maybe_in_field_access_func::in, sym_name::in, user_arity::in,
     field_access_type::in, hlds_ctor_field_defn::in,
     type_ctor::out, du_ctor::out) is semidet.
 
@@ -653,7 +692,7 @@ are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
     FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, DuCtor, _),
     TypeCtor = type_ctor(qualified(TypeModule, _), _),
     (
-        InFieldAccessFunc = no,
+        InFieldAccessFunc = not_in_field_access_func,
         module_info_get_predicate_table(ModuleInfo, PredTable),
         DuCtorName = unqualify_name(DuCtorSymName),
         predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
@@ -663,7 +702,7 @@ are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
                 TypeCtor),
             PredIds)
     ;
-        InFieldAccessFunc = yes(_)
+        InFieldAccessFunc = in_field_access_func(_, _, _, _)
     ).
 
 :- pred is_field_access_function_for_type_ctor(module_info::in,

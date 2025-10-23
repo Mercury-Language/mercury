@@ -3450,16 +3450,16 @@ non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
 
 :- interface.
 
-    % field_access_function_name(AccessType, FieldName, FuncName).
+    % construct_field_access_function_name(AccessType, FieldName, FuncName):
     %
     % From the access type and the name of the field,
     % construct a function name.
     %
-:- pred field_access_function_name(field_access_type::in, sym_name::in,
-    sym_name::out) is det.
+:- pred construct_field_access_function_name(field_access_type::in,
+    sym_name::in, sym_name::out) is det.
 
     % is_field_access_function_name(ModuleInfo, FuncName, Arity,
-    %   AccessType, FieldName).
+    %   AccessType, FieldName, OoMFieldDefns):
     %
     % Inverse of the above.
     %
@@ -3467,19 +3467,21 @@ non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
     % user_arity.
     %
 :- pred is_field_access_function_name(module_info::in, sym_name::in,
-    arity::out, field_access_type::out, sym_name::out) is semidet.
+    arity::out, field_access_type::out, sym_name::out,
+    one_or_more(hlds_ctor_field_defn)::out) is semidet.
 
-:- pred pred_info_is_field_access_function(module_info::in, pred_info::in)
-    is semidet.
+:- pred pred_info_is_field_access_function(module_info::in, pred_info::in,
+    field_access_type::out, sym_name::out,
+    one_or_more(hlds_ctor_field_defn)::out) is semidet.
 
 :- implementation.
 
-field_access_function_name(get, FieldName, FieldName).
-field_access_function_name(set, FieldName, FuncName) :-
+construct_field_access_function_name(get, FieldName, FieldName).
+construct_field_access_function_name(set, FieldName, FuncName) :-
     add_sym_name_suffix(FieldName, " :=", FuncName).
 
-is_field_access_function_name(ModuleInfo, FuncName, Arity,
-        AccessType, FieldName) :-
+is_field_access_function_name(ModuleInfo, FuncName,
+        Arity, AccessType, FieldName, OoMFieldDefns) :-
     ( if remove_sym_name_suffix(FuncName, " :=", FieldName0) then
         Arity = 2,
         AccessType = set,
@@ -3490,9 +3492,10 @@ is_field_access_function_name(ModuleInfo, FuncName, Arity,
         FieldName = FuncName
     ),
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map.contains(CtorFieldTable, FieldName).
+    map.search(CtorFieldTable, FieldName, OoMFieldDefns).
 
-pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
+pred_info_is_field_access_function(ModuleInfo, PredInfo,
+        Accesstype, FieldName, OoMFieldDefns) :-
     pred_info_is_pred_or_func(PredInfo) = pf_function,
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
@@ -3500,7 +3503,7 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     user_arity_pred_form_arity(pf_function, user_arity(FuncArityInt),
         PredFormArity),
     is_field_access_function_name(ModuleInfo, qualified(Module, Name),
-        FuncArityInt, _, _).
+        FuncArityInt, Accesstype, FieldName, OoMFieldDefns).
 
 %---------------------------------------------------------------------------%
 

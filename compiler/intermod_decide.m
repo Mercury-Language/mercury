@@ -957,15 +957,14 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodSymName0,
         MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
         MethodCallArgTypes, MethodCallExternalTypeParams, MethodContext,
         MaybePredId, InstanceMethodSymName) :-
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     MethodUserArity = user_arity(MethodUserArityInt),
     ( if
         % XXX ARITY is_field_access_function_name can take user_arity
         % XXX ARITY is_field_access_function_name can return FieldDefns
         is_field_access_function_name(ModuleInfo, InstanceMethodSymName0,
-            MethodUserArityInt, _, FieldName),
-        map.search(CtorFieldTable, FieldName, FieldDefns)
+            MethodUserArityInt, _AccessType, _FieldName, OoMFieldDefns)
     then
+        FieldDefns = one_or_more_to_list(OoMFieldDefns),
         TypeCtors0 = list.map(
             ( func(FieldDefn) = TypeCtor :-
                 FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, _, _)
