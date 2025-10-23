@@ -662,7 +662,7 @@ typecheck_plain_call_overloaded(SymName, Context, GoalId, PredIds,
         var_vector_args(arg_vector_plain_pred_call(SymNamePredFormArity)),
     typecheck_vars_have_arg_types(VarVectorKind, Context, 1, ArgVars,
         ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info),
-    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet).
+    TypeAssignSet = args_type_assign_set_to_type_assign_set(ArgsTypeAssignSet).
 
 :- pred get_overloaded_pred_arg_types(pred_id_table::in, class_table::in,
     goal_id::in, list(pred_id)::in, type_assign_set::in,
@@ -941,7 +941,7 @@ typecheck_vars_have_polymorphic_type_list(Source, VarVectorKind, Context,
         [], ArgsTypeAssignSet0),
     typecheck_vars_have_arg_types(VarVectorKind, Context, 1, ArgVars,
         ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info),
-    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet).
+    TypeAssignSet = args_type_assign_set_to_type_assign_set(ArgsTypeAssignSet).
 
 :- pred add_renamed_apart_arg_type_assigns(args_type_assign_source::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, hlds_constraint_db::in,

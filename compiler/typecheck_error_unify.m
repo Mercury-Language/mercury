@@ -299,7 +299,7 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
         vns_varset(VarSet), print_name_only, StrippedFunctor, ArgVars),
     list.length(ArgVars, Arity),
 
-    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet),
+    TypeAssignSet = args_type_assign_set_to_type_assign_set(ArgsTypeAssignSet),
 
     % If we have consistent information about the argument types,
     % we prefer to print an error message that mentions only the arguments

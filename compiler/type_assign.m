@@ -182,9 +182,11 @@
                 ata_caller_arg_assign       :: type_assign,
 
                 % Types of callee/cons_id args, renamed apart.
+                % XXX Renamed apart ... from what?
                 ata_expected_arg_types      :: list(mer_type),
 
                 % Constraints from callee/cons_id, renamed apart.
+                % XXX Renamed apart ... from what?
                 ata_expected_constraints    :: hlds_constraint_db,
 
                 % The source of the expected arg types and their constraints.
@@ -204,7 +206,8 @@
 
     % XXX document me
     %
-:- func convert_args_type_assign_set(args_type_assign_set) = type_assign_set.
+:- func args_type_assign_set_to_type_assign_set(args_type_assign_set)
+    = type_assign_set.
 
 %---------------------------------------------------------------------------%
 %
@@ -240,8 +243,7 @@
 :- type cons_type_info_source
     --->    source_type(type_ctor, du_ctor)
     ;       source_builtin_type(string)
-    ;       source_field_access(field_access_type, type_ctor, du_ctor,
-                string)
+    ;       source_field_access(field_access_type, type_ctor, du_ctor, string)
             % get or set, type, user cons_id, field name
     ;       source_apply(string)
     ;       source_pred(pred_id).
@@ -487,14 +489,14 @@ get_expected_constraints(ArgsTypeAssign) =
 
 %---------------------------------------------------------------------------%
 
-convert_args_type_assign_set([]) = [].
-convert_args_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
-    [convert_args_type_assign(ArgsTypeAssign) |
-    convert_args_type_assign_set(ArgsTypeAssigns)].
+args_type_assign_set_to_type_assign_set([]) = [].
+args_type_assign_set_to_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
+    [args_type_assign_to_type_assign(ArgsTypeAssign) |
+    args_type_assign_set_to_type_assign_set(ArgsTypeAssigns)].
 
-:- func convert_args_type_assign(args_type_assign) = type_assign.
+:- func args_type_assign_to_type_assign(args_type_assign) = type_assign.
 
-convert_args_type_assign(ArgsTypeAssign) = TypeAssign :-
+args_type_assign_to_type_assign(ArgsTypeAssign) = TypeAssign :-
     ArgsTypeAssign = args_type_assign(TypeAssign0, _, ConstraintDb0, _),
     type_assign_get_constraint_db(TypeAssign0, OldConstraintDb),
     type_assign_get_type_bindings(TypeAssign0, Bindings),
