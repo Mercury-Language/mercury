@@ -57,25 +57,27 @@
 
 %---------------------------------------------------------------------------%
 
-    % higher_order_pred_type(Purity, N, EvalMethod,
+    % higher_order_pred_type(Purity, N,
     %   TypeVarSet, PredType, ArgTypes):
     %
-    % Given an arity N, let TypeVarSet = {T1, T2, ..., TN},
-    % PredType = `Purity EvalMethod pred(T1, T2, ..., TN)', and
+    % Given Purity and an arity N, return
+    % TypeVarSet = {T1, T2, ..., TN},
+    % PredType = `Purity pred(T1, T2, ..., TN)', and
     % ArgTypes = [T1, T2, ..., TN].
     %
-:- pred higher_order_pred_type(purity::in, int::in,
+:- pred general_higher_order_pred_type(purity::in, int::in,
     tvarset::out, mer_type::out, list(mer_type)::out) is det.
 
-    % higher_order_func_type(Purity, N, EvalMethod, TypeVarSet,
-    %   FuncType, ArgTypes, RetType):
+    % higher_order_func_type(Purity, N,
+    %   TypeVarSet, FuncType, ArgTypes, RetType):
     %
-    % Given an arity N, let TypeVarSet = {T0, T1, T2, ..., TN},
-    % FuncType = `Purity EvalMethod func(T1, T2, ..., TN) = T0',
+    % Given Purity and an arity N, return
+    % TypeVarSet = {T0, T1, T2, ..., TN},
+    % FuncType = `Purity func(T1, T2, ..., TN) = T0',
     % ArgTypes = [T1, T2, ..., TN], and
     % RetType = T0.
     %
-:- pred higher_order_func_type(purity::in, int::in,
+:- pred general_higher_order_func_type(purity::in, int::in,
     tvarset::out, mer_type::out, list(mer_type)::out, mer_type::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -165,15 +167,16 @@ acc_type_assign_if_var_can_have_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
 
 %---------------------------------------------------------------------------%
 
-higher_order_pred_type(Purity, Arity, TypeVarSet, PredType, ArgTypes) :-
+general_higher_order_pred_type(Purity, Arity,
+        TypeVarSet, PredType, ArgTypes) :-
     varset.init(TypeVarSet0),
     varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet),
     % Argument types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     construct_higher_order_type(Purity, pf_predicate, ArgTypes, PredType).
 
-higher_order_func_type(Purity, Arity, TypeVarSet,
-        FuncType, ArgTypes, RetType) :-
+general_higher_order_func_type(Purity, Arity,
+        TypeVarSet, FuncType, ArgTypes, RetType) :-
     varset.init(TypeVarSet0),
     varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet1),
     varset.new_var(RetTypeVar, TypeVarSet1, TypeVarSet),

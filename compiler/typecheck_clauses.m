@@ -695,7 +695,8 @@ get_overloaded_pred_arg_types(PredTable, ClassTable, GoalId,
 typecheck_higher_order_call(GenericCall, Context, PredVar, Purity, ArgVars,
         !TypeAssignSet, !Info) :-
     list.length(ArgVars, Arity),
-    higher_order_pred_type(Purity, Arity, TypeVarSet, PredVarType, ArgTypes),
+    general_higher_order_pred_type(Purity, Arity,
+        TypeVarSet, PredVarType, ArgTypes),
     ArgVectorKind = arg_vector_generic_call(GenericCall),
     VarVectorKind = var_vector_args(ArgVectorKind),
     % The class context is empty because higher-order predicates

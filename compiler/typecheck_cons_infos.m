@@ -263,8 +263,8 @@ typecheck_info_construct_du_cons_infos(Info, DuCtor, Arity, GoalId,
     builtin_pred_type(Info, DuCtor, Arity, GoalId, PredConsInfos),
 
     % Check for higher-order function calls.
-    ( if builtin_apply_type(Info, DuCtor, Arity, ApplyConsInfosPrime) then
-        ApplyConsInfos = ApplyConsInfosPrime
+    ( if builtin_apply_type(Info, DuCtor, Arity, ApplyConsInfo) then
+        ApplyConsInfos = [ApplyConsInfo]
     else
         ApplyConsInfos = []
     ),
@@ -806,17 +806,17 @@ functor_to_field_access_function_cons_type_info(ClassTable, AccessType,
 
 %---------------------------------------------------------------------------%
 
-    % builtin_apply_type(Info, DuCtor, Arity, ConsTypeInfos):
+    % builtin_apply_type(Info, DuCtor, Arity, ConsTypeInfo):
     %
     % Succeed if DuCtor is the builtin apply/N or ''/N (N>=2),
     % which is used to invoke higher-order functions.
-    % If so, bind ConsTypeInfos to a singleton list containing
+    % If so, bind ConsTypeInfo to a singleton list containing
     % the appropriate type for apply/N of the specified Arity.
     %
 :- pred builtin_apply_type(typecheck_info::in, du_ctor::in, int::in,
-    list(cons_type_info)::out) is semidet.
+    cons_type_info::out) is semidet.
 
-builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
+builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfo) :-
     DuCtor = du_ctor(unqualified(ApplyName), _, _),
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
     (
@@ -837,13 +837,14 @@ builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
         Purity = purity_semipure
     ),
     Arity >= 1,
-    Arity1 = Arity - 1,
-    higher_order_func_type(Purity, Arity1, TypeVarSet, FuncType,
-        ArgTypes, RetType),
+    general_higher_order_func_type(Purity, Arity - 1,
+        TypeVarSet, FuncType, ArgTypes, ReturnType),
     ExistQVars = [],
-    ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], empty_hlds_constraint_db,
-        source_apply(ApplyNameToUse))].
+    % The function is the first argument of the apply operation.
+    ApplyArgTypes = [FuncType | ArgTypes],
+    Source = source_apply(ApplyNameToUse),
+    ConsTypeInfo = cons_type_info(TypeVarSet, ExistQVars, ReturnType,
+        ApplyArgTypes, empty_hlds_constraint_db, Source).
 
 %---------------------%
 
