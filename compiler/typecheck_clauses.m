@@ -165,7 +165,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
     ArgVectorKind = arg_vector_clause_head,
     typecheck_arg_vector(ArgVectorKind, Context, HeadVars, ArgTypes,
         !TypeAssignSet, !Info),
-    typecheck_goal(Body0, Body, Context, !TypeAssignSet, !Info),
+    typecheck_goal(Context, Body0, Body, !TypeAssignSet, !Info),
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
         VarSet = ClauseContext ^ tecc_varset,
@@ -181,11 +181,11 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
 
     % Typecheck a goal.
     %
-:- pred typecheck_goal(hlds_goal::in, hlds_goal::out, prog_context::in,
+:- pred typecheck_goal(prog_context::in, hlds_goal::in, hlds_goal::out,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_goal(Goal0, Goal, EnclosingContext, !TypeAssignSet, !Info) :-
+typecheck_goal(EnclosingContext, Goal0, Goal, !TypeAssignSet, !Info) :-
     % If the context of the goal is empty, we set the context of the goal
     % to the surrounding context. (That should probably be done in make_hlds,
     % but it was easier to do here.)
@@ -257,7 +257,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("conj", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal_list(SubGoals0, SubGoals, Context,
+        typecheck_goals(Context, SubGoals0, SubGoals,
             !TypeAssignSet, !Info),
         GoalExpr = conj(ConjType, SubGoals)
     ;
@@ -265,7 +265,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("disj", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal_list(SubGoals0, SubGoals, Context,
+        typecheck_goals(Context, SubGoals0, SubGoals,
             !TypeAssignSet, !Info),
         GoalExpr = disj(SubGoals)
     ;
@@ -287,22 +287,22 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("switch", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_case_list(Cases0, Cases, Context, !TypeAssignSet, !Info),
+        typecheck_cases(Context, Cases0, Cases, !TypeAssignSet, !Info),
         GoalExpr = switch(SwitchVar, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("if", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal(Cond0, Cond, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, Cond0, Cond, !TypeAssignSet, !Info),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("then", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal(Then0, Then, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, Then0, Then, !TypeAssignSet, !Info),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("else", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal(Else0, Else, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, Else0, Else, !TypeAssignSet, !Info),
         ensure_vars_have_a_type(var_vector_cond_quant, Context, Vars,
             !TypeAssignSet, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
@@ -311,14 +311,14 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("not", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, SubGoal0, SubGoal, !TypeAssignSet, !Info),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("scope", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, SubGoal0, SubGoal, !TypeAssignSet, !Info),
         (
             (
                 (
@@ -362,7 +362,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             type_checkpoint("call", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        typecheck_plain_call(SymName, Context, GoalId, ArgVars,
+        typecheck_plain_call(Context, GoalId, SymName, ArgVars,
             PredId, !TypeAssignSet, !Info),
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BI, UC, SymName)
     ;
@@ -437,8 +437,8 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("<=>", !.Info, VarSet, !.TypeAssignSet, !IO)
             ),
-            typecheck_goal(LHS0, LHS, Context, !TypeAssignSet, !Info),
-            typecheck_goal(RHS0, RHS, Context, !TypeAssignSet, !Info),
+            typecheck_goal(Context, LHS0, LHS, !TypeAssignSet, !Info),
+            typecheck_goal(Context, RHS0, RHS, !TypeAssignSet, !Info),
             ShortHand = bi_implication(LHS, RHS)
         ;
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
@@ -456,9 +456,9 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                 MaybeOutputVars = no
             ),
 
-            typecheck_goal(MainGoal0, MainGoal, Context,
+            typecheck_goal(Context, MainGoal0, MainGoal,
                 !TypeAssignSet, !Info),
-            typecheck_goal_list(OrElseGoals0, OrElseGoals, Context,
+            typecheck_goals(Context, OrElseGoals0, OrElseGoals,
                 !TypeAssignSet, !Info),
 
             VarVectorKindOuter = var_vector_atomic_outer,
@@ -486,7 +486,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                 type_checkpoint("try_goal", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
-            typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
+            typecheck_goal(Context, SubGoal0, SubGoal, !TypeAssignSet, !Info),
             (
                 MaybeIO = yes(try_io_state_vars(InitialIO, FinalIO)),
                 VarVectorKind = var_vector_try_io,
@@ -517,36 +517,37 @@ atomic_interface_list_to_var_list([atomic_interface_vars(I, O) | Interfaces]) =
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
-    prog_context::in, type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-typecheck_goal_list([], [], _, !TypeAssignSet, !Info).
-typecheck_goal_list([Goal0 | Goals0], [Goal | Goals], Context,
-        !TypeAssignSet, !Info) :-
-    typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
-    typecheck_goal_list(Goals0, Goals, Context, !TypeAssignSet, !Info).
-
-:- pred typecheck_case_list(list(case)::in, list(case)::out,
-    prog_context::in, type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-typecheck_case_list([], [], _, !TypeAssignSet, !Info).
-typecheck_case_list([Case0 | Cases0], [Case | Cases], Context,
-        !TypeAssignSet, !Info) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    typecheck_case_list(Cases0, Cases, Context, !TypeAssignSet, !Info).
-
-%---------------------------------------------------------------------------%
-
-:- pred typecheck_plain_call(sym_name::in, prog_context::in,
-    goal_id::in, list(prog_var)::in, pred_id::out,
+:- pred typecheck_goals(prog_context::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_plain_call(SymName, Context, GoalId, ArgVars, PredId,
+typecheck_goals(_, [], [], !TypeAssignSet, !Info).
+typecheck_goals(Context, [Goal0 | Goals0], [Goal | Goals],
+        !TypeAssignSet, !Info) :-
+    typecheck_goal(Context, Goal0, Goal, !TypeAssignSet, !Info),
+    typecheck_goals(Context, Goals0, Goals, !TypeAssignSet, !Info).
+
+:- pred typecheck_cases(prog_context::in, list(case)::in, list(case)::out,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_cases(_, [], [], !TypeAssignSet, !Info).
+typecheck_cases(Context, [Case0 | Cases0], [Case | Cases],
+        !TypeAssignSet, !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    typecheck_goal(Context, Goal0, Goal, !TypeAssignSet, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    typecheck_cases(Context, Cases0, Cases, !TypeAssignSet, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_plain_call(prog_context::in, goal_id::in,
+    sym_name::in, list(prog_var)::in, pred_id::out,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_plain_call(Context, GoalId, SymName, ArgVars, PredId,
         !TypeAssignSet, !Info) :-
     % Look up the called predicate's arg types.
     typecheck_info_get_module_info(!.Info, ModuleInfo),
@@ -764,7 +765,7 @@ typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
         assoc_list.keys(VarsModes, Vars),
         typecheck_lambda_var_has_type(UnifyContext, Context, Purity,
             PredOrFunc, LHSVar, Vars, !TypeAssignSet, !Info),
-        typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
+        typecheck_goal(Context, Goal0, Goal, !TypeAssignSet, !Info),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals, VarsModes, Det, Goal)
     ).
