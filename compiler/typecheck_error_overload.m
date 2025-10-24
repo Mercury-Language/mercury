@@ -35,9 +35,23 @@
 
 %---------------------------------------------------------------------------%
 
-:- func report_ambiguity_error(type_error_clause_context, prog_context,
-    overloaded_symbol_map, type_assign, type_assign, list(type_assign))
-    = error_spec.
+:- type stuff_to_check
+    --->    clause_only
+    ;       whole_pred.
+
+    % If there are multiple type assignments, then issue an error message.
+    %
+    % If stuff-to-check = whole_pred, report an error for any ambiguity,
+    % and also check for unbound type variables.
+    % But if stuff-to-check = clause_only, then only report errors
+    % for type ambiguities that don't involve the head vars, because
+    % we may be able to resolve a type ambiguity for a head var in one clause
+    % by looking at later clauses. (Ambiguities in the head variables
+    % can only arise if we are inferring the type for this pred.)
+    %
+:- pred typecheck_check_for_ambiguity(prog_context::in, stuff_to_check::in,
+    list(prog_var)::in, type_assign_set::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -56,6 +70,7 @@
 :- import_module parse_tree.error_type_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
@@ -108,6 +123,83 @@ create_first_msg(ClauseContext, Context, InitPieces,  VerbosePieces)
     FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
+        TypeAssignSet, !Info) :-
+    (
+        % There should always be a type assignment, because if there is
+        % an error somewhere, instead of setting the current type assignment
+        % set to the empty set, the type-checker should continue with the
+        % previous type assignment set (so that it can detect other errors
+        % in the same clause).
+        TypeAssignSet = [],
+        unexpected($pred, "no type-assignment")
+    ;
+        TypeAssignSet = [_SingleTypeAssign]
+    ;
+        TypeAssignSet = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
+        % We only report an ambiguity error if
+        % (a) we haven't encountered any other errors and if
+        %     StuffToCheck = clause_only(_), and also
+        % (b) the ambiguity occurs only in the body, rather than in the
+        %     head variables (and hence can't be resolved by looking at
+        %     later clauses).
+        typecheck_info_get_all_errors(!.Info, ErrorsSoFar),
+        ( if
+            ErrorsSoFar = [],
+            (
+                StuffToCheck = whole_pred
+            ;
+                StuffToCheck = clause_only,
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign1, HeadTypesInAssign1),
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign2, HeadTypesInAssign2),
+                list.map(compute_headvar_types_in_type_assign(HeadVars),
+                    TypeAssigns3plus, HeadTypesInAssigns3plus),
+
+                % Only report an error if the headvar types are identical
+                % (which means that the ambiguity must have occurred
+                % in the body).
+                all_identical_up_to_renaming(HeadTypesInAssign1,
+                    [HeadTypesInAssign2 | HeadTypesInAssigns3plus])
+            )
+        then
+            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+            typecheck_info_get_overloaded_symbol_map(!.Info,
+                OverloadedSymbolMap),
+            Spec = report_ambiguity_error(ClauseContext, Context,
+                OverloadedSymbolMap, TypeAssign1, TypeAssign2,
+                TypeAssigns3plus),
+            typecheck_info_add_error(Spec, !Info)
+        else
+            true
+        )
+    ).
+
+:- pred compute_headvar_types_in_type_assign(list(prog_var)::in,
+    type_assign::in, list(mer_type)::out) is det.
+
+compute_headvar_types_in_type_assign(HeadVars, TypeAssign, HeadTypes) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    lookup_var_types(VarTypes, HeadVars, HeadTypes0),
+    apply_rec_subst_to_types(TypeBindings, HeadTypes0, HeadTypes).
+
+:- pred all_identical_up_to_renaming(list(mer_type)::in,
+    list(list(mer_type))::in) is semidet.
+
+all_identical_up_to_renaming(_, []).
+all_identical_up_to_renaming(HeadTypes1, [HeadTypes2 | HeadTypes3plus]) :-
+    identical_up_to_renaming(HeadTypes1, HeadTypes2),
+    all_identical_up_to_renaming(HeadTypes1, HeadTypes3plus).
+
+%---------------------------------------------------------------------------%
+
+:- func report_ambiguity_error(type_error_clause_context, prog_context,
+    overloaded_symbol_map, type_assign, type_assign, list(type_assign))
+    = error_spec.
 
 report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-

@@ -109,6 +109,7 @@
 
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_clauses.
+:- import_module check_hlds.typecheck_error_overload.
 :- import_module check_hlds.typecheck_error_undef.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
