@@ -322,7 +322,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         OldExternalTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewExternalTypeParams,
         NewVarTypes, NewTypeConstraints, NewConstraintProofMap,
-        NewConstraintMap, TSubst, ExistTypeRenaming) :-
+        NewConstraintMap, OldToNewTRename, ExistTypeRenaming) :-
     (
         TypeAssignSet = [TypeAssign | _]
         % XXX Why are we using only the first TypeAssign?
@@ -394,7 +394,7 @@ type_assign_set_get_final_info(TypeAssignSet,
     % There may also be some type variables in the ExternalTypeParams
     % which do not occur in the type of any variable (e.g. this can happen
     % in the case of code containing type errors). We'd better keep those,
-    % too, to avoid errors when we apply the TSubst to the ExternalTypeParams.
+    % too, to avoid errors when we apply the TRename to the ExternalTypeParams.
     % (XXX should we do the same for TypeConstraints and ConstraintProofMap
     % too?)
     vartypes_types(OldExplicitVarTypes, ExplicitTypes),
@@ -407,25 +407,26 @@ type_assign_set_get_final_info(TypeAssignSet,
     list.sort_and_remove_dups(TypeVars2, TypeVars),
 
     % Next, create a new typevarset with the same number of variables.
-    varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
+    varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, OldToNewTRename),
 
     % Finally, if necessary, rename the types and type class constraints
     % to use the new typevarset type variables.
     retrieve_univ_exist_constraints(HLDSTypeConstraints, TypeConstraints),
-    ( if map.is_empty(TSubst) then
+    ( if map.is_empty(OldToNewTRename) then
         NewVarTypes = VarTypes1,
         NewExternalTypeParams = ExternalTypeParams,
         NewTypeConstraints = TypeConstraints,
         NewConstraintProofMap = ConstraintProofMap,
         NewConstraintMap = ConstraintMap
     else
-        rename_vars_in_vartypes(TSubst, VarTypes1, NewVarTypes),
-        map.apply_to_list(ExternalTypeParams, TSubst, NewExternalTypeParams),
-        apply_renaming_to_univ_exist_constraints(TSubst,
+        rename_vars_in_vartypes(OldToNewTRename, VarTypes1, NewVarTypes),
+        map.apply_to_list(ExternalTypeParams, OldToNewTRename,
+            NewExternalTypeParams),
+        apply_renaming_to_univ_exist_constraints(OldToNewTRename,
             TypeConstraints, NewTypeConstraints),
-        apply_renaming_to_constraint_proof_map(TSubst,
+        apply_renaming_to_constraint_proof_map(OldToNewTRename,
             ConstraintProofMap, NewConstraintProofMap),
-        apply_renaming_to_constraint_map(TSubst,
+        apply_renaming_to_constraint_map(OldToNewTRename,
             ConstraintMap, NewConstraintMap)
     ).
 
