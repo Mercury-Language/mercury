@@ -306,8 +306,8 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     MainPieces = [words("Error:")] ++ PredDescPieces ++
         [words("contains"),
         words(choose_number(Constraints,
-            "an unsatisified typeclass constraint:",
-            "some unsatisified typeclass constraints:")),
+            "an unsatisfied typeclass constraint:",
+            "some unsatisfied typeclass constraints:")),
             nl_indent_delta(1)] ++
         pieces_list_to_color_line_pieces(color_incorrect, [suffix(".")],
             list.map(constraint_to_error_pieces(TVarSet), Constraints)) ++

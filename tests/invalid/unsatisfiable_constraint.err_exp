@@ -1,5 +1,5 @@
 unsatisfiable_constraint.m:039: Error: predicate [38;5;87m`test'/1[39;49m contains some
-unsatisfiable_constraint.m:039:   unsatisified typeclass constraints:
+unsatisfiable_constraint.m:039:   unsatisfied typeclass constraints:
 unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.a(A, B, A, V_8)',[39;49m
 unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.a(A, B, C, V_14)',[39;49m
 unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.b(A, C)'.[39;49m

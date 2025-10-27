@@ -1,4 +1,4 @@
-bug184.m:019: Error: function [38;5;87m`test'/0[39;49m contains an unsatisified typeclass
+bug184.m:019: Error: function [38;5;87m`test'/0[39;49m contains an unsatisfied typeclass
 bug184.m:019:   constraint:
 bug184.m:019:     [38;5;203m`bug184.myclass(T)'.[39;49m
 bug184.m:019: Warning: [38;5;203munresolved polymorphism[39;49m in function [38;5;87m`test'/0.[39;49m
