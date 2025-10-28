@@ -63,6 +63,7 @@
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -160,8 +161,8 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
     % with the goal in the proc_info; the clauses_rep won't be needed again.
     get_clause_list_for_replacement(ClausesRep0, Clauses),
     select_matching_clauses(PredInfo, ProcId, Clauses, MatchingClauses),
-    get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
-        StateVarWarnings),
+    get_clause_disjuncts_and_warnings(MatchingClauses,
+        cord.init, ClausesDisjunctsCord, [], StateVarWarnings),
     (
         StateVarWarnings = [_ | _],
         proc_info_set_statevar_warnings(StateVarWarnings, !ProcInfo)
@@ -169,6 +170,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
         StateVarWarnings = []
         % Do not allocate a new proc_info if we do not need to.
     ),
+    ClausesDisjuncts = cord.list(ClausesDisjunctsCord),
     (
         ClausesDisjuncts = [SingleGoal],
         SingleGoal = hlds_goal(SingleExpr, _),
@@ -333,16 +335,24 @@ select_matching_nonunify_clauses_acc(ProcId, [Clause | Clauses],
 %-----------------------------------------------------------------------------%
 
 :- pred get_clause_disjuncts_and_warnings(list(clause)::in,
-    list(hlds_goal)::out, list(error_spec)::out) is det.
+    cord(hlds_goal)::in, cord(hlds_goal)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-get_clause_disjuncts_and_warnings([], [], []).
-get_clause_disjuncts_and_warnings([Clause | Clauses], Disjuncts, Warnings) :-
-    Goal = Clause ^ clause_body,
-    goal_to_disj_list(Goal, FirstDisjuncts),
-    FirstWarnings = Clause ^ clause_statevar_warnings,
-    get_clause_disjuncts_and_warnings(Clauses, LaterDisjuncts, LaterWarnings),
-    Disjuncts = FirstDisjuncts ++ LaterDisjuncts,
-    Warnings = FirstWarnings ++ LaterWarnings.
+get_clause_disjuncts_and_warnings([], !DisjunctCord, !Warnings).
+get_clause_disjuncts_and_warnings([HeadClause | TailClauses],
+        !Disjuncts, !Warnings) :-
+    HeadGoal0 = HeadClause ^ clause_body,
+    ( if HeadGoal0 = hlds_goal(disj(HeadDisjuncts0), _) then
+        cord.snoc_list(HeadDisjuncts0, !Disjuncts)
+    else
+        goal_add_feature(feature_was_clause, HeadGoal0, HeadGoal),
+        cord.snoc(HeadGoal, !Disjuncts)
+    ),
+    HeadWarnings = HeadClause ^ clause_statevar_warnings,
+    % The order in which we return the warnings does not matter;
+    % they will be printed in context order.
+    !:Warnings = HeadWarnings ++ !.Warnings,
+    get_clause_disjuncts_and_warnings(TailClauses, !Disjuncts, !Warnings).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,0 +1,11 @@
+accidental_clause.m:019: Error: the determinism declaration for predicate
+accidental_clause.m:019:   [38;5;87m`foo'/2[39;49m [38;5;203mis not satisfied.[39;49m
+accidental_clause.m:019:   Declared [38;5;40m`semidet',[39;49m inferred [38;5;203m`multi'.[39;49m
+accidental_clause.m:019:   The reasons for the difference are the following.
+accidental_clause.m:023:
+accidental_clause.m:023:   Inside the case f1/0 of the switch on HeadVar__1:
+accidental_clause.m:023:   disjunction consisting of several clauses has more
+accidental_clause.m:023:   than one disjunct with solutions.
+accidental_clause.m:026:
+accidental_clause.m:026:   This later disjunct, which is a whole clause, [38;5;203mmay[39;49m
+accidental_clause.m:026:   [38;5;203mhave a solution.[39;49m
