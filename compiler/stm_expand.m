@@ -608,13 +608,12 @@ copy_input_vars_in_goallist(GoalVar, !GoalList) :-
         ),
     list.map(CopyInputVarLambda, !GoalList).
 
-:- pred calc_pred_variables_list(instmap::in, instmap::in,
+:- pred calc_pred_variables_list(stm_info::in, instmap::in, instmap::in,
     list(hlds_goal)::in, list(prog_var)::in,
-    list(prog_var)::in, list(prog_var)::in, list(stm_goal_vars)::out,
-    stm_info::in, stm_info::out) is det.
+    list(prog_var)::in, list(prog_var)::in, list(stm_goal_vars)::out) is det.
 
-calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
-        IgnoreVarList0, StmGoalVarList, !StmInfo) :-
+calc_pred_variables_list(StmInfo, InitInstmap, FinalInstmap, Goals,
+        InnerDIs, InnerUOs, IgnoreVarList0, StmGoalVarList) :-
     ( if
         Goals = [],
         InnerDIs = [],
@@ -628,12 +627,11 @@ calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
     then
         IgnoreVarList = [HeadInnerDI, HeadInnerUO | IgnoreVarList0],
 
-        calc_pred_variables(InitInstmap, FinalInstmap, HeadGoal, HeadInnerDI,
-            HeadInnerUO, IgnoreVarList, StmGoalVar, !StmInfo),
-        calc_pred_variables_list(InitInstmap, FinalInstmap, TailGoals,
-            TailInnerDIs, TailInnerUOs, IgnoreVarList, StmGoalVarList0,
-            !StmInfo),
-        StmGoalVarList = [StmGoalVar | StmGoalVarList0]
+        calc_pred_variables(StmInfo, InitInstmap, FinalInstmap,
+            HeadGoal, HeadInnerDI, HeadInnerUO, IgnoreVarList, StmGoalVar),
+        calc_pred_variables_list(StmInfo, InitInstmap, FinalInstmap, TailGoals,
+            TailInnerDIs, TailInnerUOs, IgnoreVarList, StmGoalVarListTail),
+        StmGoalVarList = [StmGoalVar | StmGoalVarListTail]
     else
         unexpected($pred, "lengths mismatch")
     ).
@@ -642,13 +640,13 @@ calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
     % input variables and output variables. All variables that appear in the
     % list of IgnoreVarList are not included.
     %
-:- pred calc_pred_variables(instmap::in, instmap::in,
+:- pred calc_pred_variables(stm_info::in, instmap::in, instmap::in,
     hlds_goal::in, prog_var::in, prog_var::in, list(prog_var)::in,
-    stm_goal_vars::out, stm_info::in, stm_info::out) is det.
+    stm_goal_vars::out) is det.
 
-calc_pred_variables(InitInstmap, FinalInstmap, Goal,
-        InnerDI, InnerUO, IgnoreVarList, StmGoalVars, !StmInfo) :-
-    ModuleInfo = !.StmInfo ^ stm_info_module_info,
+calc_pred_variables(StmInfo, InitInstmap, FinalInstmap, Goal,
+        InnerDI, InnerUO, IgnoreVarList, StmGoalVars) :-
+    ModuleInfo = StmInfo ^ stm_info_module_info,
 
     vars_in_goal(Goal, GoalVars0),
     set_of_var.delete_list(IgnoreVarList, GoalVars0, GoalVars),
@@ -777,19 +775,19 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
         OrElseGoals = [],
 
         % If no or_else goals, simply connect up the outer and inner variables.
-        create_var_unify_stm(MainInnerDI, MainOuterDI, UnifyModeUoDi,
-            CopyDIVars, !StmInfo),
-        create_var_unify_stm(MainOuterUO, MainInnerUO, UnifyModeUoDi,
-            CopyUOVars, !StmInfo),
+        create_var_unify_stm(!.StmInfo, MainInnerDI, MainOuterDI,
+            UnifyModeUoDi, CopyDIVars),
+        create_var_unify_stm(!.StmInfo, MainOuterUO, MainInnerUO,
+            UnifyModeUoDi, CopyUOVars),
         create_plain_conj([CopyDIVars, AtomicGoal, CopyUOVars], Goal)
     ;
         OrElseGoals = [_ | _],
 
         % Creates a call to an or_else branch predicate.
-        calc_pred_variables_list(InitInstmap, FinalInstmap,
+        calc_pred_variables_list(!.StmInfo, InitInstmap, FinalInstmap,
             [AtomicGoal0 | OrElseGoals0], [MainInnerDI | OrElseInnerDIs],
             [MainInnerUO | OrElseInnerUOs], [OuterDI, OuterUO],
-            AtomicGoalVarList, !StmInfo),
+            AtomicGoalVarList),
         GoalList = [AtomicGoal | OrElseGoals],
 
         common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
@@ -824,10 +822,10 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
 
         create_or_else_pred(Context, AtomicGoalVars, AtomicGoalVarList1,
             PPIDList, MainInnerDI, MainInnerUO, OrElseCall, !StmInfo),
-        create_var_unify_stm(MainInnerDI, MainOuterDI, UnifyModeUoDi,
-            CopyDIVars, !StmInfo),
-        create_var_unify_stm(MainOuterUO, MainInnerUO, UnifyModeUoDi,
-            CopyUOVars, !StmInfo),
+        create_var_unify_stm(!.StmInfo, MainInnerDI, MainOuterDI,
+            UnifyModeUoDi, CopyDIVars),
+        create_var_unify_stm(!.StmInfo, MainOuterUO, MainInnerUO,
+            UnifyModeUoDi, CopyUOVars),
         create_plain_conj([CopyDIVars, OrElseCall, CopyUOVars], Goal)
     ).
 
@@ -847,10 +845,10 @@ create_top_level_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
     % The input and output variables of the atomic goal and or_else goals
     % should be the same as or_elses are treated as disjunctions.
 
-    calc_pred_variables_list(InitInstmap, FinalInstmap,
+    calc_pred_variables_list(!.StmInfo, InitInstmap, FinalInstmap,
         [AtomicGoal0 | OrElseGoals0], [MainInnerDI | OrElseInnerDIs],
         [MainInnerUO | OrElseInnerUOs], [OuterDI, OuterUO],
-        AtomicGoalVarList, !StmInfo),
+        AtomicGoalVarList),
 
     AtomicGoal = hlds_goal(_, AtomicGoalInfo),
     Context = goal_info_get_context(AtomicGoalInfo),
@@ -881,12 +879,12 @@ create_top_level_pred(Context, AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
 
     UnifyModeUoDi = unify_modes_li_lf_ri_rf(free, unique_inst,
         unique_inst, clobbered_inst),
-    create_var_unify(OuterUO, OuterDI, UnifyModeUoDi,
-        CopyIOAssign, NewPredInfo0, NewPredInfo1),
+    create_var_unify(NewPredInfo0, OuterUO, OuterDI, UnifyModeUoDi,
+        CopyIOAssign),
     create_plain_conj([WrapperCall, CopyIOAssign], TopLevelGoal),
 
-    new_pred_set_goal(TopLevelGoal, NewPredInfo1, NewPredInfo2),
-    run_quantification_over_pred(NewPredInfo2, NewPredInfo),
+    new_pred_set_goal(TopLevelGoal, NewPredInfo0, NewPredInfo1),
+    run_quantification_over_pred(NewPredInfo1, NewPredInfo),
     commit_new_pred(NewPredInfo, !StmInfo).
 
 %-----------------------------------------------------------------------------%
@@ -920,21 +918,21 @@ template_if_exceptres_is_cons(Context, TypeInfoVar, ExceptVar,
     create_aux_variable_assignment(Context, RollbackExceptCons,
         stm_rollback_exception_type, yes("RollbackExcpt"), AssignGoal,
         RollbackExceptVar, !NewPredInfo),
-    create_simple_call(mercury_univ_module, "type_to_univ", pf_predicate,
-        [TypeInfoVar], [UnivPayloadVar, ExceptVar],
+    create_simple_call(!.NewPredInfo, mercury_univ_module, "type_to_univ",
+        pf_predicate, [TypeInfoVar], [UnivPayloadVar, ExceptVar],
         instmap_delta_from_assoc_list(
             [TypeInfoVar - ground(shared, none_or_default_func),
             ExceptVar - ground(shared, none_or_default_func),
             UnivPayloadVar - free]),
-        mode_no(2), detism_semi, purity_pure, [], UnivCall, !NewPredInfo),
-    create_simple_call(mercury_public_builtin_module, "unify", pf_predicate,
-        [TypeInfoVar], [RollbackExceptVar, UnivPayloadVar],
+        mode_no(2), detism_semi, purity_pure, [], UnivCall),
+    create_simple_call(!.NewPredInfo, mercury_public_builtin_module, "unify",
+        pf_predicate, [TypeInfoVar], [RollbackExceptVar, UnivPayloadVar],
         instmap_delta_bind_no_var, only_mode, detism_semi, purity_pure,
-        [], _UnifyCall, !NewPredInfo),
-    create_var_test(UnivPayloadVar, RollbackExceptVar,
+        [], _UnifyCall),
+    create_var_test(!.NewPredInfo, UnivPayloadVar, RollbackExceptVar,
         unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
             ground_inst, ground_inst),
-        TestGoal, !NewPredInfo),
+        TestGoal),
 %   XXX STM
 %   create_plain_conj([AssignGoal, UnivCall, TestGoal, UnifyCall], CondGoal),
     create_plain_conj([AssignGoal, UnivCall, TestGoal], CondGoal),
@@ -942,8 +940,8 @@ template_if_exceptres_is_cons(Context, TypeInfoVar, ExceptVar,
     ITEDetermism = detism_det,
     ITEPurity = purity_impure,
 
-    create_if_then_else([], CondGoal, TrueGoal, FalseGoal, ITEDetermism,
-        ITEPurity, Goal, !NewPredInfo).
+    create_if_then_else(!.NewPredInfo, [], CondGoal, TrueGoal, FalseGoal,
+        ITEDetermism, ITEPurity, Goal).
 
     % Predicate that creates the following goals.
     %
@@ -969,24 +967,25 @@ template_lock_and_validate(StmVar, UnlockAfterwards, ValidGoal, InvalidGoal,
         Goals, !NewPredInfo) :-
     create_aux_variable(stm_valid_result_type, yes("ValidResult"),
         IsValidVar, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module, "stm_lock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], LockCall, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module, "stm_validate",
-        pf_predicate, [], [StmVar, IsValidVar],
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "stm_lock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], LockCall),
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
+        "stm_validate", pf_predicate, [], [StmVar, IsValidVar],
         instmap_delta_from_assoc_list(
             [StmVar - ground(unique, none_or_default_func),
             IsValidVar - free]),
-        only_mode, detism_det, purity_impure, [], ValidCall, !NewPredInfo),
-    create_switch_disjunction(IsValidVar,
+        only_mode, detism_det, purity_impure, [], ValidCall),
+    Cases =
         [case(stm_validres_valid_functor, [], ValidGoal),
-         case(stm_validres_invalid_functor, [], InvalidGoal)], detism_det,
-         purity_impure,  DisjGoal, !NewPredInfo),
+        case(stm_validres_invalid_functor, [], InvalidGoal)],
+    create_switch_disjunction(!.NewPredInfo, IsValidVar, Cases,
+        detism_det, purity_impure, DisjGoal),
     (
         UnlockAfterwards = yes,
-        create_simple_call(mercury_stm_builtin_module, "stm_unlock",
-            pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
-            detism_det, purity_impure, [], UnlockCall, !NewPredInfo),
+        create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
+            "stm_unlock", pf_predicate, [], [], instmap_delta_bind_no_var,
+            only_mode, detism_det, purity_impure, [], UnlockCall),
         Goals = [LockCall, ValidCall, UnlockCall, DisjGoal]
     ;
         UnlockAfterwards = no,
@@ -1007,9 +1006,9 @@ template_lock_and_validate_many(Context, StmVars, UnlockAfterwards, ValidGoal,
         stm_valid_result_type, yes("IsValidConst"), AssignValidConst,
         IsValidConstVar, !NewPredInfo),
 
-    create_simple_call(mercury_stm_builtin_module, "stm_lock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], LockCall, !NewPredInfo),
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "stm_lock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], LockCall),
 
     % Create N value result variables. Variables are returned as a list
 
@@ -1017,39 +1016,38 @@ template_lock_and_validate_many(Context, StmVars, UnlockAfterwards, ValidGoal,
         ( pred(StmVarL::in, ValidGoalL::out, ValidResL::out,
                 NPI0::in, NPI::out) is det :-
             create_aux_variable(stm_valid_result_type, yes("ValidResult"),
-                ValidResL, NPI0, NPI1),
-            create_simple_call(mercury_stm_builtin_module, "stm_validate",
+                ValidResL, NPI0, NPI),
+            create_simple_call(NPI, mercury_stm_builtin_module, "stm_validate",
                 pf_predicate, [], [StmVarL, ValidResL],
                 instmap_delta_from_assoc_list(
                     [StmVarL - ground(unique, none_or_default_func),
                     ValidResL - free]),
-                only_mode, detism_det, purity_impure, [], ValidGoalL,
-                NPI1, NPI)
+                only_mode, detism_det, purity_impure, [], ValidGoalL)
         ),
 
     list.map2_foldl(CreateValidate, StmVars, ValidCalls, IsValidVars,
         !NewPredInfo),
 
     CreateValidTests =
-        ( pred(ValidRes::in, ValidTest::out, NPI0::in, NPI::out) is det :-
-            create_var_test(ValidRes, IsValidConstVar,
+        ( pred(ValidRes::in, ValidTest::out, NPI0::in, NPI0::out) is det :-
+            create_var_test(NPI0, ValidRes, IsValidConstVar,
                 unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
                     ground_inst, ground_inst),
-                ValidTest, NPI0, NPI)
+                ValidTest)
         ),
 
     list.map_foldl(CreateValidTests, IsValidVars, TestValidGoals,
         !NewPredInfo),
     create_plain_conj(TestValidGoals, TestValidCond),
 
-    create_if_then_else([], TestValidCond, ValidGoal, InvalidGoal,
-        detism_cc_multi, purity_impure, ITEGoal, !NewPredInfo),
+    create_if_then_else(!.NewPredInfo, [], TestValidCond,
+        ValidGoal, InvalidGoal, detism_cc_multi, purity_impure, ITEGoal),
 
     (
         UnlockAfterwards = yes,
-        create_simple_call(mercury_stm_builtin_module, "stm_unlock",
-            pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
-            detism_det, purity_impure, [], UnlockCall, !NewPredInfo),
+        create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
+            "stm_unlock", pf_predicate, [], [], instmap_delta_bind_no_var,
+            only_mode, detism_det, purity_impure, [], UnlockCall),
         Goals = [AssignValidConst, LockCall | ValidCalls] ++
             [UnlockCall, ITEGoal]
     ;
@@ -1091,19 +1089,19 @@ create_validate_exception_goal(StmVar, ExceptionVar, ReturnType, RecursiveCall,
         Goal, !NewPredInfo) :-
     make_type_info(ReturnType, ReturnTypeInfoVar, ReturnTypeInfoVarAssign,
         !NewPredInfo),
-    create_simple_call(mercury_exception_module, "rethrow", pf_predicate,
-        [ReturnTypeInfoVar], [ExceptionVar],
+    create_simple_call(!.NewPredInfo, mercury_exception_module, "rethrow",
+        pf_predicate, [ReturnTypeInfoVar], [ExceptionVar],
         instmap_delta_bind_vars([ReturnTypeInfoVar, ExceptionVar]),
         only_mode, detism_erroneous, purity_pure, [],
-        Goal_ExceptionThrow_Call, !NewPredInfo),
+        Goal_ExceptionThrow_Call),
     create_plain_conj(ReturnTypeInfoVarAssign ++ [Goal_ExceptionThrow_Call],
         Goal_ValidBranch),
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_discard_transaction_log", pf_predicate,
         [], [StmVar],
         instmap_delta_from_assoc_list(
             [StmVar - ground(clobbered, none_or_default_func)]),
-        only_mode, detism_det, purity_impure, [], DropStateCall, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], DropStateCall),
     create_plain_conj([DropStateCall, RecursiveCall], Goal_InvalidBranch),
     template_lock_and_validate(StmVar, yes, Goal_ValidBranch,
         Goal_InvalidBranch, Goals, !NewPredInfo),
@@ -1118,19 +1116,19 @@ create_validate_exception_goal(StmVar, ExceptionVar, ReturnType, RecursiveCall,
     hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_retry_handler_branch(StmVar, RecCall, Goal, !NewPredInfo) :-
-    create_simple_call(mercury_stm_builtin_module, "stm_block", pf_predicate,
-        [], [StmVar], instmap_delta_bind_var(StmVar), only_mode,
-        detism_det, purity_impure, [], BlockGoal, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module, "stm_unlock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], UnlockGoal, !NewPredInfo),
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "stm_block",
+        pf_predicate, [], [StmVar], instmap_delta_bind_var(StmVar), only_mode,
+        detism_det, purity_impure, [], BlockGoal),
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "stm_unlock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], UnlockGoal),
     template_lock_and_validate(StmVar, no, BlockGoal, UnlockGoal,
         LockAndValidateGoals, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_discard_transaction_log", pf_predicate, [], [StmVar],
         instmap_delta_from_assoc_list(
             [StmVar - ground(clobbered, none_or_default_func)]),
-        only_mode, detism_det, purity_impure, [], DropStateCall, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], DropStateCall),
     create_plain_conj(LockAndValidateGoals ++ [DropStateCall, RecCall],
         Goal).
 
@@ -1151,11 +1149,11 @@ create_test_on_exception(Context, ExceptVar, StmVar, ReturnType, RecCall, Goal,
         [ExceptUnivVar], DeconstructException),
     make_type_info(stm_rollback_exception_type, TypeInfoRollbackVar,
         TypeInfoRollbackAssign, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_discard_transaction_log", pf_predicate, [], [StmVar],
         instmap_delta_from_assoc_list(
             [StmVar - ground(clobbered, none_or_default_func)]),
-        only_mode, detism_det, purity_impure, [], DropStateGoal, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], DropStateGoal),
 
     create_plain_conj([DropStateGoal, RecCall], TrueGoal),
     create_validate_exception_goal(StmVar, ExceptVar, ReturnType, RecCall,
@@ -1206,18 +1204,17 @@ create_rollback_handler_goal(Context, AtomicGoalVars, ReturnType,
     create_aux_variable(Exception_Result_Type, yes("ExceptionResult"),
         ReturnExceptVar, !NewPredInfo),
 
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_create_transaction_log", pf_predicate, [], [StmVarDI],
         instmap_delta_from_assoc_list(
             [StmVarDI - ground(unique, none_or_default_func)]),
-        only_mode, detism_det, purity_impure, [],
-        Goal_StmCreate, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], Goal_StmCreate),
 
     % TODO: Select mode based on determism of actual goal. 0 if determistic,
     % 1 if cc_multi.
 
-    create_simple_call(mercury_exception_module, "unsafe_try_stm",
-        pf_predicate, [ReturnTypeInfoVar],
+    create_simple_call(!.NewPredInfo, mercury_exception_module,
+        "unsafe_try_stm", pf_predicate, [ReturnTypeInfoVar],
         [AtomicClosureVar, ReturnExceptVar, StmVarDI, StmVarUO],
         instmap_delta_from_assoc_list([
             ReturnTypeInfoVar - ground(shared, none_or_default_func),
@@ -1225,8 +1222,7 @@ create_rollback_handler_goal(Context, AtomicGoalVars, ReturnType,
             ReturnExceptVar - ground(shared, none_or_default_func),
             StmVarDI - ground(clobbered, none_or_default_func),
             StmVarUO - ground(unique, none_or_default_func)]),
-        mode_no(0), detism_cc_multi, purity_pure, [],
-        Goal_TryStm, !NewPredInfo),
+        mode_no(0), detism_cc_multi, purity_pure, [], Goal_TryStm),
 
     % For successfull execution, deconstruct and return true
     deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
@@ -1234,10 +1230,11 @@ create_rollback_handler_goal(Context, AtomicGoalVars, ReturnType,
     create_test_on_exception(Context, ReturnExceptVar, StmVarUO,
         ReturnType, RecCall, Branch_AtomicException, !NewPredInfo),
 
-    create_switch_disjunction(ReturnExceptVar,
+    Cases =
         [case(ExceptRes_Failure_Functor, [], Branch_AtomicException),
         case(ExceptRes_Success_Functor, [], Branch_AtomicSuccess)],
-        detism_det, purity_impure, DisjGoal, !NewPredInfo),
+    create_switch_disjunction(!.NewPredInfo, ReturnExceptVar, Cases,
+        detism_det, purity_impure, DisjGoal),
 
     create_plain_conj([Goal_StmCreate | ReturnTypeInfoVarAssign] ++
         [ClosureAssign, Goal_TryStm, DisjGoal], Goal0),
@@ -1309,13 +1306,13 @@ create_rollback_pred_2(Context, AtomicGoalVarList, RecCallGoal,
     % Moves a single variable, along with its type, from the original
     % predicate to the newly created wrapper predicate.
     %
-:- pred apply_varset_to_preds(prog_var::in,
-    var_table::in, var_table::out, var_table::in, var_table::out,
+:- pred apply_varset_to_preds(var_table::in, prog_var::in,
+    var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-apply_varset_to_preds(ProgVar, !NewPredVarTable, !OldPredVarTable,
-        !VarMapping) :-
-    lookup_var_entry(!.OldPredVarTable, ProgVar, ProgVarEntry),
+apply_varset_to_preds(OldPredVarTable, ProgVar,
+        !NewPredVarTable, !VarMapping) :-
+    lookup_var_entry(OldPredVarTable, ProgVar, ProgVarEntry),
     ProgVarEntry = vte(_, ProgVarType, ProgVarIsDummy),
     NewProgVarEntry = vte("", ProgVarType, ProgVarIsDummy),
 %   map.delete(!.OldPredVarTable, ProgVar, !:OldPredVarTable),
@@ -1336,14 +1333,13 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     OldProcInfo0 = !.StmInfo ^ stm_info_proc_info,
     proc_info_get_var_table(NewProcInfo0, NewPredVarTable0),
-    proc_info_get_var_table(OldProcInfo0, OldPredVarTable0),
+    proc_info_get_var_table(OldProcInfo0, OldPredVarTable),
     AtomicGoalVars = stm_goal_vars(_, LocalVars, _, OrigInnerDI, OrigInnerUO),
     LocalVarList = set_of_var.to_sorted_list(LocalVars),
 
     VarMapping0 = map.init,
-    list.foldl3(apply_varset_to_preds, LocalVarList,
-        NewPredVarTable0, NewPredVarTable, OldPredVarTable0, OldPredVarTable,
-        VarMapping0, VarMapping1),
+    list.foldl2(apply_varset_to_preds(OldPredVarTable), LocalVarList,
+        NewPredVarTable0, NewPredVarTable, VarMapping0, VarMapping1),
 
     ( if OrigInnerDI = OrigInnerUO then
         map.det_insert(OrigInnerDI, InnerDI, VarMapping1, VarMapping)
@@ -1496,34 +1492,32 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
         RollbackCons, stm_rollback_exception_type,
         yes("Stm_Expand_Rollback"), ConstRollbackGoal, RollbackVar,
         !NewPredInfo),
-    create_simple_call(StmModuleName, "stm_lock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], Goal_StmLock_Call, !NewPredInfo),
-    create_simple_call(StmModuleName, "stm_unlock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], Goal_StmUnLock_Call, !NewPredInfo),
-    create_simple_call(StmModuleName, "stm_validate", pf_predicate,
-        [], [StmUO, IsValidVar],
+    create_simple_call(!.NewPredInfo, StmModuleName, "stm_lock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], Goal_StmLock_Call),
+    create_simple_call(!.NewPredInfo, StmModuleName, "stm_unlock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], Goal_StmUnLock_Call),
+    create_simple_call(!.NewPredInfo, StmModuleName, "stm_validate",
+        pf_predicate, [], [StmUO, IsValidVar],
         instmap_delta_from_assoc_list(
             [StmUO - ground(unique, none_or_default_func),
             IsValidVar - ground(shared, none_or_default_func)]),
-        only_mode, detism_det, purity_impure,
-        [], Goal_StmValidate_Call, !NewPredInfo),
-    create_simple_call(StmModuleName, "stm_commit", pf_predicate,
-        [], [StmUO],
+        only_mode, detism_det, purity_impure, [], Goal_StmValidate_Call),
+    create_simple_call(!.NewPredInfo, StmModuleName, "stm_commit",
+        pf_predicate, [], [StmUO],
         instmap_delta_from_assoc_list(
             [StmUO - ground(unique, none_or_default_func)]),
-        only_mode, detism_det, purity_impure,
-        [], Goal_StmCommit_Call, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], Goal_StmCommit_Call),
 
     make_type_info(stm_rollback_exception_type, TypeInfoVar,
         CreateTypeInfoGoals, !NewPredInfo),
 
-    create_simple_call(ExceptionModuleName, "throw", pf_predicate,
-        [TypeInfoVar], [RollbackVar],
+    create_simple_call(!.NewPredInfo, ExceptionModuleName, "throw",
+        pf_predicate, [TypeInfoVar], [RollbackVar],
         instmap_delta_bind_vars([TypeInfoVar, RollbackVar]),
         only_mode, detism_erroneous, purity_pure,
-        [], Goal_ExceptionThrow_Call, !NewPredInfo),
+        [], Goal_ExceptionThrow_Call),
 
     % Creates the branch on the validation result of the log.
     create_plain_conj([Goal_StmCommit_Call, Goal_StmUnLock_Call],
@@ -1532,10 +1526,11 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
         CreateTypeInfoGoals ++ [Goal_ExceptionThrow_Call],
         Goal_InvalidBranch),
 
-    create_switch_disjunction(IsValidVar,
+    Cases =
         [case(ValidTrueFunctor, [], Goal_ValidBranch),
-         case(ValidFalseFunctor, [], Goal_InvalidBranch)],
-        detism_det, purity_impure, DisjGoal, !NewPredInfo),
+        case(ValidFalseFunctor, [], Goal_InvalidBranch)],
+    create_switch_disjunction(!.NewPredInfo, IsValidVar, Cases,
+        detism_det, purity_impure, DisjGoal),
 
     % Creates the main validation and commission goal.
     PostAtomicTopLevelList = [Goal_StmLock_Call,
@@ -1547,10 +1542,10 @@ create_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType, ResultVar,
     % Creates the unification between StmUO and StmDI is needed.
     (
         CopySTM = yes,
-        create_var_unify(StmUO, StmDI,
+        create_var_unify(!.NewPredInfo, StmUO, StmDI,
             unify_modes_li_lf_ri_rf(free, unique_inst,
                 unique_inst, clobbered_inst),
-            CopySTMAssign, !NewPredInfo),
+            CopySTMAssign),
         TopLevelGoalList0 = [AtomicGoal] ++ AssignResult ++ [CopySTMAssign,
             PostAtomicGoal]
     ;
@@ -1626,7 +1621,7 @@ create_simple_wrapper_pred_2(Context, AtomicGoalVars, ResultType, ResultVar0,
 :- pred create_probe_call(string::in, prog_var::in, list(hlds_goal)::out,
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
-create_probe_call(_Name, _Var, Goals, !NewPredInfo) :-
+create_probe_call(_Name, _Var, Goals, NewPredInfo, NewPredInfo) :-
     Goals = [].
 
     % Creates the goals for validating and committing (or raising a rollback
@@ -1651,10 +1646,10 @@ create_simple_post_wrapper_goal(Context, AtomicGoalVars, AtomicGoal,
     % Creates the unification between StmUO and StmDI is needed.
     (
         CopySTM = yes,
-        create_var_unify(StmUO, StmDI,
+        create_var_unify(!.NewPredInfo, StmUO, StmDI,
             unify_modes_li_lf_ri_rf(free, unique_inst,
                 unique_inst, clobbered_inst),
-            CopySTMAssign, !NewPredInfo),
+            CopySTMAssign),
         TopLevelGoalList0 = Call1 ++ [CopySTMAssign, AtomicGoal] ++ Call2 ++
             AssignResult
     ;
@@ -1864,38 +1859,37 @@ create_or_else_end_branch(Context, StmVars, OuterSTMDI, OuterSTMUO,
 
     MakeMergeGoals =
         ( pred(StmVar::in, ThreadSTMDI::in, ThreadSTMUO::in,
-                ThisGoal::out, NPI0::in, NPI::out) is det :-
-            create_simple_call(mercury_stm_builtin_module,
+                ThisGoal::out, NPI0::in, NPI0::out) is det :-
+            create_simple_call(NPI0, mercury_stm_builtin_module,
                 "stm_merge_nested_logs", pf_predicate,
                 [], [StmVar, ThreadSTMDI, ThreadSTMUO],
                 instmap_delta_from_assoc_list(
                     [StmVar - ground(unique, none_or_default_func),
                     ThreadSTMDI - free,
                     ThreadSTMUO - ground(unique, none_or_default_func)]),
-                only_mode, detism_det, purity_impure,
-                [], ThisGoal, NPI0, NPI)
+                only_mode, detism_det, purity_impure, [], ThisGoal)
         ),
 
     map3_in_foldl(MakeMergeGoals, StmVars, MergeStmVarsIn, MergeStmVarsOut,
         MergeGoals, !NewPredInfo),
 
-    create_simple_call(mercury_stm_builtin_module, "stm_unlock", pf_predicate,
-        [], [], instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, [], UnlockCall, !NewPredInfo),
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "stm_unlock",
+        pf_predicate, [], [], instmap_delta_bind_no_var, only_mode,
+        detism_det, purity_impure, [], UnlockCall),
 
     create_aux_variable_assignment(Context, stm_rollback_retry_functor,
         stm_rollback_exception_type, yes("RetryCons"), AssignRetryCons,
         RetryConsVar, !NewPredInfo),
-    create_simple_call(mercury_exception_module, "throw", pf_predicate,
-        [ExceptionRttiVar], [RetryConsVar],
+    create_simple_call(!.NewPredInfo, mercury_exception_module, "throw",
+        pf_predicate, [ExceptionRttiVar], [RetryConsVar],
         instmap_delta_bind_vars([ExceptionRttiVar, RetryConsVar]),
-        only_mode, detism_erroneous, purity_pure, [], RetryCall, !NewPredInfo),
+        only_mode, detism_erroneous, purity_pure, [], RetryCall),
 
 %   XXX STM
-%   create_simple_call(mercury_stm_builtin_module, "retry",
+%   create_simple_call(!.NewPredInfo, mercury_stm_builtin_module, "retry",
 %       pf_predicate, only_mode,
 %       detism_det, purity_pure, [OuterSTMUO], [],
-%       instmap_delta_bind_var(OuterSTMUO), RetryCall, !NewPredInfo),
+%       instmap_delta_bind_var(OuterSTMUO), RetryCall),
     create_plain_conj(MergeGoals ++ [UnlockCall, AssignRetryCons, RetryCall],
         ValidGoal),
 
@@ -1904,10 +1898,10 @@ create_or_else_end_branch(Context, StmVars, OuterSTMDI, OuterSTMUO,
     create_aux_variable_assignment(Context, stm_rollback_exception_functor,
         stm_rollback_exception_type, yes("RollbackCons"), AssignRollbackCons,
         RollbackConsVar, !NewPredInfo),
-    create_simple_call(mercury_exception_module, "throw", pf_predicate,
-        [ExceptionRttiVar], [RollbackConsVar],
+    create_simple_call(!.NewPredInfo, mercury_exception_module, "throw",
+        pf_predicate, [ExceptionRttiVar], [RollbackConsVar],
         instmap_delta_bind_vars([ExceptionRttiVar, RollbackConsVar]),
-        only_mode, detism_erroneous, purity_pure, [], ThrowCall, !NewPredInfo),
+        only_mode, detism_erroneous, purity_pure, [], ThrowCall),
     create_plain_conj([UnlockCall, AssignRollbackCons, ThrowCall],
         InvalidGoal),
 
@@ -1954,17 +1948,16 @@ create_or_else_branch(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
         InputModes ++ [out_mode, di_mode, uo_mode],
         AtomicClosureVar, ClosureAssign, !NewPredInfo),
 
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_create_nested_transaction_log", pf_predicate,
         [OuterStmDIVar, InnerSTM0Var], [],
         instmap_delta_from_assoc_list(
             [OuterStmDIVar - ground(unique, none_or_default_func),
             InnerSTM0Var - free]),
-        only_mode, detism_det, purity_impure,
-        [], CreateNestedLogCall, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], CreateNestedLogCall),
 
-    create_simple_call(mercury_exception_module, "unsafe_try_stm",
-        pf_predicate, [RttiVar],
+    create_simple_call(!.NewPredInfo, mercury_exception_module,
+        "unsafe_try_stm", pf_predicate, [RttiVar],
         [AtomicClosureVar, ReturnExceptVar, InnerSTM0Var, InnerSTMVar],
         instmap_delta_from_assoc_list([
             RttiVar - ground(shared, none_or_default_func),
@@ -1972,34 +1965,32 @@ create_or_else_branch(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
             ReturnExceptVar - free,
             InnerSTM0Var - ground(unique, none_or_default_func),
             InnerSTMVar - free]),
-        mode_no(0), detism_cc_multi, purity_pure,
-        [], TryStmCall, !NewPredInfo),
+        mode_no(0), detism_cc_multi, purity_pure, [], TryStmCall),
 
     % Successfull execution, deconstruct and return
     deconstruct_output(AtomicGoalVars, ReturnType, ReturnExceptVar,
         DeconstructGoal, StmInfo, !NewPredInfo),
-    create_simple_call(mercury_stm_builtin_module, "stm_merge_nested_logs",
-        pf_predicate, [], [InnerSTMVar, OuterStmDIVar, OuterStmUOVar],
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
+        "stm_merge_nested_logs", pf_predicate,
+        [], [InnerSTMVar, OuterStmDIVar, OuterStmUOVar],
         instmap_delta_from_assoc_list(
             [InnerSTMVar - ground(unique, none_or_default_func),
             OuterStmDIVar - ground(unique, none_or_default_func),
             OuterStmUOVar - free]),
-        only_mode, detism_det, purity_impure,
-        [], MergeNestedLogsCall, !NewPredInfo),
+        only_mode, detism_det, purity_impure, [], MergeNestedLogsCall),
 
     create_plain_conj([DeconstructGoal, MergeNestedLogsCall], SuccessBranch),
 
     % General exception: discard and throw upwards
-    create_simple_call(mercury_stm_builtin_module,
+    create_simple_call(!.NewPredInfo, mercury_stm_builtin_module,
         "stm_discard_transaction_log", pf_predicate, [], [InnerSTMVar],
         instmap_delta_from_assoc_list(
             [InnerSTMVar - ground(unique, none_or_default_func)]),
-        only_mode, detism_det, purity_impure, [], DiscardCall, !NewPredInfo),
-    create_simple_call(mercury_exception_module, "rethrow",
+        only_mode, detism_det, purity_impure, [], DiscardCall),
+    create_simple_call(!.NewPredInfo, mercury_exception_module, "rethrow",
         pf_predicate, [], [RttiVar, ReturnExceptVar],
         instmap_delta_bind_vars([RttiVar, ReturnExceptVar]),
-        only_mode, detism_erroneous, purity_pure,
-        [], RethrowCall, !NewPredInfo),
+        only_mode, detism_erroneous, purity_pure, [], RethrowCall),
 
     % Code to extract the exception result.
     create_aux_variable(univ_type, yes("ExceptUnivVar"), ExceptUnivVar,
@@ -2015,10 +2006,11 @@ create_or_else_branch(Context, AtomicGoalVars, ReturnType, OuterStmDIVar,
         RetryBranch, NotRetryBranch, IfRetryGoal, !NewPredInfo),
 
     create_plain_conj([DeconstructException, IfRetryGoal], ExceptionBranch),
-    create_switch_disjunction(ReturnExceptVar,
+    Cases =
         [case(exception_exception_functor, [], ExceptionBranch),
          case(exception_succeeded_functor, [], SuccessBranch)],
-        detism_det, purity_impure, DisjGoal, !NewPredInfo),
+    create_switch_disjunction(!.NewPredInfo, ReturnExceptVar, Cases,
+        detism_det, purity_impure, DisjGoal),
 
     create_plain_conj([CreateNestedLogCall, ClosureAssign, TryStmCall,
         DisjGoal], Goal).
@@ -2112,10 +2104,10 @@ construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
         % Wrapper returns a single value -- Simply get the value from the
         % exception result and return.
         OutVar = list.det_head(OutputVars),
-        create_var_unify(ResultVar, OutVar,
+        create_var_unify(!.NewPredInfo, ResultVar, OutVar,
             unify_modes_li_lf_ri_rf(free, ground_inst,
                 ground_inst, ground_inst),
-            Goal, !NewPredInfo),
+            Goal),
         Goals = [Goal]
     ;
         OutputTypes = [_, _ | _],
@@ -2229,12 +2221,12 @@ create_aux_variable_assignment(Context, ConsId, Type, MaybeName, Goal, Var,
 
     % Creates a simple test between two variables (using the unify goal).
     %
-:- pred create_var_test(prog_var::in, prog_var::in, unify_mode::in,
-    hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_var_test(stm_new_pred_info::in, prog_var::in, prog_var::in,
+    unify_mode::in, hlds_goal::out) is det.
 
-create_var_test(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
-    Context = !.NewPredInfo ^ new_pred_context,
-    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
+create_var_test(NewPredInfo, VarLHS, VarRHS, UnifyMode, Goal) :-
+    Context = NewPredInfo ^ new_pred_context,
+    ModuleInfo = NewPredInfo ^ new_pred_module_info,
 
     UnifyType = simple_test(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
@@ -2257,12 +2249,12 @@ create_var_test(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     % Creates a unification between two variables (using the unify goal)
     % Takes the "stm_info" state
     %
-:- pred create_var_unify_stm(prog_var::in, prog_var::in, unify_mode::in,
-    hlds_goal::out, stm_info::in, stm_info::out) is det.
+:- pred create_var_unify_stm(stm_info::in, prog_var::in, prog_var::in,
+    unify_mode::in, hlds_goal::out) is det.
 
-create_var_unify_stm(VarLHS, VarRHS, UnifyMode, Goal, !StmInfo) :-
+create_var_unify_stm(StmInfo, VarLHS, VarRHS, UnifyMode, Goal) :-
     Context = context("--temp-context--", 999),
-    ModuleInfo = !.StmInfo ^ stm_info_module_info,
+    ModuleInfo = StmInfo ^ stm_info_module_info,
 
     UnifyType = assign(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
@@ -2284,12 +2276,12 @@ create_var_unify_stm(VarLHS, VarRHS, UnifyMode, Goal, !StmInfo) :-
 
     % Creates a unification between two variables (using the unify goal)
     %
-:- pred create_var_unify(prog_var::in, prog_var::in, unify_mode::in,
-    hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_var_unify(stm_new_pred_info::in, prog_var::in, prog_var::in,
+    unify_mode::in, hlds_goal::out) is det.
 
-create_var_unify(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
-    Context = !.NewPredInfo ^ new_pred_context,
-    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
+create_var_unify(NewPredInfo, VarLHS, VarRHS, UnifyMode, Goal) :-
+    Context = NewPredInfo ^ new_pred_context,
+    ModuleInfo = NewPredInfo ^ new_pred_module_info,
 
     UnifyType = assign(VarLHS, VarRHS),
     UnifyRHS = rhs_var(VarRHS),
@@ -2312,16 +2304,16 @@ create_var_unify(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     % Creates a simple call. If the call is polymorphic, remember to add
     % the runtime type information as well ("type_info" variable).
     %
-:- pred create_simple_call(module_name::in, string::in, pred_or_func::in,
-    list(prog_var)::in, list(prog_var)::in, instmap_delta::in,
-    mode_no::in, determinism::in, purity::in, list(goal_feature)::in,
-    hlds_goal::out, stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_simple_call(stm_new_pred_info::in, module_name::in, string::in,
+    pred_or_func::in, list(prog_var)::in, list(prog_var)::in,
+    instmap_delta::in, mode_no::in, determinism::in, purity::in,
+    list(goal_feature)::in, hlds_goal::out) is det.
 
-create_simple_call(ModuleName, ProcName, PredOrFunc, TIArgVars, NonTIArgVars,
-        InstmapDelta, Mode, Detism, Purity, GoalFeatures, Goal,
-        !NewPredInfo) :-
-    Context = !.NewPredInfo ^ new_pred_context,
-    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
+create_simple_call(NewPredInfo, ModuleName, ProcName, PredOrFunc,
+        TIArgVars, NonTIArgVars, InstmapDelta, Mode, Detism, Purity,
+        GoalFeatures, Goal) :-
+    Context = NewPredInfo ^ new_pred_context,
+    ModuleInfo = NewPredInfo ^ new_pred_module_info,
     generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
         TIArgVars, NonTIArgVars, InstmapDelta, Mode,
         Detism, Purity, GoalFeatures, Context, Goal).
@@ -2353,13 +2345,13 @@ create_closure(PredProcID, Args, ArgTypes, ArgModes, ClosureVar,
 
     % Creates an if-then-else goal.
     %
-:- pred create_if_then_else(list(prog_var)::in, hlds_goal::in, hlds_goal::in,
-    hlds_goal::in, determinism::in, purity::in, hlds_goal::out,
-    stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_if_then_else(stm_new_pred_info::in, list(prog_var)::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in, determinism::in,
+    purity::in, hlds_goal::out) is det.
 
-create_if_then_else(ExistVars, Cond, Then, Else, Detism, Purity, OutGoal,
-        !NewPredInfo) :-
-    Context = !.NewPredInfo ^ new_pred_context,
+create_if_then_else(NewPredInfo, ExistVars, Cond, Then, Else, Detism,
+        Purity, OutGoal) :-
+    Context = NewPredInfo ^ new_pred_context,
     OutGoalExpr = if_then_else(ExistVars, Cond, Then, Else),
     NonLocals = set_of_var.init,
     instmap_delta_init_reachable(InstMapDelta),
@@ -2369,13 +2361,12 @@ create_if_then_else(ExistVars, Cond, Then, Else, Detism, Purity, OutGoal,
 
     % Creates a switch goal.
     %
-:- pred create_switch_disjunction(prog_var::in, list(case)::in,
-    determinism::in, purity::in, hlds_goal::out,
-    stm_new_pred_info::in, stm_new_pred_info::out) is det.
+:- pred create_switch_disjunction(stm_new_pred_info::in, prog_var::in,
+    list(case)::in, determinism::in, purity::in, hlds_goal::out) is det.
 
-create_switch_disjunction(ProgVar, Cases, Detism, Purity, OutGoal,
-        !NewPredInfo) :-
-    Context = !.NewPredInfo ^ new_pred_context,
+create_switch_disjunction(NewPredInfo, ProgVar, Cases, Detism, Purity,
+        OutGoal) :-
+    Context = NewPredInfo ^ new_pred_context,
     NonLocals = set_of_var.init,
     instmap_delta_init_reachable(InstMapDelta),
     OutGoalExpr = switch(ProgVar, cannot_fail, Cases),
