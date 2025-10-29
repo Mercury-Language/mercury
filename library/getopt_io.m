@@ -173,6 +173,7 @@
     %
     %   % Nondeterministically returns all the options with their
     %   % corresponding types and default values.
+    %   % This predicate may also have determinism "nondet".
     %   %
     % :- pred option_default(option::out, option_data::out) is multi.
     %
@@ -1003,10 +1004,10 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
         !OptionTable, !OptionsSet, !UserData, !MaybeIO) :-
     % We process the argument list in three phases.
     %
-    % - In phase 1, record_arguments process all the arguments, sorts them
-    %   into option arguments and non-option arguments, and then recognizes
-    %   and records the options (and if relevant, their values) in option
-    %   arguments.
+    % - In phase 1, record_arguments loops over all the arguments, and
+    %   separates them into the option arguments and the non-option arguments,
+    %   recognizing and recording the options (and if relevant, their values)
+    %   in option arguments.
     %
     % - In phase 2, expand_file_specials loops over all the recorded option
     %   values, looking for file_special options. When it finds one, it
