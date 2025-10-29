@@ -219,7 +219,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
-read_specs_file_2(_, _, Problem, !IO) :-
+read_specs_file_2(_, _, Problem, IO, IO) :-
     Problem = "mmc can read event set specifications only when it itself " ++
         "is compiled in a grade that targets C code.".
 
