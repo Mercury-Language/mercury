@@ -540,9 +540,32 @@
     --->    empty_cord
     ;       nonempty_cord(cord_node(T)).
 
+    % We used to have unit_node(T) as one of three function symbols
+    % in the cord_node(T) type. It was equivalent to list_node(T, list(T))
+    % with an empty list as the second argument, so it could be deleted.
+    %
+    % Having unit_node(T) can make the representation of some cords smaller,
+    % and its presence can also avoid the cost of filling in and later reading
+    % the second argument of list_node/2. However, it increases the cost of
+    % all traversals of cord nodes by forcing a choice between three
+    % function symbols, not two. In some cases, but not all, using list_node
+    % instead of unit_node will then require a test of the second argument
+    % for nil vs cons, so using only list_nodes lowers the overall number
+    % of tests required.
+    %
+    % The extra memory accesses required by using only list_nodes will
+    % always be cache hits, since the Boehm allocator always puts two-word
+    % heap cells at two-word boundaries, so the second word will always be
+    % in the same cache block as the first word. This makes them cheap.
+    % On the other hand, branch prediction for the extra tests required
+    % by the presence of unit_nodes will necessarily be less than perfect,
+    % and mispredicted branches have been the other one of the two most
+    % costly operations (besides cache misses) on CPUs for many years now.
+    %
+    % The overall effect is that deleting the unit_node function symbol
+    % gets a speedup on tools/speedtest of approximately 0.7%.
 :- type cord_node(T)
-    --->    unit_node(T)
-    ;       list_node(T, list(T))
+    --->    list_node(T, list(T))
     ;       branch_node(cord_node(T), cord_node(T)).
 
 %---------------------------------------------------------------------------%
@@ -551,17 +574,17 @@ init = empty_cord.
 
 empty = empty_cord.
 
-singleton(X) = nonempty_cord(unit_node(X)).
+singleton(X) = nonempty_cord(list_node(X, [])).
 
 %---------------------------------------------------------------------------%
 
 cons(X, C) = XC :-
     (
         C = empty_cord,
-        XC = nonempty_cord(unit_node(X))
+        XC = nonempty_cord(list_node(X, []))
     ;
         C = nonempty_cord(N),
-        XC = nonempty_cord(branch_node(unit_node(X), N))
+        XC = nonempty_cord(branch_node(list_node(X, []), N))
     ).
 
 cons(X, !C) :-
@@ -593,10 +616,10 @@ cons_list(L, !C) :-
 snoc(C, X) = CX :-
     (
         C = empty_cord,
-        CX = nonempty_cord(unit_node(X))
+        CX = nonempty_cord(list_node(X, []))
     ;
         C = nonempty_cord(N),
-        CX = nonempty_cord(branch_node(N, unit_node(X)))
+        CX = nonempty_cord(branch_node(N, list_node(X, [])))
     ).
 
 snoc(X, !C) :-
@@ -654,15 +677,14 @@ rev_cord_list_to_cord(RevCords) = Cord :-
 %---------------------%
 
 condense(empty_cord) = empty_cord.
-condense(nonempty_cord(C0)) = condense_2(C0).
+condense(nonempty_cord(C0)) = condense_node(C0).
 
-:- func condense_2(cord_node(cord(T))) = cord(T).
+:- func condense_node(cord_node(cord(T))) = cord(T).
 
-condense_2(unit_node(C)) = C.
-condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
-condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
-    Left = condense_2(Left0),
-    Right = condense_2(Right0).
+condense_node(list_node(C, L)) = C ++ cord_list_to_cord(L).
+condense_node(branch_node(Left0, Right0)) = Left ++ Right :-
+    Left = condense_node(Left0),
+    Right = condense_node(Right0).
 
 %---------------------------------------------------------------------------%
 
@@ -671,11 +693,7 @@ is_empty(empty_cord).
 is_non_empty(nonempty_cord(_)).
 
 is_singleton(C, X) :-
-    (
-        C = nonempty_cord(unit_node(X))
-    ;
-        C = nonempty_cord(list_node(X, []))
-    ).
+    C = nonempty_cord(list_node(X, [])).
 
 %---------------------------------------------------------------------------%
 
@@ -689,8 +707,6 @@ get_first(nonempty_cord(N), Head) :-
 
 get_first_node(Node, Head) :-
     (
-        Node = unit_node(Head)
-    ;
         Node = list_node(Head, _)
     ;
         Node = branch_node(A, _),
@@ -706,9 +722,6 @@ head_tail(nonempty_cord(N), H, T) :-
 
 head_tail_node(Node, Head, Tail) :-
     (
-        Node = unit_node(Head),
-        Tail = empty_cord
-    ;
         Node = list_node(H, T),
         Head = H,
         (
@@ -739,8 +752,6 @@ get_last(nonempty_cord(N), Last) :-
 
 get_last_node(Node, Last) :-
     (
-        Node = unit_node(Last)
-    ;
         Node = list_node(Head, Tail),
         (
             Tail = [],
@@ -763,9 +774,6 @@ split_last(nonempty_cord(N), AllButLast, Last) :-
 
 split_last_node(Node, AllButLast, Last) :-
     (
-        Node = unit_node(Last),
-        AllButLast = empty_cord
-    ;
         Node = list_node(H, T),
         split_list_last(H, T, AllButLastList, Last),
         (
@@ -802,8 +810,6 @@ member(X, nonempty_cord(N)) :-
 
 member_node(X, Node) :-
     (
-        Node = unit_node(X)
-    ;
         Node = list_node(H, T),
         (
             X = H
@@ -853,9 +859,6 @@ to_list(nonempty_cord(N)) = to_list_2([N], []).
 to_list_2([], L) = L.
 to_list_2([N | Ns], L0) = L :-
     (
-        N = unit_node(X),
-        L = to_list_2(Ns, [X | L0])
-    ;
         N = list_node(H, T),
         L = to_list_2(Ns, [H | T ++ L0])
     ;
@@ -869,25 +872,22 @@ rev_list(C) =
     to_rev_list(C).
 
 to_rev_list(empty_cord) = [].
-to_rev_list(nonempty_cord(N)) = to_rev_list_2([N], []).
+to_rev_list(nonempty_cord(N)) = to_rev_list_nodes([N], []).
 
-    % to_rev_list_2(Ns, L0) = L:
+    % to_rev_list_nodes(Ns, L0) = L:
     %
     % L is the reverse list of items in Ns appended in front of L0.
     %
-:- func to_rev_list_2(list(cord_node(T)), list(T)) = list(T).
+:- func to_rev_list_nodes(list(cord_node(T)), list(T)) = list(T).
 
-to_rev_list_2([], L) = L.
-to_rev_list_2([N | Ns], L0) = L :-
+to_rev_list_nodes([], L) = L.
+to_rev_list_nodes([N | Ns], L0) = L :-
     (
-        N = unit_node(X),
-        L = to_rev_list_2(Ns, [X | L0])
-    ;
         N = list_node(H, T),
-        L = to_rev_list_2(Ns, list_reverse_2(T, [H | L0]))
+        L = to_rev_list_nodes(Ns, list_reverse_2(T, [H | L0]))
     ;
         N = branch_node(A, B),
-        L = to_rev_list_2([A, B | Ns], L0)
+        L = to_rev_list_nodes([A, B | Ns], L0)
     ).
 
     % list_reverse_2(A, L0) = L:
@@ -927,13 +927,6 @@ find_first_match(P, nonempty_cord(NX), FirstMatch) :-
 
 find_first_match_node(P, Node, FirstMatch) :-
     (
-        Node = unit_node(X),
-        ( if P(X) then
-            FirstMatch = X
-        else
-            fail
-        )
-    ;
         Node = list_node(XH, XT),
         ( if P(XH) then
             FirstMatch = XH
@@ -958,9 +951,6 @@ map(F, nonempty_cord(N)) = nonempty_cord(map_func_node(F, N)).
 
 map_func_node(F, Node) = PNode :-
     (
-        Node = unit_node(X),
-        PNode = unit_node(F(X))
-    ;
         Node = list_node(H, T),
         PNode = list_node(F(H), list.map(F, T))
     ;
@@ -977,10 +967,6 @@ map_pred(P, nonempty_cord(N), nonempty_cord(PN)) :-
 
 map_pred_node(P, Node, PNode) :-
     (
-        Node = unit_node(X),
-        P(X, PX),
-        PNode = unit_node(PX)
-    ;
         Node = list_node(H, T),
         P(H, PH),
         list.map(P, T, PT),
@@ -1003,13 +989,6 @@ filter(P, nonempty_cord(N), Trues) :-
 
 filter_node(P, Node, Trues) :-
     (
-        Node = unit_node(X),
-        ( if P(X) then
-            Trues = nonempty_cord(unit_node(X))
-        else
-            Trues = empty_cord
-        )
-    ;
         Node = list_node(H, T),
         list.filter(P, [H | T], TrueList),
         (
@@ -1037,15 +1016,6 @@ filter(P, nonempty_cord(N), Trues, Falses) :-
 
 filter_node(P, Node, Trues, Falses) :-
     (
-        Node = unit_node(X),
-        ( if P(X) then
-            Trues = nonempty_cord(unit_node(X)),
-            Falses = empty_cord
-        else
-            Trues = empty_cord,
-            Falses = nonempty_cord(unit_node(X))
-        )
-    ;
         Node = list_node(H, T),
         list.filter(P, [H | T], TrueList, FalseList),
         (
@@ -1081,20 +1051,18 @@ foldl(F, nonempty_cord(N), AccA0) = AccA :-
 
 foldl_node(F, C, Cs, !AccA) :-
     (
-        C = unit_node(X),
-        F(X, !.AccA) = !:AccA
-    ;
         C = list_node(H, T),
-        list.foldl(F, [H | T], !.AccA) = !:AccA
-    ),
-    (
-        Cs = []
+        list.foldl(F, [H | T], !.AccA) = !:AccA,
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldl_node(F, Y, Ys, !AccA)
+        )
     ;
-        Cs = [Y | Ys],
-        foldl_node(F, Y, Ys, !AccA)
+        C = branch_node(A, B),
+        foldl_node(F, A, [B | Cs], !AccA)
     ).
-foldl_node(F, branch_node(A, B), Cs, !AccA) :-
-    foldl_node(F, A, [B | Cs], !AccA).
 
 foldl_pred(_P, empty_cord, !AccA).
 foldl_pred(P, nonempty_cord(N), !AccA) :-
@@ -1116,20 +1084,18 @@ foldl_pred(P, nonempty_cord(N), !AccA) :-
 
 foldl_node_pred(P, C, Cs, !AccA) :-
     (
-        C = unit_node(X),
-        P(X, !AccA)
-    ;
         C = list_node(H, T),
-        list.foldl(P, [H | T], !AccA)
-    ),
-    (
-        Cs = []
+        list.foldl(P, [H | T], !AccA),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldl_node_pred(P, Y, Ys, !AccA)
+        )
     ;
-        Cs = [Y | Ys],
-        foldl_node_pred(P, Y, Ys, !AccA)
+        C = branch_node(A, B),
+        foldl_node_pred(P, A, [B | Cs], !AccA)
     ).
-foldl_node_pred(P, branch_node(A, B), Cs, !AccA) :-
-    foldl_node_pred(P, A, [B | Cs], !AccA).
 
 foldl2(_P, empty_cord, !AccA, !AccB).
 foldl2(P, nonempty_cord(N), !AccA, !AccB) :-
@@ -1152,20 +1118,18 @@ foldl2(P, nonempty_cord(N), !AccA, !AccB) :-
 
 foldl2_node(P, C, Cs, !AccA, !AccB) :-
     (
-        C = unit_node(X),
-        P(X, !AccA, !AccB)
-    ;
         C = list_node(H, T),
-        list.foldl2(P, [H | T], !AccA, !AccB)
-    ),
-    (
-        Cs = []
+        list.foldl2(P, [H | T], !AccA, !AccB),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldl2_node(P, Y, Ys, !AccA, !AccB)
+        )
     ;
-        Cs = [Y | Ys],
-        foldl2_node(P, Y, Ys, !AccA, !AccB)
+        C = branch_node(A, B),
+        foldl2_node(P, A, [B | Cs], !AccA, !AccB)
     ).
-foldl2_node(P, branch_node(A, B), Cs, !AccA, !AccB) :-
-    foldl2_node(P, A, [B | Cs], !AccA, !AccB).
 
 foldl3(_P, empty_cord, !AccA, !AccB, !AccC).
 foldl3(P, nonempty_cord(N), !AccA, !AccB, !AccC) :-
@@ -1188,20 +1152,18 @@ foldl3(P, nonempty_cord(N), !AccA, !AccB, !AccC) :-
 
 foldl3_node(P, C, Cs, !AccA, !AccB, !AccC) :-
     (
-        C = unit_node(X),
-        P(X, !AccA, !AccB, !AccC)
-    ;
         C = list_node(H, T),
-        list.foldl3(P, [H | T], !AccA, !AccB, !AccC)
-    ),
-    (
-        Cs = []
+        list.foldl3(P, [H | T], !AccA, !AccB, !AccC),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldl3_node(P, Y, Ys, !AccA, !AccB, !AccC)
+        )
     ;
-        Cs = [Y | Ys],
-        foldl3_node(P, Y, Ys, !AccA, !AccB, !AccC)
+        C = branch_node(A, B),
+        foldl3_node(P, A, [B | Cs], !AccA, !AccB, !AccC)
     ).
-foldl3_node(P, branch_node(A, B), Cs, !AccA, !AccB, !AccC) :-
-    foldl3_node(P, A, [B | Cs], !AccA, !AccB, !AccC).
 
 %---------------------------------------------------------------------------%
 
@@ -1214,20 +1176,18 @@ foldr(F, nonempty_cord(N), Acc0) = Acc :-
 
 foldr_node(F, C, Cs, !Acc) :-
     (
-        C = unit_node(X),
-        F(X, !.Acc) = !:Acc
-    ;
         C = list_node(H, T),
-        list.foldr(F, [H | T], !.Acc) = !:Acc
-    ),
-    (
-        Cs = []
+        list.foldr(F, [H | T], !.Acc) = !:Acc,
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldr_node(F, Y, Ys, !Acc)
+        )
     ;
-        Cs = [Y | Ys],
-        foldr_node(F, Y, Ys, !Acc)
+        C = branch_node(A, B),
+        foldr_node(F, B, [A | Cs], !Acc)
     ).
-foldr_node(F, branch_node(A, B), Cs, !Acc) :-
-    foldr_node(F, B, [A | Cs], !Acc).
 
 foldr_pred(_P, empty_cord, !Acc).
 foldr_pred(P, nonempty_cord(N), !Acc) :-
@@ -1247,20 +1207,18 @@ foldr_pred(P, nonempty_cord(N), !Acc) :-
 
 foldr_node_pred(P, C, Cs, !Acc) :-
     (
-        C = unit_node(X),
-        P(X, !Acc)
-    ;
         C = list_node(H, T),
-        list.foldr(P, [H | T], !Acc)
-    ),
-    (
-        Cs = []
+        list.foldr(P, [H | T], !Acc),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldr_node_pred(P, Y, Ys, !Acc)
+        )
     ;
-        Cs = [Y | Ys],
-        foldr_node_pred(P, Y, Ys, !Acc)
+        C = branch_node(A, B),
+        foldr_node_pred(P, B, [A | Cs], !Acc)
     ).
-foldr_node_pred(P, branch_node(A, B), Cs, !Acc) :-
-    foldr_node_pred(P, B, [A | Cs], !Acc).
 
 foldr2(_P, empty_cord, !Acc1, !Acc2).
 foldr2(P, nonempty_cord(N), !Acc1, !Acc2) :-
@@ -1283,20 +1241,18 @@ foldr2(P, nonempty_cord(N), !Acc1, !Acc2) :-
 
 foldr2_node(P, C, Cs, !Acc1, !Acc2) :-
     (
-        C = unit_node(X),
-        P(X, !Acc1, !Acc2)
-    ;
         C = list_node(H, T),
-        list.foldr2(P, [H | T], !Acc1, !Acc2)
-    ),
-    (
-        Cs = []
+        list.foldr2(P, [H | T], !Acc1, !Acc2),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldr2_node(P, Y, Ys, !Acc1, !Acc2)
+        )
     ;
-        Cs = [Y | Ys],
-        foldr2_node(P, Y, Ys, !Acc1, !Acc2)
+        C = branch_node(A, B),
+        foldr2_node(P, B, [A | Cs], !Acc1, !Acc2)
     ).
-foldr2_node(P, branch_node(A, B), Cs, !Acc1, !Acc2) :-
-    foldr2_node(P, B, [A | Cs], !Acc1, !Acc2).
 
 foldr3(_P, empty_cord, !Acc1, !Acc2, !Acc3).
 foldr3(P, nonempty_cord(N), !Acc1, !Acc2, !Acc3) :-
@@ -1319,20 +1275,18 @@ foldr3(P, nonempty_cord(N), !Acc1, !Acc2, !Acc3) :-
 
 foldr3_node(P, C, Cs, !Acc1, !Acc2, !Acc3) :-
     (
-        C = unit_node(X),
-        P(X, !Acc1, !Acc2, !Acc3)
-    ;
         C = list_node(H, T),
-        list.foldr3(P, [H | T], !Acc1, !Acc2, !Acc3)
-    ),
-    (
-        Cs = []
+        list.foldr3(P, [H | T], !Acc1, !Acc2, !Acc3),
+        (
+            Cs = []
+        ;
+            Cs = [Y | Ys],
+            foldr3_node(P, Y, Ys, !Acc1, !Acc2, !Acc3)
+        )
     ;
-        Cs = [Y | Ys],
-        foldr3_node(P, Y, Ys, !Acc1, !Acc2, !Acc3)
+        C = branch_node(A, B),
+        foldr3_node(P, B, [A | Cs], !Acc1, !Acc2, !Acc3)
     ).
-foldr3_node(P, branch_node(A, B), Cs, !Acc1, !Acc2, !Acc3) :-
-    foldr3_node(P, B, [A | Cs], !Acc1, !Acc2, !Acc3).
 
 %---------------------------------------------------------------------------%
 
@@ -1354,8 +1308,6 @@ map_foldl(P, nonempty_cord(NX), nonempty_cord(NY), !A) :-
 :- mode map_foldl_node(in(pred(in, out, di, uo) is semidet), in, out,
     di, uo) is semidet.
 
-map_foldl_node(P, unit_node(X), unit_node(Y), !A) :-
-    P(X, Y, !A).
 map_foldl_node(P, list_node(XH, XT), list_node(YH, YT), !A) :-
     P(XH, YH, !A),
     list.map_foldl(P, XT, YT, !A).
@@ -1373,8 +1325,6 @@ map_foldl2(P, nonempty_cord(NX), nonempty_cord(NY), !A, !B) :-
     in(pred(in, out, in, out, in, out) is det),
     cord_node(A)::in, cord_node(B)::out, C::in, C::out, D::in, D::out) is det.
 
-map_foldl2_node(P, unit_node(X), unit_node(Y), !A, !B) :-
-    P(X, Y, !A, !B).
 map_foldl2_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B) :-
     P(XH, YH, !A, !B),
     list.map_foldl2(P, XT, YT, !A, !B).
@@ -1393,8 +1343,6 @@ map_foldl3(P, nonempty_cord(NX), nonempty_cord(NY), !A, !B, !C) :-
     cord_node(T1)::in, cord_node(T2)::out, A::in, A::out, B::in, B::out,
     C::in, C::out) is det.
 
-map_foldl3_node(P, unit_node(X), unit_node(Y), !A, !B, !C) :-
-    P(X, Y, !A, !B, !C).
 map_foldl3_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B, !C) :-
     P(XH, YH, !A, !B, !C),
     list.map_foldl3(P, XT, YT, !A, !B, !C).
