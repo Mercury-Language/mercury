@@ -4,6 +4,7 @@
 % The .err_exp file is for systems where the directory separator is "/".
 % The .err_exp2 file is for systems where the directory separator is "\".
 % The .err_exp3 file is for C# with "/" as separator.
+% The .err_exp4 file is for Java with "/" as separator.
 
 :- module foreign_include_file_missing.
 :- interface.
