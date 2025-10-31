@@ -305,8 +305,8 @@ perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
         (  if DeclaredPurity = PromisedPurity then
             true
         else
-            InconsistentPromiseSpec = error_inconsistent_purity_promise(
-                ModuleInfo, PredInfo, PredId, DeclaredPurity),
+            InconsistentPromiseSpec =
+                error_inconsistent_purity_promise(PredInfo, DeclaredPurity),
             !:Specs = [InconsistentPromiseSpec | !.Specs]
         ),
 
@@ -780,10 +780,10 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         Purity, ContainsTrace, !Info) :-
     GoalExpr0 = plain_call(PredId0, ProcId, ArgVars, Status,
         MaybeUnifyContext, SymName0),
-    RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
-    PredInfo = !.Info ^ pi_pred_info,
-    ModuleInfo = !.Info ^ pi_module_info,
     CallContext = goal_info_get_context(GoalInfo),
+    ModuleInfo = !.Info ^ pi_module_info,
+    PredInfo = !.Info ^ pi_pred_info,
+    RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
     (
         RunPostTypecheck = run_post_typecheck_tasks,
         finally_resolve_pred_overloading(ModuleInfo, PredInfo,
@@ -793,8 +793,10 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         ( if
             % Convert any calls to private_builtin.unsafe_type_cast
             % into unsafe_type_cast generic calls.
-            SymName = qualified(mercury_private_builtin_module,
-                "unsafe_type_cast"),
+            SymName = qualified(SymModuleName, PredName),
+            % Put the most-likely-to-fail test first.
+            PredName = "unsafe_type_cast",
+            SymModuleName = mercury_private_builtin_module,
             ArgVars = [InputArg, OutputArg]
         then
             GoalExpr = generic_call(cast(unsafe_type_cast),
@@ -810,9 +812,8 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = GoalExpr0
     ),
     DeclaredPurity = goal_info_get_purity(GoalInfo),
-    perform_goal_purity_checks(CallContext, PredId,
-        DeclaredPurity, ActualPurity, !Info),
-    Purity = ActualPurity,
+    check_plain_call_purity(CallContext, PredId,
+        DeclaredPurity, Purity, !Info),
     ContainsTrace = contains_no_trace_goal.
 
     % Handle any unresolved overloading for a predicate call.
@@ -848,25 +849,26 @@ finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
         Specs = []
     ).
 
-    % Perform purity checking of the actual and declared purity,
-    % and check that promises are consistent.
+    % Check the declared purity of the call (as specified by the possible
+    % presence of an "impure" or "semipure" prefix) against the declared
+    % purity of the callee.
     %
-    % ActualPurity: The inferred purity of the goal
-    % DeclaredPurity: The declared purity of the goal
+    % DeclaredGoalPurity: the declared purity of the goal
+    % CalleePurity: the actual purity of the callee.
     %
-:- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
-    purity::out, purity_info::in, purity_info::out) is det.
+:- pred check_plain_call_purity(prog_context::in, pred_id::in,
+    purity::in, purity::out, purity_info::in, purity_info::out) is det.
 
-perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
-        !Info) :-
+check_plain_call_purity(Context, CalleePredId, DeclaredGoalPurity,
+        CalleePurity, !Info) :-
     ModuleInfo = !.Info ^ pi_module_info,
     PredInfo = !.Info ^ pi_pred_info,
-    module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
-    pred_info_get_purity(CalleePredInfo, ActualPurity),
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    pred_info_get_purity(CalleePredInfo, CalleePurity),
     ( if
         % The purity of the callee should match the
         % purity declared at the call.
-        ActualPurity = DeclaredPurity
+        CalleePurity = DeclaredGoalPurity
     then
         true
     else if
@@ -875,17 +877,21 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
     then
         true
     else if
-        less_pure(ActualPurity, DeclaredPurity)
+        less_pure(CalleePurity, DeclaredGoalPurity)
     then
-        Spec = error_missing_body_impurity_decl(ModuleInfo, PredId, Context),
+        Spec = error_missing_body_impurity_decl(CalleePredInfo, Context),
         purity_info_add_message(Spec, !Info)
     else if
         % We don't warn about exaggerated impurity decls in class methods
-        % or instance methods --- it just means that the predicate provided
-        % as an implementation was more pure than necessary.
+        % or instance methods, because
+        % - class methods are intended to have more than one instance, and
+        %   there is no reason to prohibit an instances being more pure
+        %   than required, and in any case,
+        % - our syntax for class and instance declarations has effectively
+        %   no place for the user to put any "impure" or "semipure" marker.
+        %
         % Don't warn about exaggerated impurity decls in compiler-generated
         % mutable predicates either.
-
         pred_info_get_markers(PredInfo, Markers),
         ( marker_is_present(Markers, marker_class_method)
         ; marker_is_present(Markers, marker_class_instance_method)
@@ -894,8 +900,8 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
     then
         true
     else
-        Spec = warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
-            Context, DeclaredPurity),
+        Spec = warn_unnecessary_body_impurity_decl(CalleePredInfo, Context,
+            DeclaredGoalPurity, CalleePurity),
         purity_info_add_message(Spec, !Info)
     ).
 
@@ -1467,17 +1473,15 @@ wrap_inner_outer_goals(Info, Outer, Goal0 - Inner, Goal) :-
 % This part of the module is for generating error messages.
 %
 
-:- func error_inconsistent_purity_promise(module_info, pred_info, pred_id,
-    purity) = error_spec.
+:- func error_inconsistent_purity_promise(pred_info, purity) = error_spec.
 
-error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
-        = Spec :-
+error_inconsistent_purity_promise(PredInfo, Purity) = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     purity_name(Purity, PurityName),
-    PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
-        should_not_module_qualify, [], PredId),
+    PredPieces = describe_one_pred_info_name(yes(color_subject),
+        should_not_module_qualify, [], PredInfo),
     MainPieces =
         [words("Error:")] ++ PredPieces ++
         [words("is declared")] ++ color_as_correct([fixed(PurityName)]) ++
@@ -1581,26 +1585,24 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     ),
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
-:- func error_missing_body_impurity_decl(module_info, pred_id, prog_context)
-    = error_spec.
+:- func error_missing_body_impurity_decl(pred_info, prog_context) = error_spec.
 
-error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
-        should_module_qualify, [suffix(":")], PredId),
-    pred_info_get_purity(PredInfo, Purity),
-    purity_article_name(Purity, Article, PurityName),
+error_missing_body_impurity_decl(CalleePredInfo, Context) = Spec :-
+    CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
+    CalleePredColonPieces = describe_one_pred_info_name(yes(color_subject),
+        should_module_qualify, [suffix(":")], CalleePredInfo),
+    pred_info_get_purity(CalleePredInfo, CalleePurity),
+    purity_article_name(CalleePurity, Article, CalleePurityName),
     MustBePrecededByIndicator = [words("must be preceded by"),
-        words(Article), quote(PurityName), words("indicator.")],
-    Pieces1 = [words("In call to"), fixed(PurityName)] ++
-        PredColonPieces ++ [nl],
+        words(Article), quote(CalleePurityName), words("indicator.")],
+    Pieces1 = [words("In call to"), fixed(CalleePurityName)] ++
+        CalleePredColonPieces ++ [nl],
     (
-        PredOrFunc = pf_predicate,
+        CalleePredOrFunc = pf_predicate,
         Pieces2 = [words("purity error: call")] ++
             color_as_incorrect(MustBePrecededByIndicator) ++ [nl]
     ;
-        PredOrFunc = pf_function,
+        CalleePredOrFunc = pf_function,
         Pieces2 = [words("purity error: call must be in"),
             words("an explicit unification, which in turn")] ++
             color_as_incorrect(MustBePrecededByIndicator) ++ [nl]
@@ -1608,29 +1610,28 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
     Spec = spec($pred, severity_error, phase_purity_check, Context,
         Pieces1 ++ Pieces2).
 
-:- func warn_unnecessary_body_impurity_decl(module_info, pred_id, prog_context,
-    purity) = error_spec.
+:- func warn_unnecessary_body_impurity_decl(pred_info, prog_context,
+    purity, purity) = error_spec.
 
-warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-        DeclaredPurity) = Spec :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_purity(PredInfo, ActualPurity),
-    purity_name(DeclaredPurity, DeclaredPurityName),
-    purity_name(ActualPurity, ActualPurityName),
-    PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
-        should_module_qualify, [suffix(":")], PredId),
-    Pieces1 = [words("In call to")] ++ PredColonPieces ++ [nl,
+warn_unnecessary_body_impurity_decl(CalleePredInfo, Context,
+        DeclaredGoalPurity, CalleePurity) = Spec :-
+    purity_name(DeclaredGoalPurity, DeclaredGoalPurityName),
+    CalleePredColonPieces = describe_one_pred_info_name(yes(color_subject),
+        should_module_qualify, [suffix(":")], CalleePredInfo),
+    Pieces1 = [words("In call to")] ++ CalleePredColonPieces ++ [nl,
         words("warning: the")] ++
-        color_as_subject([quote(DeclaredPurityName), words("indicator")]) ++
+        color_as_subject([quote(DeclaredGoalPurityName),
+            words("indicator")]) ++
         [words("is")] ++ color_as_incorrect([words("unnecessary.")]),
     (
-        ActualPurity = purity_pure,
+        CalleePurity = purity_pure,
         Pieces2 = [nl]
     ;
-        ( ActualPurity = purity_impure
-        ; ActualPurity = purity_semipure
+        ( CalleePurity = purity_impure
+        ; CalleePurity = purity_semipure
         ),
-        Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
+        purity_name(CalleePurity, CalleePurityName),
+        Pieces2 = [words("A purity indicator of"), quote(CalleePurityName),
             words("would be sufficient."), nl]
     ),
     Spec = spec($pred, severity_warning(warn_unneeded_purity_indicator),
