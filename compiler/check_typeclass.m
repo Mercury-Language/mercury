@@ -1199,7 +1199,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     univ_exist_constraints_get_tvars(ClassMethodClassContext1,
         MethodContextTVars),
     constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
-    list.condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
+    VarsToKeep0 = ArgTVars ++ MethodContextTVars ++ InstanceTVars,
     list.sort_and_remove_dups(VarsToKeep0, VarsToKeep),
 
     % Project away the unwanted type variables.
@@ -1217,7 +1217,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % on it which are not part of the instance declaration as a whole.
     ClassMethodClassContext =
         univ_exist_constraints(UnivConstraints1, ExistConstraints),
-    list.append(InstanceConstraints, UnivConstraints1, UnivConstraints),
+    UnivConstraints = InstanceConstraints ++ UnivConstraints1,
     ClassContext =
         univ_exist_constraints(UnivConstraints, ExistConstraints),
 
@@ -1271,51 +1271,59 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     pred_info_init(PredOrFunc, InstanceModuleName, InstancePredName,
         PredFormArity, Context, PredOrigin, PredStatus, CurUserDecl, GoalType,
         Markers, ArgTypes, TVarSet, ExistQVars, ClassContext, Proofs,
-        ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
-    pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
+        ConstraintMap, ClausesInfo, VarNameRemap, InstancePredInfo0),
+    pred_info_set_clauses_info(ClausesInfo,
+        InstancePredInfo0, InstancePredInfo1),
     pred_info_set_instance_method_arg_types(UnsubstArgTypes,
-        PredInfo1, PredInfo2),
+        InstancePredInfo1, InstancePredInfo2),
 
-    % We first insert the incomplete predicate PredInfo2 into !ModuleInfo,
-    % in order to get InstancePredId, the pred_id of the new predicate,
-    % which we need to compute the contents of the InstanceMethodInfos.
+    % We first insert the incomplete predicate InstancePredInfo2 into
+    % !ModuleInfo in order to get InstancePredId, the pred_id of the
+    % new predicate. We need this pred_id in order to compute the contents
+    % of the InstanceMethodInfos.
     module_info_get_predicate_table(!.ModuleInfo, PredTable1),
-    predicate_table_insert(PredInfo2, InstancePredId, PredTable1, PredTable),
+    predicate_table_insert(InstancePredInfo2, InstancePredId,
+        PredTable1, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo),
 
     % Add procs with the expected modes and determinisms.
     pred_info_get_proc_table(ClassPredInfo, ClassProcTable),
-    AddProc =
-        ( pred(ClassMI::in, InstanceMI::out,
-                OldPredInfo::in, NewPredInfo::out) is det :-
-            ClassMI = method_info(MethodNum, MethodName,
-                ClassOrigPredProcId, _ClassCurPredProcId),
-            ClassOrigPredProcId = proc(ClassOrigPredId, ClassOrigProcId),
-            expect(unify(ClassOrigPredId, ClassPredId), $pred,
-                "ClassOrigPredId != ClassPredId"),
-            map.lookup(ClassProcTable, ClassOrigProcId, ClassProcInfo),
-            proc_info_get_inst_varset(ClassProcInfo, InstVarSet),
-            proc_info_get_argmodes(ClassProcInfo, Modes),
-            % If the determinism declaration on the method was omitted,
-            % then make_hlds will have already issued an error message,
-            % so don't complain here.
-            proc_info_get_declared_determinism(ClassProcInfo, MaybeDetism),
-            ItemNumber = item_no_seq_num,
-            % Before the simplification pass, HasParallelConj
-            % is not meaningful.
-            HasParallelConj = has_no_parallel_conj,
-            add_new_proc(!.ModuleInfo, Context, ItemNumber,
-                InstVarSet, Modes, yes(Modes), no, detism_decl_implicit,
-                MaybeDetism, address_is_taken, HasParallelConj,
-                OldPredInfo, NewPredInfo, InstanceProcId),
-            InstanceOrigPredProcId = proc(InstancePredId, InstanceProcId),
-            InstanceMI = method_info(MethodNum, MethodName,
-                InstanceOrigPredProcId, InstanceOrigPredProcId)
-        ),
-    list.map_foldl(AddProc, ClassMethodInfos, InstanceMethodInfos,
-        PredInfo2, PredInfo),
-    % Replace the incomplete PredInfo2.
-    module_info_set_pred_info(InstancePredId, PredInfo, !ModuleInfo).
+    list.map_foldl(
+        add_instance_method_proc(!.ModuleInfo, ClassPredId, ClassProcTable,
+            InstancePredId, Context),
+        ClassMethodInfos, InstanceMethodInfos,
+        InstancePredInfo2, InstancePredInfo),
+    % Replace the incomplete InstancePredInfo2.
+    module_info_set_pred_info(InstancePredId, InstancePredInfo, !ModuleInfo).
+
+:- pred add_instance_method_proc(module_info::in, pred_id::in,
+    map(proc_id, proc_info)::in, pred_id::in, prog_context::in,
+    method_info::in, method_info::out, pred_info::in, pred_info::out) is det.
+
+add_instance_method_proc(ModuleInfo, ClassPredId, ClassProcTable,
+        InstancePredId, Context, ClassMethodInfo, InstanceMethodInfo,
+        !InstancePredInfo) :-
+    ClassMethodInfo = method_info(MethodNum, MethodName,
+        ClassOrigPredProcId, _ClassCurPredProcId),
+    ClassOrigPredProcId = proc(ClassOrigPredId, ClassOrigProcId),
+    expect(unify(ClassOrigPredId, ClassPredId), $pred,
+        "ClassOrigPredId != ClassPredId"),
+    map.lookup(ClassProcTable, ClassOrigProcId, ClassProcInfo),
+    proc_info_get_inst_varset(ClassProcInfo, InstVarSet),
+    proc_info_get_argmodes(ClassProcInfo, Modes),
+    % If the determinism declaration on the method was omitted,
+    % then make_hlds will have already issued an error message,
+    % so don't complain here.
+    proc_info_get_declared_determinism(ClassProcInfo, MaybeDetism),
+    % Before the simplification pass, HasParallelConj
+    % is not meaningful.
+    HasParallelConj = has_no_parallel_conj,
+    add_new_proc(ModuleInfo, Context, item_no_seq_num, InstVarSet,
+        Modes, yes(Modes), no, detism_decl_implicit, MaybeDetism,
+        address_is_taken, HasParallelConj, !InstancePredInfo, InstanceProcId),
+    InstanceOrigPredProcId = proc(InstancePredId, InstanceProcId),
+    InstanceMethodInfo = method_info(MethodNum, MethodName,
+        InstanceOrigPredProcId, InstanceOrigPredProcId).
 
 %---------------------------------------------------------------------------%
 
