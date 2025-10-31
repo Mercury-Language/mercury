@@ -254,14 +254,14 @@
                 % the method_info list of an instance definition to contain
                 % two method_infos whose method_orig_proc field contain e.g.
                 %
-                %   proc(pred_id(10), proc_id(0), and
-                %   proc(pred_id(10), proc_id(1)
+                %   proc(pred_id(10), proc_id(0)), and
+                %   proc(pred_id(10), proc_id(1))
                 %
                 % (i.e. the procedures refer to the same pred_id), but whose
                 % method_cur_proc fields contain
                 %
-                %   proc(pred_id(20), proc_id(0), and
-                %   proc(pred_id(21), proc_id(1),
+                %   proc(pred_id(20), proc_id(0)), and
+                %   proc(pred_id(21), proc_id(1)),
                 %
                 % (i.e. the procedures refer to different pred_ids).
                 % The direct_arg_in_out pass is one (and currently the only)
