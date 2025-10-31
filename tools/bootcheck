@@ -2095,6 +2095,14 @@ else
     MMAKE_USE_MMC_MAKE=${use_mmc_make}
     export MMAKE_USE_MMC_MAKE
 
+    # The Java version of the Mercury runtime does not currently support most
+    # of the runtime options and will abort if they are passed to it.
+    if test "${grade}" = "java"
+    then
+       MERCURY_OPTIONS=
+       export MERCURY_OPTIONS
+    fi
+
     diff_status=0
     check_namespace_status=0
     check_stdlib_modules_status=0
