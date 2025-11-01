@@ -22,3 +22,5 @@ autom4te.cache
 aclocal.m4
 /.configured_library_grades
 /main.o
+.bad_conf_grades
+.bad_added_grades
