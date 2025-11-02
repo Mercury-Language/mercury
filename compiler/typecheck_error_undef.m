@@ -131,10 +131,11 @@ report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
                 [InClauseForComponent | SpecialComponents]),
             Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
         ;
-            UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces),
+            UndefClass = undef_ordinary(MissingImportModules, AddendumPieces,
+                MaySuggestDefiningModules),
             Spec = report_error_pred_wrong_full_name(ClauseContext, Context,
                 PredicateTable, SymNameArity, MissingImportModules,
-                AddeddumPieces)
+                AddendumPieces, MaySuggestDefiningModules)
         )
     ).
 
@@ -199,11 +200,24 @@ report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
     --->    undef_special(list(error_msg_component))
             % This is not a reference to an undefined predicate,
             % but a badly-executed attempt at using Mercury's "keywords".
-    ;       undef_ordinary(list(module_name), list(format_piece)).
-            % This is an ordinary reference to an undefined predicate.
-            % The first argument lists modules whose import may fix
-            % the reference, and the second may contain an addendum
-            % to be printed after the usual diagnostic messages.
+    ;       undef_ordinary(
+                % This is an ordinary reference to an undefined predicate.
+
+                % The modules whose import may fix the reference.
+                list(module_name),
+
+                % An addendum to be printed after the usual messages.
+                list(format_piece),
+
+                % May the caller suggest modules which define the undefined
+                % symbol? Set to "may_not_suggest_defining_modules"
+                % if the addendum pieces have already done that job.
+                may_suggest_defining_modules
+            ).
+
+:- type may_suggest_defining_modules
+    --->    may_not_suggest_defining_modules
+    ;       may_suggest_defining_modules.
 
 :- pred is_undef_pred_reference_special(type_error_clause_context::in,
     sym_name_pred_form_arity::in, undef_class::out) is det.
@@ -222,16 +236,35 @@ is_undef_pred_reference_special(ClauseContext, SymNameArity, UndefClass) :-
             PredSymName = qualified(ModuleQualifier, _),
             maybe_report_missing_import_addendum(ClauseContext,
                 ModuleQualifier,
-                MissingImportAddeddumPieces, MissingImportModules)
+                MissingImportAddendumPieces, MissingImportModules),
+            MaySuggestDefiningModules = may_suggest_defining_modules
         ;
-            PredSymName = unqualified(_),
-            MissingImportAddeddumPieces = [],
-            MissingImportModules = []
+            PredSymName = unqualified(BaseName),
+            ( if
+                PredSymName = unqualified(BaseName),
+                ( BaseName = "<"
+                ; BaseName = "=<"
+                ; BaseName = ">"
+                ; BaseName = ">="
+                )
+            then
+                MissingImportAddendumPieces =
+                    construct_arith_import_pieces(nok_compare, BaseName),
+                % There are missing module imports, but the call above
+                % reports them; there is no need for our caller to do so again.
+                MissingImportModules = [],
+                MaySuggestDefiningModules = may_not_suggest_defining_modules
+            else
+                MissingImportAddendumPieces = [],
+                MissingImportModules = [],
+                MaySuggestDefiningModules = may_suggest_defining_modules
+            )
         ),
         maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt,
             GetoptPieces),
-        AddeddumPieces = MissingImportAddeddumPieces ++ GetoptPieces,
-        UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces)
+        AddendumPieces = MissingImportAddendumPieces ++ GetoptPieces,
+        UndefClass = undef_ordinary(MissingImportModules, AddendumPieces,
+            MaySuggestDefiningModules)
     ).
 
 :- pred is_undef_pred_a_syntax_error(string::in, int::in,
@@ -398,10 +431,11 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
 
 :- func report_error_pred_wrong_full_name(type_error_clause_context,
     prog_context, predicate_table, sym_name_pred_form_arity, list(module_name),
-    list(format_piece)) = error_spec.
+    list(format_piece), may_suggest_defining_modules) = error_spec.
 
 report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
-        SymNamePredFormArity, MissingImportModules, AddeddumPieces) = Spec :-
+        SymNamePredFormArity, MissingImportModules, AddendumPieces,
+        MaySuggestDefiningModules) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
     SymNamePredFormArity = sym_name_pred_form_arity(SymName, PredFormArity),
@@ -413,7 +447,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
         [nl],
     UndefMsg = simple_msg(Context,
-        [InClauseForComponent, always(MainPieces ++ AddeddumPieces)]),
+        [InClauseForComponent, always(MainPieces ++ AddendumPieces)]),
 
     predicate_table_lookup_pf_sym(PredicateTable, may_be_partially_qualified,
         pf_function, SymName, FuncOtherIds),
@@ -431,11 +465,17 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
     set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
     set.delete_list(MissingImportModules,
         PossibleModuleQualsSet0, PossibleModuleQualsSet),
-    QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
-        Context, "predicate", PossibleModuleQualsSet),
-    KindQualMsgs = KindMsgs ++ QualMsgs,
+    (
+        MaySuggestDefiningModules = may_not_suggest_defining_modules,
+        KindQualMsgs = KindMsgs
+    ;
+        MaySuggestDefiningModules = may_suggest_defining_modules,
+        QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+            Context, "predicate", PossibleModuleQualsSet),
+        KindQualMsgs = KindMsgs ++ QualMsgs
+    ),
     ( if
-        AddeddumPieces = [],
+        AddendumPieces = [],
         KindQualMsgs = []
     then
         KindQualMsgs = [],
@@ -456,7 +496,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
             Msgs = [UndefMsg, DidyouMeanMsg]
         )
     else
-        % The AddeddumPieces part of UndefMsg and/or KindQualMsgs
+        % The AddendumPieces part of UndefMsg and/or KindQualMsgs
         % offer hints about the error that allow for the base name being right.
         % Print just those.
         % XXX Should we print SuggestedNamesMsg as well even in this case?
@@ -506,7 +546,7 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
         ConsErrors) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
-    InitComp = always(InClauseForPieces ++ GoalContextPieces),
+    ContextComp = always(InClauseForPieces ++ GoalContextPieces),
     % Check for some special cases, so that we can give clearer error messages.
     DuCtor = du_ctor(SymName, Arity, _),
     ( if
@@ -521,9 +561,9 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
         )
     then
         Spec = error_spec($pred, severity_error, phase_type_check,
-            [simple_msg(Context, [InitComp | FunctorComps])])
+            [simple_msg(Context, [ContextComp | FunctorComps])])
     else
-        report_error_undef_du_ctor_std(ClauseContext, Context, InitComp,
+        report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp,
             DuCtor, ConsErrors, Spec)
     ).
 
@@ -707,7 +747,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
     prog_context::in, error_msg_component::in, du_ctor::in,
     list(cons_error)::in, error_spec::out) is det.
 
-report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
+report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
         ConsErrors, Spec) :-
     ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
     list.condense(ConsMsgLists, ConsMsgs),
@@ -743,21 +783,33 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
         ConsFuncComps = [always(ConsFuncPieces)],
         % The code that constructs QualMsgs below uses wording that
         % can be misleading in the presence of arity mismatches.
-        QualSuggestionMsgs = []
+        SuggestionMsgs = []
     ;
         OtherConsFuncArities = [],
-        maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
-            ConsFuncComps, QualMsgs),
-        ( if
-            ConsMsgs = [],
-            QualMsgs = []
-        then
-            maybe_construct_did_you_mean_msg(ModuleInfo, Context, DuCtor,
-                DidYouMeanMsgs),
-            QualSuggestionMsgs = DidYouMeanMsgs
+        ConsIdPiece = qual_cons_id_and_maybe_arity(du_data_ctor(DuCtor)),
+        UndefSymbolPieces = [words("error:")] ++
+            color_as_incorrect([words("undefined")]) ++
+            [words("symbol")] ++
+            color_as_subject([ConsIdPiece, suffix(".")]) ++
+            [nl],
+        ( if is_du_ctor_numeric_op(DuCtor, DuCtorFunctor, OpKind) then
+            AddendumPieces =
+                construct_arith_import_pieces(OpKind, DuCtorFunctor),
+            SuggestionMsgs = []
         else
-            QualSuggestionMsgs = QualMsgs
-        )
+            maybe_construct_missing_qualifier_msg(ClauseContext, Context,
+                DuCtor, AddendumPieces, QualMsgs),
+            ( if
+                ConsMsgs = [],
+                QualMsgs = []
+            then
+                maybe_construct_did_you_mean_msg(ModuleInfo, Context, DuCtor,
+                    SuggestionMsgs)
+            else
+                SuggestionMsgs = QualMsgs
+            )
+        ),
+        ConsFuncComps = [always(UndefSymbolPieces ++ AddendumPieces)]
     ),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
     ( if
@@ -781,9 +833,9 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
             PredArities, FuncArities, PredFuncComps)
     ),
     FirstMsg = simple_msg(Context,
-        [InitComp | ConsFuncComps] ++ PredFuncComps),
+        [ContextComp | ConsFuncComps] ++ PredFuncComps),
     Spec = error_spec($pred, severity_error, phase_type_check,
-        [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs).
+        [FirstMsg | ConsMsgs] ++ SuggestionMsgs).
 
 :- pred return_pred_func_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out,
@@ -1017,36 +1069,30 @@ report_closure_arities(PredOrFunc, Arities, Pieces) :-
 
 :- pred maybe_construct_missing_qualifier_msg(type_error_clause_context::in,
     prog_context::in, du_ctor::in,
-    list(error_msg_component)::out, list(error_msg)::out) is det.
+    list(format_piece)::out, list(error_msg)::out) is det.
 
 maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
-        ConsFuncComps, QualMsgs) :-
+        AddendumPieces, QualMsgs) :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_cons_table(ModuleInfo, ConsTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
 
-    ConsIdPiece = qual_cons_id_and_maybe_arity(du_data_ctor(DuCtor)),
-    UndefSymbolPieces = [words("error:")] ++
-        color_as_incorrect([words("undefined")]) ++
-        [words("symbol")] ++
-        color_as_subject([ConsIdPiece, suffix(".")]) ++
-        [nl],
     DuCtor = du_ctor(SymName, Arity, _),
     ( if
         SymName = qualified(ModQual, _)
     then
         maybe_report_missing_import_addendum(ClauseContext, ModQual,
-            AddeddumPieces, MissingImportModules)
+            AddendumPieces, MissingImportModules)
     else if
         SymName = unqualified("[|]"),
         Arity = 2
     then
         maybe_report_missing_import_addendum(ClauseContext,
-            unqualified("list"), AddeddumPieces, MissingImportModules)
+            unqualified("list"), AddendumPieces, MissingImportModules)
     else if
         SymName = unqualified("coerce")
     then
-        AddeddumPieces = [words("(The builtin")] ++
+        AddendumPieces = [words("(The builtin")] ++
             color_as_subject([words("coerce")]) ++
             [words("operator expects")] ++
             color_as_correct([words("one")]) ++
@@ -1055,10 +1101,9 @@ maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
             [suffix(")"), nl],
         MissingImportModules = []
     else
-        AddeddumPieces = [],
+        AddendumPieces = [],
         MissingImportModules = []
     ),
-    ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
     BaseName = unqualify_name(SymName),
     return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
     list.foldl(accumulate_matching_cons_module_names(SymName),
@@ -1074,6 +1119,100 @@ maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
     set.delete_list(MissingImportModules, ModuleNamesSet0, ModuleNamesSet),
     QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
         Context, "symbol", ModuleNamesSet).
+
+%---------------------------------------------------------------------------%
+
+:- type numeric_op_kind
+    --->    nok_arith_int_only
+    ;       nok_arith_int_or_float
+    ;       nok_bitwise
+    ;       nok_compare.
+
+:- pred is_du_ctor_numeric_op(du_ctor::in, string::out, numeric_op_kind::out)
+    is semidet.
+
+is_du_ctor_numeric_op(DuCtor, DuCtorFunctor, OpKind) :-
+    DuCtor = du_ctor(unqualified(DuCtorFunctor), Arity, _),
+    (
+        Arity = 1,
+        ( DuCtorFunctor = "+",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "-",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "\\",     OpKind = nok_bitwise
+        )
+    ;
+        Arity = 2,
+        ( DuCtorFunctor = "+",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "-",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "*",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "/",      OpKind = nok_arith_int_or_float
+        ; DuCtorFunctor = "//",     OpKind = nok_arith_int_only
+        ; DuCtorFunctor = "div",    OpKind = nok_arith_int_only
+        ; DuCtorFunctor = "mod",    OpKind = nok_arith_int_only
+        ; DuCtorFunctor = "rem",    OpKind = nok_arith_int_only
+        % XXX Note that <<u and >>u are not supported by integer.m.
+        % We could either fix this error message, or integer.m.
+        % I (zs) prefer the latter.
+        ; DuCtorFunctor = "<<",     OpKind = nok_bitwise
+        ; DuCtorFunctor = "<<u",    OpKind = nok_bitwise
+        ; DuCtorFunctor = ">>",     OpKind = nok_bitwise
+        ; DuCtorFunctor = ">>u",    OpKind = nok_bitwise
+        ; DuCtorFunctor = "/\\",    OpKind = nok_bitwise
+        ; DuCtorFunctor = "\\/",    OpKind = nok_bitwise
+        ; DuCtorFunctor = "xor",    OpKind = nok_bitwise
+        )
+    ).
+
+:- func construct_arith_import_pieces(numeric_op_kind, string)
+    = list(format_piece).
+
+construct_arith_import_pieces(OpKind, OpStr) = Pieces :-
+    (
+        ( OpKind = nok_arith_int_only
+        ; OpKind = nok_arith_int_or_float
+        ),
+        AOpKindStr = "an arithmetic operation",
+        (
+            OpKind = nok_arith_int_only,
+            AndFloatPeriodPieces = [suffix(".")]
+        ;
+            OpKind = nok_arith_int_or_float,
+            AndFloatPeriodPieces = [words("and")] ++
+                color_as_subject([quote("float"), suffix(".")])
+        ),
+        GenComparePieces = []
+    ;
+        OpKind = nok_bitwise,
+        AOpKindStr = "a bit manipulation operation",
+        AndFloatPeriodPieces = [suffix(".")],
+        GenComparePieces = []
+    ;
+        OpKind = nok_compare,
+        AOpKindStr = "a numeric comparison operation",
+        AndFloatPeriodPieces = [words("and")] ++
+            color_as_subject([quote("float"), suffix(".")]),
+        GenOpStr = "@" ++ OpStr,
+        GenComparePieces = [words("If the values you are trying to compare"),
+            words("are not numbers, then what you probably want is"),
+            words("the builtin")] ++ color_as_hint([quote(GenOpStr)]) ++
+            [words("operation."), nl]
+    ),
+    Pieces =
+        [words("In Mercury, if you want to invoke"),
+        words(AOpKindStr), words("such as")] ++
+        color_as_subject([quote(OpStr), suffix(",")]) ++
+        [words("then you must import a module that exports that operation."),
+        words("The modules in the Mercury standard library that do so"),
+        words("include")] ++ color_as_subject([quote("int"), suffix(",")]) ++
+        color_as_subject([quote("uint"), suffix(",")]) ++
+        [words("their sized versions (such as")] ++
+        color_as_subject([quote("int8")]) ++ [words("and")] ++
+        color_as_subject([quote("uint16")]) ++[suffix("),"),
+        words("as well as")] ++ color_as_subject([quote("integer")]) ++
+        AndFloatPeriodPieces ++
+        [words("However,")] ++
+        color_as_hint([words("none of those modules have"),
+            decl("import_module"), words("declarations.")]) ++ [nl] ++
+        GenComparePieces.
 
 %---------------------------------------------------------------------------%
 

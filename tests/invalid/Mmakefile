@@ -197,6 +197,7 @@ BORING_SINGLEMODULE_PROGS = \
 	ho_type_arity_bug \
 	ho_type_mode_bug \
 	ho_unique_error \
+	int_ops \
 	html \
 	impure_method_impl \
 	incompatible_instance_constraints \

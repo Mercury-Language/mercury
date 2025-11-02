@@ -2,16 +2,16 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% The .err_exp file is for non-debug grades without --intermod-opt.
-% The .err_exp2 file is for all grades with --intermod-opt.
-% The .err_exp3 file is for debug grades without --intermod-opt.
+% The .err_exp file was for non-debug grades without --intermod-opt.
+% The .err_exp2 file was for all grades with --intermod-opt.
+% The .err_exp3 file was for debug grades without --intermod-opt.
+% They differed when the "did you mean" part of the error message included
+% a list of the visible one-character symbols, and --intermod-opt and
+% debugging (through implicit import of table_builtin.m for I/O tabling)
+% affected the list of such symbols.
 %
-% The presence of --intermod-opt yields a kind of error message
-% which makes the presence or absence of debugging irrelevant.
-% However, without --intermod-opt, debug grades affect the error message
-% by causing the implicit import of table_builtin.m (for I/O tabling),
-% which causes the implicit import of io.m, which causes the implicit import
-% of string.m.
+% Now, the compiler generates more-specific text than the "did you mean"
+% message, so we have only the .err_exp file.
 %
 
 :- module multiply_star.
