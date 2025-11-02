@@ -260,8 +260,14 @@ typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
 :- type cons_type_assign
     --->    cons_type_assign(
                 type_assign,
+
+                % The type of the term constructed by the cons_id.
                 mer_type,
+
+                % The types of the arguments of the cons_id.
                 list(mer_type),
+
+                % What kind of cons_id this is.
                 cons_type_info_source
             ).
 
