@@ -209,9 +209,11 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
 
     % Check the variance of type arguments.
     hlds_data.search_type_ctor_defn(TypeTable, BaseTypeCtor, BaseTypeDefn),
+    hlds_data.get_type_defn_body(BaseTypeDefn, BaseTypeBody),
+    BaseTypeBody = hlds_du_type(BaseTypeBodyDu),
     hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
     compute_which_type_params_must_be_invariant(TypeTable, BaseTypeCtor,
-        BaseTypeDefn, BaseTypeParams, InvariantTVars),
+        BaseTypeBodyDu, BaseTypeParams, InvariantTVars),
     are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         BaseTypeParams, FromBaseTypeArgTypes, ToBaseTypeArgTypes, !TypeAssign).
 
@@ -247,29 +249,17 @@ compute_base_type(TypeTable, TVarSet, Type, BaseType) :-
     % fall into into the first category; the others fall into the second.
     %
 :- pred compute_which_type_params_must_be_invariant(type_table::in,
-    type_ctor::in, hlds_type_defn::in, list(tvar)::in,
+    type_ctor::in, type_body_du::in, list(tvar)::in,
     invariant_tvars::out) is det.
 
 compute_which_type_params_must_be_invariant(TypeTable,
-        BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars) :-
-    hlds_data.get_type_defn_body(BaseTypeDefn, BaseTypeBody),
-    (
-        BaseTypeBody = hlds_du_type(BaseTypeBodyDu),
-        BaseTypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanon,
-            _MaybeTypeRepn, _IsForeignType),
-        Ctors = one_or_more_to_list(OoMCtors),
-        list.foldl(
-            acc_invariant_tvars_in_ctor(TypeTable,
-                BaseTypeCtor, BaseTypeParams),
-            Ctors, set.init, InvariantTVars)
-    ;
-        ( BaseTypeBody = hlds_eqv_type(_)
-        ; BaseTypeBody = hlds_foreign_type(_)
-        ; BaseTypeBody = hlds_solver_type(_)
-        ; BaseTypeBody = hlds_abstract_type(_)
-        ),
-        unexpected($pred, "not du type")
-    ).
+        BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars) :-
+    BaseTypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanon,
+        _MaybeTypeRepn, _IsForeignType),
+    Ctors = one_or_more_to_list(OoMCtors),
+    list.foldl(
+        acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams),
+        Ctors, set.init, InvariantTVars).
 
 :- pred acc_invariant_tvars_in_ctor(type_table::in,
     type_ctor::in, list(tvar)::in, constructor::in,
@@ -452,8 +442,7 @@ is_type_param_pair_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         TypeVar, FromType, ToType, !TypeAssign) :-
     ( if set.contains(InvariantTVars, TypeVar) then
         types_compare_as_given(TypeTable, TVarSet, compare_equal,
-            FromType, ToType,
-            !TypeAssign)
+            FromType, ToType, !TypeAssign)
     else
         ( if
             types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
