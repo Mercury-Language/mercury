@@ -399,40 +399,10 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
-            Reason0 = from_ground_term(_, FGTReason),
-            (
-                FGTReason = from_ground_term_construct,
-                % There are no deconstructions at all inside these scopes.
-                GoalExpr = GoalExpr0
-            ;
-                FGTReason = from_ground_term_deconstruct,
-                % We want to know whether the redo flag is set during the
-                % processing of SubGoal0.
-                OldRedo = !.CseInfo ^ csei_redo,
-                !CseInfo ^ csei_redo := no,
-                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
-                SubGoalRedo = !.CseInfo ^ csei_redo,
-                !CseInfo ^ csei_redo := bool.or(OldRedo, SubGoalRedo),
-                (
-                    SubGoalRedo = no,
-                    GoalExpr = scope(Reason0, SubGoal)
-                ;
-                    SubGoalRedo = yes,
-                    % If we remove a goal from such a scope, what is left
-                    % may no longer satisfy the invariants we expect it
-                    % to satisfy.
-                    SubGoal = hlds_goal(GoalExpr, _)
-                )
-            ;
-                FGTReason = from_ground_term_other,
-                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
-                GoalExpr = scope(Reason0, SubGoal)
-            ;
-                FGTReason = from_ground_term_initial,
-                % Mode analysis should have replaced this kind of fgt scope
-                % with one of the other kinds.
-                unexpected($pred, "from_ground_term_initial")
-            )
+            Reason0 = from_ground_term(_, _),
+            % These scopes cannot contain any disjunctions, so we cannot pull
+            % common deconstructions out of any disjuncts.
+            GoalExpr = GoalExpr0
         ;
             Reason0 = require_switch_arms_detism(_, _),
             SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
