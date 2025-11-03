@@ -2990,10 +2990,10 @@ optdb(oc_warn_style_ctg, warn_non_contiguous_decls,     bool(yes),
         w("Do not generate a warning if the mode declarations of a"),
         w("predicate or function do not all immediately follow its"),
         code("pred"), w("or"), code("func"), w("declaration.")])).
-optdb(oc_warn_style_ctg, warn_non_contiguous_clauses,   bool(no),
+optdb(oc_warn_style_ctg, warn_non_contiguous_clauses,   bool(yes),
     help("warn-non-contiguous-clauses", [
-        w("Generate a warning if the clauses of a predicate or function"),
-        w("are not contiguous.")])).
+        w("Do not generate a warning if the clauses of a predicate"),
+        w("or function are not contiguous.")])).
 optdb(oc_warn_style_ctg, warn_non_contiguous_foreign_procs, bool(no),
     help("warn-non-contiguous-foreign-procs", [
         w("Generate a warning if the clauses and foreign_procs of a"),

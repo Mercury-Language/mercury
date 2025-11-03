@@ -1304,9 +1304,9 @@ Warning options
         function do not all immediately follow its `pred' or `func'
         declaration.
 
-    --warn-non-contiguous-clauses
-        Generate a warning if the clauses of a predicate or function are not
-        contiguous.
+    --no-warn-non-contiguous-clauses
+        Do not generate a warning if the clauses of a predicate or function are
+        not contiguous.
 
     --warn-non-contiguous-foreign-procs
         Generate a warning if the clauses and foreign_procs of a predicate or

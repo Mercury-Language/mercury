@@ -926,7 +926,15 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
                 words("destructive update")]) ++
             color_as_incorrect([words("in a context where"),
                 words("it can be backtracked over,")]) ++
-            [words("such as the condition of an if-then-else."), nl],
+            [words("such as the condition of an if-then-else."), nl,
+            words("Note that it is possible that the cause is code"),
+            words("that is intended to be a")] ++
+            color_as_correct([words("call")]) ++
+            [words("to the current predicate or function, but"),
+            words("has been accidentally turned into a")] ++
+            color_as_incorrect([words("clause")]) ++
+            [words("for it by a typo at the end of the previous line"),
+            words("that replaces a comma by a period."), nl],
         UniqMsgs = [msg(Context, UniqPieces)]
     else
         UniqMsgs = []
