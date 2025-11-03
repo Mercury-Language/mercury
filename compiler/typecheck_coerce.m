@@ -11,6 +11,9 @@
 %
 % This file typechecks coerce operations.
 %
+% Note that the two exported predicates are completely independent of each
+% other; they could easily be in separate modules.
+%
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_coerce.
@@ -27,6 +30,8 @@
 
 :- pred typecheck_coerce(typecheck_info::in, prog_context::in,
     list(prog_var)::in, type_assign_set::in, type_assign_set::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Check coerce constraints in each type assignment to see if they can be
     % satisfied. If there are one or more type assignments in which all
@@ -312,25 +317,24 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
     ;
         RhsType = type_variable(_TypeVar, _Kind)
     ;
-        RhsType = defined_type(_SymName, ArgTypes, _Kind),
-        ( if
-            type_to_ctor_and_args(RhsType, TypeCtor, TypeArgs),
-            hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
-        then
+        RhsType = defined_type(SymName, ArgTypes, _Kind),
+        list.length(ArgTypes, NumArgTypes),
+        TypeCtor = type_ctor(SymName, NumArgTypes),
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             require_complete_switch [TypeBody]
             (
                 TypeBody = hlds_du_type(_),
                 ( if
                     TypeCtor = BaseTypeCtor,
-                    type_list_to_var_list(TypeArgs, TypeArgVars),
-                    TypeArgVars = BaseTypeParams
+                    type_list_to_var_list(ArgTypes, ArgTypeVars),
+                    ArgTypeVars = BaseTypeParams
                 then
                     % A type in the RHS that matches exactly the base type
                     % does not impose any restrictions on its type params.
                     % Any difference that occurs between the from-type and
                     % the to-type must by definition occur somewhere else
-                    % (i.e. other than RhsType) as well.
+                    % (i.e. outside RhsType) as well.
                     true
                 else
                     type_vars_in_types(ArgTypes, TypeVars),
@@ -354,7 +358,7 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
                 % In these cases, expand out the type and process the result
                 % as if the equivalence *had* been expanded out.
                 hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-                map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+                map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
                 apply_subst_to_type(TSubst, EqvType0, EqvType),
                 acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
                     BaseTypeCtor, BaseTypeParams, EqvType, !InvariantTVars)
@@ -554,6 +558,7 @@ corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
     corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
         TypesA, TypesB, !TypeAssign).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 typecheck_prune_coerce_constraints(Info, TypeAssignSet0, TypeAssignSet) :-
