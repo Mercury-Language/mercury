@@ -2669,6 +2669,7 @@ Options for target language compilation
         Specify options to be passed to the C compiler. These options will not
         be quoted when passed to the shell.
 
+    --quoted-cflag <option>
     --cflag <option>
         Specify a single word option to be passed to the C compiler. The word
         will be quoted when passed to the shell.
@@ -2679,6 +2680,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-gcc-flag <flag>
     --gcc-flag <flag>
         There is no help text available.
 
@@ -2688,6 +2690,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-clang-flag <flag>
     --clang-flag <flag>
         There is no help text available.
 
@@ -2697,6 +2700,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-msvc-flag <flag>
     --msvc-flag <flag>
         There is no help text available.
 
@@ -2764,6 +2768,8 @@ Options for target language compilation
         Specify options to be passed to the Java compiler. These options will
         not be quoted when passed to the shell.
 
+    --quoted-javac-flag <option>
+    --quoted-java-flag <option>
     --javac-flag <option>
     --java-flag <option>
         Specify a single word option to be passed to the Java compiler. The
@@ -2778,6 +2784,7 @@ Options for target language compilation
         Specify options to be passed to the Java interpreter. These options
         will not be quoted when passed to the shell.
 
+    --quoted-java-runtime-flag <option>
     --java-runtime-flag <option>
         Specify a single word option to be passed to the Java interpreter. The
         word will be quoted when passed to the shell.
@@ -2800,6 +2807,7 @@ Options for target language compilation
         Specify options to be passed to the C# compiler. These options will not
         be quoted when passed to the shell.
 
+    --quoted-csharp-flag <option>
     --csharp-flag <option>
         Specify a single word option to be passed to the C# compiler. The word
         will be quoted when passed to the shell.
@@ -2882,6 +2890,7 @@ Options for linking
         executable. These options will not be quoted when passed to the shell.
         Use `mmc --output-link-command' to find out what the linker command is.
 
+    --quoted-ld-flag <option>
     --ld-flag <option>
         Specify a single word option to be passed to the linker command that
         will create an executable. The word will be quoted when passed to the
@@ -2895,6 +2904,7 @@ Options for linking
         shell. Use `mmc --output-shared-lib-link-command' to find out what the
         linker command is.
 
+    --quoted-ld-libflag <option>
     --ld-libflag <option>
         Specify a single word option to be passed to the linker command that
         will create a shared library. The word will be quoted when passed to

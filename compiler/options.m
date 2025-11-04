@@ -4601,7 +4601,7 @@ optdb(oc_target_c,  cflags,                            accumulating([]),
         w("Specify options to be passed to the C compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_c,  quoted_cflag,                      string_special,
-    arg_help("cflag", "option", [
+    alt_arg_help("quoted-cflag", ["cflag"], "option", [
         w("Specify a single word option to be passed to the C compiler."),
         w("The word will be quoted when passed to the shell.")])).
 
@@ -4610,19 +4610,19 @@ optdb(oc_target_c,  gcc_flags,                         accumulating([]),
     priv_arg_help("gcc-flags", "flags", [])).
 optdb(oc_target_c,  quoted_gcc_flag,                   string_special,
     % XXX document me.
-    priv_arg_help("gcc-flag", "flag", [])).
+    priv_alt_arg_help("quoted-gcc-flag", ["gcc-flag"], "flag", [])).
 optdb(oc_target_c,  clang_flags,                       accumulating([]),
     % XXX part of mmc --make; but needs more detail.
     priv_arg_help("clang-flags", "flags", [])).
 optdb(oc_target_c,  quoted_clang_flag,                 string_special,
     % XXX document me.
-    priv_arg_help("clang-flag", "flag", [])).
+    priv_alt_arg_help("quoted-clang-flag", ["clang-flag"], "flag", [])).
 optdb(oc_target_c,  msvc_flags,                        accumulating([]),
     % XXX part of mmc --make; but needs more detail.
     priv_arg_help("msvc-flags", "flags", [])).
 optdb(oc_target_c,  quoted_msvc_flag,                  string_special,
     % XXX document me.
-    priv_arg_help("msvc-flag", "flag", [])).
+    priv_alt_arg_help("quoted-msvc-flag", ["msvc-flag"], "flag", [])).
 
 % XXX All of the following options are reserved for the mmc script,
 % but they nevertheless should have private help text.
@@ -4673,8 +4673,8 @@ optdb(oc_target_java, java_compiler_flags,               accumulating([]),
         w("Specify options to be passed to the Java compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_compiler_flag,         string_special,
-    alt_arg_help("javac-flag",
-            ["java-flag"], "option", [
+    alt_arg_help("quoted-javac-flag",
+            ["quoted-java-flag", "javac-flag", "java-flag"], "option", [
         w("Specify a single word option to be passed to the Java compiler."),
         w("The word will be quoted when passed to the shell.")])).
 optdb(oc_target_java, java_classpath,                    accumulating([]),
@@ -4688,7 +4688,7 @@ optdb(oc_target_java, java_runtime_flags,                accumulating([]),
         w("Specify options to be passed to the Java interpreter."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
-    arg_help("java-runtime-flag", "option", [
+    alt_arg_help("quoted-java-runtime-flag", ["java-runtime-flag"], "option", [
         w("Specify a single word option to be passed"),
         w("to the Java interpreter."),
         w("The word will be quoted when passed to the shell.")])).
@@ -4718,7 +4718,7 @@ optdb(oc_target_csharp, csharp_flags,                      accumulating([]),
         w("Specify options to be passed to the C# compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_csharp, quoted_csharp_flag,                string_special,
-    arg_help("csharp-flag", "option", [
+    alt_arg_help("quoted-csharp-flag", ["csharp-flag"], "option", [
         w("Specify a single word option to be passed to the C# compiler."),
         w("The word will be quoted when passed to the shell.")])).
 optdb(oc_target_csharp, mono_path_directories,           accumulating([]),
@@ -4853,7 +4853,7 @@ optdb(oc_link_c,    ld_flags,                          accumulating([]),
         w("Use"), code("mmc --output-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_flag,                    string_special,
-    arg_help("ld-flag", "option", [
+    alt_arg_help("quoted-ld-flag", ["ld-flag"], "option", [
         w("Specify a single word option to be passed to the linker command"),
         w("that will create an executable."),
         w("The word will be quoted when passed to the shell."),
@@ -4867,7 +4867,7 @@ optdb(oc_link_c,    ld_libflags,                       accumulating([]),
         w("Use"), code("mmc --output-shared-lib-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_libflag,                 string_special,
-    arg_help("ld-libflag", "option", [
+    alt_arg_help("quoted-ld-libflag", ["ld-libflag"], "option", [
         w("Specify a single word option to be passed to the linker command"),
         w("that will create a shared library."),
         w("The word will be quoted when passed to the shell."),
