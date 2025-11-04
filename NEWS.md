@@ -1575,7 +1575,7 @@ Changes to the Mercury compiler
   argument was to set the value of the !:SV argument, then the !.SV
   argument should be deleted too. Both options are on by default.
 
-* We have made --warn-non-contiguous-clauses the default.
+* We have made `--warn-non-contiguous-clauses` the default.
 
 * We have added a new option, `--allow-non-continuity-for`, which modifies
   the operation of two existing options, `--warn-non-contiguous-clauses` and
