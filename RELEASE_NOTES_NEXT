@@ -5,5 +5,7 @@ shut up (in that release) with --no-warn-potentially-ambiguous-pragma.
 After the release, upgrade the warning to an error. In the release
 after that, remove the option, and always generate an error.
 
-Carve several submodules off io.m, as discussed on m-dev on 2021 Aug 23-34
-in a thread about get_environment_var_map.
+After the release, delete from io.m the predicates that simply forward
+the work to one of the submodules we carved off io.m years ago.
+
+For each of the quoted-x-flag options, delete its original x-flag version.
