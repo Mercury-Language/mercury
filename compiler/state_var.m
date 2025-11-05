@@ -81,7 +81,7 @@
                 % versions.)
                 ui_state_var_store  :: svar_store,
 
-                % The errrors and warnings that we definitely want to print.
+                % The errors and warnings that we definitely want to print.
                 % (The svar_store also contains error_specs, but we print those
                 % only as hints *if and when* we later find certain other kinds
                 % of errors.)
