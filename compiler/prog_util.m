@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,14 +63,24 @@
 
 %---------------------------------------------------------------------------%
 
+:- inst switchable_cons_id for cons_id/0
+    --->    du_data_ctor(ground)
+    ;       tuple_cons(ground)
+    ;       some_int_const(ground)
+    ;       float_const(ground)
+    ;       char_const(ground)
+    ;       string_const(ground).
+
     % Various predicates for accessing the cons_id type.
 
     % Given a cons_id and a list of argument terms, convert it into a term.
     % Works only on the cons_ids that can be expressed in source programs,
     % so it fails e.g. on pred_consts and type_ctor_info_consts.
     %
-:- pred cons_id_and_args_to_term(cons_id::in, list(term(T))::in, term(T)::out)
-    is semidet.
+:- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
+:- mode cons_id_and_args_to_term(in(switchable_cons_id), in, out) is det.
+:- mode cons_id_and_args_to_term(in, in, out) is semidet.
+
 
     % Get the arity of a cons_id, aborting on pred_const and
     % type_ctor_info_const.
@@ -499,51 +509,63 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
 
 %---------------------------------------------------------------------------%
 
-cons_id_and_args_to_term(some_int_const(IntConst), [], Term) :-
+cons_id_and_args_to_term(ConsId, ArgTerms, Term) :-
     (
-        IntConst = int_const(Int),
-        Term = term_int.int_to_decimal_term(Int, dummy_context)
+        (
+            ConsId = tuple_cons(_Arity),
+            SymName = unqualified("{}")
+        ;
+            ConsId = du_data_ctor(DuCtor),
+            DuCtor = du_ctor(SymName, _A, _TC)
+        ),
+        construct_qualified_term(SymName, ArgTerms, Term)
     ;
-        IntConst = int8_const(Int8),
-        Term = term_int.int8_to_decimal_term(Int8, dummy_context)
-    ;
-        IntConst = int16_const(Int16),
-        Term = term_int.int16_to_decimal_term(Int16, dummy_context)
-    ;
-        IntConst = int32_const(Int32),
-        Term = term_int.int32_to_decimal_term(Int32, dummy_context)
-    ;
-        IntConst = int64_const(Int64),
-        Term = term_int.int64_to_decimal_term(Int64, dummy_context)
-    ;
-        IntConst = uint_const(UInt),
-        Term = term_int.uint_to_decimal_term(UInt, dummy_context)
-    ;
-        IntConst = uint8_const(UInt8),
-        Term = term_int.uint8_to_decimal_term(UInt8, dummy_context)
-    ;
-        IntConst = uint16_const(UInt16),
-        Term = term_int.uint16_to_decimal_term(UInt16, dummy_context)
-    ;
-        IntConst = uint32_const(UInt32),
-        Term = term_int.uint32_to_decimal_term(UInt32, dummy_context)
-    ;
-        IntConst = uint64_const(UInt64),
-        Term = term_int.uint64_to_decimal_term(UInt64, dummy_context)
+        (
+            ConsId = some_int_const(IntConst),
+            (
+                IntConst = int_const(Int),
+                Term = term_int.int_to_decimal_term(Int, dummy_context)
+            ;
+                IntConst = int8_const(Int8),
+                Term = term_int.int8_to_decimal_term(Int8, dummy_context)
+            ;
+                IntConst = int16_const(Int16),
+                Term = term_int.int16_to_decimal_term(Int16, dummy_context)
+            ;
+                IntConst = int32_const(Int32),
+                Term = term_int.int32_to_decimal_term(Int32, dummy_context)
+            ;
+                IntConst = int64_const(Int64),
+                Term = term_int.int64_to_decimal_term(Int64, dummy_context)
+            ;
+                IntConst = uint_const(UInt),
+                Term = term_int.uint_to_decimal_term(UInt, dummy_context)
+            ;
+                IntConst = uint8_const(UInt8),
+                Term = term_int.uint8_to_decimal_term(UInt8, dummy_context)
+            ;
+                IntConst = uint16_const(UInt16),
+                Term = term_int.uint16_to_decimal_term(UInt16, dummy_context)
+            ;
+                IntConst = uint32_const(UInt32),
+                Term = term_int.uint32_to_decimal_term(UInt32, dummy_context)
+            ;
+                IntConst = uint64_const(UInt64),
+                Term = term_int.uint64_to_decimal_term(UInt64, dummy_context)
+            )
+        ;
+            ConsId = float_const(Float),
+            Term = term.functor(term.float(Float), [], dummy_context)
+        ;
+            ConsId = char_const(Char),
+            SymName = unqualified(string.from_char(Char)),
+            construct_qualified_term(SymName, [], Term)
+        ;
+            ConsId = string_const(String),
+            Term = term.functor(term.string(String), [], dummy_context)
+        ),
+        expect(unify(ArgTerms, []), $pred, "ArgTerms != [] for constant")
     ).
-cons_id_and_args_to_term(float_const(Float), [], Term) :-
-    Term = term.functor(term.float(Float), [], dummy_context).
-cons_id_and_args_to_term(char_const(Char), [], Term) :-
-    SymName = unqualified(string.from_char(Char)),
-    construct_qualified_term(SymName, [], Term).
-cons_id_and_args_to_term(string_const(String), [], Term) :-
-    Term = term.functor(term.string(String), [], dummy_context).
-cons_id_and_args_to_term(tuple_cons(_Arity), Args, Term) :-
-    SymName = unqualified("{}"),
-    construct_qualified_term(SymName, Args, Term).
-cons_id_and_args_to_term(du_data_ctor(du_ctor(SymName, _A, _TC)),
-        Args, Term) :-
-    construct_qualified_term(SymName, Args, Term).
 
 cons_id_arity(ConsId) = Arity :-
     (
