@@ -1616,16 +1616,16 @@ Changes to the Mercury compiler
   a flag to be passed to a command after quoting. The new names are
   the following:
 
-  `--quoted-cflag`              (old name `--cflag`)
-  `--quoted-gcc-flag`           (old name `--gcc-flag`)
-  `--quoted-clang-flag`         (old name `--clang-flag`)
-  `--quoted-msvc-flag`          (old name `--msvc-flag`)
-  `--quoted-javac-flag`         (old name `--javac-flag`)
-  `--quoted-java-flag`          (old name `--java-flag`)
-  `--quoted-java-runtime-flag`  (old name `--java-runtime-flag`)
-  `--quoted-csharp-flag`        (old name `--csharp-flag`)
-  `--quoted-ld-flag`            (old name `--ld-flag`)
-  `--quoted-ld-libflag`         (old name `--ld-libflag`)
+      --quoted-cflag              (old name: --cflag)    
+      --quoted-gcc-flag           (old name: --gcc-flag)    
+      --quoted-clang-flag         (old name: --clang-flag)    
+      --quoted-msvc-flag          (old name: --msvc-flag)    
+      --quoted-javac-flag         (old name: --javac-flag)    
+      --quoted-java-flag          (old name: --java-flag)    
+      --quoted-java-runtime-flag  (old name: --java-runtime-flag)    
+      --quoted-csharp-flag        (old name: --csharp-flag)    
+      --quoted-ld-flag            (old name: --ld-flag)    
+      --quoted-ld-libflag         (old name: --ld-libflag)    
 
   The compiler still accepts the old names, but we intend to remove them
   after the next stable release.
