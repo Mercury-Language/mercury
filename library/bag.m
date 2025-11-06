@@ -221,7 +221,6 @@
 :- pred to_list_only_duplicates(bag(T)::in, list(T)::out) is det.
 
     % Given a bag, produce a set containing all the values in the bag.
-    % NOTE_TO_IMPLEMENTORS The _without_duplicates suffix is redundant.
     %
 :- func to_set(bag(T)) = set(T).
 
@@ -281,7 +280,7 @@
 
     % intersect(BagA, BagB, BagAuB):
     %
-    % BagAiB is the intersection of BagA and BagB.
+    % BagAuB is the intersection of BagA and BagB.
     %
     % An example:
     % intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).

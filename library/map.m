@@ -2024,7 +2024,7 @@ intersect_list_passes(HeadAssocList, TailAssocLists, CommonPred,
 
     % If the list [HeadAssocList | TailAssocLists] has 2k sorted association
     % lists (representing 2k maps), then reduce these to k sorted association
-    % lists by intersecting assoclist 2i with assoc list 2i+1 for all i
+    % lists by intersecting assoc list 2i with assoc list 2i+1 for all i
     % in 0..(k-1). If it has 2k+1 sorted association lists, intersect
     % the first 2k as above, and add the last to the end of the list as is,
     % without intersecting it with anything.
