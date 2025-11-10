@@ -67,7 +67,7 @@
 :- pred nondet_search(one_or_more_map(K, V)::in, K::in, V::out) is nondet.
 
     % If the one_or_more_map has an entry for the given key,
-    % succeed once for each of the corresponding values.
+    % return the list of corresponding values.
     % Otherwise, throw an exception.
     %
 :- func lookup(one_or_more_map(K, V), K) = one_or_more(V).

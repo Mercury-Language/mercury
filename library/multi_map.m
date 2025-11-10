@@ -64,8 +64,8 @@
     %
 :- pred nondet_search(multi_map(K, V)::in, K::in, V::out) is nondet.
 
-    % If the multi_map has an entry for the given key,
-    % succeed once for each of the corresponding values.
+    % If the multi_map has an entry for the given key, return
+    % the list of corresponding values.
     % Otherwise, throw an exception.
     %
 :- func lookup(multi_map(K, V), K) = list(V).
