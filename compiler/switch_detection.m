@@ -997,9 +997,10 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
 
         VarTable = !.LocalInfo ^ lsdi_var_table,
         lookup_var_type(VarTable, Var, VarType),
-        is_candidate_switch(ModuleInfo, MaybeRequiredVar,
-            Var, VarType, VarInst0, Cases, Left, Candidate)
+        is_candidate_switch(Cases, Left)
     then
+        categorize_candidate_switch(ModuleInfo, MaybeRequiredVar,
+            Var, VarType, VarInst0, Cases, Left, Candidate),
         !:Candidates = cord.snoc(!.Candidates, Candidate)
     else
         true
@@ -1007,12 +1008,9 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
     detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
         MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
 
-:- pred is_candidate_switch(module_info::in, maybe(prog_var)::in, prog_var::in,
-    mer_type::in, mer_inst::in, list(case)::in, list(hlds_goal)::in,
-    candidate_switch::out) is semidet.
+:- pred is_candidate_switch(list(case)::in, list(hlds_goal)::in) is semidet.
 
-is_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType, VarInst0,
-        Cases0, LeftOver, Candidate) :-
+is_candidate_switch(Cases0, LeftOver) :-
     (
         % If every disjunct unifies Var with a function symbol, then
         % it is candidate switch on Var, *even if* all disjuncts unify Var
@@ -1039,59 +1037,63 @@ is_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType, VarInst0,
         % at best, while the cost of deleting it would be to greatly increase
         % the number of candidates and thus the time taken by switch detection.
         Cases0 = [_, _ | _]
-    ),
-    % XXX TODO make this part a separate predicate
-    require_det (
-        can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
-            CanFail, CasesMissing, Cases, UnreachableCaseGoals),
+    ).
+
+:- pred categorize_candidate_switch(module_info::in, maybe(prog_var)::in,
+    prog_var::in, mer_type::in, mer_inst::in,
+    list(case)::in, list(hlds_goal)::in, candidate_switch::out) is det.
+
+categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
+        VarInst0, Cases0, LeftOver, Candidate) :-
+    can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+        CanFail, CasesMissing, Cases, UnreachableCaseGoals),
+    (
+        LeftOver = [],
         (
-            LeftOver = [],
-            (
-                Cases = [],
-                Rank = all_disjuncts_are_unreachable
-            ;
-                Cases = [_FirstCase | LaterCases],
+            Cases = [],
+            Rank = all_disjuncts_are_unreachable
+        ;
+            Cases = [_FirstCase | LaterCases],
+            ( if
+                LaterCases = [],
+                UnreachableCaseGoals = []
+            then
+                Rank = no_leftover_one_case
+            else
+                % FirstCase is one case, and whichever of LaterCases and
+                % UnreachableCaseGoals is nonempty is the second case.
                 ( if
-                    LaterCases = [],
-                    UnreachableCaseGoals = []
+                    MaybeRequiredVar = yes(RequiredVar),
+                    RequiredVar = Var
                 then
-                    Rank = no_leftover_one_case
+                    Rank = no_leftover_twoplus_cases_explicitly_selected
                 else
-                    % FirstCase is one case, and whichever of LaterCases and
-                    % UnreachableCaseGoals is nonempty is the second case.
-                    ( if
-                        MaybeRequiredVar = yes(RequiredVar),
-                        RequiredVar = Var
-                    then
-                        Rank = no_leftover_twoplus_cases_explicitly_selected
-                    else
-                        (
-                            CasesMissing = some_cases_missing,
-                            Rank = no_leftover_twoplus_cases_finite_can_fail
-                        ;
-                            CasesMissing = no_cases_missing,
-                            Rank = no_leftover_twoplus_cases_finite_cannot_fail
-                        ;
-                            CasesMissing = unbounded_cases,
-                            Rank = no_leftover_twoplus_cases_infinite_can_fail
-                        )
+                    (
+                        CasesMissing = some_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_can_fail
+                    ;
+                        CasesMissing = no_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_cannot_fail
+                    ;
+                        CasesMissing = unbounded_cases,
+                        Rank = no_leftover_twoplus_cases_infinite_can_fail
                     )
                 )
             )
+        )
+    ;
+        LeftOver = [_ | _],
+        list.length(Cases, NumCases),
+        (
+            CanFail = cannot_fail,
+            Rank = some_leftover_cannot_fail(NumCases)
         ;
-            LeftOver = [_ | _],
-            list.length(Cases, NumCases),
-            (
-                CanFail = cannot_fail,
-                Rank = some_leftover_cannot_fail(NumCases)
-            ;
-                CanFail = can_fail,
-                Rank = some_leftover_can_fail(NumCases)
-            )
-        ),
-        Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
-            LeftOver, Rank, CanFail)
-    ).
+            CanFail = can_fail,
+            Rank = some_leftover_can_fail(NumCases)
+        )
+    ),
+    Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
+        LeftOver, Rank, CanFail).
 
 :- type cases_missing
     --->    no_cases_missing
