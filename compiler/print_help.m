@@ -2161,10 +2161,6 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces, !CindexCord, !FindexCord,
             ; HeadPiece = var(_, _)
             ; HeadPiece = file_var(_, _)
             ; HeadPiece = file_var(_, _, _)
-            ; HeadPiece = ref(_, _, _)
-            ; HeadPiece = ref(_, _, _, _)
-            ; HeadPiece = xref(_)
-            ; HeadPiece = xref(_, _)
             ),
             (
                 ( HeadPiece = quote(Text), Suffix = ""

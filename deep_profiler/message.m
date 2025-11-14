@@ -312,18 +312,18 @@ message_type_to_string(MessageType) = Cord :-
         MessageType = info_found_candidate_conjunction,
         String = "Found candidate conjunction"
     ;
-        (
-            MessageType = info_found_conjs_above_callsite_threshold(Num),
-            MessageStr = "Found %d conjuncts above callsite threshold"
-        ;
-            MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
-            MessageStr = "Found %d conjunctions with a positive speedup due"
-                ++ " to parallelisation"
-        ;
-            MessageType = info_split_conjunction_into_partitions(Num),
-            MessageStr = "Split conjunction into %d partitions, "
-                ++ "this may reduce parallelism"
-        ),
+        MessageType = info_found_conjs_above_callsite_threshold(Num),
+        MessageStr = "Found %d conjuncts above callsite threshold",
+        string.format(MessageStr, [i(Num)], String)
+    ;
+        MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
+        MessageStr = "Found %d conjunctions with a positive speedup due"
+            ++ " to parallelisation",
+        string.format(MessageStr, [i(Num)], String)
+    ;
+        MessageType = info_split_conjunction_into_partitions(Num),
+        MessageStr = "Split conjunction into %d partitions, "
+            ++ "this may reduce parallelism",
         string.format(MessageStr, [i(Num)], String)
     ;
         MessageType = info_found_pushed_conjs_above_callsite_threshold,
@@ -357,16 +357,15 @@ message_type_to_string(MessageType) = Cord :-
         String = "Cannot compute procrep coverage annotation: " ++ Msg
             ++ "\n  falling back to some other method"
     ;
-        (
-            MessageType =
-                warning_cannot_compute_cost_of_recursive_calls(WarnStr),
-            Template = "Cannot compute cost of recursive calls: %s"
-        ;
-            MessageType =
-                warning_cannot_compute_first_use_time(WarnStr),
-            Template = "Cannot compute the production or consumption time "
-                ++ "of a variable: %s"
-        ),
+        MessageType =
+            warning_cannot_compute_cost_of_recursive_calls(WarnStr),
+        Template = "Cannot compute cost of recursive calls: %s",
+        string.format(Template, [s(WarnStr)], String)
+    ;
+        MessageType =
+            warning_cannot_compute_first_use_time(WarnStr),
+        Template = "Cannot compute the production or consumption time "
+            ++ "of a variable: %s",
         string.format(Template, [s(WarnStr)], String)
     ;
         MessageType = error_extra_proc_dynamics_in_clique_proc,
