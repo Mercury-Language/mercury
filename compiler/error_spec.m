@@ -91,31 +91,22 @@
 :- type error_spec
     --->    spec(
                 s_id                    :: string,
-                s_spec_severity         :: error_severity,
-                s_spec_phase            :: error_phase,
+                s_spec_severity         :: spec_severity,
+                s_spec_phase            :: spec_phase,
                 s_spec_context          :: prog_context,
                 s_spec_pieces           :: list(format_piece)
             )
     ;       no_ctxt_spec(
                 ncs_id                  :: string,
-                ncs_spec_severity       :: error_severity,
-                ncs_spec_phase          :: error_phase,
+                ncs_spec_severity       :: spec_severity,
+                ncs_spec_phase          :: spec_phase,
                 ncs_spec_pieces         :: list(format_piece)
             )
     ;       error_spec(
                 es_id                   :: string,
-                es_severity             :: error_severity,
-                es_phase                :: error_phase,
+                es_severity             :: spec_severity,
+                es_phase                :: spec_phase,
                 es_msgs                 :: list(error_msg)
-            )
-    ;       conditional_spec(
-                cond_id                 :: string,
-                cond_spec_option        :: option,
-                cond_spec_value         :: bool,
-
-                cond_spec_severity      :: error_severity,
-                cond_spec_phase         :: error_phase,
-                cond_spec_msgs          :: list(error_msg)
             ).
 
     % An error_spec that is *intended* to contain a warning,
@@ -126,8 +117,8 @@
 :- type std_error_spec =< error_spec
     --->    error_spec(
                 es_id                   :: string,
-                es_severity             :: error_severity,
-                es_phase                :: error_phase,
+                es_severity             :: spec_severity,
+                es_phase                :: spec_phase,
                 es_msgs                 :: list(std_error_msg)
             ).
 
@@ -141,13 +132,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- type error_severity
+:- type spec_severity
     --->    severity_error
-            % Always set the exit status to indicate an error.
+            % Always print the spec, and
+            % always set the exit status to indicate an error.
+
+    ;       severity_error(option)
+            % Print the spec and set the exit status to indicate an error
+            % only if this option is enabled.
 
     ;       severity_warning(option)
-            % Only set the exit status to indicate an error if --halt-at-warn
-            % is enabled.
+            % Print the spec only if this option is enabled.
+            % Set the exit status to indicate an error only if
+            % both the given option AND --halt-at-warn are enabled.
 
     ;       severity_informational(option).
             % Don't set the exit status to indicate an error.
@@ -159,7 +156,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type error_phase
+:- type spec_phase
     --->    phase_options
     ;       phase_check_libs
     ;       phase_make_target
@@ -606,16 +603,14 @@
 :- pred extract_msg_maybe_context(error_msg::in, maybe(prog_context)::out)
     is det.
 
-:- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
+:- pred extract_spec_phase(error_spec::in, spec_phase::out) is det.
 
 :- pred accumulate_contexts(error_spec::in,
     set(prog_context)::in, set(prog_context)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred extract_spec_msgs_and_id(globals::in, error_spec::in,
-    list(error_msg)::out, string::out) is det.
-:- pred extract_spec_msgs_and_id_opt_table(option_table::in, error_spec::in,
+:- pred extract_spec_msgs_and_id(error_spec::in,
     list(error_msg)::out, string::out) is det.
 
 :- pred extract_spec_msgs_and_maybe_add_id(globals::in, error_spec::in,
@@ -1000,15 +995,11 @@ extract_spec_phase(Spec, Phase) :-
         Spec = spec(_, _, Phase, _, _)
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
-    ;
-        Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
 accumulate_contexts(Spec, !Contexts) :-
     (
-        ( Spec = error_spec(_, _, _, Msgs)
-        ; Spec = conditional_spec(_, _, _, _, _, Msgs)
-        ),
+        Spec = error_spec(_, _, _, Msgs),
         list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
     ;
         Spec = spec(_, _, _, Context, _),
@@ -1031,7 +1022,7 @@ accumulate_contexts_in_msg(Msg, !Contexts) :-
 
 %---------------------------------------------------------------------------%
 
-extract_spec_msgs_and_id(Globals, Spec, Msgs, Id) :-
+extract_spec_msgs_and_id(Spec, Msgs, Id) :-
     (
         Spec = error_spec(Id, _Severity, _Phase, Msgs)
     ;
@@ -1040,41 +1031,12 @@ extract_spec_msgs_and_id(Globals, Spec, Msgs, Id) :-
     ;
         Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
         Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        globals.lookup_bool_option(Globals, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
-    ).
-
-extract_spec_msgs_and_id_opt_table(OptionTable, Spec, Msgs, Id) :-
-    (
-        Spec = error_spec(Id, _Severity, _Phase, Msgs)
-    ;
-        Spec = spec(Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [msg(Context, Pieces)]
-    ;
-        Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
-        Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
     ).
 
 %---------------------------------------------------------------------------%
 
 extract_spec_msgs_and_maybe_add_id(Globals, Spec, Msgs) :-
-    extract_spec_msgs_and_id(Globals, Spec, Msgs0, Id),
+    extract_spec_msgs_and_id(Spec, Msgs0, Id),
     globals.get_options(Globals, OptionTable),
     maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs).
 

@@ -225,6 +225,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_sort.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -320,30 +321,8 @@ sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
 do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
         MaybeMaxWidth, StdSpec, !AlreadyPrintedVerbose, !IO) :-
     StdSpec = error_spec(Id, Severity, _Phase, StdMsgs1),
-    (
-        Severity = severity_error,
-        MaybeActualSeverity = yes(actual_severity_error)
-    ;
-        Severity = severity_warning(Option),
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-        (
-            OptionValue = no,
-            MaybeActualSeverity = no
-        ;
-            OptionValue = yes,
-            MaybeActualSeverity = yes(actual_severity_warning)
-        )
-    ;
-        Severity = severity_informational(Option),
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-        (
-            OptionValue = no,
-            MaybeActualSeverity = no
-        ;
-            OptionValue = yes,
-            MaybeActualSeverity = yes(actual_severity_informational)
-        )
-    ),
+    severity_to_maybe_actual_severity(OptionTable, Severity,
+        MaybeActualSeverity),
     (
         MaybeActualSeverity = no
         % We do not print StdSpec.

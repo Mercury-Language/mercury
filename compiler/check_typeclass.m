@@ -2646,7 +2646,7 @@ report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_duplicate_instance_defns_in_category(class_id::in,
-    error_severity::in, string::in, string::in,
+    spec_severity::in, string::in, string::in,
     list(hlds_instance_defn)::in, maybe(hlds_instance_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -2665,7 +2665,7 @@ report_any_duplicate_instance_defns_in_category(ClassId, Severity,
             LaterInstanceDefns, !Specs)
     ).
 
-:- pred report_duplicate_instance_defn(class_id::in, error_severity::in,
+:- pred report_duplicate_instance_defn(class_id::in, spec_severity::in,
     string::in, string::in, prog_context::in, hlds_instance_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 

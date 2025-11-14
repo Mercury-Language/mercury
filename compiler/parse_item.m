@@ -133,7 +133,6 @@
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.
@@ -862,8 +861,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                     words("was created by an obsolete compiler,")] ++
                     color_as_incorrect([words("so it must be rebuilt.")]) ++
                     [nl],
-                Spec = conditional_spec($pred, warn_smart_recompilation, yes,
-                    severity_error, phase_t2pt, [msg(Context, Pieces)]),
+                Severity = severity_error(warn_smart_recompilation),
+                Spec = spec($pred, Severity, phase_t2pt, Context, Pieces),
                 MaybeIOM = ok1(iom_handled_error([Spec]))
             )
         else

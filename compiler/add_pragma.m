@@ -2066,7 +2066,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         MaybePredId = error1(Specs)
     ).
 
-:- func report_unknown_pred_or_func(error_severity, string, prog_context,
+:- func report_unknown_pred_or_func(spec_severity, string, prog_context,
     pred_or_func, sym_name, user_arity) = error_spec.
 
 report_unknown_pred_or_func(Severity, PragmaName, Context,
@@ -2079,7 +2079,7 @@ report_unknown_pred_or_func(Severity, PragmaName, Context,
         [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
-:- func report_ambiguous_pred_or_func(error_severity, string, prog_context,
+:- func report_ambiguous_pred_or_func(spec_severity, string, prog_context,
     pred_or_func, sym_name, user_arity) = error_spec.
 
 report_ambiguous_pred_or_func(Severity, PragmaName, Context,

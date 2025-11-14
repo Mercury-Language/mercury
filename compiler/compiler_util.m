@@ -49,10 +49,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_error(error_phase::in, list(format_piece)::in,
+:- pred add_error(spec_phase::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_warning(error_phase::in, option::in, list(format_piece)::in,
+:- pred add_warning(spec_phase::in, option::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
