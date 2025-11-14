@@ -73,6 +73,11 @@
 :- func lookup(one_or_more_map(K, V), K) = one_or_more(V).
 :- pred lookup(one_or_more_map(K, V)::in, K::in, one_or_more(V)::out) is det.
 
+    % Return all the values in the map for the given key.
+    % If the map does not contain the key, then return the empty list.
+    %
+:- func get_values_for_key(one_or_more_map(K, V), K) = list(V).
+
     % If the one_or_more_map has an entry for the given key,
     % succeed once for each of the corresponding values.
     % Otherwise, throw an exception.
@@ -368,6 +373,14 @@ lookup(OneOrMoreMap, Key) = Value :-
 
 lookup(OneOrMoreMap, Key, Values) :-
     map.lookup(OneOrMoreMap, Key, Values).
+
+get_values_for_key(OneOrMoreMap, Key) = Values :-
+    ( if one_or_more_map.search(OneOrMoreMap, Key, OoMValues) then
+        OoMValues = one_or_more(HeadValue, TailValues),
+        Values = [HeadValue | TailValues]
+    else
+        Values = []
+    ).
 
 nondet_lookup(OneOrMoreMap, Key, Value) :-
     map.search(OneOrMoreMap, Key, Values),

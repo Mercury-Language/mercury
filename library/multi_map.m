@@ -71,6 +71,11 @@
 :- func lookup(multi_map(K, V), K) = list(V).
 :- pred lookup(multi_map(K, V)::in, K::in, list(V)::out) is det.
 
+    % Return all the values in the map for the given key.
+    % If the map does not contain the key, then return the empty list.
+    %
+:- func get_values_for_key(multi_map(K, V), K) = list(V).
+
     % If the multi_map has an entry for the given key,
     % succeed once for each of the corresponding values.
     % Otherwise, throw an exception.
@@ -362,6 +367,13 @@ lookup(MultiMap, Key) = Value :-
 
 lookup(MultiMap, Key, Values) :-
     map.lookup(MultiMap, Key, Values).
+
+get_values_for_key(MultiMap, Key) = Values :-
+    ( if multi_map.search(MultiMap, Key, ValuesPrime) then
+        Values = ValuesPrime
+    else
+        Values = []
+    ).
 
 nondet_lookup(MultiMap, Key, Value) :-
     map.search(MultiMap, Key, Values),

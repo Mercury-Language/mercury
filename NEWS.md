@@ -656,6 +656,7 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
+    - func `get_values_for_key/2`
     - func `reverse_add/3`
     - pred `reverse_add/4`
 
@@ -677,6 +678,12 @@ Changes to the Mercury standard library
   never be returned in the generated token lists. The new definition
   differs from the old one only in the fact that it omits these two
   function symbols.
+
+### Changes to the `multi_map` module
+
+* The following function has been added:
+
+    - func `get_values_for_key/2`
 
 ### Changes to the `ops` module
 
