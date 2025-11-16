@@ -64,6 +64,7 @@ MCFLAGS-equiv_solns_ia          += --inlining --local-constraint-propagation
 MCFLAGS-exists_cast_bug         += --trace rep -O0 --optimize-saved-vars-const
 MCFLAGS-explicit_quant          += --halt-at-warn
 MCFLAGS-foreign_underscore_var  += --halt-at-warn
+MCFLAGS-format_after_switch     += --warn-unknown-format-calls --halt-at-warn
 MCFLAGS-fzn_debug_abort         += --trace rep
 # XXX we should pass --ssdb-trace deep or --ss-debug to gh89
 # but that currently doesn't work in non ssdb grades.

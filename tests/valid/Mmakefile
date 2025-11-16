@@ -181,6 +181,7 @@ OTHER_PROGS = \
 	file_stream_instances \
 	followcode_det_problem \
 	foreign_underscore_var \
+	format_after_switch \
 	func_default_modes \
 	func_in_head \
 	gh65 \
