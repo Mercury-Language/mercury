@@ -457,43 +457,9 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Expansion = ExpansionPrime
     else
         % Handle the usual case.
-        ( if
-            % The condition of this if-then-else is based on the logic of
-            % try_parse_sym_name_and_args, but specialized to this location,
-            % so that we can do state var expansion only if we need to.
-            YFunctor = term.atom(YAtom),
-            ( if
-                YAtom = ".",
-                YArgTerms = [ModuleNameTerm, NameArgsTerm]
-            then
-                NameArgsTerm = term.functor(term.atom(Name), NameArgTerms, _),
-                try_parse_sym_name(ModuleNameTerm, ModuleName),
-                FunctorName = qualified(ModuleName, Name),
-                % We have done state variable name expansion at the top
-                % level of Args, but not at the level of NameArgTerms.
-                replace_any_dot_colon_state_var_in_terms(NameArgTerms,
-                    MaybeQualifiedYArgTermsPrime, !SVarState, !UrInfo)
-            else
-                FunctorName = string_to_sym_name_sep(YAtom, "__"),
-                MaybeQualifiedYArgTermsPrime = YArgTerms
-            )
-        then
-            MaybeQualifiedYArgTerms = MaybeQualifiedYArgTermsPrime,
-            list.length(MaybeQualifiedYArgTerms, Arity),
-            ConsId = du_data_ctor(du_ctor(FunctorName, Arity,
-                cons_id_dummy_type_ctor))
-        else
-            % If YFunctor is a numeric or string constant, it *should*
-            % have no arguments. If it nevertheless does, we still record
-            % its arguments, and let the error be caught later during
-            % typechecking.
-            parse_ordinary_cons_id(YFunctor, YArgTerms, YFunctorContext,
-                ConsId, !UrInfo),
-            MaybeQualifiedYArgTerms = YArgTerms
-        ),
-        build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
-            YFunctorContext, Context, MainContext, SubContext, Purity,
-            AncestorVarMap, Expansion, !SVarState, !UrInfo)
+        unravel_var_functor_unification_std(XVar, YFunctor, YArgTerms,
+            YFunctorContext, Context, MainContext, SubContext,
+            Purity, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
     % See whether YAtom indicates a term with special syntax.
@@ -525,38 +491,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         ; YAtom = ":"
         ),
         ( if YArgTerms = [RValTerm, DeclTypeTerm0] then
-            require_det (
-                % DeclType0 is a prog_term, but it is really a type,
-                % so we coerce it to a generic term before parsing it.
-                term.coerce(DeclTypeTerm0, DeclTypeTerm1),
-                ContextPieces =
-                    cord.singleton(words("In explicit type qualification:")),
-                VarSet0 = !.UrInfo ^ ui_varset,
-                varset.coerce(VarSet0, GenericVarSet),
-                parse_type(no_allow_ho_inst_info(wnhii_type_qual),
-                    GenericVarSet, ContextPieces, DeclTypeTerm1,
-                    DeclTypeResult),
-                (
-                    DeclTypeResult = ok1(DeclType),
-                    varset.coerce(VarSet0, DeclVarSet),
-                    QualInfo0 = !.UrInfo ^ ui_qual_info,
-                    process_type_qualification(XVar, DeclType, DeclVarSet,
-                        YFunctorContext, QualInfo0, QualInfo,
-                        [], TypeQualSpecs),
-                    !UrInfo ^ ui_qual_info := QualInfo,
-                    % Note that most of time, TypeQualSpecs will be [].
-                    add_unravel_specs(TypeQualSpecs, !UrInfo)
-                ;
-                    DeclTypeResult = error1(DeclTypeSpecs),
-                    % The varset is a prog_varset even though it contains
-                    % the names of type variables in ErrorTerm, which is
-                    % a generic term.
-                    add_unravel_specs(DeclTypeSpecs, !UrInfo)
-                ),
-                do_unravel_var_unification(XVar, RValTerm,
-                    Context, MainContext, SubContext, Purity, Order, Expansion,
-                    !SVarState, !UrInfo)
-            )
+            unravel_special_with_type(XVar, RValTerm, DeclTypeTerm0,
+                YFunctorContext, Context, MainContext, SubContext,
+                Purity, Order, Expansion, !SVarState, !UrInfo)
         else if YAtom = ":", YArgTerms = [] then
             % This may be the character ':'.
             fail
@@ -615,29 +552,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         % Handle coerce expressions.
         YAtom = "coerce",
         YArgTerms = [RValTerm0],
-        require_det (
-            (
-                RValTerm0 = term.variable(RValTermVar, _),
-                RValGoalCord = cord.empty
-            ;
-                RValTerm0 = term.functor(_, _, _),
-                replace_any_dot_colon_state_var_in_term(RValTerm0, RValTerm,
-                    !SVarState, !UrInfo),
-                make_fresh_arg_var_no_svar(RValTerm0, RValTermVar, [],
-                    !UrInfo),
-                do_unravel_var_unification(RValTermVar, RValTerm, Context,
-                    MainContext, SubContext, Purity, Order, RValTermExpansion,
-                    !SVarState, !UrInfo),
-                RValTermExpansion = expansion(_, RValGoalCord)
-            ),
-            CoerceGoalExpr = generic_call(cast(subtype_coerce),
-                [RValTermVar, XVar], [in_mode, out_mode],
-                arg_reg_types_unset, detism_det),
-            goal_info_init(Context, CoerceGoalInfo),
-            CoerceGoal = hlds_goal(CoerceGoalExpr, CoerceGoalInfo),
-            CoerceGoalCord = cord.singleton(CoerceGoal),
-            Expansion = expansion(not_fgti, RValGoalCord ++ CoerceGoalCord)
-        )
+        unravel_special_coerce(XVar, RValTerm0,
+            Context, MainContext, SubContext,
+            Purity, Order, Expansion, !SVarState, !UrInfo)
     ;
         % Handle if-then-else expressions.
         (
@@ -652,73 +569,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             CondThenTerm0 = term.functor(term.atom("->"),
                 [CondTerm0, ThenTerm0], _)
         ),
-
-        require_det (
-            term.coerce(CondTerm0, CondTerm),
-            ContextPieces = cord.init,
-            VarSet0 = !.UrInfo ^ ui_varset,
-            parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond,
-                VarSet0, VarSet),
-            !UrInfo ^ ui_varset := VarSet,
-            (
-                MaybeVarsCond =
-                    ok4(Vars, StateVars, CondParseTree, CondWarningSpecs),
-                add_unravel_specs(CondWarningSpecs, !UrInfo),
-                BeforeSVarState = !.SVarState,
-                svar_prepare_for_local_state_vars(Context, StateVars,
-                    BeforeSVarState, BeforeInsideSVarState, !UrInfo),
-
-                map.init(EmptyRenaming),
-                transform_parse_tree_goal_to_hlds(loc_inside_atomic_goal,
-                    EmptyRenaming, CondParseTree, CondGoal,
-                    BeforeInsideSVarState, AfterCondInsideSVarState, !UrInfo),
-
-                replace_any_dot_colon_state_var_in_term(ThenTerm0, ThenTerm,
-                    AfterCondInsideSVarState, AfterThenInsideSVarState0,
-                    !UrInfo),
-                map.init(AncestorVarMap),
-                classify_unravel_var_unification(XVar, ThenTerm,
-                    Context, MainContext, SubContext,
-                    Purity, Order, AncestorVarMap, ThenExpansion,
-                    AfterThenInsideSVarState0, AfterThenInsideSVarState,
-                    !UrInfo),
-                goal_info_init(get_term_context(ThenTerm), ThenGoalInfo),
-                expansion_to_goal_wrap_if_fgti(!.UrInfo, ThenGoalInfo,
-                    ThenExpansion, ThenGoal0),
-
-                svar_finish_local_state_vars(!.UrInfo, StateVars,
-                    BeforeSVarState, AfterThenInsideSVarState,
-                    AfterThenSVarState),
-
-                replace_any_dot_colon_state_var_in_term(ElseTerm0, ElseTerm,
-                    BeforeSVarState, AfterElseSVarState0, !UrInfo),
-                classify_unravel_var_unification(XVar, ElseTerm,
-                    Context, MainContext, SubContext,
-                    Purity, Order, AncestorVarMap, ElseExpansion,
-                    AfterElseSVarState0, AfterElseSVarState, !UrInfo),
-                goal_info_init(get_term_context(ElseTerm), ElseGoalInfo),
-                expansion_to_goal_wrap_if_fgti(!.UrInfo, ElseGoalInfo,
-                    ElseExpansion, ElseGoal0),
-
-                svar_finish_if_then_else(loc_inside_atomic_goal, Context,
-                    StateVars, ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
-                    BeforeSVarState, AfterCondInsideSVarState,
-                    AfterThenSVarState, AfterElseSVarState,
-                    AfterITESVarState, !UrInfo),
-                !:SVarState = AfterITESVarState,
-
-                GoalExpr = if_then_else(StateVars ++ Vars,
-                    CondGoal, ThenGoal, ElseGoal),
-                goal_info_init(Context, GoalInfo),
-                Goal = hlds_goal(GoalExpr, GoalInfo),
-                Expansion = expansion(not_fgti, cord.singleton(Goal))
-            ;
-                MaybeVarsCond = error4(VarsCondSpecs),
-                add_unravel_specs(VarsCondSpecs, !UrInfo),
-                Expansion = expansion(not_fgti,
-                    cord.singleton(true_goal_with_context(Context)))
-            )
-        )
+        unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
+            Context, MainContext, SubContext, Purity, Order, Expansion,
+            !SVarState, !UrInfo)
     ;
         % Handle field extraction expressions.
         YAtom = "^",
@@ -728,43 +581,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             fail
         ;
             YArgTerms = [InputTerm0, FieldNameTerm],
-            FieldNameContextPieces = [words("On the right hand side"),
-                words("of the"), quote("^"), words("operator"),
-                words("in a field selection expression:")],
-            VarSet0 = !.UrInfo ^ ui_varset,
-            parse_field_list(FieldNameTerm, VarSet0,
-                FieldNameContextPieces, MaybeFieldNames),
-            (
-                MaybeFieldNames = ok1(FieldNames),
-                require_det (
-                    replace_any_dot_colon_state_var_in_term(InputTerm0,
-                        InputTerm, !SVarState, !UrInfo),
-                    make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
-                        !UrInfo),
-                    expand_get_field_function_call(Context, MainContext,
-                        SubContext, FieldNames, XVar, InputTermVar, Purity,
-                        Functor, _, GetGoal, !SVarState, !UrInfo),
-
-                    ArgContext = ac_functor(Functor, MainContext, SubContext),
-                    map.init(AncestorVarMap),
-                    do_arg_unification(InputTermVar, InputTerm,
-                        YFunctorContext, ArgContext, Order,
-                        1, AncestorVarMap, InputArgExpansion,
-                        !SVarState, !UrInfo),
-                    goal_info_init(Context, GoalInfo),
-                    insert_expansion_before_goal_top_not_fgti(!.UrInfo,
-                        GoalInfo, InputArgExpansion, GetGoal, Goal),
-                    Expansion = expansion(not_fgti, cord.singleton(Goal))
-                )
-            ;
-                MaybeFieldNames = error1(_FieldNamesSpecs),
-                % The code below is disabled, as per the discussion
-                % on m-rev that started on 2016 may 5.
-                fail
-%               !:Specs = FieldNamesSpecs ++ !.Specs,
-%               qual_info_set_found_syntax_error(yes, !QualInfo),
-%               Expansion = expansion(not_fgti, cord.empty)
-            )
+            unravel_special_field_get(XVar, InputTerm0, FieldNameTerm,
+                YFunctorContext, Context, MainContext, SubContext,
+                Purity, Order, Expansion, !SVarState, !UrInfo)
         ;
             ( YArgTerms = [_]
             ; YArgTerms = [_, _, _ | _]
@@ -789,61 +608,10 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             FieldDescrTerm = term.functor(term.atom("^"),
                 [InputTerm0, FieldNameTerm], _)
         then
-            FieldNameContextPieces = [words("On the right hand side"),
-                words("of the"), quote("^"), words("operator"),
-                words("in a field update expression:")],
-            VarSet0 = !.UrInfo ^ ui_varset,
-            parse_field_list(FieldNameTerm, VarSet0,
-                FieldNameContextPieces, MaybeFieldNames),
-            (
-                MaybeFieldNames = ok1(FieldNames),
-                require_det (
-                    replace_any_dot_colon_state_var_in_term(InputTerm0,
-                        InputTerm, !SVarState, !UrInfo),
-                    make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
-                        !UrInfo),
-                    replace_any_dot_colon_state_var_in_term(FieldValueTerm0,
-                        FieldValueTerm, !SVarState, !UrInfo),
-                    make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
-                        [InputTermVar], !UrInfo),
-
-                    expand_set_field_function_call(Context, MainContext,
-                        SubContext, FieldNames, FieldValueVar,
-                        InputTermVar, XVar,
-                        Functor, InnerFunctor - FieldSubContext, SetGoal,
-                        !SVarState, !UrInfo),
-
-                    TermArgNumber = 1,
-                    TermArgContext = ac_functor(Functor,
-                        MainContext, SubContext),
-                    InputVTNC = unify_var_term_num_context(InputTermVar,
-                        InputTerm, TermArgNumber, TermArgContext),
-
-                    FieldArgNumber = 2,
-                    FieldArgContext = ac_functor(InnerFunctor, MainContext,
-                        FieldSubContext),
-                    FieldVTNC = unify_var_term_num_context(FieldValueVar,
-                        FieldValueTerm, FieldArgNumber, FieldArgContext),
-
-                    map.init(AncestorVarMap),
-                    do_arg_unifications_with_contexts([InputVTNC, FieldVTNC],
-                        Context, Order, AncestorVarMap,
-                        InputFieldArgExpansions, !SVarState, !UrInfo),
-
-                    goal_info_init(Context, GoalInfo),
-                    insert_expansions_before_goal_top_not_fgti(!.UrInfo,
-                        GoalInfo, InputFieldArgExpansions, SetGoal, Goal),
-                    Expansion = expansion(not_fgti, cord.singleton(Goal))
-                )
-            ;
-                MaybeFieldNames = error1(_FieldNamesSpecs),
-                % The code below is disabled, as per the discussion
-                % on m-rev that started on 2016 may 5.
-                fail
-%               !:Specs = FieldNamesSpecs ++ !.Specs,
-%               qual_info_set_found_syntax_error(yes, !QualInfo),
-%               Expansion = expansion(not_fgti, cord.empty)
-            )
+            unravel_special_field_set(XVar,
+                InputTerm0, FieldNameTerm, FieldValueTerm0,
+                Context, MainContext, SubContext, Order, Expansion,
+                !SVarState, !UrInfo)
         else
             % The code below is disabled, as per the discussion on m-rev
             % that started on 2016 may 5.
@@ -935,7 +703,304 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         )
     ).
 
+:- pred unravel_special_with_type(prog_var::in, prog_term::in, prog_term::in,
+    term.context::in, prog_context::in,
+    unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, goal_order::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(unravel_special_with_type/14)).
+
+unravel_special_with_type(XVar, RValTerm, DeclTypeTerm0,
+        YFunctorContext, Context, MainContext, SubContext, Purity, Order,
+        Expansion, !SVarState, !UrInfo) :-
+    % DeclType0 is a prog_term, but it is really a type,
+    % so we coerce it to a generic term before parsing it.
+    term.coerce(DeclTypeTerm0, DeclTypeTerm1),
+    ContextPieces = cord.singleton(words("In explicit type qualification:")),
+    VarSet0 = !.UrInfo ^ ui_varset,
+    varset.coerce(VarSet0, GenericVarSet),
+    parse_type(no_allow_ho_inst_info(wnhii_type_qual), GenericVarSet,
+        ContextPieces, DeclTypeTerm1, DeclTypeResult),
+    (
+        DeclTypeResult = ok1(DeclType),
+        varset.coerce(VarSet0, DeclVarSet),
+        QualInfo0 = !.UrInfo ^ ui_qual_info,
+        process_type_qualification(XVar, DeclType, DeclVarSet,
+            YFunctorContext, QualInfo0, QualInfo, [], TypeQualSpecs),
+        !UrInfo ^ ui_qual_info := QualInfo,
+        % Note that most of time, TypeQualSpecs will be [].
+        add_unravel_specs(TypeQualSpecs, !UrInfo)
+    ;
+        DeclTypeResult = error1(DeclTypeSpecs),
+        % The varset is a prog_varset even though it contains the names
+        % of type variables in ErrorTerm, which is a generic term.
+        add_unravel_specs(DeclTypeSpecs, !UrInfo)
+    ),
+    do_unravel_var_unification(XVar, RValTerm,
+        Context, MainContext, SubContext, Purity, Order, Expansion,
+        !SVarState, !UrInfo).
+
+:- pred unravel_special_coerce(prog_var::in, prog_term::in, prog_context::in,
+    unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, goal_order::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(unravel_special_coerce/12)).
+
+unravel_special_coerce(XVar, RValTerm0, Context, MainContext, SubContext,
+        Purity, Order, Expansion, !SVarState, !UrInfo) :-
+    (
+        RValTerm0 = term.variable(RValTermVar, _),
+        RValGoalCord = cord.empty
+    ;
+        RValTerm0 = term.functor(_, _, _),
+        replace_any_dot_colon_state_var_in_term(RValTerm0, RValTerm,
+            !SVarState, !UrInfo),
+        make_fresh_arg_var_no_svar(RValTerm0, RValTermVar, [],
+            !UrInfo),
+        do_unravel_var_unification(RValTermVar, RValTerm, Context,
+            MainContext, SubContext, Purity, Order, RValTermExpansion,
+            !SVarState, !UrInfo),
+        RValTermExpansion = expansion(_, RValGoalCord)
+    ),
+    CoerceGoalExpr = generic_call(cast(subtype_coerce),
+        [RValTermVar, XVar], [in_mode, out_mode],
+        arg_reg_types_unset, detism_det),
+    goal_info_init(Context, CoerceGoalInfo),
+    CoerceGoal = hlds_goal(CoerceGoalExpr, CoerceGoalInfo),
+    CoerceGoalCord = cord.singleton(CoerceGoal),
+    Expansion = expansion(not_fgti, RValGoalCord ++ CoerceGoalCord).
+
+:- pred unravel_special_if_then_else(prog_var::in,
+    prog_term::in, prog_term::in, prog_term::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, goal_order::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(unravel_special_if_then_else/14)).
+
+unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
+        Context, MainContext, SubContext, Purity, Order, Expansion,
+        !SVarState, !UrInfo) :-
+    term.coerce(CondTerm0, CondTerm),
+    ContextPieces = cord.init,
+    VarSet0 = !.UrInfo ^ ui_varset,
+    parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond,
+        VarSet0, VarSet),
+    !UrInfo ^ ui_varset := VarSet,
+    (
+        MaybeVarsCond =
+            ok4(Vars, StateVars, CondParseTree, CondWarningSpecs),
+        add_unravel_specs(CondWarningSpecs, !UrInfo),
+        BeforeSVarState = !.SVarState,
+        svar_prepare_for_local_state_vars(Context, StateVars,
+            BeforeSVarState, BeforeInsideSVarState, !UrInfo),
+
+        map.init(EmptyRenaming),
+        transform_parse_tree_goal_to_hlds(loc_inside_atomic_goal,
+            EmptyRenaming, CondParseTree, CondGoal,
+            BeforeInsideSVarState, AfterCondInsideSVarState, !UrInfo),
+
+        replace_any_dot_colon_state_var_in_term(ThenTerm0, ThenTerm,
+            AfterCondInsideSVarState, AfterThenInsideSVarState0, !UrInfo),
+        map.init(AncestorVarMap),
+        classify_unravel_var_unification(XVar, ThenTerm,
+            Context, MainContext, SubContext,
+            Purity, Order, AncestorVarMap, ThenExpansion,
+            AfterThenInsideSVarState0, AfterThenInsideSVarState, !UrInfo),
+        goal_info_init(get_term_context(ThenTerm), ThenGoalInfo),
+        expansion_to_goal_wrap_if_fgti(!.UrInfo, ThenGoalInfo,
+            ThenExpansion, ThenGoal0),
+
+        svar_finish_local_state_vars(!.UrInfo, StateVars,
+            BeforeSVarState, AfterThenInsideSVarState, AfterThenSVarState),
+
+        replace_any_dot_colon_state_var_in_term(ElseTerm0, ElseTerm,
+            BeforeSVarState, AfterElseSVarState0, !UrInfo),
+        classify_unravel_var_unification(XVar, ElseTerm,
+            Context, MainContext, SubContext,
+            Purity, Order, AncestorVarMap, ElseExpansion,
+            AfterElseSVarState0, AfterElseSVarState, !UrInfo),
+        goal_info_init(get_term_context(ElseTerm), ElseGoalInfo),
+        expansion_to_goal_wrap_if_fgti(!.UrInfo, ElseGoalInfo,
+            ElseExpansion, ElseGoal0),
+
+        svar_finish_if_then_else(loc_inside_atomic_goal, Context,
+            StateVars, ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
+            BeforeSVarState, AfterCondInsideSVarState,
+            AfterThenSVarState, AfterElseSVarState,
+            AfterITESVarState, !UrInfo),
+        !:SVarState = AfterITESVarState,
+
+        GoalExpr = if_then_else(StateVars ++ Vars,
+            CondGoal, ThenGoal, ElseGoal),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        Expansion = expansion(not_fgti, cord.singleton(Goal))
+    ;
+        MaybeVarsCond = error4(VarsCondSpecs),
+        add_unravel_specs(VarsCondSpecs, !UrInfo),
+        Expansion = expansion(not_fgti,
+            cord.singleton(true_goal_with_context(Context)))
+    ).
+
+:- pred unravel_special_field_get(prog_var::in, prog_term::in, prog_term::in,
+    term.context::in, prog_context::in,
+    unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, goal_order::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is semidet.
+:- pragma inline(pred(unravel_special_field_get/14)).
+
+unravel_special_field_get(XVar, InputTerm0, FieldNameTerm,
+        YFunctorContext, Context, MainContext, SubContext,
+        Purity, Order, Expansion, !SVarState, !UrInfo) :-
+    FieldNameContextPieces = [words("On the right hand side of the"),
+        quote("^"), words("operator in a field selection expression:")],
+    VarSet0 = !.UrInfo ^ ui_varset,
+    parse_field_list(FieldNameTerm, VarSet0, FieldNameContextPieces,
+        MaybeFieldNames),
+    (
+        MaybeFieldNames = ok1(FieldNames),
+        require_det (
+            replace_any_dot_colon_state_var_in_term(InputTerm0,
+                InputTerm, !SVarState, !UrInfo),
+            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !UrInfo),
+            expand_get_field_function_call(Context, MainContext,
+                SubContext, FieldNames, XVar, InputTermVar, Purity,
+                Functor, _, GetGoal, !SVarState, !UrInfo),
+
+            ArgContext = ac_functor(Functor, MainContext, SubContext),
+            map.init(AncestorVarMap),
+            do_arg_unification(InputTermVar, InputTerm,
+                YFunctorContext, ArgContext, Order,
+                1, AncestorVarMap, InputArgExpansion, !SVarState, !UrInfo),
+            goal_info_init(Context, GoalInfo),
+            insert_expansion_before_goal_top_not_fgti(!.UrInfo, GoalInfo,
+                InputArgExpansion, GetGoal, Goal),
+            Expansion = expansion(not_fgti, cord.singleton(Goal))
+        )
+    ;
+        MaybeFieldNames = error1(_FieldNamesSpecs),
+        % The code below is disabled, as per the discussion
+        % on m-rev that started on 2016 may 5.
+        fail
+%       !:Specs = FieldNamesSpecs ++ !.Specs,
+%       qual_info_set_found_syntax_error(yes, !QualInfo),
+%       Expansion = expansion(not_fgti, cord.empty)
+    ).
+
+:- pred unravel_special_field_set(prog_var::in,
+    prog_term::in, prog_term::in, prog_term::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
+    goal_order::in, expansion::out, svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is semidet.
+:- pragma inline(pred(unravel_special_field_set/13)).
+
+unravel_special_field_set(XVar, InputTerm0, FieldNameTerm, FieldValueTerm0,
+        Context, MainContext, SubContext, Order, Expansion,
+        !SVarState, !UrInfo) :-
+    FieldNameContextPieces = [words("On the right hand side of the"),
+        quote("^"), words("operator in a field update expression:")],
+    VarSet0 = !.UrInfo ^ ui_varset,
+    parse_field_list(FieldNameTerm, VarSet0, FieldNameContextPieces,
+        MaybeFieldNames),
+    (
+        MaybeFieldNames = ok1(FieldNames),
+        require_det (
+            replace_any_dot_colon_state_var_in_term(InputTerm0,
+                InputTerm, !SVarState, !UrInfo),
+            make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [], !UrInfo),
+            replace_any_dot_colon_state_var_in_term(FieldValueTerm0,
+                FieldValueTerm, !SVarState, !UrInfo),
+            make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
+                [InputTermVar], !UrInfo),
+
+            expand_set_field_function_call(Context, MainContext,
+                SubContext, FieldNames, FieldValueVar, InputTermVar, XVar,
+                Functor, InnerFunctor - FieldSubContext, SetGoal,
+                !SVarState, !UrInfo),
+
+            TermArgNumber = 1,
+            TermArgContext = ac_functor(Functor, MainContext, SubContext),
+            InputVTNC = unify_var_term_num_context(InputTermVar, InputTerm,
+                TermArgNumber, TermArgContext),
+
+            FieldArgNumber = 2,
+            FieldArgContext = ac_functor(InnerFunctor, MainContext,
+                FieldSubContext),
+            FieldVTNC = unify_var_term_num_context(FieldValueVar,
+                FieldValueTerm, FieldArgNumber, FieldArgContext),
+
+            map.init(AncestorVarMap),
+            do_arg_unifications_with_contexts([InputVTNC, FieldVTNC],
+                Context, Order, AncestorVarMap,
+                InputFieldArgExpansions, !SVarState, !UrInfo),
+
+            goal_info_init(Context, GoalInfo),
+            insert_expansions_before_goal_top_not_fgti(!.UrInfo,
+                GoalInfo, InputFieldArgExpansions, SetGoal, Goal),
+            Expansion = expansion(not_fgti, cord.singleton(Goal))
+        )
+    ;
+        MaybeFieldNames = error1(_FieldNamesSpecs),
+        % The code below is disabled, as per the discussion
+        % on m-rev that started on 2016 may 5.
+        fail
+%       !:Specs = FieldNamesSpecs ++ !.Specs,
+%       qual_info_set_found_syntax_error(yes, !QualInfo),
+%       Expansion = expansion(not_fgti, cord.empty)
+    ).
+
 %---------------------------------------------------------------------------%
+
+:- pred unravel_var_functor_unification_std(prog_var::in, term.const::in,
+    list(prog_term)::in, term.context::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, ancestor_var_map::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+
+unravel_var_functor_unification_std(XVar, YFunctor, YArgTerms,
+        YFunctorContext, Context, MainContext, SubContext,
+        Purity, AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
+    ( if
+        % The condition of this if-then-else is based on the logic of
+        % try_parse_sym_name_and_args, but specialized to this location,
+        % so that we can do state var expansion only if we need to.
+        YFunctor = term.atom(YAtom),
+        ( if
+            YAtom = ".",
+            YArgTerms = [ModuleNameTerm, NameArgsTerm]
+        then
+            NameArgsTerm = term.functor(term.atom(Name), NameArgTerms, _),
+            try_parse_sym_name(ModuleNameTerm, ModuleName),
+            FunctorName = qualified(ModuleName, Name),
+            % We have done state variable name expansion at the top level
+            % of Args, but not at the level of NameArgTerms.
+            replace_any_dot_colon_state_var_in_terms(NameArgTerms,
+                MaybeQualifiedYArgTermsPrime, !SVarState, !UrInfo)
+        else
+            FunctorName = string_to_sym_name_sep(YAtom, "__"),
+            MaybeQualifiedYArgTermsPrime = YArgTerms
+        )
+    then
+        MaybeQualifiedYArgTerms = MaybeQualifiedYArgTermsPrime,
+        list.length(MaybeQualifiedYArgTerms, Arity),
+        ConsId = du_data_ctor(du_ctor(FunctorName, Arity,
+            cons_id_dummy_type_ctor))
+    else
+        parse_ordinary_cons_id(YFunctor, YArgTerms, YFunctorContext,
+            ConsId, !UrInfo),
+        % If YFunctor is a numeric or string constant, it *should*
+        % have no arguments. If it nevertheless does, we still record
+        % its arguments, and let the error be caught during typechecking.
+        MaybeQualifiedYArgTerms = YArgTerms
+    ),
+    build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
+        YFunctorContext, Context, MainContext, SubContext, Purity,
+        AncestorVarMap, Expansion, !SVarState, !UrInfo).
 
 :- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,
     term.context::in, cons_id::out,
