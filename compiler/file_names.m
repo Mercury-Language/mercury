@@ -2077,9 +2077,9 @@ create_any_dirs_on_path(DirComponents, !IO) :-
     ;
         DirComponents = [_ | _],
         DirName = dir.relative_path_name_from_components(DirComponents),
-        % We avoid trying to create a directory if we have created it
-        % before, because a set membership check here should be *much*
-        % cheaper than a system call.
+        % We avoid trying to create a directory if we have created it before,
+        % because a set membership check here should be *much* cheaper
+        % than a system call.
         %
         % We could try to check not just whether we have created
         % DirName before, but also any directory that corresponds

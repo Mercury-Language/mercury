@@ -311,9 +311,8 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         %       ...
         %
         % we need braces around the inner `if', otherwise they wouldn't parse
-        % they way we want them to: C would match the `else' with the
+        % the way we want them to: C would match the `else' with the
         % inner `if' rather than the outer `if'.
-
         MaybeElse = yes(_),
         Then0 = ml_stmt_if_then_else(_, _, no, ThenContext)
     then
@@ -330,7 +329,6 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         % we do not _need_ braces around the inner `if', since C will match
         % the else with the inner `if', but we add braces anyway, to avoid
         % a warning from gcc.
-
         MaybeElse = no,
         Then0 = ml_stmt_if_then_else(_, _, yes(_), ThenContext)
     then
@@ -449,8 +447,6 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
         io.format(Stream, "%sdefault:\n", [s(IndentStr)], !IO),
         mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo, Stmt, !IO),
-        % XXX Why put a context on a non-user-provide code such as "break"?
-        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
         io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO)
     ).
 
@@ -466,7 +462,7 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
 mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_label(Label, _Context),
     IndentM1Str = indent2_string(Indent - 1u),
-    % Note: MLDS allows labels at the end of blocks. C does not.
+    % Note: MLDS allows labels at the ends of blocks, but C does not.
     % Hence we need to insert a semicolon after the colon to ensure that
     % there is a statement to attach the label to.
     LabelStr = label_to_string(Label),
