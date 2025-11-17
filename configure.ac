@@ -605,7 +605,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --inrange-2025-10-01 \
+            --scout-disj-2025-11-15 \
             --warn-include-and-non-include \
             --allow-ho-insts-as-modes \
             --no-ssdb \

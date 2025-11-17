@@ -2137,31 +2137,6 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces, !CindexCord, !FindexCord,
             add_word(LineLen, FixedStr, !CurLine, !CurLineLen,
                 !FinishedLineCord)
         ;
-            ( HeadPiece = quote(_)
-            ; HeadPiece = quote(_, _)
-            ; HeadPiece = opt(_)
-            ; HeadPiece = opt(_, _)
-            ; HeadPiece = arg(_)
-            ; HeadPiece = arg(_, _)
-            ; HeadPiece = bare_arg(_)
-            ; HeadPiece = bare_arg(_, _)
-            ; HeadPiece = opt_arg(_, _)
-            ; HeadPiece = opt_arg(_, _, _)
-            ; HeadPiece = samp(_)
-            ; HeadPiece = samp(_, _)
-            ; HeadPiece = emph(_)
-            ; HeadPiece = emph(_, _)
-            ; HeadPiece = env(_)
-            ; HeadPiece = env(_, _)
-            ; HeadPiece = code(_)
-            ; HeadPiece = code(_, _)
-            ; HeadPiece = file(_)
-            ; HeadPiece = file(_, _)
-            ; HeadPiece = var(_)
-            ; HeadPiece = var(_, _)
-            ; HeadPiece = file_var(_, _)
-            ; HeadPiece = file_var(_, _, _)
-            ),
             (
                 ( HeadPiece = quote(Text), Suffix = ""
                 ; HeadPiece = quote(Text, Suffix)
@@ -2301,11 +2276,6 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces, !CindexCord, !FindexCord,
             ),
             add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
         ;
-            ( HeadPiece = ref(_, _, _)
-            ; HeadPiece = ref(_, _, _, _)
-            ; HeadPiece = xref(_)
-            ; HeadPiece = xref(_, _)
-            ),
             (
                 ( HeadPiece = ref(Before0, RefName, After0), Suffix = ""
                 ; HeadPiece = ref(Before0, RefName, After0, Suffix)
