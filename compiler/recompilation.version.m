@@ -87,7 +87,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_sym_name.
@@ -103,6 +102,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.type_inst_mode_map.
 
 :- import_module assoc_list.
 :- import_module cord.

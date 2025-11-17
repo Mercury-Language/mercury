@@ -549,8 +549,12 @@ write_module_interface_files.m has the code to write out
 comp_unit_interface.m figures out which parts of a raw parse_tree_module_src
 belong in its .int3, .int0, .int and .int2 files.
 <li>
-check_type_inst_mode_defns.m checks whether the items in a module
-related to a given type, inst or more are all consistent with one another.
+type_inst_mode_map.m creates maps that group together
+all the definitions for a given type, inst, or mode constructor.
+<li>
+check_type_inst_mode_defns.m uses those maps to check
+whether the definitions for a given type, inst, or mode constructor
+are all consistent with one another.
 It uses prog_foreign_enum.m
 to check the validity of foreign enum declarations,
 using code that also does the same job for foreign export enum declarations.

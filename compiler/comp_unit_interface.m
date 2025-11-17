@@ -144,7 +144,6 @@
 :- import_module parse_tree.check_type_inst_mode_defns.
 :- import_module parse_tree.convert_import_use.
 :- import_module parse_tree.convert_include.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
@@ -165,6 +164,7 @@
 :- import_module parse_tree.prog_type_repn.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
+:- import_module parse_tree.type_inst_mode_map.
 
 :- import_module bool.
 :- import_module cord.

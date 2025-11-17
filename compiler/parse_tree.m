@@ -100,6 +100,7 @@
 :- include_module prog_type_test.
 :- include_module prog_type_unify.
 :- include_module prog_util.
+:- include_module type_inst_mode_map.
 
 % Type representation.
 :- include_module decide_type_repn.
