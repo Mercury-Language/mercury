@@ -695,11 +695,12 @@ root(SearchSpace, RootId) :-
     SearchSpace ^ root = yes(RootId).
 
 topmost_det(SearchSpace, TopMostId) :-
+    MaybeTopMost = SearchSpace ^ topmost,
     (
-        SearchSpace ^ topmost = yes(Id),
+        MaybeTopMost = yes(Id),
         TopMostId = Id
     ;
-        SearchSpace ^ topmost = no,
+        MaybeTopMost = no,
         throw(internal_error("topmost_det", "search space empty"))
     ).
 
@@ -709,10 +710,11 @@ parent(SearchSpace, SuspectId, ParentId) :-
 
 children(Store, Oracle, SuspectId, !SearchSpace, Children) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+    MaybeChildren = Suspect ^ children,
     (
-        Suspect ^ children = yes(Children)
+        MaybeChildren = yes(Children)
     ;
-        Suspect ^ children = no,
+        MaybeChildren = no,
         edt_children(Store, Suspect ^ edt_node, EDTChildren),
         NewStatus = new_child_status(Suspect ^ status),
         add_children(Store, Oracle, EDTChildren, SuspectId, NewStatus,
@@ -905,12 +907,13 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     set_suspect(SuspectId, (Suspect ^ status := Status) ^ weight := 0,
         !SearchSpace),
+    MaybeChildren = Suspect ^ children,
     (
-        Suspect ^ children = yes(Children),
+        MaybeChildren = yes(Children),
         list.foldl(propagate_status_downwards(suspect_pruned,
             [suspect_correct, suspect_inadmissible]), Children, !SearchSpace)
     ;
-        Suspect ^ children = no
+        MaybeChildren = no
     ),
     % Remove the suspect's weight from its ancestors, since its weight is
     % now zero.
@@ -1069,17 +1072,13 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
         Response = origin(SuspectId, InputArgPos, InputTermPath, subterm_in)
     ;
         Origin = origin_output(OriginNode, OutputArgPos, OutputTermPath),
-        ( if
-            bimap.search(!.SearchSpace ^ implicit_to_explicit_roots,
-                OriginNode, ExplicitNode)
-        then
+        ImplicitToExplicitMap = !.SearchSpace ^ implicit_to_explicit_roots,
+        ( if bimap.search(ImplicitToExplicitMap, OriginNode, ExplicitNode) then
             ExplicitOrigin = ExplicitNode
         else
             ExplicitOrigin = OriginNode
         ),
-        ( if
-            children(Store, Oracle, SuspectId, !SearchSpace, Children)
-        then
+        ( if children(Store, Oracle, SuspectId, !SearchSpace, Children) then
             ( if
                 find_edt_node_in_suspect_list(Children, ExplicitOrigin,
                     !.SearchSpace, OriginId)
@@ -1216,8 +1215,7 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
     ( if list.member(Suspect ^ status, StopStatusSet) then
         list.cons(SuspectId, !StopSuspects)
     else
-        set_suspect(SuspectId, Suspect ^ status := Status,
-            !SearchSpace),
+        set_suspect(SuspectId, Suspect ^ status := Status, !SearchSpace),
         (
             Suspect ^ children = yes(Children),
             list.foldl2(propagate_status_downwards(Status, StopStatusSet),
@@ -1271,16 +1269,23 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 
 calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
         ExcessWeight) :-
+    MaybeWeightHeuristic = SearchSpace ^ maybe_weighting_heuristic,
     (
-        SearchSpace ^ maybe_weighting_heuristic = yes(Weighting),
-        ( if
+        MaybeWeightHeuristic = yes(Weighting),
+        (
             ( Status = suspect_correct
             ; Status = suspect_inadmissible
-            )
-        then
+            ),
             Weight = 0,
             ExcessWeight = 0
-        else
+        ;
+            ( Status = suspect_ignored
+            ; Status = suspect_skipped(_)
+            ; Status = suspect_erroneous
+            ; Status = suspect_pruned
+            ; Status = suspect_in_erroneous_subtree_complement
+            ; Status = suspect_unknown
+            ),
             calc_weight(Weighting, Store, Node, OriginalWeight, ExcessWeight),
             (
                 MaybeChildren = no,
@@ -1301,9 +1306,7 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
                     Weight = ChildrenWeight + ChildrenExcess
                 ;
                     ( Status = suspect_skipped(_)
-                    ; Status = suspect_correct
                     ; Status = suspect_erroneous
-                    ; Status = suspect_inadmissible
                     ; Status = suspect_pruned
                     ; Status = suspect_in_erroneous_subtree_complement
                     ; Status = suspect_unknown
@@ -1314,7 +1317,7 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
             )
         )
     ;
-        SearchSpace ^ maybe_weighting_heuristic = no,
+        MaybeWeightHeuristic = no,
         Weight = 0,
         ExcessWeight = 0
     ).
@@ -1328,7 +1331,7 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
 
 add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
     ( if
-        % Stop if the weight is 0, if the node is erroneous or
+        % Stop if the weight is 0, if the node is erroneous, or
         % if there is no parent.
         Weight \= 0,
         lookup_suspect(!.SearchSpace, SuspectId, Suspect),
@@ -1555,7 +1558,6 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     % Recalculate the weight if the suspect is ignored. This would not have
     % been done by ignore_suspect/4, since the children would not have been
     % available.
-
     ( if Suspect ^ status = suspect_ignored then
         calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
             suspect_ignored, !.SearchSpace, Weight, _),

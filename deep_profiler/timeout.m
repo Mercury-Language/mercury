@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
-% Copyright (C) 2014, 2017, 2019, 2021 The Mercury team.
+% Copyright (C) 2014, 2017, 2019, 2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -97,18 +97,18 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>  /* for O_CREAT, O_EXCL */
-#include <signal.h> /* for signal numbers */
-#include <unistd.h> /* for alarm() */
+#include <fcntl.h>                  // for O_CREAT, O_EXCL
+#include <signal.h>                 // for signal numbers
+#include <unistd.h>                 // for alarm()
 #include <stdio.h>
-#include <errno.h>  /* for EEXIST etc */
-#include    <dirent.h>
+#include <errno.h>                  // for EEXIST etc
+#include <dirent.h>
 #include ""mercury_signal.h""
 
-#define MP_MAX_CLEANUP_FILES    20  /* this should be plenty */
+#define MP_MAX_CLEANUP_FILES    20  // This should be plenty.
 
 extern  const char  *MP_cleanup_files[MP_MAX_CLEANUP_FILES];
-extern  int     MP_cleanup_file_next;
+extern  int         MP_cleanup_file_next;
 
 extern  void        MP_maybe_print_cleanup_files(const char *msg);
 extern  void        MP_register_cleanup_file(const char *filename);
@@ -131,22 +131,22 @@ typedef struct
 
 extern  const MP_sig_handler    MP_signal_structs[];
 
-extern  void    MP_handle_timeout(void);
+extern  void                MP_handle_timeout(void);
 
-MR_NO_RETURN(extern  void    MP_handle_sig_term(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_hup(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_int(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_quit(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_ill(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_abrt(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_bus(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_fpe(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_segv(void));
-MR_NO_RETURN(extern  void    MP_handle_sig_pipe(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_term(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_hup(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_int(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_quit(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_ill(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_abrt(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_bus(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_fpe(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_segv(void));
+MR_NO_RETURN(extern  void   MP_handle_sig_pipe(void));
 
-extern  MR_bool MP_do_try_get_lock(const char *mutex_file);
-extern  void    MP_do_get_lock(const char *mutex_file);
-extern  void    MP_do_release_lock(const char *mutex_file);
+extern  MR_bool             MP_do_try_get_lock(const char *mutex_file);
+extern  void                MP_do_get_lock(const char *mutex_file);
+extern  void                MP_do_release_lock(const char *mutex_file);
 
 #endif
 ").
@@ -165,7 +165,7 @@ const char  *MP_timeout_mutex_file = NULL;
 const char  *MP_timeout_want_dir = NULL;
 const char  *MP_timeout_want_prefix = NULL;
 
-/* set this variable to MR_TRUE to debug the code cleanup array */
+// Set this variable to MR_TRUE to debug the code cleanup array.
 MR_bool     MP_print_cleanup_files = MR_FALSE;
 
 void
@@ -209,7 +209,7 @@ MP_unregister_cleanup_file(const char *filename)
 
     for (i = 0; i < MP_cleanup_file_next; i++) {
         if (MR_streq(filename, MP_cleanup_files[i])) {
-            /* shift the array entries above index i down one */
+            // Shift the array entries above index i down one.
             for (j = i + 1; j < MP_cleanup_file_next; j++) {
                 MP_cleanup_files[j - 1] = MP_cleanup_files[j];
             }
@@ -226,7 +226,7 @@ MP_unregister_cleanup_file(const char *filename)
 void
 MP_handle_fatal_exception(void *data)
 {
-    /* we ignore data */
+    // We ignore data.
     MP_delete_cleanup_files();
 }
 
@@ -236,10 +236,8 @@ MP_delete_cleanup_files(void)
     int     i;
     MR_bool delayed_mutex_file;
 
-    /*
-    ** We want to remove the mutex file only after we have removed the
-    ** files manipulated by the critical section it was protecting.
-    */
+    // We want to remove the mutex file only after we have removed
+    // the files manipulated by the critical section it was protecting.
 
     MP_maybe_print_cleanup_files(""delete"");
 
@@ -269,7 +267,7 @@ MP_delete_cleanup_files_and_exit_failure(const char *signal_name)
 
 #ifdef  MP_DEBUG_MDPROF_SIGNAL
     FILE    *fp;
-    char    buf[1024];  /* that should be big enough */
+    char    buf[1024];  // That should be big enough.
 
     fp = fopen(""/tmp/mdprof_signal"", ""w"");
     if (fp != NULL) {
@@ -289,23 +287,21 @@ MP_delete_cleanup_files_and_exit_failure(const char *signal_name)
 #endif
 }
 
-/*
-** SIGALRM alarm signal indicates a timeout. SIGTERM usually indicates the
-** machine is being shut down. The others are there to catch forceful shutdowns
-** during development, both intentional ones where the programmer sends the
-** signal and those caused by bugs in the server code. We would like to include
-** all catchable, fatal signals in this list, but that set is somewhat OS
-** dependent. The set whose existence we test for here includes all the
-** signals that are at all likely to be sent to server process.
-**
-** We don't test for the existence of SIGALRM, because we want compilation to
-** fail if it does not exist. Without alarm signals, server processes will
-** never be timed out, and thus constitute a resource leak (mostly of virtual
-** memory/swap space).
-**
-** We could avoid this problem if we had a version of atexit that executed
-** its actions even when the program exits after a signal.
-*/
+// SIGALRM alarm signal indicates a timeout. SIGTERM usually indicates the
+// machine is being shut down. The others are there to catch forceful shutdowns
+// during development, both intentional ones where the programmer sends the
+// signal and those caused by bugs in the server code. We would like to include
+// all catchable, fatal signals in this list, but that set is somewhat OS
+// dependent. The set whose existence we test for here includes all the
+// signals that are at all likely to be sent to server process.
+//
+// We don't test for the existence of SIGALRM, because we want compilation to
+// fail if it does not exist. Without alarm signals, server processes will
+// never be timed out, and thus constitute a resource leak (mostly of virtual
+// memory/swap space).
+//
+// We could avoid this problem if we had a version of atexit that executed
+// its actions even when the program exits after a signal.
 
 const MP_sig_handler MP_signal_structs[] =
 {
@@ -372,10 +368,8 @@ MP_handle_timeout(void)
 
     success = MP_do_try_get_lock(MP_timeout_mutex_file);
     if (! success) {
-        /*
-        ** We could not get the lock, so some other process holds it.
-        ** We therefore abort the timeout, but schedule the next one.
-        */
+        // We could not get the lock, so some other process holds it.
+        // We therefore abort the timeout, but schedule the next one.
 
 #ifdef  MP_DEBUG_LOCKS
         {
@@ -417,7 +411,7 @@ MP_handle_timeout(void)
                 }
             }
 #endif
-            /* abort the timeout */
+            // Abort the timeout.
             (void) closedir(dir);
             (void) alarm(MP_timeout_seconds);
             return;
@@ -426,10 +420,7 @@ MP_handle_timeout(void)
 
     (void) closedir(dir);
 
-    /*
-    ** This call will delete the mutex file last, releasing the mutex.
-    */
-
+    // This call will delete the mutex file last, releasing the mutex.
     MP_delete_cleanup_files();
 
 #ifdef  MP_DEBUG_LOCKS
@@ -615,7 +606,7 @@ MP_do_release_lock(const char *mutex_file)
     (void) unlink(mutex_file);
 }
 
-#endif  /* MR_DEEP_PROFILER_ENABLED */
+#endif  // MR_DEEP_PROFILER_ENABLED
 ").
 
 :- pragma foreign_proc("C",
@@ -694,14 +685,11 @@ MP_do_release_lock(const char *mutex_file)
             ""Mercury deep profiler: cannot setup signal exit"");
     }
 
-    /*
-    ** Mercury exceptions do not cause signals. The default exception
-    ** handler prints and error message and exits. To ensure that
-    ** we delete the files we need to clean up, we get the exit
-    ** library function to invoke MP_delete_cleanup_files through
-    ** MP_handle_fatal_exception.
-    */
-
+    // Mercury exceptions do not cause signals. The default exception
+    // handler prints and error message and exits. To ensure that
+    // we delete the files we need to clean up, we get the exit
+    // library function to invoke MP_delete_cleanup_files through
+    // MP_handle_fatal_exception.
     MR_register_exception_cleanup(MP_handle_fatal_exception, NULL);
 
 #else

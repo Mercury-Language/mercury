@@ -870,9 +870,7 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
     ;
         FindOriginResponse = origin(OriginId, OriginArgPos,
             OriginTermPath, SubtermMode),
-        ( if
-            suspect_unknown(!.SearchSpace, OriginId)
-        then
+        ( if suspect_unknown(!.SearchSpace, OriginId) then
             NewLastUnknown = yes(OriginId)
         else
             NewLastUnknown = LastUnknown
@@ -1326,7 +1324,7 @@ show_info(Store, OutStream, Analyser, !IO) :-
             else
                 topmost_det(SearchSpace, StartId)
             ),
-                Weight = get_weight(SearchSpace, StartId),
+            Weight = get_weight(SearchSpace, StartId),
             ( if
                 Analyser ^ search_mode =
                     analyser_divide_and_query(number_of_events)

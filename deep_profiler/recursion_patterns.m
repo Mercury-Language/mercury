@@ -122,7 +122,7 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
         CoverageReport = procrep_coverage_info(_, ProcRep, CoverageArray),
         Goal = ProcRep ^ pr_defn ^ pdr_goal,
         proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-        foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
+        list.foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
             Slots, map.init, CallSitesMap),
         Info = recursion_analysis_info(ThisClique, CallSitesMap,
             CoverageArray),
@@ -316,12 +316,10 @@ goal_recursion_data(Info, RevGoalPath, GoalRep, !:RecursionData) :-
     else
         (
             GoalExpr = conj_rep(Conjs),
-            conj_recursion_data(Info, RevGoalPath, 1, Conjs,
-                !:RecursionData)
+            conj_recursion_data(Info, RevGoalPath, 1, Conjs, !:RecursionData)
         ;
             GoalExpr = disj_rep(Disjs),
-            disj_recursion_data(Info, RevGoalPath, 1, Disjs,
-                !:RecursionData)
+            disj_recursion_data(Info, RevGoalPath, 1, Disjs, !:RecursionData)
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_recursion_data(Info, RevGoalPath, 1, Cases,
@@ -431,16 +429,15 @@ disj_recursion_data(Info, RevGoalPath, DisjNum, [Disj | Disjs],
         DisjRecursionData = recursion_data(_, _, _),
         CoverageInfo = get_goal_attribute_det(Info ^ rai_coverage_info,
             Disj ^ goal_annotation),
-        success_probability_from_coverage(CoverageInfo,
-            DisjSuccessProb),
+        success_probability_from_coverage(CoverageInfo, DisjSuccessProb),
         DisjFailureProb = not_probability(DisjSuccessProb),
 
         % The code can branch here, either it tries the next disjunct, which we
         % represent as DisjsRecursionData, ...
         disj_recursion_data(Info, RevGoalPath, DisjNum + 1, Disjs,
             DisjsRecursionData0),
-        recursion_data_and_probability(DisjFailureProb, DisjsRecursionData0,
-            DisjsRecursionData),
+        recursion_data_and_probability(DisjFailureProb,
+            DisjsRecursionData0, DisjsRecursionData),
 
         % ... or it succeeds, which we represent as finished.
         Finish0 = simple_recursion_data(0.0, 0),
@@ -973,7 +970,7 @@ recursion_type_to_simple_type(rt_mutual_recursion(NumProcs),
     [rts_mutual_recursion(NumProcs)]).
 recursion_type_to_simple_type(rt_other(Levels), [rts_other(SimpleLevels)]) :-
     SimpleLevels = set.list_to_set(
-        map((func(Level) = Level ^ rlr_level), Levels)).
+        list.map((func(Level) = Level ^ rlr_level), Levels)).
 recursion_type_to_simple_type(rt_errors(Errors), SimpleTypes) :-
     SimpleTypes =
         list.map((func(E) = rts_error(E)), Errors)
@@ -984,7 +981,7 @@ recursion_type_to_simple_type(rt_errors(Errors), SimpleTypes) :-
     map(recursion_type_simple, recursion_type_freq_data)::out) is det.
 
 finalize_histogram(Deep, NumCliques, !Histogram) :-
-    map_values(finalize_histogram_rec_type(Deep, float(NumCliques)),
+    map.map_values(finalize_histogram_rec_type(Deep, float(NumCliques)),
         !Histogram).
 
 :- pred finalize_histogram_rec_type(deep::in, float::in,
@@ -1004,7 +1001,7 @@ finalize_histogram_rec_type(Deep, NumCliques, _RecursionType,
         own_and_inherit_to_perf_row_data(Deep, unit, Own, Inherit, Summary),
         MaybeSummary = yes(Summary)
     ),
-    map_values(finalize_histogram_proc_rec_type(Deep, NumCliques),
+    map.map_values(finalize_histogram_proc_rec_type(Deep, NumCliques),
         !EntryProcs).
 
 :- pred finalize_histogram_proc_rec_type(deep::in, float::in,

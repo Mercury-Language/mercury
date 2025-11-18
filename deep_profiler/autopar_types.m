@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2013, 2015, 2017, 2019, 2022 The Mercury team.
+% Copyright (C) 2013, 2015, 2017, 2019, 2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
                 ipi_progrep         :: prog_rep,
                 ipi_opts            :: candidate_par_conjunctions_params,
                 ipi_clique          :: clique_ptr,
-                ipi_call_sites      :: map(reverse_goal_path, cost_and_callees),
+                ipi_call_sites    :: map(reverse_goal_path, cost_and_callees),
                 ipi_rec_call_sites  :: map(reverse_goal_path, cs_cost_csq),
                 ipi_containing_goal_map
                                     :: containing_goal_map,

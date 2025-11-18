@@ -99,7 +99,7 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
         ParalleliseDepConjs, AlgForFindingBestPar),
     AlgForFindingBestParStr =
         alg_for_finding_best_par_to_string(AlgForFindingBestPar),
-    ReportHeader = singleton(format(
+    string.format(
         "  Candidate parallel conjunctions:\n" ++
         "    Desired parallelism:       %f\n" ++
         "    Intermodule var use:       %s\n" ++
@@ -131,7 +131,8 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
          s(ParalleliseDepConjsStr),
          s(AlgForFindingBestParStr),
          i(NumProcConjs),
-         i(NumConjs)])),
+         i(NumConjs)],
+        ReportHeader),
     (
         ParalleliseDepConjs = parallelise_dep_conjs(SpeedupAlg),
         (
@@ -145,9 +146,10 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
         ParalleliseDepConjs = do_not_parallelise_dep_conjs,
         ParalleliseDepConjsStr = "no"
     ),
-    list.map(create_candidate_parallel_conj_proc_report, ProcConjs,
-        ReportConjs),
-    Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
+    list.map(create_candidate_parallel_conj_proc_report,
+        ProcConjs, ReportConjCords),
+    string.append_list([ReportHeader | cord_list_to_list(ReportConjCords)],
+        Report).
 
 :- pred count_conjunctions_in_procs(
     pair(T, candidate_par_conjunctions_proc)::in, int::in, int::out) is det.
@@ -339,7 +341,7 @@ format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum0,
                 Indent + 1, RevInnerGoalPath, Goal, ConjReport)
         ;
             GoalsTail = [_ | _],
-            Cost = foldl(
+            Cost = list.foldl(
                 (func(GoalI, Acc) =
                     Acc + GoalI ^ goal_annotation ^ pga_cost_percall),
                 Goals, 0.0),

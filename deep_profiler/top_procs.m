@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2005-2008, 2010, 2012 The University of Melbourne.
-% Copyright (C) 2015-2017 The Mercury team.
+% Copyright (C) 2015-2017, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,10 +81,11 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
         deep_lookup_proc_dynamics(Deep, Deep ^ root, RootPD),
         RootPD ^ pd_proc_static = proc_static_ptr(RootPSI),
         list.filter(filter_top_procs(Deep, RootPSI, FilterPred), PSIs0, PSIs),
-        SortPred = (pred(PSI1::in, PSI2::in, ComparisonResult::out) is det :-
-            ComparisonResult =
-                compare_procs_fallback(RawSortFunc, Deep, PSI1, PSI2)
-        ),
+        SortPred =
+            ( pred(PSI1::in, PSI2::in, ComparisonResult::out) is det :-
+                ComparisonResult =
+                    compare_procs_fallback(RawSortFunc, Deep, PSI1, PSI2)
+            ),
         list.sort(SortPred, PSIs, DescendingPSIs),
         (
             Limit = rank_range(First, Last),
@@ -103,9 +104,10 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 MaybeTopPSIs = error("bad threshold specification")
             ;
                 ThresholdCompatible = yes,
-                ThresholdPred = (pred(PSI::in) is semidet :-
-                    RawThresholdPred(Deep, Threshold, PSI)
-                ),
+                ThresholdPred =
+                    ( pred(PSI::in) is semidet :-
+                        RawThresholdPred(Deep, Threshold, PSI)
+                    ),
                 list.take_while(ThresholdPred, DescendingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
             )
@@ -118,9 +120,10 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 MaybeTopPSIs = error("bad threshold specification")
             ;
                 ThresholdCompatible = yes,
-                ThresholdPred = (pred(PSI::in) is semidet :-
-                    RawThresholdPred(Deep, Threshold, PSI)
-                ),
+                ThresholdPred =
+                    ( pred(PSI::in) is semidet :-
+                        RawThresholdPred(Deep, Threshold, PSI)
+                    ),
                 list.take_while(ThresholdPred, DescendingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
             )
