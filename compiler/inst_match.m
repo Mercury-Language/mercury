@@ -191,20 +191,23 @@
 
 :- import_module check_hlds.inst_abstract_unify.
 :- import_module check_hlds.inst_merge.
+:- import_module hlds.hlds_data.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_test.
 :- import_module hlds.inst_util.
 :- import_module hlds.mode_util.
-:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
@@ -395,12 +398,11 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
         ;
             InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
             ModuleInfo = !.Info ^ imi_module_info,
-            % We can check this case properly only if the type is a du type.
-            type_is_du_type(ModuleInfo, Type),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            bound_functor_list_is_complete_for_type(ModuleInfo, set.init, Type,
-                BoundFunctorsB),
+            set.init(CompletenessExpansions0),
+            bound_functor_list_is_complete_for_type(ModuleInfo, Type,
+                CompletenessExpansions0, BoundFunctorsB),
             ground_matches_initial_bound_functor_list(CalcSub, UniqA, Type,
                 BoundFunctorsB, !Info)
         ;
@@ -691,8 +693,9 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
                 !Info),
             (
                 % This check can succeed only if the type is known.
-                bound_functor_list_is_complete_for_type(ModuleInfo, set.init,
-                    Type, BoundFunctorsB)
+                set.init(CompletenessExpansions0),
+                bound_functor_list_is_complete_for_type(ModuleInfo, Type,
+                    CompletenessExpansions0, BoundFunctorsB)
             ;
                 % XXX the check for bound_functor_list_is_complete_for_type
                 % makes the mode checker too conservative in the absence
@@ -947,9 +950,9 @@ inst_matches_binding_2(CalcSub, Type, InstA, InstB, !Info) :-
                 !.Info ^ imi_module_info, Type, InstResultsB, BoundFunctorsB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstB, no,
                 !Info),
-            % We can only do this check if the type is known.
+            set.init(CompletenessExpansions0),
             bound_functor_list_is_complete_for_type(!.Info ^ imi_module_info,
-                set.init, Type, BoundFunctorsB)
+                Type, CompletenessExpansions0, BoundFunctorsB)
         ;
             InstB = any(UniqB, HOInstInfoB),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqB,
@@ -1679,51 +1682,72 @@ update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-    % A list(bound_functor) is ``complete'' for a given type iff
+    % A list(bound_functor) is complete for a given type iff
     %
     % - it includes each functor of that type, and
-    % - each argument of each functor is also ``complete'' for its type.
+    % - each argument of each functor is also complete for its type.
     %
 :- pred bound_functor_list_is_complete_for_type(module_info::in,
-    set(inst_name)::in, mer_type::in, list(bound_functor)::in) is semidet.
+    mer_type::in, set(inst_name)::in, list(bound_functor)::in) is semidet.
 
-bound_functor_list_is_complete_for_type(ModuleInfo, Expansions, Type,
+bound_functor_list_is_complete_for_type(ModuleInfo, Type, Expansions,
         BoundFunctors) :-
-    % Is this a type for which cons_ids are recorded in the type_table?
-    type_is_du_type(ModuleInfo, Type),
+    type_to_ctor_and_args(Type, TypeCtor, TypeCtorArgTypes),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
+    TypeDefnBody = hlds_du_type(TypeBodyDu),
 
-    all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes0),
-    list.sort(NamesAritiesArgTypes0, NamesAritiesArgTypes1),
-    bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-        BoundFunctors, NamesAritiesArgTypes1, NamesAritiesArgTypes),
-    % Each and every NamesAritiesArgTypes left over specifies
-    % a data in Type that BoundFunctors did not cover.
-    NamesAritiesArgTypes = [].
+    get_type_defn_tparams(TypeDefn, TypeParams),
+    % TypeSubst replaces the type parameter variables in TypeCtorArgTypes
+    % with the cotrresponding actual types from Type.
+    map.from_corresponding_lists(TypeParams, TypeCtorArgTypes, TypeSubst),
 
+    TypeBodyDu = type_body_du(_, SortedOoMCtors, _, _, _, _),
+    SortedCtors = one_or_more_to_list(SortedOoMCtors),
+    bound_functor_list_is_complete_for_type_loop(ModuleInfo, TypeSubst,
+        Expansions, BoundFunctors, SortedCtors).
+
+    % Both the list of bound_functors and the list of constructors must be
+    % sorted first on the names and then on the arities of the cons_ids.
+    %
+    % Apply TypeSubst to each constructor's arguments only when processing
+    % that constructor. This way, we don't expend any resources
+    % on applying TypeSubst to a  constructor if the call to
+    % bound_functor_list_is_complete_for_type_loop fails before it gets
+    % to that constructor.
+    %
+    % Likewise, even when we process a given constructor, we apply
+    % TypeSubst to each argument only when we know that the checking
+    % of all the previous arguments of that constructor has been successful.
+    %
 :- pred bound_functor_list_is_complete_for_type_loop(module_info::in,
-    set(inst_name)::in, list(bound_functor)::in,
-    list({string, arity, list(mer_type)})::in,
-    list({string, arity, list(mer_type)})::out) is semidet.
+    map(type_param, mer_type)::in, set(inst_name)::in,
+    list(bound_functor)::in, list(constructor)::in) is semidet.
 
-bound_functor_list_is_complete_for_type_loop(_ModuleInfo, _Expansions,
-        [], !NamesAritiesArgTypes).
-bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-        [BoundFunctor | BoundFunctors], !NamesAritiesArgTypes) :-
+bound_functor_list_is_complete_for_type_loop(_, _, _, [], []).
+bound_functor_list_is_complete_for_type_loop(ModuleInfo, TypeSubst, Expansions,
+        [BoundFunctor | BoundFunctors], [Ctor | Ctors]) :-
     BoundFunctor = bound_functor(InstConsId, ArgInsts),
     InstConsId = du_data_ctor(InstDuCtor),
     InstDuCtor = du_ctor(InstSymName, InstArity, _InstTypeCtor),
-    % We are assuming here that BoundFunctor is sorted on cons_ids.
-    ( if
-        !.NamesAritiesArgTypes = [NameArityArgTypes | !:NamesAritiesArgTypes],
-        NameArityArgTypes = {unqualify_name(InstSymName), InstArity, ArgTypes},
-        list.map(inst_is_complete_for_type(ModuleInfo, Expansions),
-            ArgTypes, ArgInsts)
-    then
-        bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-            BoundFunctors, !NamesAritiesArgTypes)
-    else
-        fail
-    ).
+    Ctor = ctor(_, MaybeExist, CtorSymName, CtorArgs, CtorArity, _),
+    unqualify_name(CtorSymName) = unqualify_name(InstSymName),
+    CtorArity = InstArity,
+    list.map(inst_is_complete_for_arg_type(ModuleInfo, TypeSubst, Expansions),
+        CtorArgs, ArgInsts),
+    MaybeExist = no_exist_constraints,
+    bound_functor_list_is_complete_for_type_loop(ModuleInfo, TypeSubst,
+        Expansions, BoundFunctors, Ctors).
+
+:- pred inst_is_complete_for_arg_type(module_info::in,
+    map(type_param, mer_type)::in, set(inst_name)::in,
+    constructor_arg::in, mer_inst::in) is semidet.
+
+inst_is_complete_for_arg_type(ModuleInfo, TypeSubst, Expansions,
+        CtorArg, Inst) :-
+    apply_subst_to_type(TypeSubst, CtorArg ^ arg_type, ExpandedArgType),
+    inst_is_complete_for_type(ModuleInfo, Expansions, ExpandedArgType, Inst).
 
 :- pred inst_is_complete_for_type(module_info::in, set(inst_name)::in,
     mer_type::in, mer_inst::in) is semidet.
@@ -1741,8 +1765,8 @@ inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
         )
     ;
         Inst = bound(_, _, BoundFunctors),
-        bound_functor_list_is_complete_for_type(ModuleInfo, Expansions,
-            Type, BoundFunctors)
+        bound_functor_list_is_complete_for_type(ModuleInfo, Type,
+            Expansions, BoundFunctors)
     ;
         % XXX This switch was originally an if-then-else chain, with explicit
         % tests for defined_inst and bound, and the final else case being

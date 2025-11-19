@@ -282,7 +282,9 @@
 
     % Is this type a du type?
     %
-:- pred type_is_du_type(module_info::in, mer_type::in) is semidet.
+% ZZZ
+:- pred type_is_du_type(module_info::in, mer_type::in,
+    hlds_type_defn::out, type_body_du::out) is semidet.
 
     % Given a type constructor and one of its cons_ids, look up the definition
     % of that cons_id. Fails if the cons_id is not user-defined.
@@ -558,7 +560,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, NonCanonical) :-
     require_complete_switch [TypeBody]
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, _, MaybeForeignType),
+        TypeBodyDu = type_body_du(_, _, _, _, _, MaybeForeignType),
         ( if
             MaybeForeignType = yes(ForeignTypeBody),
             module_info_get_globals(ModuleInfo, Globals),
@@ -870,7 +872,7 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_du_type(TypeBodyDu),
-                    TypeBodyDu = type_body_du(_, _, _, MaybeTypeRepn, _),
+                    TypeBodyDu = type_body_du(_, _, _, _, MaybeTypeRepn, _),
                     (
                         MaybeTypeRepn = no,
                         % Code setting up var_table entries invokes
@@ -988,7 +990,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     require_complete_switch [Body]
     (
         Body = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, _, IsForeignType),
+        TypeBodyDu = type_body_du(_, _, _, _, _, IsForeignType),
         (
             IsForeignType = yes(_),
             HasHandDefinedRtti = no
@@ -1018,7 +1020,7 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
     require_complete_switch [TypeBody]
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, MaybeSuperType, _, _, _),
+        TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, _, _),
         (
             MaybeSuperType = not_a_subtype,
             BaseTypeCtor = TypeCtor
@@ -1062,7 +1064,7 @@ get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
     hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(TypeBodyDu),
-    TypeBodyDu = type_body_du(_, subtype_of(SuperType0), _, _, _),
+    TypeBodyDu = type_body_du(_, _, subtype_of(SuperType0), _, _, _),
     require_det (
         % Create substitution from type parameters to ArgTypes.
         hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
@@ -1251,7 +1253,7 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
     % XXX Why do we classify abstract_enum_types as general?
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, MaybeTypeRepn, _),
+        TypeBodyDu = type_body_du(_, _, _, _, MaybeTypeRepn, _),
         (
             MaybeTypeRepn = no,
             unexpected($pred, "MaybeTypeRepn = no")
@@ -1469,7 +1471,7 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(type_body_du(OoMConstructors, _, _, _, _)),
+        TypeBody = hlds_du_type(type_body_du(OoMConstructors, _, _, _, _, _)),
         OoMConstructors = one_or_more(_HeadCtor, TailCtors),
         NumFunctors = 1 + list.length(TailCtors)
     ).
@@ -1570,9 +1572,10 @@ all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-        TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _))
+        TypeDefnBody = hlds_du_type(TypeBodyDu)
     then
         get_type_defn_tparams(TypeDefn, TypeParams),
+        TypeBodyDu = type_body_du(OoMCtors, _, _, _, _, _),
         Ctors = one_or_more_to_list(OoMCtors),
         list.filter_map(get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes),
             Ctors, NamesAritiesArgTypes)
@@ -1596,12 +1599,12 @@ get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes, Ctor,
     apply_subst_to_types(TSubst, CtorArgTypes0, CtorArgTypes),
     Name = unqualify_name(SymName).
 
-type_is_du_type(ModuleInfo, Type) :-
+type_is_du_type(ModuleInfo, Type, TypeDefn, TypeBodyDu) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     type_to_ctor(Type, TypeCtor),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(_).
+    TypeDefnBody = hlds_du_type(TypeBodyDu).
 
 get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
@@ -1620,7 +1623,7 @@ get_cons_repn_defn(ModuleInfo, DuCtor, UserDataCTorConsRepn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+    TypeBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
     MaybeRepn = yes(Repn),
     Repn = du_type_repn(_, ConsRepnMap, _, _, _),
     ConsName = unqualify_name(ConsSymName),

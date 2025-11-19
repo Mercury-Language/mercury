@@ -393,8 +393,8 @@ intermod_gather_type(TypeCtor - TypeDefn,
     TypeCtor = type_ctor(TypeSymName, _Arity),
     (
         Body = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, MaybeSubType, MaybeCanon,
-            MaybeRepnA, MaybeForeignTypeBody),
+        TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors, MaybeSubType,
+            MaybeCanon, MaybeRepnA, MaybeForeignTypeBody),
         (
             MaybeRepnA = no,
             unexpected($pred, "MaybeRepnA = no")
@@ -450,7 +450,7 @@ intermod_gather_type(TypeCtor - TypeDefn,
             Context, (func(FT) = csharp(FT)), MaybeCsharp, !TypeDefnsCord)
     ),
     ( if
-        Body = hlds_du_type(type_body_du(_, _, _, MaybeRepnB, _)),
+        Body = hlds_du_type(type_body_du(_, _, _, _, MaybeRepnB, _)),
         MaybeRepnB = yes(RepnB),
         RepnB = du_type_repn(CtorRepns, _, _, DuTypeKind, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)

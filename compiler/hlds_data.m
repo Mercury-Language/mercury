@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -747,6 +747,16 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % The ctors for this type.
                 du_type_ctors               :: one_or_more(constructor),
 
+                % The same constructors, sorted first on name, and
+                % then on arity.
+                %
+                % The purpose of this otherwise-redundant field is
+                % to speed up tests about whether a bound inst matches ground.
+                % Since lists of bound_functors are sorted this way,
+                % the completeness test needs the relevant type's constructors
+                % sorted the same way.
+                du_type_sorted_snas         :: one_or_more(constructor),
+
                 % The declared supertype for a subtype definition.
                 du_type_supertype           :: maybe_subtype,
 
@@ -1042,13 +1052,8 @@ set_type_defn_prev_errors(X, !Defn) :-
 :- pred insert_ctor_repn_into_map(constructor_repn::in,
     ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
 
-    % Return the cons_ids for the given data constructors of the give type
-    % constructor, in a sorted order.
-    %
-:- func constructor_data_ctors(type_ctor, list(constructor)) =
-    list(du_ctor).
-:- func constructor_cons_ids(type_ctor, list(constructor)) =
-    list(cons_id).
+:- pred compare_ctors_by_name_arity(constructor::in, constructor::in,
+    comparison_result::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1056,7 +1061,7 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
-        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
@@ -1089,24 +1094,23 @@ insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap) :-
 
 %---------------------%
 
-constructor_data_ctors(TypeCtor, Ctors) = SortedDuCtors :-
-    gather_constructor_data_ctors(TypeCtor, Ctors, [], DuCtors),
-    list.sort(DuCtors, SortedDuCtors).
-
-:- pred gather_constructor_data_ctors(type_ctor::in, list(constructor)::in,
-    list(du_ctor)::in, list(du_ctor)::out) is det.
-
-gather_constructor_data_ctors(_TypeCtor, [], !DuCtors).
-gather_constructor_data_ctors(TypeCtor, [Ctor | Ctors], !DuCtors) :-
-    Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName,
-        _Args, Arity, _Ctxt),
-    DuCtor = du_ctor(SymName, Arity, TypeCtor),
-    !:DuCtors = [DuCtor | !.DuCtors],
-    gather_constructor_data_ctors(TypeCtor, Ctors, !DuCtors).
-
-constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
-    SortedDuCtors = constructor_data_ctors(TypeCtor, Ctors),
-    SortedConsIds = list.map((func(UDC) = du_data_ctor(UDC)), SortedDuCtors).
+compare_ctors_by_name_arity(CtorA, CtorB, Cmp) :-
+    CtorA = ctor(_, _, SymNameA, _, ArityA, _),
+    CtorB = ctor(_, _, SymNameB, _, ArityB, _),
+    % Since in all of our use cases, CtorA and CtorB come from the same type,
+    % their module qualifications must be identical.
+    NameA = unqualify_name(SymNameA),
+    NameB = unqualify_name(SymNameB),
+    compare(NameCmp, NameA, NameB),
+    (
+        ( NameCmp = (<)
+        ; NameCmp = (>)
+        ),
+        Cmp = NameCmp
+    ;
+        NameCmp = (=),
+        compare(Cmp, ArityA, ArityB)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

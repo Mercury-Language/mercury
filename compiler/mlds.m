@@ -2884,7 +2884,7 @@ mercury_type_ctor_defn_to_mlds_type(ModuleInfo, Type, TypeCtor, TypeDefn) =
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, MaybeSuperType, _, _, _),
+        TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, _, _),
         ( if
             MaybeSuperType = subtype_of(SuperType),
             compilation_target_uses_high_level_data(ModuleInfo)

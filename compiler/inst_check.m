@@ -210,7 +210,8 @@ status_implies_type_defn_is_user_visible(Section, TypeStatus) = Visible :-
 get_du_functors_for_type_def(TypeDefn, Functors) :-
     get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(type_body_du(Constructors, _, _, _, _)),
+        TypeDefnBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(Constructors, _, _, _, _, _),
         list.map(constructor_to_functor_name_and_arity,
             one_or_more_to_list(Constructors), Functors)
     ;
@@ -464,7 +465,7 @@ check_for_type_bound_functors(ForTypeKind, [BoundFunctor | BoundFunctors],
             get_type_defn_body(TypeDefn, TypeDefnBody),
             (
                 TypeDefnBody = hlds_du_type(TypeBodyDu),
-                TypeBodyDu = type_body_du(OoMConstructors, _, _, _, _),
+                TypeBodyDu = type_body_du(OoMConstructors, _, _, _, _, _),
                 Constructors = one_or_more_to_list(OoMConstructors),
                 (
                     ConsSymName = unqualified(ConsName),
@@ -1090,7 +1091,7 @@ diagnose_mismatches_from_type(BoundFunctors, TypeDefnOrBuiltin,
         get_type_defn_body(TypeDefn, TypeDefnBody),
         (
             TypeDefnBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(Constructors, _, _, _, _),
+            TypeBodyDu = type_body_du(Constructors, _, _, _, _, _),
             find_mismatches_from_user(one_or_more_to_list(Constructors), 1,
                 BoundFunctors, 0, NumMismatches, cord.init, MismatchPiecesCord)
         ;

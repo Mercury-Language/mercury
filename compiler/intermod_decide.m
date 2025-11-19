@@ -1036,8 +1036,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
             TypeBody0 = hlds_du_type(TypeBodyDu0),
-            TypeBodyDu0 = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp0,
-                MaybeRepn, MaybeForeign0),
+            TypeBodyDu0 = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+                MaybeUserEqComp0, MaybeRepn, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1067,8 +1067,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !IntermodInfo),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
-                MaybeRepn, MaybeForeign),
+            TypeBodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+                MaybeUserEqComp, MaybeRepn, MaybeForeign),
             TypeBody = hlds_du_type(TypeBodyDu),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;

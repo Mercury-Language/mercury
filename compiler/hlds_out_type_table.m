@@ -163,8 +163,8 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
     IndentStr = indent2_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
-            MaybeRepn, Foreign),
+        TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+            MaybeUserEqComp, MaybeRepn, Foreign),
         string.builder.append_string("\n", !State),
         (
             MaybeSuperType = subtype_of(SuperType),

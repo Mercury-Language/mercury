@@ -41,6 +41,8 @@ MCFLAGS-parse_tree.module_qual.qualify_items \
 # post_typecheck_do_finish_preds should be tail recursive.
 MCFLAGS-check_hlds.post_typecheck        += --optimize-constructor-last-call
 
+MCFLAGS-check_hlds.det_check_switch      += --optimize-constructor-last-call
+
 # The predicates in these modules that could be transformed by lcmc
 # are not speed-critical.
 MCFLAGS-backend_libs.base_typeclass_info += --no-optimize-constructor-last-call

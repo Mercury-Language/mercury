@@ -254,8 +254,8 @@ compute_base_type(TypeTable, TVarSet, Type, BaseType) :-
 
 compute_which_type_params_must_be_invariant(TypeTable,
         BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars) :-
-    BaseTypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanon,
-        _MaybeTypeRepn, _IsForeignType),
+    BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
+        _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
     Ctors = one_or_more_to_list(OoMCtors),
     list.foldl(
         acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams),

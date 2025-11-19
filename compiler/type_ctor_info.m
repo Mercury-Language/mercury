@@ -370,8 +370,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             LayoutIndexable = no
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeCanonical,
-                MaybeRepn, _IsForeignType),
+            TypeBodyDu = type_body_du(_Ctors, _AlphaSortedCtors,
+                MaybeSuperType, MaybeCanonical, MaybeRepn, _IsForeignType),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

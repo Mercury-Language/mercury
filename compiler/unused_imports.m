@@ -554,7 +554,10 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         Visibility = type_visibility(TypeStatus),
         (
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _, _, _),
+            % _AlphaSortedCtors contains exactly the same items as Ctors,
+            % just in a different order.
+            TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors,
+                MaybeSuperType, _, _, _),
             list.foldl(ctor_used_modules(Visibility),
                 one_or_more_to_list(Ctors), !UsedModules),
             (

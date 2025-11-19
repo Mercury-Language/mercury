@@ -2125,7 +2125,7 @@ check_typeclass_constraints_on_type_data_ctors(ModuleInfo, TypeCtor - TypeDefn,
         !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(type_body_du(Ctors, _, _, _, _)),
+        Body = hlds_du_type(type_body_du(Ctors, _, _, _, _, _)),
         list.foldl(
             check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor,
                 TypeDefn),

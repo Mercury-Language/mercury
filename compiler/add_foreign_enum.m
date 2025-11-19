@@ -183,8 +183,8 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                     TypeBody, TypeDefnContext, Context, !Specs)
             ;
                 TypeBody = hlds_du_type(TypeBodyDu),
-                TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeUserEq,
-                    MaybeRepn, _IsForeignType),
+                TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors,
+                    MaybeSuperType, _MaybeUserEq, MaybeRepn, _IsForeignType),
                 expect(unify(MaybeSuperType, not_a_subtype), $pred,
                     "MaybeSuperType != no"),
                 expect(unify(MaybeRepn, no), $pred,
@@ -322,8 +322,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     TypeCtor, TypeBody, TypeDefnContext, Context, !Specs)
             ;
                 TypeBody = hlds_du_type(TypeBodyDu),
-                TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeUserEq,
-                    MaybeRepn, _IsForeignType),
+                TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors,
+                    MaybeSuperType, _MaybeUserEq, MaybeRepn, _IsForeignType),
                 expect(unify(MaybeSuperType, not_a_subtype), $pred,
                     "MaybeSuperType != no"),
                 (

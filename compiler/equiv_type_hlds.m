@@ -66,6 +66,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -179,8 +180,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
         Body0 = hlds_du_type(BodyDu0),
-        BodyDu0 = type_body_du(Ctors0, MaybeSuperType0, MaybeCanonical,
-            MaybeRepn0, MaybeForeign),
+        BodyDu0 = type_body_du(Ctors0, _AlphaSortedCtors0, MaybeSuperType0,
+            MaybeCanonical, MaybeRepn0, MaybeForeign),
         (
             MaybeSuperType0 = subtype_of(SuperType0),
             hlds_replace_in_type(TypeEqvMap, SuperType0, SuperType,
@@ -193,6 +194,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         ),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
             TVarSet1, TVarSet2, EquivTypeInfo0, EquivTypeInfo1),
+        one_or_more.sort(compare_ctors_by_name_arity,
+            Ctors, AlphaSortedCtors),
         (
             MaybeRepn0 = no,
             MaybeRepn = no,
@@ -209,8 +212,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
                 CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
         ),
-        BodyDu = type_body_du(Ctors, MaybeSuperType, MaybeCanonical,
-            MaybeRepn, MaybeForeign),
+        BodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+            MaybeCanonical, MaybeRepn, MaybeForeign),
         Body = hlds_du_type(BodyDu)
     ;
         Body0 = hlds_eqv_type(Type0),

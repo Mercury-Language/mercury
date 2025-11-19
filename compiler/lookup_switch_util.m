@@ -168,7 +168,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(OoMCtors, MaybeSuperType, _,
+            TypeBodyDu = type_body_du(OoMCtors, _, MaybeSuperType, _,
                 MaybeRepn, _),
             (
                 MaybeRepn = yes(Repn)
