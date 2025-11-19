@@ -1566,45 +1566,34 @@ get_user_data_arg_types_2(EQVarAction, ModuleInfo, Type, DuCtor,
 
 all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes) :-
     ( if
-        type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+        type_to_ctor_and_args(Type, TypeCtor, TypeCtorArgTypes),
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
         TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _))
     then
-        module_info_get_cons_table(ModuleInfo, ConsTable),
+        get_type_defn_tparams(TypeDefn, TypeParams),
         Ctors = one_or_more_to_list(OoMCtors),
-        list.filter_map(get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs),
+        list.filter_map(get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes),
             Ctors, NamesAritiesArgTypes)
     else
         NamesAritiesArgTypes = []
     ).
 
-:- pred get_user_ctor_arg_types(cons_table::in, type_ctor::in,
+:- pred get_user_ctor_arg_types(list(type_param)::in,
     list(mer_type)::in, constructor::in,
     {string, arity, list(mer_type)}::out) is semidet.
 
-get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs, Ctor,
-        {Name, Arity, ArgTypes}) :-
-    Ctor =
-        ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
-    % The module qualifier in SymName should be the module name in TypeCtor,
-    % and thus should be the same for all the data constructors in TypeCtor.
-    DuCtor = du_ctor(SymName, Arity, TypeCtor),
-    % XXX Why this lookup? What is the difference between the info in ConsDefn
-    % and the info in Ctor? TypeParams should be available in TypeCtor's entry
-    % in the type table; it should not need to be looked up separately
-    % for every one of its data constructors.
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
-    ConsDefn =
-        hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints, Args, _),
-
+get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes, Ctor,
+        {Name, Arity, CtorArgTypes}) :-
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, CtorArgs,
+        Arity, _Ctxt),
     % XXX handle ExistConstraints
     MaybeExistConstraints = no_exist_constraints,
 
-    map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-    apply_subst_to_types(TSubst, ArgTypes0, ArgTypes),
+    map.from_corresponding_lists(TypeParams, TypeCtorArgTypes, TSubst),
+    CtorArgTypes0 = list.map(func(C) = C ^ arg_type, CtorArgs),
+    apply_subst_to_types(TSubst, CtorArgTypes0, CtorArgTypes),
     Name = unqualify_name(SymName).
 
 type_is_du_type(ModuleInfo, Type) :-
