@@ -409,14 +409,23 @@
 % Record variables becoming dead.
 %
 
-    % var_locn_var_becomes_dead(Var, FirstTime, !VarLocnInfo):
+:- type maybe_first_death
+    --->    first_death
+    ;       maybe_not_first_death.
+
+    % var_locn_var_becomes_dead(FirstDeath, Var, !VarLocnInfo):
     %
-    % Frees any code generator resources used by Var in !VarLocnInfo.
-    % FirstTime should be no if this same operation may already have been
-    % executed on Var; otherwise, var_becomes_dead will throw an exception
-    % if it does not know about Var.
+    % Free any code generator resources used by Var in !VarLocnInfo.
+    % FirstDeath should be maybe_not_first_death if this same operation
+    % may already have been executed on Var. If FirstDeath is first_death,
+    % this predicate will throw an exception if Var is unknown
+    % in the initial var_locn_info (since you cannot kill something
+    % that is not initially alive).
     %
-:- pred var_locn_var_becomes_dead(prog_var::in, bool::in,
+    % Note: The value of FirstDeath is used only for this sanity check,
+    % and not for any other purpose.
+    %
+:- pred var_locn_var_becomes_dead(maybe_first_death::in, prog_var::in,
     var_locn_info::in, var_locn_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1515,16 +1524,16 @@ remove_use_refs(MaybeExprRval, UsingVar, !VLI) :-
         MaybeExprRval = yes(ExprRval),
         exprn_aux.vars_in_rval(ExprRval, ContainedVars0),
         list.remove_dups(ContainedVars0, ContainedVars),
-        remove_use_refs_2(ContainedVars, UsingVar, !VLI)
+        remove_use_refs_loop(ContainedVars, UsingVar, !VLI)
     ;
         MaybeExprRval = no
     ).
 
-:- pred remove_use_refs_2(list(prog_var)::in, prog_var::in,
+:- pred remove_use_refs_loop(list(prog_var)::in, prog_var::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-remove_use_refs_2([], _, !VLI).
-remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
+remove_use_refs_loop([], _, !VLI).
+remove_use_refs_loop([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     map.lookup(VarStateMap0, ContainedVar, State0),
     State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using0,
@@ -1542,11 +1551,11 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
         set_of_var.is_empty(Using),
         DeadOrAlive = doa_dead
     then
-        var_locn_var_becomes_dead(ContainedVar, no, !VLI)
+        var_locn_var_becomes_dead(maybe_not_first_death, ContainedVar, !VLI)
     else
         true
     ),
-    remove_use_refs_2(ContainedVars, UsingVar, !VLI).
+    remove_use_refs_loop(ContainedVars, UsingVar, !VLI).
 
 :- pred clobber_old_lval(prog_var::in, lval::in,
     var_locn_info::in, var_locn_info::out) is det.
@@ -2355,15 +2364,16 @@ var_locn_save_cell_fields(ReuseVar, ReuseLval, Code, Regs, !VLI) :-
     map.lookup(VarStateMap, ReuseVar, ReuseVarState0),
     DepVarsSet = ReuseVarState0 ^ using_vars,
     DepVars = set_of_var.to_sorted_list(DepVarsSet),
-    list.map_foldl2(var_locn_save_cell_fields_2(ReuseLval),
+    list.map_foldl2(var_locn_save_cell_fields_dep_var(ReuseLval),
         DepVars, SaveArgsCode, [], Regs, !VLI),
     Code = cord_list_to_cord(SaveArgsCode).
 
-:- pred var_locn_save_cell_fields_2(lval::in, prog_var::in, llds_code::out,
-    list(lval)::in, list(lval)::out,
+:- pred var_locn_save_cell_fields_dep_var(lval::in, prog_var::in,
+    llds_code::out, list(lval)::in, list(lval)::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_save_cell_fields_2(ReuseLval, DepVar, SaveDepVarCode, !Regs, !VLI) :-
+var_locn_save_cell_fields_dep_var(ReuseLval, DepVar, SaveDepVarCode,
+        !Regs, !VLI) :-
     find_var_availability(!.VLI, DepVar, no, Avail),
     (
         Avail = available(DepVarRval),
@@ -2544,7 +2554,7 @@ recursive_using_vars_dead_and_ok_to_delete([Var | Vars], VarStateMap,
 % Record variables becoming dead.
 %
 
-var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
+var_locn_var_becomes_dead(FirstDeath, Var, !VLI) :-
     % Var has become dead. If there are no expressions that depend on its
     % value, delete the record of its state, thus freeing up the resources
     % it has tied down: the locations it occupies, or the variables whose
@@ -2553,9 +2563,9 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
     % that it is dead, which means that its resources will be freed when
     % the last reference to its value is deleted.
     %
-    % If FirstTime = no, then it is possible that this predicate has already
-    % been called for Var, if FirstTime = yes, then as a consistency check
-    % we want to insist on Var being alive.
+    % If FirstDeath = maybe_not_first_death, then it is possible that this
+    % predicate has already been called for Var. If FirstDeath = first_death,
+    % then as a consistency check we insist on Var being alive.
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     ( if map.search(VarStateMap0, Var, State0) then
@@ -2563,7 +2573,8 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             DeadOrAlive0),
         (
             DeadOrAlive0 = doa_dead,
-            expect(unify(FirstTime, no), $pred, "already dead")
+            expect(unify(FirstDeath, maybe_not_first_death), $pred,
+                "already dead")
         ;
             DeadOrAlive0 = doa_alive
         ),
@@ -2590,7 +2601,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
         VarEntry = vte(_N, _T, VarIsDummy),
         ( if
             ( VarIsDummy = is_dummy_type
-            ; FirstTime = no
+            ; FirstDeath = maybe_not_first_death
             )
         then
             true

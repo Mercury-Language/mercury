@@ -94,6 +94,7 @@
 :- import_module hlds.instmap.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.var_locn.
 
 :- import_module bool.
 :- import_module cord.
@@ -219,7 +220,7 @@ set_liveness_and_end_branch(EndBranch, BranchEndCode, !MaybeEnd, !.CLD) :-
     get_forward_live_vars(!.CLD, OldLiveness),
     set_forward_live_vars(Liveness, !CLD),
     set_of_var.difference(OldLiveness, Liveness, DeadVars),
-    maybe_make_vars_forward_dead(DeadVars, no, !CLD),
+    maybe_make_vars_forward_dead(maybe_not_first_death, DeadVars, !CLD),
     generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !.CLD).
 
 record_offset_assigns([], _, _, _CI, !CLD).
