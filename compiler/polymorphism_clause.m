@@ -427,9 +427,8 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
 
     % Figure out the bindings for any unconstrained existentially quantified
     % type variables in the head.
-    var_table_count(VarTable0, NumVarsInDb0),
     ( if
-        NumVarsInDb0 = 0
+        var_table_is_empty(VarTable0)
     then
         % This can happen for compiler generated procedures.
         map.init(PredToActualTypeSubst)

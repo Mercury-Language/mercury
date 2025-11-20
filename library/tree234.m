@@ -3721,24 +3721,35 @@ sorted_keys_match_in_tree(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3),
 %---------------------------------------------------------------------------%
 
 count(T) = N :-
-    tree234.count(T, N).
+    tree234.acc_count(T, 0, N).
 
-count(empty, 0).
-count(two(_, _, T0, T1), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    N = 1 + N0 + N1.
-count(three(_, _, _, _, T0, T1, T2), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    tree234.count(T2, N2),
-    N = 2 + N0 + N1 + N2.
-count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
-    tree234.count(T0, N0),
-    tree234.count(T1, N1),
-    tree234.count(T2, N2),
-    tree234.count(T3, N3),
-    N = 3 + N0 + N1 + N2 + N3.
+count(T, N) :-
+    tree234.acc_count(T, 0, N).
+
+:- pred acc_count(tree234(K, V)::in, int::in, int::out) is det.
+
+acc_count(T, !N) :-
+    (
+        T = empty
+    ;
+        T = two(_, _, T0, T1),
+        !:N = !.N + 1,
+        acc_count(T0, !N),
+        acc_count(T1, !N)
+    ;
+        T = three(_, _, _, _, T0, T1, T2),
+        !:N = !.N + 2,
+        acc_count(T0, !N),
+        acc_count(T1, !N),
+        acc_count(T2, !N)
+    ;
+        T = four(_, _, _, _, _, _, T0, T1, T2, T3),
+        !:N = !.N + 3,
+        acc_count(T0, !N),
+        acc_count(T1, !N),
+        acc_count(T2, !N),
+        acc_count(T3, !N)
+    ).
 
 %---------------------------------------------------------------------------%
 
