@@ -28,6 +28,7 @@ MCFLAGS-check_hlds.typecheck_clauses     += --optimize-constructor-last-call \
                                             --unneeded-code 
 
 MCFLAGS-parse_tree.opt_deps_spec         += --unneeded-code
+MCFLAGS-ll_backend.var_locn              += --inline-simple
 
 MCFLAGS-ml_backend.ml_unify_gen_deconstruct += --unneeded-code \
                                             --optimize-constructor-last-call \

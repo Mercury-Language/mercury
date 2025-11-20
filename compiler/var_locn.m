@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -731,17 +731,22 @@ var_locn_get_acquired(VI, VI ^ vli_acquired).
 var_locn_get_locked(VI, VI ^ vli_locked_r, VI ^ vli_locked_f).
 var_locn_get_exceptions(VI, VI ^ vli_exceptions).
 
-var_locn_set_follow_var_map(FVM, VI, VI ^ vli_follow_vars_map := FVM).
+var_locn_set_follow_var_map(FVM, !VI) :-
+    !VI ^ vli_follow_vars_map := FVM.
 var_locn_set_next_non_reserved(NNR, NNF, !VI) :-
     !VI ^ vli_next_non_res_r := NNR,
     !VI ^ vli_next_non_res_f := NNF.
-var_locn_set_var_state_map(VSM, VI, VI ^ vli_var_state_map := VSM).
-var_locn_set_loc_var_map(LVM, VI, VI ^ vli_loc_var_map := LVM).
-var_locn_set_acquired(A, VI, VI ^ vli_acquired := A).
+var_locn_set_var_state_map(VSM, !VI) :-
+    !VI ^ vli_var_state_map := VSM.
+var_locn_set_loc_var_map(LVM, !VI) :-
+    !VI ^ vli_loc_var_map := LVM.
+var_locn_set_acquired(A, !VI) :-
+    !VI ^ vli_acquired := A.
 var_locn_set_locked(R, F, !VI) :-
     !VI ^ vli_locked_r := R,
     !VI ^ vli_locked_f := F.
-var_locn_set_exceptions(E, VI, VI ^ vli_exceptions := E).
+var_locn_set_exceptions(E, !VI) :-
+    !VI ^ vli_exceptions := E.
 
 %---------------------------------------------------------------------------%
 %
@@ -1732,7 +1737,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             find_var_availability(!.VLI, Var, yes(Target), Avail),
             (
                 Avail = available(Rval),
-                EvalCode = empty,
+                FreeEvalCode = FreeCode,
                 ( if Rval = lval(SourceLval) then
                     record_copy(SourceLval, Target, !VLI)
                 else
@@ -1742,37 +1747,38 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
                 Avail = needs_materialization,
                 materialize_var_general(Var, yes(Target), do_not_store_var,
                     [Target], Rval, EvalCode, !VLI),
-                record_clobbering(Target, [Var], !VLI)
+                record_clobbering(Target, [Var], !VLI),
+                FreeEvalCode = FreeCode ++ EvalCode
             ),
 
             % Record that Var is now in Target.
             add_additional_lval_for_var(Var, Target, !VLI),
 
             ( if Rval = lval(Target) then
-                AssignCode = empty
+                Code = FreeEvalCode
             else
-                get_var_name(!.VLI, Var, VarName),
-                (
-                    ForbiddenLvals = [],
-                    string.append("Placing ", VarName, Msg)
-                ;
-                    ForbiddenLvals = [_ | _],
-                    string.format("Placing %s (depth %d)",
-                        [s(VarName), i(list.length(ForbiddenLvals))], Msg)
-                ),
                 var_locn_get_var_table(!.VLI, VarTable),
                 lookup_var_entry(VarTable, Var, VarEntry),
                 VarEntry = vte(_N, _T, VarIsDummy),
                 (
                     VarIsDummy = is_dummy_type,
-                    AssignCode = empty
+                    Code = FreeEvalCode
                 ;
                     VarIsDummy = is_not_dummy_type,
+                    VarName = var_entry_name(Var, VarEntry),
+                    (
+                        ForbiddenLvals = [],
+                        string.format("Placing %s", [s(VarName)], Msg)
+                    ;
+                        ForbiddenLvals = [_ | _],
+                        string.format("Placing %s (depth %d)",
+                            [s(VarName), i(list.length(ForbiddenLvals))], Msg)
+                    ),
                     AssignCode = singleton(
-                        llds_instr(assign(Target, Rval), Msg))
+                        llds_instr(assign(Target, Rval), Msg)),
+                    Code = FreeEvalCode ++ AssignCode
                 )
-            ),
-            Code = FreeCode ++ EvalCode ++ AssignCode
+            )
         )
     else
         var_locn_get_var_table(!.VLI, VarTable),
@@ -1782,9 +1788,9 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             VarIsDummy = is_dummy_type
         ;
             VarIsDummy = is_not_dummy_type,
-            unexpected($pred, "placing nondummy var " ++
-                string.int_to_string(var_to_int(Var)) ++
-                " which has no state")
+            string.format("placing nondummy var %d which has no state",
+                [i(var_to_int(Var))], NonDummyMsg),
+            unexpected($pred, NonDummyMsg)
         ),
         Code = empty
     ).
