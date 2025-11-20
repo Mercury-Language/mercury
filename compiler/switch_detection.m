@@ -273,7 +273,8 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     LocalInfo0 = local_switch_detect_info(VarTable, AllowMulti,
         ScoutInfo, ModuleInfo, Requant0, BodyDeletedCallCallees0),
 
-    detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
+    detect_switches_in_goal(InstMap0, nrsv, Goal0, Goal,
+        LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     LocalInfo = local_switch_detect_info(_VarTable, _AllowMulti,
         _MaybeScoutInfo, _ModuleInfo, Requant, BodyDeletedCallCallees),
@@ -309,42 +310,22 @@ detect_switches_in_proc(Info, !ProcInfo) :-
                 lsdi_deleted_callees    :: set(pred_proc_id)
             ).
 
-    % Given a goal, and the instmap on entry to that goal,
-    % replace disjunctions with switches whereever possible.
-    %
-:- pred detect_switches_in_goal(instmap::in, maybe(prog_var)::in,
+:- type maybe_required_switch_var
+    --->    nrsv
+            % "no required switch var": This goal is not inside a scope
+            % that requires its top level goal to be a switch on a specific
+            % variable.
+    ;       rsv(prog_var).
+            % "required switch var": This goal *is* inside a scope
+            % that requires its top level goal to be a switch on *this*
+            % variable.
+
+:- pred detect_switches_in_goal(instmap::in, maybe_required_switch_var::in,
     hlds_goal::in, hlds_goal::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
 detect_switches_in_goal(InstMap0, MaybeRequiredVar, Goal0, Goal, !LocalInfo) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar,
-        GoalInfo, GoalExpr0, GoalExpr, !LocalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-    % This version is the same as the above except that it returns the
-    % resulting instmap on exit from the goal, which is computed by applying
-    % the instmap delta specified in the goal's goalinfo.
-    %
-:- pred detect_switches_in_goal_update_instmap(instmap::in, instmap::out,
-    hlds_goal::in, hlds_goal::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
-
-detect_switches_in_goal_update_instmap(!InstMap, Goal0, Goal, !LocalInfo) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    detect_switches_in_goal_expr(!.InstMap, no, GoalInfo, GoalExpr0, GoalExpr,
-        !LocalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    apply_goal_instmap_delta(Goal0, !InstMap).
-
-    % Here we process each of the different sorts of goals.
-    %
-:- pred detect_switches_in_goal_expr(instmap::in, maybe(prog_var)::in,
-    hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
-
-detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
-        GoalExpr0, GoalExpr, !LocalInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = disj(Disjuncts0),
         (
@@ -353,7 +334,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
         ;
             Disjuncts0 = [_ | _],
             detect_switches_in_disj(InstMap0, MaybeRequiredVar,
-                Disjuncts0, GoalInfo, GoalExpr, !LocalInfo)
+                Disjuncts0, GoalInfo0, GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
@@ -361,14 +342,14 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
         GoalExpr = conj(ConjType, Conjuncts)
     ;
         GoalExpr0 = negation(SubGoal0),
-        detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal, !LocalInfo),
+        detect_switches_in_goal(InstMap0, nrsv, SubGoal0, SubGoal, !LocalInfo),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        detect_switches_in_goal_update_instmap(InstMap0, InstMap1,
-            Cond0, Cond, !LocalInfo),
-        detect_switches_in_goal(InstMap1, no, Then0, Then, !LocalInfo),
-        detect_switches_in_goal(InstMap0, no, Else0, Else, !LocalInfo),
+        detect_switches_in_goal(InstMap0, nrsv, Cond0, Cond, !LocalInfo),
+        apply_goal_instmap_delta(Cond0, InstMap0, InstMap1),
+        detect_switches_in_goal(InstMap1, nrsv, Then0, Then, !LocalInfo),
+        detect_switches_in_goal(InstMap0, nrsv, Else0, Else, !LocalInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
@@ -399,13 +380,13 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
             ; Reason = trace_goal(_, _, _, _, _)
             ; Reason = loop_control(_, _, _)
             ),
-            detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal,
+            detect_switches_in_goal(InstMap0, nrsv, SubGoal0, SubGoal,
                 !LocalInfo)
         ;
             ( Reason = require_complete_switch(RequiredVar)
             ; Reason = require_switch_arms_detism(RequiredVar, _)
             ),
-            detect_switches_in_goal(InstMap0, yes(RequiredVar),
+            detect_switches_in_goal(InstMap0, rsv(RequiredVar),
                 SubGoal0, SubGoal, !LocalInfo)
         ),
         GoalExpr = scope(Reason, SubGoal)
@@ -418,7 +399,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
             ModuleInfo = !.LocalInfo ^ lsdi_module_info,
             instmap.pre_lambda_update(ModuleInfo, VarsModes,
                 InstMap0, InstMap1),
-            detect_switches_in_goal(InstMap1, no, LambdaGoal0, LambdaGoal,
+            detect_switches_in_goal(InstMap1, nrsv, LambdaGoal0, LambdaGoal,
                 !LocalInfo),
             RHS = RHS0 ^ rhs_lambda_goal := LambdaGoal,
             GoalExpr = GoalExpr0 ^ unify_rhs := RHS
@@ -439,7 +420,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            detect_switches_in_goal(InstMap0, no, MainGoal0, MainGoal,
+            detect_switches_in_goal(InstMap0, nrsv, MainGoal0, MainGoal,
                 !LocalInfo),
             detect_switches_in_orelse(InstMap0, OrElseGoals0, OrElseGoals,
                 !LocalInfo),
@@ -447,7 +428,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal,
+            detect_switches_in_goal(InstMap0, nrsv, SubGoal0, SubGoal,
                 !LocalInfo),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
@@ -456,7 +437,8 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
             unexpected($pred, "bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 :- pred detect_sub_switches_in_disj(instmap::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -465,7 +447,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
 detect_sub_switches_in_disj(_, [], [], !LocalInfo).
 detect_sub_switches_in_disj(InstMap, [Goal0 | Goals0], [Goal | Goals],
         !LocalInfo) :-
-    detect_switches_in_goal(InstMap, no, Goal0, Goal, !LocalInfo),
+    detect_switches_in_goal(InstMap, nrsv, Goal0, Goal, !LocalInfo),
     detect_sub_switches_in_disj(InstMap, Goals0, Goals, !LocalInfo).
 
 :- pred detect_switches_in_cases(prog_var::in, instmap::in,
@@ -473,8 +455,8 @@ detect_sub_switches_in_disj(InstMap, [Goal0 | Goals0], [Goal | Goals],
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
 detect_switches_in_cases(_, _, [], [], !LocalInfo).
-detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
-        !LocalInfo) :-
+detect_switches_in_cases(Var, InstMap0,
+        [Case0 | Cases0], [Case | Cases], !LocalInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     VarTable = !.LocalInfo ^ lsdi_var_table,
     lookup_var_type(VarTable, Var, VarType),
@@ -482,7 +464,7 @@ detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     !LocalInfo ^ lsdi_module_info := ModuleInfo,
-    detect_switches_in_goal(InstMap1, no, Goal0, Goal, !LocalInfo),
+    detect_switches_in_goal(InstMap1, nrsv, Goal0, Goal, !LocalInfo),
     Case = case(MainConsId, OtherConsIds, Goal),
     detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo).
 
@@ -493,8 +475,8 @@ detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
 detect_switches_in_conj(_, [], [], !LocalInfo).
 detect_switches_in_conj(InstMap0,
         [Goal0 | Goals0], [Goal | Goals], !LocalInfo) :-
-    detect_switches_in_goal_update_instmap(InstMap0, InstMap1, Goal0, Goal,
-        !LocalInfo),
+    detect_switches_in_goal(InstMap0, nrsv, Goal0, Goal, !LocalInfo),
+    apply_goal_instmap_delta(Goal0, InstMap0, InstMap1),
     detect_switches_in_conj(InstMap1, Goals0, Goals, !LocalInfo).
 
 :- pred detect_switches_in_orelse(instmap::in,
@@ -502,9 +484,9 @@ detect_switches_in_conj(InstMap0,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
 detect_switches_in_orelse(_, [], [], !LocalInfo).
-detect_switches_in_orelse(InstMap, [Goal0 | Goals0], [Goal | Goals],
-        !LocalInfo) :-
-    detect_switches_in_goal(InstMap, no, Goal0, Goal, !LocalInfo),
+detect_switches_in_orelse(InstMap,
+        [Goal0 | Goals0], [Goal | Goals], !LocalInfo) :-
+    detect_switches_in_goal(InstMap, nrsv, Goal0, Goal, !LocalInfo),
     detect_switches_in_orelse(InstMap, Goals0, Goals, !LocalInfo).
 
 %---------------------------------------------------------------------------%
@@ -787,6 +769,38 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
                 cs_can_fail                 :: can_fail
             ).
 
+    % The initial version of switch detection, which we used for a *long* time,
+    % looked at nonlocal variables in variable number order and stopped looking
+    % when it found a viable candidate switch.
+    %
+    % This could lead to an suboptimal outcome for two separate reasons.
+    %
+    % - First, when the user specifies which variable the switch should be on
+    %   (via a require_switch_* scope), the committed-to variable is
+    %   not necessarily the specified variable.
+    %
+    % - Second, switching on a variable later in the order can lead to a
+    %   tighter determinism (because it leads to a cannot_fail switch, when
+    %   the switch on the earlier, committed-to variable is can_fail).
+    %
+    % We fixed the first problem by putting RequiredVar at the start of
+    % VarsToTry in cases where MaybeRequiredVar is yes(RequiredVar), and
+    % we fixed the second by evaluating all candidate switches, without
+    % stopping when we found a viable one. The second fix obsoletes the first;
+    % if we look at all candidates and select the one with the best rank,
+    % then for correctness, it *doesn't matter* in what order we look at
+    % the nonlocals.
+    %
+    % It might matter for performance. When MaybeRequiredVar is
+    % yes(RequiredVar), we *could* arrange to look at RequiredVar first,
+    % and if it does yield a candidate switch with the best possible rank,
+    % stop looking at the other variables. However, this would require
+    % detect_switch_candidates_in_disj testing that condition after finding
+    % each candidate switch. Since require_switch_* scopes are relatively rare,
+    % the cost of the test in the common case where MaybeRequiredVar is "no"
+    % would probably cost us more overall than we could save in cases where
+    % MaybeRequiredVar is "yes".
+
     % The order of preference that we use to decide which candidate switch
     % to turn a disjunction into, for disjunctions in which we actually
     % have a choice. The ranks are in order from the least attractive
@@ -873,43 +887,12 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % to switch on the option, not on the kind of data (none, bool,
             % int, string, maybe_string) given to it.
 
-:- pred detect_switches_in_disj(instmap::in, maybe(prog_var)::in,
+:- pred detect_switches_in_disj(instmap::in, maybe_required_switch_var::in,
     list(hlds_goal)::in, hlds_goal_info::in, hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
 detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
         GoalExpr, !LocalInfo) :-
-    % The initial version of switch detection, which we used for a *long* time,
-    % looked at nonlocal variables in variable number order and stopped looking
-    % when it found a viable candidate switch.
-    %
-    % This could lead to an suboptimal outcome for two separate reasons.
-    %
-    % - First, when the user specifies which variable the switch should be on
-    %   (via a require_switch_* scope), the committed-to variable is
-    %   not necessarily the specified variable.
-    %
-    % - Second, switching on a variable later in the order can lead to a
-    %   tighter determinism (because it leads to a cannot_fail switch, when
-    %   the switch on the earlier, committed-to variable is can_fail).
-    %
-    % We fixed the first problem by putting RequiredVar at the start of
-    % VarsToTry in cases where MaybeRequiredVar is yes(RequiredVar), and
-    % we fixed the second by evaluating all candidate switches, without
-    % stopping when we found a viable one. The second fix obsoletes the first;
-    % if we look at all candidates and select the one with the best rank,
-    % then for correctness, it *doesn't matter* in what order we look at
-    % the nonlocals.
-    %
-    % It might matter for performance. When MaybeRequiredVar is
-    % yes(RequiredVar), we *could* arrange to look at RequiredVar first,
-    % and if it does yield a candidate switch with the best possible rank,
-    % stop looking at the other variables. However, this would require
-    % detect_switch_candidates_in_disj testing that condition after finding
-    % each candidate switch. Since require_switch_* scopes are relatively rare,
-    % the cost of the test in the common case where MaybeRequiredVar is "no"
-    % would probably cost us more overall than we could save in cases where
-    % MaybeRequiredVar is "yes".
 
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(NonLocals, VarsToTry),
@@ -980,7 +963,8 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
     % if the variable is bound to a different functor.
     %
 :- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
-    list(hlds_goal)::in, instmap::in, maybe(prog_var)::in, list(prog_var)::in,
+    list(hlds_goal)::in, instmap::in, maybe_required_switch_var::in,
+    list(prog_var)::in,
     cord(candidate_switch)::in, cord(candidate_switch)::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
@@ -1039,8 +1023,8 @@ is_candidate_switch(Cases0, LeftOver) :-
         Cases0 = [_, _ | _]
     ).
 
-:- pred categorize_candidate_switch(module_info::in, maybe(prog_var)::in,
-    prog_var::in, mer_type::in, mer_inst::in,
+:- pred categorize_candidate_switch(module_info::in,
+    maybe_required_switch_var::in, prog_var::in, mer_type::in, mer_inst::in,
     list(case)::in, list(hlds_goal)::in, candidate_switch::out) is det.
 
 categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
@@ -1063,7 +1047,7 @@ categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
                 % FirstCase is one case, and whichever of LaterCases and
                 % UnreachableCaseGoals is nonempty is the second case.
                 ( if
-                    MaybeRequiredVar = yes(RequiredVar),
+                    MaybeRequiredVar = rsv(RequiredVar),
                     RequiredVar = Var
                 then
                     Rank = no_leftover_twoplus_cases_explicitly_selected
