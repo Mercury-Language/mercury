@@ -1593,31 +1593,38 @@ can_delay_frame(BlockMap, [Label | _Labels]) :-
 delay_frame_transform(EntryInfo, ProcLabel, PredMap, AddComments,
         TransformComments, DescComments, CanTransform,
         !LabelSeq, !C, !BlockMap) :-
-    some [!OrdNeedsFrame, !CanTransform, !PropagationStepsLeft] (
-        !:OrdNeedsFrame = map.init,
-        !:CanTransform = can_transform,
+    some [!OrdNeedsFrameMap, !PropagationStepsLeft] (
+        !:OrdNeedsFrameMap = map.init,
         !:PropagationStepsLeft = max_propagation_steps,
         delay_frame_init(!.BlockMap, !.LabelSeq, map.init, RevMap,
-            queue.init, SuccQueue, !OrdNeedsFrame),
+            queue.init, SuccQueue, !OrdNeedsFrameMap),
         propagate_frame_requirement_to_successors(!.BlockMap, SuccQueue,
-            set.init, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform),
-        map.to_assoc_list(!.OrdNeedsFrame, OrdNeedsFrameList),
-        list.filter_map(key_block_needs_frame, OrdNeedsFrameList, Frontier),
-        queue.list_to_queue(Frontier, PredQueue),
-        propagate_frame_requirement_to_predecessors(PredQueue, !.BlockMap,
-            RevMap, !OrdNeedsFrame, !.PropagationStepsLeft, _, !CanTransform),
+            set.init, SuccCanTransform,
+            !OrdNeedsFrameMap, !PropagationStepsLeft),
         (
-            !.CanTransform = cannot_transform
-            % The delay frame optimization is not applicable; our caller will
-            % ignore all the other output arguments.
+            SuccCanTransform = cannot_transform,
+            CanTransform = cannot_transform
         ;
-            !.CanTransform = can_transform,
-            process_frame_delay(!.OrdNeedsFrame, ProcLabel, !.LabelSeq,
-                !C, !BlockMap, setup_par_map(map.init), SetupParMap,
-                exit_par_map(map.init), ExitParMap),
-            create_parallels(EntryInfo, ProcLabel,
-                !.OrdNeedsFrame, SetupParMap, ExitParMap, PredMap,
-                !LabelSeq, !C, !BlockMap)
+            SuccCanTransform = can_transform,
+            map.to_assoc_list(!.OrdNeedsFrameMap, OrdNeedsFrameAL),
+            list.filter_map(key_block_needs_frame, OrdNeedsFrameAL, Frontier),
+            queue.list_to_queue(Frontier, PredQueue),
+            propagate_frame_requirement_to_predecessors(!.BlockMap, RevMap,
+                PredQueue, !.PropagationStepsLeft, CanTransform,
+                !OrdNeedsFrameMap),
+            (
+                CanTransform = cannot_transform
+                % The delay frame optimization is not applicable;
+                % our caller will ignore all the other output arguments.
+            ;
+                CanTransform = can_transform,
+                process_frame_delay(!.OrdNeedsFrameMap, ProcLabel, !.LabelSeq,
+                    !C, !BlockMap, setup_par_map(map.init), SetupParMap,
+                    exit_par_map(map.init), ExitParMap),
+                create_parallels(EntryInfo, ProcLabel,
+                    !.OrdNeedsFrameMap, SetupParMap, ExitParMap, PredMap,
+                    !LabelSeq, !C, !BlockMap)
+            )
         ),
         (
             AddComments = no,
@@ -1627,10 +1634,9 @@ delay_frame_transform(EntryInfo, ProcLabel, PredMap, AddComments,
             AddComments = yes,
             TransformComments =
                 [llds_instr(comment("delaying stack frame"), "")],
-            list.map(describe_block(!.BlockMap, !.OrdNeedsFrame,
+            list.map(describe_block(!.BlockMap, !.OrdNeedsFrameMap,
                 PredMap, ProcLabel), !.LabelSeq, DescComments)
-        ),
-        CanTransform = !.CanTransform
+        )
     ).
 
     % We want to stop the transformation if we need more than this many
@@ -1668,9 +1674,9 @@ key_block_needs_frame(Label - block_needs_frame, Label).
     rev_map::in, rev_map::out, prop_queue::in, prop_queue::out,
     ord_needs_frame_map::in, ord_needs_frame_map::out) is det.
 
-delay_frame_init(_, [], !RevMap, !Queue, !OrdNeedsFrame).
+delay_frame_init(_, [], !RevMap, !Queue, !OrdNeedsFrameMap).
 delay_frame_init(BlockMap, [Label | Labels], !RevMap, !Queue,
-        !OrdNeedsFrame) :-
+        !OrdNeedsFrameMap) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockType = BlockInfo ^ fb_type,
     (
@@ -1679,17 +1685,17 @@ delay_frame_init(BlockMap, [Label | Labels], !RevMap, !Queue,
         BlockType = ordinary_block(NeedsFrame, _),
         (
             NeedsFrame = block_doesnt_need_frame,
-            map.det_insert(Label, block_doesnt_need_frame, !OrdNeedsFrame)
+            map.det_insert(Label, block_doesnt_need_frame, !OrdNeedsFrameMap)
         ;
             NeedsFrame = block_needs_frame,
-            map.det_insert(Label, block_needs_frame, !OrdNeedsFrame),
+            map.det_insert(Label, block_needs_frame, !OrdNeedsFrameMap),
             queue.put(Label, !Queue)
         )
     ;
         BlockType = exit_block(_)
     ),
     rev_map_side_labels(successors(BlockInfo), Label, !RevMap),
-    delay_frame_init(BlockMap, Labels, !RevMap, !Queue, !OrdNeedsFrame).
+    delay_frame_init(BlockMap, Labels, !RevMap, !Queue, !OrdNeedsFrameMap).
 
 :- pred rev_map_side_labels(list(label)::in, label::in,
     rev_map::in, rev_map::out) is det.
@@ -1710,11 +1716,11 @@ rev_map_side_labels([Label | Labels], SourceLabel, !RevMap) :-
 :- pred ord_needs_frame(label::in,
     ord_needs_frame_map::in, ord_needs_frame_map::out) is det.
 
-ord_needs_frame(Label, !OrdNeedsFrame) :-
-    map.lookup(!.OrdNeedsFrame, Label, NeedsFrame0),
+ord_needs_frame(Label, !OrdNeedsFrameMap) :-
+    map.lookup(!.OrdNeedsFrameMap, Label, NeedsFrame0),
     (
         NeedsFrame0 = block_doesnt_need_frame,
-        map.det_update(Label, block_needs_frame, !OrdNeedsFrame)
+        map.det_update(Label, block_needs_frame, !OrdNeedsFrameMap)
     ;
         NeedsFrame0 = block_needs_frame
     ).
@@ -1727,107 +1733,107 @@ ord_needs_frame(Label, !OrdNeedsFrame) :-
     % delay_frame_transform.
     %
 :- pred propagate_frame_requirement_to_successors(frame_block_map(En, Ex)::in,
-    prop_queue::in, set(label)::in,
+    prop_queue::in, set(label)::in, can_transform::out,
     ord_needs_frame_map::in, ord_needs_frame_map::out,
-    int::in, int::out, can_transform::in, can_transform::out) is det.
+    int::in, int::out) is det.
 
-propagate_frame_requirement_to_successors(BlockMap, !.Queue,
-        !.AlreadyProcessed,
-        !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform) :-
-    (
-        !.CanTransform = cannot_transform
-    ;
-        !.CanTransform = can_transform,
-        ( if !.PropagationStepsLeft < 0 then
-            !:CanTransform = cannot_transform
-        else if queue.get(Label, !Queue) then
-            !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-            set.insert(Label, !AlreadyProcessed),
-            map.lookup(BlockMap, Label, BlockInfo),
-            BlockType = BlockInfo ^ fb_type,
-            (
-                BlockType = ordinary_block(_, _MaybeDummy),
-                ord_needs_frame(Label, !OrdNeedsFrame),
-                % Putting an already processed label into the queue could
-                % lead to an infinite loop. However, we cannot decide whether
-                % a label has been processed by checking whether
-                % !.OrdNeedsFrame maps Label to yes, since !.OrdNeedsFrame
-                % doesn't mention setup frames, and we want to set
-                % !:CanTransform to no if any successor is a setup frame.
-                % We cannot assume that successors not in !.OrdNeedsFrame
-                % should set !:CanTransform to no either, since we don't want
-                % to do that for exit frames.
-                list.filter(set.contains(!.AlreadyProcessed),
-                    successors(BlockInfo), _, UnprocessedSuccessors),
-                queue.put_list(UnprocessedSuccessors, !Queue)
-            ;
-                BlockType = entry_block(_),
-                !:CanTransform = cannot_transform
-            ;
-                BlockType = exit_block(_)
-                % Exit blocks never *need* stack frames.
-            ),
+propagate_frame_requirement_to_successors(BlockMap, !.Queue, !.DoneLabels,
+        CanTransform, !OrdNeedsFrameMap, !PropagationStepsLeft) :-
+    ( if !.PropagationStepsLeft < 0 then
+        CanTransform = cannot_transform
+    else if queue.get(Label, !Queue) then
+        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+        set.insert(Label, !DoneLabels),
+        map.lookup(BlockMap, Label, BlockInfo),
+        BlockType = BlockInfo ^ fb_type,
+        (
+            BlockType = entry_block(_),
+            CanTransform = cannot_transform
+        ;
+            BlockType = ordinary_block(_, _MaybeDummy),
+            ord_needs_frame(Label, !OrdNeedsFrameMap),
+            % Putting an already processed label into the queue could
+            % lead to an infinite loop. However, we cannot decide whether
+            % a label has been processed by checking whether
+            % !.OrdNeedsFrameMap maps Label to yes, since !.OrdNeedsFrameMap
+            % doesn't mention setup frames, and we want to set
+            % !:CanTransform to no if any successor is a setup frame.
+            % We cannot assume that successors not in !.OrdNeedsFrameMap
+            % should set !:CanTransform to no either, since we don't want
+            % to do that for exit frames.
+            list.filter(set.contains(!.DoneLabels),
+                successors(BlockInfo), _, UnprocessedSuccessors),
+            queue.put_list(UnprocessedSuccessors, !Queue),
             disable_warning [suspicious_recursion] (
                 propagate_frame_requirement_to_successors(BlockMap,
-                    !.Queue, !.AlreadyProcessed,
-                    !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
+                    !.Queue, !.DoneLabels, CanTransform,
+                    !OrdNeedsFrameMap, !PropagationStepsLeft)
             )
-        else
-            true
+        ;
+            BlockType = exit_block(_),
+            % Exit blocks never *need* stack frames.
+            disable_warning [suspicious_recursion] (
+                propagate_frame_requirement_to_successors(BlockMap,
+                    !.Queue, !.DoneLabels, CanTransform,
+                    !OrdNeedsFrameMap, !PropagationStepsLeft)
+            )
         )
+    else
+        CanTransform = can_transform
     ).
 
     % This predicate implements the third part of the first phase of
     % delay_frame_transform; see the documentation there.
     %
-:- pred propagate_frame_requirement_to_predecessors(prop_queue::in,
-    frame_block_map(En, Ex)::in, rev_map::in,
-    ord_needs_frame_map::in, ord_needs_frame_map::out, int::in, int::out,
-    can_transform::in, can_transform::out) is det.
+:- pred propagate_frame_requirement_to_predecessors(
+    frame_block_map(En, Ex)::in, rev_map::in, prop_queue::in, int::in,
+    can_transform::out,
+    ord_needs_frame_map::in, ord_needs_frame_map::out) is det.
 
-propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
-        !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform) :-
-    (
-        !.CanTransform = cannot_transform
-    ;
-        !.CanTransform = can_transform,
-        ( if !.PropagationStepsLeft < 0 then
-            !:CanTransform = cannot_transform
-        else if queue.get(Label, !Queue) then
-            !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-            ( if map.search(RevMap, Label, PredecessorsPrime) then
-                Predecessors = PredecessorsPrime
-            else
-                % We get here if Label cannot be reached by a fallthrough or an
-                % explicit jump, but only by backtracking. In that case, the
-                % code that sets up the resumption point saves the address of
-                % Label on the stack, and thus is already known to need
-                % a stack frame.
-                Predecessors = [],
-                ord_needs_frame(Label, !OrdNeedsFrame)
-            ),
-            list.filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
-                Predecessors, NowNeedFrameLabels),
-            list.foldl2(record_frame_need(BlockMap), NowNeedFrameLabels,
-                !OrdNeedsFrame, !CanTransform),
+propagate_frame_requirement_to_predecessors(BlockMap, RevMap,
+        !.Queue, !.PropagationStepsLeft, CanTransform, !OrdNeedsFrameMap) :-
+    ( if !.PropagationStepsLeft < 0 then
+        CanTransform = cannot_transform
+    else if queue.get(Label, !Queue) then
+        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+        ( if map.search(RevMap, Label, PredecessorsPrime) then
+            Predecessors = PredecessorsPrime
+        else
+            % We get here if Label cannot be reached by a fallthrough or an
+            % explicit jump, but only by backtracking. In that case, the
+            % code that sets up the resumption point saves the address of
+            % Label on the stack, and thus is already known to need
+            % a stack frame.
+            Predecessors = [],
+            ord_needs_frame(Label, !OrdNeedsFrameMap)
+        ),
+        list.filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrameMap),
+            Predecessors, NowNeedFrameLabels),
+        list.foldl2(record_frame_need(BlockMap), NowNeedFrameLabels,
+            !OrdNeedsFrameMap, can_transform, NowNeedCanTransform),
+        (
+            NowNeedCanTransform = cannot_transform,
+            CanTransform = cannot_transform
+        ;
+            NowNeedCanTransform = can_transform,
             % XXX map.lookup(BlockMap, Label, BlockInfo),
             % XXX Successors = successors(BlockInfo),
             queue.put_list(NowNeedFrameLabels, !Queue),
             disable_warning [suspicious_recursion] (
-                propagate_frame_requirement_to_predecessors(!.Queue,
-                    BlockMap, RevMap, !OrdNeedsFrame,
-                    !PropagationStepsLeft, !CanTransform)
+                propagate_frame_requirement_to_predecessors(BlockMap, RevMap,
+                    !.Queue, !.PropagationStepsLeft,
+                    CanTransform, !OrdNeedsFrameMap)
             )
-        else
-            true
         )
+    else
+        CanTransform = can_transform
     ).
 
 :- pred record_frame_need(frame_block_map(En, Ex)::in,
     label::in, ord_needs_frame_map::in, ord_needs_frame_map::out,
     can_transform::in, can_transform::out) is det.
 
-record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
+record_frame_need(BlockMap, Label, !OrdNeedsFrameMap, !CanTransform) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockType = BlockInfo ^ fb_type,
     (
@@ -1835,7 +1841,7 @@ record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
         !:CanTransform = cannot_transform
     ;
         BlockType = ordinary_block(_, _),
-        ord_needs_frame(Label, !OrdNeedsFrame)
+        ord_needs_frame(Label, !OrdNeedsFrameMap)
     ;
         BlockType = exit_block(_),
         unexpected($pred, "exit_block")
@@ -1844,17 +1850,17 @@ record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
 :- pred all_successors_need_frame(frame_block_map(En, Ex)::in,
     ord_needs_frame_map::in, label::in) is semidet.
 
-all_successors_need_frame(BlockMap, OrdNeedsFrame, Label) :-
+all_successors_need_frame(BlockMap, OrdNeedsFrameMap, Label) :-
     map.lookup(BlockMap, Label, BlockInfo),
     Successors = successors(BlockInfo),
-    list.filter(label_needs_frame(OrdNeedsFrame), Successors,
+    list.filter(label_needs_frame(OrdNeedsFrameMap), Successors,
         _NeedFrameSuccessors, NoNeedFrameSuccessors),
     NoNeedFrameSuccessors = [].
 
 :- pred label_needs_frame(ord_needs_frame_map::in, label::in) is semidet.
 
-label_needs_frame(OrdNeedsFrame, Label) :-
-    ( if map.search(OrdNeedsFrame, Label, NeedsFrame) then
+label_needs_frame(OrdNeedsFrameMap, Label) :-
+    ( if map.search(OrdNeedsFrameMap, Label, NeedsFrame) then
         NeedsFrame = block_needs_frame
     else
         % If the map.search fails, Label is not an ordinary frame.
@@ -1891,7 +1897,7 @@ successors(BlockInfo) = Successors :-
     is det <= block_entry_exit(En, Ex).
 
 process_frame_delay(_, _, [], !C, !BlockMap, !SetupParMap, !ExitParMap).
-process_frame_delay(OrdNeedsFrame, ProcLabel, [Label0 | Labels0], !C,
+process_frame_delay(OrdNeedsFrameMap, ProcLabel, [Label0 | Labels0], !C,
         !BlockMap, !SetupParMap, !ExitParMap) :-
     map.lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, Instrs0, FallInto, SideLabels0,
@@ -1912,29 +1918,29 @@ process_frame_delay(OrdNeedsFrame, ProcLabel, [Label0 | Labels0], !C,
             SideLabels0, MaybeFallThrough0,
             ordinary_block(block_doesnt_need_frame, is_not_dummy)),
         map.det_update(Label0, BlockInfo, !BlockMap),
-        process_frame_delay(OrdNeedsFrame, ProcLabel, Labels0,
+        process_frame_delay(OrdNeedsFrameMap, ProcLabel, Labels0,
             !C, !BlockMap, !SetupParMap, !ExitParMap)
     ;
         Type = ordinary_block(_, _),
-        map.lookup(OrdNeedsFrame, Label0, NeedsFrame),
+        map.lookup(OrdNeedsFrameMap, Label0, NeedsFrame),
         (
             NeedsFrame = block_needs_frame,
             % Every block reachable from this block, whether via jump or
             % fallthrough, will be an ordinary block also mapped to `yes'
-            % by OrdNeedsFrame, or will be an exit block, or will be a pre-exit
+            % by OrdNeedsFrameMap, or will be an exit block, or will be a pre-exit
             % dummy block. We already have a stack frame, and all our
             % successors expect one, so we need not do anything.
-            process_frame_delay(OrdNeedsFrame, ProcLabel, Labels0,
+            process_frame_delay(OrdNeedsFrameMap, ProcLabel, Labels0,
                 !C, !BlockMap, !SetupParMap, !ExitParMap)
         ;
             NeedsFrame = block_doesnt_need_frame,
-            transform_nostack_ordinary_block(OrdNeedsFrame, ProcLabel,
+            transform_nostack_ordinary_block(OrdNeedsFrameMap, ProcLabel,
                 Label0, Labels0, BlockInfo0,
                 !C, !BlockMap, !SetupParMap, !ExitParMap)
         )
     ;
         Type = exit_block(_),
-        process_frame_delay(OrdNeedsFrame, ProcLabel, Labels0,
+        process_frame_delay(OrdNeedsFrameMap, ProcLabel, Labels0,
             !C, !BlockMap, !SetupParMap, !ExitParMap)
     ).
 
@@ -1964,16 +1970,16 @@ process_frame_delay(OrdNeedsFrame, ProcLabel, [Label0 | Labels0], !C,
     setup_par_map::in, setup_par_map::out, exit_par_map::in, exit_par_map::out)
     is det <= block_entry_exit(En, Ex).
 
-transform_nostack_ordinary_block(OrdNeedsFrame, ProcLabel, Label0, Labels0,
+transform_nostack_ordinary_block(OrdNeedsFrameMap, ProcLabel, Label0, Labels0,
         BlockInfo0, !C, !BlockMap, !SetupParMap, !ExitParMap) :-
     BlockInfo0 = frame_block_info(_, Instrs0, FallInto,
         SideLabels0, MaybeFallThrough0, Type),
-    mark_parallels_for_nostack_successors(OrdNeedsFrame, !.BlockMap, ProcLabel,
+    mark_parallels_for_nostack_successors(OrdNeedsFrameMap, !.BlockMap, ProcLabel,
         SideLabels0, SideLabels, SideAssocLabelMap,
         !C, !SetupParMap, !ExitParMap),
     (
         MaybeFallThrough0 = yes(FallThroughLabel0),
-        mark_parallel_for_nostack_successor(OrdNeedsFrame, !.BlockMap,
+        mark_parallel_for_nostack_successor(OrdNeedsFrameMap, !.BlockMap,
             ProcLabel, FallThroughLabel0, FallThroughLabel,
             !C, !SetupParMap, !ExitParMap),
         MaybeFallThrough = yes(FallThroughLabel),
@@ -2002,7 +2008,7 @@ transform_nostack_ordinary_block(OrdNeedsFrame, ProcLabel, Label0, Labels0,
     BlockInfo = frame_block_info(Label0, Instrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
     map.set(Label0, BlockInfo, !BlockMap),
-    process_frame_delay(OrdNeedsFrame, ProcLabel, Labels0,
+    process_frame_delay(OrdNeedsFrameMap, ProcLabel, Labels0,
         !C, !BlockMap, !SetupParMap, !ExitParMap).
 
 :- pred no_disagreement(assoc_list(label, label)::in, label::in, label::in)
@@ -2028,12 +2034,12 @@ no_disagreement([K - V | KVs], Key, Value) :-
 
 mark_parallels_for_nostack_successors(_, _, _, [], [], [],
         !C, !SetupParMap, !ExitParMap).
-mark_parallels_for_nostack_successors(OrdNeedsFrame, BlockMap, ProcLabel,
+mark_parallels_for_nostack_successors(OrdNeedsFrameMap, BlockMap, ProcLabel,
         [Label0 | Labels0], [Label | Labels], [Label0 - Label | LabelMap],
         !C, !SetupParMap, !ExitParMap) :-
-    mark_parallel_for_nostack_successor(OrdNeedsFrame, BlockMap, ProcLabel,
+    mark_parallel_for_nostack_successor(OrdNeedsFrameMap, BlockMap, ProcLabel,
         Label0, Label, !C, !SetupParMap, !ExitParMap),
-    mark_parallels_for_nostack_successors(OrdNeedsFrame, BlockMap, ProcLabel,
+    mark_parallels_for_nostack_successors(OrdNeedsFrameMap, BlockMap, ProcLabel,
         Labels0, Labels, LabelMap, !C, !SetupParMap, !ExitParMap).
 
     % Label0 is a label that is a successor of a block which has no stack
@@ -2051,7 +2057,7 @@ mark_parallels_for_nostack_successors(OrdNeedsFrame, BlockMap, ProcLabel,
     counter::in, counter::out, setup_par_map::in, setup_par_map::out,
     exit_par_map::in, exit_par_map::out) is det.
 
-mark_parallel_for_nostack_successor(OrdNeedsFrame, BlockMap, ProcLabel,
+mark_parallel_for_nostack_successor(OrdNeedsFrameMap, BlockMap, ProcLabel,
         Label0, Label, !C, !SetupParMap, !ExitParMap) :-
     map.lookup(BlockMap, Label0, BlockInfo),
     Type = BlockInfo ^ fb_type,
@@ -2060,7 +2066,7 @@ mark_parallel_for_nostack_successor(OrdNeedsFrame, BlockMap, ProcLabel,
         unexpected($pred, "reached setup via jump from ordinary block")
     ;
         Type = ordinary_block(_, _),
-        map.lookup(OrdNeedsFrame, Label0, NeedsFrame),
+        map.lookup(OrdNeedsFrameMap, Label0, NeedsFrame),
         (
             NeedsFrame = block_needs_frame,
             ensure_setup_parallel(Label0, Label, ProcLabel, !C, !SetupParMap)
@@ -2091,10 +2097,10 @@ mark_parallel_for_nostack_successor(OrdNeedsFrame, BlockMap, ProcLabel,
 
 create_parallels(_, _, _, _, _, _, [], [], !C, !BlockMap).
 create_parallels(EntryInfo, ProcLabel,
-        OrdNeedsFrame, SetupParMap, ExitParMap, PredMap,
+        OrdNeedsFrameMap, SetupParMap, ExitParMap, PredMap,
         [Label0 | Labels0], Labels, !C, !BlockMap) :-
     create_parallels(EntryInfo, ProcLabel,
-        OrdNeedsFrame, SetupParMap, ExitParMap, PredMap,
+        OrdNeedsFrameMap, SetupParMap, ExitParMap, PredMap,
         Labels0, Labels1, !C, !BlockMap),
     map.lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, _, FallInto,
@@ -2114,7 +2120,7 @@ create_parallels(EntryInfo, ProcLabel,
             Comments = [llds_instr(comment("exit side labels "
                 ++ dump_labels(yes(ProcLabel), SideLabels)), "")]
         ),
-        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
+        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrameMap, BlockInfo0),
         (
             Type = exit_block(ExitInfo),
             LabelInstr = llds_instr(label(ParallelLabel),
@@ -2145,7 +2151,7 @@ create_parallels(EntryInfo, ProcLabel,
     else if search_setup_par_map(SetupParMap, Label0, SetupLabel) then
         expect(is_ordinary_block(Type), $pred,
             "block in setup map is not ordinary"),
-        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
+        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrameMap, BlockInfo0),
         (
             PrevNeedsFrame = block_needs_frame,
             counter.allocate(N, !C),
@@ -2184,11 +2190,11 @@ create_parallels(EntryInfo, ProcLabel,
 :- func prev_block_needs_frame(ord_needs_frame_map, frame_block_info(En, Ex)) =
     block_needs_frame.
 
-prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
+prev_block_needs_frame(OrdNeedsFrameMap, BlockInfo) = PrevNeedsFrame :-
     MaybeFallIntoFrom = BlockInfo ^ fb_fallen_into,
     (
         MaybeFallIntoFrom = yes(FallIntoFrom),
-        ( if map.search(OrdNeedsFrame, FallIntoFrom, NeedsFrame) then
+        ( if map.search(OrdNeedsFrameMap, FallIntoFrom, NeedsFrame) then
             % FallIntoFrom is an ordinary block that can fall through
             % to this block.
             PrevNeedsFrame = NeedsFrame
@@ -2281,7 +2287,7 @@ ensure_exit_parallel(Label, ParallelLabel, ProcLabel, !C, !ExitParMap) :-
     pred_map::in, proc_label::in, label::in, instruction::out) is det
     <= block_entry_exit(En, Ex).
 
-describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
+describe_block(BlockMap, OrdNeedsFrameMap, PredMap, ProcLabel, Label, Instr) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
@@ -2342,7 +2348,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
             UsesFrame = block_doesnt_need_frame,
             TypeStr1 = TypeStr0 ++ "does not use frame\n"
         ),
-        ( if map.search(OrdNeedsFrame, Label, NeedsFrame) then
+        ( if map.search(OrdNeedsFrameMap, Label, NeedsFrame) then
             (
                 NeedsFrame = block_doesnt_need_frame,
                 expect(unify(UsesFrame, block_doesnt_need_frame), $pred,
