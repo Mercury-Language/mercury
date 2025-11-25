@@ -543,6 +543,10 @@
 :- mode in_three == in(three(ground, ground)).
 :- mode in_four  == in(four(ground, ground)).
 
+:- type maybe_reduced_height
+    --->    did_not_reduce_height
+    ;       reduced_height.
+
 %---------------------------------------------------------------------------%
 
 init = ct(0, empty).
@@ -617,8 +621,7 @@ is_member(ct(_, T), E) = R :-
 is_member(ct(_, Tin), E, R) :-
     do_is_member(Tin, E, R).
 
-:- pred do_is_member(set_tree234(T)::in, T::in, bool::out)
-    is det.
+:- pred do_is_member(set_tree234(T)::in, T::in, bool::out) is det.
 
 do_is_member(T, E, R) :-
     (
@@ -1321,14 +1324,14 @@ delete(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
     % reduced by one. The last argument says whether this has occurred.
     %
 :- pred do_delete(T::in, int::out, set_tree234(T)::in,
-    set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 do_delete(E, Decr, Tin, Tout, RH) :-
     (
         Tin = empty,
         Decr = 0,
         Tout = empty,
-        RH = no
+        RH = did_not_reduce_height
     ;
         Tin = two(E0, T0, T1),
         compare(Result0, E, E0),
@@ -1336,40 +1339,40 @@ do_delete(E, Decr, Tin, Tout, RH) :-
             Result0 = (<),
             do_delete(E, Decr, T0, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = two(E0, NewT0, T1),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result0 = (=),
             ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = two(ST1E, T0, NewT1),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T1 must be empty
                 Tout = T0,
-                RH = yes
+                RH = reduced_height
             ),
             Decr = 1
         ;
             Result0 = (>),
             do_delete(E, Decr, T1, NewT1, RHT1),
             (
-                RHT1 = yes,
+                RHT1 = reduced_height,
                 fix_2node_t1(E0, T0, NewT1, Tout, RH)
             ;
-                RHT1 = no,
+                RHT1 = did_not_reduce_height,
                 Tout = two(E0, T0, NewT1),
-                RH = no
+                RH = did_not_reduce_height
             )
         )
     ;
@@ -1379,28 +1382,28 @@ do_delete(E, Decr, Tin, Tout, RH) :-
             Result0 = (<),
             do_delete(E, Decr, T0, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = three(E0, E1, NewT0, T1, T2),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result0 = (=),
             ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = three(ST1E, E1, T0, NewT1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T1 must be empty
                 Tout = two(E1, T0, T2),
-                RH = no
+                RH = did_not_reduce_height
             ),
             Decr = 1
         ;
@@ -1410,12 +1413,12 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 Result1 = (<),
                 do_delete(E, Decr, T1, NewT1, RHT1),
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = three(E0, E1, T0, NewT1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result1 = (=),
@@ -1423,29 +1426,29 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                     do_remove_least(T2, ST2E, NewT2, RHT2)
                 then
                     (
-                        RHT2 = yes,
+                        RHT2 = reduced_height,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
                     ;
-                        RHT2 = no,
+                        RHT2 = did_not_reduce_height,
                         Tout = three(E0, ST2E, T0, T1, NewT2),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T2 must be empty
                     Tout = two(E0, T0, T1),
-                    RH = no
+                    RH = did_not_reduce_height
                 ),
                 Decr = 1
             ;
                 Result1 = (>),
                 do_delete(E, Decr, T2, NewT2, RHT2),
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = three(E0, E1, T0, T1, NewT2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         )
@@ -1459,57 +1462,57 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 Result0 = (<),
                 do_delete(E, Decr, T0, NewT0, RHT0),
                 (
-                    RHT0 = yes,
+                    RHT0 = reduced_height,
                     fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
                 ;
-                    RHT0 = no,
+                    RHT0 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result0 = (=),
                 ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                     (
-                        RHT1 = yes,
+                        RHT1 = reduced_height,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
                     ;
-                        RHT1 = no,
+                        RHT1 = did_not_reduce_height,
                         Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T1 must be empty
                     Tout = three(E1, E2, T0, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 ),
                 Decr = 1
             ;
                 Result0 = (>),
                 do_delete(E, Decr, T1, NewT1, RHT1),
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, NewT1, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         ;
             Result1 = (=),
             ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T2 must be empty
                 Tout = three(E0, E2, T0, T1, T3),
-                RH = no
+                RH = did_not_reduce_height
             ),
             Decr = 1
         ;
@@ -1519,40 +1522,40 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 Result2 = (<),
                 do_delete(E, Decr, T2, NewT2, RHT2),
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, T1, NewT2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result2 = (=),
                 ( if do_remove_least(T3, ST3E, NewT3, RHT3) then
                     (
-                        RHT3 = yes,
+                        RHT3 = reduced_height,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
                     ;
-                        RHT3 = no,
+                        RHT3 = did_not_reduce_height,
                         Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T3 must be empty
                     Tout = three(E0, E1, T0, T1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 ),
                 Decr = 1
             ;
                 Result2 = (>),
                 do_delete(E, Decr, T3, NewT3, RHT3),
                 (
-                    RHT3 = yes,
+                    RHT3 = reduced_height,
                     fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
                 ;
-                    RHT3 = no,
+                    RHT3 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, T1, T2, NewT3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         )
@@ -1583,7 +1586,7 @@ remove(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
     Sizeout = Sizein - 1.
 
 :- pred do_remove(T::in, set_tree234(T)::in, set_tree234(T)::out,
-    bool::out) is semidet.
+    maybe_reduced_height::out) is semidet.
 
 do_remove(E, Tin, Tout, RH) :-
     (
@@ -1596,39 +1599,39 @@ do_remove(E, Tin, Tout, RH) :-
             Result0 = (<),
             do_remove(E, T0, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = two(E0, NewT0, T1),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result0 = (=),
             ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = two(ST1E, T0, NewT1),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T1 must be empty
                 Tout = T0,
-                RH = yes
+                RH = reduced_height
             )
         ;
             Result0 = (>),
             do_remove(E, T1, NewT1, RHT1),
             (
-                RHT1 = yes,
+                RHT1 = reduced_height,
                 fix_2node_t1(E0, T0, NewT1, Tout, RH)
             ;
-                RHT1 = no,
+                RHT1 = did_not_reduce_height,
                 Tout = two(E0, T0, NewT1),
-                RH = no
+                RH = did_not_reduce_height
             )
         )
     ;
@@ -1638,28 +1641,28 @@ do_remove(E, Tin, Tout, RH) :-
             Result0 = (<),
             do_remove(E, T0, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = three(E0, E1, NewT0, T1, T2),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result0 = (=),
             ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = three(ST1E, E1, T0, NewT1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T1 must be empty
                 Tout = two(E1, T0, T2),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result0 = (>),
@@ -1668,39 +1671,39 @@ do_remove(E, Tin, Tout, RH) :-
                 Result1 = (<),
                 do_remove(E, T1, NewT1, RHT1),
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = three(E0, E1, T0, NewT1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result1 = (=),
                 ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                     (
-                        RHT2 = yes,
+                        RHT2 = reduced_height,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
                     ;
-                        RHT2 = no,
+                        RHT2 = did_not_reduce_height,
                         Tout = three(E0, ST2E, T0, T1, NewT2),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T2 must be empty
                     Tout = two(E0, T0, T1),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result1 = (>),
                 do_remove(E, T2, NewT2, RHT2),
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = three(E0, E1, T0, T1, NewT2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         )
@@ -1714,56 +1717,56 @@ do_remove(E, Tin, Tout, RH) :-
                 Result0 = (<),
                 do_remove(E, T0, NewT0, RHT0),
                 (
-                    RHT0 = yes,
+                    RHT0 = reduced_height,
                     fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
                 ;
-                    RHT0 = no,
+                    RHT0 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result0 = (=),
                 ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                     (
-                        RHT1 = yes,
+                        RHT1 = reduced_height,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
                     ;
-                        RHT1 = no,
+                        RHT1 = did_not_reduce_height,
                         Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T1 must be empty
                     Tout = three(E1, E2, T0, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result0 = (>),
                 do_remove(E, T1, NewT1, RHT1),
                 (
-                    RHT1 = yes,
+                    RHT1 = reduced_height,
                     fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
                 ;
-                    RHT1 = no,
+                    RHT1 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, NewT1, T2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         ;
             Result1 = (=),
             ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             else
                 % T2 must be empty
                 Tout = three(E0, E2, T0, T1, T3),
-                RH = no
+                RH = did_not_reduce_height
             )
         ;
             Result1 = (>),
@@ -1772,39 +1775,39 @@ do_remove(E, Tin, Tout, RH) :-
                 Result2 = (<),
                 do_remove(E, T2, NewT2, RHT2),
                 (
-                    RHT2 = yes,
+                    RHT2 = reduced_height,
                     fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
                 ;
-                    RHT2 = no,
+                    RHT2 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, T1, NewT2, T3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result2 = (=),
                 ( if do_remove_least(T3, ST3E, NewT3, RHT3) then
                     (
-                        RHT3 = yes,
+                        RHT3 = reduced_height,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
                     ;
-                        RHT3 = no,
+                        RHT3 = did_not_reduce_height,
                         Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
-                        RH = no
+                        RH = did_not_reduce_height
                     )
                 else
                     % T3 must be empty
                     Tout = three(E0, E1, T0, T1, T2),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             ;
                 Result2 = (>),
                 do_remove(E, T3, NewT3, RHT3),
                 (
-                    RHT3 = yes,
+                    RHT3 = reduced_height,
                     fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
                 ;
-                    RHT3 = no,
+                    RHT3 = did_not_reduce_height,
                     Tout = four(E0, E1, E2, T0, T1, T2, NewT3),
-                    RH = no
+                    RH = did_not_reduce_height
                 )
             )
         )
@@ -1845,7 +1848,7 @@ remove_least(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
     Sizeout = Sizein - 1.
 
 :- pred do_remove_least(set_tree234(T)::in, T::out,
-    set_tree234(T)::out, bool::out) is semidet.
+    set_tree234(T)::out, maybe_reduced_height::out) is semidet.
 
 do_remove_least(Tin, E, Tout, RH) :-
     (
@@ -1856,16 +1859,16 @@ do_remove_least(Tin, E, Tout, RH) :-
         ( if T0 = empty then
             E = E0,
             Tout = T1,
-            RH = yes
+            RH = reduced_height
         else
             do_remove_least(T0, E, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = two(E0, NewT0, T1),
-                RH = no
+                RH = did_not_reduce_height
             )
         )
     ;
@@ -1873,16 +1876,16 @@ do_remove_least(Tin, E, Tout, RH) :-
         ( if T0 = empty then
             E = E0,
             Tout = two(E1, T1, T2),
-            RH = no
+            RH = did_not_reduce_height
         else
             do_remove_least(T0, E, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = three(E0, E1, NewT0, T1, T2),
-                RH = no
+                RH = did_not_reduce_height
             )
         )
     ;
@@ -1890,16 +1893,16 @@ do_remove_least(Tin, E, Tout, RH) :-
         ( if T0 = empty then
             E = E0,
             Tout = three(E1, E2, T1, T2, T3),
-            RH = no
+            RH = did_not_reduce_height
         else
             do_remove_least(T0, E, NewT0, RHT0),
             (
-                RHT0 = yes,
+                RHT0 = reduced_height,
                 fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
             ;
-                RHT0 = no,
+                RHT0 = did_not_reduce_height,
                 Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
-                RH = no
+                RH = did_not_reduce_height
             )
         )
     ).
@@ -1916,7 +1919,7 @@ do_remove_least(Tin, E, Tout, RH) :-
 %
 
 :- pred fix_2node_t0(T::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_2node_t0(E0, T0, T1, Tout, RH) :-
     (
@@ -1925,29 +1928,29 @@ fix_2node_t0(E0, T0, T1, Tout, RH) :-
         NewT1 = three(E11, E12, T11, T12, T13),
         Node = two(E0, T0, T10),
         Tout = two(E10, Node, NewT1),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T1's leftmost subtree and combine it with T0
         T1 = three(E10, E11, T10, T11, T12),
         NewT1 = two(E11, T11, T12),
         Node = two(E0, T0, T10),
         Tout = two(E10, Node, NewT1),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T0 one level down and combine it with the subtrees of T1
         % this reduces the depth of the tree
         T1 = two(E10, T10, T11),
         Tout = three(E0, E10, T0, T10, T11),
-        RH = yes
+        RH = reduced_height
     ;
         T1 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
-        % RH = yes
+        % RH = reduced_height
     ).
 
 :- pred fix_2node_t1(T::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_2node_t1(E0, T0, T1, Tout, RH) :-
     (
@@ -1956,29 +1959,29 @@ fix_2node_t1(E0, T0, T1, Tout, RH) :-
         NewT0 = three(E00, E01, T00, T01, T02),
         Node = two(E0, T03, T1),
         Tout = two(E02, NewT0, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T0's leftmost subtree and combine it with T1
         T0 = three(E00, E01, T00, T01, T02),
         NewT0 = two(E00, T00, T01),
         Node = two(E0, T02, T1),
         Tout = two(E01, NewT0, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T1 one level down and combine it with the subtrees of T0
         % this reduces the depth of the tree
         T0 = two(E00, T00, T01),
         Tout = three(E00, E0, T00, T01, T1),
-        RH = yes
+        RH = reduced_height
     ;
         T0 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
-        % RH = yes
+        % RH = reduced_height
     ).
 
 :- pred fix_3node_t0(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_3node_t0(E0, E1, T0, T1, T2, Tout, RH) :-
     (
@@ -1987,30 +1990,30 @@ fix_3node_t0(E0, E1, T0, T1, T2, Tout, RH) :-
         NewT1 = three(E11, E12, T11, T12, T13),
         Node = two(E0, T0, T10),
         Tout = three(E10, E1, Node, NewT1, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T1's leftmost subtree and combine it with T0
         T1 = three(E10, E11, T10, T11, T12),
         NewT1 = two(E11, T11, T12),
         Node = two(E0, T0, T10),
         Tout = three(E10, E1, Node, NewT1, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T0 one level down to become the leftmost subtree of T1
         T1 = two(E10, T10, T11),
         NewT1 = three(E0, E10, T0, T10, T11),
         Tout = two(E1, NewT1, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T1 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T1 and T2 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_3node_t1(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_3node_t1(E0, E1, T0, T1, T2, Tout, RH) :-
     (
@@ -2019,30 +2022,30 @@ fix_3node_t1(E0, E1, T0, T1, T2, Tout, RH) :-
         NewT0 = three(E00, E01, T00, T01, T02),
         Node = two(E0, T03, T1),
         Tout = three(E02, E1, NewT0, Node, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T0's rightmost subtree and combine it with T1
         T0 = three(E00, E01, T00, T01, T02),
         NewT0 = two(E00, T00, T01),
         Node = two(E0, T02, T1),
         Tout = three(E01, E1, NewT0, Node, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T1 one level down to become the rightmost subtree of T0
         T0 = two(E00, T00, T01),
         NewT0 = three(E00, E0, T00, T01, T1),
         Tout = two(E1, NewT0, T2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T0 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T2 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_3node_t2(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_3node_t2(E0, E1, T0, T1, T2, Tout, RH) :-
     (
@@ -2051,31 +2054,31 @@ fix_3node_t2(E0, E1, T0, T1, T2, Tout, RH) :-
         NewT1 = three(E10, E11, T10, T11, T12),
         Node = two(E1, T13, T2),
         Tout = three(E0, E12, T0, NewT1, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T1's rightmost subtree and combine it with T2
         T1 = three(E10, E11, T10, T11, T12),
         NewT1 = two(E10, T10, T11),
         Node = two(E1, T12, T2),
         Tout = three(E0, E11, T0, NewT1, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T2 one level down to become the rightmost subtree of T1
         T1 = two(E10, T10, T11),
         NewT1 = three(E10, E1, T10, T11, T2),
         Tout = two(E0, T0, NewT1),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T1 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T1 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_4node_t0(T::in, T::in, T::in,
     set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_4node_t0(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
     (
@@ -2084,31 +2087,31 @@ fix_4node_t0(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         NewT1 = three(E11, E12, T11, T12, T13),
         Node = two(E0, T0, T10),
         Tout = four(E10, E1, E2, Node, NewT1, T2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T1's leftmost subtree and combine it with T0
         T1 = three(E10, E11, T10, T11, T12),
         NewT1 = two(E11, T11, T12),
         Node = two(E0, T0, T10),
         Tout = four(E10, E1, E2, Node, NewT1, T2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T0 one level down to become the leftmost subtree of T1
         T1 = two(E10, T10, T11),
         NewT1 = three(E0, E10, T0, T10, T11),
         Tout = three(E1, E2, NewT1, T2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T1 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T1, T2 and T3 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_4node_t1(T::in, T::in, T::in,
     set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_4node_t1(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
     (
@@ -2117,31 +2120,31 @@ fix_4node_t1(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         NewT2 = three(E21, E22, T21, T22, T23),
         Node = two(E1, T1, T20),
         Tout = four(E0, E20, E2, T0, Node, NewT2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T2's leftmost subtree and combine it with T1
         T2 = three(E20, E21, T20, T21, T22),
         NewT2 = two(E21, T21, T22),
         Node = two(E1, T1, T20),
         Tout = four(E0, E20, E2, T0, Node, NewT2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T1 one level down to become the leftmost subtree of T2
         T2 = two(E20, T20, T21),
         NewT2 = three(E1, E20, T1, T20, T21),
         Tout = three(E0, E2, T0, NewT2, T3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T2 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T2 and T3 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_4node_t2(T::in, T::in, T::in,
     set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_4node_t2(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
     (
@@ -2150,31 +2153,31 @@ fix_4node_t2(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         NewT3 = three(E31, E32, T31, T32, T33),
         Node = two(E2, T2, T30),
         Tout = four(E0, E1, E30, T0, T1, Node, NewT3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T3's leftmost subtree and combine it with T2
         T3 = three(E30, E31, T30, T31, T32),
         NewT3 = two(E31, T31, T32),
         Node = two(E2, T2, T30),
         Tout = four(E0, E1, E30, T0, T1, Node, NewT3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T2 one level down to become the leftmost subtree of T3
         T3 = two(E30, T30, T31),
         NewT3 = three(E2, E30, T2, T30, T31),
         Tout = three(E0, E1, T0, T1, NewT3),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T3 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T3 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 :- pred fix_4node_t3(T::in, T::in, T::in,
     set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+    set_tree234(T)::in, set_tree234(T)::out, maybe_reduced_height::out) is det.
 
 fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
     (
@@ -2183,26 +2186,26 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         NewT2 = three(E20, E21, T20, T21, T22),
         Node = two(E2, T23, T3),
         Tout = four(E0, E1, E22, T0, T1, NewT2, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % steal T2's rightmost subtree and combine it with T3
         T2 = three(E20, E21, T20, T21, T22),
         NewT2 = two(E20, T20, T21),
         Node = two(E2, T22, T3),
         Tout = four(E0, E1, E21, T0, T1, NewT2, Node),
-        RH = no
+        RH = did_not_reduce_height
     ;
         % move T3 one level down to become the rightmost subtree of T2
         T2 = two(E20, T20, T21),
         NewT2 = three(E20, E2, T20, T21, T3),
         Tout = three(E0, E1, T0, T1, NewT2),
-        RH = no
+        RH = did_not_reduce_height
     ;
         T2 = empty,
         unexpected($pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T2 are unchanged
-        % RH = no
+        % RH = did_not_reduce_height
     ).
 
 %---------------------------------------------------------------------------%
