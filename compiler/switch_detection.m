@@ -1079,45 +1079,6 @@ categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
     Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
         LeftOver, Rank, CanFail).
 
-:- type cases_missing
-    --->    no_cases_missing
-    ;       some_cases_missing
-    ;       unbounded_cases.
-
-:- pred can_candidate_switch_fail(module_info::in, mer_type::in, mer_inst::in,
-    list(case)::in, can_fail::out, cases_missing::out, list(case)::out,
-    list(hlds_goal)::out) is det.
-
-can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
-        CanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
-    ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
-        type_to_ctor_det(VarType, TypeCtor),
-        bound_functors_to_cons_ids(TypeCtor, Functors, ConsIds),
-        set_tree234.list_to_set(ConsIds, ConsIdSet),
-        delete_unreachable_cases(Cases0, ConsIdSet,
-            Cases, UnreachableCaseGoals),
-        compute_can_fail(ConsIdSet, Cases, CanFail, CasesMissing)
-    else
-        % We do not have any inst information that would allow us to decide
-        % that any case is unreachable.
-        Cases = Cases0,
-        UnreachableCaseGoals = [],
-        ( if switch_type_num_functors(ModuleInfo, VarType, NumFunctors) then
-            % We could check for each cons_id of the type whether a case covers
-            % it, but given that type checking ensures that the set of covered
-            % cons_ids is a subset of the set of cons_ids of the type, checking
-            % whether the cardinalities of the two sets match is *equivalent*
-            % to checking whether they are the same set.
-            does_switch_cover_n_cases(NumFunctors, Cases,
-                CanFail, CasesMissing)
-        else
-            % switch_type_num_functors fails only for types on which
-            % you cannot have a complete switch, e.g. integers and strings.
-            CanFail = can_fail,
-            CasesMissing = unbounded_cases
-        )
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- pred select_best_candidate_switch(list(candidate_switch)::in,
@@ -1187,8 +1148,7 @@ partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
 
                 VarStr = mercury_var_to_string(VarTable,
                     print_name_and_num, Var),
-                io.format(StrErr, "\nVar = %s\n",
-                    [s(VarStr)], !IO),
+                io.format(StrErr, "\nVar = %s\n", [s(VarStr)], !IO),
 
                 io.write_string(StrErr, "\nLEFT GOALS\n", !IO),
                 list.foldl(
@@ -1633,6 +1593,52 @@ cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
         GoalExpr = switch(Var, CanFail, Cases)
     ).
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Compute whether a switch on a given variable with a given set
+% of cases can fail.
+%
+
+:- type cases_missing
+    --->    no_cases_missing
+    ;       some_cases_missing
+    ;       unbounded_cases.
+
+:- pred can_candidate_switch_fail(module_info::in, mer_type::in, mer_inst::in,
+    list(case)::in, can_fail::out, cases_missing::out, list(case)::out,
+    list(hlds_goal)::out) is det.
+
+can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+        CanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
+    ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
+        type_to_ctor_det(VarType, TypeCtor),
+        bound_functors_to_cons_ids(TypeCtor, Functors, ConsIds),
+        set_tree234.list_to_set(ConsIds, ConsIdSet),
+        delete_unreachable_cases(Cases0, ConsIdSet,
+            Cases, UnreachableCaseGoals),
+        compute_can_fail(ConsIdSet, Cases, CanFail, CasesMissing)
+    else
+        % We do not have any inst information that would allow us to decide
+        % that any case is unreachable.
+        Cases = Cases0,
+        UnreachableCaseGoals = [],
+        ( if switch_type_num_functors(ModuleInfo, VarType, NumFunctors) then
+            % We could check for each cons_id of the type whether a case covers
+            % it, but given that type checking ensures that the set of covered
+            % cons_ids is a subset of the set of cons_ids of the type, checking
+            % whether the cardinalities of the two sets match is *equivalent*
+            % to checking whether they are the same set.
+            does_switch_cover_n_cases(NumFunctors, Cases,
+                CanFail, CasesMissing)
+        else
+            % switch_type_num_functors fails only for types on which
+            % you cannot have a complete switch, e.g. integers and strings.
+            CanFail = can_fail,
+            CasesMissing = unbounded_cases
+        )
+    ).
+
 :- pred compute_can_fail(set_tree234(cons_id)::in, list(case)::in,
     can_fail::out, cases_missing::out) is det.
 
@@ -1656,7 +1662,7 @@ delete_covered_functors([], !UncoveredConsIds).
 delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
     Case = case(MainConsId, OtherConsIds, _Goal),
     set_tree234.delete(MainConsId, !UncoveredConsIds),
-    list.foldl(set_tree234.delete, OtherConsIds, !UncoveredConsIds),
+    set_tree234.delete_list(OtherConsIds, !UncoveredConsIds),
     delete_covered_functors(Cases, !UncoveredConsIds).
 
     % Check whether a switch handles the given number of cons_ids.
