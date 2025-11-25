@@ -992,111 +992,6 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
     detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
         MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
 
-:- pred is_candidate_switch(list(case)::in, list(hlds_goal)::in) is semidet.
-
-is_candidate_switch(Cases0, LeftOver) :-
-    (
-        % If every disjunct unifies Var with a function symbol, then
-        % it is candidate switch on Var, *even if* all disjuncts unify Var
-        % with the *same* function symbol. This is because the resulting
-        % single-arm switch may turn out to contain sub-switches on the
-        % *arguments* of that function symbol.
-        LeftOver = []
-    ;
-        % If some disjunct does not unify Var with any function symbol,
-        % then we insist on at least two cases (though one may unreachable,
-        % see below). We do this because the presence of the LeftOver
-        % disjunct(s) requires us to have an outer disjunction anyway;
-        % having one of its arms be a single-arm switch would be
-        % indistinguishable from the original disjunction in almost all cases.
-        % The only exception I (zs) can think of would happen if the same
-        % X = f(...) goal occurred inside all the disjuncts that would end up
-        % in an inner disjunction inside the single-arm switch's single arm,
-        % but not in the other disjuncts. In that case, acting on the
-        % candidate we would create here may allow cse_detection.m to make
-        % a change could enable later follow-on changes by switch detection
-        % itself. However, I have never seen any real-life code that could
-        % benefit from this theoretical possibility, and until we do see
-        % such code, so the gain from deleting this test would be minimal
-        % at best, while the cost of deleting it would be to greatly increase
-        % the number of candidates and thus the time taken by switch detection.
-        Cases0 = [_, _ | _]
-    ).
-
-:- pred categorize_candidate_switch(module_info::in,
-    maybe_required_switch_var::in, prog_var::in, mer_type::in, mer_inst::in,
-    list(case)::in, list(hlds_goal)::in, candidate_switch::out) is det.
-
-categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
-        VarInst0, Cases0, LeftOver, Candidate) :-
-    can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
-        CanFail, CasesMissing, Cases, UnreachableCaseGoals),
-    (
-        LeftOver = [],
-        (
-            Cases = [],
-            Rank = all_disjuncts_are_unreachable
-        ;
-            Cases = [_FirstCase | LaterCases],
-            ( if
-                LaterCases = [],
-                UnreachableCaseGoals = []
-            then
-                Rank = no_leftover_one_case
-            else
-                % FirstCase is one case, and whichever of LaterCases and
-                % UnreachableCaseGoals is nonempty is the second case.
-                ( if
-                    MaybeRequiredVar = rsv(RequiredVar),
-                    RequiredVar = Var
-                then
-                    Rank = no_leftover_twoplus_cases_explicitly_selected
-                else
-                    (
-                        CasesMissing = some_cases_missing,
-                        Rank = no_leftover_twoplus_cases_finite_can_fail
-                    ;
-                        CasesMissing = no_cases_missing,
-                        Rank = no_leftover_twoplus_cases_finite_cannot_fail
-                    ;
-                        CasesMissing = unbounded_cases,
-                        Rank = no_leftover_twoplus_cases_infinite_can_fail
-                    )
-                )
-            )
-        )
-    ;
-        LeftOver = [_ | _],
-        list.length(Cases, NumCases),
-        (
-            CanFail = cannot_fail,
-            Rank = some_leftover_cannot_fail(NumCases)
-        ;
-            CanFail = can_fail,
-            Rank = some_leftover_can_fail(NumCases)
-        )
-    ),
-    Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
-        LeftOver, Rank, CanFail).
-
-%---------------------------------------------------------------------------%
-
-:- pred select_best_candidate_switch(list(candidate_switch)::in,
-    candidate_switch::in, candidate_switch::out) is det.
-
-select_best_candidate_switch([], !BestCandidate).
-select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
-    compare(Result, Candidate ^ cs_rank, !.BestCandidate ^ cs_rank),
-    (
-        ( Result = (<)
-        ; Result = (=)
-        )
-    ;
-        Result = (>),
-        !:BestCandidate = Candidate
-    ),
-    select_best_candidate_switch(Candidates, !BestCandidate).
-
 %---------------------------------------------------------------------------%
 
     % partition_disj(Var, Disjuncts, GoalInfo, Left, Cases, !LocalInfo):
@@ -1161,6 +1056,74 @@ partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
             Left = Left1,
             Cases = convert_cases_table(GoalInfo, CasesTable1)
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
+    list(hlds_goal)::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    cases_table::in, cases_table::out) is det.
+
+partition_disj_trial(_, _, [], !Left, !CasesTable).
+partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
+        !Left, !CasesTable) :-
+    find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
+        Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
+    trace [compile_time(flag("partition_disj")), io(!IO)] (
+        ModuleInfo = LocalInfo ^ lsdi_module_info,
+        VarTable = LocalInfo ^ lsdi_var_table,
+        io.output_stream(Stream, !IO),
+        DisjunctDesc0 =
+            describe_structured_goal(ModuleInfo, VarTable, 1u, Disjunct0),
+        (
+            MaybeConsId = no,
+            ResultStr = "no"
+        ;
+            MaybeConsId = yes(ConsId0),
+            ResultStr = "yes(" ++ cons_id_and_arity_to_string(ConsId0) ++ ")"
+        ),
+        io.format(Stream, "\nfind_bind_var for %s on\n",
+            [s(describe_var(VarTable, Var))], !IO),
+        io.write_string(Stream, DisjunctDesc0, !IO),
+        io.format(Stream, "MaybeConsId = %s\n\n", [s(ResultStr)], !IO)
+    ),
+    (
+        MaybeConsId = yes(ConsId),
+        add_single_entry(ConsId, Disjunct, !CasesTable)
+    ;
+        MaybeConsId = no,
+        !:Left = [Disjunct0 | !.Left]
+    ),
+    partition_disj_trial(LocalInfo, Var, Disjuncts0, !Left, !CasesTable).
+
+:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
+    list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
+    unit::in, unit::out) is det.
+
+find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
+        _Result0, Result, _, unit) :-
+    GoalExpr0 = unify(_, _, _, Unification0, _),
+    Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _),
+    Result = yes(Functor),
+    ( if
+        ArgVars = [],
+        SwitchVar = UnifyVar
+    then
+        % The test will get carried out in the switch, there are no
+        % argument values to pick up, and the test was on the switch
+        % variable (not on one of its aliases), so the unification
+        % serve no further purpose. We delete it here, so simplify
+        % doesn't have to.
+        Goals = []
+    else
+        % The deconstruction unification now becomes deterministic, since
+        % the test will get carried out in the switch.
+        Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
+        GoalExpr = GoalExpr0 ^ unify_kind := Unification,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
+        Goals = [Goal]
     ).
 
 %---------------------------------------------------------------------------%
@@ -1316,71 +1279,108 @@ create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
-    list(hlds_goal)::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    cases_table::in, cases_table::out) is det.
+:- pred is_candidate_switch(list(case)::in, list(hlds_goal)::in) is semidet.
 
-partition_disj_trial(_, _, [], !Left, !CasesTable).
-partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
-        !Left, !CasesTable) :-
-    find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
-        Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
-    trace [compile_time(flag("partition_disj")), io(!IO)] (
-        ModuleInfo = LocalInfo ^ lsdi_module_info,
-        VarTable = LocalInfo ^ lsdi_var_table,
-        io.output_stream(Stream, !IO),
-        DisjunctDesc0 =
-            describe_structured_goal(ModuleInfo, VarTable, 1u, Disjunct0),
-        (
-            MaybeConsId = no,
-            ResultStr = "no"
-        ;
-            MaybeConsId = yes(ConsId0),
-            ResultStr = "yes(" ++ cons_id_and_arity_to_string(ConsId0) ++ ")"
-        ),
-        io.format(Stream, "\nfind_bind_var for %s on\n",
-            [s(describe_var(VarTable, Var))], !IO),
-        io.write_string(Stream, DisjunctDesc0, !IO),
-        io.format(Stream, "MaybeConsId = %s\n\n", [s(ResultStr)], !IO)
-    ),
+is_candidate_switch(Cases0, LeftOver) :-
     (
-        MaybeConsId = yes(ConsId),
-        add_single_entry(ConsId, Disjunct, !CasesTable)
+        % If every disjunct unifies Var with a function symbol, then
+        % it is candidate switch on Var, *even if* all disjuncts unify Var
+        % with the *same* function symbol. This is because the resulting
+        % single-arm switch may turn out to contain sub-switches on the
+        % *arguments* of that function symbol.
+        LeftOver = []
     ;
-        MaybeConsId = no,
-        !:Left = [Disjunct0 | !.Left]
-    ),
-    partition_disj_trial(LocalInfo, Var, Disjuncts0, !Left, !CasesTable).
-
-:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
-    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
-    list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
-    unit::in, unit::out) is det.
-
-find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
-        _Result0, Result, _, unit) :-
-    GoalExpr0 = unify(_, _, _, Unification0, _),
-    Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _),
-    Result = yes(Functor),
-    ( if
-        ArgVars = [],
-        SwitchVar = UnifyVar
-    then
-        % The test will get carried out in the switch, there are no
-        % argument values to pick up, and the test was on the switch
-        % variable (not on one of its aliases), so the unification
-        % serve no further purpose. We delete it here, so simplify
-        % doesn't have to.
-        Goals = []
-    else
-        % The deconstruction unification now becomes deterministic, since
-        % the test will get carried out in the switch.
-        Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
-        GoalExpr = GoalExpr0 ^ unify_kind := Unification,
-        Goal = hlds_goal(GoalExpr, GoalInfo0),
-        Goals = [Goal]
+        % If some disjunct does not unify Var with any function symbol,
+        % then we insist on at least two cases (though one may unreachable,
+        % see below). We do this because the presence of the LeftOver
+        % disjunct(s) requires us to have an outer disjunction anyway;
+        % having one of its arms be a single-arm switch would be
+        % indistinguishable from the original disjunction in almost all cases.
+        % The only exception I (zs) can think of would happen if the same
+        % X = f(...) goal occurred inside all the disjuncts that would end up
+        % in an inner disjunction inside the single-arm switch's single arm,
+        % but not in the other disjuncts. In that case, acting on the
+        % candidate we would create here may allow cse_detection.m to make
+        % a change could enable later follow-on changes by switch detection
+        % itself. However, I have never seen any real-life code that could
+        % benefit from this theoretical possibility, and until we do see
+        % such code, so the gain from deleting this test would be minimal
+        % at best, while the cost of deleting it would be to greatly increase
+        % the number of candidates and thus the time taken by switch detection.
+        Cases0 = [_, _ | _]
     ).
+
+:- pred categorize_candidate_switch(module_info::in,
+    maybe_required_switch_var::in, prog_var::in, mer_type::in, mer_inst::in,
+    list(case)::in, list(hlds_goal)::in, candidate_switch::out) is det.
+
+categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
+        VarInst0, Cases0, LeftOver, Candidate) :-
+    can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
+        CanFail, CasesMissing, Cases, UnreachableCaseGoals),
+    (
+        LeftOver = [],
+        (
+            Cases = [],
+            Rank = all_disjuncts_are_unreachable
+        ;
+            Cases = [_FirstCase | LaterCases],
+            ( if
+                LaterCases = [],
+                UnreachableCaseGoals = []
+            then
+                Rank = no_leftover_one_case
+            else
+                % FirstCase is one case, and whichever of LaterCases and
+                % UnreachableCaseGoals is nonempty is the second case.
+                ( if
+                    MaybeRequiredVar = rsv(RequiredVar),
+                    RequiredVar = Var
+                then
+                    Rank = no_leftover_twoplus_cases_explicitly_selected
+                else
+                    (
+                        CasesMissing = some_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_can_fail
+                    ;
+                        CasesMissing = no_cases_missing,
+                        Rank = no_leftover_twoplus_cases_finite_cannot_fail
+                    ;
+                        CasesMissing = unbounded_cases,
+                        Rank = no_leftover_twoplus_cases_infinite_can_fail
+                    )
+                )
+            )
+        )
+    ;
+        LeftOver = [_ | _],
+        list.length(Cases, NumCases),
+        (
+            CanFail = cannot_fail,
+            Rank = some_leftover_cannot_fail(NumCases)
+        ;
+            CanFail = can_fail,
+            Rank = some_leftover_can_fail(NumCases)
+        )
+    ),
+    Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
+        LeftOver, Rank, CanFail).
+
+:- pred select_best_candidate_switch(list(candidate_switch)::in,
+    candidate_switch::in, candidate_switch::out) is det.
+
+select_best_candidate_switch([], !BestCandidate).
+select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
+    compare(Result, Candidate ^ cs_rank, !.BestCandidate ^ cs_rank),
+    (
+        ( Result = (<)
+        ; Result = (=)
+        )
+    ;
+        Result = (>),
+        !:BestCandidate = Candidate
+    ),
+    select_best_candidate_switch(Candidates, !BestCandidate).
 
 %---------------------------------------------------------------------------%
 
