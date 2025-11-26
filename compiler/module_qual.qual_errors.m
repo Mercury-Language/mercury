@@ -479,7 +479,12 @@ warn_unused_interface_import(ParentModuleName,
         ImportedModuleName - ImportContexts, !Specs) :-
     % UNUSED_IMPORT Harmonize the operation of this predicate with
     % the operation of generate_unused_warning in unused_imports.m.
-    ImportContexts = one_or_more(HeadContext, TailContexts),
+    %
+    % We ignore _TailContexts because since mar 2020, we have had warnings
+    % about duplicate import_module and/or use_module declarations in modules.
+    % In the presence of those warnings, there is no point in listing
+    % the contexts of all the imports and/or uses of module.
+    ImportContexts = one_or_more(HeadContext, _TailContexts),
     HeadPieces =
         [words("In module"), qual_sym_name(ParentModuleName), suffix(":"), nl,
         words("warning: module")] ++
@@ -488,25 +493,13 @@ warn_unused_interface_import(ParentModuleName,
         words("but it is")] ++
         color_as_incorrect([words("not used in the interface.")]) ++
         [nl],
-    HeadMsg = msg(HeadContext, HeadPieces),
-    % TailContexts is almost always [], we add TailMsgs just in case it isn't.
-    list.map(warn_redundant_import_context(ImportedModuleName),
-        TailContexts, TailMsgs),
     % If the warn_unused_imports option is set to yes, then
     % unused_imports.m will also generate a warning for this import,
     % and it will be more precise than we can do here, because it will know
     % whether the imported module is used in the *implementation* section.
-    Spec = error_spec($pred, severity_warning(warn_unused_interface_imports),
-        phase_pt2h, [HeadMsg | TailMsgs]),
+    Severity = severity_warning(warn_unused_interface_imports),
+    Spec = spec($pred, Severity, phase_pt2h, HeadContext, HeadPieces),
     !:Specs = [Spec | !.Specs].
-
-:- pred warn_redundant_import_context(module_name::in, prog_context::in,
-    error_msg::out) is det.
-
-warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
-    Pieces = [words("Module"), qual_sym_name(ImportedModuleName),
-        words("is also redundantly imported here."), nl],
-    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
