@@ -143,7 +143,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     mq_info_get_undef_insts(!.Info, UndefInsts),
     mq_info_get_undef_modes(!.Info, UndefModes),
     mq_info_get_undef_typeclasses(!.Info, UndefTypeClasses),
-    maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs).
+    maybe_report_qual_warnings(Globals, !.Info, ModuleName, !Specs).
 
 %---------------------%
 
@@ -166,7 +166,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
-        maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs)
+        maybe_report_qual_warnings(Globals, !.Info, ModuleName, !Specs)
     ).
 
 %---------------------%
@@ -196,27 +196,27 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
     % the interface of the importing module, except if the importing
     % module itself exports _no_ type class instances.
     %
-:- pred maybe_report_qual_errors(globals::in, mq_info::in, module_name::in,
+:- pred maybe_report_qual_warnings(globals::in, mq_info::in, module_name::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_report_qual_errors(Globals, Info, ModuleName, !Specs) :-
-    mq_info_get_as_yet_unused_interface_modules(Info, UnusedImportsMap0),
-    mq_info_get_exported_instances_flag(Info, ModuleExportsInstances),
-    (
-        ModuleExportsInstances = yes,
-        mq_info_get_imported_instance_modules(Info, InstanceImports),
-        map.delete_list(set_tree234.to_sorted_list(InstanceImports),
-            UnusedImportsMap0, UnusedImportsMap)
-    ;
-        ModuleExportsInstances = no,
-        UnusedImportsMap = UnusedImportsMap0
-    ),
+maybe_report_qual_warnings(Globals, Info, ModuleName, !Specs) :-
     globals.lookup_bool_option(Globals, warn_interface_imports,
         WarnInterfaceImports),
     (
         WarnInterfaceImports = no
     ;
         WarnInterfaceImports = yes,
+        mq_info_get_as_yet_unused_interface_modules(Info, UnusedImportsMap0),
+        mq_info_get_exported_instances_flag(Info, ModuleExportsInstances),
+        (
+            ModuleExportsInstances = yes,
+            mq_info_get_imported_instance_modules(Info, InstanceImports),
+            map.delete_list(set_tree234.to_sorted_list(InstanceImports),
+                UnusedImportsMap0, UnusedImportsMap)
+        ;
+            ModuleExportsInstances = no,
+            UnusedImportsMap = UnusedImportsMap0
+        ),
         map.to_assoc_list(UnusedImportsMap, UnusedImports),
         list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
             !Specs)
