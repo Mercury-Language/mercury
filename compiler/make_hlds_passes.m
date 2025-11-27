@@ -20,6 +20,8 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_spec.
@@ -30,23 +32,27 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
     % parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals,
-    %   DumpBaseFileName, MQInfo, TypeEqvMap, UsedModules, QualInfo,
-    %   InvalidTypes, InvalidModes, HLDS, Specs):
+    %   DumpBaseFileName, MQInfo0, TypeEqvMap,
+    %   UsedModules, UnusedInterfaceImports,
+    %   QualInfo, InvalidType, InvalidInstOrMode, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
     % (both returned by equiv_type.m), convert AugCompUnit to HLDS.
     % Return any errors found in Specs.
-    % Return InvalidTypes = yes if we found undefined types.
-    % Return InvalidModes = yes if we found undefined or cyclic insts or modes.
+    % Return InvalidType = yes if we found undefined types.
+    % Return InvalidInstOrMode = yes if we found undefined or cyclic
+    % insts or modes.
     % QualInfo is an abstract type that check_typeclass.m will later pass
     % to produce_instance_method_clauses.
     %
 :- pred parse_tree_to_hlds(io.text_output_stream::in, aug_compilation_unit::in,
-    globals::in, string::in, mq_info::in, type_eqv_map::in, used_modules::in,
+    globals::in, string::in, mq_info::in, type_eqv_map::in,
+    used_modules::in, set_tree234(module_name)::in,
     qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
@@ -77,10 +83,8 @@
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module libs.options.
-:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
@@ -105,7 +109,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 :- import_module term_context.
 :- import_module term_subst.
 :- import_module varset.
@@ -113,7 +116,7 @@
 %---------------------------------------------------------------------------%
 
 parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
-        MQInfo0, TypeEqvMap, UsedModules, !:QualInfo,
+        MQInfo0, TypeEqvMap, UsedModules, UnusedInterfaceImports, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, InclSpecs),
@@ -218,8 +221,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
         ForeignEnums, ForeignExportEnums),
     module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
-        InclMap, UsedModules, ImplicitlyUsedModules, PQInfo, no, TypeRepnDec,
-        !:ModuleInfo),
+        InclMap, UsedModules, ImplicitlyUsedModules, UnusedInterfaceImports,
+        PQInfo, no, TypeRepnDec, !:ModuleInfo),
 
     % The old pass 1.
 

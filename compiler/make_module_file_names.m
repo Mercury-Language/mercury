@@ -30,7 +30,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -66,6 +65,7 @@
 
 :- implementation.
 
+:- import_module map.
 :- import_module string.
 :- import_module uint.
 

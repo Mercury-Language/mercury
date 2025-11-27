@@ -246,7 +246,8 @@
     % compilation unit.
     %
 :- pred module_info_init(globals::in, module_name::in, prog_context::in,
-    string::in, include_module_map::in, used_modules::in, set(module_name)::in,
+    string::in, include_module_map::in,
+    used_modules::in, set(module_name)::in, set_tree234(module_name)::in,
     partial_qualifier_info::in, maybe(recompilation_info)::in,
     type_repn_decision_data::in, module_info::out) is det.
 
@@ -369,6 +370,8 @@
     avail_module_map::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
+:- pred module_info_get_unused_interface_imports(module_info::in,
+    set_tree234(module_name)::out) is det.
 :- pred module_info_get_maybe_complexity_proc_map(module_info::in,
     maybe(pair(int, complexity_proc_map))::out) is det.
 :- pred module_info_get_complexity_proc_infos(module_info::in,
@@ -987,6 +990,8 @@
                 % imports/uses of those modules.
                 mri_used_modules                :: used_modules,
 
+                mri_unused_interface_imports    :: set_tree234(module_name),
+
                 % Information about the procedures we are performing
                 % complexity experiments on.
                 mri_maybe_complexity_proc_map   :: maybe(pair(int,
@@ -1122,7 +1127,7 @@
 %---------------------------------------------------------------------------%
 
 module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
-        InclMap, UsedModules, ImplicitlyUsedModules,
+        InclMap, UsedModules, ImplicitlyUsedModules, UnusedInterfaceImports,
         QualifierInfo, MaybeRecompInfo, TypeRepnDec, ModuleInfo) :-
     SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
     map.init(ClassTable),
@@ -1246,6 +1251,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         AvailModuleMap,
         AvailModuleSets,
         UsedModules,
+        UnusedInterfaceImports,
         MaybeComplexityMap,
         ComplexityProcInfos,
         ProcAnalysisKinds,
@@ -1430,6 +1436,8 @@ module_info_get_avail_module_sets(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_sets.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
+module_info_get_unused_interface_imports(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_unused_interface_imports.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map.
 module_info_get_complexity_proc_infos(MI, X) :-

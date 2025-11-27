@@ -78,7 +78,7 @@
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module pretty_printer.
-:- import_module set.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 
@@ -94,23 +94,65 @@ warn_about_unused_imports(ProgressStream, ModuleInfo, !:Specs) :-
     get_avail_modules_anywhere_interface(ModuleAvails,
         cord.init, AvailAnywhereCord,
         cord.init, AvailInterfaceCord),
-    set.sorted_list_to_set(cord.list(AvailAnywhereCord),
+    set_tree234.sorted_list_to_set(cord.list(AvailAnywhereCord),
         AvailAnywhereModules),
-    set.sorted_list_to_set(cord.list(AvailInterfaceCord),
+    set_tree234.sorted_list_to_set(cord.list(AvailInterfaceCord),
         AvailInterfaceModules),
 
     UsedInInterface = UsedModules ^ int_used_modules,
     UsedInImplementation = UsedModules ^ imp_used_modules,
-    UsedAnywhere = set.union(UsedInInterface, UsedInImplementation),
+    UsedAnywhere = set_tree234.union(UsedInInterface, UsedInImplementation),
 
     % The unused imports is simply the set of all imports minus all the
     % used modules.
-    set.difference(AvailAnywhereModules, UsedAnywhere, UnusedAnywhereImports),
+    set_tree234.difference(AvailAnywhereModules, UsedAnywhere,
+        UnusedAnywhereImports),
 
     % Determine the modules imported in the interface but not used in
     % the interface.
-    UnusedInterfaceImports =
-        set.difference(AvailInterfaceModules, UsedInInterface),
+    set_tree234.difference(AvailInterfaceModules, UsedInInterface,
+        UnusedInterfaceImports0),
+    % As its name implies, UnusedInterfaceImports0 contains a subset
+    % of the modules that are imported in the interface. Specifically,
+    % it contains the subset that are not used in the interface *now*.
+    % However, it misses some imports that don't need to be in the interface
+    % because they are not used in the interface *when the HLDS is initially
+    % constructed*.
+    %
+    % To see the difference, consider a module A that imports module B
+    % in its interface. Module A's interface starts out containing
+    % no references to anything defined in module B, but it does contain
+    % a reference to a type tc, which defined in module C, which module A
+    % also imports in its interface. If module C defines and exports type tc
+    % as an equivalence type, *and* if the right hand side of that equivalence
+    % contains a reference to a type defined by module B, then module A's
+    % interface *will* contains a reference to that type from B after
+    % equiv_type.m has done its job. The same thing can also happen
+    % with inst and mode definitions.
+    %
+    % There are two obvious approaches to fixing this problem.
+    %
+    % Approach 1 is to extend the parse tree's representations of
+    % all the items that contain types, insts and modes (including
+    % type definitions, predicate and mode declarations, and typeclass
+    % method declarations) with a copy of every type, inst and mode that
+    % equiv_type.m would leave alone. We would then copy all those fields
+    % into their HLDS equivalents, and then get find_all_non_warn_modules
+    % to process those fields.
+    %
+    % Approach 2 is to remember which modules imported in the interface
+    % are not used in the interface during a traversal that we already perform,
+    % the module qualification pass (module_qual.m), which occurs *before*
+    % we invoked equiv_type.m.
+    %
+    % We use approach 2, both because it requires a lot less code, and because
+    % it imposes a much smaller memory overhead. The value returned by
+    % module_info_get_unused_interface_imports is the value computed by
+    % the module qualification pass.
+    module_info_get_unused_interface_imports(ModuleInfo,
+        UnusedInterfaceImports1),
+    set_tree234.union(UnusedInterfaceImports0, UnusedInterfaceImports1,
+        UnusedInterfaceImports),
 
     trace [compile_time(flag("debug_unused_imports")),
         runtime(env("DEBUG_UNUSED_IMPORTS")), io(!IO)]
@@ -192,7 +234,8 @@ get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
 :- type unused_avail_map ==
     one_or_more_map(unused_avail_msg_kind, unused_avail).
 
-:- pred maybe_warn_about_avail(set(module_name)::in, set(module_name)::in,
+:- pred maybe_warn_about_avail(
+    set_tree234(module_name)::in, set_tree234(module_name)::in,
     module_name::in, avail_module_entry::in,
     list(error_spec)::in, list(error_spec)::out,
     unused_avail_map::in, unused_avail_map::out) is det.
@@ -217,7 +260,7 @@ maybe_warn_about_avail(UnusedAnywhereImports, UnusedInterfaceImports,
         HeadAvail = avail_module(Section, ImportOrUse, HeadCtxt),
         maybe_generate_redundant_avail_warnings(ModuleName, SortedAvails,
             [], !Specs),
-        ( if set.contains(UnusedAnywhereImports, ModuleName) then
+        ( if set_tree234.contains(UnusedAnywhereImports, ModuleName) then
             MsgKindA = unused_avail_msg_kind(aoi_anywhere, ImportOrUse),
             one_or_more_map.add(MsgKindA, unused_avail(HeadCtxt, ModuleName),
                 !UnusedAvailMap),
@@ -227,7 +270,7 @@ maybe_warn_about_avail(UnusedAnywhereImports, UnusedInterfaceImports,
         ),
         ( if
             Section = ms_interface,
-            set.contains(UnusedInterfaceImports, ModuleName),
+            set_tree234.contains(UnusedInterfaceImports, ModuleName),
             % Do not generate a report that a module is unused in the interface
             % if we have generated a report that it is unused *anywhere*.
             AnywhereWarning = no
@@ -506,36 +549,36 @@ find_all_non_warn_modules(ProgressStream, ModuleInfo, !:UsedModules) :-
             "instances"       - UsedModulesInstance,
             "builtin"         - UsedModulesBuiltin
         ],
-        dump_used_modules_history(ProgressStream, set.init, set.init,
-            UsedModulesHistory, !IO)
+        dump_used_modules_history(ProgressStream,
+            set_tree234.init, set_tree234.init, UsedModulesHistory, !IO)
     ).
 
 :- pred dump_used_modules_history(io.text_output_stream::in,
-    set(module_name)::in, set(module_name)::in,
+    set_tree234(module_name)::in, set_tree234(module_name)::in,
     assoc_list(string, used_modules)::in, io::di, io::uo) is det.
 
 dump_used_modules_history(_, _, _, [], !IO).
 dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed,
         [Head | Tail], !IO) :-
     Head = HeadStr - used_modules(HeadInt, HeadImp),
-    set.difference(HeadInt, !.IntUsed, NewHeadInt),
-    set.difference(HeadImp, !.ImpUsed, NewHeadImp),
+    set_tree234.difference(HeadInt, !.IntUsed, NewHeadInt),
+    set_tree234.difference(HeadImp, !.ImpUsed, NewHeadImp),
     io.format(ProgressStream, "modules added at stage %s\n\n",
         [s(HeadStr)], !IO),
-    ( if set.is_empty(NewHeadInt) then
+    ( if set_tree234.is_empty(NewHeadInt) then
         true
     else
         io.write_string(ProgressStream, "interface:\n", !IO),
         output_module_name_set_nl(ProgressStream, NewHeadInt, !IO)
     ),
-    ( if set.is_empty(NewHeadImp) then
+    ( if set_tree234.is_empty(NewHeadImp) then
         true
     else
         io.write_string(ProgressStream, "implementation:\n", !IO),
         output_module_name_set_nl(ProgressStream, NewHeadImp, !IO)
     ),
-    set.union(HeadInt, !IntUsed),
-    set.union(HeadImp, !ImpUsed),
+    set_tree234.union(HeadInt, !IntUsed),
+    set_tree234.union(HeadImp, !ImpUsed),
     dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed, Tail, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -759,8 +802,9 @@ const_struct_used_modules(ProgressStream, ConstNum - ConstStruct,
             FinalUsedModules = !.UsedModules,
             InitUsedModules = used_modules(_InitIntModules, InitImpModules),
             FinalUsedModules = used_modules(_FinalIntModules, FinalImpModules),
-            set.difference(FinalImpModules, InitImpModules, NewImpModules),
-            ( if set.is_empty(NewImpModules) then
+            set_tree234.difference(FinalImpModules, InitImpModules,
+                NewImpModules),
+            ( if set_tree234.is_empty(NewImpModules) then
                 true
             else
                 ConstStructDoc = pretty_printer.format(ConstStruct),
@@ -834,16 +878,18 @@ pred_info_used_modules(ProgressStream, PredId, PredInfo, !UsedModules) :-
             FinalUsedModules = !.UsedModules,
             InitUsedModules = used_modules(InitIntModules, InitImpModules),
             FinalUsedModules = used_modules(FinalIntModules, FinalImpModules),
-            set.difference(FinalIntModules, InitIntModules, NewIntModules),
-            set.difference(FinalImpModules, InitImpModules, NewImpModules),
-            ( if set.is_empty(NewIntModules) then
+            set_tree234.difference(FinalIntModules, InitIntModules,
+                NewIntModules),
+            set_tree234.difference(FinalImpModules, InitImpModules,
+                NewImpModules),
+            ( if set_tree234.is_empty(NewIntModules) then
                 true
             else
                 io.write_string(ProgressStream,
                     "new interface modules:\n", !IO),
                 output_module_name_set_nl(ProgressStream, NewIntModules, !IO)
             ),
-            ( if set.is_empty(NewImpModules) then
+            ( if set_tree234.is_empty(NewImpModules) then
                 true
             else
                 io.write_string(ProgressStream,
@@ -1255,11 +1301,11 @@ exported_to_visibility(Exported) = Visibility :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_module_name_set_nl(io.text_output_stream::in,
-    set(module_name)::in, io::di, io::uo) is det.
+    set_tree234(module_name)::in, io::di, io::uo) is det.
 
 output_module_name_set_nl(Stream, ModuleNameSet, !IO) :-
-    ModuleNameStrSet = set.map(sym_name_to_string, ModuleNameSet),
-    set.to_sorted_list(ModuleNameStrSet, ModuleNameStrs),
+    ModuleNameStrSet = set_tree234.map(sym_name_to_string, ModuleNameSet),
+    set_tree234.to_sorted_list(ModuleNameStrSet, ModuleNameStrs),
     list.foldl(write_string_nl(Stream), ModuleNameStrs, !IO),
     io.nl(Stream, !IO).
 

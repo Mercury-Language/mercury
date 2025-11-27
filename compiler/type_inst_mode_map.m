@@ -19,7 +19,6 @@
 :- module parse_tree.type_inst_mode_map.
 :- interface.
 
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -70,6 +69,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module cord.
 :- import_module map.
