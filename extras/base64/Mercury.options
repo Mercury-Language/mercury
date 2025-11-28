@@ -6,4 +6,4 @@ MCFLAGS += --libgrades-exclude-component java
 MCFLAGS += --libgrades-exclude-component csharp
 
 MCFLAGS-mercury_base64 += --no-warn-nothing-exported
-MCFLAGS-mercury_base64 += --no-warn-interface-imports
+MCFLAGS-mercury_base64 += --no-warn-unused-interface-imports

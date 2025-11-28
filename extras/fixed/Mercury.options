@@ -1,1 +1,2 @@
-MCFLAGS-mercury_fixed = --no-warn-nothing-exported --no-warn-interface-imports
+MCFLAGS-mercury_fixed += --no-warn-nothing-exported
+MCFLAGS-mercury_fixed += --no-warn-unused-interface-imports

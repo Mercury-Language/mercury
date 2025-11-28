@@ -9,11 +9,6 @@
 
 MAIN_TARGET = libmercury_glut
 
-MCFLAGS-mercury_glut+=--no-warn-nothing-exported --no-warn-interface-imports
-
-MCFLAGS += --halt-at-warn --transitive-intermodule-optimization \
-	--enable-termination --analyse-exceptions
-
 MLLIBS = -framework GLUT
 
 depend: mercury_glut.depend

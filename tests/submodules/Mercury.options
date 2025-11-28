@@ -9,7 +9,7 @@ MCFLAGS-direct_arg_intermod_helper_1    += --intermod-opt
 MCFLAGS-direct_arg_intermod_helper_2    += --intermod-opt
 MCFLAGS-g12_fe_bug                      += --intermod-opt
 MCFLAGS-g12_fe_bug.g12_fe_bug_helper_1  += --intermod-opt \
-                                            --no-warn-interface-imports
+                                            --no-warn-unused-interface-imports
 MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2  += --intermod-opt
 MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2.g12_fe_bug_helper_3 += \
                                         --intermod-opt

@@ -1637,6 +1637,12 @@ Changes to the Mercury compiler
   The compiler still accepts the old names, but we intend to remove them
   after the next stable release.
 
+* We have changed the preferred name of the `--warn-interface-imports option`
+  to `--warn-unused-interface-imports`, which is more descriptive.
+
+  The compiler still accepts the old name, but we intend to remove it
+  after the next stable release.
+
 * On macOS systems, the configure script now uses the value of the
   `MACOSX_DEPLOYMENT_TARGET` environment variable as the default value for the
   deployment target, if set.

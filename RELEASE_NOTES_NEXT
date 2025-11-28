@@ -9,3 +9,5 @@ After the release, delete from io.m the predicates that simply forward
 the work to one of the submodules we carved off io.m years ago.
 
 For each of the quoted-x-flag options, delete its original x-flag version.
+
+Delete the --warn-interface-imports option name synonym.

@@ -30,7 +30,7 @@ MCFLAGS-unused_args_analysis_helper_1 += --intermodule-analysis \
                                     --optimize-unused-args \
                                     --trace-optimized
 MCFLAGS-unused_args_test        += --warn-unused-args
-MCFLAGS-unused_import           += --warn-interface-imports
+MCFLAGS-unused_import           += --warn-unused-interface-imports
 MCFLAGS-inference_test          += --infer-all
 MCFLAGS-save                    += --warn-implicit-stream-calls
 

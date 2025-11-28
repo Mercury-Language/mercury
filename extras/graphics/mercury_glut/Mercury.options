@@ -1,0 +1,7 @@
+MCFLAGS-mercury_glut    += --no-warn-nothing-exported
+MCFLAGS-mercury_glut    += --no-warn-unused-interface-imports
+
+MCFLAGS += --halt-at-warn
+MCFLAGS += --transitive-intermodule-optimization
+MCFLAGS += --enable-termination
+MCFLAGS += --analyse-exceptions

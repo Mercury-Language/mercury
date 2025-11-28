@@ -893,11 +893,7 @@ Warning options
     --warn-unused-imports
         Warn about modules that are imported but not used.
 
-    PRIVATE OPTION
     --no-warn-unused-interface-imports
-        Warn about modules that are imported in the interface but not used
-        there.
-
     --no-warn-interface-imports
         Do not warn about modules imported in the interface, but which are not
         used in the interface.

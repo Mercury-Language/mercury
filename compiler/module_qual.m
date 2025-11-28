@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,18 +53,18 @@
 %
 % For the same reason (we don't know what modules predicate names,
 % function names and function symbols in goals may refer to), this package
-% cannot implement any equivalent of --warn-interface-imports that would
+% cannot implement any equivalent of --warn-unused-interface-imports that would
 % report unnecessary imports in the *implementation* section of a module.
 %
 % If the --warn-unused-imports option is set, then unused_imports.m
-% can generate all the warnings we would, but it can generate *better*
-% messages, since unlike the code here, it can report that an imported module
-% is unused *anywhere* in the module. However, even if --warn-unused-imports
-% *is* set, the code in unused_imports.m won't be invoked if we stop
-% compilation before its normal invocation time, due to e.g. type or more
-% errors. What we should do is generate warnings here; print them if we
-% stop before the unused_imports pass; throw them away if we *do* get to
-% that pass. We don't (yet) do this.
+% can generate all the warnings we would, but it can generate *more* messages,
+% since unlike the code here, it can report that an imported module is unused
+% *anywhere* in the module. However, even if --warn-unused-imports *is* set,
+% the code in unused_imports.m won't be invoked if we stop compilation
+% before its normal invocation time, due to e.g. the op_mode being
+% the creation of an interface file. We therefore print warnings about
+% unneeded imports in the interface section only if the option controlling
+% its operation dictates that the code in unused_imports.m won't be invoked.
 %
 %---------------------------------------------------------------------------%
 

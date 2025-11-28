@@ -32,9 +32,6 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 -include ../Mmake.params
 
-# Do not issue a warning because mercury_odbc does not export anything.
-MCFLAGS-mercury_odbc = --no-warn-nothing-exported --no-warn-interface-imports
-
 #-----------------------------------------------------------------------------#
 
 ifeq ($(MODBC_DRIVER),MODBC_MS)

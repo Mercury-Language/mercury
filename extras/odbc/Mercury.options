@@ -1,4 +1,7 @@
-MCFLAGS-odbc +=--no-allow-ho-insts-as-modes
+MCFLAGS-mercury_odbc += --no-warn-nothing-exported
+MCFLAGS-mercury_odbc += --no-warn-unused-interface-imports
+
+MCFLAGS-odbc += --no-allow-ho-insts-as-modes
 MCFLAGS-odbc += --warn-dead-preds
 MCFLAGS-odbc += --warn-implicit-stream-calls
 MCFLAGS-odbc += --warn-inconsistent-pred-order-clauses

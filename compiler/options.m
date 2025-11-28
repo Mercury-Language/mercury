@@ -434,7 +434,6 @@
     ;       warn_nothing_exported
     ;       warn_unused_imports
     ;       warn_unused_interface_imports
-    ;       warn_interface_imports
     ;       warn_interface_imports_in_parents
     ;       warn_stdlib_shadowing
     ;       warn_duplicate_abstract_instances
@@ -2505,13 +2504,7 @@ optdb(oc_warn_dodgy_mod, warn_unused_imports,          bool(no),
     help("warn-unused-imports", [
         w("Warn about modules that are imported but not used.")])).
 optdb(oc_warn_dodgy_mod, warn_unused_interface_imports, bool(yes),
-    % Not documented because its relationship with --warn-unused-imports
-    % is too complicated for users (and maybe even developers ...).
-    priv_help("warn-unused-interface-imports", [
-        w("Warn about modules that are imported in the interface"),
-        w("but not used there.")])).
-optdb(oc_warn_dodgy_mod, warn_interface_imports,       bool(yes),
-    help("warn-interface-imports", [
+    alt_help("warn-unused-interface-imports", ["warn-interface-imports"], [
         w("Do not warn about modules imported in the interface,"),
         w("but which are not used in the interface.")])).
 optdb(oc_warn_dodgy_mod, warn_interface_imports_in_parents, bool(no),

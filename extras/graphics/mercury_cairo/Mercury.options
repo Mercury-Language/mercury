@@ -11,4 +11,5 @@ MCFLAGS = \
 	--cflags $(CAIRO_CFLAGS)					\
 	--ld-flags $(CAIRO_LDFLAGS)
 
-MCFLAGS-mercury_cairo = --no-warn-nothing-exported --no-warn-interface-imports
+MCFLAGS-mercury_cairo += --no-warn-nothing-exported
+MCFLAGS-mercury_cairo += --no-warn-unused-interface-imports

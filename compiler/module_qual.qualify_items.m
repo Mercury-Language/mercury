@@ -196,7 +196,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
-        globals.lookup_bool_option(Globals, warn_interface_imports,
+        globals.lookup_bool_option(Globals, warn_unused_interface_imports,
             WarnInterfaceImports),
         (
             WarnInterfaceImports = no

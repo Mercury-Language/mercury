@@ -1,0 +1,8 @@
+# Don't issue a warning because mercury_opengl doesn't export anything.
+MCFLAGS-mercury_opengl  += --no-warn-nothing-exported
+MCFLAGS-mercury_opengl  += --no-warn-unused-interface-imports
+
+# This is needed for a few predicates whose code is incomplete.
+MCFLAGS-mogl            += --no-warn-inferred-erroneous
+
+MCFLAGS                 = --halt-at-warn --intermodule-optimization
