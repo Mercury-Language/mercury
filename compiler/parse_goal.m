@@ -523,7 +523,7 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         parse_goal_true_fail(GoalKind, Args, Context, ContextPieces, MaybeGoal)
     ;
         GoalKind = gk_equal,
-        parse_goal_equal(Args, Context, ContextPieces, MaybeGoal)
+        parse_goal_equal(!.VarSet, Args, Context, ContextPieces, MaybeGoal)
     ).
 
 %---------------------%
@@ -1632,15 +1632,36 @@ parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal) :-
 
 %---------------------%
 
-:- pred parse_goal_equal(list(term)::in, term.context::in,
+:- pred parse_goal_equal(prog_varset::in, list(term)::in, term.context::in,
     cord(format_piece)::in, maybe2(goal, list(warning_spec))::out) is det.
-:- pragma inline(pred(parse_goal_equal/4)).
+:- pragma inline(pred(parse_goal_equal/5)).
 
-parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal) :-
+parse_goal_equal(VarSet, ArgTerms, Context, ContextPieces, MaybeGoal) :-
     ( if ArgTerms = [TermA0, TermB0] then
         term.coerce(TermA0, TermA),
         term.coerce(TermB0, TermB),
-        MaybeGoal = ok2(unify_expr(Context, TermA, TermB, purity_pure), [])
+        Goal = unify_expr(Context, TermA, TermB, purity_pure),
+        ( if
+            TermA = functor(atom("^"), [TermAA, TermAB], Context),
+            TermAA = functor(atom("!"), [variable(Var, _)], _Context),
+            TermAB = functor(atom(FieldName), [], _)
+        then
+            VarName = mercury_var_to_string_vs(VarSet, print_name_only, Var),
+            string.format("!%s ^ %s", [s(VarName), s(FieldName)], ExprStr),
+            Pieces = [words("Warning: if the expression")] ++
+                color_as_subject([quote(ExprStr)]) ++
+                [words("is intended to be part of a field update,"),
+                words("then it should be followed by")] ++
+                color_as_correct([quote(":="), suffix(",")]) ++
+                [words("not")] ++
+                color_as_incorrect([quote("="), suffix(".")]) ++ [nl],
+            Severity = severity_warning(warn_dodgy_simple_code),
+            WarningSpec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+            WarningSpecs = [WarningSpec]
+        else
+            WarningSpecs = []
+        ),
+        MaybeGoal = ok2(Goal, WarningSpecs)
     else
         Spec = should_have_two_terms_infix(ContextPieces, Context, "="),
         MaybeGoal = error2([Spec])
