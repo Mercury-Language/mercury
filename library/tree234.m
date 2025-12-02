@@ -624,6 +624,12 @@
     in, out, mdi, muo) is semidet.
 :- mode map_foldl(in(pred(in, in, out, di, uo) is semidet),
     in, out, di, uo) is semidet.
+:- mode map_foldl(in(pred(in, in, out, in, out) is cc_multi),
+    in, out, in, out) is cc_multi.
+:- mode map_foldl(in(pred(in, in, out, mdi, muo) is cc_multi),
+    in, out, mdi, muo) is cc_multi.
+:- mode map_foldl(in(pred(in, in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 
 :- pred map_foldl2(pred(K, V, W, A, A, B, B),
     tree234(K, V), tree234(K, W), A, A, B, B).
@@ -641,6 +647,12 @@
     in, out, in, out, mdi, muo) is semidet.
 :- mode map_foldl2(in(pred(in, in, out, in, out, di, uo) is semidet),
     in, out, in, out, di, uo) is semidet.
+:- mode map_foldl2(in(pred(in, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl2(in(pred(in, in, out, in, out, mdi, muo) is cc_multi),
+    in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl2(in(pred(in, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
 :- pred map_foldl3(pred(K, V, W, A, A, B, B, C, C),
     tree234(K, V), tree234(K, W), A, A, B, B, C, C).
@@ -663,6 +675,12 @@
 :- mode map_foldl3(in(pred(in, in, out, in, out, in, out, di, uo)
     is semidet),
     in, out, in, out, in, out, di, uo) is semidet.
+:- mode map_foldl3(in(pred(in, in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl3(in(pred(in, in, out, in, out, in, out, mdi, muo) is cc_multi),
+    in, out, in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl3(in(pred(in, in, out, di, uo, di, uo, di, uo) is cc_multi),
+    in, out, di, uo, di, uo, di, uo) is cc_multi.
 
 :- pred map_foldl4(pred(K, V, W, A, A, B, B, C, C, D, D),
     tree234(K, V), tree234(K, W), A, A, B, B, C, C, D, D).
@@ -690,82 +708,119 @@
 :- mode map_foldl4(
     in(pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, out, in, out, in, out, in, out, di, uo) is semidet.
+:- mode map_foldl4(
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl4(
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is cc_multi),
+    in, out, in, out, in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl4(
+    in(pred(in, in, out, in, out, di, uo, di, uo, di, uo) is cc_multi),
+    in, out, in, out, di, uo, di, uo, di, uo) is cc_multi.
 
 :- pred map_values_foldl(pred(V, W, A, A),
     tree234(K, V), tree234(K, W), A, A).
-:- mode map_values_foldl(in(pred(in, out, di, uo) is det),
-    in, out, di, uo) is det.
 :- mode map_values_foldl(in(pred(in, out, in, out) is det),
     in, out, in, out) is det.
+:- mode map_values_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
 :- mode map_values_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
+:- mode map_values_foldl(in(pred(in, out, in, out) is cc_multi),
+    in, out, in, out) is cc_multi.
+:- mode map_values_foldl(in(pred(in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 
 :- pred map_values_only_foldl(pred(V, W, A, A),
     tree234(K, V), tree234(K, W), A, A).
-:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
-    in, out, di, uo) is det.
 :- mode map_values_only_foldl(in(pred(in, out, in, out) is det),
     in, out, in, out) is det.
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
 :- mode map_values_only_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is cc_multi),
+    in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 
 :- pred map_values_foldl2(pred(V, W, A, A, B, B),
     tree234(K, V), tree234(K, W), A, A, B, B).
-:- mode map_values_foldl2(in(pred(in, out, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo) is det.
-:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is det),
-    in, out, in, out, di, uo) is det.
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
+:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
+:- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
 :- pred map_values_only_foldl2(pred(V, W, A, A, B, B),
     tree234(K, V), tree234(K, W), A, A, B, B).
-:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo) is det.
-:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
-    in, out, in, out, di, uo) is det.
 :- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
 :- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
 :- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
     tree234(K, V), tree234(K, W), A, A, B, B, C, C).
 :- mode map_values_foldl3(
-    in(pred(in, out, di, uo, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo, di, uo) is det.
-:- mode map_values_foldl3(
-    in(pred(in, out, in, out, di, uo, di, uo) is det),
-    in, out, in, out, di, uo, di, uo) is det.
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
 :- mode map_values_foldl3(
     in(pred(in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, di, uo) is det.
 :- mode map_values_foldl3(
-    in(pred(in, out, in, out, in, out, in, out) is det),
-    in, out, in, out, in, out, in, out) is det.
+    in(pred(in, out, in, out, di, uo, di, uo) is det),
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map_values_foldl3(
+    in(pred(in, out, di, uo, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo, di, uo) is det.
 :- mode map_values_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
+:- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, in, out, di, uo) is cc_multi.
 
 :- pred map_values_only_foldl3(pred(V, W, A, A, B, B, C, C),
     tree234(K, V), tree234(K, W), A, A, B, B, C, C).
 :- mode map_values_only_foldl3(
-    in(pred(in, out, di, uo, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo, di, uo) is det.
-:- mode map_values_only_foldl3(
-    in(pred(in, out, in, out, di, uo, di, uo) is det),
-    in, out, in, out, di, uo, di, uo) is det.
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
 :- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, di, uo) is det.
 :- mode map_values_only_foldl3(
-    in(pred(in, out, in, out, in, out, in, out) is det),
-    in, out, in, out, in, out, in, out) is det.
+    in(pred(in, out, in, out, di, uo, di, uo) is det),
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, di, uo, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo, di, uo) is det.
 :- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, in, out, di, uo) is cc_multi.
 
 %---------------------%
 

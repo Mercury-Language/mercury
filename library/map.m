@@ -1100,6 +1100,12 @@ semidet),
     mdi, muo) is semidet.
 :- mode map_foldl(in(pred(in, in, out, di, uo) is semidet), in, out,
     di, uo) is semidet.
+:- mode map_foldl(in(pred(in, in, out, in, out) is cc_multi), in, out, in, out)
+    is cc_multi.
+:- mode map_foldl(in(pred(in, in, out, mdi, muo) is cc_multi), in, out,
+    mdi, muo) is cc_multi.
+:- mode map_foldl(in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo)
+    is cc_multi.
 
     % As map_foldl, but with two accumulators.
     %
@@ -1119,6 +1125,12 @@ semidet),
     in, out, in, out, mdi, muo) is semidet.
 :- mode map_foldl2(in(pred(in, in, out, in, out, di, uo) is semidet),
     in, out, in, out, di, uo) is semidet.
+:- mode map_foldl2(in(pred(in, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl2(in(pred(in, in, out, in, out, mdi, muo) is cc_multi),
+    in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl2(in(pred(in, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
     % As map_foldl, but with three accumulators.
     %
@@ -1148,6 +1160,15 @@ semidet),
 :- mode map_foldl3(
     in(pred(in, in, out, in, out, in, out, di, uo) is semidet),
     in, out, in, out, in, out, di, uo) is semidet.
+:- mode map_foldl3(
+    in(pred(in, in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl3(
+    in(pred(in, in, out, in, out, in, out, mdi, muo) is cc_multi),
+    in, out, in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl3(
+    in(pred(in, in, out, di, uo, di, uo, di, uo) is cc_multi),
+    in, out, di, uo, di, uo, di, uo) is cc_multi.
 
     % As map_foldl, but with four accumulators.
     %
@@ -1177,6 +1198,15 @@ semidet),
 :- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is semidet),
     in, out, in, out, in, out, in, out, di, uo) is semidet.
+:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, in, out)
+    is cc_multi),
+    in, out, in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+    is cc_multi),
+    in, out, in, out, in, out, in, out, mdi, muo) is cc_multi.
+:- mode map_foldl4(in(pred(in, in, out, in, out, di, uo, di, uo, di, uo)
+    is cc_multi),
+    in, out, in, out, di, uo, di, uo, di, uo) is cc_multi.
 
 %---------------------%
 
@@ -1187,88 +1217,116 @@ semidet),
     % take a key argument.
     %
 :- pred map_values_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
-:- mode map_values_foldl(in(pred(in, out, di, uo) is det),
-    in, out, di, uo) is det.
 :- mode map_values_foldl(in(pred(in, out, in, out) is det),
     in, out, in, out) is det.
+:- mode map_values_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
 :- mode map_values_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
+:- mode map_values_foldl(in(pred(in, out, in, out) is cc_multi),
+    in, out, in, out) is cc_multi.
+:- mode map_values_foldl(in(pred(in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 
     % As map_foldl, but without passing the key to the predicate.
     %
 :- pred map_values_only_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
-:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
-    in, out, di, uo) is det.
 :- mode map_values_only_foldl(in(pred(in, out, in, out) is det),
     in, out, in, out) is det.
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
 :- mode map_values_only_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is cc_multi),
+    in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 
     % As map_values_only_foldl, but with two accumulators.
     %
 :- pred map_values_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
-:- mode map_values_foldl2(in(pred(in, out, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo) is det.
-:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is det),
-    in, out, in, out, di, uo) is det.
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
+:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
+:- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_values_foldl2(in(pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
     % As map_values_only_foldl, but with two accumulators.
     %
 :- pred map_values_only_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
-:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo) is det.
-:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
-    in, out, in, out, di, uo) is det.
 :- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
 :- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, di, uo) is cc_multi.
 
     % As map_values_only_foldl, but with three accumulators.
     %
 :- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
     map(K, V), map(K, W), A, A, B, B, C, C).
 :- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
+:- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is det),
+    in, out, in, out, in, out, di, uo) is det.
+:- mode map_values_foldl3(
     in(pred(in, out, di, uo, di, uo, di, uo) is det),
     in, out, di, uo, di, uo, di, uo) is det.
 :- mode map_values_foldl3(
     in(pred(in, out, in, out, di, uo, di, uo) is det),
     in, out, in, out, di, uo, di, uo) is det.
 :- mode map_values_foldl3(
-    in(pred(in, out, in, out, in, out, di, uo) is det),
-    in, out, in, out, in, out, di, uo) is det.
-:- mode map_values_foldl3(
-    in(pred(in, out, in, out, in, out, in, out) is det),
-    in, out, in, out, in, out, in, out) is det.
-:- mode map_values_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
+:- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, in, out, di, uo) is cc_multi.
 
     % As map_values_only_foldl, but with three accumulators.
     %
 :- pred map_values_only_foldl3(pred(V, W, A, A, B, B, C, C),
     map(K, V), map(K, W), A, A, B, B, C, C).
 :- mode map_values_only_foldl3(
-    in(pred(in, out, di, uo, di, uo, di, uo) is det),
-    in, out, di, uo, di, uo, di, uo) is det.
-:- mode map_values_only_foldl3(
-    in(pred(in, out, in, out, di, uo, di, uo) is det),
-    in, out, in, out, di, uo, di, uo) is det.
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
 :- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, di, uo) is det.
 :- mode map_values_only_foldl3(
-    in(pred(in, out, in, out, in, out, in, out) is det),
-    in, out, in, out, in, out, in, out) is det.
+    in(pred(in, out, in, out, di, uo, di, uo) is det),
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, di, uo, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo, di, uo) is det.
 :- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is cc_multi),
+    in, out, in, out, in, out, in, out) is cc_multi.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is cc_multi),
+    in, out, in, out, in, out, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

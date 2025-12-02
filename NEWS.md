@@ -670,6 +670,9 @@ Changes to the Mercury standard library
     - pred `compose_maps/3`
     - pred `sorted_keys_match/2`
 
+* We have added `cc_multi` versions of many of the higher-order predicates in
+  this module
+
 ### Changes to the `mercury_term_lexer` module
 
 * The representation type of the tokens returned has been tightened.
@@ -1309,6 +1312,9 @@ Changes to the Mercury standard library
 
     - func `tree234_to_doc/1`
                             (replacement: `pretty_printer.tree234_to_doc/1`)
+
+* We have added `cc_multi` versions of many of the higher-order predicates in
+  this module
 
 ### Changes to the `tree_bitset` module
 
