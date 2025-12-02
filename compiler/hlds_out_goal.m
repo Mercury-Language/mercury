@@ -2133,12 +2133,11 @@ format_goal_switch(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-    string.builder.format("%s( %% %s switch on `%s'\n",
+    string.builder.format("%s( %% %s switch on %s\n",
         [s(IndentStr), s(CanFailStr), s(VarStr)], !State),
-    Indent1 = Indent + 1u,
     (
         CasesList = [Case | Cases],
-        write_case(InfoGoal, Indent1, Var, Case, !State),
+        write_case(InfoGoal, Indent, Var, Case, !State),
         write_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = [],
@@ -2155,7 +2154,7 @@ write_cases(InfoGoal, Indent, Var, CasesList, !State) :-
         CasesList = [Case | Cases],
         IndentStr = indent2_string(Indent),
         string.builder.format("%s;\n", [s(IndentStr)], !State),
-        write_case(InfoGoal, Indent + 1u, Var, Case, !State),
+        write_case(InfoGoal, Indent, Var, Case, !State),
         write_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = []
@@ -2177,6 +2176,8 @@ write_case(InfoGoal, Indent, Var, Case, !State) :-
     ConsIdStrs = list.map(unqual_cons_id_and_arity_to_string,
         [MainConsId | OtherConsIds]),
     ConsIdsStr = string.join_list(" or ", ConsIdStrs),
+    % Align the line listing the case's functors with the parentheses
+    % around the switch, having them stand out from the case arm goals.
     string.builder.format("%s%% %s has functor %s\n",
         [s(IndentStr), s(VarStr), s(ConsIdsStr)], !State),
     % XXX if the output of this is to be used, e.g. in
@@ -2184,7 +2185,7 @@ write_case(InfoGoal, Indent, Var, Case, !State) :-
     % Var to the functor, since simplify.m and unused_args.m remove
     % the unification. At the moment this is not a problem, since
     % intermod.m works on the unoptimized clauses.
-    do_format_goal(InfoGoal, Indent, "\n", Goal, !State).
+    do_format_goal(InfoGoal, Indent + 1u, "\n", Goal, !State).
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
