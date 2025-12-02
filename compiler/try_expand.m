@@ -72,7 +72,10 @@
 %
 %---------------------------------------------------------------------------%
 %
-% PRE-TRANSFORMATION (implemented in add_clause.m)
+% PRE-TRANSFORMATION
+%
+% This pre-transformation is implemented in goal_expr_to_goal.m,
+% which is invoked ultimately from add_clause.m.
 %
 % 1. try goal without I/O but with an else part
 %

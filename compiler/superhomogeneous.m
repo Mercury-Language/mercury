@@ -634,8 +634,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             YAtom = "-->",
             LambdaBodyKind = lambda_body_dcg
         ),
-        % A lambda expression with a body goal. It may or may not have purity
-        % marker.
+        % A lambda expression with a body goal. It may or may not have
+        % a purity marker.
         ( if YArgTerms = [PurityPFArgsDetTerm, BodyGoalTerm] then
             require_det(
                 parse_lambda_expr(XVar, Purity,
