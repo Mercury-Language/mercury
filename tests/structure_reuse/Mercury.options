@@ -1,2 +1,6 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 # As far as I (zs) can tell, no --cell-cache option was ever in the repository.
 # MCFLAGS-interpret=--cell-cache

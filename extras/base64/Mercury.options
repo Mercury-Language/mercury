@@ -1,7 +1,10 @@
-# The base64 module (currently) only provides a C implementation of the
-# encoder / decoder.  Compilation will fail if we attempt to build it
-# in a non-C grade.
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
+# The base64 module (currently) only provides a C implementation of the
+# encoder / decoder. Compilation will fail if we attempt to build it
+# in a non-C grade.
 MCFLAGS += --libgrades-exclude-component java 
 MCFLAGS += --libgrades-exclude-component csharp
 

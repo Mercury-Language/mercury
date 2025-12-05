@@ -1,4 +1,6 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 # With the Mercury system as of 17 September 1998,
 # tc_minimal works on some machines even in the presence of a known bug

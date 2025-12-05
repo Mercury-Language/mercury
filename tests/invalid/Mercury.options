@@ -1,5 +1,7 @@
-# vim: ts=4 sw=4 expandtab
-#
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 # Inter-module optimization changes the diagnostics for some tests
 # (in most cases reporting diagnostics when writing the `.opt' file).
 # For those tests, we just disable inter-module optimization.
@@ -10,8 +12,8 @@ MCFLAGS-any_mode                += --infer-types
 # doesn't know whether items imported from `.opt' files were imported
 # in the interface or the implementation. The error is reported correctly
 # when building the `.opt' file.
-MCFLAGS-assert_in_interface     += --no-intermodule-optimization \
-                                    --verbose-error-messages
+MCFLAGS-assert_in_interface     += --no-intermodule-optimization
+MCFLAGS-assert_in_interface     += -E
 
 MCFLAGS-abstract_eqv            += --no-intermodule-optimization
 MCFLAGS-actual_expected         += --no-intermodule-optimization
@@ -19,78 +21,74 @@ MCFLAGS-actual_more_expected    += -E
 MCFLAGS-any_to_ground_in_ite_cond_nomax += --no-max-error-line-width
 MCFLAGS-bad_ambiguity_msg       += -E
 MCFLAGS-bad_exported_mode       += --infer-all --no-intermodule-optimization
-MCFLAGS-bug150_bad_color        += --ignore-color-scheme-envvar \
-                                --color-scheme specified@holy=8:hint=cow
-MCFLAGS-bug150_partial_color    += --ignore-color-scheme-envvar \
-                                --color-scheme specified@incorrect=203
+MCFLAGS-bug150_bad_color        += --ignore-color-scheme-envvar
+MCFLAGS-bug150_bad_color        += --color-scheme specified@holy=8:hint=cow
+MCFLAGS-bug150_partial_color    += --ignore-color-scheme-envvar
+MCFLAGS-bug150_partial_color    += --color-scheme specified@incorrect=203
 # Intermodule optimization changes the number of an unnamed variable
 # whose automatically-constructed "name" shows up in the .err file.
-MCFLAGS-bug214                  += --allow-stubs --no-warn-stubs \
-                                    --no-intermodule-optimization
+MCFLAGS-bug214                  += --allow-stubs --no-warn-stubs
+MCFLAGS-bug214                  += --no-intermodule-optimization
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238                  += --constraint-propagation
 MCFLAGS-children                += --no-intermodule-optimization
 MCFLAGS-coerce_implied_mode     += --halt-at-warn
 MCFLAGS-coerce_infer            += --infer-all
-MCFLAGS-coerce_typecheck_eqv	+= --no-intermodule-optimization
+MCFLAGS-coerce_typecheck_eqv    += --no-intermodule-optimization
 MCFLAGS-coerce_typecheck_eqv_helper_1 += --no-intermodule-optimization
 MCFLAGS-coerce_void             += --halt-at-warn
 MCFLAGS-duplicate_instance      += --no-intermodule-optimization
 MCFLAGS-duplicate_instance_helper_1 += --no-intermodule-optimization
-MCFLAGS-ee_invalid              += --verbose-error-messages
+MCFLAGS-ee_invalid              += -E
 MCFLAGS-exported_mode           += --infer-all --no-intermodule-optimization
 MCFLAGS-exported_unify          += --no-intermodule-optimization
-MCFLAGS-fe_unmapped_verbose     += --verbose-error-messages
-MCFLAGS-foreign_decl_line_number += --no-errorcheck-only --line-numbers \
-                                    --line-numbers-for-c-headers
-MCFLAGS-foreign_enum_invalid    += --verbose-error-messages
+MCFLAGS-fe_unmapped_verbose     += -E
+MCFLAGS-foreign_decl_line_number += --no-errorcheck-only
+MCFLAGS-foreign_decl_line_number += --line-numbers --line-numbers-for-c-headers
+MCFLAGS-foreign_enum_invalid    += -E
 MCFLAGS-foreign_include_file_missing += --canonicalize-error-path-names
-MCFLAGS-foreign_type_line_number += --no-errorcheck-only --line-numbers \
-                                    --compile-only
+MCFLAGS-foreign_type_line_number += --no-errorcheck-only
+MCFLAGS-foreign_type_line_number += --line-numbers --compile-only
 MCFLAGS-foreign_type_2          += --no-intermodule-optimization
 MCFLAGS-foreign_type_visibility += --no-intermodule-optimization
 MCFLAGS-gh72_errors             += --no-errorcheck-only
-MCFLAGS-illtyped_compare        += --no-intermodule-optimization \
-                                    --verbose-error-messages
-MCFLAGS-impure_method_impl      += --no-intermodule-optimization \
-                                    --verbose-error-messages \
-                                    --warn-too-private-instances
+MCFLAGS-illtyped_compare        += --no-intermodule-optimization -E
+MCFLAGS-impure_method_impl      += --no-intermodule-optimization -E
+MCFLAGS-impure_method_impl      += --warn-too-private-instances
 MCFLAGS-inconsistent_instances  += --warn-too-private-instances
 MCFLAGS-inline_conflict         += --no-warn-ambiguous-pragmas
 MCFLAGS-instances_pc            += --no-intermodule-optimization
 MCFLAGS-instances_pc.instances_pc_helper_1 += --no-intermodule-optimization
 MCFLAGS-invalid_event           += --event-set-file-name invalid_event_spec
-MCFLAGS-invalid_mllibs          += --no-errorcheck-only --no-verbose-make \
-                                    --options-file Mercury.options.invalid \
-                                    --make invalid_mllibs
-MCFLAGS-instance_var_bug        += --verbose-error-messages
-MCFLAGS-loopcheck               += --warn-inferred-erroneous \
-                                    --verbose-error-messages
-MCFLAGS-max_error_line_width    += --max-error-line-width 120 \
-                                    --verbose-error-messages
-MCFLAGS-method_impl             += --no-intermodule-optimization \
-                                    --verbose-error-messages \
-                                    --warn-too-private-instances
-MCFLAGS-missing_det_decls       += --no-infer-det --verbose-error-messages
+# XXX Opmode flags should never be included in Mercury.options files.
+MCFLAGS-invalid_mllibs          += --no-errorcheck-only --no-verbose-make
+MCFLAGS-invalid_mllibs          += --options-file Mercury.options.invalid
+MCFLAGS-invalid_mllibs          += --make invalid_mllibs
+MCFLAGS-instance_var_bug        += -E
+MCFLAGS-loopcheck               += --warn-inferred-erroneous -E
+MCFLAGS-max_error_line_width    += --max-error-line-width 120 -E
+MCFLAGS-method_impl             += --no-intermodule-optimization -E
+MCFLAGS-method_impl             += --warn-too-private-instances
+MCFLAGS-missing_det_decls       += --no-infer-det -E
 MCFLAGS-missing_interface_import2 += --no-intermodule-optimization
-MCFLAGS-mode_inf                += --infer-all --verbose-error-messages
-MCFLAGS-mpj_1                   += --infer-all --verbose-error-messages
+MCFLAGS-mode_inf                += --infer-all -E
+MCFLAGS-mpj_1                   += --infer-all -E
 MCFLAGS-mpj_3                   += --warn-too-private-instances
 MCFLAGS-mpj_4                   += --warn-too-private-instances
-MCFLAGS-multiply_star           += --verbose-error-messages
-MCFLAGS-multisoln_func          += --infer-types --verbose-error-messages
+MCFLAGS-multiply_star           += -E
+MCFLAGS-multisoln_func          += --infer-types -E
 MCFLAGS-nonexistent_import      += --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading             += --no-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det    += --warn-inferred-erroneous
 MCFLAGS-range_restrict          += --warn-too-private-instances
-MCFLAGS-record_syntax_errors    += --verbose-error-messages
-MCFLAGS-string_format_bad       += --halt-at-warn \
-                                    --warn-known-bad-format-calls \
-                                    --warn-unknown-format-calls
-MCFLAGS-string_format_unknown   += --halt-at-warn \
-                                    --warn-known-bad-format-calls \
-                                    --warn-unknown-format-calls
-MCFLAGS-subtype_user_compare    += --verbose-error-messages
+MCFLAGS-record_syntax_errors    += -E
+MCFLAGS-string_format_bad       += --halt-at-warn
+MCFLAGS-string_format_bad       += --warn-known-bad-format-calls
+MCFLAGS-string_format_bad       += --warn-unknown-format-calls
+MCFLAGS-string_format_unknown   += --halt-at-warn
+MCFLAGS-string_format_unknown   += --warn-known-bad-format-calls
+MCFLAGS-string_format_unknown   += --warn-unknown-format-calls
+MCFLAGS-subtype_user_compare    += -E
 MCFLAGS-synth_attr_error        += --event-set-file-name synth_attr_error_spec
 MCFLAGS-syntax_error_event      += --event-set-file-name syntax_error_event_spec
 
@@ -98,8 +96,7 @@ MCFLAGS-syntax_error_event      += --event-set-file-name syntax_error_event_spec
 # case the error we want to report is the absence of trailing.
 MCFLAGS-trailed_mutable         += --no-use-trail
 
-MCFLAGS-test_nested             += --no-intermodule-optimization \
-                                    --verbose-error-messages
+MCFLAGS-test_nested             += --no-intermodule-optimization -E
 MCFLAGS-transitive_import       += --no-intermodule-optimization
 MCFLAGS-transitive_import2      += --no-intermodule-optimization
 MCFLAGS-transitive_import_class += --no-intermodule-optimization
@@ -110,52 +107,49 @@ MCFLAGS-typeclass_mode          += --infer-all
 MCFLAGS-undef_symbol            += --no-intermodule-optimization
 
 # Include the verbose part of the error message where we have one.
-MCFLAGS-ambiguous_method_1      += --verbose-error-messages
-MCFLAGS-anys_in_negated_contexts += --verbose-error-messages
-MCFLAGS-bind_in_negated         += --verbose-error-messages
-MCFLAGS-bug83                   += --verbose-error-messages
-MCFLAGS-complex_constraint_err  += --verbose-error-messages
-MCFLAGS-ext_type                += --verbose-error-messages
-MCFLAGS-ext_type_bug            += --verbose-error-messages
-MCFLAGS-freefree                += --verbose-error-messages
-MCFLAGS-ho_default_func_1       += --verbose-error-messages
-MCFLAGS-ho_default_func_3       += --verbose-error-messages
-MCFLAGS-ho_type_mode_bug        += --verbose-error-messages
-MCFLAGS-make_opt_error          += --verbose-error-messages
-MCFLAGS-modes_erroneous         += --verbose-error-messages
-MCFLAGS-mpj_4                   += --verbose-error-messages
-MCFLAGS-multimode_syntax        += --verbose-error-messages
-MCFLAGS-nullary_ho_func_error   += --verbose-error-messages
-MCFLAGS-one_member              += --verbose-error-messages
+MCFLAGS-ambiguous_method_1      += -E
+MCFLAGS-anys_in_negated_contexts += -E
+MCFLAGS-bind_in_negated         += -E
+MCFLAGS-bug83                   += -E
+MCFLAGS-complex_constraint_err  += -E
+MCFLAGS-ext_type                += -E
+MCFLAGS-ext_type_bug            += -E
+MCFLAGS-freefree                += -E
+MCFLAGS-ho_default_func_1       += -E
+MCFLAGS-ho_default_func_3       += -E
+MCFLAGS-ho_type_mode_bug        += -E
+MCFLAGS-make_opt_error          += -E
+MCFLAGS-modes_erroneous         += -E
+MCFLAGS-mpj_4                   += -E
+MCFLAGS-multimode_syntax        += -E
+MCFLAGS-nullary_ho_func_error   += -E
+MCFLAGS-one_member              += -E
 MCFLAGS-oisu_check_add_pragma_errors += --no-halt-at-invalid-interface
-MCFLAGS-polymorphic_unification += --verbose-error-messages
-MCFLAGS-test_type_spec          += --verbose-error-messages
+MCFLAGS-polymorphic_unification += -E
+MCFLAGS-test_type_spec          += -E
 
-MCFLAGS-require_tailrec_1       += -O0 --optimise-tailcalls \
-                                    --no-warn-non-tail-recursion
-MCFLAGS-require_tailrec_2       += -O0 --optimise-tailcalls \
-                                    --warn-non-tail-recursion self -E
-MCFLAGS-require_tailrec_3       += -O0 --optimise-tailcalls \
-                                    --warn-non-tail-recursion self-and-mutual
+MCFLAGS-require_tailrec_1       += -O0 --optimise-tailcalls
+MCFLAGS-require_tailrec_1       += --no-warn-non-tail-recursion
+MCFLAGS-require_tailrec_2       += -O0 --optimise-tailcalls
+MCFLAGS-require_tailrec_2       += --warn-non-tail-recursion self -E
+MCFLAGS-require_tailrec_3       += -O0 --optimise-tailcalls
+MCFLAGS-require_tailrec_3       += --warn-non-tail-recursion self-and-mutual
 
 # We compile test_feature_set in grade java because that grade is incompatible
 # with the features in the test require_feature_set pragma.
-MCFLAGS-test_feature_set        += --grade java --verbose-error-messages \
-                                    --no-intermod-opt
-MCFLAGS-tricky_assert           += --verbose-error-messages
-MCFLAGS-type_error_use_module   += --verbose-error-messages \
-                                    --no-intermodule-optimization
-MCFLAGS-typeclass_dup_method_mode += --verbose-error-messages
-MCFLAGS-typeclass_constraint_extra_var += --verbose-error-messages
-MCFLAGS-typeclass_missing_det_3 += --verbose-error-messages
-MCFLAGS-typeclass_test_12       += --verbose-error-messages
-MCFLAGS-typeclass_test_8        += --verbose-error-messages
-MCFLAGS-types                   += --verbose-error-messages \
-                                    --warn-non-contiguous-clauses
-MCFLAGS-type_vars               += --verbose-error-messages
-MCFLAGS-undef_type              += --verbose-error-messages
-MCFLAGS-unsatisfiable_constraint += --verbose-error-messages
-MCFLAGS-user_eq_dummy           += --verbose-error-messages
+MCFLAGS-test_feature_set        += --grade java --no-intermod-opt -E
+MCFLAGS-tricky_assert           += -E
+MCFLAGS-type_error_use_module   += --no-intermodule-optimization -E
+MCFLAGS-typeclass_dup_method_mode += -E
+MCFLAGS-typeclass_constraint_extra_var += -E
+MCFLAGS-typeclass_missing_det_3 += -E
+MCFLAGS-typeclass_test_12       += -E
+MCFLAGS-typeclass_test_8        += -E
+MCFLAGS-types                   += --warn-non-contiguous-clauses -E
+MCFLAGS-type_vars               += -E
+MCFLAGS-undef_type              += -E
+MCFLAGS-unsatisfiable_constraint += -E
+MCFLAGS-user_eq_dummy           += -E
 
 MCFLAGS-ambiguous_overloading_error += --warn-unsorted-import-blocks
 MCFLAGS-bug10                   += --warn-unsorted-import-blocks

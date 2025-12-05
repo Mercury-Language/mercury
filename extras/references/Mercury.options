@@ -1,13 +1,16 @@
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 # Copyright (C) 2011 The University of Melbourne.
 # Copyright (C) 2018, 2022, 2025 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 MCFLAGS = \
-	--use-trail		                        \
-	--use-grade-subdirs		                \
-	--libgrades-include-component tr        \
-	--extra-library-header c_reference.h
+    --use-trail                             \
+    --use-grade-subdirs                     \
+    --libgrades-include-component tr        \
+    --extra-library-header c_reference.h
 
 MCFLAGS-global = --no-warn-nothing-exported --no-warn-unused-interface-imports

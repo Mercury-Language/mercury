@@ -1,75 +1,78 @@
-# vim: ts=4 sw=4 expandtab
-# (please keep these lists sorted)
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
-MCFLAGS-bad_detism_category                     \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_end_module                          \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_existential_data_type               \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_finalise_decl_int                   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_foreign_type_int                    \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs -E
-MCFLAGS-bad_initialise_decl_int                 \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_in_interface                        \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_instance                            \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_mutable_int                         \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_tscp                                \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bad_type_class_constraint_intermodule   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bug17                                   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bug499                                  \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-bug521                                  \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-builtin_int                             \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-instance_no_type                        \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-int_impl_imports                        \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-missing_initial_section                 \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-missing_interface_import                \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-missing_interface_import_test_2         \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-missing_parent_import                   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-pragma_export_int                       \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-redundant_import                        \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-sub_c                                   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-test_nested                             \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-test_type_spec_int                      \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-transitive_import                       \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-type_arity                              \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-type_vars_int                           \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-unbound_type_vars_int                   \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-undef_inst                              \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-undef_mode                              \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-undef_type_int                          \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-undef_type_mod_qual                     \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-unicode_1                               \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
-MCFLAGS-unicode_2                               \
-    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+# Please keep these lists sorted.
+
+MCFLAGS-bad_detism_category             += --halt-at-invalid-interface
+MCFLAGS-bad_detism_category             += --std-int-file-not-written-msgs
+MCFLAGS-bad_end_module                  += --halt-at-invalid-interface
+MCFLAGS-bad_end_module                  += --std-int-file-not-written-msgs
+MCFLAGS-bad_existential_data_type       += --halt-at-invalid-interface
+MCFLAGS-bad_existential_data_type       += --std-int-file-not-written-msgs
+MCFLAGS-bad_finalise_decl_int           += --halt-at-invalid-interface
+MCFLAGS-bad_finalise_decl_int           += --std-int-file-not-written-msgs
+MCFLAGS-bad_foreign_type_int            += --halt-at-invalid-interface
+MCFLAGS-bad_foreign_type_int            += --std-int-file-not-written-msgs -E
+MCFLAGS-bad_in_interface                += --halt-at-invalid-interface
+MCFLAGS-bad_in_interface                += --std-int-file-not-written-msgs
+MCFLAGS-bad_initialise_decl_int         += --halt-at-invalid-interface
+MCFLAGS-bad_initialise_decl_int         += --std-int-file-not-written-msgs
+MCFLAGS-bad_instance                    += --halt-at-invalid-interface
+MCFLAGS-bad_instance                    += --std-int-file-not-written-msgs
+MCFLAGS-bad_mutable_int                 += --halt-at-invalid-interface
+MCFLAGS-bad_mutable_int                 += --std-int-file-not-written-msgs
+MCFLAGS-bad_tscp                        += --halt-at-invalid-interface
+MCFLAGS-bad_tscp                        += --std-int-file-not-written-msgs
+MCFLAGS-bad_type_class_constraint_intermodule += --halt-at-invalid-interface
+MCFLAGS-bad_type_class_constraint_intermodule += --std-int-file-not-written-msgs
+MCFLAGS-bug17                           += --halt-at-invalid-interface
+MCFLAGS-bug17                           += --std-int-file-not-written-msgs
+MCFLAGS-bug499                          += --halt-at-invalid-interface
+MCFLAGS-bug499                          += --std-int-file-not-written-msgs
+MCFLAGS-bug521                          += --halt-at-invalid-interface
+MCFLAGS-bug521                          += --std-int-file-not-written-msgs
+MCFLAGS-builtin_int                     += --halt-at-invalid-interface
+MCFLAGS-builtin_int                     += --std-int-file-not-written-msgs
+MCFLAGS-instance_no_type                += --halt-at-invalid-interface
+MCFLAGS-instance_no_type                += --std-int-file-not-written-msgs
+MCFLAGS-int_impl_imports                += --halt-at-invalid-interface
+MCFLAGS-int_impl_imports                += --std-int-file-not-written-msgs
+MCFLAGS-missing_initial_section         += --halt-at-invalid-interface
+MCFLAGS-missing_initial_section         += --std-int-file-not-written-msgs
+MCFLAGS-missing_interface_import        += --halt-at-invalid-interface
+MCFLAGS-missing_interface_import        += --std-int-file-not-written-msgs
+MCFLAGS-missing_interface_import_test_2 += --halt-at-invalid-interface
+MCFLAGS-missing_interface_import_test_2 += --std-int-file-not-written-msgs
+MCFLAGS-missing_parent_import           += --halt-at-invalid-interface
+MCFLAGS-missing_parent_import           += --std-int-file-not-written-msgs
+MCFLAGS-pragma_export_int               += --halt-at-invalid-interface
+MCFLAGS-pragma_export_int               += --std-int-file-not-written-msgs
+MCFLAGS-redundant_import                += --halt-at-invalid-interface
+MCFLAGS-redundant_import                += --std-int-file-not-written-msgs
+MCFLAGS-sub_c                           += --halt-at-invalid-interface
+MCFLAGS-sub_c                           += --std-int-file-not-written-msgs
+MCFLAGS-test_nested                     += --halt-at-invalid-interface
+MCFLAGS-test_nested                     += --std-int-file-not-written-msgs
+MCFLAGS-test_type_spec_int              += --halt-at-invalid-interface
+MCFLAGS-test_type_spec_int              += --std-int-file-not-written-msgs
+MCFLAGS-transitive_import               += --halt-at-invalid-interface
+MCFLAGS-transitive_import               += --std-int-file-not-written-msgs
+MCFLAGS-type_arity                      += --halt-at-invalid-interface
+MCFLAGS-type_arity                      += --std-int-file-not-written-msgs
+MCFLAGS-type_vars_int                   += --halt-at-invalid-interface
+MCFLAGS-type_vars_int                   += --std-int-file-not-written-msgs
+MCFLAGS-unbound_type_vars_int           += --halt-at-invalid-interface
+MCFLAGS-unbound_type_vars_int           += --std-int-file-not-written-msgs
+MCFLAGS-undef_inst                      += --halt-at-invalid-interface
+MCFLAGS-undef_inst                      += --std-int-file-not-written-msgs
+MCFLAGS-undef_mode                      += --halt-at-invalid-interface
+MCFLAGS-undef_mode                      += --std-int-file-not-written-msgs
+MCFLAGS-undef_type_int                  += --halt-at-invalid-interface
+MCFLAGS-undef_type_int                  += --std-int-file-not-written-msgs
+MCFLAGS-undef_type_mod_qual             += --halt-at-invalid-interface
+MCFLAGS-undef_type_mod_qual             += --std-int-file-not-written-msgs
+MCFLAGS-unicode_1                       += --halt-at-invalid-interface
+MCFLAGS-unicode_1                       += --std-int-file-not-written-msgs
+MCFLAGS-unicode_2                       += --halt-at-invalid-interface
+MCFLAGS-unicode_2                       += --std-int-file-not-written-msgs

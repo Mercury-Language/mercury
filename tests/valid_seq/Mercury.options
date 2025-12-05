@@ -1,6 +1,9 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
-# Some regression tests only failed with particular options enabled.
+# Some regression tests only fail with particular options enabled.
+
 # Please keep these lists sorted.
 
 MCFLAGS-ambig_high_level                += --type-check-constraints
@@ -9,7 +12,6 @@ MCFLAGS-ambig_pred_helper_1             += --type-check-constraints
 MCFLAGS-ambig_pred_helper_2             += --type-check-constraints
 MCFLAGS-ambig_pred_helper_3             += --type-check-constraints
 MCFLAGS-ambig_pred_helper_4             += --type-check-constraints
-
 MCFLAGS-bug100                          += --halt-at-warn
 MCFLAGS-call_impure_in_opt              += --intermodule-optimization
 MCFLAGS-call_impure_in_opt_helper_1     += --intermodule-optimization
@@ -29,11 +31,11 @@ MCFLAGS-head_var_unify_uniq             += --intermodule-optimization
 MCFLAGS-head_var_unify_uniq_helper_1    += --intermodule-optimization
 MCFLAGS-mode_from_int0_opt              += --intermodule-optimization
 MCFLAGS-mode_from_int0_opt_helper_1     += --intermodule-optimization
-MCFLAGS-opt_det_warn                    += --intermodule-optimization \
-                                            --halt-at-warn
-MCFLAGS-opt_det_warn_helper_1           += --intermodule-optimization \
-                                            --halt-at-warn \
-                                            --no-warn-inferred-erroneous
+MCFLAGS-opt_det_warn                    += --halt-at-warn
+MCFLAGS-opt_det_warn                    += --intermodule-optimization
+MCFLAGS-opt_det_warn_helper_1           += --halt-at-warn
+MCFLAGS-opt_det_warn_helper_1           += --intermodule-optimization
+MCFLAGS-opt_det_warn_helper_1           += --no-warn-inferred-erroneous
 MCFLAGS-opt_file_quote                  += --intermodule-optimization
 MCFLAGS-opt_file_quote_helper_1         += --intermodule-optimization
 MCFLAGS-overload_resolution             += --intermodule-optimization
@@ -53,8 +55,8 @@ MCFLAGS-typeclass_in_opt                += --intermodule-optimization
 MCFLAGS-typeclass_in_opt_helper_1       += --intermodule-optimization
 MCFLAGS-unused_args_type_spec           += --intermod-unused-args
 MCFLAGS-user_eq_pred_nested             += --intermodule-optimization
-MCFLAGS-user_eq_pred_nested_helper_1    += --intermodule-optimization \
-                                            --no-warn-det-decls-too-lax
+MCFLAGS-user_eq_pred_nested_helper_1    += --intermodule-optimization
+MCFLAGS-user_eq_pred_nested_helper_1    += --no-warn-det-decls-too-lax
 MCFLAGS-user_eq_pred_nonnested          += --intermodule-optimization
 MCFLAGS-user_eq_pred_nonnested_helper_1 += --intermodule-optimization
 MCFLAGS-xml_event_read                  += --intermodule-optimization

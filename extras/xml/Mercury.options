@@ -1,3 +1,7 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 MCFLAGS-xml.cat         += --no-warn-implicit-stream-calls
 MCFLAGS-xml.parse       += --no-warn-implicit-stream-calls
 

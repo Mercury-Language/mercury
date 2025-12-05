@@ -1,12 +1,18 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+#
 # Common options which will be used by subdirectories.
+#
 
-LINKAGE = shared
-MERCURY_LINKAGE = shared
-MCFLAGS = --use-grade-subdirs
-MCFLAGS += --warn-unused-imports
+LINKAGE                     = shared
+MERCURY_LINKAGE             = shared
+
+MCFLAGS                     = --use-grade-subdirs
+MCFLAGS                     += --warn-unused-imports
 
 # XXX LDFLAGS doesn't work so we use this hack.
-MCFLAGS += --ld-flags "`allegro-config --libs`"
+MCFLAGS                     += --ld-flags "`allegro-config --libs`"
 
 # These lines are specific to this directory.
 

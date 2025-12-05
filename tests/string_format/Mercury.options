@@ -1,5 +1,7 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 # The heap size must be increased to avoid running out of heap
 # in non-gc grades.
-MLFLAGS     +=--runtime-flags "--heap-size 30000"
+MLFLAGS     += --runtime-flags "--heap-size 30000"

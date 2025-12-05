@@ -1,4 +1,6 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 MCFLAGS-deep_sub                += --trace rep --suppress-trace context
 MCFLAGS-exceptions              += --strict-sequential

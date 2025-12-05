@@ -1,7 +1,10 @@
-# vim: ts=4 sw=4 expandtab
-# (please keep these lists sorted)
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
-MCFLAGS-test_repn       += --experiment1 --pack-everything \
-                            --type-repns-for-humans
-MCFLAGS-test_repn_sub   += --experiment1 --pack-everything \
-                            --type-repns-for-humans
+# Please keep these lists sorted.
+
+MCFLAGS-test_repn       += --experiment1 --pack-everything
+MCFLAGS-test_repn       += --type-repns-for-humans
+MCFLAGS-test_repn_sub   += --experiment1 --pack-everything
+MCFLAGS-test_repn_sub   += --type-repns-for-humans

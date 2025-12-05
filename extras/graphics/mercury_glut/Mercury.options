@@ -1,3 +1,7 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 MCFLAGS-mercury_glut    += --no-warn-nothing-exported
 MCFLAGS-mercury_glut    += --no-warn-unused-interface-imports
 

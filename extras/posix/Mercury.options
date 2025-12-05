@@ -1,3 +1,7 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 MCFLAGS = \
-	--libgrades-exclude java \
-	--libgrades-exclude csharp
+    --libgrades-exclude java \
+    --libgrades-exclude csharp
