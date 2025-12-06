@@ -6,8 +6,9 @@
 % multi-cons_id switch arms in which one of the cons_ids also has its own
 % switch arm. Some old versions of the compiler had an overzealous sanity check
 % that would cause a compiler abort on this code.
+%
 
-:- module multi_arm_switch.
+:- module multi_arm_switch_1.
 :- interface.
 
 :- import_module io.

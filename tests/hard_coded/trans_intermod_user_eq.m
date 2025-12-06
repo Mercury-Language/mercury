@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module trans_intermod_user_equality.
+:- module trans_intermod_user_eq.
 :- interface.
 
 :- import_module io.
@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module trans_intermod_user_equality_helper_1.
+:- import_module trans_intermod_user_eq_helper_1.
 
 main(!IO) :-
     make_bar(0, 1, Bar),

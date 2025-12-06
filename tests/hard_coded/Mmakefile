@@ -281,7 +281,7 @@ ORDINARY_PROGS = \
 	merge_and_remove_dups \
 	mode_check_clauses \
 	mode_choice \
-	multi_arm_switch \
+	multi_arm_switch_1 \
 	multi_arm_switch_2 \
 	multi_map_test \
 	multimode \
@@ -543,7 +543,7 @@ ORDINARY_PROGS = \
 # --transitive-intermodule-optimization is incompatible with mmc --make.
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 ORDINARY_PROGS += \
-	trans_intermod_user_equality
+	trans_intermod_user_eq
 endif
 
 # Solver types only work in C grades.

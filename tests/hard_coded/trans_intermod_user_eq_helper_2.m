@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module trans_intermod_user_equality_helper_2.
+:- module trans_intermod_user_eq_helper_2.
 
 :- interface.
 
