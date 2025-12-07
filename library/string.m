@@ -1491,7 +1491,7 @@
     % - the N'th line contains the N'th string in each column;
     % - that string will be padded to the width of the widest string
     %   in that column;
-    % - each field will be left justfied within that width if the column
+    % - each field will be left justified within that width if the column
     %   has a "left()" wrapper, and right justified if it has a "right()"
     %   wrapper;
     % - the fields on each line are separated with Separator;
@@ -1903,7 +1903,7 @@
 % from outside the string module, since they need to be visible to the
 % compiler (specifically, to format_call.m and its submodule
 % parse_format_string.m.). However, they should not be part of the
-% publically documented interface of the Mercury standard library,
+% publicly documented interface of the Mercury standard library,
 % since we don't want any user code to depend on the implementation
 % details they contain.
 :- interface.
