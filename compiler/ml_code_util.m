@@ -264,10 +264,17 @@
 
     % Given a source type and a destination type, and given an source rval
     % holding a value of the source type, produce an rval that converts
-    % the source rval to the destination type.
+    % the source rval to the destination type, by boxing or unboxing it,
+    % possibly with an additional cast.
+    %
+    % The second version assumes that the box_policy is bp_native_if_possible.
+    % (Only one caller calls the general version; all the others call
+    % the second version.)
     %
 :- pred ml_gen_box_or_unbox_rval(module_info::in, mer_type::in, mer_type::in,
     box_policy::in, mlds_rval::in, mlds_rval::out) is det.
+:- pred ml_gen_box_or_unbox_rval_native(module_info::in,
+    mer_type::in, mer_type::in, mlds_rval::in, mlds_rval::out) is det.
 
     % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
     %   Context, ForClosureWrapper, ArgNum,
@@ -1170,99 +1177,142 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         ArgRval = VarRval
     ;
         BoxPolicy = bp_native_if_possible,
-        ( if
-            % If converting from polymorphic type to concrete type, then unbox.
-            SourceType = type_variable(_, _),
-            DestType \= type_variable(_, _)
-        then
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unbox(MLDS_DestType, VarRval)
-        else if
-            % If converting from concrete type to polymorphic type, then box.
-            SourceType \= type_variable(_, _),
-            DestType = type_variable(_, _)
-        then
-            MLDS_SourceType =
-                mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            ArgRval = ml_box(MLDS_SourceType, VarRval)
-        else if
-            % If converting to float, cast to mlds_generic_type and then unbox.
-            DestType = builtin_type(builtin_type_float),
-            SourceType \= builtin_type(builtin_type_float)
-        then
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unbox(MLDS_DestType,
-                ml_cast(mlds_generic_type, VarRval))
-        else if
-            % If converting from float, box and then cast the result.
-            SourceType = builtin_type(builtin_type_float),
-            DestType \= builtin_type(builtin_type_float)
-        then
-            MLDS_SourceType =
-                mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_cast(MLDS_DestType,
-                ml_box(MLDS_SourceType, VarRval))
-        else if
-            % If converting to int64 / uint64, cast to mlds_generic_type and
-            % then unbox.
-            DestType = builtin_type(builtin_type_int(IntType)),
-            ( IntType = int_type_int64
-            ; IntType = int_type_uint64
-            ),
-            SourceType \= builtin_type(builtin_type_int(IntType))
-        then
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_unbox(MLDS_DestType,
-                ml_cast(mlds_generic_type, VarRval))
-        else if
-            % If converting from int64 / uint64, box then cast the result.
-            SourceType = builtin_type(builtin_type_int(IntType)),
-            ( IntType = int_type_int64
-            ; IntType = int_type_uint64
-            ),
-            DestType \= builtin_type(builtin_type_int(IntType))
-        then
-            MLDS_SourceType =
-                mercury_type_to_mlds_type(ModuleInfo, SourceType),
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_cast(MLDS_DestType,
-                ml_box(MLDS_SourceType, VarRval))
-        else if
-            % If converting from an array(T) to array(X) where X is a concrete
-            % instance, we should insert a cast to the concrete instance.
-            % Also when converting to array(T) from array(X) we should cast
-            % to array(T).
-            type_to_ctor_and_args(SourceType, SourceTypeCtor, SourceTypeArgs),
-            type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
-            (
-                type_ctor_is_array(SourceTypeCtor),
-                SourceTypeArgs = [type_variable(_, _)]
-            ;
-                type_ctor_is_array(DestTypeCtor),
-                DestTypeArgs = [type_variable(_, _)]
-            ),
-            % Don't insert redundant casts if the types are the same, since
-            % the extra assignments introduced can inhibit tail call
-            % optimisation.
-            SourceType \= DestType
-        then
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_cast(MLDS_DestType, VarRval)
-        else if
-            % If converting from one concrete type to a different one, then
-            % cast. This is needed to handle construction/deconstruction
-            % unifications for no_tag types.
-            %
-            not type_unify(SourceType, DestType, [], map.init, _)
-        then
-            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
-            ArgRval = ml_cast(MLDS_DestType, VarRval)
-        else
-            % Otherwise leave unchanged.
-            ArgRval = VarRval
-        )
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, SourceType, DestType,
+            VarRval, ArgRval)
     ).
+
+ml_gen_box_or_unbox_rval_native(ModuleInfo, SourceType, DestType,
+        VarRval, ArgRval) :-
+    % We have special box/unbox rules for 2x2=4 situations:
+    %
+    % 1a convert from a type variable to something else
+    % 1b convert to a type variable from something else
+    % 2a convert from int64/uint64/float to something else
+    % 2b convert to int64/uint64/float from something else
+    %
+    % By the definition of "something else", it is not possible for
+    % the SourceType/DestType combination to match both 1a and 1b.
+    %
+    % It is possible for the SourceType/DestType combination to match
+    % both 1a and 2b, or 1b and 2a. In these cases, the 1a or 2a rule has
+    % precedence. This is the reason for the second test of DestType
+    % in the code handling 2a below.
+    %
+    % It is not possible for the SourceType/DestType combination to match
+    % both 2a and 2b, because any such change of type is beyond the scope
+    % of a box or unbox operation.
+    ( if
+        (
+            SourceType = type_variable(_, _),
+            DestType \= type_variable(_, _),
+            % Converting from polymorphic type to concrete type: unbox.
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+            ArgRvalPrime = ml_unbox(MLDS_DestType, VarRval)
+        ;
+            SourceType = builtin_type(SourceBuiltinType),
+            (
+                SourceBuiltinType = builtin_type_int(IntType),
+                ( IntType = int_type_int64
+                ; IntType = int_type_uint64
+                )
+            ;
+                SourceBuiltinType = builtin_type_float
+            ),
+            DestType \= builtin_type(SourceBuiltinType),
+            % Leave this to the DestType = type_variable(_, _) code below.
+            DestType \= type_variable(_, _),
+            % Converting from int64/uint64/float: box, then cast the result.
+            MLDS_SourceType =
+                mercury_type_to_mlds_type(ModuleInfo, SourceType),
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+            ArgRvalPrime = ml_cast(MLDS_DestType,
+                ml_box(MLDS_SourceType, VarRval))
+        )
+    then
+        ArgRvalPrime = ArgRval
+    else if
+        (
+            DestType = type_variable(_, _),
+            SourceType \= type_variable(_, _),
+            % Converting from concrete type to polymorphic type: box.
+            MLDS_SourceType =
+                mercury_type_to_mlds_type(ModuleInfo, SourceType),
+            ArgRvalPrime = ml_box(MLDS_SourceType, VarRval)
+        ;
+            DestType = builtin_type(DestBuiltinType),
+            (
+                DestBuiltinType = builtin_type_int(IntType),
+                ( IntType = int_type_int64
+                ; IntType = int_type_uint64
+                )
+            ;
+                DestBuiltinType = builtin_type_float
+            ),
+            SourceType \= builtin_type(DestBuiltinType),
+            % We have already tested for SourceType = type_variable(_, _).
+            % Converting to int64/uint64/float: cast to mlds_generic_type,
+            % and then unbox.
+            MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+            ArgRvalPrime = ml_unbox(MLDS_DestType,
+                ml_cast(mlds_generic_type, VarRval))
+        )
+    then
+        ArgRvalPrime = ArgRval
+    else
+        ml_gen_box_or_unbox_rval_native_std(ModuleInfo, SourceType, DestType,
+            VarRval, ArgRval)
+    ).
+
+:- pred ml_gen_box_or_unbox_rval_native_std(module_info::in,
+    mer_type::in, mer_type::in, mlds_rval::in, mlds_rval::out) is det.
+:- pragma inline(pred(ml_gen_box_or_unbox_rval_native_std/5)).
+
+ml_gen_box_or_unbox_rval_native_std(ModuleInfo, SourceType, DestType,
+        VarRval, ArgRval) :-
+    ( if
+        type_unify(SourceType, DestType, [], map.init, _),
+        not unifiable_types_still_need_cast(SourceType, DestType)
+    then
+        % If converting from one concrete type to the same type,
+        % leave the rval unchanged.
+        ArgRval = VarRval
+    else
+        % If converting from one concrete type to a different one, then cast.
+        % This is needed to handle construction/deconstruction unifications
+        % for no_tag types.
+        MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
+        ArgRval = ml_cast(MLDS_DestType, VarRval)
+    ).
+
+:- pred unifiable_types_still_need_cast(mer_type::in, mer_type::in) is semidet.
+:- pragma inline(pred(unifiable_types_still_need_cast/2)).
+
+unifiable_types_still_need_cast(SourceType, DestType) :-
+    % XXX This exception from the "unifiable types do not need a cast"
+    % path above was part of the implementation of arrays for .NET
+    % added by trd in commit d4965acd721e480a31d618dadc95818cb4516df7.
+    % A bootcheck in hlc.gc works just fine without this exception,
+    % but the exception is still needed in java and csharp grades.
+    %
+    % Tyson's original comment, which was probably talking only about
+    % the .NET backend, was:
+    % If converting from an array(T) to array(X) where X is a concrete
+    % instance, we should insert a cast to the concrete instance.
+    % Also when converting to array(T) from array(X) we should cast
+    % to array(T).
+    type_to_ctor_and_args(SourceType, SourceTypeCtor, SourceTypeArgs),
+    type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
+    (
+        type_ctor_is_array(SourceTypeCtor),
+        SourceTypeArgs = [type_variable(_, _)]
+    ;
+        type_ctor_is_array(DestTypeCtor),
+        DestTypeArgs = [type_variable(_, _)]
+    ),
+    % Don't insert redundant casts if the types are the same, since
+    % the extra assignments introduced can inhibit tail call
+    % optimisation.
+    SourceType \= DestType.
 
 %---------------------------------------------------------------------------%
 

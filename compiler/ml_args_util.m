@@ -1118,8 +1118,8 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
                 CallerIsDummy = is_not_dummy_type,
                 CallerVarRval = ml_lval(CallerVarLval)
             ),
-            ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
-                bp_native_if_possible, CallerVarRval, ArgRval),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, CallerType, CalleeType,
+                CallerVarRval, ArgRval),
             !:InputRvals = [ArgRval | !.InputRvals]
         ;
             CalleeArgTopFunctorMode = top_out,
