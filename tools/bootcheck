@@ -701,7 +701,14 @@ then
     export MERCURY_OPTIONS
 fi
 
-echo "starting at $(date)"
+if test -r ${HOME}/.bootcheck_date
+then
+    date_opts="$(cat ${HOME}/.bootcheck_date)"
+else
+    date_opts=""
+fi
+
+echo "starting at $(date ${date_opts})"
 
 # set -x
 
@@ -1365,7 +1372,7 @@ then
             ls -lt ${stage2dir}/compiler/mercury_compile
         fi
     fi
-    echo "finishing stage 2 at $(date)"
+    echo "finishing stage 2 at $(date ${date_opts})"
 
     # Build the check_namespace target in the relevant directories.
     # We want to do so before we delete any of the stage 2 object files.
@@ -1373,7 +1380,7 @@ then
     check_namespace_status=0
     if ${check_namespace}
     then
-        echo "starting namespace checks at $(date)"
+        echo "starting namespace checks at $(date ${date_opts})"
         cd "${root}"/${stage2dir}/runtime
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in runtime!'
@@ -1411,7 +1418,7 @@ then
         }
         mmake ${mmake_opts} clean_check
         cd "${root}"
-        echo "namespace checks done at $(date)"
+        echo "namespace checks done at $(date ${date_opts})"
     fi
 
     check_stdlib_modules_status=0
@@ -1424,7 +1431,7 @@ then
 
     if ${stop_after_stage_2}
     then
-        echo "stopping after building stage 2 at $(date)"
+        echo "stopping after building stage 2 at $(date ${date_opts})"
         exit 0
     fi
 
@@ -2083,7 +2090,7 @@ EOF
             fi
         fi
 
-        echo "finishing stage 3 at $(date)"
+        echo "finishing stage 3 at $(date ${date_opts})"
     else
         diff_status=0
         echo "building of stage 3 skipped"
@@ -2174,7 +2181,7 @@ fi
 test_status=0
 if ${runtests}
 then
-    echo "starting the test suite at $(date)"
+    echo "starting the test suite at $(date ${date_opts})"
 
     # If the workspace has been moved since ${root}/scripts/test_mdbrc
     # was last built, that file will refer to the OLD location of
@@ -2652,7 +2659,7 @@ fi
 
 echo "-----------------------------------------------------------------------"
 
-echo "finishing at $(date)"
+echo "finishing at $(date ${date_opts})"
 exit ${exitstatus}
 
 #-----------------------------------------------------------------------------#
