@@ -91,9 +91,9 @@
 insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
     % We used to use a straightforward algorithm that, given a list of N insts,
     % merged the tail N-1 insts, and merged the result with the head inst.
-    % While this is simple and efficient for small N, it has very bad
+    % While this is simple, and it is efficient for small N, it has very bad
     % performance for large N. The reason is that its complexity can be N^2,
-    % since in many cases each arm of the branched control structure binds
+    % since in many cases, each arm of the branched control structure binds
     % the variable to a different function symbol, and this means that the
     % merged inst evolves like this:
     %
@@ -102,9 +102,10 @@ insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
     %   bound(f; g; h)
     %   bound(f; g; h; i)
     %
-    % Our current algorithm uses a number of passes, each of which merges
-    % groups of up to eight adjacent insts, thus dividing the number of insts
-    % by eight. The overall complexity is thus closer to N log N than N^2.
+    % Our current algorithm uses a one or more passes, each of which merges
+    % groups of up to eight adjacent insts into a single inst, using balanced
+    % tree merges. Its overall complexity is thus closer to N log N
+    % than to N^2.
     insts_merge_pass(Type, HeadInst, TailInsts,
         [], MergedInsts, merge_has_not_failed, Fail, !ModuleInfo),
     (
@@ -254,10 +255,11 @@ inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         InstA = bound(_, _, _),
         InstB = bound(_, _, _)
     then
-        % The invocations of inst_expand in inst_merge_2 would do nothing
-        % for bound insts, and after that, inst_merge_2 would call
-        % inst_merge_3 anyway.
-        inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo)
+        % The invocations of inst_expand in inst_merge_2 would do
+        % nothing for bound insts, and after that, inst_merge_2 would call
+        % inst_merge_3, which would call inst_merge_4, which would then
+        % make this call.
+        merge_bound_insts(Type, InstA, InstB, InstAB, !ModuleInfo)
     else
         % Check whether this pair of insts is already in the merge_insts table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -285,7 +287,7 @@ inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             % Merge the insts.
             inst_merge_2(Type, InstA, InstB, InstAB0, !ModuleInfo),
 
-            % Now update the value associated with ThisInstPair.
+            % Now update the value associated with MergeInstInfo.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
             inst_table_get_merge_insts(InstTable2, MergeInstTable2),
             det_update_merge_inst(MergeInstInfo, inst_known(InstAB0),
@@ -548,14 +550,26 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             ),
             InstAB = any(Uniq, none_or_default_func)
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
-            merge_uniq(UniqA, UniqB, Uniq),
-            bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsB,
-                BoundFunctorsAB, !ModuleInfo),
-            % XXX A better approximation of InstResults is probably possible.
-            InstAB = bound(Uniq, inst_test_no_results, BoundFunctorsAB)
+            InstB = bound(_, _, _),
+            merge_bound_insts(Type, InstA, InstB, InstAB, !ModuleInfo)
         )
     ).
+
+:- inst inst_bound for mer_inst/0
+    --->        bound(ground, ground, ground).
+
+:- pred merge_bound_insts(mer_type::in,
+    mer_inst::in(inst_bound), mer_inst::in(inst_bound),
+    mer_inst::out(inst_bound), module_info::in, module_info::out) is semidet.
+
+merge_bound_insts(Type, InstA, InstB, InstAB, !ModuleInfo) :-
+    InstA = bound(UniqA, _InstResultsA, BoundFunctorsA),
+    InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
+    merge_uniq(UniqA, UniqB, Uniq),
+    bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsB,
+        BoundFunctorsAB, !ModuleInfo),
+    % XXX A better approximation of InstResults is probably possible.
+    InstAB = bound(Uniq, inst_test_no_results, BoundFunctorsAB).
 
     % merge_uniq(A, B, C) succeeds if C is minimum of A and B in the ordering
     % clobbered < mostly_clobbered < shared < mostly_unique < unique.
