@@ -159,7 +159,6 @@
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -171,29 +170,26 @@
     % (such as Mercury.config and Mercury.options).
 :- type env_optfile_variables
     --->    env_optfile_variables(
-                % This field is for the variable values we get from
-                % the small set of environment variables that
-                % we pay attention to.
+                % This field contains the set of all the environment variables
+                % of the current process. Most of these are not related to
+                % Mercury, which means we cannot pre-process them all.
+                % We cannot pre-process the set that are relevant Mercury
+                % either, because we don't know what that set is.
+                % The reason is the presence of module names in
+                % options variable name of forms such as MCFLAGS-modulename.
+                %
+                % We therefore process the values of environment variables
+                % (meaning, we check whether they can be split up into words
+                % cleanly) only when the compiler looks up a key in this map.
                 eov_env     :: map(env_optfile_var, string),
 
                 % This field contains the variable values we get from
                 % one or more configuration and/or options files,
-                % with one exception. That exception is that *if* a variable
-                % has a value it got from an environment variable, then
-                %
-                % - we copy its value to this field, marking it as having
-                %   the environment as its source, and then
-                % - refuse to update it.
-                %
-                % This seems to me (zs) to be totally unnecessary, because
-                % all the operations exported by this module that look things
-                % up in env_optfile_variables structures look in the eov_env
-                % field *first*, and if they find the variable there, then
-                % they do *not* look in this field. The copying thus seems
-                % to be totally unnecessary. The only possible use of
-                % the copying could be the errors we discover during the
-                % process, but the same checks could, and probably should,
-                % be done during the creation of the eov_env field.
+                % with the exception that if a variable name occurs in
+                % eov_env, then it won't occur in eov_opts, even if
+                % the options file(s) we read in do define that variable.
+                % This is because an entry in eov_env will override
+                % any eov_opts entry it shadows.
                 eov_opts    :: map(env_optfile_var, env_optfile_var_value)
             ).
 
@@ -201,18 +197,19 @@
 
 :- type env_optfile_var_value
     --->    env_optfile_var_value(
-                % The variable's value.
+                % The variable's value, as the exact list of chars we read,
+                % with any gaps between any two part-definitions (meaning
+                % definition components extended using ":=" syntax)
+                % being a single space.
+                %
+                % We use this to expand references to $(varname).
                 list(char),
 
                 % The variable's value, split into words.
-                list(string),
-
-                variable_source
+                %
+                % This is the field that the rest of the compiler consults.
+                list(string)
             ).
-
-:- type variable_source
-    --->    options_file
-    ;       environment.
 
 env_optfile_variables_init(EnvVarMap) = Variables :-
     map.init(OptsMap),
@@ -272,7 +269,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
     read_named_options_file(ProgressStream, OptionsFile,
         Variables0, Variables, Specs0, UndefSpecs, !IO),
     % Ignore settings in the environment -- the parent mmc process
-    % will have included those in the file.
+    % will have included those in OptionsFile.
     NoEnvVariables = Variables ^ eov_env := map.init,
     lookup_variable_words(NoEnvVariables, "MCFLAGS", FlagsResult),
     (
@@ -778,8 +775,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
 report_split_error(FileName, LineNumber, Msg) = Spec :-
     Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error:"), words(Msg), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_read_files,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_read_files, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1074,60 +1070,69 @@ get_string_acc([Char | Chars0], Chars, RevString0, RevString, MaybeError) :-
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
+update_variable(FileName, LineNumber, SetOrAdd, VarName, NewChars0,
         !Variables, !ParseSpecs, !UndefSpecs, !IO) :-
     expand_any_var_references(!.Variables, FileName, LineNumber,
-        NewValue0, NewValue1, !ParseSpecs, !UndefSpecs, !IO),
-    MaybeWords1 = split_into_words(NewValue1),
+        NewChars0, NewChars1, !ParseSpecs, !UndefSpecs, !IO),
+    MaybeWords1 = split_into_words(NewChars1),
     (
         MaybeWords1 = ok(Words1),
         !.Variables = env_optfile_variables(EnvMap, OptsMap0),
-        ( if map.search(EnvMap, VarName, EnvValue) then
-            Value = string.to_char_list(EnvValue),
-            MaybeWords = split_into_words(Value),
+        ( if map.search(EnvMap, VarName, EnvStr) then
+            % We do not need to insert the VarName/Words1 pair into OptsMap0,
+            % because, due to the presence of VarName key in EnvMap,
+            % it will never be consulted.
+            %
+            % However, the first time we get here for a given VarName
+            % is the first time we learn that the environment variable
+            % with that name is relevant to Mercury, and therefore we should
+            % check whether it splits into words cleanly.
+            %
+            % Should we check that here and now, or should we leave it
+            % to lookup_variable_words predicate, which is invoked when
+            % the compiler wants to use this environment variable?
+            % There are arguments in favor of both options.
+            %
+            % Checking now means that we detect and report errors in the value
+            % of an environment variable as early as possible after that
+            % envvar is set to a value we do not consider acceptable.
+            %
+            % On the other hand, if two envvars relevant to a Mercury program,
+            % say MCFLAGS-mod_a and MCFLAGS-mod_b, both have the same error,
+            % but only MCFLAGS-mod_a appears in a Mercury.options file, then
+            % the code here would report the error only for the first envvar,
+            % leaving the second to be reported by lookup_variable_words.
+            % That would seem to violate the law of least astonishment.
+            %
+            % Reporting any errors here and now preserves old behavior.
+            % XXX The question is: *should* we preserve this old behavior?
+            SplitResult = split_into_words(string.to_char_list(EnvStr)),
             (
-                MaybeWords = ok(Words),
-                % XXX This code is not needed, because the key/value pair
-                % we insert into eov_opts will never be consulted, due to
-                % the presence of the key in eov_env.
-                EnvValueChars = string.to_char_list(EnvValue),
-                Entry = env_optfile_var_value(EnvValueChars, Words,
-                    environment),
-                map.set(VarName, Entry, OptsMap0, OptsMap),
-                !Variables ^ eov_opts := OptsMap
+                SplitResult = ok(_)
             ;
-                MaybeWords = error(WordsError),
-                Spec = report_split_error(FileName, LineNumber, WordsError),
+                SplitResult = error(Msg),
+                Spec = split_error_msg_to_error_spec(VarName, Msg),
                 !:ParseSpecs = [Spec | !.ParseSpecs]
             )
         else
-            ( if map.search(OptsMap0, VarName, OldEntry) then
-                OldEntry = env_optfile_var_value(OldValue, OldWords, Source),
+            ( if map.search(OptsMap0, VarName, OldOptsEntry) then
+                OldOptsEntry = env_optfile_var_value(OldChars, OldWords),
                 (
-                    Source = environment,
-                    unexpected($pred, "Source = environment")
+                    SetOrAdd = soa_set,
+                    NewChars = NewChars1,
+                    NewWords = Words1
                 ;
-                    Source = options_file,
-                    (
-                        SetOrAdd = soa_set,
-                        NewValue = NewValue1,
-                        Words = Words1
-                    ;
-                        SetOrAdd = soa_add,
-                        NewValue = OldValue ++ [' ' |  NewValue1],
-                        Words = OldWords ++ Words1
-                    ),
-                    Entry = env_optfile_var_value(NewValue, Words,
-                        options_file),
-                    map.det_update(VarName, Entry, OptsMap0, OptsMap),
-                    !Variables ^ eov_opts := OptsMap
-                )
+                    SetOrAdd = soa_add,
+                    NewChars = OldChars ++ [' ' |  NewChars1],
+                    NewWords = OldWords ++ Words1
+                ),
+                NewOptsEntry = env_optfile_var_value(NewChars, NewWords),
+                map.det_update(VarName, NewOptsEntry, OptsMap0, OptsMap)
             else
-                Entry =
-                    env_optfile_var_value(NewValue1, Words1, options_file),
-                map.det_insert(VarName, Entry, OptsMap0, OptsMap),
-                !Variables ^ eov_opts := OptsMap
-            )
+                NewOptsEntry = env_optfile_var_value(NewChars1, Words1),
+                map.det_insert(VarName, NewOptsEntry, OptsMap0, OptsMap)
+            ),
+            !Variables ^ eov_opts := OptsMap
         )
     ;
         MaybeWords1 = error(WordsError1),
@@ -1647,26 +1652,21 @@ get_env_optfile_var_info(VarId, VarName, DefaultVarName, ExtraVarName,
 
 lookup_variable_words(Variables, VarName, Result) :-
     Variables = env_optfile_variables(EnvMap, OptsMap),
-    ( if map.search(EnvMap, VarName, EnvValue) then
-        SplitResult = split_into_words(string.to_char_list(EnvValue)),
+    ( if map.search(EnvMap, VarName, EnvStr) then
+        SplitResult = split_into_words(string.to_char_list(EnvStr)),
         (
             SplitResult = ok(EnvWords),
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            Pieces = [words("Error: in environment variable"),
-                quote(VarName), suffix(":"), words(Msg), nl],
-            ErrorSpec = no_ctxt_spec($pred, severity_error,
-                phase_read_files, Pieces),
-            Result = var_result_error(one_or_more(ErrorSpec, []))
+            Spec = split_error_msg_to_error_spec(VarName, Msg),
+            Result = var_result_error(one_or_more(Spec, []))
         )
+    else if map.search(OptsMap, VarName, OptsEntry) then
+        OptsEntry = env_optfile_var_value(_, Words),
+        Result = var_result_set(Words)
     else
-        ( if map.search(OptsMap, VarName, MapValue) then
-            MapValue = env_optfile_var_value(_, Words, _),
-            Result = var_result_set(Words)
-        else
-            Result = var_result_unset
-        )
+        Result = var_result_unset
     ).
 
 :- pred lookup_variable_value(env_optfile_variables::in,
@@ -1674,16 +1674,21 @@ lookup_variable_words(Variables, VarName, Result) :-
 
 lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
     Variables = env_optfile_variables(EnvMap, OptsMap),
-    ( if map.search(EnvMap, VarName, EnvValue) then
-        ValueChars = string.to_char_list(EnvValue)
+    ( if map.search(EnvMap, VarName, EnvStr) then
+        ValueChars = string.to_char_list(EnvStr)
+    else if map.search(OptsMap, VarName, OptsEntry) then
+        OptsEntry = env_optfile_var_value(ValueChars, _)
     else
-        ( if map.search(OptsMap, VarName, Entry) then
-            Entry = env_optfile_var_value(ValueChars, _, _)
-        else
-            ValueChars = [],
-            set.insert(VarName, !UndefVarNames)
-        )
+        ValueChars = [],
+        set.insert(VarName, !UndefVarNames)
     ).
+
+:- func split_error_msg_to_error_spec(string, string) = error_spec.
+
+split_error_msg_to_error_spec(VarName, Msg) = Spec :-
+    Pieces = [words("Error: in environment variable"),
+        quote(VarName), suffix(":"), words(Msg), nl],
+    Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1754,9 +1759,9 @@ write_env_optfile_var_value(DumpStream, VarName, OptVarValue, !IO) :-
     % The contents of _ValueChars is implicit in ValueWords, so
     % printing it out would just clutter the output and make it
     % harder to read.
-    OptVarValue = env_optfile_var_value(_ValueChars, ValueWords, Src),
-    io.format(DumpStream, "%-24s %s %s\n",
-        [s(VarName ++ " ->"), s(string(Src)), s(string(ValueWords))], !IO).
+    OptVarValue = env_optfile_var_value(_ValueChars, ValueWords),
+    io.format(DumpStream, "%-24s %s\n",
+        [s(VarName ++ " ->"), s(string(ValueWords))], !IO).
 
 :- pred write_env_variable_value(io.text_output_stream::in,
     string::in, string::in, io::di, io::uo) is det.
