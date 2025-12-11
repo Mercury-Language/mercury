@@ -1,5 +1,17 @@
 #!/bin/sh
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+#
+# This shell script is invoked by the rule for %.log in tests/Mmake.common.
+# That rule sets up the values of the following shell variables:
+#
+# test_full:        the name of the test case, including any -nodepend suffix
+# test:             the name of the test case, minus any -nodepend suffix
+# params_msg:       the string "in grade $(GRADE)"
+# this_dir:         the name of the dictory the test being run is in
+# tests_dir:        the path to the top-level tests directory
+#
 
 exitstatus=0
 echo RUNNING TEST "${this_dir}/${test_full}" "${params_msg}"
