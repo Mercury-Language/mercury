@@ -1,6 +1,6 @@
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 # vim: ts=8 sw=8 noexpandtab ft=make
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 # Mmake.common - shared Mmake variables and rules for the test directories.
 #
 # The Mmakefile in each test directory must set several make variables.
@@ -38,7 +38,7 @@
 # (it is never invoked by tools/bootcheck), which invokes "mmake runtests_dir"
 # in *all* the test directories.
 #
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 MAIN_TARGET = runtests
 
@@ -101,7 +101,7 @@ endif
 # Avoid trying to make this file with `mmc --make' if it doesn't exist.
 $(TESTS_DIR)/Mmake.params: ;
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 .PRECIOUS: %.res %.err_res %.out %.err
 
@@ -274,7 +274,7 @@ DIFF_WO = diff $(DIFF_OPTS)
 		cat $@; \
 		exit 1; }
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 MERCURY_MAIN_MODULES = $(PROGS)
 
@@ -380,9 +380,9 @@ start_runtests_local:
 	fi
 	@> FAILED_TESTS
 
-# Run a single test, cleaning up if it succeeds, or producing a log file
-# if the test fails.
-
+# Run a single test.
+# - If it succeeds, clean up its regenerable files.
+# - If it fails, produce a log file.
 .PHONY: %.log
 %.log: start_runtests_local
 	+@test_full=$*; \
@@ -440,4 +440,4 @@ runtests_local:
 
 endif	# THIS_DIR_TESTS_TO_RUN != ""
 
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
