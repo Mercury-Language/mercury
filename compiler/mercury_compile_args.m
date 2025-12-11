@@ -334,6 +334,9 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
         ),
         io.environment.get_environment_var_map(EnvVarMap, !IO),
         (
+            OptFileSpecs = [_ | _],
+            Result = opr_failure(OptFileSpecs)
+        ;
             OptFileSpecs = [],
             maybe_dump_options_file(ErrorStream, ArgsOptionTable,
                 EnvOptFileVariables0, !IO),
@@ -373,9 +376,6 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
                         OptionArgs, NonOptionArgs, Specs)
                 )
             )
-        ;
-            OptFileSpecs = [_ | _],
-            Result = opr_failure(OptFileSpecs)
         )
     ).
 
