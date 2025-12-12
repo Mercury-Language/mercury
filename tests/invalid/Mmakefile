@@ -360,13 +360,6 @@ BORING_SINGLEMODULE_PROGS = \
 
 #-----------------------------------------------------------------------------#
 
-# The following require that num_tag_bits >= 1.
-# NOTE We don't support reserving tags anymore.
-# RESERVE_TAG_MODULES = \
-# 	reserve_tag
-
-#-----------------------------------------------------------------------------#
-
 # The following require that the back-end support the C interface.
 # For invalid_event and synth_attr_error, what we need for the *compiler*
 # to be compiled to C, but there is no way to test for that directly,
