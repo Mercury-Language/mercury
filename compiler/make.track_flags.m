@@ -120,15 +120,14 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
 
 make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
         ModuleName, Succeeded, !LastHash, !IO) :-
-    EnvOptFileVariables = make_info_get_env_optfile_variables(Info),
+    Params = make_info_get_compiler_params(Info),
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(Info),
         lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs),
-        EnvVarArgs = make_info_get_env_var_args(Info),
-        OptionArgs = make_info_get_option_args(Info),
         AllOptionArgs = ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,

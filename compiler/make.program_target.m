@@ -176,13 +176,10 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
         IntermodAnalysisSucceeded = succeeded,
         get_default_options(Globals, DefaultOptionTable),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
-        EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-        EnvVarArgs = make_info_get_env_var_args(!.Info),
-        OptionArgs = make_info_get_option_args(!.Info),
+        Params = make_info_get_compiler_params(!.Info),
         setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
             MaybeStdLibGrades, invoked_by_mmc_make, MainModuleName,
-            EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions,
-            MayBuild, !IO),
+            Params, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_build(_AllOptionArgs, BuildGlobals),
             make_linked_target_2(ProgressStream, BuildGlobals,
@@ -979,14 +976,11 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
         Succeeded, !Info, !Specs, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
-    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-    EnvVarArgs = make_info_get_env_var_args(!.Info),
-    OptionArgs = make_info_get_option_args(!.Info),
+    Params = make_info_get_compiler_params(!.Info),
     ExtraOptions = [],
     setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         MaybeStdLibGrades, invoked_by_mmc_make, MainModuleName,
-        EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions,
-        MayBuild, !IO),
+        Params, ExtraOptions, MayBuild, !IO),
     (
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         make_misc_target_builder(ProgressStream, BuildGlobals, MainModuleName,
@@ -1260,10 +1254,12 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, Pred, Succeeded,
         Pred(ProgressStream, Succeeded, !Info, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = make_info_get_option_args(!.Info),
+        OrigParams = make_info_get_compiler_params(!.Info),
+        OrigOptionArgs = OrigParams ^ cp_option_args,
         % Pass the name of the cache directory to child processes.
         NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
-        make_info_set_option_args(NewOptionArgs, !Info),
+        NewParams = OrigParams ^ cp_option_args := NewOptionArgs,
+        make_info_set_compiler_params(NewParams, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         Pred(ProgressStream, TaskSucceeded, !Info, !IO),
@@ -1271,7 +1267,7 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, Pred, Succeeded,
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
-        make_info_set_option_args(OrigOptionArgs, !Info)
+        make_info_set_compiler_params(OrigParams, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1300,10 +1296,12 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, Pred, Succeeded,
         Pred(ProgressStream, Succeeded, !Info, !Specs, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = make_info_get_option_args(!.Info),
+        OrigParams = make_info_get_compiler_params(!.Info),
+        OrigOptionArgs = OrigParams ^ cp_option_args,
         % Pass the name of the cache directory to child processes.
         NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
-        make_info_set_option_args(NewOptionArgs, !Info),
+        NewParams = OrigParams ^ cp_option_args := NewOptionArgs,
+        make_info_set_compiler_params(NewParams, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         Pred(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
@@ -1311,7 +1309,7 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, Pred, Succeeded,
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
-        make_info_set_option_args(OrigOptionArgs, !Info)
+        make_info_set_compiler_params(OrigParams, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1355,7 +1353,9 @@ should_we_use_analysis_cache_dir(ProgressStream, Globals, Info,
         ;
             % Analysis file cache directory already set up in a parent call.
             % XXX The comment just above applies here as well.
-            list.member(CacheDirOption, make_info_get_option_args(Info))
+            Params = make_info_get_compiler_params(Info),
+            Params = compiler_params(_, _, OpttonArgs),
+            list.member(CacheDirOption, OpttonArgs)
         )
     then
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir

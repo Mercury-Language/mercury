@@ -587,16 +587,16 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         CleanAfter = no
     ),
 
-    EnvVarArgs = make_info_get_env_var_args(!.Info),
+    Params0 = make_info_get_compiler_params(!.Info),
+    Params0 = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs0),
     % Set up so that grade-dependent files for the current grade
-    % don't overwrite the files for the default grade.
-    OptionArgs0 = make_info_get_option_args(!.Info),
+    % do not overwrite the files for the default grade.
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
 
     verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
 
-    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
     lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags),
     (
         MaybeMCFlags = ok1(MCFlags),
@@ -648,7 +648,7 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
             StatusMap0, StatusMap0, StatusMap),
 
         make_info_set_target_status_map(StatusMap, !Info),
-        make_info_set_option_args(OptionArgs, !Info),
+        make_info_set_compiler_params(Params, !Info),
 
         % Reset the target file timestamp cache, as the information it contains
         % is not valid for the changed grade and grade-subdir setting.

@@ -48,13 +48,12 @@
 
     % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     %   MaybeStdLibGrades, InvokedByMmcMake, ModuleName,
-    %   EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
-    %   !Info, !IO):
+    %   Params, ExtraOptions, MayBuild, !Info, !IO):
     %
     % Set up for building some compiler-generated file for ModuleName,
     % Return, in MayBuild, the full argument list for that compiler invocation,
-    % containing module-specific options from EnvOptFileVariables and
-    % OptionArgs, and including ExtraOptions, adding `--use-subdirs' and
+    % containing module-specific options from the cp_eov and cp_option_args
+    % fields of Params, and including ExtraOptions, adding `--use-subdirs' and
     % `--invoked-by-mmc-make' to the option list. (The latter presumably
     % dependent on the value of the second arg).
     %
@@ -62,16 +61,15 @@
     % from this full argument list.
     %
     % XXX Most, maybe all, callers seem to ignore the full argument list,
-    % using only the build globals derived from it,
+    % using only the build globals derived from it.
     %
     % XXX The type of ExtraOptions should be assoc_list(option, option_data),
     % or possibly just a maybe(op_mode). not list(string),
     %
 :- pred setup_for_build_with_module_options(io.text_output_stream::in,
     option_table(option)::in, maybe_stdlib_grades::in,
-    maybe_invoked_by_mmc_make::in, module_name::in, env_optfile_variables::in,
-    list(string)::in, list(string)::in, list(string)::in,
-    may_build::out, io::di, io::uo) is det.
+    maybe_invoked_by_mmc_make::in, module_name::in, compiler_params::in,
+    list(string)::in, may_build::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -203,8 +201,9 @@
 %---------------------------------------------------------------------------%
 
 setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
-        MaybeStdLibGrades, InvokedByMmcMake, ModuleName, EnvOptFileVariables,
-        EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO) :-
+        MaybeStdLibGrades, InvokedByMmcMake, ModuleName, Params,
+        ExtraOptions, MayBuild, !IO) :-
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (

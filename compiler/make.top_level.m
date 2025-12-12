@@ -21,7 +21,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
 :- import_module make.make_info.
@@ -32,10 +31,13 @@
 
 %---------------------------------------------------------------------------%
 
+    % make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO):
+    %
+    % Build the targets specified by the non-option arguments in ArgPack,
+    % obeying the options in the rest of ArgPack.
+    %
 :- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
-    env_optfile_variables::in,
-    list(string)::in, list(string)::in, list(file_name)::in,
-    io::di, io::uo) is det.
+    compiler_arg_pack::in, io::di, io::uo) is det.
 
 :- pred make_top_targets(io.text_output_stream::in, globals::in,
     maybe_keep_going::in, list(top_target_file)::in,
@@ -79,11 +81,12 @@
 
 %---------------------------------------------------------------------------%
 
-make_process_compiler_args(ProgressStream, Globals,
-        EnvOptFileVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
+make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO) :-
+    ArgPack = compiler_arg_pack(EnvOptFileVariables, EnvVarArgs,
+        OptionArgs, NonOptionArgs),
     io.progname_base("mercury_compile", ProgName, !IO),
     get_main_target_if_needed(ProgName, EnvOptFileVariables,
-        Targets0, MaybeTargets0),
+        NonOptionArgs, MaybeTargets0),
     report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets),
     (
         MaybeTargets = error1(Specs),
@@ -123,10 +126,11 @@ make_process_compiler_args(ProgressStream, Globals,
         ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
         globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
-        MakeInfo0 = init_make_info(EnvOptFileVariables, MaybeStdLibGrades,
-            KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
-            AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
-            TargetIndexMap, TargetStatusMap),
+        Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
+        TimestampMap = init_target_file_timestamp_map,
+        MakeInfo0 = init_make_info(MaybeStdLibGrades, KeepGoing, Params,
+            ClassifiedTargetSet, AnalysisRepeat, TimestampMap,
+            ModuleIndexMap, TargetIndexMap, TargetStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.

@@ -29,10 +29,7 @@
     --->    apr_failure
     ;       apr_success(
                 aprs_globals                :: globals,
-                aprs_env_optfile_variables  :: env_optfile_variables,
-                aprs_env_var_args           :: list(string),
-                aprs_option_args            :: list(string),
-                aprs_nonoption_args         :: list(string)
+                aprs_arg_pack               :: compiler_arg_pack
             ).
 
 :- pred setup_all_args(io.text_output_stream::in, io.text_output_stream::in,
@@ -139,8 +136,9 @@ setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO) :-
                 ArgResult = apr_failure
             ;
                 Specs = [],
-                ArgResult = apr_success(Globals, EnvOptFileVariables,
-                    EnvVarArgs, OptionArgs, NonOptionArgs)
+                ArgPack = compiler_arg_pack(EnvOptFileVariables, EnvVarArgs,
+                    OptionArgs, NonOptionArgs),
+                ArgResult = apr_success(Globals, ArgPack)
             )
         ;
             OptResult = opr_failure(OptionSpecs),

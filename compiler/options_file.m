@@ -33,6 +33,37 @@
 
 %---------------------------------------------------------------------------%
 
+:- type compiler_arg_pack
+    --->    compiler_arg_pack(
+                % The structure constructed by most of this module,
+                % containing the values of make-like variables that we get
+                % either from the environment of the compiler process,
+                % or from configuration/options files.
+                cap_eov             :: env_optfile_variables,
+
+                % A sequence of option values that express the values
+                % of environment variables such as MERCURY_COLOR_SCHEME
+                % and NO_COLOR. Computed by get_args_representing_env_vars.
+                cap_env_var_args    :: list(string),
+
+                % The contents of the command line (or of its args file
+                % replacement), separated into the arguments that represent
+                % options, and the ones that do not do so.
+                cap_option_args     :: list(string),
+                cap_nonoption_args  :: list(string)
+            ).
+
+:- type compiler_params
+    --->    compiler_params(
+                % The first three fields of a compiler_arg_pack.
+                % Used by code that iterates over the nonoption arguments.
+                cp_eov              :: env_optfile_variables,
+                cp_env_var_args     :: list(string),
+                cp_option_args      :: list(string)
+            ).
+
+%---------------------------------------------------------------------------%
+
 :- type env_optfile_variables.
 
 :- func env_optfile_variables_init(environment_var_map)

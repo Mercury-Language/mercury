@@ -264,16 +264,13 @@
 
 :- type make_info.
 
-:- func init_make_info(env_optfile_variables, maybe_stdlib_grades,
-    maybe_keep_going, list(string), list(string), set(top_target_file), int,
-    target_file_timestamp_map, module_index_map, target_id_index_map,
-    target_status_map) = make_info.
+:- func init_make_info(maybe_stdlib_grades, maybe_keep_going, compiler_params,
+    set(top_target_file), int, target_file_timestamp_map,
+    module_index_map, target_id_index_map, target_status_map) = make_info.
 
-:- func make_info_get_env_optfile_variables(make_info) = env_optfile_variables.
+:- func make_info_get_compiler_params(make_info) = compiler_params.
 :- func make_info_get_maybe_stdlib_grades(make_info) = maybe_stdlib_grades.
 :- func make_info_get_keep_going(make_info) = maybe_keep_going.
-:- func make_info_get_env_var_args(make_info) = list(string).
-:- func make_info_get_option_args(make_info) = list(string).
 :- func make_info_get_command_line_targets(make_info) = set(top_target_file).
 :- func make_info_get_rebuild_module_deps(make_info) =
     maybe_rebuild_module_deps.
@@ -307,7 +304,7 @@
 :- func make_info_get_module_src_is_local_map(make_info) =
     map(module_index, is_src_local).
 
-:- pred make_info_set_option_args(list(string)::in,
+:- pred make_info_set_compiler_params(compiler_params::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_command_line_targets(set(top_target_file)::in,
     make_info::in, make_info::out) is det.
@@ -365,10 +362,7 @@
 
 :- type make_info
     --->    make_info(
-                % The first few fields are read-only.
-
-                % The contents of the Mercury.options file.
-                mki_env_optfile_variables   :: env_optfile_variables,
+            % The first few fields are read-only.
 
                 % The set of detected library grades, if known.
                 % (By the time we construct the initial make_info,
@@ -379,17 +373,13 @@
                 % The value of the --keep-going option.
                 mki_keep_going              :: maybe_keep_going,
 
-                % A sequence of option values that express the values
-                % of environment variables such as MERCURY_COLOR_SCHEME
-                % and NO_COLOR.
-                mki_env_var_args            :: list(string),
+            % The remaining fields are read-write.
 
-                % The remaining fields are read-write.
-
-                % Initially, the original set of options passed to mmc,
-                % not including the targets to be made.
-                % Can be modified later,
-                mki_option_args             :: list(string),
+                % The overall parameters of the compiler invocation.
+                % The cp_eov and cp_env_var_args fields are readonly,
+                % but in some places, we temporarily override the value
+                % of the cp_option_args field.
+                mki_compiler_params         :: compiler_params,
 
                 % Initially, the targets specified on the command line.
                 % Can be modified later,
@@ -504,10 +494,9 @@
                 mki_module_src_is_local_map :: map(module_index, is_src_local)
             ).
 
-init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
-        EnvVarArgs, OptionArgs, CmdLineTargets, AnalysisRepeat,
-        TargetTimestamps, ModuleIndexMap, TargetIdIndexMap, TargetStatusMap)
-        = MakeInfo :-
+init_make_info(MaybeStdLibGrades, KeepGoing, Params, CmdLineTargets,
+        AnalysisRepeat, TargetTimestamps, ModuleIndexMap, TargetIdIndexMap,
+        TargetStatusMap) = MakeInfo :-
     map.init(ModuleDependencies),
     map.init(FileTimestamps),
     ShouldRebuildModuleDeps = do_rebuild_module_deps,
@@ -515,11 +504,9 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
     MaybeStdoutLock = maybe.no,
     map.init(SrcCurDirMap),
     MakeInfo = make_info(
-        EnvOptFileVariables,
         MaybeStdLibGrades,
         KeepGoing,
-        EnvVarArgs,
-        OptionArgs,
+        Params,
         CmdLineTargets,
         ShouldRebuildModuleDeps,
         AnalysisRepeat,
@@ -543,16 +530,12 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         SrcCurDirMap
     ).
 
-make_info_get_env_optfile_variables(Info) = X :-
-    X = Info ^ mki_env_optfile_variables.
+make_info_get_compiler_params(Info) = X :-
+    X = Info ^ mki_compiler_params.
 make_info_get_maybe_stdlib_grades(Info) = X :-
     X = Info ^ mki_maybe_stdlib_grades.
 make_info_get_keep_going(Info) = X :-
     X = Info ^ mki_keep_going.
-make_info_get_env_var_args(Info) = X :-
-    X = Info ^ mki_env_var_args.
-make_info_get_option_args(Info) = X :-
-    X = Info ^ mki_option_args.
 make_info_get_command_line_targets(Info) = X :-
     X = Info ^ mki_command_line_targets.
 make_info_get_rebuild_module_deps(Info) = X :-
@@ -596,8 +579,8 @@ make_info_get_trans_prereqs_cache(Info) = X :-
 make_info_get_module_src_is_local_map(Info) = X :-
     X = Info ^ mki_module_src_is_local_map.
 
-make_info_set_option_args(X, !Info) :-
-    !Info ^ mki_option_args := X.
+make_info_set_compiler_params(X, !Info) :-
+    !Info ^ mki_compiler_params := X.
 make_info_set_command_line_targets(X, !Info) :-
     !Info ^ mki_command_line_targets := X.
 make_info_set_rebuild_module_deps(X, !Info) :-

@@ -52,6 +52,7 @@
 :- import_module make.file_names.
 :- import_module make.module_dep_file.
 :- import_module make.module_target.
+:- import_module make.options_file.
 :- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.
@@ -624,14 +625,11 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
 
         globals.get_default_options(Globals, DefaultOptionTable),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
-        EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-        EnvVarArgs = make_info_get_env_var_args(!.Info),
-        OptionArgs = make_info_get_option_args(!.Info),
+        Params = make_info_get_compiler_params(!.Info),
         ExtraOptions = ["--make-short-interface"],
         setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
             MaybeStdLibGrades, invoked_by_mmc_make, ModuleName,
-            EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions,
-            MayBuild, !IO),
+            Params, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_not_build(MSISpecs),
             % XXX MAKE_STREAM
