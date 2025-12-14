@@ -36,8 +36,8 @@
     globals::out, io::di, io::uo) is det.
 
     % handle_given_options(ProgressStream, DefaultOptionTable,
-    %   EnvOptFileVariables, Args, OptionArgs, NonOptionArgs,
-    %   Specs, Globals, !IO).
+    %   MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir, Args0,
+    %   OptionArgs, Args, Specs, !:Globals, !IO):
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
     maybe_stdlib_grades::in, maybe1(list(string))::in, list(string)::in,
