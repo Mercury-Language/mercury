@@ -203,8 +203,11 @@
     --->    env_optfile_variables(
                 % This field contains the set of all the environment variables
                 % of the current process. Most of these are not related to
-                % Mercury, which means we cannot pre-process them all.
-                % We cannot pre-process the set that are relevant Mercury
+                % Mercury, so preprocessing all environment variable values
+                % would yield lots of diagnostics about settings that have
+                % nothing to do with Mercury.
+                %
+                % We cannot pre-process the set that are relevant to Mercury
                 % either, because we don't know what that set is.
                 % The reason is the presence of module names in
                 % options variable name of forms such as MCFLAGS-modulename.
