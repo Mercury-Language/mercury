@@ -354,24 +354,33 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
                 ),
                 % Process the options again to find out which configuration
                 % file to read.
-                % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
+                %
+                % Note that MaybeErrorMC can be yes(_) even though MaybeError
+                % was no, due to the addition of MCFlags0 to the argument list.
                 getopt.process_options_userdata_io(OptionOps,
                     MCFlags0 ++ CmdLineArgs, _OptionArgsMC, _NonOptionArgsMC,
-                    _MaybeErrorMC, _OptionsSetMC,
+                    MaybeErrorMC, _OptionsSetMC,
                     DefaultOptionTable, FlagsArgsOptionTable,
                     cord.init, _UserDataMC, !IO),
-                process_options_std_config_file(ProgressStream,
-                    FlagsArgsOptionTable, EnvVarMap, WarnUndef,
-                    EnvOptFileVariables0, EnvOptFileVariables,
-                    MaybeMCFlags, OptFileOkSpecs, !IO),
-                Specs = OptFileSpecs ++ OptFileOkSpecs,
                 (
-                    MaybeMCFlags = no,
+                    MaybeErrorMC = yes(OptionError),
+                    Specs = report_option_error(OptionError),
                     Result = opr_failure(Specs)
                 ;
-                    MaybeMCFlags = yes(MCFlags),
-                    Result = opr_success(EnvOptFileVariables, MCFlags,
-                        OptionArgs, NonOptionArgs, Specs)
+                    MaybeErrorMC = no,
+                    process_options_std_config_file(ProgressStream,
+                        FlagsArgsOptionTable, EnvVarMap, WarnUndef,
+                        EnvOptFileVariables0, EnvOptFileVariables,
+                        MaybeMCFlags, OptFileOkSpecs, !IO),
+                    Specs = OptFileSpecs ++ OptFileOkSpecs,
+                    (
+                        MaybeMCFlags = no,
+                        Result = opr_failure(Specs)
+                    ;
+                        MaybeMCFlags = yes(MCFlags),
+                        Result = opr_success(EnvOptFileVariables, MCFlags,
+                            OptionArgs, NonOptionArgs, Specs)
+                    )
                 )
             )
         )
