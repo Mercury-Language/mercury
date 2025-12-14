@@ -170,12 +170,12 @@ ug_invocation.texi: ug_invocation.texi_date
 # ug_invocation.texi, assuming the bootstrap compiler is the same or a similar
 # version.
 ifdef BUILD_SRCDIST
-UG_INVOCATION_DEP=
-UG_INVOCATION_MC=$(MC)
+UG_INVOCATION_DEP = 
+UG_INVOCATION_MC  = $(MC)
 else
 ifeq ($(CROSS_COMPILING),yes)
-UG_INVOCATION_DEP=
-UG_INVOCATION_MC=$(MC)
+UG_INVOCATION_DEP = 
+UG_INVOCATION_MC  = $(MC)
 else
 # We do not specify the executable extension $(EXT_FOR_EXE) here because we
 # need a way to refer to the compiler that works regardless of the grade in
@@ -188,8 +188,8 @@ else
 #   gmake on Windows contains code to add it for us, to both UG_INVOCATION_DEP
 #   and UG_INVOCATION_MC.
 #
-UG_INVOCATION_DEP=../compiler/mercury_compile
-UG_INVOCATION_MC=../compiler/mercury_compile
+UG_INVOCATION_DEP = ../compiler/mercury_compile
+UG_INVOCATION_MC  = ../compiler/mercury_compile
 endif
 endif
 
