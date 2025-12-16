@@ -192,17 +192,25 @@
             ).
 
 :- type help_text == list(help_piece).
+    % Some of the function symbols below occur with two arities.
+    % These function symbols all represent help text that is surrounded
+    % by something in either the output of mmc --help or in the texinfo text
+    % (as in e.g. ``quoted text'' or @samp{sample text}). The function symbol
+    % version with the lower arity just specifies the text that should be
+    % so surrounded, while the version with the one greater arity specifies
+    % the text that should be put following immediately (without any spaces)
+    % the right
 :- type help_piece
     --->    w(string)                           % words
     ;       fixed(string)                       % as in the format_piece
-    ;       opt(string)                         %
+    ;       opt(string)                         % option names
     ;       opt(string, string)                 %
-    ;       arg(string)                         % ?
-    ;       arg(string, string)                 % ?
-    ;       bare_arg(string)                         % ?
-    ;       bare_arg(string, string)                 % ?
-    ;       opt_arg(string, string)             % ?
-    ;       opt_arg(string, string, string)     % ?
+    ;       arg(string)                         % option arg names
+    ;       arg(string, string)                 %
+    ;       bare_arg(string)                    % option arg names, differently
+    ;       bare_arg(string, string)            %
+    ;       opt_arg(string, string)             % option and its argument
+    ;       opt_arg(string, string, string)     %
     ;       quote(string)                       % ``str1''
     ;       quote(string, string)               % ``str1''str2
     ;       ref(string, string, string)         % @ref{str2}
