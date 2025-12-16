@@ -5230,7 +5230,11 @@ optdb(oc_env,       options_files,           accumulating(["Mercury.options"]),
         w("If"), arg("filename"), w("is"), samp("-", ","),
         w("an options file will be read from the standard input."),
         w("By default, the compiler will read the file named"),
-        file("Mercury.options"), w("in the current directory.")])).
+        file("Mercury.options"), w("in the current directory."),
+        w("Note that this option is intended to be used"),
+        w("only on command lines. When specified in options files"),
+        w("(i.e. in files named by other --options-file options),"),
+        w("it has no effect.")])).
 optdb(oc_env,       config_file,                       maybe_string(yes("")),
     % yes("") means unset.
     arg_help("config-file", "filename", [

@@ -21,8 +21,6 @@ MCFLAGS-actual_more_expected    += -E
 MCFLAGS-any_to_ground_in_ite_cond_nomax += --no-max-error-line-width
 MCFLAGS-bad_ambiguity_msg       += -E
 MCFLAGS-bad_exported_mode       += --infer-all --no-intermodule-optimization
-MCFLAGS-bug150_bad_color        += --ignore-color-scheme-envvar
-MCFLAGS-bug150_bad_color        += --color-scheme specified@holy=8:hint=cow
 MCFLAGS-bug150_partial_color    += --ignore-color-scheme-envvar
 MCFLAGS-bug150_partial_color    += --color-scheme specified@incorrect=203
 # Intermodule optimization changes the number of an unnamed variable

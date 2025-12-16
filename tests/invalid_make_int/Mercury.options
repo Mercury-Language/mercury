@@ -4,6 +4,8 @@
 
 # Please keep these lists sorted.
 
+MCFLAGS-bad_color                       += --ignore-color-scheme-envvar
+MCFLAGS-bad_color                   += --color-scheme specified@holy=8:hint=cow
 MCFLAGS-bad_detism_category             += --halt-at-invalid-interface
 MCFLAGS-bad_detism_category             += --std-int-file-not-written-msgs
 MCFLAGS-bad_end_module                  += --halt-at-invalid-interface

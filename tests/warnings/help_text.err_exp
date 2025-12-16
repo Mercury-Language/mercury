@@ -3237,7 +3237,10 @@ Options specifying properties of the environment
         Add <filename> to the list of options files to be processed. If
         <filename> is `-', an options file will be read from the standard
         input. By default, the compiler will read the file named
-        `Mercury.options' in the current directory.
+        `Mercury.options' in the current directory. Note that this option is
+        intended to be used only on command lines. When specified in options
+        files (i.e. in files named by other --options-file options), it has no
+        effect.
 
     --config-file <filename>
     --no-config-file

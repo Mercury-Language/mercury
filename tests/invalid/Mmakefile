@@ -91,7 +91,6 @@ BORING_SINGLEMODULE_PROGS = \
 	bug113 \
 	bug117 \
 	bug150 \
-	bug150_bad_color \
 	bug150_partial_color \
 	bug184 \
 	bug191 \
