@@ -310,6 +310,12 @@ Changes to the Mercury standard library
 
     - func `float_to_doc/1`   (replacement: `pretty_printer.float_to_doc/1`)
 
+### Changes to the `getopt` module
+
+* The following predicate has been added:
+
+    - pred `record_all_arguments/7`
+
 ### Changes to the `hash_table` module
 
 * The following predicate has been added:
@@ -1918,7 +1924,7 @@ Changes that may break compatibility
 * We have renamed the `lexer` and `parser` modules of the Mercury standard
   library to `mercury_term_lexer` and `mercury_term_parser` respectively.
 
-* We have made slight changes to the names and/or the functionality
+* We have made slight changes to the names and/or to the functionality
   of several predicates in the `getopt` and `getopt_io` modules.
 
 * We have removed the legacy support for the Alpha architecture.
@@ -2030,7 +2036,7 @@ Changes to the Mercury standard library
     - pred `record_arguments/8`
     - pred `expand_file_specials/8`
 
-* The following variants of the existing process_options predicate
+* The following variants of the existing `process_options` predicate
   have been added:
 
     - pred `process_options_io/6`
@@ -2051,8 +2057,8 @@ Changes to the Mercury standard library
     - pred `process_options/7`
     - pred `process_options_track/7`
 
-    All these predicates used to return error indications in the form of a
-    simple string. They now return error indications using the existing
+    All these predicates used to return error indications in the form of
+    a simple string. They now return error indications using the existing
     structured type `option_error`, which can be converted into a string
     on demand.
 
