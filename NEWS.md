@@ -1767,4 +1767,4 @@ Other changes
   the version information displayed by programs in the Mercury system.
 
 
-For news about earlier versions, see the HISTORY file.
+For news about earlier versions, see the Documentation/NEWS_* files.

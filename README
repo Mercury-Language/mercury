@@ -25,7 +25,7 @@ The installation process will install INFO, HTML, and DVI versions under the
 nominated installation prefix, by default /usr/local/mercury-DEV.
 It will also install Unix-style man pages under the same prefix.
 
-The files RELEASE_NOTES, NEWS, HISTORY, LIMITATIONS, and BUGS
+The files RELEASE_NOTES, NEWS.md, Documentation/NEWS_*, LIMITATIONS, and BUGS
 also contain useful information. If you are interested in looking
 at the source code, the file compiler/notes/compiler_design.html is
 a good place to start.
