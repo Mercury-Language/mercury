@@ -308,13 +308,18 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `float_to_doc/1`   (replacement: `pretty_printer.float_to_doc/1`)
+    - func `float_to_doc/1`     (replacement: `pretty_printer.float_to_doc/1`)
 
 ### Changes to the `getopt` module
 
-* The following predicate has been added:
+* The following predicates have been added:
 
-    - pred `record_all_arguments/7`
+    - pred `recognize_options/7`
+    - pred `recognize_all_options/7`
+
+* The following predicate has been marked obsolete:
+
+    - pred `record_arguments/7` (replacement: `getopt.recognize_options/7`)
 
 ### Changes to the `hash_table` module
 

@@ -274,16 +274,15 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         get_short_option(ShortOption),
         get_long_option(LongOption),
         % Separate the option args from the non-option args.
-        getopt.record_arguments(ShortOption, LongOption, DefaultOptionTable,
-            Args1, NonOptionArgs, OptionArgs, MaybeError, _OptionValues),
+        getopt.recognize_all_options(ShortOption, LongOption,
+            DefaultOptionTable, Args1, Errors, _OptionValues,
+            OptionArgs, NonOptionArgs),
         (
-            MaybeError = found_option_error(OptionError),
-            OptionErrorStr = option_error_to_string(OptionError),
-            Spec = no_ctxt_spec($pred, severity_error,
-                phase_options, [words(OptionErrorStr), suffix("."), nl]),
-            Result = opr_failure([Spec])
+            Errors = [_ | _],
+            OptionSpecs = list.map(option_error_to_error_spec, Errors),
+            Result = opr_failure(OptionSpecs)
         ;
-            MaybeError = no_option_error,
+            Errors = [],
             Result = opr_success(EnvOptFileVariables, [],
                 OptionArgs, NonOptionArgs, Specs)
         )
@@ -294,6 +293,13 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         Result = opr_success(EnvOptFileVariables, [],
             OptionArgs, NonOptionArgs, Specs)
     ).
+
+:- func option_error_to_error_spec(option_error(option)) = error_spec.
+
+option_error_to_error_spec(OptionError) = Spec :-
+    OptionErrorStr = option_error_to_string(OptionError),
+    Pieces = [words(OptionErrorStr), suffix("."), nl],
+    Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces).
 
 %---------------------%
 
