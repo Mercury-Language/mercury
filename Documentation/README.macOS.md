@@ -25,7 +25,7 @@ Macs using macOS 10.9 onwards.
 The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
 and only when using GCC version 4.3 or later as the C compiler.
 
-If `clang` is being used as the C compiler then the only low-level C grades
+If `clang` is being used as the C compiler, then the only low-level C grades
 available are the `none*` grades. The high-level C, Java and C# grades
 all work. The C# grades require the Mono .NET implementation.
 (See [README.CSharp.md](README.CSharp.md) for further details.)

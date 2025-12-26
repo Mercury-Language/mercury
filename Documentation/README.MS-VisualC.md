@@ -87,7 +87,7 @@ In either case, to use MSVC as the C compiler with Mercury, invoke `configure`
 as follows:
 
 ```
-    $ ./configure --with-cc=cl [--with-msvcrt] [<any other options>]
+    ./configure --with-cc=cl [--with-msvcrt] [<any other options>]
 ```
 
 The `--with-msvcrt` flag causes executables built with this install of Mercury
@@ -101,20 +101,25 @@ with a drive letter, except that you must use `/` instead of `\` as a directory
 separator. For example, this is acceptable:
 
 ```
-    $ ./configure --prefix="c:/where/to/install/mercury"
+    ./configure --prefix="c:/where/to/install/mercury"
 ```
 
 but this is not:
 
 ```
-    $ ./configure --prefix="c:\where\to\install\mercury"
+    ./configure --prefix="c:\where\to\install\mercury"
 ```
 
 Once `configure` has successfully finished, then you should do
 
 ```
-    $ make 
-    $ make install
+    make
+```
+
+and then
+
+```
+    make install
 ```
 
 as normal.
@@ -165,7 +170,7 @@ The MSVC port currently has a number of limitations:
   and also enable the commented out definition of `CFLAGS_FOR_DEBUG` in
   `configure.ac` (in the `msvc*` case). You will then need to regenerate
   the `configure` script and rebuild the Mercury system.
-  (See [INSTALL.git](Install.git) for details of how to do this.)
+  (See [../INSTALL.git](Install.git) for details of how to do this.)
 
 Post-installation configuration
 -------------------------------
@@ -229,13 +234,13 @@ Then ensure that the directory that you wish to install into is mounted
 somewhere, i.e.
 
 ```
-    $ mount //foo/usr/local /temp_mount_point
+    mount //foo/usr/local /temp_mount_point
 ```
 
 and then use that mount point as the location to install into
 
 ```
-    $ make install INSTALL_PREFIX=/temp_mount_point
+    make install INSTALL_PREFIX=/temp_mount_point
 ```
 
 This avoids the problem that `mkdir -p //foo/usr/local/xxx` fails.

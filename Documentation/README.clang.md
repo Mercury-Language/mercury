@@ -18,5 +18,5 @@ Versions of LLVM (the underlying compiler infrastructure used by `clang`) before
 about version 2.9 contain bugs that require most C compiler optimizations to be
 disabled when compiling Mercury generated C code with `clang` (i.e. the
 generated C files have to be compiled at `-O0`). If you are using a more recent
-version of LLVM then the `configure` script will automatically enable a higher
+version of LLVM, then the `configure` script will automatically enable a higher
 level of optimization.

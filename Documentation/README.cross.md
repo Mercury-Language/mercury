@@ -1,5 +1,5 @@
 Cross-compiling Mercury with GCC or clang
-========================================
+=========================================
 
 You can cross-compile the Mercury system with GCC or with clang so that the
 Mercury installation will run on a different platform from your host system.

@@ -40,7 +40,7 @@ Tracing Levels
 2. `--ssdb-trace shallow`
 
    All the procedures in the interface of the module will generate events
-   of trace level `shallow`.  Events of trace level `shallow` are only
+   of trace level `shallow`. Events of trace level `shallow` are only
    displayed if the parent procedure in the call stack is compiled in
    trace level `deep`.
 
@@ -60,7 +60,7 @@ the environment variable `SSDB` beforehand.
     ssdb>
 ```
 
-If you set `SSDB=0` then you will need to explicitly enable the debugger later
+If you set `SSDB=0`, then you will need to explicitly enable the debugger later
 in your code by calling `ssdb.enable_debugging/2`.
 
 As in `mdb`, the three numbers are the event number, call sequence number (CSN)
@@ -95,7 +95,7 @@ Limitations
 * The `retry` command works by executing forwards until reaching the end of
   the call to retry, then recursively calling that procedure. Any side
   effects of continuing execution will be visible. If it is not possible to
-  reach the end of the procedure to retry, the program will simply keep
+  reach the end of the procedure to retry, then the program will simply keep
   executing. Press ^C to get back the debugger prompt.
 
 * When running on Mono 2.8 and earlier, ^C can cause the program to hang.

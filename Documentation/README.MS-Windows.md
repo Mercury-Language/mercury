@@ -49,7 +49,7 @@ Building Mercury for Windows on Linux
 -------------------------------------
 
 Alternatively, you can cross-compile Mercury on Linux with a MinGW
-cross-compiler.  See [README.cross.md](README.cross.md).
+cross-compiler. See [README.cross.md](README.cross.md).
 
 Using Mercury on Windows
 ------------------------

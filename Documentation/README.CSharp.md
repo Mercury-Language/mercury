@@ -52,12 +52,11 @@ can build programs such as `hello.m` or `calculator.m` in the [samples](samples)
 directory.
 
 ```
-    $ cd samples
-    $ mmc ---grade csharp --make hello
+    mmc --grade csharp --make hello
 ```
 
-When building programs with the `csharp` grade you *must* use `mmc --make`; using
-`mmake` to build programs using the `csharp` grade is _not_ supported.
+When building programs with the `csharp` grade you *must* use `mmc --make`.
+Using `mmake` to build programs using the `csharp` grade is _not_ supported.
 
 Running `csharp` grade programs with Mono
 -----------------------------------------
@@ -72,7 +71,7 @@ It will then invoke then CLI execution environment on the process assembly.
 You can run the program using wrapper shell script, for example:
 
 ```
-    $ ./hello
+    ./hello
 ```
 
 Running `csharp` grade programs on Windows with .NET

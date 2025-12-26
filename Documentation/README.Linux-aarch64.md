@@ -9,4 +9,4 @@ Mercury should build and install "out-of-the-box" on Linux for AArch64.
 Low-level C grades using non-local gotos, i.e. `asm_fast.*`, do not work
 with GCC 9 or later. Non-PIC (position-independent code) actually does
 still work, but PIC is commonly the default.
-If you require a low-level C grade, please use a `reg.*` grade.
+If you require a low-level C grade, then please use a `reg.*` grade.
