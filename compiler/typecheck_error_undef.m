@@ -636,14 +636,19 @@ syntax_functor_components(FunctorName, Arity, Components) :-
     (
         Arity = 1,
         FunctorName = "!",
-        Pieces1 = [words("error:")] ++
+        Pieces = [words("error:")] ++
             color_as_incorrect([words("invalid use of the"), quote("!"),
                 words("state variable operator.")]) ++
+            [nl] ++
+            color_as_hint([words("You probably meant to type"),
+                quote("!."), words("or"), quote("!:"),
+                words("instead of just"), quote("!"), suffix(".")]) ++
+            [nl,
+            words("If you are trying to do a field update, then")] ++
+            color_as_hint([words("you probably typed"), quote("="),
+                words("where you meant to type"), quote(":="), suffix(".")]) ++
             [nl],
-        Pieces2 = color_as_hint([words("You probably meant to use"),
-            quote("!."), words("or"), quote("!:"), suffix(".")]) ++
-            [nl],
-        Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)]
+        Components = [always(Pieces)]
     ;
         Arity = 2,
         (

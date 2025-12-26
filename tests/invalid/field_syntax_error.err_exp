@@ -37,6 +37,10 @@ field_syntax_error.m:034: In clause for function `baz5'/1:
 field_syntax_error.m:034:   in argument 1 of functor `f2/1':
 field_syntax_error.m:034:   error: [38;5;203minvalid use of the `!' state variable[39;49m
 field_syntax_error.m:034:   [38;5;203moperator.[39;49m
+field_syntax_error.m:034:   [38;5;226mYou probably meant to type `!.' or `!:' instead of[39;49m
+field_syntax_error.m:034:   [38;5;226mjust `!'.[39;49m
+field_syntax_error.m:034:   If you are trying to do a field update, then [38;5;226myou[39;49m
+field_syntax_error.m:034:   [38;5;226mprobably typed `=' where you meant to type `:='.[39;49m
 field_syntax_error.m:034: Warning: if the expression [38;5;87m`!Foo ^ f2'[39;49m is intended to
 field_syntax_error.m:034:   be part of a field update, then it should be
 field_syntax_error.m:034:   followed by [38;5;40m`:=',[39;49m not [38;5;203m`='.[39;49m
