@@ -1206,8 +1206,8 @@ then
         # For the csharp grade, Mmake.workspace needs to see the grade setting
         # when it defines MLLIBS, otherwise we will try to reference a separate
         # Mercury runtime assembly, which we do not have for the csharp grade.
-        # As per README.Csharp, we need to set GRADE as part of the command
-        # line that invokes mmake.
+        # As per Documentation/README.CSharp.md, we need to set GRADE as part
+        # of the command line that invokes mmake.
         if test "${grade}" = "csharp"
         then
             ENVGRADE="GRADE=${grade}"

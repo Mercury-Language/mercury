@@ -141,7 +141,8 @@ significantly better than all previous Prolog systems known to us.  However,
 the system does not need these extensions, and will work in their absence.
 
 The Mercury compiler can also compile Mercury programs to Java or C#.
-See README.Java.md and README.CSharp.md respectively.
+See Documentation/README.Java.md and Documentation/README.CSharp.md
+respectively.
 
 The current Mercury system has been tested on Linux (x86, x86_64, arm),
 macOS (x86_64), Windows 7 and Windows 10 (x86 and x86_64),
@@ -162,7 +163,8 @@ later.  Do not use gcc versions 2.96, 3.0 or 4.0; those versions have bugs that
 cause trouble for Mercury.  If you are using gcc, you will need at least
 version 2.95 or higher, except on Mac OS X where you will need version 3.3 or
 higher.  Visual C++ or clang may also be used as a C compiler.
-(See README.MS-VisualC.md and README.clang.md for further details.)
+(See Documentation/README.MS-VisualC.md and Documentation/README.clang.md for
+further details.)
 You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution contains:

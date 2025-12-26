@@ -291,8 +291,8 @@ NM 			= @NM@
 # The inclusion of Mmake.workspace.
 #
 # We should swap the sections that include Mmake.workspace and Mmake.params,
-# as this should allow the instructions in README.java.md and README.CSharp.md
-# to be simplified.
+# as this should allow the instructions in Documentation/README.Java.md and
+# Documentation/README.CSharp.md to be simplified.
 #
 
 # The rpath for the libraries needs to be set to the final installation

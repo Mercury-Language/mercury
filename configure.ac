@@ -276,7 +276,7 @@ then
 [
 **** Note that this version of Xcode 11 has bugs that prevent Mercury programs
 **** from working correctly.  Please use Xcode 11.4 or later.
-**** See README.MacOS for further details.])
+**** See Documentation/README.macOS.md for further details.])
             ;;
             esac }
          ;;
@@ -4529,7 +4529,8 @@ case "$mercury_cv_cc_type" in
         # Suppress the MSVC banner message.
         CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
-        # XXX See README.MS-Visual C for details of why we disable this.
+        # XXX See Documentation/README.MS-VisualC.md for details of why we
+        # disable this.
         #CFLAGS_FOR_DEBUG="-Zi"
         CFLAGS_FOR_DEBUG=
         CFLAGS_FOR_NO_STRICT_ALIASING=
