@@ -528,7 +528,8 @@ Grade options
         Enable support for profiling parallel execution. using Threadscope.
         This option is supported only when targeting C in parallel grades with
         `--no-high-level-code', and only on some processors. See
-        README.ThreadScope and the "Using threadscope" section for details.
+        Documentation/README.ThreadScope and the "Using threadscope" section
+        for details.
 
   Optional feature grade options
 

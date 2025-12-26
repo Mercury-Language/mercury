@@ -2004,7 +2004,7 @@ optdb(oc_grade_tsprof, threadscope,                    bool(no),
         w("This option is supported only when targeting C"),
         w("in parallel grades with"), opt("--no-high-level-code", ","),
         w("and only on some processors."),
-        w("See README.ThreadScope and"),
+        w("See Documentation/README.ThreadScope and"),
         ref("the", "Using threadscope", "section", ""), w("for details.")])).
 
 %---------------------%
@@ -2227,39 +2227,39 @@ optdb(oc_grade_dev, sync_term_size_in_words,           int(8),
 
 optdb(oc_infer,     infer_all,                         bool_special,
     help("infer-all", [
-        cindex("Inferemce"),
+        cindex("Inference"),
         w("This option is an abbreviation for the combination of"),
         opt("--infer-types", ","), opt("--infer-modes", ","),
         w("and"), opt("--infer-det", ".")])).
 optdb(oc_infer,     infer_types,                       bool(no),
     help("infer-types", [
-        cindex("Inferemce of types"),
+        cindex("Inference of types"),
         cindex("Type inference"),
         w("If there is no type declaration for a predicate or function,"),
         w("try to infer its type, instead of just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
-        cindex("Inferemce of mode"),
+        cindex("Inference of mode"),
         cindex("Mode inference"),
         w("If there is no mode declaration for a predicate,"),
         w("try to infer its mode (or modes),"),
         w("instead of just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
-        cindex("Inferemce of determinism"),
-        cindex("Determinism inferemce"),
+        cindex("Inference of determinism"),
+        cindex("Determinism inference"),
         w("If there is no determinism declaration for a procedure"),
         w("(a mode of a predicate or of a function),"),
         w("just report an error; do not try to infer its determinism.")])).
 optdb(oc_infer,     type_inference_iteration_limit,    int(60),
     arg_help("type-inference-iteration-limit", "N", [
-        cindex("Inferemce of types"),
+        cindex("Inference of types"),
         cindex("Type inference"),
         w("Perform at most"), arg("N"),
         w("passes of type inference (default: 60).")])).
 optdb(oc_infer,     mode_inference_iteration_limit,    int(30),
     arg_help("mode-inference-iteration-limit", "N", [
-        cindex("Inferemce of mode"),
+        cindex("Inference of mode"),
         cindex("Mode inference"),
         w("Perform at most"), arg("N"),
         w("passes of mode inference (default: 30).")])).
