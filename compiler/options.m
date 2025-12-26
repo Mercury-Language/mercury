@@ -2239,14 +2239,14 @@ optdb(oc_infer,     infer_types,                       bool(no),
         w("try to infer its type, instead of just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
-        cindex("Inference of mode"),
+        cindex("Inference of modes"),
         cindex("Mode inference"),
         w("If there is no mode declaration for a predicate,"),
         w("try to infer its mode (or modes),"),
         w("instead of just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
-        cindex("Inference of determinism"),
+        cindex("Inference of determinisms"),
         cindex("Determinism inference"),
         w("If there is no determinism declaration for a procedure"),
         w("(a mode of a predicate or of a function),"),
@@ -2259,7 +2259,7 @@ optdb(oc_infer,     type_inference_iteration_limit,    int(60),
         w("passes of type inference (default: 60).")])).
 optdb(oc_infer,     mode_inference_iteration_limit,    int(30),
     arg_help("mode-inference-iteration-limit", "N", [
-        cindex("Inference of mode"),
+        cindex("Inference of modes"),
         cindex("Mode inference"),
         w("Perform at most"), arg("N"),
         w("passes of mode inference (default: 30).")])).
