@@ -8,7 +8,7 @@
 %
 % File: mode_comparison.m.
 %
-% This file contains code compare different modes of a predicate.
+% This file contains code to compare different modes of a predicate.
 %
 %---------------------------------------------------------------------------%
 
@@ -123,8 +123,8 @@ modes_are_indistinguishable(ModuleInfo, PredInfo, ProcId, OtherProcId) :-
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts, no,
-        ArgTypes, CompareInsts),
+    compare_inst_list(ModuleInfo, ArgTypes, InitialInsts, OtherInitialInsts,
+        no, CompareInsts),
     CompareInsts = same,
 
     % Compare the expected livenesses of the arguments.
@@ -160,16 +160,16 @@ modes_are_identical_bar_cc(ModuleInfo, PredInfo, ProcId, OtherProcId) :-
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts, no,
-        ArgTypes, CompareInitialInsts),
+    compare_inst_list(ModuleInfo, ArgTypes, InitialInsts, OtherInitialInsts,
+        no, CompareInitialInsts),
     CompareInitialInsts = same,
 
     % Compare the final insts of the arguments
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts),
     mode_list_get_final_insts(ModuleInfo, OtherProcArgModes,
         OtherFinalInsts),
-    compare_inst_list(ModuleInfo, FinalInsts, OtherFinalInsts, no,
-        ArgTypes, CompareFinalInsts),
+    compare_inst_list(ModuleInfo, ArgTypes, FinalInsts, OtherFinalInsts,
+        no, CompareFinalInsts),
     CompareFinalInsts = same,
 
     % Compare the expected livenesses of the arguments
@@ -234,8 +234,8 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
     get_var_insts(ModeInfo, ArgVars, ArgInitialInsts),
-    compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts,
-        yes(ArgInitialInsts), ArgTypes, CompareInsts),
+    compare_inst_list(ModuleInfo, ArgTypes, InitialInsts, OtherInitialInsts,
+        yes(ArgInitialInsts), CompareInsts),
 
     % Compare the expected livenesses of the arguments.
     get_arg_lives(ModuleInfo, ProcArgModes, ProcArgLives),
@@ -282,35 +282,38 @@ get_var_insts(ModeInfo, [Var | Vars], [Inst | Insts]) :-
     get_var_inst(ModeInfo, Var, Inst),
     get_var_insts(ModeInfo, Vars, Insts).
 
-:- pred compare_inst_list(module_info::in,
-    list(mer_inst)::in, list(mer_inst)::in,
-    maybe(list(mer_inst))::in, list(mer_type)::in, match::out) is det.
+:- pred compare_inst_list(module_info::in, list(mer_type)::in,
+    list(mer_inst)::in, list(mer_inst)::in, maybe(list(mer_inst))::in,
+    match::out) is det.
 
-compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
+compare_inst_list(ModuleInfo, Types, InstsA, InstsB, ArgInsts, Result) :-
     ( if
-        compare_inst_list_2(ModuleInfo, InstsA, InstsB, ArgInsts,
-            Types, Result0)
+        compare_inst_list_2(ModuleInfo, Types, InstsA, InstsB, ArgInsts,
+            Result0)
     then
         Result = Result0
     else
         unexpected($pred, "length mismatch")
     ).
 
-:- pred compare_inst_list_2(module_info::in,
+:- pred compare_inst_list_2(module_info::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::in,
-    maybe(list(mer_inst))::in, list(mer_type)::in, match::out) is semidet.
+    maybe(list(mer_inst))::in, match::out) is semidet.
 
-compare_inst_list_2(_, [], [], _, [], same).
-compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
-        no, [Type | Types], Result) :-
-    compare_inst(ModuleInfo, InstA, InstB, no, Type, Result0),
-    compare_inst_list_2(ModuleInfo, InstsA, InstsB, no, Types, Result1),
-    combine_results(Result0, Result1, Result).
-compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
-        yes([ArgInst | ArgInsts]), [Type | Types], Result) :-
-    compare_inst(ModuleInfo, InstA, InstB, yes(ArgInst), Type, Result0),
-    compare_inst_list_2(ModuleInfo, InstsA, InstsB, yes(ArgInsts), Types,
-        Result1),
+compare_inst_list_2(_, [], [], [], _, same).
+compare_inst_list_2(ModuleInfo, [Type | Types],
+        [InstA | InstsA], [InstB | InstsB], MaybeArgInsts, Result) :-
+    (
+        MaybeArgInsts = no,
+        compare_inst(ModuleInfo, Type, InstA, InstB, no, Result0),
+        compare_inst_list_2(ModuleInfo, Types, InstsA, InstsB, no, Result1)
+    ;
+        MaybeArgInsts = yes([ArgInst | ArgInsts]),
+        compare_inst(ModuleInfo, Type, InstA, InstB,
+            yes(ArgInst), Result0),
+        compare_inst_list_2(ModuleInfo, Types, InstsA, InstsB,
+            yes(ArgInsts), Result1)
+    ),
     combine_results(Result0, Result1, Result).
 
 :- pred compare_liveness_list(list(is_live)::in, list(is_live)::in, match::out)
@@ -341,25 +344,25 @@ compare_liveness(is_live, is_live, same).
     %
 :- pred prioritized_combine_results(match::in, match::in, match::out) is det.
 
-prioritized_combine_results(better, _, better).
-prioritized_combine_results(worse, _, worse).
-prioritized_combine_results(same, Result, Result).
-prioritized_combine_results(incomparable, _, incomparable).
+prioritized_combine_results(better,         _,      better).
+prioritized_combine_results(worse,          _,      worse).
+prioritized_combine_results(same,           Result, Result).
+prioritized_combine_results(incomparable,   _,      incomparable).
 
     % Combine two results, giving them equal priority.
     %
 :- pred combine_results(match::in, match::in, match::out) is det.
 
-combine_results(better, better, better).
-combine_results(better, same, better).
-combine_results(better, worse, incomparable).
-combine_results(better, incomparable, incomparable).
-combine_results(worse, worse, worse).
-combine_results(worse, same, worse).
-combine_results(worse, better, incomparable).
-combine_results(worse, incomparable, incomparable).
-combine_results(same, Result, Result).
-combine_results(incomparable, _, incomparable).
+combine_results(better,         better,         better).
+combine_results(better,         same,           better).
+combine_results(better,         worse,          incomparable).
+combine_results(better,         incomparable,   incomparable).
+combine_results(worse,          worse,          worse).
+combine_results(worse,          same,           worse).
+combine_results(worse,          better,         incomparable).
+combine_results(worse,          incomparable,   incomparable).
+combine_results(same,           Result,         Result).
+combine_results(incomparable,   _,              incomparable).
 
     % Compare two initial insts, to figure out which would be a better match.
     %
@@ -376,10 +379,10 @@ combine_results(incomparable, _, incomparable).
     %   prefer ground to any    (e.g. prefer in to in(any))
     %   prefer any to free  (e.g. prefer any->ground to out)
     %
-:- pred compare_inst(module_info::in, mer_inst::in, mer_inst::in,
-    maybe(mer_inst)::in, mer_type::in, match::out) is det.
+:- pred compare_inst(module_info::in, mer_type::in, mer_inst::in, mer_inst::in,
+    maybe(mer_inst)::in, match::out) is det.
 
-compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
+compare_inst(ModuleInfo, Type, InstA, InstB, MaybeArgInst, Result) :-
     % inst_matches_initial(A,B) succeeds iff
     %   A specifies at least as much information
     %   and at least as much binding as B --
