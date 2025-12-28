@@ -169,11 +169,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_util.
 :- import_module hlds.goal_vars.
@@ -184,12 +180,16 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_top_functor.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -1815,7 +1815,7 @@ lco_transform_variant_rev_conj(ModuleInfo, Transforms0, VariantMap, VarToAddr,
         VarToAddr, RevGoalIMs0, !Conjuncts, TailChanged, !ProcInfo),
     Changed = bool.or(HeadChanged, TailChanged),
     ( if RevGoalExpr = conj(plain_conj, RevGoalSubConjuncts) then
-        !:Conjuncts = !.Conjuncts ++ cord.from_list(RevGoalSubConjuncts)
+        cord.snoc_list(RevGoalSubConjuncts, !Conjuncts)
     else
         cord.snoc(RevGoal, !Conjuncts)
     ).

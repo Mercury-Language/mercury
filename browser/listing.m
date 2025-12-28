@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020, 2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -211,7 +211,10 @@ list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine, MarkLine,
         )
     ).
 
+%---------------------%
+
 :- func mercury_stream_to_c_file_ptr(io.text_input_stream) = c_file_ptr.
+:- pragma no_determinism_warning(func(mercury_stream_to_c_file_ptr/1)).
 
 :- pragma foreign_proc("C",
     mercury_stream_to_c_file_ptr(InStream::in) = (InStreamC::out),
@@ -220,7 +223,13 @@ list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine, MarkLine,
     InStreamC = MR_file(*(MR_unwrap_input_stream(InStream)));
 ").
 
+mercury_stream_to_c_file_ptr(_) = _ :-
+    private_builtin.sorry($pred).
+
+%---------------------%
+
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(write_to_c_file/4)).
 
 :- pragma foreign_proc("C",
     write_to_c_file(ErrorStreamC::in, Str::in, _IO0::di, _IO::uo),
@@ -228,6 +237,9 @@ list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine, MarkLine,
 "
     fputs(Str, (FILE *) ErrorStreamC);
 ").
+
+write_to_c_file(_, _, _, _) :-
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -354,6 +366,7 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
     %
 :- pred print_lines_in_range_c(c_file_ptr::in, c_file_ptr::in,
     line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(print_lines_in_range_c/8)).
 
 :- pragma foreign_proc("C",
     print_lines_in_range_c(InStreamC::in, OutStreamC::in, ThisLine::in,
@@ -382,6 +395,9 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
         }
     }
 ").
+
+print_lines_in_range_c(_, _, _, _, _, _, _, _) :-
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -446,9 +462,12 @@ execute_command_with_redirects(Prog, Args, OutStreamC, ErrorStreamC,
         )
     ).
 
+%---------------------%
+
 :- pred do_posix_spawnp(string::in, int::in, list(string)::in,
     c_file_ptr::in, c_file_ptr::in, int::out, io.system_error::out,
     io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(do_posix_spawnp/9)).
 
 :- pragma foreign_proc("C",
     do_posix_spawnp(Prog::in, NumArgs::in, Args::in,
@@ -467,6 +486,11 @@ execute_command_with_redirects(Prog, Args, OutStreamC, ErrorStreamC,
         Error = 0;
     }
 ").
+
+do_posix_spawnp(_, _, _, _, _, _, _, _, _) :-
+    private_builtin.sorry($pred).
+
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", local, "
 // See library/io.m regarding declaration of the environ global variable.

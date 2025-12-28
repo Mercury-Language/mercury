@@ -56,12 +56,11 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.lookup_switch_util.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.type_util.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 

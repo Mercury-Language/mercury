@@ -434,7 +434,6 @@
     ;       warn_nothing_exported
     ;       warn_unused_imports
     ;       warn_unused_interface_imports
-    ;       warn_interface_imports
     ;       warn_interface_imports_in_parents
     ;       warn_stdlib_shadowing
     ;       warn_duplicate_abstract_instances
@@ -1102,6 +1101,7 @@
     ;       par_loop_control
     ;       par_loop_control_keep_tail_rec
     ;       optopt_enable_const_struct_poly
+    ;       canonicalize_error_path_names
 
     % Developer verbosity options.
 
@@ -2004,7 +2004,7 @@ optdb(oc_grade_tsprof, threadscope,                    bool(no),
         w("This option is supported only when targeting C"),
         w("in parallel grades with"), opt("--no-high-level-code", ","),
         w("and only on some processors."),
-        w("See README.ThreadScope and"),
+        w("See Documentation/README.ThreadScope and"),
         ref("the", "Using threadscope", "section", ""), w("for details.")])).
 
 %---------------------%
@@ -2227,39 +2227,39 @@ optdb(oc_grade_dev, sync_term_size_in_words,           int(8),
 
 optdb(oc_infer,     infer_all,                         bool_special,
     help("infer-all", [
-        cindex("Inferemce"),
+        cindex("Inference"),
         w("This option is an abbreviation for the combination of"),
         opt("--infer-types", ","), opt("--infer-modes", ","),
         w("and"), opt("--infer-det", ".")])).
 optdb(oc_infer,     infer_types,                       bool(no),
     help("infer-types", [
-        cindex("Inferemce of types"),
+        cindex("Inference of types"),
         cindex("Type inference"),
         w("If there is no type declaration for a predicate or function,"),
         w("try to infer its type, instead of just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
-        cindex("Inferemce of mode"),
+        cindex("Inference of modes"),
         cindex("Mode inference"),
         w("If there is no mode declaration for a predicate,"),
         w("try to infer its mode (or modes),"),
         w("instead of just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
-        cindex("Inferemce of determinism"),
-        cindex("Determinism inferemce"),
+        cindex("Inference of determinisms"),
+        cindex("Determinism inference"),
         w("If there is no determinism declaration for a procedure"),
         w("(a mode of a predicate or of a function),"),
         w("just report an error; do not try to infer its determinism.")])).
 optdb(oc_infer,     type_inference_iteration_limit,    int(60),
     arg_help("type-inference-iteration-limit", "N", [
-        cindex("Inferemce of types"),
+        cindex("Inference of types"),
         cindex("Type inference"),
         w("Perform at most"), arg("N"),
         w("passes of type inference (default: 60).")])).
 optdb(oc_infer,     mode_inference_iteration_limit,    int(30),
     arg_help("mode-inference-iteration-limit", "N", [
-        cindex("Inferemce of mode"),
+        cindex("Inference of modes"),
         cindex("Mode inference"),
         w("Perform at most"), arg("N"),
         w("passes of mode inference (default: 30).")])).
@@ -2504,13 +2504,7 @@ optdb(oc_warn_dodgy_mod, warn_unused_imports,          bool(no),
     help("warn-unused-imports", [
         w("Warn about modules that are imported but not used.")])).
 optdb(oc_warn_dodgy_mod, warn_unused_interface_imports, bool(yes),
-    % Not documented because its relationship with --warn-unused-imports
-    % is too complicated for users (and maybe even developers ...).
-    priv_help("warn-unused-interface-imports", [
-        w("Warn about modules that are imported in the interface"),
-        w("but not used there.")])).
-optdb(oc_warn_dodgy_mod, warn_interface_imports,       bool(yes),
-    help("warn-interface-imports", [
+    alt_help("warn-unused-interface-imports", ["warn-interface-imports"], [
         w("Do not warn about modules imported in the interface,"),
         w("but which are not used in the interface.")])).
 optdb(oc_warn_dodgy_mod, warn_interface_imports_in_parents, bool(no),
@@ -2989,10 +2983,10 @@ optdb(oc_warn_style_ctg, warn_non_contiguous_decls,     bool(yes),
         w("Do not generate a warning if the mode declarations of a"),
         w("predicate or function do not all immediately follow its"),
         code("pred"), w("or"), code("func"), w("declaration.")])).
-optdb(oc_warn_style_ctg, warn_non_contiguous_clauses,   bool(no),
+optdb(oc_warn_style_ctg, warn_non_contiguous_clauses,   bool(yes),
     help("warn-non-contiguous-clauses", [
-        w("Generate a warning if the clauses of a predicate or function"),
-        w("are not contiguous.")])).
+        w("Do not generate a warning if the clauses of a predicate"),
+        w("or function are not contiguous.")])).
 optdb(oc_warn_style_ctg, warn_non_contiguous_foreign_procs, bool(no),
     help("warn-non-contiguous-foreign-procs", [
         w("Generate a warning if the clauses and foreign_procs of a"),
@@ -4600,7 +4594,7 @@ optdb(oc_target_c,  cflags,                            accumulating([]),
         w("Specify options to be passed to the C compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_c,  quoted_cflag,                      string_special,
-    arg_help("cflag", "option", [
+    alt_arg_help("quoted-cflag", ["cflag"], "option", [
         w("Specify a single word option to be passed to the C compiler."),
         w("The word will be quoted when passed to the shell.")])).
 
@@ -4609,19 +4603,19 @@ optdb(oc_target_c,  gcc_flags,                         accumulating([]),
     priv_arg_help("gcc-flags", "flags", [])).
 optdb(oc_target_c,  quoted_gcc_flag,                   string_special,
     % XXX document me.
-    priv_arg_help("gcc-flag", "flag", [])).
+    priv_alt_arg_help("quoted-gcc-flag", ["gcc-flag"], "flag", [])).
 optdb(oc_target_c,  clang_flags,                       accumulating([]),
     % XXX part of mmc --make; but needs more detail.
     priv_arg_help("clang-flags", "flags", [])).
 optdb(oc_target_c,  quoted_clang_flag,                 string_special,
     % XXX document me.
-    priv_arg_help("clang-flag", "flag", [])).
+    priv_alt_arg_help("quoted-clang-flag", ["clang-flag"], "flag", [])).
 optdb(oc_target_c,  msvc_flags,                        accumulating([]),
     % XXX part of mmc --make; but needs more detail.
     priv_arg_help("msvc-flags", "flags", [])).
 optdb(oc_target_c,  quoted_msvc_flag,                  string_special,
     % XXX document me.
-    priv_arg_help("msvc-flag", "flag", [])).
+    priv_alt_arg_help("quoted-msvc-flag", ["msvc-flag"], "flag", [])).
 
 % XXX All of the following options are reserved for the mmc script,
 % but they nevertheless should have private help text.
@@ -4672,8 +4666,8 @@ optdb(oc_target_java, java_compiler_flags,               accumulating([]),
         w("Specify options to be passed to the Java compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_compiler_flag,         string_special,
-    alt_arg_help("javac-flag",
-            ["java-flag"], "option", [
+    alt_arg_help("quoted-javac-flag",
+            ["quoted-java-flag", "javac-flag", "java-flag"], "option", [
         w("Specify a single word option to be passed to the Java compiler."),
         w("The word will be quoted when passed to the shell.")])).
 optdb(oc_target_java, java_classpath,                    accumulating([]),
@@ -4687,7 +4681,7 @@ optdb(oc_target_java, java_runtime_flags,                accumulating([]),
         w("Specify options to be passed to the Java interpreter."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
-    arg_help("java-runtime-flag", "option", [
+    alt_arg_help("quoted-java-runtime-flag", ["java-runtime-flag"], "option", [
         w("Specify a single word option to be passed"),
         w("to the Java interpreter."),
         w("The word will be quoted when passed to the shell.")])).
@@ -4717,7 +4711,7 @@ optdb(oc_target_csharp, csharp_flags,                      accumulating([]),
         w("Specify options to be passed to the C# compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_csharp, quoted_csharp_flag,                string_special,
-    arg_help("csharp-flag", "option", [
+    alt_arg_help("quoted-csharp-flag", ["csharp-flag"], "option", [
         w("Specify a single word option to be passed to the C# compiler."),
         w("The word will be quoted when passed to the shell.")])).
 optdb(oc_target_csharp, mono_path_directories,           accumulating([]),
@@ -4852,7 +4846,7 @@ optdb(oc_link_c,    ld_flags,                          accumulating([]),
         w("Use"), code("mmc --output-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_flag,                    string_special,
-    arg_help("ld-flag", "option", [
+    alt_arg_help("quoted-ld-flag", ["ld-flag"], "option", [
         w("Specify a single word option to be passed to the linker command"),
         w("that will create an executable."),
         w("The word will be quoted when passed to the shell."),
@@ -4866,7 +4860,7 @@ optdb(oc_link_c,    ld_libflags,                       accumulating([]),
         w("Use"), code("mmc --output-shared-lib-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_libflag,                 string_special,
-    arg_help("ld-libflag", "option", [
+    alt_arg_help("quoted-ld-libflag", ["ld-libflag"], "option", [
         w("Specify a single word option to be passed to the linker command"),
         w("that will create a shared library."),
         w("The word will be quoted when passed to the shell."),
@@ -5236,7 +5230,11 @@ optdb(oc_env,       options_files,           accumulating(["Mercury.options"]),
         w("If"), arg("filename"), w("is"), samp("-", ","),
         w("an options file will be read from the standard input."),
         w("By default, the compiler will read the file named"),
-        file("Mercury.options"), w("in the current directory.")])).
+        file("Mercury.options"), w("in the current directory."),
+        w("Note that this option is intended to be used"),
+        w("only on command lines. When specified in options files"),
+        w("(i.e. in files named by other --options-file options),"),
+        w("it has no effect.")])).
 optdb(oc_env,       config_file,                       maybe_string(yes("")),
     % yes("") means unset.
     arg_help("config-file", "filename", [
@@ -5647,7 +5645,9 @@ optdb(oc_dev_ctrl,  compiler_sufficiently_recent,      bool(no),
         "can-fail-function-obsolete-2024-08-10",
         "unused-statevar-warn-2025-05-16",
         "allow-non-contig-for-2025-06-01",
-        "subtype-int2-2025-07-07"], [
+        "subtype-int2-2025-07-07",
+        "inrange-2025-10-01",
+        "scout-disj-2025-11-15"], [
         w("Is the compiler sufficiently recent to contain the new feature"),
         w("or bugfix referred to by each name?")])).
 % These options are provided for use by implementors who want to compare
@@ -5714,6 +5714,15 @@ optdb(oc_dev_ctrl,  optopt_enable_const_struct_poly,   bool_special,
     unnamed_help([
         w("Disable the gathering of constant structures holding"),
         w("typeinfos and typeclass_infos in global_data structures.")])).
+optdb(oc_dev_ctrl,  canonicalize_error_path_names,     bool(no),
+    priv_help("canonicalize-error-path-names", [
+        w("Canonicalize path names in error messages that report"),
+        w("being unable to open files, in two ways."),
+        w("The first is deleting any initial './' or '.\' prefix;"),
+        w("the second is deleting the directory component of any"),
+        w("absolute path name, leaving only the within-directory component."),
+        w("This option considers any string between single quotes"),
+        w("to be a path name.")])).
 
 %---------------------%
 

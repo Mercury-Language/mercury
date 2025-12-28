@@ -42,12 +42,26 @@
 
 %---------------------------------------------------------------------------%
 
+    % acc_builtin_types_of_var(TypeAssignSet, Var, !BuiltinTypes):
+    %
+    % Add to !BuiltinTypes any builtin types that appear in any of the
+    % possible types of Var in TypeAssignSet.
+    %
 :- pred acc_builtin_types_of_var(list(type_assign)::in, prog_var::in,
     set(builtin_type)::in, set(builtin_type)::out) is det.
 
+    % acc_builtin_types_in_cons_type_infos(ConsTypeInfos, !BuiltinTypes):
+    %
+    % Add to !BuiltinTypes any builtin types that appear in any of the
+    % ConsTypeInfos, either as argument types or as result types.
+    %
 :- pred acc_builtin_types_in_cons_type_infos(list(cons_type_info)::in,
     set(builtin_type)::in, set(builtin_type)::out) is det.
 
+    % acc_builtin_type(Type, !BuiltinTypes):
+    %
+    % Add Type to !BuiltinTypes if it is a builtin type.
+    %
 :- pred acc_builtin_type(mer_type::in,
     set(builtin_type)::in, set(builtin_type)::out) is det.
 
@@ -143,9 +157,13 @@ is_int_pred_op(SymName, PredFormArity) :-
 %---------------------------------------------------------------------------%
 
 acc_builtin_types_of_var(TypeAssignSet, Var, !BuiltinTypes) :-
-    get_all_type_stuffs_remove_dups(TypeAssignSet, Var, VarTypeStuffs),
-    TypesOfVar = list.map(typestuff_to_type, VarTypeStuffs),
-    list.foldl(acc_builtin_type, TypesOfVar, !BuiltinTypes).
+    AccBuiltinTypesPred =
+        ( pred(TypeStuff::in, BT0::in, BT::out) is det :-
+            Type = typestuff_to_type(TypeStuff),
+            acc_builtin_type(Type, BT0, BT)
+        ),
+    acc_transformed_type_stuffs(AccBuiltinTypesPred, TypeAssignSet, Var,
+        !BuiltinTypes).
 
 acc_builtin_types_in_cons_type_infos([], !BuiltinTypes).
 acc_builtin_types_in_cons_type_infos([ConsTypeInfo | ConsTypeInfos],
@@ -166,8 +184,10 @@ acc_builtin_type(Type, !BuiltinTypes) :-
         ; Type = tuple_type(_, _)
         ; Type = higher_order_type(_, _, _, _)
         ; Type = apply_n_type(_, _, _)
-        ; Type = kinded_type(_, _)
         )
+    ;
+        Type = kinded_type(SubType, _Kind),
+        acc_builtin_type(SubType, !BuiltinTypes)
     ).
 
 %---------------------------------------------------------------------------%

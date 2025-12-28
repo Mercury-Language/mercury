@@ -278,8 +278,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 

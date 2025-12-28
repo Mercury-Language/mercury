@@ -719,18 +719,19 @@ read_coverage_point_static(InputStream, MaybeCP, !IO) :-
 
 :- func raw_proc_id_to_string(string_proc_label) = string.
 
-raw_proc_id_to_string(str_special_proc_label(TypeName, TypeModule, _DefModule,
-        PredName, Arity, Mode)) =
-    string.append_list(
-        [PredName, " for ", TypeModule, ".", TypeName,
-        "/", string.int_to_string(Arity),
-        " mode ", string.int_to_string(Mode)]).
-raw_proc_id_to_string(str_ordinary_proc_label(PredOrFunc, DeclModule,
-        _DefModule, Name, Arity, Mode)) =
-    string.append_list([DeclModule, ".", Name,
-        "/", string.int_to_string(Arity),
-        add_plus_one_for_function(PredOrFunc),
-        "-", string.int_to_string(Mode)]).
+raw_proc_id_to_string(ProcLabel) = Str :-
+    (
+        ProcLabel = str_special_proc_label(TypeName, TypeModule, _DefModule,
+            PredName, Arity, Mode),
+        string.format("%s for %s.%s/%d mode %d",
+            [s(PredName), s(TypeModule), s(TypeName), i(Arity), i(Mode)], Str)
+    ;
+        ProcLabel = str_ordinary_proc_label(PredOrFunc, DeclModule,
+            _DefModule, Name, Arity, Mode),
+        string.format("%s.%s/%d%s-%d",
+            [s(DeclModule), s(Name), i(Arity),
+            s(plus_one_for_function(PredOrFunc)), i(Mode)], Str)
+    ).
 
 :- pred create_refined_proc_ids(string_proc_label::in,
     string::out, string::out) is det.
@@ -766,6 +767,7 @@ create_refined_proc_ids(ProcLabel, UnQualName, QualName) :-
     ;
         ProcLabel = str_ordinary_proc_label(PredOrFunc, DeclModule,
             _DefModule, ProcName, Arity, Mode),
+        PlusOne = plus_one_for_function(PredOrFunc),
         ( if
             string.append("TypeSpecOf__", ProcName1, ProcName),
             ( if string.append("pred__", ProcName2A, ProcName1) then
@@ -781,12 +783,10 @@ create_refined_proc_ids(ProcLabel, UnQualName, QualName) :-
             fix_type_spec_suffix(ProcName2Chars, ProcNameChars, SpecInfo)
         then
             RefinedProcName = string.from_char_list(ProcNameChars),
-            Suffix = "/" ++ string.int_to_string(Arity) ++
-                add_plus_one_for_function(PredOrFunc) ++
-                "-" ++ string.int_to_string(Mode) ++
-                " [" ++ SpecInfo ++ "]",
-            UnQualName = RefinedProcName ++ Suffix,
-            QualName = DeclModule ++ "." ++ RefinedProcName ++ Suffix
+            string.format("%s/%d%s-%d [%s]",
+                [s(RefinedProcName), i(Arity), s(PlusOne), i(Mode),
+                    s(SpecInfo)],
+                UnQualName)
         else if
             string.append("IntroducedFrom__", ProcName1, ProcName),
             ( if string.append("pred__", ProcName2A, ProcName1) then
@@ -798,31 +798,25 @@ create_refined_proc_ids(ProcLabel, UnQualName, QualName) :-
             ),
             string.to_char_list(ProcName2, ProcName2Chars),
             split_lambda_name(ProcName2Chars, Segments),
-            glue_lambda_name(Segments, ContainingNameChars,
-                LineNumberChars)
+            glue_lambda_name(Segments, ContainingNameChars, LineNumberChars)
         then
             string.from_char_list(ContainingNameChars, ContainingName),
             string.from_char_list(LineNumberChars, LineNumber),
-            Suffix =
-                " lambda line " ++ LineNumber ++
-                "/" ++ string.int_to_string(Arity) ++
-                add_plus_one_for_function(PredOrFunc),
-            UnQualName = ContainingName ++ Suffix,
-            QualName = DeclModule ++ "." ++ ContainingName ++ Suffix
+            string.format("%s lambda line %s/%d%s",
+                [s(ContainingName), s(LineNumber), i(Arity), s(PlusOne)],
+                UnQualName)
         else
-            Suffix =
-                "/" ++ string.int_to_string(Arity) ++
-                add_plus_one_for_function(PredOrFunc) ++
-                "-" ++ string.int_to_string(Mode),
-            UnQualName = ProcName ++ Suffix,
-            QualName = DeclModule ++ "." ++ ProcName ++ Suffix
-        )
+            string.format("%s/%d%s-%d",
+                [s(ProcName), i(Arity), s(PlusOne), i(Mode)],
+                UnQualName)
+        ),
+        QualName = DeclModule ++ "." ++ UnQualName
     ).
 
-:- func add_plus_one_for_function(pred_or_func) = string.
+:- func plus_one_for_function(pred_or_func) = string.
 
-add_plus_one_for_function(pf_function) = "+1".
-add_plus_one_for_function(pf_predicate) = "".
+plus_one_for_function(pf_function) = "+1".
+plus_one_for_function(pf_predicate) = "".
 
 :- pred fix_type_spec_suffix(list(char)::in, list(char)::out, string::out)
     is semidet.

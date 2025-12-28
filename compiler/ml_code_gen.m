@@ -501,9 +501,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.instmap.
+:- import_module hlds.type_util.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_commit_gen.
@@ -1283,15 +1282,15 @@ ml_gen_det_conj([HeadGoal | TailGoals],
         HeadVars = []
     ;
         HeadVars = [_ | _],
-        !:VarsCord = !.VarsCord ++ cord.from_list(HeadVars)
+        cord.snoc_list(HeadVars, !VarsCord)
     ),
     (
         HeadFuncs = []
     ;
         HeadFuncs = [_ | _],
-        !:FuncsCord = !.FuncsCord ++ cord.from_list(HeadFuncs)
+        cord.snoc_list(HeadFuncs, !FuncsCord)
     ),
-    !:StmtsCord = !.StmtsCord ++ cord.from_list(HeadStmts),
+    cord.snoc_list(HeadStmts, !StmtsCord),
     ml_gen_det_conj(TailGoals,
         !VarsCord, !FuncsCord, !StmtsCord, !Info).
 

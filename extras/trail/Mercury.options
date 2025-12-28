@@ -1,11 +1,16 @@
-TRAIL_INSTALL_PREFIX=.
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
+TRAIL_INSTALL_PREFIX = .
 
 MCFLAGS = \
-	--use-trail			\
-	--use-grade-subdirs		\
-	--libgrades-exclude java	\
-	--libgrades-exclude csharp	\
-	--libgrades-include tr		\
-	--install-prefix $(TRAIL_INSTALL_PREFIX)
+    --use-trail                 \
+    --use-grade-subdirs         \
+    --libgrades-exclude java    \
+    --libgrades-exclude csharp  \
+    --libgrades-include tr      \
+    --install-prefix $(TRAIL_INSTALL_PREFIX)
 
-MCFLAGS-mercury_trail=--no-warn-nothing-exported --no-warn-interface-imports 
+MCFLAGS-mercury_trail += --no-warn-nothing-exported
+MCFLAGS-mercury_trail += --no-warn-unused-interface-imports 

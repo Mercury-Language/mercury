@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009 The University of Melbourne.
-% Copyright (C) 2015, 2018, 2022 The Mercury team.
+% Copyright (C) 2015, 2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -111,6 +111,10 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
         )
     ).
 
+%---------------------%
+
+:- pragma no_determinism_warning(pred(cterm_deconstruct/3)).
+
 :- pragma foreign_proc(c,
     cterm_deconstruct(Term::in, Functor::out, Args::out),
     [will_not_call_mercury, promise_pure],
@@ -130,6 +134,13 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
     if (1 == 1) throw new Error(\"not supported in java grade\");
 ").
 
+cterm_deconstruct(_, _, _) :-
+    private_builtin.sorry($pred).
+
+%---------------------%
+
+:- pragma no_determinism_warning(pred(cterm_head_tail/3)).
+
 :- pragma foreign_proc(c,
     cterm_head_tail(Args::in, Head::out, Tail::out),
     [will_not_call_mercury, promise_pure],
@@ -143,12 +154,8 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
     }
 ").
 
-:- pragma foreign_proc("Java",
-    cterm_head_tail(_Args::in, _Head::out, _Tail::out),
-    [will_not_call_mercury, promise_pure],
-"
-    if (1 == 1) throw new Error(\"not supported in java grade\");
-").
+cterm_head_tail(_, _, _) :-
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.cterm.

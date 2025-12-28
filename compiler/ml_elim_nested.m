@@ -523,7 +523,7 @@ ml_elim_nested_defns_in_funcs(Target, Action, ModuleName,
         PrivateBuiltin = mercury_private_builtin_module,
         ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
     then
-        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn)
+        cord.snoc(FuncDefn, !FuncDefnsCord)
     else
         ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn,
             !FuncDefnsCord, !ClassDefnsCord)
@@ -553,12 +553,12 @@ ml_elim_nested_defns_in_funcs(Target, Action, ModuleName,
 ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         !FuncDefnsCord, !EnvDefnsCord) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags, PredProcId,
-        Params0, Body0, EnvVarNames, MaybeRequiretailrecInfo),
+        Params0, FuncBody0, EnvVarNames, MaybeRequiretailrecInfo),
     (
-        Body0 = body_external,
-        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn0)
+        FuncBody0 = body_external,
+        cord.snoc(FuncDefn0, !FuncDefnsCord)
     ;
-        Body0 = body_defined_here(FuncBody0),
+        FuncBody0 = body_defined_here(FuncBodyStmt0),
         EnvName = ml_env_name(Name, Action),
         EnvId = mlds_env_id(ModuleName, EnvName),
 
@@ -573,9 +573,10 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
 
         ElimInfo0 = elim_info_init(EnvId),
         Params0 = mlds_func_params(Arguments0, RetValues),
-        ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
-            Context, ElimInfo0, ElimInfo1),
-        flatten_statement(Action, FuncBody0, FuncBody1, ElimInfo1, ElimInfo2),
+        ml_maybe_add_args(Action, FuncBodyStmt0, Context, Arguments0,
+            ElimInfo0, ElimInfo1),
+        flatten_statement(Action, FuncBodyStmt0, FuncBodyStmt1,
+            ElimInfo1, ElimInfo2),
         use_envptr_in_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
@@ -586,7 +587,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
             % Likewise, when doing accurate GC, if there were no local
             % variables (or arguments) that contained pointers, then we don't
             % need to chain a stack frame for this function.
-            FuncBody = FuncBody1
+            FuncBodyStmt = FuncBodyStmt1
         ;
             NestedFuncs0 = [_ | _],
             % Create a struct to hold the local variables, and initialize
@@ -620,7 +621,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 Action = hoist_nested_funcs,
                 InsertedEnv = have_not_inserted_env
             then
-                FuncBody = FuncBody1
+                FuncBodyStmt = FuncBodyStmt1
             else
                 cord.snoc(EnvDefn, !EnvDefnsCord),
 
@@ -629,8 +630,8 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 % then we need to copy them to local variables in the
                 % environment structure.
                 EnvPtrTypeName = elim_info_get_env_ptr_type_name(ElimInfo),
-                ml_maybe_copy_args(Action, ElimInfo, Arguments0, FuncBody0,
-                    EnvId, EnvPtrTypeName, Context,
+                ml_maybe_copy_args(Action, ElimInfo, Arguments0,
+                    FuncBodyStmt0, EnvId, EnvPtrTypeName, Context,
                     _ArgsToCopy, CodeToCopyArgs),
 
                 % Insert code to unlink this stack frame before doing any tail
@@ -641,11 +642,11 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 % calls.
                 (
                     Action = hoist_nested_funcs,
-                    FuncBody2 = FuncBody1
+                    FuncBodyStmt2 = FuncBodyStmt1
                 ;
                     Action = chain_gc_stack_frames,
-                    add_unchain_stack_to_stmt(Action, FuncBody1, FuncBody2,
-                        ElimInfo, _ElimInfo)
+                    add_unchain_stack_to_stmt(Action,
+                        FuncBodyStmt1, FuncBodyStmt2, ElimInfo, _ElimInfo)
                 ),
                 % Add a final unlink statement at the end of the function,
                 % if needed. This is only needed if the function has no
@@ -665,9 +666,10 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 % body, and append the final unlink statement (if any)
                 % at the end.
                 % XXX MLDS_DEFN
-                FuncBody = ml_gen_block(EnvDefns, [],
-                    InitEnv ++ CodeToCopyArgs ++ [FuncBody2] ++ UnchainFrame,
-                    Context)
+                FuncBodyStmts = InitEnv ++ CodeToCopyArgs ++
+                    [FuncBodyStmt2] ++ UnchainFrame,
+                FuncBodyStmt =
+                    ml_gen_block(EnvDefns, [], FuncBodyStmts, Context)
             )
         ),
         (
@@ -684,9 +686,9 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         ),
         Params = mlds_func_params(Arguments, RetValues),
         FuncDefn = mlds_function_defn(Name, Context, Flags,
-            PredProcId, Params, body_defined_here(FuncBody),
+            PredProcId, Params, body_defined_here(FuncBodyStmt),
             EnvVarNames, MaybeRequiretailrecInfo),
-        !:FuncDefnsCord = cord.snoc(!.FuncDefnsCord, FuncDefn)
+        cord.snoc(FuncDefn, !FuncDefnsCord)
     ).
 
 :- func strip_gc_statement(mlds_argument) = mlds_argument.
@@ -698,14 +700,13 @@ strip_gc_statement(Argument0) = Argument :-
     % Add any arguments which are used in nested functions
     % to the ei_local_vars field in the elim_info.
     %
-:- pred ml_maybe_add_args(action, list(mlds_argument), mlds_stmt,
-    mlds_module_name, prog_context, elim_info, elim_info).
-:- mode ml_maybe_add_args(in(hoist), in, in, in, in, in, out) is det.
-:- mode ml_maybe_add_args(in(chain), in, in, in, in, in, out) is det.
+:- pred ml_maybe_add_args(action, mlds_stmt, prog_context,
+    list(mlds_argument), elim_info, elim_info).
+:- mode ml_maybe_add_args(in(hoist), in, in, in, in, out) is det.
+:- mode ml_maybe_add_args(in(chain), in, in, in, in, out) is det.
 
-ml_maybe_add_args(_, [], _, _, _, !Info).
-ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
-        !Info) :-
+ml_maybe_add_args(_, _, _, [], !Info).
+ml_maybe_add_args(Action, FuncBody, Context, [Arg | Args], !Info) :-
     Arg = mlds_argument(VarName, _Type, GCStmt),
     ( if
         ml_should_add_local_var_to_env(Action, VarName, GCStmt,
@@ -716,7 +717,7 @@ ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
     else
         true
     ),
-    ml_maybe_add_args(Action, Args, FuncBody, ModuleName, Context, !Info).
+    ml_maybe_add_args(Action, FuncBody, Context, Args, !Info).
 
     % Generate code to copy any arguments which are used in nested functions
     % to the environment struct.
@@ -2584,7 +2585,7 @@ elim_info_set_local_vars(X, !ElimInfo) :-
 
 elim_info_add_nested_func(NestedFunc, !ElimInfo) :-
     NestedFuncs0 = !.ElimInfo ^ ei_nested_funcs,
-    NestedFuncs = cord.snoc(NestedFuncs0, NestedFunc),
+    cord.snoc(NestedFunc, NestedFuncs0, NestedFuncs),
     !ElimInfo ^ ei_nested_funcs := NestedFuncs.
 
 :- pred elim_info_add_local_var(mlds_local_var_defn::in,
@@ -2592,7 +2593,7 @@ elim_info_add_nested_func(NestedFunc, !ElimInfo) :-
 
 elim_info_add_local_var(LocalVar, !ElimInfo) :-
     LocalVars0 = !.ElimInfo ^ ei_local_vars,
-    LocalVars = cord.snoc(LocalVars0, LocalVar),
+    cord.snoc(LocalVar, LocalVars0, LocalVars),
     !ElimInfo ^ ei_local_vars := LocalVars.
 
 :- pred elim_info_allocate_saved_stack_chain_id(int::out,

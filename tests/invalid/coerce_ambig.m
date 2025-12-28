@@ -34,8 +34,10 @@ ambig1 :-
 :- pred ambig2 is semidet.
 
 ambig2 :-
-    X = apple,
-    _Y = coerce(X).
+    X1 = apple,
+    _Y1 = coerce(X1),
+    X2 = apple,
+    _Y2 = coerce(X2).
 
 :- pred ambig3(list(fruit)::out) is det.
 

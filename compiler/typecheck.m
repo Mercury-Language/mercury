@@ -109,6 +109,7 @@
 
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_clauses.
+:- import_module check_hlds.typecheck_error_overload.
 :- import_module check_hlds.typecheck_error_undef.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
@@ -556,10 +557,10 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
         ),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
-        make_head_hlds_constraints(ClassTable, TypeVarSet0,
-            PredConstraints, Constraints),
+        make_head_hlds_constraint_db(ClassTable, TypeVarSet0,
+            PredConstraints, ConstraintDb),
         type_assign_set_init(TypeVarSet0, ExplicitVarTypes0,
-            !.ExternalTypeParams, Constraints, !:TypeAssignSet),
+            !.ExternalTypeParams, ConstraintDb, !:TypeAssignSet),
         pred_info_get_markers(!.PredInfo, PredMarkers0),
         typecheck_info_init(ProgressStream, ModuleInfo, PredId, !.PredInfo,
             ClauseVarSet, PredStatus, PredMarkers0, !.Specs, !:Info),
@@ -598,10 +599,10 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
             ExplicitVarTypes1 = ExplicitVarTypes0
         ;
             ExistQVars0 = [_ | _],
-            apply_variable_renaming_to_vartypes(ExistTypeRenaming,
+            rename_vars_in_vartypes(ExistTypeRenaming,
                 ExplicitVarTypes0, ExplicitVarTypes1)
         ),
-        apply_variable_renaming_to_vartypes(TVarRenaming,
+        rename_vars_in_vartypes(TVarRenaming,
             ExplicitVarTypes1, ExplicitVarTypes),
 
         clauses_info_set_explicit_vartypes(ExplicitVarTypes, !ClausesInfo),
@@ -697,9 +698,9 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
 
                 term_subst.apply_renaming_in_vars(ExistTypeRenaming,
                     ExistQVars0, ExistQVars1),
-                apply_variable_renaming_to_type_list(ExistTypeRenaming,
+                apply_renaming_to_types(ExistTypeRenaming,
                     ArgTypes0, ArgTypes1),
-                apply_variable_renaming_to_univ_exist_constraints(
+                apply_renaming_to_univ_exist_constraints(
                     ExistTypeRenaming, PredConstraints, PredConstraints1),
                 rename_instance_method_constraints(ExistTypeRenaming,
                     Origin0, Origin1)
@@ -708,9 +709,9 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
             % Rename them all to match the new typevarset.
             term_subst.apply_renaming_in_vars(TVarRenaming,
                 ExistQVars1, ExistQVars),
-            apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
+            apply_renaming_to_types(TVarRenaming, ArgTypes1,
                 RenamedOldArgTypes),
-            apply_variable_renaming_to_univ_exist_constraints(TVarRenaming,
+            apply_renaming_to_univ_exist_constraints(TVarRenaming,
                 PredConstraints1, RenamedOldConstraints),
             rename_instance_method_constraints(TVarRenaming, Origin1, Origin),
 
@@ -845,11 +846,11 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
     then
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
-        apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
+        apply_renaming_to_types(Renaming, InstanceTypes0,
             InstanceTypes),
-        apply_variable_renaming_to_prog_constraint_list(Renaming,
+        apply_renaming_to_prog_constraints(Renaming,
             InstanceConstraints0, InstanceConstraints),
-        apply_variable_renaming_to_univ_exist_constraints(Renaming,
+        apply_renaming_to_univ_exist_constraints(Renaming,
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),

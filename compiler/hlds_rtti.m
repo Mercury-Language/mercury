@@ -317,9 +317,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.mode_top_functor.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 
@@ -721,7 +720,7 @@ apply_subst_to_prog_var(Subst, Var0, Var) :-
     typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
 apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
-    apply_variable_renaming_to_prog_constraint(TRenaming, Constraint0,
+    apply_renaming_to_prog_constraint(TRenaming, Constraint0,
         Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
@@ -742,7 +741,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     type_info_locn_var(Locn, Var),
     apply_subst_to_prog_var(Subst, Var, NewVar),
     type_info_locn_set_var(NewVar, Locn, NewLocn),
-    apply_variable_renaming_to_tvar(TRenaming, TVar, NewTVar1),
+    apply_renaming_to_tvar(TRenaming, TVar, NewTVar1),
     % We don't use the correct kinds here, but that doesn't matter because
     % the resulting kind will be thrown away anyway.
     apply_rec_subst_to_tvar(map.init, TSubst, NewTVar1, NewType),
@@ -768,7 +767,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     type_info_type_map::in, type_info_type_map::out) is det.
 
 apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
-    apply_variable_renaming_to_type(TRenaming, Type0, Type1),
+    apply_renaming_to_type(TRenaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type),
     apply_subst_to_prog_var(Subst, Var0, Var),
     ( if map.search(!.Map, Var, ExistingType) then
@@ -791,8 +790,7 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
 
 apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         !Map) :-
-    apply_variable_renaming_to_prog_constraint(TRenaming, Constraint0,
-        Constraint1),
+    apply_renaming_to_prog_constraint(TRenaming, Constraint0, Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
     ( if map.search(!.Map, Var, ExistingConstraint) then

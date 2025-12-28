@@ -226,12 +226,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.mode_top_functor.
+:- import_module hlds.type_util.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -1159,7 +1158,7 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
     !:Specs = [Spec | !.Specs].
 
 :- pred woe_to_severity_and_string(option::in, warning_or_error::in,
-    error_severity::out, format_piece::out) is det.
+    spec_severity::out, format_piece::out) is det.
 
 woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord) :-
     (

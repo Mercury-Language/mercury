@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,14 +71,13 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.type_class_info.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -371,8 +370,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             LayoutIndexable = no
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeCanonical,
-                MaybeRepn, _IsForeignType),
+            TypeBodyDu = type_body_du(_Ctors, _AlphaSortedCtors,
+                MaybeSuperType, MaybeCanonical, MaybeRepn, _IsForeignType),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

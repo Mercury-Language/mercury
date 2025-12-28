@@ -33,6 +33,37 @@
 
 %---------------------------------------------------------------------------%
 
+:- type compiler_arg_pack
+    --->    compiler_arg_pack(
+                % The structure constructed by most of this module,
+                % containing the values of make-like variables that we get
+                % either from the environment of the compiler process,
+                % or from configuration/options files.
+                cap_eov             :: env_optfile_variables,
+
+                % A sequence of option values that express the values
+                % of environment variables such as MERCURY_COLOR_SCHEME
+                % and NO_COLOR. Computed by get_args_representing_env_vars.
+                cap_env_var_args    :: list(string),
+
+                % The contents of the command line (or of its args file
+                % replacement), separated into the arguments that represent
+                % options, and the ones that do not do so.
+                cap_option_args     :: list(string),
+                cap_nonoption_args  :: list(string)
+            ).
+
+:- type compiler_params
+    --->    compiler_params(
+                % The first three fields of a compiler_arg_pack.
+                % Used by code that iterates over the nonoption arguments.
+                cp_eov              :: env_optfile_variables,
+                cp_env_var_args     :: list(string),
+                cp_option_args      :: list(string)
+            ).
+
+%---------------------------------------------------------------------------%
+
 :- type env_optfile_variables.
 
 :- func env_optfile_variables_init(environment_var_map)
@@ -79,11 +110,12 @@
     %
     % Read a single options file. No searching will be done. The result is
     % the value of the variable MCFLAGS obtained from the file, ignoring
-    % settings in the environment. This is used to pass arguments to child
-    % mmc processes without exceeding command line limits on crappy operating
-    % systems.
+    % settings in the environment. We use this mechanism to pass arguments
+    % to child mmc processes without exceeding command line limits
+    % on crappy operating systems.
     %
-    % This is not quite the same as @file syntax as the environment is ignored.
+    % This is not quite the same as @file syntax, as we ignore
+    % the environment.
     %
     % We return two lists of error specs. The first list consists of errors,
     % which should be printed unconditionally. The second list consists
@@ -164,35 +196,58 @@
 
 %---------------------------------------------------------------------------%
 
+    % Values of this type contain the values of options we get from
+    % two sources: environment variables, and configuration/options files
+    % (such as Mercury.config and Mercury.options).
+:- type env_optfile_variables
+    --->    env_optfile_variables(
+                % This field contains the set of all the environment variables
+                % of the current process. Most of these are not related to
+                % Mercury, so preprocessing all environment variable values
+                % would yield lots of diagnostics about settings that have
+                % nothing to do with Mercury.
+                %
+                % We cannot pre-process the set that are relevant to Mercury
+                % either, because we don't know what that set is.
+                % The reason is the presence of module names in
+                % options variable name of forms such as MCFLAGS-modulename.
+                %
+                % We therefore process the values of environment variables
+                % (meaning, we check whether they can be split up into words
+                % cleanly) only when the compiler looks up a key in this map.
+                eov_env     :: map(env_optfile_var, string),
+
+                % This field contains the variable values we get from
+                % one or more configuration and/or options files,
+                % with the exception that if a variable name occurs in
+                % eov_env, then it won't occur in eov_opts, even if
+                % the options file(s) we read in do define that variable.
+                % This is because an entry in eov_env will override
+                % any eov_opts entry it shadows.
+                eov_opts    :: map(env_optfile_var, env_optfile_var_value)
+            ).
+
 :- type env_optfile_var == string.
-
-:- type options_file_error
-    --->    options_file_error(string).
-
-:- type found_options_file_error
-    --->    found_options_file_error.
 
 :- type env_optfile_var_value
     --->    env_optfile_var_value(
-                list(char),     % The variable's value.
-                list(string),   % The variable's value split into words.
-                variable_source
-            ).
+                % The variable's value, as the exact list of chars we read,
+                % with any gaps between any two part-definitions (meaning
+                % definition components extended using ":=" syntax)
+                % being a single space.
+                %
+                % We use this to expand references to $(varname).
+                list(char),
 
-:- type variable_source
-    --->    options_file
-    ;       command_line
-    ;       environment.
-
-:- type env_optfile_variables
-    --->    env_optfile_variables(
-                eov_opts    :: map(env_optfile_var, env_optfile_var_value),
-                eov_env     :: map(env_optfile_var, string)
+                % The variable's value, split into words.
+                %
+                % This is the field that the rest of the compiler consults.
+                list(string)
             ).
 
 env_optfile_variables_init(EnvVarMap) = Variables :-
     map.init(OptsMap),
-    Variables = env_optfile_variables(OptsMap, EnvVarMap).
+    Variables = env_optfile_variables(EnvVarMap, OptsMap).
 
 %---------------------------------------------------------------------------%
 
@@ -248,7 +303,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
     read_named_options_file(ProgressStream, OptionsFile,
         Variables0, Variables, Specs0, UndefSpecs, !IO),
     % Ignore settings in the environment -- the parent mmc process
-    % will have included those in the file.
+    % will have included those in OptionsFile.
     NoEnvVariables = Variables ^ eov_env := map.init,
     lookup_variable_words(NoEnvVariables, "MCFLAGS", FlagsResult),
     (
@@ -445,20 +500,17 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 else
                     ErrorFile = FileToFind
                 ),
-                (
-                    PreStack0 = pre_stack_base,
-                    MaybeContext = no
-                ;
-                    PreStack0 = pre_stack_nested(Context, _),
-                    MaybeContext = yes(Context)
-                ),
+                Phase = phase_find_files(ErrorFile),
                 Pieces = [words("Error: cannot open options file"),
                     quote(ErrorFile), suffix(":"),
                     words(Error), suffix("."), nl],
-                Spec = error_spec($pred, severity_error,
-                    phase_find_files(ErrorFile),
-                    [error_msg(MaybeContext, always_treat_as_first, 0u,
-                        [always(Pieces)])]),
+                (
+                    PreStack0 = pre_stack_base,
+                    Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces)
+                ;
+                    PreStack0 = pre_stack_nested(Context, _),
+                    Spec = spec($pred, severity_error, Phase, Context, Pieces)
+                ),
                 !:IOSpecs = [Spec | !.IOSpecs]
             ;
                 IsOptionsFileOptional = options_file_need_not_exist
@@ -757,8 +809,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
 report_split_error(FileName, LineNumber, Msg) = Spec :-
     Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error:"), words(Msg), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_read_files,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_read_files, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1053,58 +1104,69 @@ get_string_acc([Char | Chars0], Chars, RevString0, RevString, MaybeError) :-
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
+update_variable(FileName, LineNumber, SetOrAdd, VarName, NewChars0,
         !Variables, !ParseSpecs, !UndefSpecs, !IO) :-
     expand_any_var_references(!.Variables, FileName, LineNumber,
-        NewValue0, NewValue1, !ParseSpecs, !UndefSpecs, !IO),
-    MaybeWords1 = split_into_words(NewValue1),
+        NewChars0, NewChars1, !ParseSpecs, !UndefSpecs, !IO),
+    MaybeWords1 = split_into_words(NewChars1),
     (
         MaybeWords1 = ok(Words1),
-        !.Variables = env_optfile_variables(OptsMap0, EnvMap),
-        ( if map.search(EnvMap, VarName, EnvValue) then
-            Value = string.to_char_list(EnvValue),
-            MaybeWords = split_into_words(Value),
+        !.Variables = env_optfile_variables(EnvMap, OptsMap0),
+        ( if map.search(EnvMap, VarName, EnvStr) then
+            % We do not need to insert the VarName/Words1 pair into OptsMap0,
+            % because, due to the presence of VarName key in EnvMap,
+            % it will never be consulted.
+            %
+            % However, the first time we get here for a given VarName
+            % is the first time we learn that the environment variable
+            % with that name is relevant to Mercury, and therefore we should
+            % check whether it splits into words cleanly.
+            %
+            % Should we check that here and now, or should we leave it
+            % to lookup_variable_words predicate, which is invoked when
+            % the compiler wants to use this environment variable?
+            % There are arguments in favor of both options.
+            %
+            % Checking now means that we detect and report errors in the value
+            % of an environment variable as early as possible after that
+            % envvar is set to a value we do not consider acceptable.
+            %
+            % On the other hand, if two envvars relevant to a Mercury program,
+            % say MCFLAGS-mod_a and MCFLAGS-mod_b, both have the same error,
+            % but only MCFLAGS-mod_a appears in a Mercury.options file, then
+            % the code here would report the error only for the first envvar,
+            % leaving the second to be reported by lookup_variable_words.
+            % That would seem to violate the law of least astonishment.
+            %
+            % Reporting any errors here and now preserves old behavior.
+            % XXX The question is: *should* we preserve this old behavior?
+            SplitResult = split_into_words(string.to_char_list(EnvStr)),
             (
-                MaybeWords = ok(Words),
-                EnvValueChars = string.to_char_list(EnvValue),
-                Entry = env_optfile_var_value(EnvValueChars, Words,
-                    environment),
-                map.set(VarName, Entry, OptsMap0, OptsMap),
-                !:Variables = env_optfile_variables(OptsMap, EnvMap)
+                SplitResult = ok(_)
             ;
-                MaybeWords = error(WordsError),
-                Spec = report_split_error(FileName, LineNumber, WordsError),
+                SplitResult = error(Msg),
+                Spec = split_error_msg_to_error_spec(VarName, Msg),
                 !:ParseSpecs = [Spec | !.ParseSpecs]
             )
         else
-            ( if map.search(!.Variables ^ eov_opts, VarName, OldEntry) then
-                OldEntry = env_optfile_var_value(OldValue, OldWords, Source),
+            ( if map.search(OptsMap0, VarName, OldOptsEntry) then
+                OldOptsEntry = env_optfile_var_value(OldChars, OldWords),
                 (
-                    Source = environment
+                    SetOrAdd = soa_set,
+                    NewChars = NewChars1,
+                    NewWords = Words1
                 ;
-                    Source = command_line
-                ;
-                    Source = options_file,
-                    (
-                        SetOrAdd = soa_set,
-                        NewValue = NewValue1,
-                        Words = Words1
-                    ;
-                        SetOrAdd = soa_add,
-                        NewValue = OldValue ++ [' ' |  NewValue1],
-                        Words = OldWords ++ Words1
-                    ),
-                    Entry = env_optfile_var_value(NewValue, Words,
-                        options_file),
-                    map.det_update(VarName, Entry, OptsMap0, OptsMap),
-                    !:Variables = env_optfile_variables(OptsMap, EnvMap)
-                )
+                    SetOrAdd = soa_add,
+                    NewChars = OldChars ++ [' ' |  NewChars1],
+                    NewWords = OldWords ++ Words1
+                ),
+                NewOptsEntry = env_optfile_var_value(NewChars, NewWords),
+                map.det_update(VarName, NewOptsEntry, OptsMap0, OptsMap)
             else
-                Entry = env_optfile_var_value(NewValue1, Words1,
-                    options_file),
-                map.det_insert(VarName, Entry, OptsMap0, OptsMap),
-                !:Variables = env_optfile_variables(OptsMap, EnvMap)
-            )
+                NewOptsEntry = env_optfile_var_value(NewChars1, Words1),
+                map.det_insert(VarName, NewOptsEntry, OptsMap0, OptsMap)
+            ),
+            !Variables ^ eov_opts := OptsMap
         )
     ;
         MaybeWords1 = error(WordsError1),
@@ -1299,6 +1361,120 @@ lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
         % lookup_env_optfile_var.
         Result = error1(Specs)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type variable_result(T)
+    --->    var_result_set(T)
+    ;       var_result_unset
+    ;       var_result_error(one_or_more(error_spec)).
+
+:- pred lookup_env_optfile_var(env_optfile_variables::in,
+    env_optfile_var_class::in, env_optfile_var_id::in,
+    list(string)::in, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
+        !AllMmcOptions, !Specs) :-
+    % NOTE: The order in which we add these lists of flags are added together
+    % is important. In the resulting set the flags must occur in the order
+    %
+    % - first from DefaultFlagsResult
+    % - then from FlagsResult
+    % - then from ExtraFlagsResult
+    % - then from ModuleFlagsResult.
+    %
+    % Failing to maintain this order will result in the user being unable
+    % to override the default value of many of the compiler's options.
+    %
+    % On the other hand, there is no point in not exploiting the fact
+    % that for some values of EnvOptFileVarClass, some of those sources
+    % of flags do not exist.
+    get_env_optfile_var_info(FlagsVarId, VarName, DefaultVarName, ExtraVarName,
+        TargetSpecific, OptionSpec),
+    lookup_variable_words(Variables, DefaultVarName, DefaultFlagsResult),
+    (
+        EnvOptFileVarClass = default,
+        Result = DefaultFlagsResult
+    ;
+        EnvOptFileVarClass = non_module_specific,
+        lookup_variable_words(Variables, VarName, FlagsResult),
+        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
+        Result =
+            DefaultFlagsResult  `combine_var_results`
+            FlagsResult         `combine_var_results`
+            ExtraFlagsResult
+    ;
+        EnvOptFileVarClass = module_specific(ModuleName),
+        lookup_variable_words(Variables, VarName, FlagsResult),
+        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
+        (
+            TargetSpecific = target_specific(VarNameMinus),
+            ModuleFileNameBase = sym_name_to_string(ModuleName),
+            ModuleVarName = VarNameMinus ++ ModuleFileNameBase,
+            lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult),
+            Result =
+                DefaultFlagsResult  `combine_var_results`
+                FlagsResult         `combine_var_results`
+                ExtraFlagsResult    `combine_var_results`
+                ModuleFlagsResult
+        ;
+            TargetSpecific = not_target_specific,
+            Result =
+                DefaultFlagsResult  `combine_var_results`
+                FlagsResult         `combine_var_results`
+                ExtraFlagsResult
+        )
+    ),
+
+    % Check whether the result is valid for the variable type.
+    (
+        Result = var_result_unset
+        % Leave !AllMmcOptions as is.
+    ;
+        Result = var_result_set(VarValues),
+        ( if FlagsVarId = ml_libs then
+            check_ml_libs_values(VarValues, !Specs)
+        else
+            true
+        ),
+        (
+            OptionSpec = mmc_flags,
+            MmcOptions = VarValues
+        ;
+            OptionSpec = option(InitialOptions, OptionName),
+            MmcOptions = list.condense([InitialOptions |
+                list.map((func(Word) = [OptionName, Word]), VarValues)])
+        ),
+        !:AllMmcOptions = MmcOptions ++ !.AllMmcOptions
+    ;
+        Result = var_result_error(OoMSpecs),
+        % Leave !AllMmcOptions as is.
+        !:Specs = one_or_more_to_list(OoMSpecs) ++ !.Specs
+    ).
+
+:- pred check_ml_libs_values(list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_ml_libs_values(VarValues, !Specs) :-
+    NotLibLPrefix =
+        ( pred(LibFlag::in) is semidet :-
+            not string.prefix(LibFlag, "-l")
+        ),
+    BadLibs = list.filter(NotLibLPrefix, VarValues),
+    (
+        BadLibs = []
+    ;
+        BadLibs = [_ | _],
+        Pieces = [words("Error: MLLIBS must contain only"),
+            quote("-l"), words("options, found")] ++
+            quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
+        Spec = no_ctxt_spec($pred, severity_error,
+            phase_read_files, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- type env_optfile_var_class
     --->    default
@@ -1505,94 +1681,50 @@ get_env_optfile_var_info(VarId, VarName, DefaultVarName, ExtraVarName,
 
 %---------------------------------------------------------------------------%
 
-:- type variable_result(T)
-    --->    var_result_set(T)
-    ;       var_result_unset
-    ;       var_result_error(one_or_more(error_spec)).
+:- pred lookup_variable_words(env_optfile_variables::in, env_optfile_var::in,
+    variable_result(list(string))::out) is det.
 
-:- pred lookup_env_optfile_var(env_optfile_variables::in,
-    env_optfile_var_class::in, env_optfile_var_id::in,
-    list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
-        !AllMmcOptions, !Specs) :-
-    % NOTE: The order in which we add these lists of flags are added together
-    % is important. In the resulting set the flags must occur in the order
-    %
-    % - first from DefaultFlagsResult
-    % - then from FlagsResult
-    % - then from ExtraFlagsResult
-    % - then from ModuleFlagsResult.
-    %
-    % Failing to maintain this order will result in the user being unable
-    % to override the default value of many of the compiler's options.
-    %
-    % On the other hand, there is no point in not exploiting the fact
-    % that for some values of EnvOptFileVarClass, some of those sources
-    % of flags do not exist.
-    get_env_optfile_var_info(FlagsVarId, VarName, DefaultVarName, ExtraVarName,
-        TargetSpecific, OptionSpec),
-    lookup_variable_words(Variables, DefaultVarName, DefaultFlagsResult),
-    (
-        EnvOptFileVarClass = default,
-        Result = DefaultFlagsResult
-    ;
-        EnvOptFileVarClass = non_module_specific,
-        lookup_variable_words(Variables, VarName, FlagsResult),
-        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
-        Result =
-            DefaultFlagsResult  `combine_var_results`
-            FlagsResult         `combine_var_results`
-            ExtraFlagsResult
-    ;
-        EnvOptFileVarClass = module_specific(ModuleName),
-        lookup_variable_words(Variables, VarName, FlagsResult),
-        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
+lookup_variable_words(Variables, VarName, Result) :-
+    Variables = env_optfile_variables(EnvMap, OptsMap),
+    ( if map.search(EnvMap, VarName, EnvStr) then
+        SplitResult = split_into_words(string.to_char_list(EnvStr)),
         (
-            TargetSpecific = target_specific(VarNameMinus),
-            ModuleFileNameBase = sym_name_to_string(ModuleName),
-            ModuleVarName = VarNameMinus ++ ModuleFileNameBase,
-            lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult),
-            Result =
-                DefaultFlagsResult  `combine_var_results`
-                FlagsResult         `combine_var_results`
-                ExtraFlagsResult    `combine_var_results`
-                ModuleFlagsResult
+            SplitResult = ok(EnvWords),
+            Result = var_result_set(EnvWords)
         ;
-            TargetSpecific = not_target_specific,
-            Result =
-                DefaultFlagsResult  `combine_var_results`
-                FlagsResult         `combine_var_results`
-                ExtraFlagsResult
+            SplitResult = error(Msg),
+            Spec = split_error_msg_to_error_spec(VarName, Msg),
+            Result = var_result_error(one_or_more(Spec, []))
         )
-    ),
-
-    % Check whether the result is valid for the variable type.
-    (
+    else if map.search(OptsMap, VarName, OptsEntry) then
+        OptsEntry = env_optfile_var_value(_, Words),
+        Result = var_result_set(Words)
+    else
         Result = var_result_unset
-        % Leave !AllMmcOptions as is.
-    ;
-        Result = var_result_set(VarValues),
-        ( if FlagsVarId = ml_libs then
-            check_ml_libs_values(VarValues, !Specs)
-        else
-            true
-        ),
-        (
-            OptionSpec = mmc_flags,
-            MmcOptions = VarValues
-        ;
-            OptionSpec = option(InitialOptions, OptionName),
-            MmcOptions = list.condense([InitialOptions |
-                list.map((func(Word) = [OptionName, Word]), VarValues)])
-        ),
-        !:AllMmcOptions = MmcOptions ++ !.AllMmcOptions
-    ;
-        Result = var_result_error(OoMSpecs),
-        % Leave !AllMmcOptions as is.
-        !:Specs = one_or_more_to_list(OoMSpecs) ++ !.Specs
     ).
+
+:- pred lookup_variable_value(env_optfile_variables::in,
+    string::in, list(char)::out, set(string)::in, set(string)::out) is det.
+
+lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
+    Variables = env_optfile_variables(EnvMap, OptsMap),
+    ( if map.search(EnvMap, VarName, EnvStr) then
+        ValueChars = string.to_char_list(EnvStr)
+    else if map.search(OptsMap, VarName, OptsEntry) then
+        OptsEntry = env_optfile_var_value(ValueChars, _)
+    else
+        ValueChars = [],
+        set.insert(VarName, !UndefVarNames)
+    ).
+
+:- func split_error_msg_to_error_spec(string, string) = error_spec.
+
+split_error_msg_to_error_spec(VarName, Msg) = Spec :-
+    Pieces = [words("Error: in environment variable"),
+        quote(VarName), suffix(":"), words(Msg), nl],
+    Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces).
+
+%---------------------------------------------------------------------------%
 
 :- func combine_var_results(variable_result(list(T)), variable_result(list(T)))
     = variable_result(list(T)).
@@ -1626,70 +1758,6 @@ combine_var_results(ResultA, ResultB) = Result :-
         )
     ).
 
-:- pred lookup_variable_words(env_optfile_variables::in, env_optfile_var::in,
-    variable_result(list(string))::out) is det.
-
-lookup_variable_words(Variables, VarName, Result) :-
-    Variables = env_optfile_variables(OptsMap, EnvMap),
-    ( if map.search(EnvMap, VarName, EnvValue) then
-        SplitResult = split_into_words(string.to_char_list(EnvValue)),
-        (
-            SplitResult = ok(EnvWords),
-            Result = var_result_set(EnvWords)
-        ;
-            SplitResult = error(Msg),
-            Pieces = [words("Error: in environment variable"),
-                quote(VarName), suffix(":"), words(Msg), nl],
-            ErrorSpec = no_ctxt_spec($pred, severity_error,
-                phase_read_files, Pieces),
-            Result = var_result_error(one_or_more(ErrorSpec, []))
-        )
-    else
-        ( if map.search(OptsMap, VarName, MapValue) then
-            MapValue = env_optfile_var_value(_, Words, _),
-            Result = var_result_set(Words)
-        else
-            Result = var_result_unset
-        )
-    ).
-
-:- pred lookup_variable_value(env_optfile_variables::in,
-    string::in, list(char)::out, set(string)::in, set(string)::out) is det.
-
-lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
-    Variables = env_optfile_variables(OptsMap, EnvMap),
-    ( if map.search(EnvMap, VarName, EnvValue) then
-        ValueChars = string.to_char_list(EnvValue)
-    else
-        ( if map.search(OptsMap, VarName, Entry) then
-            Entry = env_optfile_var_value(ValueChars, _, _)
-        else
-            ValueChars = [],
-            set.insert(VarName, !UndefVarNames)
-        )
-    ).
-
-:- pred check_ml_libs_values(list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_ml_libs_values(VarValues, !Specs) :-
-    NotLibLPrefix =
-        ( pred(LibFlag::in) is semidet :-
-            not string.prefix(LibFlag, "-l")
-        ),
-    BadLibs = list.filter(NotLibLPrefix, VarValues),
-    (
-        BadLibs = []
-    ;
-        BadLibs = [_ | _],
-        Pieces = [words("Error: MLLIBS must contain only"),
-            quote("-l"), words("options, found")] ++
-            quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_read_files, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
-
 %---------------------------------------------------------------------------%
 
 dump_options_file(ProgressStream, FileName, Variables, !IO) :-
@@ -1712,7 +1780,7 @@ dump_options_file(ProgressStream, FileName, Variables, !IO) :-
     env_optfile_variables::in, io::di, io::uo) is det.
 
 write_env_optfile_variables(DumpStream, Variables, !IO) :-
-    Variables = env_optfile_variables(OptsMap, _EnvMap),
+    Variables = env_optfile_variables(_EnvMap, OptsMap),
     map.foldl(write_env_optfile_var_value(DumpStream), OptsMap, !IO).
     % tests/options_file/basic_test depends on dumping only OptsMap.
     % You can uncomment this call for debugging.
@@ -1725,20 +1793,15 @@ write_env_optfile_var_value(DumpStream, VarName, OptVarValue, !IO) :-
     % The contents of _ValueChars is implicit in ValueWords, so
     % printing it out would just clutter the output and make it
     % harder to read.
-    OptVarValue = env_optfile_var_value(_ValueChars, ValueWords, Src),
-    io.format(DumpStream, "%-24s ", [s(VarName ++ " ->")], !IO),
-    io.write(DumpStream, Src, !IO),
-    io.write_string(DumpStream, " ", !IO),
-    io.write_line(DumpStream, ValueWords, !IO).
+    OptVarValue = env_optfile_var_value(_ValueChars, ValueWords),
+    io.format(DumpStream, "%-24s %s\n",
+        [s(VarName ++ " ->"), s(string(ValueWords))], !IO).
 
 :- pred write_env_variable_value(io.text_output_stream::in,
     string::in, string::in, io::di, io::uo) is det.
 :- pragma consider_used(pred(write_env_variable_value/5)).
 
 write_env_variable_value(DumpStream, VarName, VarValue, !IO) :-
-    % The contents of _ValueChars is implicit in ValueWords, so
-    % printing it out would just clutter the output and make it
-    % harder to read.
     io.format(DumpStream, "%-24s %s\n",
         [s(VarName ++ " ->"), s(VarValue)], !IO).
 

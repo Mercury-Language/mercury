@@ -1,4 +1,6 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 # mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
 # with `--infer-all'.

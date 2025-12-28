@@ -11,6 +11,9 @@
 %
 % This file typechecks coerce operations.
 %
+% Note that the two exported predicates are completely independent of each
+% other; they could easily be in separate modules.
+%
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_coerce.
@@ -28,6 +31,8 @@
 :- pred typecheck_coerce(typecheck_info::in, prog_context::in,
     list(prog_var)::in, type_assign_set::in, type_assign_set::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Check coerce constraints in each type assignment to see if they can be
     % satisfied. If there are one or more type assignments in which all
     % coerce constraints are satisfied, then keep only those type assignments
@@ -42,10 +47,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_util.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -204,9 +209,11 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
 
     % Check the variance of type arguments.
     hlds_data.search_type_ctor_defn(TypeTable, BaseTypeCtor, BaseTypeDefn),
+    hlds_data.get_type_defn_body(BaseTypeDefn, BaseTypeBody),
+    BaseTypeBody = hlds_du_type(BaseTypeBodyDu),
     hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
     compute_which_type_params_must_be_invariant(TypeTable, BaseTypeCtor,
-        BaseTypeDefn, BaseTypeParams, InvariantTVars),
+        BaseTypeBodyDu, BaseTypeParams, InvariantTVars),
     are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         BaseTypeParams, FromBaseTypeArgTypes, ToBaseTypeArgTypes, !TypeAssign).
 
@@ -242,29 +249,17 @@ compute_base_type(TypeTable, TVarSet, Type, BaseType) :-
     % fall into into the first category; the others fall into the second.
     %
 :- pred compute_which_type_params_must_be_invariant(type_table::in,
-    type_ctor::in, hlds_type_defn::in, list(tvar)::in,
+    type_ctor::in, type_body_du::in, list(tvar)::in,
     invariant_tvars::out) is det.
 
 compute_which_type_params_must_be_invariant(TypeTable,
-        BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars) :-
-    hlds_data.get_type_defn_body(BaseTypeDefn, BaseTypeBody),
-    (
-        BaseTypeBody = hlds_du_type(BaseTypeBodyDu),
-        BaseTypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanon,
-            _MaybeTypeRepn, _IsForeignType),
-        Ctors = one_or_more_to_list(OoMCtors),
-        list.foldl(
-            acc_invariant_tvars_in_ctor(TypeTable,
-                BaseTypeCtor, BaseTypeParams),
-            Ctors, set.init, InvariantTVars)
-    ;
-        ( BaseTypeBody = hlds_eqv_type(_)
-        ; BaseTypeBody = hlds_foreign_type(_)
-        ; BaseTypeBody = hlds_solver_type(_)
-        ; BaseTypeBody = hlds_abstract_type(_)
-        ),
-        unexpected($pred, "not du type")
-    ).
+        BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars) :-
+    BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
+        _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
+    Ctors = one_or_more_to_list(OoMCtors),
+    list.foldl(
+        acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams),
+        Ctors, set.init, InvariantTVars).
 
 :- pred acc_invariant_tvars_in_ctor(type_table::in,
     type_ctor::in, list(tvar)::in, constructor::in,
@@ -312,25 +307,24 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
     ;
         RhsType = type_variable(_TypeVar, _Kind)
     ;
-        RhsType = defined_type(_SymName, ArgTypes, _Kind),
-        ( if
-            type_to_ctor_and_args(RhsType, TypeCtor, TypeArgs),
-            hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
-        then
+        RhsType = defined_type(SymName, ArgTypes, _Kind),
+        list.length(ArgTypes, NumArgTypes),
+        TypeCtor = type_ctor(SymName, NumArgTypes),
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             require_complete_switch [TypeBody]
             (
                 TypeBody = hlds_du_type(_),
                 ( if
                     TypeCtor = BaseTypeCtor,
-                    type_list_to_var_list(TypeArgs, TypeArgVars),
-                    TypeArgVars = BaseTypeParams
+                    type_list_to_var_list(ArgTypes, ArgTypeVars),
+                    ArgTypeVars = BaseTypeParams
                 then
                     % A type in the RHS that matches exactly the base type
                     % does not impose any restrictions on its type params.
                     % Any difference that occurs between the from-type and
                     % the to-type must by definition occur somewhere else
-                    % (i.e. other than RhsType) as well.
+                    % (i.e. outside RhsType) as well.
                     true
                 else
                     type_vars_in_types(ArgTypes, TypeVars),
@@ -354,7 +348,7 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
                 % In these cases, expand out the type and process the result
                 % as if the equivalence *had* been expanded out.
                 hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-                map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+                map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
                 apply_subst_to_type(TSubst, EqvType0, EqvType),
                 acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
                     BaseTypeCtor, BaseTypeParams, EqvType, !InvariantTVars)
@@ -448,8 +442,7 @@ is_type_param_pair_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         TypeVar, FromType, ToType, !TypeAssign) :-
     ( if set.contains(InvariantTVars, TypeVar) then
         types_compare_as_given(TypeTable, TVarSet, compare_equal,
-            FromType, ToType,
-            !TypeAssign)
+            FromType, ToType, !TypeAssign)
     else
         ( if
             types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
@@ -554,6 +547,7 @@ corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
     corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
         TypesA, TypesB, !TypeAssign).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 typecheck_prune_coerce_constraints(Info, TypeAssignSet0, TypeAssignSet) :-

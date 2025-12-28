@@ -109,13 +109,12 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.add_foreign_enum.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -279,8 +278,8 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
         get_type_defn_body(TypeDefn0, Body0),
         (
             Body0 = hlds_du_type(BodyDu0),
-            BodyDu0 = type_body_du(Ctors, MaybeSuperType, MaybeCanon,
-                _, _MaybeForeignTypeBody),
+            BodyDu0 = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+                MaybeCanon, _, _MaybeForeignTypeBody),
             (
                 (
                     RepnInfo = tcrepn_is_word_aligned_ptr,
@@ -768,8 +767,8 @@ check_and_record_non_sub_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
 
 %---------------------%
 
-:- pred check_and_record_non_sub_du_only_functor(repn_target::in, type_ctor::in,
-    prog_context::in, one_or_more(constructor)::in,
+:- pred check_and_record_non_sub_du_only_functor(repn_target::in,
+    type_ctor::in, prog_context::in, one_or_more(constructor)::in,
     gen_du_only_functor_repn::in, maybe_du_type_repn::out) is det.
 
 check_and_record_non_sub_du_only_functor(RepnTarget, TypeCtor, Context,
@@ -1823,8 +1822,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     get_type_defn_body(TypeDefn0, Body0),
     (
         Body0 = hlds_du_type(BodyDu0),
-        BodyDu0 = type_body_du(OoMCtors, MaybeSuperType, MaybeCanonical,
-            MaybeRepn0, MaybeForeign),
+        BodyDu0 = type_body_du(OoMCtors, _OoMAlphaSortedCtors, MaybeSuperType,
+            MaybeCanonical, MaybeRepn0, MaybeForeign),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
         (
@@ -2254,8 +2253,8 @@ decide_if_subtype_of_simple_du_type(OldTypeTable, TypeCtorTypeDefn,
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(BodyDu),
-        BodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
-            MaybeRepn, _MaybeForeign),
+        BodyDu = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+            _MaybeCanonical, MaybeRepn, _MaybeForeign),
         (
             MaybeSuperType = subtype_of(SuperType),
             expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
@@ -2380,8 +2379,8 @@ decide_if_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap,
     get_type_defn_body(TypeDefn0, Body0),
     (
         Body0 = hlds_du_type(BodyDu0),
-        BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
-            MaybeRepn0, _MaybeForeign),
+        BodyDu0 = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+            _MaybeCanonical, MaybeRepn0, _MaybeForeign),
         expect(unify(MaybeSuperType, not_a_subtype), $pred,
             "subtype not separated out"),
         (
@@ -3650,8 +3649,8 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
     get_type_defn_body(TypeDefn0, Body0),
     (
         Body0 = hlds_du_type(BodyDu0),
-        BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
-            MaybeRepn0, _MaybeForeign),
+        BodyDu0 = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+            _MaybeCanonical, MaybeRepn0, _MaybeForeign),
         (
             MaybeSuperType = subtype_of(SuperType),
             expect(unify(MaybeRepn0, no), $pred,
@@ -3895,8 +3894,9 @@ is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
 
             get_type_defn_body(ArgTypeDefn, ArgTypeDefnBody),
             ArgTypeDefnBody = hlds_du_type(ArgTypeDefnBodyDu),
-            ArgTypeDefnBodyDu = type_body_du(_ArgCtors, _ArgMaybeSuperType,
-                _ArgMaybeUserEqComp, _ArgMaybeRepn, ArgMaybeForeign),
+            ArgTypeDefnBodyDu = type_body_du(_ArgCtors, _ArgAlphaSortedCtors,
+                _ArgMaybeSuperType, _ArgMaybeUserEqComp, _ArgMaybeRepn,
+                ArgMaybeForeign),
 
             ArgMaybeForeign = no,
 
@@ -4562,8 +4562,8 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             )
         ;
             Body = hlds_du_type(BodyDu),
-            BodyDu = type_body_du(_Ctors, MaybeSuperType, _MaybeCanonical,
-                MaybeRepn, _MaybeForeign),
+            BodyDu = type_body_du(_Ctors, _AlphaSortedCtors, MaybeSuperType,
+                _MaybeCanonical, MaybeRepn, _MaybeForeign),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

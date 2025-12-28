@@ -84,10 +84,8 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
                 io.write_string(ProgressStream, " failed.\n", !IO),
                 io.flush_output(ProgressStream, !IO)
             ),
-            io.error_message(IOError, IOErrorMessage),
-            string.format("error opening file `%s' for output: %s\n",
-                [s(ImportsGraphFileName), s(IOErrorMessage)], ImpMessage),
-            report_error(ProgressStream, ImpMessage, !IO)
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                ImportsGraphFileName, IOError, !IO)
         )
     ;
         ShowImportsGraph = no

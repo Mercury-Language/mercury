@@ -57,8 +57,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_vars.
 :- import_module hlds.headvar_names.
@@ -71,6 +69,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.mode_util.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
@@ -168,7 +167,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
     ( if
-        pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+        pred_info_is_field_access_function(ModuleInfo, !.PredInfo, _, _, _),
         clause_list_is_empty(ClausesRep0) = yes,
         pred_status_defined_in_this_module(PredStatus) = yes
     then
@@ -539,13 +538,6 @@ proc_args_are_free_of_declared_uniqueness(ModuleInfo, InitArgNum, FinalArgNum,
         mode_is_free_of_uniqueness(ModuleInfo, FinalArgMode)
     ).
 
-:- pred mode_is_free_of_uniqueness(module_info::in, mer_mode::in) is semidet.
-
-mode_is_free_of_uniqueness(ModuleInfo, Mode) :-
-    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
-    inst_is_not_partly_unique(ModuleInfo, InitInst),
-    inst_is_not_partly_unique(ModuleInfo, FinalInst).
-
 %---------------------%
 
 :- pred warn_about_unneeded_final_statevar(pred_info::in, prog_context::in,
@@ -589,7 +581,7 @@ warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
     InitArgPieces = arg_num_pieces(PredInfo, InitArgNum),
     FinalArgPieces = arg_num_pieces(PredInfo, FinalArgNum),
     % Please keep this wording in sync with the code of the
-    % XXX not yet written predicate in state_var.m.
+    % report_unneeded_svar_in_lambda predicate in state_var.m.
     Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
         words("warning:")] ++ InitArgPieces ++ [words("and")]
         ++ FinalArgPieces ++ [suffix(",")] ++

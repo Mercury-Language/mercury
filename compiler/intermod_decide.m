@@ -42,7 +42,6 @@
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
@@ -56,6 +55,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -957,15 +957,14 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodSymName0,
         MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
         MethodCallArgTypes, MethodCallExternalTypeParams, MethodContext,
         MaybePredId, InstanceMethodSymName) :-
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     MethodUserArity = user_arity(MethodUserArityInt),
     ( if
         % XXX ARITY is_field_access_function_name can take user_arity
         % XXX ARITY is_field_access_function_name can return FieldDefns
         is_field_access_function_name(ModuleInfo, InstanceMethodSymName0,
-            MethodUserArityInt, _, FieldName),
-        map.search(CtorFieldTable, FieldName, FieldDefns)
+            MethodUserArityInt, _AccessType, _FieldName, OoMFieldDefns)
     then
+        FieldDefns = one_or_more_to_list(OoMFieldDefns),
         TypeCtors0 = list.map(
             ( func(FieldDefn) = TypeCtor :-
                 FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, _, _)
@@ -1037,8 +1036,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
             TypeBody0 = hlds_du_type(TypeBodyDu0),
-            TypeBodyDu0 = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp0,
-                MaybeRepn, MaybeForeign0),
+            TypeBodyDu0 = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+                MaybeUserEqComp0, MaybeRepn, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1068,8 +1067,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !IntermodInfo),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
-                MaybeRepn, MaybeForeign),
+            TypeBodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+                MaybeUserEqComp, MaybeRepn, MaybeForeign),
             TypeBody = hlds_du_type(TypeBodyDu),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;

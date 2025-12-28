@@ -210,8 +210,9 @@ copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
     (
         Result = dot_tmp_copy_error,
         Succeeded = did_not_succeed,
+        % XXX The call about should have told us: what was the actual problem?
         string.format("problem updating %s files.", [s(FileKindStr)], Msg),
-        report_error(ProgressStream, Msg, !IO)
+        report_arbitrary_error(ProgressStream, Msg, !IO)
     ;
         ( Result = base_file_new_or_changed
         ; Result = base_file_unchanged

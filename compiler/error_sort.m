@@ -121,18 +121,6 @@ remove_conditionals_in_spec(OptionTable, Spec0, StdSpec) :-
             MaybeStdSeverity = yes(Severity0),
             StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
                 [always(Pieces0)])]
-        ;
-            Spec0 = conditional_spec(Id, Option, MatchValue,
-                Severity0, Phase, Msgs0),
-            getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-            ( if OptionValue = MatchValue then
-                MaybeStdSeverity = yes(Severity0),
-                list.filter_map(remove_conditionals_in_msg(OptionTable),
-                    Msgs0, StdMsgs)
-            else
-                MaybeStdSeverity = no,
-                StdMsgs = []
-            )
         )
     ),
     ( if

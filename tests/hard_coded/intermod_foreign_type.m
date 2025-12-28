@@ -3,17 +3,18 @@
 %---------------------------------------------------------------------------%
 
 :- module intermod_foreign_type.
-
 :- interface.
 
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module intermod_foreign_type_helper_1.
-:- import_module std_util.
 
 main(!IO) :-
     C = new(4, 5),

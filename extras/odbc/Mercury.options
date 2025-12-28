@@ -1,12 +1,19 @@
-MCFLAGS-odbc +=--no-allow-ho-insts-as-modes
-MCFLAGS-odbc += --warn-dead-preds
-MCFLAGS-odbc += --warn-implicit-stream-calls
-MCFLAGS-odbc += --warn-inconsistent-pred-order-clauses
-MCFLAGS-odbc += --warn-insts-with-functors-without-type
-MCFLAGS-odbc += --warn-known-bad-format-calls
-MCFLAGS-odbc += --warn-non-contiguous-clauses
-MCFLAGS-odbc += --warn-non-contiguous-foreign-procs
-MCFLAGS-odbc += --warn-potentially-ambiguous-pragma
-MCFLAGS-odbc += --warn-suspicious-foreign-code
-MCFLAGS-odbc += --warn-unknown-format-calls
-MCFLAGS-odbc += --warn-unused-imports
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
+MCFLAGS-mercury_odbc    += --no-warn-nothing-exported
+MCFLAGS-mercury_odbc    += --no-warn-unused-interface-imports
+
+MCFLAGS-odbc            += --no-allow-ho-insts-as-modes
+MCFLAGS-odbc            += --warn-dead-preds
+MCFLAGS-odbc            += --warn-implicit-stream-calls
+MCFLAGS-odbc            += --warn-inconsistent-pred-order-clauses
+MCFLAGS-odbc            += --warn-insts-with-functors-without-type
+MCFLAGS-odbc            += --warn-known-bad-format-calls
+MCFLAGS-odbc            += --warn-non-contiguous-clauses
+MCFLAGS-odbc            += --warn-non-contiguous-foreign-procs
+MCFLAGS-odbc            += --warn-potentially-ambiguous-pragma
+MCFLAGS-odbc            += --warn-suspicious-foreign-code
+MCFLAGS-odbc            += --warn-unknown-format-calls
+MCFLAGS-odbc            += --warn-unused-imports

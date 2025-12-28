@@ -181,6 +181,7 @@ OTHER_PROGS = \
 	file_stream_instances \
 	followcode_det_problem \
 	foreign_underscore_var \
+	format_after_switch \
 	func_default_modes \
 	func_in_head \
 	gh65 \
@@ -301,6 +302,7 @@ OTHER_PROGS = \
 	trace_goal_reorder \
 	tricky_assert \
 	tricky_ite \
+	try_inside_lambda \
 	tuple_eqv \
 	two_foreign_procs_for_two_modes \
 	two_way_unif \

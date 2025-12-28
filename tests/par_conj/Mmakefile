@@ -58,7 +58,6 @@ DEP_PAR_CONJ_PROGS = \
 	dep_par_28 \
 	dep_par_29 \
 	impure_wait \
-	pathological_right_recursion \
 	produce_in_nondet_disj
 
 INDEP_PAR_CONJ_PROGS = \
@@ -67,8 +66,12 @@ INDEP_PAR_CONJ_PROGS = \
 	par_fib
 
 # threads_hang has a predicate that is implemented only for C.
+# pathological_right_recursion exceeds the default stack limits for both the C#
+# and Java runtimes. Since parallel conjunction is currently only supported by
+# the C grades, we only enable it for them.
 ifeq "$(filter java% csharp%,$(GRADE))" ""
 	INDEP_PAR_CONJ_C_PROGS = \
+		pathological_right_recursion \
 		threads_hang
 else
 	INDEP_PAR_CONJ_C_PROGS =

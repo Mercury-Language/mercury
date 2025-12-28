@@ -478,7 +478,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         cord.snoc(Instr0, !InstrsCord)
     ;
         NewRemain = nr_specified(ReplacementInstrs, RecurseInstrs),
-        !:InstrsCord = !.InstrsCord ++ cord.from_list(ReplacementInstrs),
+        cord.snoc_list(ReplacementInstrs, !InstrsCord),
         (
             ReplacementInstrs = [],
             ReplacementInstrsEmpty = yes

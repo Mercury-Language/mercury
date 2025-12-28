@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -219,7 +219,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
-read_specs_file_2(_, _, Problem, !IO) :-
+read_specs_file_2(_, _, Problem, IO, IO) :-
     Problem = "mmc can read event set specifications only when it itself " ++
         "is compiled in a grade that targets C code.".
 
@@ -638,7 +638,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
         ;
             AttrErrorSpecs = [],
             ( if map.search(!.AttrTypeMap, AttrName, AttrType) then
-                ArgTypes = list.map(map.lookup(!.AttrTypeMap), ArgAttrNames),
+                list.map(map.lookup(!.AttrTypeMap), ArgAttrNames, ArgTypes),
                 ( if
                     map.search(AttrNameMap, FuncAttrName, FuncAttrInfo),
                     FuncAttrInfo ^ attr_info_type =

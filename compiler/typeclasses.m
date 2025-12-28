@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,17 +80,17 @@
     tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
-    hlds_constraints::in, hlds_constraints::out) is det.
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_debug.
 :- import_module check_hlds.typecheck_errors.
 :- import_module hlds.hlds_module.
+:- import_module hlds.type_util.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
@@ -132,14 +132,14 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
         typecheck_info_add_error(Spec, !Info),
         DeleteConstraints =
             ( pred(TA0::in, TA::out) is det :-
-                % Make a new hlds_constraints structure for the type assign,
+                % Make a new hlds_constraint_db structure for the type assign,
                 % with the same assumed constraints but all unproven
                 % constraints deleted.
-                type_assign_get_typeclass_constraints(TA0, Constraints0),
+                type_assign_get_constraint_db(TA0, ConstraintDb0),
                 type_assign_get_typevarset(TA0, TVarSet),
-                make_hlds_constraints(ClassTable, TVarSet, [],
-                    Constraints0 ^ hcs_assumed, Constraints),
-                type_assign_set_typeclass_constraints(Constraints, TA0, TA)
+                make_hlds_constraint_db(ClassTable, TVarSet, [],
+                    ConstraintDb0 ^ hcd_assumed, ConstraintDb),
+                type_assign_set_constraint_db(ConstraintDb, TA0, TA)
             ),
         list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
     else
@@ -152,11 +152,11 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
 
 reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         !TypeAssignCord, !UnsatTypeAssignSet) :-
-    type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
+    type_assign_get_constraint_db(!.TypeAssign, ConstraintDb0),
     ( if
         % Optimize the common case of no typeclass constraints at all.
-        Constraints0 =
-            hlds_constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
+        ConstraintDb0 =
+            hlds_constraint_db(Unproven0, Assumed0, Redundant0, Ancestors0),
         Unproven0 = [],
         Assumed0 = [],
         map.is_empty(Redundant0),
@@ -173,12 +173,12 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         reduce_context_by_rule_application(ClassTable, InstanceTable,
             ExistQTVars, Bindings0, Bindings, TVarSet0, TVarSet,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap,
-            Constraints0, Constraints),
+            ConstraintDb0, ConstraintDb),
 
-        type_assign_set_reduce_results(TVarSet, Bindings, Constraints,
+        type_assign_set_reduce_results(TVarSet, Bindings, ConstraintDb,
             ProofMap, ConstraintMap, !TypeAssign),
 
-        Unproven = Constraints ^ hcs_unproven,
+        Unproven = ConstraintDb ^ hcd_unproven,
         ( if all_constraints_are_satisfiable(Unproven, ExistQTVars) then
             !:TypeAssignCord = cord.snoc(!.TypeAssignCord, !.TypeAssign)
         else
@@ -229,24 +229,25 @@ all_constraints_are_satisfiable([Constraint | Constraints], ExistQTVars) :-
     all_constraints_are_satisfiable(Constraints, ExistQTVars).
 
 reduce_context_by_rule_application(ClassTable, InstanceTable, ExistQTVars,
-        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints) :-
+        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !ConstraintDb) :-
     reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         ExistQTVars, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
-        !Constraints, !.Constraints ^ hcs_unproven, _).
+        !ConstraintDb, !.ConstraintDb ^ hcd_unproven, _).
 
 :- pred reduce_context_by_rule_application_2(class_table::in,
     instance_table::in, external_type_params::in,
     tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
-    hlds_constraints::in, hlds_constraints::out,
+    hlds_constraint_db::in, hlds_constraint_db::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 reduce_context_by_rule_application_2(ClassTable, InstanceTable, ExistQTVars,
-        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints, !Seen) :-
-    apply_rec_subst_to_constraints(!.Bindings, !Constraints),
+        !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
+        !ConstraintDb, !Seen) :-
+    apply_rec_subst_to_constraint_db(!.Bindings, !ConstraintDb),
     apply_improvement_rules(ClassTable, InstanceTable, ExistQTVars,
-        !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
+        !.ConstraintDb, !TVarSet, !Bindings, AppliedImprovementRule),
 
     % We want to make sure that any changes to the bindings are reflected
     % in the constraints, so that the full effect of the improvement rules
@@ -255,16 +256,16 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, ExistQTVars,
     % they were last applied).
     (
         AppliedImprovementRule = yes,
-        apply_rec_subst_to_constraints(!.Bindings, !Constraints)
+        apply_rec_subst_to_constraint_db(!.Bindings, !ConstraintDb)
     ;
         AppliedImprovementRule = no
     ),
 
-    eliminate_assumed_constraints(!ConstraintMap, !Constraints,
+    eliminate_assumed_constraints(!ConstraintMap, !ConstraintDb,
         EliminatedAssumed),
     apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !ProofMap,
-        !ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
-    apply_class_rules(!ProofMap, !ConstraintMap, !Constraints,
+        !ConstraintMap, !Seen, !ConstraintDb, AppliedInstanceRule),
+    apply_class_rules(!ProofMap, !ConstraintMap, !ConstraintDb,
         AppliedClassRule),
     ( if
         AppliedImprovementRule = no,
@@ -273,24 +274,24 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, ExistQTVars,
         AppliedClassRule = no
     then
         % We have reached fixpoint.
-        sort_and_merge_dups(!Constraints)
+        sort_and_merge_dups(!ConstraintDb)
     else
         disable_warning [suspicious_recursion] (
             reduce_context_by_rule_application_2(ClassTable, InstanceTable,
                 ExistQTVars, !Bindings, !TVarSet, !ProofMap,
-                !ConstraintMap, !Constraints, !Seen)
+                !ConstraintMap, !ConstraintDb, !Seen)
         )
     ).
 
-:- pred sort_and_merge_dups(hlds_constraints::in, hlds_constraints::out)
+:- pred sort_and_merge_dups(hlds_constraint_db::in, hlds_constraint_db::out)
     is det.
 
-sort_and_merge_dups(!Constraints) :-
+sort_and_merge_dups(!ConstraintDb) :-
     % Should we also sort and merge the other fields?
-    Unproven0 = !.Constraints ^ hcs_unproven,
+    Unproven0 = !.ConstraintDb ^ hcd_unproven,
     list.sort(compare_hlds_constraints, Unproven0, Unproven1),
     merge_adjacent_constraints(Unproven1, Unproven),
-    !Constraints ^ hcs_unproven := Unproven.
+    !ConstraintDb ^ hcd_unproven := Unproven.
 
 :- pred merge_adjacent_constraints(list(hlds_constraint)::in,
     list(hlds_constraint)::out) is det.
@@ -326,26 +327,26 @@ merge_constraints(ConstraintA, ConstraintB, Constraint) :-
     Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
-    external_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
-    tsubst::in, tsubst::out, bool::out) is det.
+    external_type_params::in, hlds_constraint_db::in,
+    tvarset::in, tvarset::out, tsubst::in, tsubst::out, bool::out) is det.
 
 apply_improvement_rules(ClassTable, InstanceTable, ExternalTypeParams,
-        Constraints, !TVarSet, !Bindings, Changed) :-
+        ConstraintDb, !TVarSet, !Bindings, Changed) :-
     % XXX Should we sort and merge the constraints here?
-    do_class_improvement(ClassTable, ExternalTypeParams, Constraints,
+    do_class_improvement(ClassTable, ExternalTypeParams, ConstraintDb,
         !Bindings, Changed1),
     % XXX Do we really need to modify the varset? See the comment above
     % find_matching_instance_rule.
     do_instance_improvement(ClassTable, InstanceTable, ExternalTypeParams,
-        Constraints, !TVarSet, !Bindings, Changed2),
+        ConstraintDb, !TVarSet, !Bindings, Changed2),
     Changed = bool.or(Changed1, Changed2).
 
 :- pred do_class_improvement(class_table::in, external_type_params::in,
-    hlds_constraints::in, tsubst::in, tsubst::out, bool::out) is det.
+    hlds_constraint_db::in, tsubst::in, tsubst::out, bool::out) is det.
 
-do_class_improvement(ClassTable, ExternalTypeParams, Constraints, !Bindings,
+do_class_improvement(ClassTable, ExternalTypeParams, ConstraintDb, !Bindings,
         Changed) :-
-    Redundant = Constraints ^ hcs_redundant,
+    Redundant = ConstraintDb ^ hcd_redundant,
     map.keys(Redundant, ClassIds),
     list.foldl2(
         do_class_improvement_2(ClassTable, ExternalTypeParams, Redundant),
@@ -434,12 +435,12 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep,
     ).
 
 :- pred do_instance_improvement(class_table::in, instance_table::in,
-    external_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
-    tsubst::in, tsubst::out, bool::out) is det.
+    external_type_params::in, hlds_constraint_db::in,
+    tvarset::in, tvarset::out, tsubst::in, tsubst::out, bool::out) is det.
 
 do_instance_improvement(ClassTable, InstanceTable, ExternalTypeParams,
-        Constraints, !TVarSet, !Bindings, Changed) :-
-    RedundantConstraints = Constraints ^ hcs_redundant,
+        ConstraintDb, !TVarSet, !Bindings, Changed) :-
+    RedundantConstraints = ConstraintDb ^ hcd_redundant,
     map.keys(RedundantConstraints, ClassIds),
     list.foldl3(
         do_instance_improvement_2(ClassTable, InstanceTable,
@@ -472,7 +473,7 @@ do_instance_improvement_3(Constraints, FunDeps, ExternalTypeParams,
     InstanceTVarSet = InstanceDefn ^ instdefn_tvarset,
     InstanceTypes0 = InstanceDefn ^ instdefn_types,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
+    apply_renaming_to_types(Renaming, InstanceTypes0,
         InstanceTypes),
     list.foldl2(
         do_instance_improvement_4(FunDeps, InstanceTypes, ExternalTypeParams),
@@ -508,7 +509,7 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, ExternalTypeParams,
         % We already know that the name/arity of the constraints match,
         % since we have partitioned them already.
         subsumes_on_elements(Domain, InstanceTypes0, ConstraintTypes, Subst),
-        apply_rec_subst_to_type_list(Subst, InstanceTypes0, InstanceTypes),
+        apply_rec_subst_to_types(Subst, InstanceTypes0, InstanceTypes),
 
         % Improvement occurs iff the instance range types are not more
         % general than the constraint range types. If they *are* more
@@ -564,13 +565,15 @@ subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     type_unify_list(RTypesA, RTypesB, RTypesBVars, Subst0, Subst).
 
 :- pred eliminate_assumed_constraints(constraint_map::in, constraint_map::out,
-    hlds_constraints::in, hlds_constraints::out, bool::out) is det.
+    hlds_constraint_db::in, hlds_constraint_db::out, bool::out) is det.
 
-eliminate_assumed_constraints(!ConstraintMap, !Constraints, Changed) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed, Redundant, Ancestors),
+eliminate_assumed_constraints(!ConstraintMap, !ConstraintDb, Changed) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed,
+        Redundant, Ancestors),
     eliminate_assumed_constraints_2(Assumed, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
 :- pred eliminate_assumed_constraints_2(list(hlds_constraint)::in,
     constraint_map::in, constraint_map::out,
@@ -601,16 +604,17 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out,
-    hlds_constraints::in, hlds_constraints::out, bool::out) is det.
+    hlds_constraint_db::in, hlds_constraint_db::out, bool::out) is det.
 
 apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !ProofMap,
-        !ConstraintMap, !Seen, !Constraints, Changed) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed,
+        !ConstraintMap, !Seen, !ConstraintDb, Changed) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed,
         Redundant0, Ancestors),
     apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, Redundant0, Redundant, !Seen,
         Unproven0, Unproven, Changed),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
 :- pred apply_instance_rules_2(class_table::in, instance_table::in,
     tvarset::in, tvarset::out,
@@ -697,13 +701,13 @@ find_matching_instance_rule_2([Instance | Instances], CurInstanceNum,
     InstanceTypes0 = Instance ^ instdefn_types,
     InstanceTVarSet = Instance ^ instdefn_tvarset,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
+    apply_renaming_to_types(Renaming, InstanceTypes0,
         InstanceTypes),
     ( if type_list_subsumes(InstanceTypes, ArgTypes, Subst) then
         !:TVarSet = NewTVarSet,
-        apply_variable_renaming_to_prog_constraint_list(Renaming,
+        apply_renaming_to_prog_constraints(Renaming,
             ProgConstraints0, ProgConstraints1),
-        apply_rec_subst_to_prog_constraint_list(Subst,
+        apply_rec_subst_to_prog_constraints(Subst,
             ProgConstraints1, ProgConstraints),
         init_hlds_constraint_list(ProgConstraints, NewConstraints),
 
@@ -716,18 +720,18 @@ find_matching_instance_rule_2([Instance | Instances], CurInstanceNum,
     ).
 
     % To reduce a constraint using class declarations, we search the
-    % ancestors in the hlds_constraints to find a path from the inferred
+    % ancestors in the hlds_constraint_db to find a path from the inferred
     % constraint to another (declared or inferred) constraint.
     %
 :- pred apply_class_rules(constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
-    hlds_constraints::in, hlds_constraints::out, bool::out) is det.
+    hlds_constraint_db::in, hlds_constraint_db::out, bool::out) is det.
 
-apply_class_rules(!ProofMap, !ConstraintMap, !Constraints, Changed) :-
-    !.Constraints = hlds_constraints(Unproven0, _, _, Ancestors),
+apply_class_rules(!ProofMap, !ConstraintMap, !ConstraintDb, Changed) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, _, _, Ancestors),
     apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !Constraints ^ hcs_unproven := Unproven.
+    !ConstraintDb ^ hcd_unproven := Unproven.
 
 :- pred apply_class_rules_2(ancestor_constraints::in,
     constraint_proof_map::in, constraint_proof_map::out,

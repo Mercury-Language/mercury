@@ -427,9 +427,8 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
 
     % Figure out the bindings for any unconstrained existentially quantified
     % type variables in the head.
-    var_table_count(VarTable0, NumVarsInDb0),
     ( if
-        NumVarsInDb0 = 0
+        var_table_is_empty(VarTable0)
     then
         % This can happen for compiler generated procedures.
         map.init(PredToActualTypeSubst)
@@ -448,7 +447,7 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     % Apply the type bindings to the unconstrained type variables to give
     % the actual types, and then generate code to initialize the type_infos
     % for those types.
-    apply_subst_to_tvar_list(KindMap, PredToActualTypeSubst,
+    apply_subst_to_tvars(KindMap, PredToActualTypeSubst,
         UnconstrainedTVars, ActualTypes),
     polymorphism_do_make_type_info_vars(ActualTypes, Context,
         TypeInfoVarsMCAs, ExtraTypeInfoGoals, !Info),

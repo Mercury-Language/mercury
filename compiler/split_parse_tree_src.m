@@ -413,7 +413,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                         OldSplitNested = split_nested_empty(EmptyContext),
                         warn_duplicate_of_empty_submodule(ModuleName,
                             ParentModuleName, Context, EmptyContext, !Specs),
-                        NewSplitNested = split_nested_int_imp(Context, Context),
+                        NewSplitNested =
+                            split_nested_int_imp(Context, Context),
                         NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                             SubInclInfoMap0),
                         map.det_update(ModuleName, NewEntry, !SplitModuleMap)

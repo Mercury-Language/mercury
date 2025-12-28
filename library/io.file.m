@@ -23,22 +23,28 @@
 %
 % File handling predicates.
 %
+% NOTE_TO_IMPLEMENTORS We should add an "unlink_file" predicate that
+% NOTE_TO_IMPLEMENTORS guarantees, on all platforms, that it deletes
+% NOTE_TO_IMPLEMENTORS only regular files. Unfortunately, I (zs) don't know
+% NOTE_TO_IMPLEMENTORS how to implement that for C# and Java.
 
-    % remove_file(FileName, Result, !IO) attempts to remove the file
-    % FileName, binding Result to ok/0 if it succeeds, or error/1 if it
-    % fails. If FileName names a file that is currently open, the behaviour
-    % is implementation-dependent.
+    % remove_file(FileName, Result, !IO):
+    %
+    % Attempt to remove the file FileName, binding Result to ok/0
+    % if this succeeds, or error/1 if it fails. If FileName names a file
+    % that is currently open, the behaviour is implementation-dependent.
     %
     % If FileName names a directory, the behavior is currently
-    % implementation-dependent. On most platforms, an empty directory will be
-    % deleted.
+    % implementation-dependent. On most platforms, an empty directory
+    % will be deleted.
     %
 :- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
 
-    % remove_file_recursively(FileName, Result, !IO) attempts to remove
-    % the file FileName, binding Result to ok/0 if it succeeds, or error/1
-    % if it fails. If FileName names a file that is currently open, the
-    % behaviour is implementation-dependent.
+    % remove_file_recursively(FileName, Result, !IO):
+    %
+    % Attempt to remove the file FileName, binding Result to ok/0
+    % if this succeeds, or error/1 if it fails. If FileName names a file
+    % that is currently open, the behaviour is implementation-dependent.
     %
     % Unlike remove_file, this predicate will attempt to remove non-empty
     % directories (recursively). If it fails, some of the directory elements
@@ -47,13 +53,15 @@
 :- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
     is det.
 
-    % rename_file(OldFileName, NewFileName, Result, !IO).
+%---------------------%
+
+    % rename_file(OldFileName, NewFileName, Result, !IO):
     %
-    % Attempts to rename the file or directory OldFileName as NewFileName,
-    % binding Result to ok/0 if it succeeds, or error/1 if it fails.
+    % Attempt to rename the file or directory OldFileName as NewFileName,
+    % binding Result to ok/0 if this succeeds, or error/1 if it fails.
     % If OldFileName names a file that is currently open, the behaviour is
     % implementation-dependent. If NewFileName names a file that already
-    % exists the behaviour is also implementation-dependent; on some systems,
+    % exists, the behaviour is also implementation-dependent; on some systems,
     % the file previously named NewFileName will be deleted and replaced
     % with the file previously named OldFileName.
     %
@@ -62,7 +70,8 @@
 
 %---------------------%
 
-    % Succeeds if this platform can read and create symbolic links.
+    % Succeed if and only if the current platform can read and create
+    % symbolic links.
     %
 :- pred have_symlinks is semidet.
 
@@ -75,11 +84,14 @@
 :- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
     is det.
 
-    % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
-    % if FileName is a symbolic link pointing to LinkTarget, and
-    % `error(Error)' otherwise. If LinkTarget is a relative path,
-    % it should be interpreted relative the directory containing FileName,
-    % not the current directory.
+    % read_symlink(FileName, Result, !IO):
+    %
+    % Return ok(LinkTarget) if FileName is a symbolic link
+    % pointing to LinkTarget, and error(Error) otherwise.
+    %
+    % If the returned LinkTarget is a relative path, it should be interpreted
+    % relative to the directory containing FileName, not
+    % relative to the current directory.
     %
 :- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo) is det.
 
@@ -97,22 +109,25 @@
     %   code.
     %
     % - The "write" access check passes for a directory if the directory does
-    %   not have the ReadOnly attribute, which does not necessarily mean we can
-    %   write to it.
+    %   not have the ReadOnly attribute, which does *not* necessarily mean
+    %   that we can write to it.
     %
     % - The "execute" access check is ignored for directories.
     %
 :- pred check_file_accessibility(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
 
-    % file_type(FollowSymLinks, FileName, TypeResult)
-    % finds the type of the given file.
+    % file_type(FollowSymLinks, FileName, TypeResult):
+    %
+    % Return the type of the given file.
     %
 :- pred file_type(bool::in, string::in, io.res(file_type)::out,
     io::di, io::uo) is det.
 
-    % file_modification_time(FileName, TimeResult)
-    % finds the last modification time of the given file.
+    % file_modification_time(FileName, TimeResult):
+    %
+    % Return the time of the last modification to the contents
+    % of the given file.
     %
 :- pred file_modification_time(string::in, io.res(time_t)::out,
     io::di, io::uo) is det.
@@ -122,26 +137,34 @@
 % Predicates for handling temporary files.
 %
 
-    % make_temp_file(Result, !IO) creates an empty file whose name is different
-    % to the name of any existing file. If successful Result returns the name
-    % of the file. It is the responsibility of the caller to delete the file
-    % when it is no longer required.
+    % make_temp_file(Result, !IO):
     %
-    % The file is placed in the directory returned by get_temp_directory/3.
+    % Create an empty file whose name differs from the name of
+    % any existing file. The file will be placed in the directory
+    % specified by get_temp_directory/3.
+    %
+    % If successful, return the name of the file in Result.
+    %
+    % It is the responsibility of the caller to delete the file
+    % when it is no longer required.
     %
 :- pred make_temp_file(io.res(string)::out, io::di, io::uo) is det.
 
-    % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
-    % whose name is different to the name of any existing file. The file will
-    % reside in the directory specified by Dir and will have a prefix using up
-    % to the first 5 code units of Prefix. If successful, Result returns the
-    % name of the file. It is the responsibility of the caller to delete the
-    % file when it is no longer required.
+    % make_temp_file(Dir, Prefix, Suffix, Result, !IO):
     %
-    % The reason for truncating Prefix is historical; in future the behaviour
-    % may be changed. Note that the truncation is performed without regard for
-    % code point boundaries. It is recommended to use only (printable) ASCII
-    % characters in the prefix string.
+    % Create an empty file whose name is differs from the name
+    % of any existing file.
+    %
+    % The file will reside in the directory specified by Dir, and
+    % will have a prefix using up to the first 5 code units of Prefix.
+    % If successful, Result returns the name of the file.
+    %
+    % The reason for truncating Prefix is historical, and in future,
+    % the behaviour may be changed.
+    %
+    % Note that the truncation is done without regard for the boundaries
+    % between code points. We recommend that the prefix should contain
+    % only printable ASCII characters.
     %
     % The C backend has the following limitations:
     %   - Suffix may be ignored.
@@ -151,21 +174,31 @@
     %   - Prefix is ignored.
     %   - Suffix is ignored.
     %
+    % It is the responsibility of the caller to delete the file
+    % when it is no longer required.
+    %
 :- pred make_temp_file(string::in, string::in, string::in, io.res(string)::out,
     io::di, io::uo) is det.
 
-    % make_temp_directory(Result, !IO) creates an empty directory whose name
-    % is different from the name of any existing directory.
+    % make_temp_directory(Result, !IO):
+    %
+    % Create an empty directory whose name differs from the name
+    % of any existing directory.
     %
 :- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
 
-    % make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) creates
-    % an empty directory whose name is different from the name of any existing
-    % directory. The new directory will reside in the existing directory
-    % specified by ParentDirName and will have a prefix using up to the
-    % first 5 characters of Prefix and a Suffix. Result returns the name of the
-    % new directory. It is the responsibility of the program to delete the
-    % directory when it is no longer needed.
+    % make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO):
+    %
+    % Create an empty directory whose name differs from the name
+    % of any existing directory.
+    %
+    % The new directory will reside in the existing directory
+    % specified by ParentDirName, and will have a prefix (using up to the
+    % first 5 characters of Prefix) and a Suffix. Result returns the name
+    % of the new directory.
+    %
+    % It is the responsibility of the caller to delete the directory
+    % when it is no longer required.
     %
     % The C backend has the following limitations:
     %   - Suffix is ignored.
@@ -177,6 +210,7 @@
     % The Java backend has the following limitation:
     %  - Suffix is ignored.
     %
+    % NOTE_TO_IMPLEMENTORS: If all backends ignore Suffix, then delete it.
 :- pred make_temp_directory(string::in, string::in, string::in,
     io.res(string)::out, io::di, io::uo) is det.
 
@@ -185,25 +219,35 @@
     %
 :- pred have_make_temp_directory is semidet.
 
-    % get_temp_directory(DirName, !IO)
+    % get_temp_directory(DirName, !IO):
     %
     % DirName is the name of a directory where applications should put
     % temporary files.
     %
     % This is implementation-dependent. For current Mercury implementations,
     % it is determined as follows:
+    %
     % 1. For the non-Java back-ends:
-    %    - On Microsoft Windows systems, the file will reside in
-    %      the current directory if the TMP environment variable
-    %      is not set, or in the directory specified by TMP if it is set.
-    %    - On Unix systems, the file will reside in /tmp if the TMPDIR
-    %      environment variable is not set, or in the directory specified
-    %      by TMPDIR if it is set.
-    % 2. For the Java back-end, the system-dependent default
-    %    temporary-file directory will be used, specified by the Java
-    %    system property java.io.tmpdir. On UNIX systems the default
-    %    value of this property is typically "/tmp" or "/var/tmp";
-    %    on Microsoft Windows systems it is typically "c:\\temp".
+    %
+    %    - On Microsoft Windows systems, DirName will be set
+    %       - to the directory named by the TMP environment variable,
+    %         if that environment variable exists and names a directory, and
+    %       - to the current directory otherwise.
+    %
+    %    - On Unix systems, DirName will be set
+    %       - to the directory named by the TMPDIR environment variable,
+    %         if that environment variable exists and names a directory, and
+    %       - to the /tmp directory otherwise.
+    %
+    % 2. For the Java back-end, DirName will be set to the system-dependent
+    %    default temporary-file directory, specified by the Java system
+    %    property java.io.tmpdir.
+    %
+    %    - On Microsoft Windows systems, the default value of this property
+    %      is typically "c:\\temp".
+    %
+    %    - On UNIX systems, the default value of this property
+    %      is typically "/tmp" or "/var/tmp".
     %
 :- pred get_temp_directory(string::out, io::di, io::uo) is det.
 
@@ -1161,7 +1205,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 
 %---------------------%
 
-% XXX The code for io.make_temp assumes POSIX. It uses the functions open(),
+% XXX The code for do_make_temp assumes POSIX. It uses the functions open(),
 % close(), and getpid() and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
 % We should be using conditional compilation here to avoid these POSIX
 % dependencies.
@@ -1221,16 +1265,18 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
                 fd = open(FileName, flags, 0600);
             #endif
         } while (fd == -1 && MR_is_eintr(errno));
+
         num_tries++;
         ML_io_tempnam_counter += (1 << num_tries);
-    } while (fd == -1 && errno == EEXIST &&
-        num_tries < ML_MAX_TEMPNAME_TRIES);
+    } while (fd == -1 && errno == EEXIST && num_tries < ML_MAX_TEMPNAME_TRIES);
+
     if (fd == -1) {
         Error = errno;
     }  else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
+
         if (err == 0) {
             Error = 0;
         } else {

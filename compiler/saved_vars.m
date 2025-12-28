@@ -241,8 +241,9 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
     %
 :- func ok_to_duplicate(goal_feature) = bool.
 
-ok_to_duplicate(feature_constraint) = no.
+ok_to_duplicate(feature_was_clause) = yes.
 ok_to_duplicate(feature_from_head) = yes.
+ok_to_duplicate(feature_constraint) = no.
 ok_to_duplicate(feature_not_impure_for_determinism) = no.
 ok_to_duplicate(feature_stack_opt) = no.
 ok_to_duplicate(feature_tuple_opt) = no.

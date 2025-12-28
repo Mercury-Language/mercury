@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015, 2024 The Mercury team.
+% Copyright (C) 2015, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -564,116 +564,120 @@ old_make_status_abstract(Status, AbstractStatus) :-
 
 type_combine_status(type_status(StatusA), type_status(StatusB),
         type_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-pred_combine_status(pred_status(StatusA), pred_status(StatusB),
-        pred_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-typeclass_combine_status(typeclass_status(StatusA), typeclass_status(StatusB),
-        typeclass_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-instance_combine_status(instance_status(StatusA), instance_status(StatusB),
-        instance_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-
-:- pred old_combine_status(old_import_status::in, old_import_status::in,
-    old_import_status::out) is det.
-
-old_combine_status(StatusA, StatusB, Status) :-
-    ( if combine_status_2(StatusA, StatusB, CombinedStatus) then
+    ( if old_combine_status(StatusA, StatusB, CombinedStatus) then
         Status = CombinedStatus
     else
         unexpected($pred, "unexpected status for type definition")
     ).
-
-:- pred combine_status_2(old_import_status::in, old_import_status::in,
-    old_import_status::out) is semidet.
-
-combine_status_2(status_imported(ImportLocn), Status2, Status) :-
-    require_complete_switch [ImportLocn]
-    (
-        ( ImportLocn = import_locn_implementation
-        ; ImportLocn = import_locn_interface
-        ; ImportLocn = import_locn_import_by_ancestor
-        ),
-        combine_status_imported_non_private(Status2, Status)
-    ;
-        ImportLocn = import_locn_ancestor_int0_interface,
-        Status = status_imported(import_locn_ancestor_int0_interface)
-    ;
-        ImportLocn = import_locn_ancestor_int0_implementation,
-        Status = status_imported(import_locn_ancestor_int0_implementation)
-    ).
-combine_status_2(status_local, Status2, Status) :-
-    combine_status_local(Status2, Status).
-combine_status_2(status_exported, _Status2, status_exported).
-combine_status_2(status_exported_to_submodules, Status2, Status) :-
-    combine_status_local(Status2, Status3),
-    ( if Status3 = status_local then
-        Status = status_exported_to_submodules
+pred_combine_status(pred_status(StatusA), pred_status(StatusB),
+        pred_status(Status)) :-
+    ( if old_combine_status(StatusA, StatusB, CombinedStatus) then
+        Status = CombinedStatus
     else
-        Status = Status3
+        unexpected($pred, "unexpected status for pred definition")
     ).
-combine_status_2(status_opt_imported, _Status2, status_opt_imported).
-combine_status_2(status_abstract_imported, Status2, Status) :-
-    combine_status_abstract_imported(Status2, Status).
-combine_status_2(status_abstract_exported, Status2, Status) :-
-    combine_status_abstract_exported(Status2, Status).
+typeclass_combine_status(typeclass_status(StatusA), typeclass_status(StatusB),
+        typeclass_status(Status)) :-
+    ( if old_combine_status(StatusA, StatusB, CombinedStatus) then
+        Status = CombinedStatus
+    else
+        unexpected($pred, "unexpected status for typeclass definition")
+    ).
+instance_combine_status(instance_status(StatusA), instance_status(StatusB),
+        instance_status(Status)) :-
+    ( if old_combine_status(StatusA, StatusB, CombinedStatus) then
+        Status = CombinedStatus
+    else
+        unexpected($pred, "unexpected status for instance definition")
+    ).
 
-:- pred combine_status_imported_non_private(old_import_status::in,
+:- pred old_combine_status(old_import_status::in, old_import_status::in,
     old_import_status::out) is semidet.
 
-combine_status_imported_non_private(Status2, Status) :-
+old_combine_status(StatusA, StatusB, Status) :-
+    % This switch on StatusA does not cover
+    %   status_external
+    %   status_opt_exported
+    %   status_pseudo_exported
+    %   status_pseudo_imported
     (
-        Status2 = status_imported(Section),
-        Status = status_imported(Section)
+        StatusA = status_imported(ImportLocn),
+        require_complete_switch [ImportLocn]
+        (
+            ( ImportLocn = import_locn_implementation
+            ; ImportLocn = import_locn_interface
+            ; ImportLocn = import_locn_import_by_ancestor
+            ),
+            (
+                StatusB = status_imported(Section),
+                Status = status_imported(Section)
+            ;
+                StatusB = status_local,
+                Status = status_imported(import_locn_implementation)
+            ;
+                StatusB = status_exported,
+                Status = status_exported
+            ;
+                StatusB = status_opt_imported,
+                Status = status_opt_imported
+            ;
+                StatusB = status_abstract_imported,
+                Status = status_imported(import_locn_interface)
+            ;
+                StatusB = status_abstract_exported,
+                Status = status_abstract_exported
+            )
+        ;
+            ImportLocn = import_locn_ancestor_int0_interface,
+            Status = status_imported(import_locn_ancestor_int0_interface)
+        ;
+            ImportLocn = import_locn_ancestor_int0_implementation,
+            Status = status_imported(import_locn_ancestor_int0_implementation)
+        )
     ;
-        Status2 = status_local,
-        Status = status_imported(import_locn_implementation)
+        StatusA = status_local,
+        old_combine_status_local(StatusB, Status)
     ;
-        Status2 = status_exported,
+        StatusA = status_exported,
         Status = status_exported
     ;
-        Status2 = status_opt_imported,
+        StatusA = status_exported_to_submodules,
+        old_combine_status_local(StatusB, Status3),
+        ( if Status3 = status_local then
+            Status = status_exported_to_submodules
+        else
+            Status = Status3
+        )
+    ;
+        StatusA = status_opt_imported,
         Status = status_opt_imported
     ;
-        Status2 = status_abstract_imported,
-        Status = status_imported(import_locn_interface)
+        StatusA = status_abstract_imported,
+        ( if StatusB = status_imported(Section) then
+            Status = status_imported(Section)
+        else
+            Status = status_abstract_imported
+        )
     ;
-        Status2 = status_abstract_exported,
-        Status = status_abstract_exported
+        StatusA = status_abstract_exported,
+        ( if StatusB = status_exported then
+            Status = status_exported
+        else
+            Status = status_abstract_exported
+        )
     ).
 
-:- pred combine_status_local(old_import_status::in, old_import_status::out)
+:- pred old_combine_status_local(old_import_status::in, old_import_status::out)
     is semidet.
 
-combine_status_local(status_exported_to_submodules,
+old_combine_status_local(status_exported_to_submodules,
     status_exported_to_submodules).
-combine_status_local(status_imported(_),            status_local).
-combine_status_local(status_local,                  status_local).
-combine_status_local(status_exported,               status_exported).
-combine_status_local(status_opt_imported,           status_local).
-combine_status_local(status_abstract_imported,      status_local).
-combine_status_local(status_abstract_exported,      status_abstract_exported).
-
-:- pred combine_status_abstract_exported(old_import_status::in,
-    old_import_status::out) is det.
-
-combine_status_abstract_exported(Status2, Status) :-
-    ( if Status2 = status_exported then
-        Status = status_exported
-    else
-        Status = status_abstract_exported
-    ).
-
-:- pred combine_status_abstract_imported(old_import_status::in,
-    old_import_status::out) is det.
-
-combine_status_abstract_imported(Status2, Status) :-
-    ( if Status2 = status_imported(Section) then
-        Status = status_imported(Section)
-    else
-        Status = status_abstract_imported
-    ).
+old_combine_status_local(status_imported(_),        status_local).
+old_combine_status_local(status_local,              status_local).
+old_combine_status_local(status_exported,           status_exported).
+old_combine_status_local(status_opt_imported,       status_local).
+old_combine_status_local(status_abstract_imported,  status_local).
+old_combine_status_local(status_abstract_exported,  status_abstract_exported).
 
 %-----------------------------------------------------------------------------%
 

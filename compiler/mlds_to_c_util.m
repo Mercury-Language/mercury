@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2020, 2022 The Mercury team.
+% Copyright (C) 2018-2020, 2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -58,6 +58,7 @@
     --->    mlds_to_c_opts(
                 m2co_all_globals            :: globals,
                 m2co_source_filename        :: string,
+                m2co_output_filename        :: string,
 
                 m2co_line_numbers           :: bool,
                 m2co_foreign_line_numbers   :: bool,
@@ -81,7 +82,8 @@
     --->    tod_target
     ;       tod_dump.
 
-:- func init_mlds_to_c_opts(globals, string, target_or_dump) = mlds_to_c_opts.
+:- func init_mlds_to_c_opts(globals, string, string, target_or_dump)
+    = mlds_to_c_opts.
 
 %---------------------------------------------------------------------------%
 
@@ -92,7 +94,7 @@
 :- pred c_output_file_line(io.text_output_stream::in, bool::in,
     string::in, int::in, io::di, io::uo) is det.
 :- pred c_reset_context(io.text_output_stream::in, bool::in,
-    io::di, io::uo) is det.
+    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -110,12 +112,12 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_util.
 
-:- import_module maybe.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
-init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
+init_mlds_to_c_opts(Globals, SourceFileName, OutputFileName, TargetOrDump)
+        = Opts :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
@@ -138,7 +140,7 @@ init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
     globals.get_gc_method(Globals, GCMethod),
     StdFuncDecls = no,
     BreakContext = bc_none,
-    Opts = mlds_to_c_opts(Globals, SourceFileName,
+    Opts = mlds_to_c_opts(Globals, SourceFileName, OutputFileName,
         LineNumbers, ForeignLineNumbers, Comments,
         SinglePrecFloat, ProfileCalls, ProfileMemory, ProfileTime, NeedToInit,
         Target, GCMethod, TargetOrDump, StdFuncDecls, BreakContext).
@@ -178,10 +180,10 @@ c_output_file_line(Stream, OutputLineNumbers, FileName, LineNumber, !IO) :-
         OutputLineNumbers = no
     ).
 
-c_reset_context(Stream, OutputLineNumbers, !IO) :-
+c_reset_context(Stream, OutputLineNumbers, FileName, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num(Stream, no, !IO)
+        c_util.always_reset_line_num(Stream, FileName, !IO)
     ;
         OutputLineNumbers = no
     ).

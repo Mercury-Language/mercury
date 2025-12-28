@@ -84,7 +84,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
@@ -96,6 +95,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
+:- import_module hlds.type_util.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.
@@ -210,7 +210,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
     Context = SpecDefnInfo ^ spdi_context,
     ( if
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, subtype_of(SuperType), _, _, _)
+        TypeBodyDu = type_body_du(_, _, subtype_of(SuperType), _, _, _)
     then
         % Unify subtype terms after casting to base type.
         % This is necessary in high-level data grades,
@@ -280,7 +280,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
             Clauses = [Clause]
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_, MaybeSuperType, _, MaybeRepn, _),
+            TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, MaybeRepn, _),
             expect(unify(MaybeSuperType, not_a_subtype), $pred,
                 "MaybeSuperType != not_a_subtype"),
             (
@@ -985,7 +985,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
     Context = SpecDefnInfo ^ spdi_context,
     ( if
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, subtype_of(SuperType), _, _, _)
+        TypeBodyDu = type_body_du(_, _, subtype_of(SuperType), _, _, _)
     then
         % Compare subtype terms after casting to base type.
         TVarSet = SpecDefnInfo ^ spdi_tvarset,
@@ -1048,7 +1048,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                 Res, X, Y, Clause, !Info)
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_, MaybeSuperType, _, MaybeRepn, _),
+            TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, MaybeRepn, _),
             expect(unify(MaybeSuperType, not_a_subtype), $pred,
                 "MaybeSuperType != not_a_subtype"),
             (
@@ -2672,7 +2672,7 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
         unexpected($pred, "trying to create index proc for a solver type")
     ;
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, MaybeRepn, _),
+        TypeBodyDu = type_body_du(_, _, _, _, MaybeRepn, _),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
@@ -2773,7 +2773,7 @@ get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, MaybeSuperType, _, _MaybeRepn, _),
+        TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, _MaybeRepn, _),
         (
             MaybeSuperType = not_a_subtype,
             BaseType = Type
@@ -2805,9 +2805,9 @@ get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType) :-
 merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
         TVarSet0, TypeParams0, Type0, Type) :-
     tvarset_merge_renaming(TVarSet, TVarSet0, _MergedTVarSet, Renaming),
-    apply_variable_renaming_to_tvar_list(Renaming, TypeParams0, TypeParams),
+    apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_renaming_to_type(Renaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type).
 
 %---------------------------------------------------------------------------%

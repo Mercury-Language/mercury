@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,10 +89,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module parse_tree.parse_tree_out_misc.
 
 :- import_module bool.

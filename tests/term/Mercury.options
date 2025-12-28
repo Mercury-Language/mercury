@@ -1,4 +1,6 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 MCFLAGS-ack                         += --term-norm=simple
 MCFLAGS-append                      += --term-norm=simple
@@ -10,10 +12,11 @@ MCFLAGS-dds3_14                     += --term-norm=simple
 MCFLAGS-dds3_15                     += --term-norm=simple
 MCFLAGS-dds3_17                     += --term-norm=simple
 MCFLAGS-dds3_8                      += --term-norm=simple
-MCFLAGS-exception_analysis_test     += --analyse-exceptions \
-    --no-warn-inferred-erroneous --no-warn-simple-code
-MCFLAGS-exception_analysis_test2    += --analyse-exceptions \
-    --no-warn-inferred-erroneous
+MCFLAGS-exception_analysis_test     += --analyse-exceptions
+MCFLAGS-exception_analysis_test     += --no-warn-inferred-erroneous
+MCFLAGS-exception_analysis_test     += --no-warn-simple-code
+MCFLAGS-exception_analysis_test2    += --analyse-exceptions
+MCFLAGS-exception_analysis_test2    += --no-warn-inferred-erroneous
 MCFLAGS-existential_error1          += --term-norm=num-data-elems
 MCFLAGS-existential_error2          += --term-norm=num-data-elems
 MCFLAGS-existential_error3          += --term-norm=num-data-elems

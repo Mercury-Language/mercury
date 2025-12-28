@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2020-2024 The Mercury team.
+% Copyright (C) 2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -899,6 +899,9 @@ binop_to_strcord(BinOp) = Cord :-
             CmpOp = le,
             Cord = strcord("unsigned_le")
         )
+    ;
+        BinOp = in_range,
+        Cord = strcord("in_range")
     ;
         BinOp = logical_and,
         Cord = strcord("logical_and")

@@ -145,6 +145,11 @@
     ;       string_const(string)
 
     ;       impl_defined_const(impl_defined_const_kind)
+            % Occurrences of impl_defined_const_kind cons_ids are always
+            % replaced by either string or integer constants by one of the
+            % front end passes, at dump stage 25. This happens after
+            % typechecking, purity checking and promise checking, but
+            % before the polymorphism transformation and mode analysis.
 
     ;       type_ctor_info_const(
                 module_name,

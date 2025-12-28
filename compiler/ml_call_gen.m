@@ -83,16 +83,14 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
 
@@ -314,8 +312,8 @@ ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
         ;
             DstIsDummy = is_not_dummy_type,
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
-            ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DstType,
-                bp_native_if_possible, ml_lval(SrcLval), CastRval),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, SrcType, DstType,
+                ml_lval(SrcLval), CastRval),
             Assign = ml_gen_assign(DstLval, CastRval, Context),
             Stmts = [Assign]
         ),

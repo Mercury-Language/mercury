@@ -926,7 +926,8 @@ parse_arg_num(VarSet, MaybeListPos, FS_VL, Term, MaybeArgNum) :-
         MaybeArgNum = error1([Spec])
     ).
 
-:- func in_format_string_values_context_pieces(maybe(int)) = list(format_piece).
+:- func in_format_string_values_context_pieces(maybe(int))
+    = list(format_piece).
 
 in_format_string_values_context_pieces(MaybeListPos) = Pieces :-
     Pieces0 = [words("In the second argument of a"),

@@ -148,8 +148,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
         % a .d file that does not include the trans_opt_deps mmake rule,
         % which will require an "mmake depend" before the next rebuild.
-        maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream,
-            Globals, ModuleName, MaybeDFileTransOptDeps, !IO)
+        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
+            ModuleName, MaybeDFileTransOptDeps, !IO)
     ),
 
     maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
@@ -170,7 +170,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         "% Module qualifying items...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
     module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
-        EventSpecMap0, EventSpecMap1, EventSetFileName, MQInfo0,
+        EventSpecMap0, EventSpecMap1, EventSetFileName, MQInfo0, UnusedImports,
         MQUndefTypes, MQUndefInsts, MQUndefModes, MQUndefTypeClasses,
         [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
@@ -194,15 +194,15 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
 
     EventSet = event_set(EventSetName, EventSpecMap),
     make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet,
-        MQInfo, TypeEqvMap, UsedModules, Verbose, Stats, HLDS0, QualInfo,
-        MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
+        MQInfo, TypeEqvMap, UsedModules, UnusedImports, Verbose, Stats, HLDS0,
+        QualInfo, MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO),
     bool.or(FoundSemanticError, IntermodError, PreHLDSErrors),
-    maybe_write_definitions(ProgressStream, ErrorStream,
+    maybe_write_definitions(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
-    maybe_write_definition_line_counts(ProgressStream, ErrorStream,
+    maybe_write_definition_line_counts(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
-    maybe_write_definition_extents(ProgressStream, ErrorStream,
+    maybe_write_definition_extents(ProgressStream,
         Verbose, Stats, HLDS0, !IO),
 
     ( if
@@ -232,9 +232,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         WriteDFile = do_not_write_d_file
     ;
         WriteDFile = write_d_file,
-        % The original Baggage0 will do just fine for write_dependency_file,
-        % since it accesses only the parts of Baggage0 that identify
-        % the properties of the source file containing the module.
+        % The original Baggage0 will do just fine for
+        % generate_and_write_d_file_hlds, since it accesses only the parts
+        % of Baggage0 that identify the properties of the source file
+        % containing the module.
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
         module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
         (
@@ -384,10 +385,10 @@ maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
     % depend on. Otherwise return `no'.
     %
 :- pred maybe_read_d_file_for_trans_opt_deps(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, module_name::in,
-    maybe(list(module_name))::out, io::di, io::uo) is det.
+    globals::in, module_name::in, maybe(list(module_name))::out,
+    io::di, io::uo) is det.
 
-maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
+maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
         ModuleName, MaybeDFileTransOptDeps, !IO) :-
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
@@ -413,12 +414,11 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans), ModuleName,
                 TransOptDateFileName, _TransOptDateFileNameProposed),
             SearchPattern = TransOptDateFileName ++ " :",
-            read_dependency_file_find_start(DFileInStream, SearchPattern,
+            read_d_file_find_start(DFileInStream, SearchPattern,
                 FindResult, !IO),
             (
                 FindResult = yes,
-                read_dependency_file_get_modules(DFileInStream,
-                    TransOptDeps, !IO),
+                read_d_file_get_modules(DFileInStream, TransOptDeps, !IO),
                 MaybeDFileTransOptDeps = yes(TransOptDeps)
             ;
                 FindResult = no,
@@ -431,10 +431,8 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
             DFileOpenResult = error(IOError),
             maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
             maybe_flush_output(ProgressStream, Verbose, !IO),
-            io.error_message(IOError, IOErrorMessage),
-            string.format("error opening file `%s for input: %s",
-                [s(DFileName), s(IOErrorMessage)], Message),
-            report_error(ErrorStream, Message, !IO),
+            report_cannot_open_file_for_input(ProgressStream, Globals,
+                DFileName, IOError, !IO),
             MaybeDFileTransOptDeps = no
         )
     ;
@@ -445,10 +443,10 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
     % Read lines from the dependency file (module.d) until one is found
     % which begins with SearchPattern.
     %
-:- pred read_dependency_file_find_start(io.text_input_stream::in, string::in,
+:- pred read_d_file_find_start(io.text_input_stream::in, string::in,
     bool::out, io::di, io::uo) is det.
 
-read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
+read_d_file_find_start(InStream, SearchPattern, Success, !IO) :-
     io.read_line_as_string(InStream, Result, !IO),
     (
         Result = ok(Line),
@@ -456,8 +454,7 @@ read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
             % Have found the start.
             Success = yes
         else
-            read_dependency_file_find_start(InStream, SearchPattern,
-                Success, !IO)
+            read_d_file_find_start(InStream, SearchPattern, Success, !IO)
         )
     ;
         ( Result = error(_)
@@ -471,10 +468,10 @@ read_dependency_file_find_start(InStream, SearchPattern, Success, !IO) :-
     % ending from all the words which are read in and return the resulting
     % list of modules.
     %
-:- pred read_dependency_file_get_modules(io.text_input_stream::in,
+:- pred read_d_file_get_modules(io.text_input_stream::in,
     list(module_name)::out, io::di, io::uo) is det.
 
-read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
+read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
     io.read_line(InStream, Result, !IO),
     ( if
         Result = ok(CharList0),
@@ -491,7 +488,7 @@ read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
             ModuleFileName = FileName
         ),
         file_name_to_module_name(ModuleFileName, Module),
-        read_dependency_file_get_modules(InStream, TransOptDeps0, !IO),
+        read_d_file_get_modules(InStream, TransOptDeps0, !IO),
         TransOptDeps = [Module | TransOptDeps0]
     else
         TransOptDeps = []
@@ -613,14 +610,14 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
 
 :- pred make_hlds(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, aug_compilation_unit::in, event_set::in, mq_info::in,
-    type_eqv_map::in, used_modules::in, bool::in, bool::in,
-    module_info::out, qual_info::out,
+    type_eqv_map::in, used_modules::in, set_tree234(module_name)::in,
+    bool::in, bool::in, module_info::out, qual_info::out,
     found_invalid_type::out, found_invalid_inst_or_mode::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
-        TypeEqvMap, UsedModules, Verbose, Stats, !:HLDS, QualInfo,
-        FoundInvalidType, FoundInvalidInstOrMode,
+        TypeEqvMap, UsedModules, UnusedImports, Verbose, Stats, !:HLDS,
+        QualInfo, FoundInvalidType, FoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO) :-
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose,
@@ -630,7 +627,7 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
     module_name_to_cur_dir_file_name(ext_cur_user_hlds_dump,
         ModuleName, DumpBaseFileName),
     parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
-        MQInfo, TypeEqvMap, UsedModules, QualInfo,
+        MQInfo, TypeEqvMap, UsedModules, UnusedImports, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
     !:Specs = MakeSpecs ++ !.Specs,
     module_info_set_event_set(EventSet, !HLDS),
@@ -653,11 +650,9 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
 %---------------------%
 
 :- pred maybe_write_definitions(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !IO) :-
+maybe_write_definitions(ProgressStream, Verbose, Stats, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definitions, ShowDefns),
     (
@@ -667,17 +662,16 @@ maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defns,
             ModuleName, DefnsFileName),
-        io.open_output(DefnsFileName, DefnsFileNameOpenResult, !IO),
+        io.open_output(DefnsFileName, DefnsOpenResult, !IO),
         (
-            DefnsFileNameOpenResult = ok(DefnsFileStream),
+            DefnsOpenResult = ok(DefnsFileStream),
             write_hlds_defns(DefnsFileStream, HLDS, !IO),
             io.close_output(DefnsFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            DefnsFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definitions: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            DefnsOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                DefnsFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -685,10 +679,9 @@ maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
     ).
 
 :- pred maybe_write_definition_line_counts(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
+maybe_write_definition_line_counts(ProgressStream, Verbose, Stats,
         HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definition_line_counts,
@@ -700,17 +693,16 @@ maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defn_lc,
             ModuleName, LcFileName),
-        io.open_output(LcFileName, LcFileNameOpenResult, !IO),
+        io.open_output(LcFileName, LcOpenResult, !IO),
         (
-            LcFileNameOpenResult = ok(LcFileStream),
+            LcOpenResult = ok(LcFileStream),
             write_hlds_defn_line_counts(LcFileStream, HLDS, !IO),
             io.close_output(LcFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            LcFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definition line counts: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            LcOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                LcFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -718,11 +710,9 @@ maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
     ).
 
 :- pred maybe_write_definition_extents(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
-maybe_write_definition_extents(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !IO) :-
+maybe_write_definition_extents(ProgressStream, Verbose, Stats, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_definition_extents, Extents),
     (
@@ -732,17 +722,16 @@ maybe_write_definition_extents(ProgressStream, ErrorStream, Verbose, Stats,
         module_info_get_name(HLDS, ModuleName),
         module_name_to_cur_dir_file_name(ext_cur_user_defn_ext, ModuleName,
             DefnFileName),
-        io.open_output(DefnFileName, DefnFileNameOpenResult, !IO),
+        io.open_output(DefnFileName, DefnOpenResult, !IO),
         (
-            DefnFileNameOpenResult = ok(DefnFileStream),
+            DefnOpenResult = ok(DefnFileStream),
             write_hlds_defn_extents(DefnFileStream, HLDS, !IO),
             io.close_output(DefnFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            DefnFileNameOpenResult = error(IOError),
-            ErrorMsg = "unable to write definition extents: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            DefnOpenResult = error(IOError),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                DefnFileName, IOError, !IO)
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

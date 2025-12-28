@@ -267,13 +267,17 @@
 %---------------------------------------------------------------------------%
 
 :- type goal_feature
-    --->    feature_constraint
-            % This is included if the goal is a constraint. See constraint.m
-            % for the definition of this.
+    --->    feature_was_clause
+            % This goal was originally an entire clause, but has been turned
+            % into a disjunct in a disjunction.
 
     ;       feature_from_head
             % This goal was originally in the head of the clause, and was
             % put into the body by the superhomogeneous form transformation.
+
+    ;       feature_constraint
+            % This is included if the goal is a constraint. See constraint.m
+            % for the definition of this.
 
     ;       feature_not_impure_for_determinism
             % This goal should not be treated as impure for the purpose of

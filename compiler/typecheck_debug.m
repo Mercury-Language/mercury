@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,9 +30,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module parse_tree.parse_tree_out_term.
@@ -100,7 +100,7 @@ write_type_assign_set(Stream, [TypeAssign | TypeAssigns], VarSet, !IO) :-
 write_type_assign(Stream, TypeAssign, VarSet, !IO) :-
     type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
+    type_assign_get_constraint_db(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
@@ -162,12 +162,12 @@ write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type0, !IO) :-
     mercury_output_type(TypeVarSet, print_name_and_num, Type, Stream, !IO).
 
 :- pred write_type_assign_hlds_constraints(io.text_output_stream::in,
-    tvarset::in, tsubst::in, hlds_constraints::in, io::di, io::uo) is det.
+    tvarset::in, tsubst::in, hlds_constraint_db::in, io::di, io::uo) is det.
 
 write_type_assign_hlds_constraints(Stream, TypeVarSet, TypeBindings,
-        Constraints, !IO) :-
-    Constraints =
-        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
+        ConstraintDb, !IO) :-
+    ConstraintDb =
+        hlds_constraint_db(ConstraintsToProve, AssumedConstraints, _, _),
     write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
         AssumedConstraints, "&", !IO),
     write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,

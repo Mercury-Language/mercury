@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -351,8 +351,8 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
         ( if map.search(ModuleTrustMap0, ModuleName, ModuleTrustInfo0) then
             ModuleTrustInfo1 = ModuleTrustInfo0
         else
-            ModuleTrustInfo1 = module_trust_info(is_not_trusted, is_not_trusted,
-                map.init, map.init)
+            ModuleTrustInfo1 = module_trust_info(is_not_trusted,
+                is_not_trusted, map.init, map.init)
         ),
         (
             PredOrFunc = pf_predicate,

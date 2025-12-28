@@ -244,14 +244,13 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_util.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -196,9 +196,9 @@ implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
         implement_mutable(ModuleParams, ItemMutable,
             PredDecls, ClauseInfos, ForeignProcs, FPEInfo,
             !ForeignDeclCodeCord, !ForeignBodyCodeCord, !PredTargetNames),
-        !:PredDeclCord = !.PredDeclCord ++ cord.from_list(PredDecls),
-        !:ClauseInfoCord = !.ClauseInfoCord ++ cord.from_list(ClauseInfos),
-        !:ForeignProcCord = !.ForeignProcCord ++ cord.from_list(ForeignProcs),
+        cord.snoc_list(PredDecls, !PredDeclCord),
+        cord.snoc_list(ClauseInfos, !ClauseInfoCord),
+        cord.snoc_list(ForeignProcs, !ForeignProcCord),
         cord.snoc(FPEInfo, !FPEInfoCord)
     ),
     implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,

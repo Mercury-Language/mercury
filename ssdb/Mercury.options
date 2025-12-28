@@ -1,13 +1,13 @@
-#-----------------------------------------------------------------------------#
-# vim: ts=4 sw=4 expandtab
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2007, 2010 The University of Melbourne.
 # Copyright (C) 2023-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 MCFLAGS-mer_ssdb                    += --no-warn-nothing-exported
 MCFLAGS-mer_ssdb                    += --no-warn-unused-imports

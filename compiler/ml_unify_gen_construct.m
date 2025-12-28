@@ -86,14 +86,13 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
-:- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mode_top_functor.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
@@ -105,7 +104,6 @@
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_cons_id.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -781,8 +779,8 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context, ArgType, FieldType,
         % Otherwise, fall back on ml_gen_box_or_unbox_rval in ml_call_gen.m.
         % XXX This might generate an rval which is not legal in a static
         % initializer!
-        ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
-            bp_native_if_possible, ArgRval, FieldRval)
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, ArgType, FieldType,
+            ArgRval, FieldRval)
     ).
 
 :- pred ml_gen_box_const_rval_list_lld(ml_gen_info::in, prog_context::in,
@@ -1060,8 +1058,8 @@ ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
         is_either_type_a_dummy(ModuleInfo, RHSType, ConsArgType) =
             neither_is_dummy_type
     then
-        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, BoxedRHSType,
-            bp_native_if_possible, ml_lval(RHSLval), RHSRval)
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, BoxedRHSType,
+            ml_lval(RHSLval), RHSRval)
     else
         RHSRval = ml_const(mlconst_null(RHS_MLDS_Type))
     ).
@@ -1203,8 +1201,8 @@ ml_genenate_construct_notag_direct_arg(NonLocals, LHSVar, ConsTag, RHSVars,
         (
             ConsTag = no_tag,
             RHSRval0 = ml_lval(RHSLval),
-            ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-                bp_native_if_possible, RHSRval0, RHSRval)
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, LHSType,
+                RHSRval0, RHSRval)
         ;
             ConsTag = direct_arg_tag(Ptag),
             % The reason this case needs a switch on Dir is the arm below
@@ -1229,8 +1227,8 @@ ml_genenate_construct_notag_direct_arg(NonLocals, LHSVar, ConsTag, RHSVars,
                 Dir = assign_dummy,
                 unexpected($pred, "dummy unify")
             ),
-            ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-                bp_native_if_possible, RHSRval0, RHSRval1),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, LHSType,
+                RHSRval0, RHSRval1),
             ( if Ptag = ptag(0u8) then
                 RHSRval = ml_cast(LHS_MLDS_Type, RHSRval1)
             else

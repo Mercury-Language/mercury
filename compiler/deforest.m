@@ -51,8 +51,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
@@ -65,7 +63,9 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.var_table_hlds.
@@ -1396,7 +1396,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     tvarset_merge_renaming(TVarSet0, CalledTVarSet, TVarSet, TypeRenaming),
     pred_info_set_typevarset(TVarSet, PredInfo0, PredInfo),
     pd_info_set_pred_info(PredInfo, !PDInfo),
-    apply_variable_renaming_to_type_list(TypeRenaming, ArgTypes0, ArgTypes1),
+    apply_renaming_to_types(TypeRenaming, ArgTypes0, ArgTypes1),
 
     create_deforest_call_arg_vars(ModuleInfo, Renaming, TypeSubn,
         OldArgVars, ArgTypes1, ArgVars, VarTable0, VarTable),

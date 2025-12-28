@@ -33,7 +33,7 @@
 % File names.
 %
 
-:- pred dependency_file_to_file_name(globals::in, dependency_file::in,
+:- pred target_id_to_file_name(globals::in, target_id::in,
     file_name::out, file_name::out, io::di, io::uo) is det.
 
     % module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
@@ -123,14 +123,14 @@
 
 %---------------------------------------------------------------------------%
 
-dependency_file_to_file_name(Globals, DepFile,
+target_id_to_file_name(Globals, TargetId,
         FileNameLegacy, FileNameProposed, !IO) :-
     (
-        DepFile = dep_target(TargetFile),
+        TargetId = merc_target(TargetFile),
         module_target_file_to_file_name(Globals, $pred,
             TargetFile, FileNameLegacy, FileNameProposed, !IO)
     ;
-        DepFile = dep_file(FileName),
+        TargetId = non_merc_target(FileName),
         FileNameLegacy = FileName,
         FileNameProposed = FileName
     ).

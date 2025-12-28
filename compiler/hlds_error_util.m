@@ -20,13 +20,18 @@
 :- module hlds.hlds_error_util.
 :- interface.
 
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
+:- import_module libs.
+:- import_module libs.maybe_util.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -173,6 +178,96 @@
 
 %---------------------------------------------------------------------------%
 
+:- type last_context_word
+    --->    lcw_none
+    ;       lcw_call
+    ;       lcw_result
+    ;       lcw_argument
+    ;       lcw_element.
+
+    % unify_context_to_pieces generates a message such as
+    %   foo.m:123:   in argument 3 of functor `foo/5':
+    %   foo.m:123:   in unification of `X' and `blah':
+    % based on the unify_context and prog_context.
+    %
+:- pred unify_context_to_pieces(unify_context::in, last_context_word::out,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+    % unify_context_first_to_pieces is the same as above, except that
+    % it also takes and returns a flag which specifies whether this is the
+    % start of a sentence. If the first argument is `is_first', then it means
+    % this is the first line of an error message, so the message starts with
+    % a capital letter, e.g.
+    %   foo.m:123:   In argument 3 of functor `foo/5':
+    %   foo.m:123:   in unification of `X' and `blah':
+    % The flag returned as the second argument will be `is_not_first'
+    % unless nothing was generated, in which case it will be the same
+    % as the first argument.
+    %
+:- pred unify_context_first_to_pieces(is_first::in, is_first::out,
+    unify_context::in, last_context_word::out,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+    % Succeed iff the given cons_id either *does* represent list.[|],
+    % or (before typechecking has finished) *may* represent list.[|].
+    %
+:- pred cons_id_may_be_list_cons(cons_id::in) is semidet.
+
+:- func argument_to_pieces(unify_sub_context) = list(format_piece).
+
+%---------------------------------------------------------------------------%
+
+    % When a higher order call uses either P(A, B, C) or C = F(A, B) syntax,
+    % we normally identify the call as being to "the predicate P" or to
+    % "the function F". However, there is a category of errors for which
+    % this is inappropriate: when the error is calling a function-valued
+    % variable as if it were a predicate, and vice versa. In such cases,
+    % we don't want the description of the error's context to say e.g.
+    % "in the call to the predicate P", and the description of the error
+    % itself to say "P is a function, but should be a predicate".
+    % Code that wants to report such errors should call the functions below
+    % with do_not_print_ho_var_name; pretty much all other callers should
+    % pass print_ho_var_name.
+:- type maybe_print_ho_var_name
+    --->    do_not_print_ho_var_name
+    ;       print_ho_var_name.
+
+:- func call_id_to_pieces(maybe_print_ho_var_name, call_id) =
+    list(format_piece).
+
+    % generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces:
+    %
+    % Return a description of GenericCall as Pieces.
+    %
+    % For a description of the semantics of PrintHoVarName, see the
+    % definition of its type above.
+    %
+    % We use VarNameSrc for describing the callee of higher order calls.
+    % The type of this argument is var_name_source because we use this
+    % function both during the type analysis pass (which occurs before
+    % we construct var_tables, since it actually constructs var_tables),
+    % and during mode and determinism analysis, which do use var_tables.
+    %
+:- func generic_call_to_pieces(maybe_print_ho_var_name, var_name_source,
+    generic_call) = list(format_piece).
+
+    % This variant of generic_call_to_string returns a string that
+    % specifically describes the *callee* of the call, not the call
+    % as a whole.
+    %
+:- func generic_callee_to_pieces(maybe_print_ho_var_name, var_name_source,
+    generic_call) = list(format_piece).
+
+    % Generate a message of the form "argument %i of call to pred_or_func
+    % `foo/n'". The pred_markers argument is used to tell if the calling
+    % predicate is a type class method implementation; if so, we omit the
+    % "call to" part, since the user didn't write any explicit call.
+    %
+:- func call_arg_id_to_pieces(maybe_print_ho_var_name, call_id, int,
+    pred_markers) = list(format_piece).
+
+%---------------------------------------------------------------------------%
+
     % Return the arities that the given pred_ids have.
     %
 :- pred find_pred_arities(pred_id_table::in, list(pred_id)::in,
@@ -197,12 +292,15 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_mode.
@@ -451,6 +549,343 @@ describe_several_call_sites(ModuleInfo, MaybeColor, ShouldModuleQualify,
         describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify),
         Sites),
     Pieces = pieces_list_to_pieces("and", PiecesList).
+
+%---------------------------------------------------------------------------%
+%
+% Write out the contexts of unifications.
+%
+
+unify_context_to_pieces(UnifyContext, LastContextWord, !Pieces) :-
+    unify_context_first_to_pieces(is_not_first, _, UnifyContext,
+        LastContextWord, !Pieces).
+
+unify_context_first_to_pieces(!First, UnifyContext, LastContextWord,
+        !Pieces) :-
+    UnifyContext = unify_context(MainContext, BottomUpSubContexts),
+    list.reverse(BottomUpSubContexts, TopDownSubContexts),
+    unify_main_context_to_pieces(!First, MainContext,
+        LastContextWord0, !Pieces),
+    unify_sub_contexts_to_pieces(!First, TopDownSubContexts,
+        LastContextWord0, LastContextWord, !Pieces).
+
+:- pred unify_main_context_to_pieces(is_first::in, is_first::out,
+    unify_main_context::in, last_context_word::out,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
+    (
+        MainContext = umc_explicit,
+        LastContextWord = lcw_none
+    ;
+        MainContext = umc_head(ArgNum),
+        LastContextWord = lcw_argument,
+        ArgNumStr = int_to_string(ArgNum),
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words("argument"), fixed(ArgNumStr), words("of clause head:"),
+            nl],
+        !:First = is_not_first
+    ;
+        MainContext = umc_head_result,
+        LastContextWord = lcw_result,
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words("function result term of clause head:"), nl],
+        !:First = is_not_first
+    ;
+        MainContext = umc_call(CallId, ArgNum),
+        LastContextWord = lcw_call,
+        % The markers argument below is used only for type class method
+        % implementations defined using the named syntax rather than
+        % the clause syntax, and the bodies of such procedures should
+        % only contain a single call, so we shouldn't get unifications
+        % nested inside calls. Hence we can safely initialize the
+        % markers to empty here. (Anyway the worst possible consequence
+        % is slightly sub-optimal text for an error message.)
+        init_markers(Markers),
+        ArgIdPieces = call_arg_id_to_pieces(print_ho_var_name, CallId,
+            ArgNum, Markers),
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            ArgIdPieces ++ [suffix(":"), nl],
+        !:First = is_not_first
+    ;
+        MainContext = umc_implicit(Source),
+        LastContextWord = lcw_none,
+        string.format("implicit %s unification:", [s(Source)], Msg),
+        !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+            [words(Msg), nl],
+        !:First = is_not_first
+    ).
+
+:- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
+    list(unify_sub_context)::in, last_context_word::in, last_context_word::out,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+unify_sub_contexts_to_pieces(!First, [], !LastContextWord, !Pieces).
+unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
+        _, !:LastContextWord, !Pieces) :-
+    ( if
+        contexts_describe_list_element([SubContext | SubContexts],
+            0, ElementNum, AfterContexts)
+    then
+        HeadPieces = element_to_pieces(ElementNum),
+        !:LastContextWord = lcw_element,
+        NextContexts = AfterContexts
+    else
+        HeadPieces = argument_to_pieces(SubContext),
+        !:LastContextWord = lcw_argument,
+        NextContexts = SubContexts
+    ),
+    !:Pieces = !.Pieces ++ start_in_message_to_pieces(!.First) ++
+        HeadPieces ++ [suffix(":"), nl],
+    !:First = is_not_first,
+    unify_sub_contexts_to_pieces(!First, NextContexts,
+        !LastContextWord, !Pieces).
+
+:- pred contexts_describe_list_element(list(unify_sub_context)::in,
+    int::in, int::out, list(unify_sub_context)::out) is semidet.
+
+contexts_describe_list_element([SubContext | SubContexts],
+        NumElementsBefore, ElementNum, AfterContexts) :-
+    SubContext = unify_sub_context(ConsId, ArgNum),
+    cons_id_may_be_list_cons(ConsId),
+    (
+        ArgNum = 1,
+        % If there were zero elements before this element,
+        % then this is element #1.
+        ElementNum = NumElementsBefore + 1,
+        AfterContexts = SubContexts
+    ;
+        ArgNum = 2,
+        contexts_describe_list_element(SubContexts,
+            NumElementsBefore + 1, ElementNum, AfterContexts)
+    ).
+
+cons_id_may_be_list_cons(ConsId) :-
+    ConsId = du_data_ctor(DuCtor),
+    DuCtor = du_ctor(DuCtorSymName, 2, _TypeCtor),
+    % We ignore _TypeCtor since it may not have been set yet.
+    (
+        DuCtorSymName = unqualified("[|]")
+    ;
+        DuCtorSymName = qualified(ModuleSymName, "[|]"),
+        is_std_lib_module_name(ModuleSymName, "list")
+    ).
+
+argument_to_pieces(SubContext) = Pieces :-
+    SubContext = unify_sub_context(ConsId, ArgNum),
+    ArgNumStr = int_to_string(ArgNum),
+    % XXX Using cons_id_and_arity_to_string here results in the
+    % quotes being in the wrong place.
+    ConsIdStr = cons_id_and_arity_to_string(ConsId),
+    Pieces = [words("argument"), fixed(ArgNumStr),
+        words("of functor"), quote(ConsIdStr)].
+
+:- func element_to_pieces(int) = list(format_piece).
+
+element_to_pieces(ElementNum) = Pieces :-
+    ElementNumStr = int_to_string(ElementNum),
+    Pieces = [words("list element"), prefix("#"), fixed(ElementNumStr)].
+
+:- func start_in_message_to_pieces(is_first) = list(format_piece).
+
+start_in_message_to_pieces(First) = Pieces :-
+    (
+        First = is_first,
+        % It is possible for First to be yes and !.Pieces to be nonempty,
+        % since !.Pieces may contain stuff from before the unify context.
+        Pieces = [words("In")]
+    ;
+        First = is_not_first,
+        Pieces = [words("in")]
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Write out ids of calls.
+%
+
+call_id_to_pieces(_PrintHoVarName, plain_call_id(PFSNA)) =
+    [qual_pf_sym_name_pred_form_arity(PFSNA)].
+call_id_to_pieces(PrintHoVarName, generic_call_id(VarNameSrc, GenericCall)) =
+    generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall).
+
+generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces :-
+    (
+        GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
+        (
+            Syntax = hos_var,
+            (
+                PrintHoVarName = do_not_print_ho_var_name,
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("call")]
+            ;
+                PrintHoVarName = print_ho_var_name,
+                lookup_var_name_in_source(VarNameSrc, Var, VarName),
+                Pieces = [words("the higher order call to the"),
+                    p_or_f(PredOrFunc), words("variable"), quote(VarName)]
+            )
+        ;
+            Syntax = hos_call_or_apply,
+            (
+                PredOrFunc = pf_predicate,
+                Pieces = [words("the call to the"), quote("call"),
+                    words("builtin predicate")]
+            ;
+                PredOrFunc = pf_function,
+                ApplyFuncName = apply_func_name(Purity),
+                Pieces = [words("the call to the"), quote(ApplyFuncName),
+                    words("builtin function")]
+            )
+        )
+    ;
+        GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
+        Pieces = [qual_pf_sym_name_pred_form_arity(MethodId)]
+    ;
+        GenericCall = event_call(EventName),
+        Pieces = [words("event"), words(EventName)]
+    ;
+        GenericCall = cast(CastType),
+        Pieces = [words(cast_type_to_string(CastType))]
+    ).
+
+generic_callee_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces :-
+    (
+        GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
+        (
+            Syntax = hos_var,
+            (
+                PrintHoVarName = do_not_print_ho_var_name,
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("variable")]
+            ;
+                PrintHoVarName = print_ho_var_name,
+                lookup_var_name_in_source(VarNameSrc, Var, VarName),
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("variable"), quote(VarName)]
+            )
+        ;
+            Syntax = hos_call_or_apply,
+            (
+                PredOrFunc = pf_predicate,
+                Pieces = [words("the predicate argument of the"),
+                    quote("call"), words("builtin predicate")]
+            ;
+                PredOrFunc = pf_function,
+                Pieces = [words("the function argument of the"),
+                    quote(apply_func_name(Purity)), words("builtin function")]
+            )
+        )
+    ;
+        GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
+        Pieces = [qual_pf_sym_name_pred_form_arity(MethodId)]
+    ;
+        GenericCall = event_call(EventName),
+        Pieces = [words("event"), words(EventName)]
+    ;
+        GenericCall = cast(CastType),
+        Pieces = [words(cast_type_to_string(CastType))]
+    ).
+
+:- func apply_func_name(purity) = string.
+
+apply_func_name(purity_pure) = "apply".
+apply_func_name(purity_semipure) = "semipure_apply".
+apply_func_name(purity_impure) = "impure_apply".
+
+call_arg_id_to_pieces(PrintHoVarName, CallId, ArgNum, PredMarkers) = Pieces :-
+    ( if ArgNum =< 0 then
+        % Argument numbers that are less than or equal to zero
+        % are used for the type_info and typeclass_info arguments
+        % that are introduced by polymorphism.m.
+        % I think argument zero might also be used in some other cases
+        % when we just don't have any information about which argument it is.
+        % For both of these, we just say "in call to"
+        % rather than "in argument N of call to".
+        ArgNumPieces = []
+    else
+        ArgNumPieces = arg_number_to_pieces(CallId, ArgNum) ++ [words("of")]
+    ),
+    ( if
+        (
+            % The text printed for generic calls other than
+            % `class_method' does not need the "call to"
+            % prefix ("in call to higher-order call" is redundant,
+            % it's much better to just say "in higher-order call").
+            CallId = generic_call_id(_, GenericCallId),
+            not GenericCallId = class_method(_, _, _, _)
+        ;
+            % For calls from type class instance implementations
+            % that were defined using the named syntax rather
+            % than the clause syntax, we also omit the "call to",
+            % since in that case there was no explicit call in
+            % the user's source code.
+            marker_is_present(PredMarkers, marker_named_class_instance_method)
+        )
+    then
+        CallToPieces = []
+    else
+        CallToPieces = [words("call to")]
+    ),
+    CallIdPieces = call_id_to_pieces(PrintHoVarName, CallId),
+    Pieces = ArgNumPieces ++ CallToPieces ++ CallIdPieces.
+
+:- func arg_number_to_pieces(call_id, int) = list(format_piece).
+
+arg_number_to_pieces(CallId, ArgNum) = Pieces :-
+    (
+        CallId = plain_call_id(PFSymNameArity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, PredFormArity),
+        PredFormArity = pred_form_arity(Arity),
+        ( if
+            PredOrFunc = pf_function,
+            Arity = ArgNum
+        then
+            Pieces = [words("the return value")]
+        else
+            Pieces = [words("argument"), int_fixed(ArgNum)]
+        )
+    ;
+        CallId = generic_call_id(_VarNameSrc, GenericCall),
+        (
+            GenericCall = higher_order(_Var, _Purity, PredOrFunc,
+                PredFormArity, Syntax),
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            ( if
+                PredOrFunc = pf_function,
+                ArgNum = PredFormArityInt
+            then
+                Pieces = [words("the return value")]
+            else
+                (
+                    Syntax = hos_var,
+                    ( if ArgNum = 1 then
+                        Pieces = [words("the"), p_or_f(PredOrFunc),
+                            words("term")]
+                    else
+                        Pieces = [words("argument"), int_fixed(ArgNum - 1)]
+                    )
+                ;
+                    Syntax = hos_call_or_apply,
+                    Pieces = [words("argument"), int_fixed(ArgNum)]
+                )
+            )
+        ;
+            ( GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ; GenericCall = cast(unsafe_type_cast)
+            ; GenericCall = cast(unsafe_type_inst_cast)
+            ; GenericCall = cast(equiv_type_cast)
+            ; GenericCall = cast(exists_cast)
+            ),
+            Pieces = [words("argument"), int_fixed(ArgNum)]
+        ;
+            GenericCall = cast(subtype_coerce),
+            ( if ArgNum = 2 then
+                Pieces = [words("the result")]
+            else
+                Pieces = [words("the argument")]
+            )
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

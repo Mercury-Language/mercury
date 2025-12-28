@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2002, 2004-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2015, 2018-2024 The Mercury team.
+% Copyright (C) 2015, 2018-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 
@@ -18,9 +18,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- func is_function(pred_or_func) = bool.
-
 :- type line_number == int.
+
+:- func is_function(pred_or_func) = bool.
 
     % Get user input via the same method used by the internal debugger.
     %
@@ -49,6 +49,17 @@
 is_function(pf_predicate) = no.
 is_function(pf_function) = yes.
 
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+    #include ""mercury_wrapper.h""
+    #include ""mercury_string.h""
+    #include ""mercury_trace_base.h""
+    #include ""mercury_library_types.h""
+").
+
+%---------------------------------------------------------------------------%
+
 trace_getline(MdbIn, MdbOut, Prompt, Result, !IO) :-
     call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO),
     ( if Success = 0 then
@@ -59,13 +70,6 @@ trace_getline(MdbIn, MdbOut, Prompt, Result, !IO) :-
 
 :- pred call_trace_getline(io.text_input_stream::in, io.text_output_stream::in,
     string::in, string::out, int::out, io::di, io::uo) is det.
-
-:- pragma foreign_decl("C", "
-    #include ""mercury_wrapper.h""
-    #include ""mercury_string.h""
-    #include ""mercury_trace_base.h""
-    #include ""mercury_library_types.h""
-").
 
 :- pragma foreign_proc("C",
     call_trace_getline(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
@@ -114,6 +118,8 @@ call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
         unexpected($pred, io.error_message(Error))
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_proc("C",
     trace_get_command(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
         _IO0::di, _IO::uo),
@@ -141,7 +147,6 @@ trace_get_command(MdbIn, MdbOut, Prompt, Line, !IO) :-
     %
 :- pred trace_get_command_fallback(io.text_input_stream::in,
     io.text_output_stream::in, string::in, string::out, io::di, io::uo) is det.
-
 :- pragma foreign_export("C",
     trace_get_command_fallback(in, in, in, out, di, uo),
     "ML_BROWSER_trace_get_command_fallback").
@@ -159,6 +164,8 @@ trace_get_command_fallback(MdbIn, MdbOut, Prompt, String, !IO) :-
         Result = error(Error),
         unexpected($pred, io.error_message(Error))
     ).
+
+%---------------------------------------------------------------------------%
 
 zip_with(_Pred, [], [], []).
 zip_with(_Pred, [], [_ | _], _) :-

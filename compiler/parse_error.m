@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2014, 2016, 2019, 2022-2024 The Mercury team.
+% Copyright (C) 2014, 2016, 2019, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -191,11 +191,11 @@
 
 %---------------------%
 
-:- pred io_error_to_error_spec(error_phase::in, string::in, error_spec::out,
+:- pred io_error_to_error_spec(spec_phase::in, string::in, error_spec::out,
     io::di, io::uo) is det.
 
 :- pred io_error_to_read_module_errors(fatal_read_module_error::in,
-    error_phase::in, string::in, read_module_errors::out,
+    spec_phase::in, string::in, read_module_errors::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

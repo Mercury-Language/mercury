@@ -106,16 +106,6 @@ LN	= ln
 
 #-----------------------------------------------------------------------------#
 
-# The C# and Java implementations of the standard library are not yet
-# complete, so we need to pass `--allow-stubs' to get them to compile.
-# Since the standard library is compiled with `--halt-at-warn',
-# we also need `--no-warn-stubs'.
-ifneq ("$(filter csharp% java%,$(GRADE))","")
-MCFLAGS += --allow-stubs --no-warn-stubs
-endif
-
-#-----------------------------------------------------------------------------#
-
 # Stuff for Windows DLLS using gnu-win32
 
 ifeq ($(USE_DLLS),yes)

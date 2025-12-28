@@ -35,9 +35,23 @@
 
 %---------------------------------------------------------------------------%
 
-:- func report_ambiguity_error(type_error_clause_context, prog_context,
-    overloaded_symbol_map, type_assign, type_assign, list(type_assign))
-    = error_spec.
+:- type stuff_to_check
+    --->    clause_only
+    ;       whole_pred.
+
+    % If there are multiple type assignments, then issue an error message.
+    %
+    % If stuff-to-check = whole_pred, report an error for any ambiguity,
+    % and also check for unbound type variables.
+    % But if stuff-to-check = clause_only, then only report errors
+    % for type ambiguities that don't involve the head vars, because
+    % we may be able to resolve a type ambiguity for a head var in one clause
+    % by looking at later clauses. (Ambiguities in the head variables
+    % can only arise if we are inferring the type for this pred.)
+    %
+:- pred typecheck_check_for_ambiguity(prog_context::in, stuff_to_check::in,
+    list(prog_var)::in, type_assign_set::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -56,10 +70,10 @@
 :- import_module parse_tree.error_type_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -72,53 +86,262 @@
 
 report_warning_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
-    Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-        OverloadedSymbolMap, no),
+    InitPieces = [words("warning: highly ambiguous overloading."), nl],
+    VerbosePieces =
+        [words("This may cause type-checking to be very slow."),
+        words("It may also make your code difficult to understand."), nl],
+    FirstMsg = create_first_msg(ClauseContext, Context,
+        InitPieces, VerbosePieces),
+    LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+        OverloadedSymbolMap),
     Spec = error_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
-        phase_type_check, Msgs).
+        phase_type_check, [FirstMsg | LaterMsgs]).
 
 report_error_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
-    Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-        OverloadedSymbolMap, yes),
+    InitPieces = [words("error: excessively ambiguous overloading."), nl],
+    VerbosePieces =
+        [words("This caused the type checker to exceed its limits."),
+        words("It may also make your code difficult to understand."), nl],
+    FirstMsg = create_first_msg(ClauseContext, Context,
+        InitPieces, VerbosePieces),
+    LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+        OverloadedSymbolMap),
+    Spec = error_spec($pred, severity_error,
+        phase_type_check, [FirstMsg | LaterMsgs]).
+
+%---------------------------------------------------------------------------%
+
+:- func create_first_msg(type_error_clause_context, prog_context,
+    list(format_piece), list(format_piece)) = error_msg.
+
+create_first_msg(ClauseContext, Context, InitPieces,  VerbosePieces)
+        = FirstMsg :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    InitComponent = always(InClauseForPieces ++ InitPieces),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces),
+    FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
+        TypeAssignSet, !Info) :-
+    (
+        % There should always be a type assignment, because if there is
+        % an error somewhere, instead of setting the current type assignment
+        % set to the empty set, the type-checker should continue with the
+        % previous type assignment set (so that it can detect other errors
+        % in the same clause).
+        TypeAssignSet = [],
+        unexpected($pred, "no type-assignment")
+    ;
+        TypeAssignSet = [_SingleTypeAssign]
+    ;
+        TypeAssignSet = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
+        % We only report an ambiguity error if
+        % (a) we haven't encountered any other errors and if
+        %     StuffToCheck = clause_only(_), and also
+        % (b) the ambiguity occurs only in the body, rather than in the
+        %     head variables (and hence can't be resolved by looking at
+        %     later clauses).
+        typecheck_info_get_all_errors(!.Info, ErrorsSoFar),
+        ( if
+            ErrorsSoFar = [],
+            (
+                StuffToCheck = whole_pred
+            ;
+                StuffToCheck = clause_only,
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign1, HeadTypesInAssign1),
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign2, HeadTypesInAssign2),
+                list.map(compute_headvar_types_in_type_assign(HeadVars),
+                    TypeAssigns3plus, HeadTypesInAssigns3plus),
+
+                % Only report an error if the headvar types are identical
+                % (which means that the ambiguity must have occurred
+                % in the body).
+                all_identical_up_to_renaming(HeadTypesInAssign1,
+                    [HeadTypesInAssign2 | HeadTypesInAssigns3plus])
+            )
+        then
+            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+            typecheck_info_get_overloaded_symbol_map(!.Info,
+                OverloadedSymbolMap),
+            Spec = report_ambiguity_error(ClauseContext, Context,
+                OverloadedSymbolMap, TypeAssign1, TypeAssign2,
+                TypeAssigns3plus),
+            typecheck_info_add_error(Spec, !Info)
+        else
+            true
+        )
+    ).
+
+:- pred compute_headvar_types_in_type_assign(list(prog_var)::in,
+    type_assign::in, list(mer_type)::out) is det.
+
+compute_headvar_types_in_type_assign(HeadVars, TypeAssign, HeadTypes) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    lookup_var_types(VarTypes, HeadVars, HeadTypes0),
+    apply_rec_subst_to_types(TypeBindings, HeadTypes0, HeadTypes).
+
+:- pred all_identical_up_to_renaming(list(mer_type)::in,
+    list(list(mer_type))::in) is semidet.
+
+all_identical_up_to_renaming(_, []).
+all_identical_up_to_renaming(HeadTypes1, [HeadTypes2 | HeadTypes3plus]) :-
+    identical_up_to_renaming(HeadTypes1, HeadTypes2),
+    all_identical_up_to_renaming(HeadTypes1, HeadTypes3plus).
+
+%---------------------------------------------------------------------------%
+
+:- func report_ambiguity_error(type_error_clause_context, prog_context,
+    overloaded_symbol_map, type_assign, type_assign, list(type_assign))
+    = error_spec.
+
+report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
+        TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    InitPieces = [words("error: unresolved type ambiguity."), nl],
+    FirstMsg = simple_msg(Context, [always(InClauseForPieces ++ InitPieces)]),
+
+    VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
+    type_assign_get_var_types(TypeAssign1, VarTypes1),
+    vartypes_vars(VarTypes1, Vars1),
+    AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
+    VarAssignPiecesList0 = list.map(
+        var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
+    list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
+    (
+        VarAssignPiecesList = [],
+        LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
+            OverloadedSymbolMap)
+    ;
+        VarAssignPiecesList = [_ | TailVarAssignPiecesList],
+        list.condense(VarAssignPiecesList, VarAssignPieces),
+        (
+            TailVarAssignPiecesList = [],
+            % We could have gere a singular version of the PreVarPieces in the
+            % nonempty tail case, but that would be overkill. But we do want
+            % to make clear that the entity we are reporting on is a variable,
+            % which is why we have this prefix on the first and only
+            % VarAssignPieceList.
+            PreVarPieces = [words("The variable")]
+        ;
+            TailVarAssignPiecesList = [_ | _],
+            PreVarPieces =
+                [words("The following variables have ambiguous types."), nl]
+        ),
+        VarPieces = PreVarPieces ++ VarAssignPieces,
+        VerboseComponent = verbose_only(verbose_once, add_qualifiers_reminder),
+        VarMsg = simple_msg(Context, [always(VarPieces), VerboseComponent]),
+        LaterMsgs = [VarMsg]
+    ),
+    Msgs = [FirstMsg | LaterMsgs],
     Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
 
-:- func too_much_overloading_to_msgs(type_error_clause_context, prog_context,
-    overloaded_symbol_map, bool) = list(error_msg).
+:- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
+    prog_var) = list(format_piece).
 
-too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
-        IsError) = Msgs :-
-    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
+    list.foldl2(gather_type_pieces_for_var_in_type_assign(InstVarSet, Var),
+        TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
+    NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
     (
-        IsError = no,
-        InitPieces = InClauseForPieces ++
-            [words("warning: highly ambiguous overloading."), nl],
-        InitComponent = always(InitPieces),
-
-        VerbosePieces =
-            [words("This may cause type-checking to be very slow."),
-            words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
+        NameNumPiecesList = [],
+        % We have no info about Var (which I, zs, think should NOT happen).
+        Pieces = []
     ;
-        IsError = yes,
-        InitPieces = InClauseForPieces ++
-            [words("error: excessively ambiguous overloading."), nl],
-        InitComponent = always(InitPieces),
+        NameNumPiecesList = [_],
+        % Var has an unambiguous type.
+        Pieces = []
+    ;
+        NameNumPiecesList = [_, _ | _],
+        % Var has an ambiguous type.
+        NameOnlyPiecesList = set.to_sorted_list(NameOnlyPiecesSet),
+        (
+            NameOnlyPiecesList = [],
+            % NameOnlyPiecesSet can be empty if and *only if*
+            % NameNumPiecesSet is also empty.
+            unexpected($pred, "NameOnlyPiecesList = []")
+        ;
+            NameOnlyPiecesList = [_],
+            % Var has an ambiguous type, but this is apparent *only*
+            % from NameNumPiecesList.
+            PossibleTypePiecesList = NameNumPiecesList
+        ;
+            NameOnlyPiecesList = [_, _ | _],
+            % Var has an ambiguous type, and this is apparent even from
+            % just NameOnlyPiecesList.
+            PossibleTypePiecesList = NameOnlyPiecesList
+        ),
+        VarPiece = var_to_quote_piece(VarSet, Var),
+        ( if list.length(PossibleTypePiecesList) = 2 then
+            EitherAny = "either"
+        else
+            EitherAny = "any"
+        ),
+        Pieces =
+            % ZZZ [words("The variable")] ++
+            color_as_subject([VarPiece]) ++
+            [words("can have"), words(EitherAny),
+            words("of the following types:"), nl_indent_delta(1)] ++
+            pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
+                PossibleTypePiecesList) ++
+            [nl_indent_delta(-1)]
+    ).
 
-        VerbosePieces =
-            [words("This caused the type checker to exceed its limits."),
-            words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
-    ),
+:- pred gather_type_pieces_for_var_in_type_assign(inst_varset::in,
+    prog_var::in, type_assign::in,
+    set(list(format_piece))::in, set(list(format_piece))::out,
+    set(list(format_piece))::in, set(list(format_piece))::out) is det.
 
-    FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]),
+gather_type_pieces_for_var_in_type_assign(InstVarSet, Var, TypeAssign,
+        !NameOnlyPiecesSet, !NameNumPiecesSet) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    ( if search_var_type(VarTypes, Var, Type0) then
+        type_assign_get_type_bindings(TypeAssign, TypeBindings),
+        type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
+        type_assign_get_typevarset(TypeAssign, TVarSet),
+        apply_rec_subst_to_type(TypeBindings, Type0, Type),
+        NameOnlyPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_only, do_not_add_quotes, ExistQTVars, Type),
+        NameNumPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_and_num, do_not_add_quotes, ExistQTVars, Type),
+        set.insert(NameOnlyPieces, !NameOnlyPiecesSet),
+        set.insert(NameNumPieces, !NameNumPiecesSet)
+    else
+        true
+    ).
 
+:- func add_qualifiers_reminder = list(format_piece).
+
+add_qualifiers_reminder = [
+    words("You will need to add an explicit type qualification"),
+    words("to resolve the type ambiguity."),
+    words("The way to add an explicit type qualification"),
+    words("is to use \"with_type\"."),
+    words("For details see the"), fixed("\"Explicit type qualification\""),
+    words(" sub-section of the \"Data-terms\" section of the"),
+    words("\"Syntax\" chapter of the Mercury language reference manual.")
+].
+
+%---------------------------------------------------------------------------%
+
+:- func describe_overloaded_symbols(type_error_clause_context, prog_context,
+    overloaded_symbol_map) = list(error_msg).
+
+describe_overloaded_symbols(ClauseContext, Context, OverloadedSymbolMap)
+        = Msgs :-
     map.to_assoc_list(OverloadedSymbolMap, OverloadedSymbols),
     OverloadedSymbolsSortedContexts =
         assoc_list.map_values_only(sort_and_remove_dups, OverloadedSymbols),
     (
         OverloadedSymbolsSortedContexts = [],
-        Msgs = [FirstMsg]
+        Msgs = []
     ;
         (
             OverloadedSymbolsSortedContexts = [_ - Contexts],
@@ -127,27 +350,27 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
                 unexpected($pred, "no contexts")
             ;
                 Contexts = [_],
-                SecondPieces =
+                WasOverloadedPieces =
                     [words("The following symbol was overloaded"),
                     words("in the following context."), nl]
             ;
                 Contexts = [_, _ | _],
-                SecondPieces =
+                WasOverloadedPieces =
                     [words("The following symbol was overloaded"),
                     words("in the following contexts."), nl]
             )
         ;
             OverloadedSymbolsSortedContexts = [_, _ | _],
-            SecondPieces =
+            WasOverloadedPieces =
                 [words("The following symbols were overloaded"),
                 words("in the following contexts."), nl]
         ),
-        SecondMsg = msg(Context, SecondPieces),
+        WasOverloadedMsg = msg(Context, WasOverloadedPieces),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
         list.condense(DetailMsgsList, DetailMsgs),
-        Msgs = [FirstMsg, SecondMsg | DetailMsgs]
+        Msgs = [WasOverloadedMsg | DetailMsgs]
     ).
 
 :- func describe_overloaded_symbol(module_info,
@@ -200,129 +423,6 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
 :- func context_to_error_msg(list(format_piece), prog_context) = error_msg.
 
 context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
-
-%---------------------------------------------------------------------------%
-
-report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
-        TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
-    InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    ErrorPieces =
-        [words("error: ambiguous overloading causes type ambiguity."), nl],
-    VarSet = ClauseContext ^ tecc_varset,
-    get_inst_varset(ClauseContext, InstVarSet),
-    type_assign_get_var_types(TypeAssign1, VarTypes1),
-    vartypes_vars(VarTypes1, Vars1),
-    AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
-    VarAssignPiecesList0 = list.map(
-        var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
-    list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
-    (
-        VarAssignPiecesList = [],
-        Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
-            OverloadedSymbolMap, no)
-    ;
-        VarAssignPiecesList = [_ | TailVarAssignPiecesList],
-        list.condense(VarAssignPiecesList, VarAssignPieces),
-        (
-            TailVarAssignPiecesList = [],
-            AmbiguityIntro = "The following variable has an ambiguous type:"
-        ;
-            TailVarAssignPiecesList = [_ | _],
-            AmbiguityIntro = "The following variables have ambiguous types:"
-        ),
-        AlwaysPieces = InClauseForPieces ++ ErrorPieces ++
-            [words(AmbiguityIntro), nl | VarAssignPieces],
-        VerboseComponents =
-            [verbose_only(verbose_once, add_qualifiers_reminder)],
-        Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
-        Msgs = [Msg]
-    ),
-    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
-
-:- func add_qualifiers_reminder = list(format_piece).
-
-add_qualifiers_reminder = [
-    words("You will need to add an explicit type qualification"),
-    words("to resolve the type ambiguity."),
-    words("The way to add an explicit type qualification"),
-    words("is to use \"with_type\"."),
-    words("For details see the"), fixed("\"Explicit type qualification\""),
-    words(" sub-section of the \"Data-terms\" section of the"),
-    words("\"Syntax\" chapter of the Mercury language reference manual.")
-].
-
-:- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
-    prog_var) = list(format_piece).
-
-var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
-    list.foldl2(gather_type_pieces_for_var_in_type_assign(InstVarSet, Var),
-        TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
-    NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
-    (
-        ( NameNumPiecesList = []
-        ; NameNumPiecesList = [_]
-        ),
-        % Either we have no info about Var (which I, zs, think should not
-        % happen), or Var has an unambiguous type.
-        Pieces = []
-    ;
-        NameNumPiecesList = [_, _ | _],
-        % Var has an ambiguous type.
-        NameOnlyPiecesList = set.to_sorted_list(NameOnlyPiecesSet),
-        (
-            NameOnlyPiecesList = [],
-            % NameOnlyPiecesSet can be empty if and *only if*
-            % NameNumPiecesSet is also empty.
-            unexpected($pred, "NameOnlyPiecesList = []")
-        ;
-            NameOnlyPiecesList = [_],
-            % Var has an ambiguous type, but this is apparent *only*
-            % from NameNumPiecesList.
-            PossibleTypePiecesList = NameNumPiecesList
-        ;
-            NameOnlyPiecesList = [_, _ | _],
-            % Var has an ambiguous type, and this is apparent even from
-            % from NameOnlyPiecesList.
-            PossibleTypePiecesList = NameOnlyPiecesList
-        ),
-        VarPiece = var_to_quote_piece(VarSet, Var),
-        ( if list.length(PossibleTypePiecesList) = 2 then
-            EitherAny = "either"
-        else
-            EitherAny = "any"
-        ),
-        Pieces =
-            [words("The variable")] ++ color_as_subject([VarPiece]) ++
-            [words("can have"), words(EitherAny),
-            words("of the following types:"),
-            nl_indent_delta(1)] ++
-            pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
-                PossibleTypePiecesList) ++
-            [nl_indent_delta(-1)]
-    ).
-
-:- pred gather_type_pieces_for_var_in_type_assign(inst_varset::in,
-    prog_var::in, type_assign::in,
-    set(list(format_piece))::in, set(list(format_piece))::out,
-    set(list(format_piece))::in, set(list(format_piece))::out) is det.
-
-gather_type_pieces_for_var_in_type_assign(InstVarSet, Var, TypeAssign,
-        !NameOnlyPiecesSet, !NameNumPiecesSet) :-
-    type_assign_get_var_types(TypeAssign, VarTypes),
-    ( if search_var_type(VarTypes, Var, Type0) then
-        type_assign_get_type_bindings(TypeAssign, TypeBindings),
-        type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
-        type_assign_get_typevarset(TypeAssign, TVarSet),
-        apply_rec_subst_to_type(TypeBindings, Type0, Type),
-        NameOnlyPieces = type_to_pieces(TVarSet, InstVarSet,
-            print_name_only, do_not_add_quotes, ExistQTVars, Type),
-        NameNumPieces = type_to_pieces(TVarSet, InstVarSet,
-            print_name_and_num, do_not_add_quotes, ExistQTVars, Type),
-        set.insert(NameOnlyPieces, !NameOnlyPiecesSet),
-        set.insert(NameNumPieces, !NameNumPiecesSet)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_error_overload.

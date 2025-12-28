@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2024 The Mercury team.
+% Copyright (C) 2013-2018, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -883,6 +883,7 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             ( Op = int_arith(_, _)
             ; Op = int_cmp(_, _)
             ; Op = int_as_uint_cmp(_)
+            ; Op = in_range
             ; Op = float_cmp(_)
             ; Op = str_cmp(_)
             ; Op = str_nzp
@@ -1261,7 +1262,12 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = int_as_uint_cmp(CmpOp),
+        (
+            Op = int_as_uint_cmp(CmpOp)
+        ;
+            Op = in_range,
+            CmpOp = lt
+        ),
         OpStr = cmp_op_c_operator(coerce(CmpOp)),
         Uint = lt_int(int_type_uint),
         io.write_string(Stream, "(", !IO),
@@ -1952,6 +1958,7 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
             ( Binop = int_arith(_, _)
             ; Binop = float_arith(_)
             ; Binop = int_as_uint_cmp(_)
+            ; Binop = in_range
             ; Binop = float_cmp(_)
             ; Binop = str_cmp(_)
             ; Binop = str_nzp

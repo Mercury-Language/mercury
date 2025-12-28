@@ -163,8 +163,8 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
     IndentStr = indent2_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
-            MaybeRepn, Foreign),
+        TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors, MaybeSuperType,
+            MaybeUserEqComp, MaybeRepn, Foreign),
         string.builder.append_string("\n", !State),
         (
             MaybeSuperType = subtype_of(SuperType),
@@ -398,7 +398,8 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
 
 %---------------------%
 
-:- pred format_constructors(tvarset::in, constructor::in, list(constructor)::in,
+:- pred format_constructors(tvarset::in,
+    constructor::in, list(constructor)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_constructors(TVarSet, HeadCtor, TailCtors, !State) :-

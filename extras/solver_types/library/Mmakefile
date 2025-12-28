@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2006 The University of Melbourne.
-# Copyright (C) 2015, 2018 The Mercury team.
+# Copyright (C) 2015, 2018, 2025 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
@@ -17,8 +17,6 @@ all:	libany
 depend:	any.depend
 
 install: libany.install
-
-MCFLAGS-any= --no-warn-nothing-exported --no-warn-interface-imports
 
 .PHONY: check
 check:

@@ -21,7 +21,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
 :- import_module make.make_info.
@@ -32,10 +31,13 @@
 
 %---------------------------------------------------------------------------%
 
+    % make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO):
+    %
+    % Build the targets specified by the non-option arguments in ArgPack,
+    % obeying the options in the rest of ArgPack.
+    %
 :- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
-    env_optfile_variables::in,
-    list(string)::in, list(string)::in, list(file_name)::in,
-    io::di, io::uo) is det.
+    compiler_arg_pack::in, io::di, io::uo) is det.
 
 :- pred make_top_targets(io.text_output_stream::in, globals::in,
     maybe_keep_going::in, list(top_target_file)::in,
@@ -79,11 +81,12 @@
 
 %---------------------------------------------------------------------------%
 
-make_process_compiler_args(ProgressStream, Globals,
-        EnvOptFileVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
+make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO) :-
+    ArgPack = compiler_arg_pack(EnvOptFileVariables, EnvVarArgs,
+        OptionArgs, NonOptionArgs),
     io.progname_base("mercury_compile", ProgName, !IO),
     get_main_target_if_needed(ProgName, EnvOptFileVariables,
-        Targets0, MaybeTargets0),
+        NonOptionArgs, MaybeTargets0),
     report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets),
     (
         MaybeTargets = error1(Specs),
@@ -102,12 +105,12 @@ make_process_compiler_args(ProgressStream, Globals,
         ReverseMI = version_array.empty,
         ModuleIndexMap = module_index_map(ForwardMI, ReverseMI, 0u),
 
-        HashPredDI = dependency_file_with_module_index_hash,
+        HashPredDI = target_id_module_index_hash,
         ForwardDI = version_hash_table.init_default(HashPredDI),
         ReverseDI = version_array.empty,
-        DepIndexMap = dependency_file_index_map(ForwardDI, ReverseDI, 0u),
+        TargetIndexMap = target_id_index_map(ForwardDI, ReverseDI, 0u),
 
-        DepStatusMap = version_hash_table.init_default(dependency_file_hash),
+        TargetStatusMap = version_hash_table.init_default(target_id_hash),
 
         % Accept and ignore `.depend' targets. `mmc --make' does not need
         % a separate make depend step. The dependencies for each module
@@ -123,10 +126,11 @@ make_process_compiler_args(ProgressStream, Globals,
         ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
         globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
-        MakeInfo0 = init_make_info(EnvOptFileVariables, MaybeStdLibGrades,
-            KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
-            AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
-            DepIndexMap, DepStatusMap),
+        Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
+        TimestampMap = init_target_file_timestamp_map,
+        MakeInfo0 = init_make_info(MaybeStdLibGrades, KeepGoing, Params,
+            ClassifiedTargetSet, AnalysisRepeat, TimestampMap,
+            ModuleIndexMap, TargetIndexMap, TargetStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
@@ -247,7 +251,7 @@ make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
             make_module_target([], ProgressStream, Globals,
-                dep_target(TargetFile), Succeeded, !Info, !IO)
+                merc_target(TargetFile), Succeeded, !Info, !IO)
         ;
             TargetType = linked_target(LinkedTargetType),
             LinkedTargetFile =
@@ -274,8 +278,9 @@ classify_target(Globals, TargetName, TopTargetFile) :-
     ( if
         string.length(TargetName, NameLength),
         search_backwards_for_dot(TargetName, NameLength, DotLocn),
-        string.split(TargetName, DotLocn, ModuleNameStr0, Suffix),
-        classify_target_2(Globals, ModuleNameStr0, Suffix, TopTargetFilePrime)
+        string.split(TargetName, DotLocn, ModuleNameStr0, ExtStr),
+        classify_extstr_target(Globals, ModuleNameStr0, ExtStr,
+            TopTargetFilePrime)
     then
         TopTargetFile = TopTargetFilePrime
     else
@@ -289,81 +294,25 @@ classify_target(Globals, TargetName, TopTargetFile) :-
         TopTargetFile = top_target_file(ModuleName, TargetType)
     ).
 
-:- pred classify_target_2(globals::in, string::in, string::in,
+:- pred classify_extstr_target(globals::in, string::in, string::in,
     top_target_file::out) is semidet.
 
-classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
-    ( if fixed_extension_target_type(ExtStr, TargetTypePrime) then
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = TargetTypePrime
+classify_extstr_target(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
+    ( if
+        fixed_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
+            TopTargetFilePrime)
+    then
+        TopTargetFile = TopTargetFilePrime
     else
-        get_linked_target_ext_map(Globals, LinkedtargetExtMap),
-        map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
-        LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
-        % target_type_to_maybe_target_extension and this part of
-        % classify_target_2 in make.top_level.m represent the same relationship
-        % between targets and suffixes, but in different directions, and for
-        % slightly different sets of targets. (For example, there is no
-        % extension that generates module_target_fact_table_object as a
-        % target.) Where they talk about the same targets, their codes
-        % should be kept in sync.
-        (
-            (
-                LinkedTargetKind = ltk_object_file,
-                ModuleTargetType = module_target_object_code(non_pic)
-            ;
-                LinkedTargetKind = ltk_pic_object_file,
-                ModuleTargetType = module_target_object_code(pic)
-            ),
-            ModuleNameStr = ModuleNameStr0,
-            TargetType = module_target(ModuleTargetType)
-        ;
-            (
-                LinkedTargetKind = ltk_all_object_file,
-                ModuleTargetType = module_target_object_code(non_pic)
-            ;
-                LinkedTargetKind = ltk_all_pic_object_file,
-                ModuleTargetType = module_target_object_code(pic)
-            ),
-            ModuleNameStr = ModuleNameStr0,
-            TargetType = misc_target(misc_target_build_all(ModuleTargetType))
-        ;
-            LinkedTargetKind = ltk_executable,
-            ModuleNameStr = ModuleNameStr0,
-            TargetType = linked_target(get_executable_type(Globals))
-        ;
-            (
-                LinkedTargetKind = ltk_static_library,
-                TargetType = linked_target(static_library)
-            ;
-                LinkedTargetKind = ltk_shared_library,
-                TargetType = linked_target(shared_library)
-            ;
-                LinkedTargetKind = ltk_library_install,
-                TargetType = misc_target(misc_target_install_library)
-            ;
-                LinkedTargetKind = ltk_library_install_gs_gas,
-                TargetType = misc_target(misc_target_install_library_gs_gas)
-            ),
-            string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
-        )
-    ),
-    file_name_to_module_name(ModuleNameStr, ModuleName),
-    TopTargetFile = top_target_file(ModuleName, TargetType).
-
-:- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
-
-search_backwards_for_dot(String, Index, DotIndex) :-
-    string.unsafe_prev_index(String, Index, CharIndex, Char),
-    ( if Char = ('.') then
-        DotIndex = CharIndex
-    else
-        search_backwards_for_dot(String, CharIndex, DotIndex)
+        mapped_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
+            TopTargetFile)
     ).
 
-:- pred fixed_extension_target_type(string::in, target_type::out) is semidet.
+:- pred fixed_extension_top_target_file(globals::in, string::in, string::in,
+    top_target_file::out) is semidet.
 
-fixed_extension_target_type(ExtStr, TargetType) :-
+fixed_extension_top_target_file(Globals, ModuleNameStr, ExtStr,
+        TopTargetFile) :-
     (
         (
             ExtStr = ".m",
@@ -413,6 +362,9 @@ fixed_extension_target_type(ExtStr, TargetType) :-
             ExtStr = ".class",
             ModuleTarget = module_target_java_class_code
         ;
+            ExtStr = ".target",
+            grade_specific_target_type(Globals, ModuleTarget)
+        ;
             ExtStr = ".track_flags",
             ModuleTarget = module_target_track_flags
         ;
@@ -449,6 +401,8 @@ fixed_extension_target_type(ExtStr, TargetType) :-
         ; ExtStr = ".javas"
         ; ExtStr = ".all_classs"
         ; ExtStr = ".classs"
+        ; ExtStr = ".targets"
+        ; ExtStr = ".all_targets"
         ; ExtStr = ".all_track_flagss"
         ; ExtStr = ".track_flagss"
         ; ExtStr = ".all_xmls"
@@ -537,6 +491,11 @@ fixed_extension_target_type(ExtStr, TargetType) :-
             ),
             ModuleTarget = module_target_java_class_code
         ;
+            ( ExtStr = ".targets"
+            ; ExtStr = ".all_targets"
+            ),
+            grade_specific_target_type(Globals, ModuleTarget)
+        ;
             ( ExtStr = ".all_track_flagss"
             ; ExtStr = ".track_flagss"
             ),
@@ -574,6 +533,107 @@ fixed_extension_target_type(ExtStr, TargetType) :-
             MiscTarget = misc_target_realclean
         ),
         TargetType = misc_target(MiscTarget)
+    ),
+    file_name_to_module_name(ModuleNameStr, ModuleName),
+    TopTargetFile = top_target_file(ModuleName, TargetType).
+
+    % XXX This predicate is intended to allow the tests in the recompilation
+    % directory to build target files *without* compiling or linking them,
+    % thus avoiding the disabling of smart recompilation by the
+    % maybe_disable_smart_recompilation predicate in handle_options.m.
+    % However, that would be worthwhile only *after* the infrastructure
+    % of that test directory has been converted to use mmc --make directly,
+    % *without* going through mmake.
+    %
+    % The extensions that this predicate is used for will need to be documented
+    % only when that actually happens.
+    %
+    % For more info, see the comment in tests/recompilation/Mmakefile
+    % on the code that disables all the tests there in Java and C# grades.
+    %
+:- pred grade_specific_target_type(globals::in, module_target_type::out)
+    is det.
+
+grade_specific_target_type(Globals, ModuleTargetType) :-
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        ModuleTargetType = module_target_c_code
+    ;
+        Target = target_java,
+        ModuleTargetType = module_target_java_code
+    ;
+        Target = target_csharp,
+        ModuleTargetType = module_target_csharp_code
+    ).
+
+:- pred mapped_extension_top_target_file(globals::in, string::in, string::in,
+    top_target_file::out) is semidet.
+
+mapped_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
+        TopTargetFile) :-
+    get_linked_target_ext_map(Globals, LinkedtargetExtMap),
+    map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
+    LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
+    % target_type_to_maybe_target_extension and the following code represent
+    % the same relationship between targets and suffixes, but in different
+    % directions, and for slightly different sets of targets. (For example,
+    % there is no extension that generates module_target_fact_table_object
+    % as a target.) Where they talk about the same targets, their codes
+    % should be kept in sync.
+    (
+        (
+            LinkedTargetKind = ltk_object_file,
+            ModuleTargetType = module_target_object_code(non_pic)
+        ;
+            LinkedTargetKind = ltk_pic_object_file,
+            ModuleTargetType = module_target_object_code(pic)
+        ),
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = module_target(ModuleTargetType)
+    ;
+        (
+            LinkedTargetKind = ltk_all_object_file,
+            ModuleTargetType = module_target_object_code(non_pic)
+        ;
+            LinkedTargetKind = ltk_all_pic_object_file,
+            ModuleTargetType = module_target_object_code(pic)
+        ),
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = misc_target(misc_target_build_all(ModuleTargetType))
+    ;
+        LinkedTargetKind = ltk_executable,
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = linked_target(get_executable_type(Globals))
+    ;
+        (
+            LinkedTargetKind = ltk_static_library,
+            TargetType = linked_target(static_library)
+        ;
+            LinkedTargetKind = ltk_shared_library,
+            TargetType = linked_target(shared_library)
+        ;
+            LinkedTargetKind = ltk_library_install,
+            TargetType = misc_target(misc_target_install_library)
+        ;
+            LinkedTargetKind = ltk_library_install_gs_gas,
+            TargetType = misc_target(misc_target_install_library_gs_gas)
+        ),
+        string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
+    ),
+    file_name_to_module_name(ModuleNameStr, ModuleName),
+    TopTargetFile = top_target_file(ModuleName, TargetType).
+
+%---------------------------------------------------------------------------%
+
+:- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
+
+search_backwards_for_dot(String, Index, DotIndex) :-
+    string.unsafe_prev_index(String, Index, CharIndex, Char),
+    ( if Char = ('.') then
+        DotIndex = CharIndex
+    else
+        search_backwards_for_dot(String, CharIndex, DotIndex)
     ).
 
 :- func get_executable_type(globals) = linked_target_type.

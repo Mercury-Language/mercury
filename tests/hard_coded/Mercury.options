@@ -1,4 +1,6 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
 MCFLAGS-allow_stubs                 += --allow-stubs --no-warn-stubs
 MCFLAGS-allow_stubs                 += --infer-all --no-inform-inferred-types
@@ -16,7 +18,8 @@ MCFLAGS-bug103                      += --optimize-constructor-last-call
 MCFLAGS-bug160                      += -w --optimize-peep-mkword
 MCFLAGS-bug240                      += -O1
 MCFLAGS-bug300                      += --no-const-struct
-MCFLAGS-bug300          += --no-const-struct --optimize-constructor-last-call
+MCFLAGS-bug300                      += --no-const-struct
+MCFLAGS-bug300                      += --optimize-constructor-last-call
 MCFLAGS-bug314                      += --trace deep
 MCFLAGS-bug392                      += -O0 --deforestation
 MCFLAGS-bug455                      += --intermodule-optimization
@@ -24,11 +27,13 @@ MCFLAGS-bug548                      += --inlining
 MCFLAGS-bug567                      += -O2 --merge-code-after-switch
 MCFLAGS-bug570                      += -O2 --deforestation
 MCFLAGS-checked_nondet_tailcall     += --checked-nondet-tailcalls
-MCFLAGS-checked_nondet_tailcall_noinline += \
-                                    --checked-nondet-tailcalls --no-inlining
+MCFLAGS-checked_nondet_tailcall_noinline += --checked-nondet-tailcalls
+MCFLAGS-checked_nondet_tailcall_noinline += --no-inlining
 MCFLAGS-cc_and_non_cc_test          += --no-inlining
-MCFLAGS-constraint          += --constraint-propagation --enable-termination
-MCFLAGS-constraint_order    += --constraint-propagation --enable-termination
+MCFLAGS-constraint                  += --constraint-propagation
+MCFLAGS-constraint                  += --enable-termination
+MCFLAGS-constraint_order            += --constraint-propagation
+MCFLAGS-constraint_order            += --enable-termination
 MCFLAGS-coerce_opt                  += --intermodule-optimization
 MCFLAGS-deforest_cc_bug             += --deforestation
 MCFLAGS-delay_partial_test_1        += --delay-partial-instantiations
@@ -36,7 +41,6 @@ MCFLAGS-delay_partial_test_2        += --delay-partial-instantiations
 MCFLAGS-delay_partial_test_2        += --no-warn-simple-code
 MCFLAGS-ground_terms                += --from-ground-term-threshold=2
 MCFLAGS-impl_defn_literals          += --no-warn-simple-code
-
 MCFLAGS-lp                          += --intermodule-optimization -O3
 MCFLAGS-elim_local_var_char         += --eliminate-local-vars
 MCFLAGS-erroneous_liveness          += --no-warn-obsolete
@@ -111,14 +115,14 @@ MCFLAGS-user_defined_equality_1     += --no-inform-inferred-modes
 MCFLAGS-user_defined_equality_2     += --no-warn-det-decls-too-lax
 MCFLAGS-uo_regression1              += --from-ground-term-threshold=4
 MCFLAGS-write                       += --no-warn-unresolved-polymorphism
-
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.
-MCFLAGS-intermod_unused_args +=  \
-    --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
-MCFLAGS-intermod_unused_args_helper_1 += \
-    --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
-
+MCFLAGS-intermod_unused_args        +=  --no-intermodule-optimization
+MCFLAGS-intermod_unused_args        +=  --intermodule-analysis
+MCFLAGS-intermod_unused_args        +=  --optimise-unused-args
+MCFLAGS-intermod_unused_args_helper_1 += --no-intermodule-optimization
+MCFLAGS-intermod_unused_args_helper_1 += --intermodule-analysis
+MCFLAGS-intermod_unused_args_helper_1 += --optimise-unused-args
 MCFLAGS-loop_inv_extra_test_1       += --loop-invariants --trace-optimized
 MCFLAGS-loop_inv_extra_test_2       += --loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test_1             += --loop-invariants --trace-optimized
@@ -161,7 +165,6 @@ MCFLAGS-space +=   \
 
 # This bug only shows up at optimization levels -O2 and below.
 MCFLAGS-profdeep_seg_fault          += -O2
-
 MCFLAGS-puzzle_detism_bug           += --trace-optimized --inlining
 MCFLAGS-no_inline_builtins          += --no-inline-builtins
 MCFLAGS-no_warn_singleton           += --halt-at-warn
@@ -169,7 +172,6 @@ MCFLAGS-nondet_copy_out             += --no-inlining --nondet-copy-out
 MCFLAGS-opt_dup_bug                 += -O2 --optimize-dups --optimize-frames
 MCFLAGS-redoip_clobber              += --no-inlining
 MCFLAGS-rnd                         += -O6
-
 MCFLAGS-switch_detect               += --halt-at-warn
 # The trace_goal_1 and trace_goal_2 test cases differ only in that
 # we compile the latter without any --trace-flag arguments.
@@ -178,19 +180,29 @@ MCFLAGS-trace_goal_3                += --trace-flag=abc
 MCFLAGS-trace_goal_env_1            += --trace-flag=abc
 MCFLAGS-trace_goal_env_2            += --trace-flag=abc
 MCFLAGS-trace_goal_opt              += --intermod-opt
-MCFLAGS-trans_intermod_user_equality += \
-    --intermodule-optimization --transitive-intermodule-optimization
-MCFLAGS-trans_intermod_user_equality2 += \
-    --intermodule-optimization --transitive-intermodule-optimization
-MCFLAGS-trans_intermod_user_equality3 += \
-    --intermodule-optimization --transitive-intermodule-optimization
-MCFLAGS-type_qual               += --infer-all --from-ground-term-threshold=4
-MCFLAGS-type_spec               += --user-guided-type-specialization
+MCFLAGS-trans_intermod_user_eq      += --intermodule-optimization
+MCFLAGS-trans_intermod_user_eq      += --transitive-intermodule-optimization
+MCFLAGS-trans_intermod_user_eq_helper_1 += --intermodule-optimization
+MCFLAGS-trans_intermod_user_eq_helper_1 += --transitive-intermodule-optimization
+MCFLAGS-trans_intermod_user_eq_helper_2 += --intermodule-optimization
+MCFLAGS-trans_intermod_user_eq_helper_2 += --transitive-intermodule-optimization
+MCFLAGS-type_qual                   += --infer-all
+MCFLAGS-type_qual                   += --from-ground-term-threshold=4
+MCFLAGS-type_spec                   += --user-guided-type-specialization
 MCFLAGS-existential_types_test      += --infer-all
 MCFLAGS-existential_float           += --infer-all
 MCFLAGS-user_defined_equality_1     += --infer-all
 MCFLAGS-parse                       += --trace rep
 MCFLAGS-unused_float_box_test       += --infer-all
+
+MCFLAGS-constant_prop_1             += --optimize-constant-propagation
+MCFLAGS-constant_prop_1             += --trace-optimized
+MCFLAGS-constant_prop_2             += --optimize-constant-propagation
+MCFLAGS-constant_prop_2             += --optimize-dead-procs --trace-optimized
+MCFLAGS-constant_prop_int           += --optimize-constant-propagation
+MCFLAGS-constant_prop_loop_inv      += --optimize-constant-propagation
+MCFLAGS-constant_prop_loop_inv      += --optimize-dead-procs --trace-optimized
+MCFLAGS-constant_prop_loop_inv      += --loop-invariants
 
 # XXX MSVC - this won't work due to the object file extension being hardcoded
 # to ".o".
@@ -219,7 +231,8 @@ CFLAGS-no_refs_to_deleted_labels    += -DMR_DEBUG_LABEL_NAMES
 
 MLFLAGS-parse                       += --trace
 MLFLAGS-split-c-files               += --trace
-MLFLAGS-needs_init              += --include-initialization-code --extra-inits
+MLFLAGS-needs_init                  += --include-initialization-code
+MLFLAGS-needs_init                  += --extra-inits
 
 # These tests run out of memory in non-GC grades
 # unless we increase the heap size from the default 4M.
@@ -231,13 +244,3 @@ MLFLAGS-needs_init              += --include-initialization-code --extra-inits
 MLFLAGS-integer_test += \
     --runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
 MLFLAGS-rational_test               += --runtime-flags "--heap-size 20000"
-
-MCFLAGS-constant_prop_1 += \
-    --optimize-constant-propagation --trace-optimized
-MCFLAGS-constant_prop_2 += \
-    --optimize-constant-propagation --optimize-dead-procs --trace-optimized
-MCFLAGS-constant_prop_int += \
-    --optimize-constant-propagation
-MCFLAGS-constant_prop_loop_inv += \
-    --optimize-constant-propagation --optimize-dead-procs --trace-optimized \
-    --loop-invariants

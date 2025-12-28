@@ -363,7 +363,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn keyword mercuryCBool  contained MR_YES MR_NO
   syn match mercuryForeignIface contained "\v<MR_[A-Z]+_LENGTH_MODIFIER>"
   syn match mercuryForeignIface contained "\v<MR_THREAD_SAFE>"
-  syn match mercuryCFunc "\v<MR_(list_(empty|head|tail)|incr_hp((_atomic)?|((_type)?_msg))|assert|fatal_error|make_aligned_string)>" contained
+  syn match mercuryCFunc "\v<MR_(list_(is_empty|head|tail|empty|cons)|incr_hp((_atomic)?|((_type)?_msg))|assert|fatal_error|make_aligned_string)>" contained
   syn match mercuryCPreProc "#\(if\(n\?def\)\?\|else\|elif\|endif\|define\|undef\|include\|error\|warning\|line\)" contained
   syn match mercuryCPreProc    "\v(\\){1,2}$" contained
   syn match mercuryCStringFmt  /%[I]\?[-+# *.0-9]*[dioxXucsfeEgGp]/ contained

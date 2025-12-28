@@ -1,13 +1,13 @@
-#-----------------------------------------------------------------------------#
-# vim: ts=4 sw=4 expandtab
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 # Copyright (C) 2002-2009 The University of Melbourne.
 # Copyright (C) 2013, 2015-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
-#-----------------------------------------------------------------------------#
+#---------------------------------------------------------------------------#
 
 # llds_out.m contains some sanity checking code that is usually turned off.
 # However, the cost of checking whether they are turned off exceeds the cost of
@@ -28,6 +28,7 @@ MCFLAGS-check_hlds.typecheck_clauses     += --optimize-constructor-last-call \
                                             --unneeded-code 
 
 MCFLAGS-parse_tree.opt_deps_spec         += --unneeded-code
+MCFLAGS-ll_backend.var_locn              += --inline-simple
 
 MCFLAGS-ml_backend.ml_unify_gen_deconstruct += --unneeded-code \
                                             --optimize-constructor-last-call \
@@ -40,6 +41,8 @@ MCFLAGS-parse_tree.module_qual.qualify_items \
                                          += --optimize-constructor-last-call
 # post_typecheck_do_finish_preds should be tail recursive.
 MCFLAGS-check_hlds.post_typecheck        += --optimize-constructor-last-call
+
+MCFLAGS-check_hlds.det_check_switch      += --optimize-constructor-last-call
 
 # The predicates in these modules that could be transformed by lcmc
 # are not speed-critical.
@@ -112,11 +115,5 @@ MCFLAGS-mode_robdd.tfeirn                += -O3
 MCFLAGS-mode_robdd.implications          += -O0
 
 MCFLAGS-transform_hlds.higher_order      += --no-warn-nothing-exported
-
-MCFLAGS-check_hlds.mode_constraints      += --no-warn-unneeded-final-statevars
-MCFLAGS-check_hlds.mode_ordering         += --no-warn-unneeded-final-statevars
-MCFLAGS-parse_tree.parse_module          += --no-warn-unneeded-initial-statevars
-MCFLAGS-parse_tree.prog_event            += --no-warn-unneeded-final-statevars
-MCFLAGS-transform_hlds.stm_expand        += --no-warn-unneeded-final-statevars
 
 MCFLAGS-mode_robdd                       += --no-warn-include-and-non-include

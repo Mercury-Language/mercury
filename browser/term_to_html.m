@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2021, 2023 The Mercury team.
+% Copyright (C) 2017-2018, 2021, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -362,7 +362,8 @@ js_bool(Stream, B, !IO) :-
 js_int(Stream, Int, !IO) :-
     io.write_int(Stream, Int, !IO).
 
-:- pred js_string(io.text_output_stream::in, string::in, io::di, io::uo) is det.
+:- pred js_string(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
 js_string(Stream, String, !IO) :-
     io.write_char(Stream, '"', !IO),

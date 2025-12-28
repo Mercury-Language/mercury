@@ -44,7 +44,7 @@
 % pointer comparison.
 %
 % XXX This module is not yet sufficiently well tested or documented to be
-% included in the publically available part of the library, so at the moment
+% included in the publicly available part of the library, so at the moment
 % it is not included in the list of modules mentioned in the library manual.
 %
 %---------------------------------------------------------------------------%

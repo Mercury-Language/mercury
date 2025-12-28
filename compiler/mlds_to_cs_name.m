@@ -225,7 +225,7 @@ local_var_name_to_ll_string_for_csharp(LocalVarName) = LocalVarNameStr :-
 
 field_var_name_to_nll_string_for_csharp(FieldVarName) = FieldVarNameStr :-
     RawString = ml_field_var_name_to_string(FieldVarName),
-    MangledString = name_mangle(RawString),
+    MangledString = name_mangle_no_leading_digit(RawString),
     FieldVarNameStr = make_valid_csharp_symbol_name(MangledString).
 
 field_var_name_to_ll_string_for_csharp(FieldVarName) = FieldVarNameStr :-

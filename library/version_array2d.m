@@ -131,7 +131,7 @@ version_array2d(Rows) = VA2D :-
         list.length(FirstRow, FirstRowNumCols),
         ( if
             all [Row] (
-               list.member(Row, Rows)
+                list.member(Row, Rows)
             =>
                 list.length(Row) = FirstRowNumCols
             )

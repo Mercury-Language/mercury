@@ -120,15 +120,14 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
 
 make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
         ModuleName, Succeeded, !LastHash, !IO) :-
-    EnvOptFileVariables = make_info_get_env_optfile_variables(Info),
+    Params = make_info_get_compiler_params(Info),
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(Info),
         lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs),
-        EnvVarArgs = make_info_get_env_var_args(Info),
-        OptionArgs = make_info_get_option_args(Info),
         AllOptionArgs = ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,
@@ -196,10 +195,10 @@ option_table_hash(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
     % of these options will have their default values, which makes
     % most of that work effectively wasted.
     %
-    % A more elegant approach would be to invoke getopt.record_arguments on
-    % AllOptionArgs, and hash the resulting list of option_values. This would
-    % require hashing special options (such as -ON) as well as non-special
-    % values, but the cost of that would be trivial.
+    % A more elegant approach would be to invoke getopt.recognize_all_options
+    % on AllOptionArgs, and hash the resulting list of option_values.
+    % This would require hashing special options (such as -ON) as well as
+    % non-special values, but the cost of that would be trivial.
     %
     % This approach would have two principal differences from the current one.
     %
@@ -237,7 +236,7 @@ option_table_hash(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
     %
     % XXX A somewhat more backwards-compatible version of the above approach
     % would be to hash both DefaultOptionTable AND the result invoking
-    % getopt.record_arguments, after filtering inconsequential options
+    % getopt.recognize_all_options, after filtering inconsequential options
     % out of both. This would effectively hash the *input* of the call to
     % handle_given_options, rather than its output. It would also be
     % logically cleaner, since in some cases, handle_given_options does

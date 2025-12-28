@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009, 2011 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2016, 2018, 2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -43,6 +43,7 @@
                 lout_module_name                :: module_name,
                 lout_mangled_module_name        :: string,
                 lout_source_file_name           :: string,
+                lout_output_file_name           :: string,
                 lout_internal_label_to_layout   :: map(label,
                                                     layout_slot_name),
                 lout_entry_label_to_layout      :: map(label, data_id),
@@ -72,7 +73,7 @@
                 lout_globals                    :: globals
             ).
 
-:- func init_llds_out_info(module_name, string, globals,
+:- func init_llds_out_info(module_name, string, string, globals,
     map(label, layout_slot_name), map(label, data_id),
     map(pred_proc_id, layout_slot_name),
     map(alloc_site_id, layout_slot_name)) = llds_out_info.
@@ -81,7 +82,7 @@
     prog_context::in, io::di, io::uo) is det.
 
 :- pred output_reset_line_num(io.text_output_stream::in, bool::in,
-    io::di, io::uo) is det.
+    string::in, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -138,13 +139,12 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.
-:- import_module maybe.
 :- import_module set_tree234.
 :- import_module term_context.
 
 %----------------------------------------------------------------------------%
 
-init_llds_out_info(ModuleName, SourceFileName, Globals,
+init_llds_out_info(ModuleName, SourceFileName, OutputFileName, Globals,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
         AllocSiteMap) = Info :-
     MangledModuleName = sym_name_mangle(ModuleName),
@@ -170,8 +170,8 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
     UseMacroForRedoFail = OptTuple ^ ot_use_macro_for_redo_fail,
     globals.get_trace_level(Globals, TraceLevel),
     Info = llds_out_info(ModuleName, MangledModuleName, SourceFileName,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
-        AllocSiteMap, AutoComments, ForeignLineNumbers,
+        OutputFileName, InternalLabelToLayoutMap, EntryLabelToLayoutMap,
+        TableIoEntryMap, AllocSiteMap, AutoComments, ForeignLineNumbers,
         EmitCLoops, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
         UnboxedFloat, DetStackDwordAligment, StaticGroundFloats,
@@ -181,17 +181,16 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
 output_set_line_num(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
-        File = term_context.context_file(Context),
-        Line = term_context.context_line(Context),
+        Context = context(File, Line),
         c_util.always_set_line_num(Stream, File, Line, !IO)
     ;
         OutputLineNumbers = no
     ).
 
-output_reset_line_num(Stream, OutputLineNumbers, !IO) :-
+output_reset_line_num(Stream, OutputLineNumbers, FileName, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num(Stream, no, !IO)
+        c_util.always_reset_line_num(Stream, FileName, !IO)
     ;
         OutputLineNumbers= no
     ).

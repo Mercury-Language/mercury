@@ -22,11 +22,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred add_decl_pragmas(ims_list(item_decl_pragma_info)::in,
+:- pred add_decl_pragmas(io.text_output_stream::in,
+    ims_list(item_decl_pragma_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_decl_pragmas_type_spec_constr(
+:- pred add_decl_pragmas_type_spec_constr(io.text_output_stream::in,
     list(decl_pragma_type_spec_constr_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -121,7 +122,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
-:- import_module ll_backend.fact_table.
+:- import_module ll_backend.fact_table_gen.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -156,20 +157,20 @@
 % Adding decl pragmas to the HLDS.
 %
 
-add_decl_pragmas([], !ModuleInfo, !QualInfo, !Specs).
-add_decl_pragmas([ImsList | ImsLists],
+add_decl_pragmas(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas(ProgressStream, [ImsList | ImsLists],
         !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_decl_pragma(ItemMercuryStatus), Items,
+    list.foldl3(add_decl_pragma(ProgressStream, ItemMercuryStatus), Items,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    add_decl_pragmas(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
 
-add_decl_pragmas_type_spec_constr([], !ModuleInfo, !QualInfo, !Specs).
-add_decl_pragmas_type_spec_constr([Pragma | Pragmas],
+add_decl_pragmas_type_spec_constr(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas_type_spec_constr(ProgressStream, [Pragma | Pragmas],
         !ModuleInfo, !QualInfo, !Specs) :-
-    add_pragma_type_spec_constr(Pragma,
+    add_pragma_type_spec_constr(ProgressStream, Pragma,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas_type_spec_constr(Pragmas,
+    add_decl_pragmas_type_spec_constr(ProgressStream, Pragmas,
         !ModuleInfo, !QualInfo, !Specs).
 
 add_decl_pragmas_type_spec([], !ModuleInfo, !QualInfo, !Specs).
@@ -200,12 +201,13 @@ add_decl_pragmas_reuse([Pragma | Pragmas], !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-:- pred add_decl_pragma(item_mercury_status::in,
-    item_decl_pragma_info::in,
+:- pred add_decl_pragma(io.text_output_stream::in,
+    item_mercury_status::in, item_decl_pragma_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_decl_pragma(ItemMercuryStatus, Pragma, !ModuleInfo, !QualInfo, !Specs) :-
+add_decl_pragma(ProgressStream, ItemMercuryStatus, Pragma,
+        !ModuleInfo, !QualInfo, !Specs) :-
     (
         Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
         mark_pred_as_obsolete(ObsoletePredInfo, ItemMercuryStatus,
@@ -220,7 +222,7 @@ add_decl_pragma(ItemMercuryStatus, Pragma, !ModuleInfo, !QualInfo, !Specs) :-
             !ModuleInfo, !Specs)
     ;
         Pragma = decl_pragma_type_spec_constr(TypeSpecConstrInfo),
-        add_pragma_type_spec_constr(TypeSpecConstrInfo,
+        add_pragma_type_spec_constr(ProgressStream, TypeSpecConstrInfo,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
@@ -2064,7 +2066,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         MaybePredId = error1(Specs)
     ).
 
-:- func report_unknown_pred_or_func(error_severity, string, prog_context,
+:- func report_unknown_pred_or_func(spec_severity, string, prog_context,
     pred_or_func, sym_name, user_arity) = error_spec.
 
 report_unknown_pred_or_func(Severity, PragmaName, Context,
@@ -2077,7 +2079,7 @@ report_unknown_pred_or_func(Severity, PragmaName, Context,
         [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
-:- func report_ambiguous_pred_or_func(error_severity, string, prog_context,
+:- func report_ambiguous_pred_or_func(spec_severity, string, prog_context,
     pred_or_func, sym_name, user_arity) = error_spec.
 
 report_ambiguous_pred_or_func(Severity, PragmaName, Context,

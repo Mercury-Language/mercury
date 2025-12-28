@@ -17,10 +17,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.inst_test.
+:- module hlds.inst_test.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
@@ -211,11 +210,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_util.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
+:- import_module hlds.type_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module io.
@@ -306,7 +305,7 @@ static  InstIsGroundCacheEntry inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
 ").
 
     % Look up Inst in the cache. If it is there, return Found = yes
-    % and set MayOccur. Otherwise, return Found = no.
+    % and set IsGround. Otherwise, return Found = no.
     %
 :- semipure pred lookup_inst_is_ground(mer_type::in, mer_inst::in,
     bool::out, bool::out) is det.
@@ -375,16 +374,14 @@ inst_is_ground_mt(ModuleInfo, Type, Inst) :-
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 inst_is_ground_mt_1(ModuleInfo, Type, Inst, !Expansions) :-
-    % XXX This special casing of any/2 was introduced in version 1.65
-    % of this file. The log message for that version gives a reason why
-    % this special casing is required, but I (zs) don't believe it,
-    % at least not without more explanation.
     ( if Inst = any(_, _) then
-        ( if set_tree234.contains(!.Expansions, Inst) then
-            true
-        else
-            inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions)
-        )
+        % This special casing of any/2 was introduced in commit
+        % 1412a135cb57af6f9ecab2bc5c8128bad8d30d2e, whose log message says:
+        %
+        %   "Fix a bug where under certain situations inst_is_ground_1/5
+        %   would erroneously add any(_) to the set of insts it would treat
+        %   as ground."
+        fail
     else
         % XXX Make this work on Inst's *address*.
         ( if set_tree234.insert_new(Inst, !Expansions) then
@@ -1586,5 +1583,5 @@ ho_inst_info_contains_higher_order(HOInstInfo) = ContainsHO :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.inst_test.
+:- end_module hlds.inst_test.
 %-----------------------------------------------------------------------------%

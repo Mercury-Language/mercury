@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1180,11 +1180,9 @@ empty_inst_map_delta = InstMap :-
     empty_inst_map_delta(InstMap).
 
 calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
-    map.foldl(
+    AccInstantiatedVars =
         ( pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
-            ( if
-                map.search(Before ^ im_inst_map, Var, BeforeInst)
-            then
+            ( if map.search(Before ^ im_inst_map, Var, BeforeInst) then
                 (
                     BeforeInst = ir_free_rep,
                     (
@@ -1236,7 +1234,8 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     set.insert(Var, Set0, Set)
                 )
             )
-        ), After ^ im_inst_map, set.init, DeltaVars).
+        ),
+    map.foldl(AccInstantiatedVars, After ^ im_inst_map, set.init, DeltaVars).
 
 %---------------------------------------------------------------------------%
 

@@ -155,6 +155,16 @@
             % binary(int_as_uint_cmp_op(le), int_const(1), int_const(-1))
             % returns true, since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
+    ;       in_range
+            % Tests for "0 =< Index, Index < Range". On Java, that is its
+            % implementation, while for C and C#, it is implemented the same
+            % as int_as_uint_cmp_op(lt). The reason for the difference is
+            % that in C and C#, the int->uint cast is free, while in Java
+            % it requires masking both operands. That makes it unclear
+            % which approach to range tests is faster in Java. The only way
+            % to decide is to benchmark both approaches, which requires
+            % both to be implemented.
+
     ;       float_arith(float_arith_op)
     ;       float_cmp(cmp_op)
             % Note that we do not have primitive operations in library/float.m
@@ -365,67 +375,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         )
     ;
         ModuleName = "private_builtin",
-        (
-            PredName = "trace_get_io_state", ProcNum = 0, Args = [X],
-            Code = noop([X])
-        ;
-            PredName = "trace_set_io_state", ProcNum = 0, Args = [_X],
-            Code = noop([])
-        ;
-            PredName = "store_at_ref_impure",
-            ProcNum = 0, Args = [X, Y],
-            Code = ref_assign(X, Y)
-        ;
-            PredName = "unsafe_type_cast", ProcNum = 0, Args = [X, Y],
-            % Note that the code we generate for unsafe_type_cast
-            % is not type-correct. Back-ends that require type-correct
-            % intermediate code (e.g. the MLDS back-end) must handle
-            % unsafe_type_cast separately, rather than by calling
-            % builtin_translation.
-            Code = assign(Y, assign_copy(X))
-        ;
-            ( PredName = "builtin_int_gt",    Type = int_type_int,    Cmp = gt
-            ; PredName = "builtin_int_lt",    Type = int_type_int,    Cmp = lt
-            ; PredName = "builtin_int8_gt",   Type = int_type_int8,   Cmp = gt
-            ; PredName = "builtin_int8_lt",   Type = int_type_int8,   Cmp = lt
-            ; PredName = "builtin_int16_gt",  Type = int_type_int16,  Cmp = gt
-            ; PredName = "builtin_int16_lt",  Type = int_type_int16,  Cmp = lt
-            ; PredName = "builtin_int32_gt",  Type = int_type_int32,  Cmp = gt
-            ; PredName = "builtin_int32_lt",  Type = int_type_int32,  Cmp = lt
-            ; PredName = "builtin_int64_gt",  Type = int_type_int64,  Cmp = gt
-            ; PredName = "builtin_int64_lt",  Type = int_type_int64,  Cmp = lt
-            ; PredName = "builtin_uint_gt",   Type = int_type_uint,   Cmp = gt
-            ; PredName = "builtin_uint_lt",   Type = int_type_uint,   Cmp = lt
-            ; PredName = "builtin_uint8_gt",  Type = int_type_uint8,  Cmp = gt
-            ; PredName = "builtin_uint8_lt",  Type = int_type_uint8,  Cmp = lt
-            ; PredName = "builtin_uint16_gt", Type = int_type_uint16, Cmp = gt
-            ; PredName = "builtin_uint16_lt", Type = int_type_uint16, Cmp = lt
-            ; PredName = "builtin_uint32_gt", Type = int_type_uint32, Cmp = gt
-            ; PredName = "builtin_uint32_lt", Type = int_type_uint32, Cmp = lt
-            ; PredName = "builtin_uint64_gt", Type = int_type_uint64, Cmp = gt
-            ; PredName = "builtin_uint64_lt", Type = int_type_uint64, Cmp = lt
-            ),
-            CmpOp = int_cmp(Type, Cmp),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(CmpOp, X, Y))
-        ;
-            ( PredName = "unsigned_lt",       CmpOp = int_as_uint_cmp(lt)
-            ; PredName = "unsigned_le",       CmpOp = int_as_uint_cmp(le)
-            ),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(CmpOp, X, Y))
-        ;
-            PredName = "pointer_equal", ProcNum = 0,
-            % The arity of this predicate is two during parsing,
-            % and three after the polymorphism pass.
-            ( Args = [X, Y]
-            ; Args = [_TypeInfo, X, Y]
-            ),
-            Code = test(binary_test(pointer_equal_conservative, X, Y))
-        ;
-            PredName = "partial_inst_copy", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, assign_copy(X))
-        )
+        builtin_translation_private_builtin(PredName, ProcNum, Args, Code)
     ;
         ModuleName = "term_size_prof_builtin",
         PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
@@ -442,140 +392,219 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         ; ModuleName = "uint32", IT = int_type_uint32
         ; ModuleName = "uint64", IT = int_type_uint64
         ),
-        (
-            PredName = "+",
-            (
-                Args = [X, Y, Z],
-                (
-                    ProcNum = 0,
-                    Code = assign(Z,
-                        assign_binary(int_arith(IT, ao_add), X, Y))
-                ;
-                    ProcNum = 1,
-                    Code = assign(X,
-                        assign_binary(int_arith(IT, ao_sub), Z, Y))
-                ;
-                    ProcNum = 2,
-                    Code = assign(Y,
-                        assign_binary(int_arith(IT, ao_sub), Z, X))
-                )
-            ;
-                Args = [X, Y],
-                ProcNum = 0,
-                Code = assign(Y, assign_copy(X))
-            )
-        ;
-            PredName = "-",
-            (
-                Args = [X, Y, Z],
-                (
-                    ProcNum = 0,
-                    Code = assign(Z,
-                        assign_binary(int_arith(IT, ao_sub), X, Y))
-                ;
-                    ProcNum = 1,
-                    Code = assign(X,
-                        assign_binary(int_arith(IT, ao_add), Y, Z))
-                ;
-                    ProcNum = 2,
-                    Code = assign(Y,
-                        assign_binary(int_arith(IT, ao_sub), X, Z))
-                )
-            ;
-                Args = [X, Y],
-                ProcNum = 0,
-                IntZeroConst = make_int_zero_const(IT),
-                Code = assign(Y,
-                    assign_binary_lc(int_arith(IT, ao_sub), IntZeroConst, X))
-            )
-        ;
-            PredName = "xor", Args = [X, Y, Z],
-            (
-                ProcNum = 0,
-                Code = assign(Z, assign_binary(bitwise_xor(IT), X, Y))
-            ;
-                ProcNum = 1,
-                Code = assign(Y, assign_binary(bitwise_xor(IT), X, Z))
-            ;
-                ProcNum = 2,
-                Code = assign(X, assign_binary(bitwise_xor(IT), Y, Z))
-            )
-        ;
-            ( PredName = "plus",                ArithOp = ao_add
-            ; PredName = "minus",               ArithOp = ao_sub
-            ; PredName = "*",                   ArithOp = ao_mul
-            ; PredName = "times",               ArithOp = ao_mul
-            ; PredName = "unchecked_quotient",  ArithOp = ao_div
-            ; PredName = "unchecked_rem",       ArithOp = ao_rem
-            ),
-            ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, assign_binary(int_arith(IT, ArithOp), X, Y))
-        ;
-            ( PredName = "unchecked_left_shift",
-                ArithOp = unchecked_left_shift(IT, shift_by_int)
-            ; PredName = "unchecked_left_ushift",
-                ArithOp = unchecked_left_shift(IT, shift_by_uint)
-            ; PredName = "unchecked_right_shift",
-                ArithOp = unchecked_right_shift(IT, shift_by_int)
-            ; PredName = "unchecked_right_ushift",
-                ArithOp = unchecked_right_shift(IT, shift_by_uint)
-            ; PredName = "/\\", ArithOp = bitwise_and(IT)
-            ; PredName = "\\/", ArithOp = bitwise_or(IT)
-            ),
-            ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, assign_binary(ArithOp, X, Y))
-        ;
-            PredName = "\\", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, assign_unary(bitwise_complement(IT), X))
-        ;
-            ( PredName = ">",  CmpOp = gt
-            ; PredName = "<",  CmpOp = lt
-            ; PredName = ">=", CmpOp = ge
-            ; PredName = "=<", CmpOp = le
-            ),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(int_cmp(IT ,CmpOp), X, Y))
-        )
+        builtin_translation_int(IT, PredName, ProcNum, Args, Code)
     ;
         ModuleName = "float",
+        builtin_translation_float(PredName, ProcNum, Args, Code)
+    ).
+
+:- pred builtin_translation_private_builtin(string::in, int::in, list(T)::in,
+    simple_code(T)::out) is semidet.
+
+builtin_translation_private_builtin(PredName, ProcNum, Args, Code) :-
+    (
+        PredName = "trace_get_io_state", ProcNum = 0, Args = [X],
+        Code = noop([X])
+    ;
+        PredName = "trace_set_io_state", ProcNum = 0, Args = [_X],
+        Code = noop([])
+    ;
+        PredName = "store_at_ref_impure",
+        ProcNum = 0, Args = [X, Y],
+        Code = ref_assign(X, Y)
+    ;
+        PredName = "unsafe_type_cast", ProcNum = 0, Args = [X, Y],
+        % Note that the code we generate for unsafe_type_cast
+        % is not type-correct. Back-ends that require type-correct
+        % intermediate code (e.g. the MLDS back-end) must handle
+        % unsafe_type_cast separately, rather than by calling
+        % builtin_translation.
+        Code = assign(Y, assign_copy(X))
+    ;
+        ( PredName = "builtin_int_gt",    Type = int_type_int,    Cmp = gt
+        ; PredName = "builtin_int_lt",    Type = int_type_int,    Cmp = lt
+        ; PredName = "builtin_int8_gt",   Type = int_type_int8,   Cmp = gt
+        ; PredName = "builtin_int8_lt",   Type = int_type_int8,   Cmp = lt
+        ; PredName = "builtin_int16_gt",  Type = int_type_int16,  Cmp = gt
+        ; PredName = "builtin_int16_lt",  Type = int_type_int16,  Cmp = lt
+        ; PredName = "builtin_int32_gt",  Type = int_type_int32,  Cmp = gt
+        ; PredName = "builtin_int32_lt",  Type = int_type_int32,  Cmp = lt
+        ; PredName = "builtin_int64_gt",  Type = int_type_int64,  Cmp = gt
+        ; PredName = "builtin_int64_lt",  Type = int_type_int64,  Cmp = lt
+        ; PredName = "builtin_uint_gt",   Type = int_type_uint,   Cmp = gt
+        ; PredName = "builtin_uint_lt",   Type = int_type_uint,   Cmp = lt
+        ; PredName = "builtin_uint8_gt",  Type = int_type_uint8,  Cmp = gt
+        ; PredName = "builtin_uint8_lt",  Type = int_type_uint8,  Cmp = lt
+        ; PredName = "builtin_uint16_gt", Type = int_type_uint16, Cmp = gt
+        ; PredName = "builtin_uint16_lt", Type = int_type_uint16, Cmp = lt
+        ; PredName = "builtin_uint32_gt", Type = int_type_uint32, Cmp = gt
+        ; PredName = "builtin_uint32_lt", Type = int_type_uint32, Cmp = lt
+        ; PredName = "builtin_uint64_gt", Type = int_type_uint64, Cmp = gt
+        ; PredName = "builtin_uint64_lt", Type = int_type_uint64, Cmp = lt
+        ),
+        CmpOp = int_cmp(Type, Cmp),
+        ProcNum = 0, Args = [X, Y],
+        Code = test(binary_test(CmpOp, X, Y))
+    ;
+        ( PredName = "unsigned_lt",       CmpOp = int_as_uint_cmp(lt)
+        ; PredName = "unsigned_le",       CmpOp = int_as_uint_cmp(le)
+        ; PredName = "in_range",          CmpOp = in_range
+        ),
+        ProcNum = 0, Args = [X, Y],
+        Code = test(binary_test(CmpOp, X, Y))
+    ;
+        PredName = "pointer_equal", ProcNum = 0,
+        % The arity of this predicate is two during parsing,
+        % and three after the polymorphism pass.
+        ( Args = [X, Y]
+        ; Args = [_TypeInfo, X, Y]
+        ),
+        Code = test(binary_test(pointer_equal_conservative, X, Y))
+    ;
+        PredName = "partial_inst_copy", ProcNum = 0, Args = [X, Y],
+        Code = assign(Y, assign_copy(X))
+    ).
+
+:- pred builtin_translation_int(int_type::in, string::in,
+    int::in, list(T)::in, simple_code(T)::out) is semidet.
+
+builtin_translation_int(IT, PredName, ProcNum, Args, Code) :-
+    (
+        PredName = "+",
         (
-            PredName = "+",
+            Args = [X, Y, Z],
             (
-                Args = [X, Y],
                 ProcNum = 0,
-                Code = assign(Y, assign_copy(X))
+                Code = assign(Z,
+                    assign_binary(int_arith(IT, ao_add), X, Y))
             ;
-                Args = [X, Y, Z],
-                ProcNum = 0,
-                Code = assign(Z, assign_binary(float_arith(ao_add), X, Y))
-            )
-        ;
-            PredName = "-",
-            (
-                Args = [X, Y],
-                ProcNum = 0,
+                ProcNum = 1,
+                Code = assign(X,
+                    assign_binary(int_arith(IT, ao_sub), Z, Y))
+            ;
+                ProcNum = 2,
                 Code = assign(Y,
-                    assign_binary_lc(float_arith(ao_sub), float_const(0.0), X))
-            ;
-                Args = [X, Y, Z],
-                ProcNum = 0,
-                Code = assign(Z, assign_binary(float_arith(ao_sub), X, Y))
+                    assign_binary(int_arith(IT, ao_sub), Z, X))
             )
         ;
-            ( PredName = "*",                   ArithOp = ao_mul
-            ; PredName = "unchecked_quotient",  ArithOp = ao_div
-            ),
-            ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, assign_binary(float_arith(ArithOp), X, Y))
-        ;
-            ( PredName = ">",  CmpOp = gt
-            ; PredName = "<",  CmpOp = lt
-            ; PredName = ">=", CmpOp = ge
-            ; PredName = "=<", CmpOp = le
-            ),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(float_cmp(CmpOp), X, Y))
+            Args = [X, Y],
+            ProcNum = 0,
+            Code = assign(Y, assign_copy(X))
         )
+    ;
+        PredName = "-",
+        (
+            Args = [X, Y, Z],
+            (
+                ProcNum = 0,
+                Code = assign(Z,
+                    assign_binary(int_arith(IT, ao_sub), X, Y))
+            ;
+                ProcNum = 1,
+                Code = assign(X,
+                    assign_binary(int_arith(IT, ao_add), Y, Z))
+            ;
+                ProcNum = 2,
+                Code = assign(Y,
+                    assign_binary(int_arith(IT, ao_sub), X, Z))
+            )
+        ;
+            Args = [X, Y],
+            ProcNum = 0,
+            IntZeroConst = make_int_zero_const(IT),
+            Code = assign(Y,
+                assign_binary_lc(int_arith(IT, ao_sub), IntZeroConst, X))
+        )
+    ;
+        PredName = "xor", Args = [X, Y, Z],
+        (
+            ProcNum = 0,
+            Code = assign(Z, assign_binary(bitwise_xor(IT), X, Y))
+        ;
+            ProcNum = 1,
+            Code = assign(Y, assign_binary(bitwise_xor(IT), X, Z))
+        ;
+            ProcNum = 2,
+            Code = assign(X, assign_binary(bitwise_xor(IT), Y, Z))
+        )
+    ;
+        ( PredName = "plus",                ArithOp = ao_add
+        ; PredName = "minus",               ArithOp = ao_sub
+        ; PredName = "*",                   ArithOp = ao_mul
+        ; PredName = "times",               ArithOp = ao_mul
+        ; PredName = "unchecked_quotient",  ArithOp = ao_div
+        ; PredName = "unchecked_rem",       ArithOp = ao_rem
+        ),
+        ProcNum = 0, Args = [X, Y, Z],
+        Code = assign(Z, assign_binary(int_arith(IT, ArithOp), X, Y))
+    ;
+        ( PredName = "unchecked_left_shift",
+            ArithOp = unchecked_left_shift(IT, shift_by_int)
+        ; PredName = "unchecked_left_ushift",
+            ArithOp = unchecked_left_shift(IT, shift_by_uint)
+        ; PredName = "unchecked_right_shift",
+            ArithOp = unchecked_right_shift(IT, shift_by_int)
+        ; PredName = "unchecked_right_ushift",
+            ArithOp = unchecked_right_shift(IT, shift_by_uint)
+        ; PredName = "/\\", ArithOp = bitwise_and(IT)
+        ; PredName = "\\/", ArithOp = bitwise_or(IT)
+        ),
+        ProcNum = 0, Args = [X, Y, Z],
+        Code = assign(Z, assign_binary(ArithOp, X, Y))
+    ;
+        PredName = "\\", ProcNum = 0, Args = [X, Y],
+        Code = assign(Y, assign_unary(bitwise_complement(IT), X))
+    ;
+        ( PredName = ">",  CmpOp = gt
+        ; PredName = "<",  CmpOp = lt
+        ; PredName = ">=", CmpOp = ge
+        ; PredName = "=<", CmpOp = le
+        ),
+        ProcNum = 0, Args = [X, Y],
+        Code = test(binary_test(int_cmp(IT ,CmpOp), X, Y))
+    ).
+
+:- pred builtin_translation_float(string::in, int::in, list(T)::in,
+    simple_code(T)::out) is semidet.
+
+builtin_translation_float(PredName, ProcNum, Args, Code) :-
+    (
+        PredName = "+",
+        (
+            Args = [X, Y],
+            ProcNum = 0,
+            Code = assign(Y, assign_copy(X))
+        ;
+            Args = [X, Y, Z],
+            ProcNum = 0,
+            Code = assign(Z, assign_binary(float_arith(ao_add), X, Y))
+        )
+    ;
+        PredName = "-",
+        (
+            Args = [X, Y],
+            ProcNum = 0,
+            Code = assign(Y,
+                assign_binary_lc(float_arith(ao_sub), float_const(0.0), X))
+        ;
+            Args = [X, Y, Z],
+            ProcNum = 0,
+            Code = assign(Z, assign_binary(float_arith(ao_sub), X, Y))
+        )
+    ;
+        ( PredName = "*",                   ArithOp = ao_mul
+        ; PredName = "unchecked_quotient",  ArithOp = ao_div
+        ),
+        ProcNum = 0, Args = [X, Y, Z],
+        Code = assign(Z, assign_binary(float_arith(ArithOp), X, Y))
+    ;
+        ( PredName = ">",  CmpOp = gt
+        ; PredName = "<",  CmpOp = lt
+        ; PredName = ">=", CmpOp = ge
+        ; PredName = "=<", CmpOp = le
+        ),
+        ProcNum = 0, Args = [X, Y],
+        Code = test(binary_test(float_cmp(CmpOp), X, Y))
     ).
 
 %-----------------------------------------------------------------------------%

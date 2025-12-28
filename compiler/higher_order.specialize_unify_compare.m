@@ -34,8 +34,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
@@ -43,6 +41,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.special_pred.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

@@ -330,7 +330,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         user_arity_pred_form_arity(PredOrFunc,
             user_arity(UserArityInt), PredFormArity),
         is_field_access_function_name(ModuleInfo, PredSymName,
-            UserArityInt, _, _),
+            UserArityInt, _, _, _),
         % Don't report errors for clauses for field access function clauses
         % in `.opt' files.
         PredStatus \= pred_status(status_opt_imported)

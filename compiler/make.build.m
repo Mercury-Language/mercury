@@ -48,13 +48,12 @@
 
     % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     %   MaybeStdLibGrades, InvokedByMmcMake, ModuleName,
-    %   EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
-    %   !Info, !IO):
+    %   Params, ExtraOptions, MayBuild, !Info, !IO):
     %
     % Set up for building some compiler-generated file for ModuleName,
     % Return, in MayBuild, the full argument list for that compiler invocation,
-    % containing module-specific options from EnvOptFileVariables and
-    % OptionArgs, and including ExtraOptions, adding `--use-subdirs' and
+    % containing module-specific options from the cp_eov and cp_option_args
+    % fields of Params, and including ExtraOptions, adding `--use-subdirs' and
     % `--invoked-by-mmc-make' to the option list. (The latter presumably
     % dependent on the value of the second arg).
     %
@@ -62,16 +61,15 @@
     % from this full argument list.
     %
     % XXX Most, maybe all, callers seem to ignore the full argument list,
-    % using only the build globals derived from it,
+    % using only the build globals derived from it.
     %
     % XXX The type of ExtraOptions should be assoc_list(option, option_data),
     % or possibly just a maybe(op_mode). not list(string),
     %
 :- pred setup_for_build_with_module_options(io.text_output_stream::in,
     option_table(option)::in, maybe_stdlib_grades::in,
-    maybe_invoked_by_mmc_make::in, module_name::in, env_optfile_variables::in,
-    list(string)::in, list(string)::in, list(string)::in,
-    may_build::out, io::di, io::uo) is det.
+    maybe_invoked_by_mmc_make::in, module_name::in, compiler_params::in,
+    list(string)::in, may_build::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -131,7 +129,7 @@
     % Targets, stopping at errors unless KeepGoing = do_keep_going.
     %
 :- pred foldl2_make_module_targets(maybe_keep_going::in, list(string)::in,
-    io.text_output_stream::in, globals::in, list(dependency_file)::in,
+    io.text_output_stream::in, globals::in, list(target_id)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -150,7 +148,7 @@
     %
 :- pred foldl2_make_module_targets_maybe_parallel(maybe_keep_going::in,
     list(string)::in, io.text_output_stream::in, globals::in,
-    list(dependency_file)::in, maybe_succeeded::out,
+    list(target_id)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % This predicate does the exact same job as the one above,
@@ -158,7 +156,7 @@
     % higher order type in make.program_target.m.
     %
 :- pred foldl2_make_module_targets_maybe_parallel_build2(maybe_keep_going::in,
-    list(string)::in, globals::in, list(dependency_file)::in,
+    list(string)::in, globals::in, list(target_id)::in,
     io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -203,8 +201,9 @@
 %---------------------------------------------------------------------------%
 
 setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
-        MaybeStdLibGrades, InvokedByMmcMake, ModuleName, EnvOptFileVariables,
-        EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO) :-
+        MaybeStdLibGrades, InvokedByMmcMake, ModuleName, Params,
+        ExtraOptions, MayBuild, !IO) :-
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (

@@ -193,16 +193,15 @@
 :- pred remove_list(list(T)::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is semidet <= uenum(T).
 
-    % remove_leq(Set, Item) returns returns the set containing all the
-    % elements of Set whose enum forms are strictly greater than
-    % the enum form of Item.
+    % remove_leq(Set, Item) returns the set containing all the elements of Set
+    % whose enum forms are strictly greater than the enum form of Item.
     %
 :- func remove_leq(sparse_bitset(T), T) = sparse_bitset(T) <= uenum(T).
 :- pred remove_leq(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= uenum(T).
 
-    % remove_gt(Set, Item) returns returns the set containing all the elements
-    % of Set whose enum forms are less than or equal to the enum form of Item.
+    % remove_gt(Set, Item) returns the set containing all the elements of Set
+    % whose enum forms are less than or equal to the enum form of Item.
     %
 :- func remove_gt(sparse_bitset(T), T) = sparse_bitset(T) <= uenum(T).
 :- pred remove_gt(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)

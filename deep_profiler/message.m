@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,10 +82,9 @@
             % configured call site threshold, we are considering them for
             % parallelisation against one another.
 
-    ;       info_found_pushed_conjs_above_callsite_threshold
-            % There are two of conjuncts containing calls above the
-            % configured call site threshold that can be pushed together,
-            % we are considering them for parallelisation against one another.
+    ;       info_found_n_conjunctions_with_positive_speedup(int)
+            % There are N conjunctions whose speedup due to parallelisation
+            % is positive.
 
     ;       info_split_conjunction_into_partitions(int)
             % The conjunction being considered for parallelisation had to be
@@ -93,9 +92,10 @@
             % nonatomic goals; this can limit the amount of parallelism
             % available.
 
-    ;       info_found_n_conjunctions_with_positive_speedup(int)
-            % There are N conjunctions whose speedup due to parallelisation
-            % is positive.
+    ;       info_found_pushed_conjs_above_callsite_threshold
+            % There are two of conjuncts containing calls above the
+            % configured call site threshold that can be pushed together,
+            % we are considering them for parallelisation against one another.
 
     ;       notice_duplicate_instantiation(
                 % This occurs when a variable is instantiated twice in a
@@ -305,27 +305,25 @@ message_type_to_level(MsgType) = MsgLevel :-
 %---------------------------------------------------------------------------%
 
 :- func message_type_to_string(message_type) = cord(string).
+:- pragma require_switch_arms_in_type_order(func(message_type_to_string/1)).
 
 message_type_to_string(MessageType) = Cord :-
     (
         MessageType = info_found_candidate_conjunction,
         String = "Found candidate conjunction"
     ;
-        MessageType = error_cannot_lookup_coverage_points,
-        String = "Cannot lookup coverage points"
+        MessageType = info_found_conjs_above_callsite_threshold(Num),
+        MessageStr = "Found %d conjuncts above callsite threshold",
+        string.format(MessageStr, [i(Num)], String)
     ;
-        (
-            MessageType = info_found_conjs_above_callsite_threshold(Num),
-            MessageStr = "Found %d conjuncts above callsite threshold"
-        ;
-            MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
-            MessageStr = "Found %d conjunctions with a positive speedup due"
-                ++ " to parallelisation"
-        ;
-            MessageType = info_split_conjunction_into_partitions(Num),
-            MessageStr = "Split conjunction into %d partitions, "
-                ++ "this may reduce parallelism"
-        ),
+        MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
+        MessageStr = "Found %d conjunctions with a positive speedup due"
+            ++ " to parallelisation",
+        string.format(MessageStr, [i(Num)], String)
+    ;
+        MessageType = info_split_conjunction_into_partitions(Num),
+        MessageStr = "Split conjunction into %d partitions, "
+            ++ "this may reduce parallelism",
         string.format(MessageStr, [i(Num)], String)
     ;
         MessageType = info_found_pushed_conjs_above_callsite_threshold,
@@ -355,27 +353,30 @@ message_type_to_string(MessageType) = Cord :-
         String = "Could not look up proc defn, perhaps this procedure is"
             ++ " built-in"
     ;
-        MessageType = warning_cannot_compute_procrep_coverage_fallback(Error),
-        String = "Cannot compute procrep coverage annotation: " ++ Error
+        MessageType = warning_cannot_compute_procrep_coverage_fallback(Msg),
+        String = "Cannot compute procrep coverage annotation: " ++ Msg
             ++ "\n  falling back to some other method"
+    ;
+        MessageType =
+            warning_cannot_compute_cost_of_recursive_calls(WarnStr),
+        Template = "Cannot compute cost of recursive calls: %s",
+        string.format(Template, [s(WarnStr)], String)
+    ;
+        MessageType =
+            warning_cannot_compute_first_use_time(WarnStr),
+        Template = "Cannot compute the production or consumption time "
+            ++ "of a variable: %s",
+        string.format(Template, [s(WarnStr)], String)
     ;
         MessageType = error_extra_proc_dynamics_in_clique_proc,
         String = "extra proc dynamics for a clique proc are not currently"
             ++ " handled."
     ;
-        (
-            MessageType = error_exception_thrown(ErrorStr),
-            Template = "Exception thrown: %s"
-        ;
-            MessageType =
-                warning_cannot_compute_cost_of_recursive_calls(ErrorStr),
-            Template = "Cannot compute cost of recursive calls: %s"
-        ;
-            MessageType =
-                warning_cannot_compute_first_use_time(ErrorStr),
-            Template = "Cannot compute the production or consumption time "
-                ++ "of a variable: %s"
-        ),
+        MessageType = error_cannot_lookup_coverage_points,
+        String = "Cannot lookup coverage points"
+    ;
+        MessageType = error_exception_thrown(ErrorStr),
+        Template = "Exception thrown: %s",
         string.format(Template, [s(ErrorStr)], String)
     ),
     Cord = singleton(String).

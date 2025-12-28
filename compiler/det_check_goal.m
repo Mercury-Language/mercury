@@ -64,10 +64,10 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
 :- import_module libs.
@@ -180,31 +180,51 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         % disjuncts that have the same context, which call for a message here,
         % with just one possibly-successful disjunct, which does not.
         det_diagnose_disj(InstMap0, SwitchContexts, Desired, Actual,
-            Goals, SubMsgGroups, bag.init, DisjunctsWithSolnSet, !DetInfo),
+            Goals, SubMsgGroups, bag.init, DisjunctsWithSolnBag, !DetInfo),
         determinism_components(Desired, _, DesSolns),
-        bag.to_list(DisjunctsWithSolnSet, DisjunctsWithSoln),
+        bag.to_list(DisjunctsWithSolnBag, DisjunctsWithSoln),
         ( if
             DesSolns \= at_most_many,
             DesSolns \= at_most_many_cc,
-            DisjunctsWithSoln = [FirstContext | LaterContexts],
-            LaterContexts = [_ | _]
+            DisjunctsWithSoln = [FirstSolnDisjunct | LaterSolnDisjuncts],
+            LaterSolnDisjuncts = [_ | _]
         then
             det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
-            FirstDisjPieces = [lower_case_next_if_not_first,
-                words("Disjunction has more than one disjunct"),
-                words("with solutions."), nl],
+            FirstSolnDisjunct = soln_disjunct(FirstContext, FirstWasClause),
+            (
+                FirstWasClause = disjunct_was_clause,
+                FirstDisjPieces = [lower_case_next_if_not_first,
+                    words("Disjunction consisting of several clauses"),
+                    words("has more than one disjunct"),
+                    words("with solutions."), nl]
+            ;
+                FirstWasClause = disjunct_was_not_clause,
+                FirstDisjPieces = [lower_case_next_if_not_first,
+                    words("Disjunction has more than one disjunct"),
+                    words("with solutions."), nl]
+            ),
             FirstMsg =
                 msg(FirstContext, NestingPieces ++ FirstDisjPieces),
-            LaterDisjPieces = [words("This later disjunct")] ++
-                color_as_incorrect([words("may have a solution.")]) ++
-                [nl],
             MakeLaterMsgs =
-                ( func(LaterContext) = LaterMsg :-
-                    LaterMsg = msg(LaterContext, LaterDisjPieces)
+                ( func(LaterSolnDisjunct) = LaterMsg :-
+                    LaterSolnDisjunct =
+                        soln_disjunct(LaterContext, LaterWasClause),
+                    (
+                        LaterWasClause = disjunct_was_clause,
+                        LaterDisjPieces = [words("This later disjunct,"),
+                            words("which is a whole clause,")]
+                    ;
+                        LaterWasClause = disjunct_was_not_clause,
+                        LaterDisjPieces = [words("This later disjunct")]
+                    ),
+                    LaterPieces = LaterDisjPieces ++
+                        color_as_incorrect([words("may have a solution.")]) ++
+                        [nl],
+                    LaterMsg = msg(LaterContext, LaterPieces)
                 ),
-            list.sort(LaterContexts, SortedLaterContexts),
-            LaterMsgs = list.map(MakeLaterMsgs, SortedLaterContexts),
+            list.sort(LaterSolnDisjuncts, SortedLaterSolnDisjuncts),
+            LaterMsgs = list.map(MakeLaterMsgs, SortedLaterSolnDisjuncts),
             DisjMsgGroup = error_msg_group(FirstMsg, LaterMsgs),
             MsgGroups = [DisjMsgGroup | SubMsgGroups]
         else
@@ -407,10 +427,19 @@ det_diagnose_conj(InstMap0, SwitchContexts, Desired,
         Goals, TailMsgGroups, !DetInfo),
     MsgGroups = HeadMsgGroups ++ TailMsgGroups.
 
+    % The context of the disjunct with a solution,
+    % and was this disjunct a whole clause?
+:- type soln_disjunct
+    --->    soln_disjunct(prog_context, was_disjunct_a_clause).
+
+:- type was_disjunct_a_clause
+    --->    disjunct_was_not_clause
+    ;       disjunct_was_clause.
+
 :- pred det_diagnose_disj(instmap::in, list(switch_context)::in,
     determinism::in, determinism::in,
     list(hlds_goal)::in, list(error_msg_group)::out,
-    bag(prog_context)::in, bag(prog_context)::out,
+    bag(soln_disjunct)::in, bag(soln_disjunct)::out,
     det_info::in, det_info::out) is det.
 
 det_diagnose_disj(_InstMap0, _SwitchContexts, _Desired, _Actual,
@@ -444,7 +473,13 @@ det_diagnose_disj(InstMap0, SwitchContexts, Desired, Actual,
         true
     else
         GoalContext = goal_info_get_context(GoalInfo),
-        bag.insert(GoalContext, !DisjunctsWithSoln)
+        ( if goal_info_has_feature(GoalInfo, feature_was_clause) then
+            WasClause = disjunct_was_clause
+        else
+            WasClause = disjunct_was_not_clause
+        ),
+        SolnDisjunct = soln_disjunct(GoalContext, WasClause),
+        bag.insert(SolnDisjunct, !DisjunctsWithSoln)
     ),
     det_diagnose_disj(InstMap0, SwitchContexts, Desired, Actual,
         Goals, TailMsgGroups, !DisjunctsWithSoln, !DetInfo),

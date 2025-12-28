@@ -12,6 +12,7 @@
 % This package contains utility modules that are each used by
 % several different back-ends.
 %
+
 :- module backend_libs.
 :- interface.
 
@@ -36,6 +37,6 @@
 :- include_module type_class_info.
 :- include_module type_ctor_info.
 
+%-----------------------------------------------------------------------------%
 :- end_module backend_libs.
-
 %-----------------------------------------------------------------------------%

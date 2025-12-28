@@ -82,8 +82,8 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
@@ -438,8 +438,9 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
         MaybeSubtype = not_a_subtype,
         MaybeRepn = maybe.no,
         MaybeForeign = maybe.no,
-        TypeBodyDu = type_body_du(Ctors, MaybeSubtype, MaybeCanon, MaybeRepn,
-            MaybeForeign),
+        one_or_more.sort(compare_ctors_by_name_arity, Ctors, AlphaSortedCtors),
+        TypeBodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSubtype,
+            MaybeCanon, MaybeRepn, MaybeForeign),
         HLDSBody = hlds_du_type(TypeBodyDu),
         (
             MaybeDirectArgCtors = no
@@ -481,8 +482,9 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
         MaybeCanon = canon,
         MaybeRepn = maybe.no,
         MaybeForeign = maybe.no,
-        TypeBodyDu = type_body_du(Ctors, MaybeSubtype, MaybeCanon,
-            MaybeRepn, MaybeForeign),
+        one_or_more.sort(compare_ctors_by_name_arity, Ctors, AlphaSortedCtors),
+        TypeBodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSubtype,
+            MaybeCanon, MaybeRepn, MaybeForeign),
         HLDSBody = hlds_du_type(TypeBodyDu)
     ;
         TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
@@ -583,8 +585,8 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
 
 merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, TypeBodyDuB,
         Body) :-
-    TypeBodyDuB = type_body_du(_Ctors, MaybeSuperTypeB, _MaybeUserEq,
-        _MaybeRepn, MaybeForeignTypeBodyB),
+    TypeBodyDuB = type_body_du(_Ctors, _AlphaSortedCtors, MaybeSuperTypeB,
+        _MaybeUserEq, _MaybeRepn, MaybeForeignTypeBodyB),
     MaybeSuperTypeB = not_a_subtype,
     (
         MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
@@ -944,8 +946,8 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
     get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
     (
         Body = hlds_du_type(BodyDu),
-        BodyDu = type_body_du(OoMCtors, MaybeSuperType, _MaybeUserEqCmp,
-            _MaybeRepn, _MaybeForeign),
+        BodyDu = type_body_du(OoMCtors, _AlphaSortedCtors, MaybeSuperType,
+            _MaybeUserEqCmp, _MaybeRepn, _MaybeForeign),
 
         % Check subtype conditions if this is a subtype definitions.
         % There is no particular reason to do this here except to
@@ -1155,7 +1157,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     % Field names must be unique within a type.
     ( if
         map.search(!.FieldNameTable, FieldName, ExistingDefns),
-        list.find_first_match(is_conflicting_field_defn(FieldDefn),
+        one_or_more.find_first_match(is_conflicting_field_defn(FieldDefn),
             ExistingDefns, _ConflictingDefn)
     then
         % check_type_inst_mode_defns has already generated an error message
@@ -1168,7 +1170,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % if appropriate.
         (
             NeedQual = may_be_unqualified,
-            multi_map.set(unqualified(UnqualFieldName), FieldDefn,
+            one_or_more_map.set(unqualified(UnqualFieldName), FieldDefn,
                 !FieldNameTable)
         ;
             NeedQual = must_be_qualified
@@ -1192,7 +1194,7 @@ is_conflicting_field_defn(FieldDefnA, FieldDefnB) :-
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
-    multi_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
+    one_or_more_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
         !FieldNameTable).
 
 %---------------------------------------------------------------------------%
@@ -1307,7 +1309,8 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
 check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
         CurSuperTypeCtor, CurSuperTypeDefn, CurSuperTypeBodyDu,
         PrevSuperTypeCtors0, MaybeBaseMaybeCanon) :-
-    CurSuperTypeBodyDu = type_body_du(_, MaybeNextSuperType, MaybeCanon, _, _),
+    CurSuperTypeBodyDu =
+        type_body_du(_, _, MaybeNextSuperType, MaybeCanon, _, _),
     (
         MaybeNextSuperType = not_a_subtype,
         MaybeBaseMaybeCanon = ok1(MaybeCanon)
@@ -1413,7 +1416,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
     hlds_data.get_type_defn_body(SuperTypeDefn, SuperTypeBody),
     (
         SuperTypeBody = hlds_du_type(SuperTypeBodyDu),
-        SuperTypeBodyDu = type_body_du(_, _, _, _, IsForeign),
+        SuperTypeBodyDu = type_body_du(_, _, _, _, _, IsForeign),
         (
             IsForeign = no,
             MaybeSuperTypeBodyDu = ok1(SuperTypeBodyDu)
@@ -1597,21 +1600,20 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     % Merge type variables in the subtype and supertype definitions into a
     % common tvarset.
     tvarset_merge_renaming(TVarSet0, SuperTVarSet, NewTVarSet, Renaming),
-    apply_variable_renaming_to_tvar_list(Renaming, SuperTypeParams0,
-        SuperTypeParams),
+    apply_renaming_to_tvars(Renaming, SuperTypeParams0, SuperTypeParams),
 
     % Create a substitution from the supertype's type parameters to the
     % argument types in the declared supertype part of the subtype definition.
     map.from_corresponding_lists(SuperTypeParams, SuperTypeArgs, TSubst),
 
     % Apply the type substitution to the supertype constructors' arguments.
-    SuperTypeBodyDu = type_body_du(OoMSuperCtors, _, _, _, _),
+    SuperTypeBodyDu = type_body_du(OoMSuperCtors, _, _, _, _, _),
     SuperCtors0 = one_or_more_to_list(OoMSuperCtors),
     list.map(rename_and_rec_subst_in_constructor(Renaming, TSubst),
         SuperCtors0, SuperCtors),
 
     % Check each subtype constructor against the supertype's constructors.
-    TypeBodyDu = type_body_du(OoMCtors, _, _, _, _),
+    TypeBodyDu = type_body_du(OoMCtors, _, _, _, _, _),
     Ctors = one_or_more_to_list(OoMCtors),
     list.foldl2(
         look_up_and_check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
@@ -1718,7 +1720,8 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         Constraints = []
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints, _, _)
+        ExistConstraints =
+            cons_exist_constraints(ExistQVars, Constraints, _, _)
     ),
     (
         MaybeSuperExistConstraints = no_exist_constraints,
@@ -1784,7 +1787,7 @@ build_existq_tvars_mapping(VarA, VarB, !ExistQVarsMapping) :-
 check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         ExistQVarsMapping, Constraints, SuperConstraints0, Result) :-
     ExistQVarsRenaming = bimap.forward_map(ExistQVarsMapping),
-    apply_variable_renaming_to_prog_constraint_list(ExistQVarsRenaming,
+    apply_renaming_to_prog_constraints(ExistQVarsRenaming,
         SuperConstraints0, SuperConstraints),
     ( if Constraints = SuperConstraints then
         Result = ok1(ExistQVarsMapping)
@@ -1880,7 +1883,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
             search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
             hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
             TypeBodyA = hlds_du_type(TypeBodyDuA),
-            TypeBodyDuA = type_body_du(_, subtype_of(SuperTypeA), _, _, _),
+            TypeBodyDuA = type_body_du(_, _, subtype_of(SuperTypeA), _, _, _),
 
             hlds_data.get_type_defn_status(TypeDefnA, TypeStatusA),
             not subtype_defn_int_supertype_defn_impl(OrigTypeStatus,
@@ -1891,8 +1894,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
             hlds_data.get_type_defn_tvarset(TypeDefnA, TVarSetA),
             hlds_data.get_type_defn_tparams(TypeDefnA, TypeParamsA0),
             tvarset_merge_renaming(TVarSet0, TVarSetA, TVarSet, RenamingA),
-            apply_variable_renaming_to_tvar_list(RenamingA,
-                TypeParamsA0, TypeParamsA),
+            apply_renaming_to_tvars(RenamingA, TypeParamsA0, TypeParamsA),
             map.from_corresponding_lists(TypeParamsA, ArgTypesA, TSubstA),
 
             % Apply the substitution to t(T1, ..., Tk) to give
@@ -2101,18 +2103,15 @@ rename_and_rec_subst_in_exist_constraints(Renaming, TSubst,
     ExistConstraints0 = cons_exist_constraints(ExistQVars0, Constraints0,
         UnconstrainedExistQVars0, ConstrainedExistQVars0),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
-        ExistQVars0, ExistQVars),
+    apply_renaming_to_tvars(Renaming, ExistQVars0, ExistQVars),
 
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
-        Constraints0, Constraints1),
-    apply_rec_subst_to_prog_constraint_list(TSubst,
-        Constraints1, Constraints),
+    apply_renaming_to_prog_constraints(Renaming, Constraints0, Constraints1),
+    apply_rec_subst_to_prog_constraints(TSubst, Constraints1, Constraints),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
+    apply_renaming_to_tvars(Renaming,
         UnconstrainedExistQVars0, UnconstrainedExistQVars),
 
-    apply_variable_renaming_to_tvar_list(Renaming,
+    apply_renaming_to_tvars(Renaming,
         ConstrainedExistQVars0, ConstrainedExistQVars),
 
     ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
@@ -2130,7 +2129,7 @@ rename_and_rec_subst_in_constructor_arg(Renaming, TSubst, Arg0, Arg) :-
     mer_type::in, mer_type::out) is det.
 
 rename_and_rec_subst_in_type(Renaming, TSubst, Type0, Type) :-
-    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_renaming_to_type(Renaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type).
 
 %---------------------------------------------------------------------------%

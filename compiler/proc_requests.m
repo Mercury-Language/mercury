@@ -104,14 +104,14 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_data.
+:- import_module hlds.inst_test.
 :- import_module hlds.pred_name.
 :- import_module hlds.special_pred.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

@@ -14,3 +14,8 @@ ho_unique_error.m:016:   This kind of uniqueness mismatch is usually caused by
 ho_unique_error.m:016:   doing [38;5;226minput/output[39;49m or [38;5;226msome other kind of destructive[39;49m
 ho_unique_error.m:016:   [38;5;226mupdate[39;49m [38;5;203min a context where it can be backtracked over,[39;49m
 ho_unique_error.m:016:   such as the condition of an if-then-else.
+ho_unique_error.m:016:   Note that it is possible that the cause is code that
+ho_unique_error.m:016:   is intended to be a [38;5;40mcall[39;49m to the current predicate or
+ho_unique_error.m:016:   function, but has been accidentally turned into a
+ho_unique_error.m:016:   [38;5;203mclause[39;49m for it by a typo at the end of the previous
+ho_unique_error.m:016:   line that replaces a comma by a period.

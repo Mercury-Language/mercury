@@ -1,6 +1,12 @@
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+
 TOP = ../..
 include $(TOP)/Mercury.options
 
 MAIN_TARGET = demo
+
 MCFLAGS += --search-lib-files-dir $(TOP) -R $(TOP)
+
 EXTRA_LIBRARIES = mercury_allegro

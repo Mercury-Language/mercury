@@ -13,3 +13,8 @@ mostly_uniq_1.m:023:   This kind of uniqueness mismatch is usually caused by
 mostly_uniq_1.m:023:   doing [38;5;226minput/output[39;49m or [38;5;226msome other kind of destructive[39;49m
 mostly_uniq_1.m:023:   [38;5;226mupdate[39;49m [38;5;203min a context where it can be backtracked over,[39;49m
 mostly_uniq_1.m:023:   such as the condition of an if-then-else.
+mostly_uniq_1.m:023:   Note that it is possible that the cause is code that is
+mostly_uniq_1.m:023:   intended to be a [38;5;40mcall[39;49m to the current predicate or
+mostly_uniq_1.m:023:   function, but has been accidentally turned into a [38;5;203mclause[39;49m
+mostly_uniq_1.m:023:   for it by a typo at the end of the previous line that
+mostly_uniq_1.m:023:   replaces a comma by a period.

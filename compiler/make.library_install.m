@@ -24,11 +24,12 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % install_library(ProgressStream, Globals, MainModuleName, Succeeded,
-    %   !Info, !IO):
+    % install_library(ProgressStream, Globals, MainModuleName,
+    %   AllModuleNames, Succeeded, !Info, !IO):
     %
     % Install
     %
@@ -44,11 +45,11 @@
     % install directory structure *if* the --experiment4 option is given.
     %
 :- pred install_library(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out,
+    module_name::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % install_library_gs_gas(ProgressStream, Globals, MainModuleName,
-    %   Succeeded, !Info, !IO):
+    %   AllModuleNames, Succeeded, !Info, !IO):
     %
     % Install
     %
@@ -69,7 +70,7 @@
     % that structure.
     %
 :- pred install_library_gs_gas(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out,
+    module_name::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -86,7 +87,6 @@
 :- import_module libs.system_cmds.
 :- import_module libs.timestamp.
 :- import_module make.clean.
-:- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
 :- import_module make.options_file.
 :- import_module make.program_target.   % for make_misc_target
@@ -103,7 +103,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -114,38 +113,20 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
-        !Info, !IO) :-
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
-    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
-    (
-        DepsSucceeded = succeeded,
-        install_library_non_grade_specific_files(ProgressStream, Globals,
-            AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO),
-        install_library_grade_specific_files_for_all_libgrades(ProgressStream,
-            Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
-            !Succeeded, !Info, !IO)
-    ;
-        DepsSucceeded = did_not_succeed,
-        !:Succeeded = did_not_succeed
-    ).
+install_library(ProgressStream, Globals, MainModuleName, AllModuleNames,
+        !:Succeeded, !Info, !IO) :-
+    install_library_non_grade_specific_files(ProgressStream, Globals,
+        AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO),
+    install_library_grade_specific_files_for_all_libgrades(ProgressStream,
+        Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO).
 
-install_library_gs_gas(ProgressStream, Globals, MainModuleName, !:Succeeded,
-        !Info, !IO) :-
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
-    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
-    (
-        DepsSucceeded = succeeded,
-        globals.get_grade_dir(Globals, CurGrade),
-        proposed_install_library_grade_specific_files_for_grade(ProgressStream,
-            Globals, CurGrade, MainModuleName, AllModuleNames,
-            succeeded, !:Succeeded, !Info, !IO)
-    ;
-        DepsSucceeded = did_not_succeed,
-        !:Succeeded = did_not_succeed
-    ).
+install_library_gs_gas(ProgressStream, Globals, MainModuleName, AllModuleNames,
+        !:Succeeded, !Info, !IO) :-
+    globals.get_grade_dir(Globals, CurGrade),
+    proposed_install_library_grade_specific_files_for_grade(ProgressStream,
+        Globals, CurGrade, MainModuleName, AllModuleNames,
+        succeeded, !:Succeeded, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -606,16 +587,16 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         CleanAfter = no
     ),
 
-    EnvVarArgs = make_info_get_env_var_args(!.Info),
+    Params0 = make_info_get_compiler_params(!.Info),
+    Params0 = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs0),
     % Set up so that grade-dependent files for the current grade
-    % don't overwrite the files for the default grade.
-    OptionArgs0 = make_info_get_option_args(!.Info),
+    % do not overwrite the files for the default grade.
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
+    Params = compiler_params(EnvOptFileVariables, EnvVarArgs, OptionArgs),
 
     verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
 
-    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
     lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags),
     (
         MaybeMCFlags = ok1(MCFlags),
@@ -650,7 +631,7 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         % was fixed by switching to separate chaining on 2009 mar 26.
         % The replacement code was
         %
-        %   StatusMap = version_hash_table.init_default(dependency_file_hash)
+        %   StatusMap = version_hash_table.init_default(target_id_hash)
         %
         % NOTE that each delete made by remove_target_file_if_grade_dependent
         % will create a new version_hash_table, even though, with the exception
@@ -662,12 +643,12 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         % - convert StatusMap0 to an assoc list;
         % - delete all grade dependent files' entries from this assoc list;
         % - then construct a new version hash table from the result.
-        StatusMap0 = make_info_get_dep_file_status_map(!.Info),
+        StatusMap0 = make_info_get_target_status_map(!.Info),
         version_hash_table.fold(remove_target_file_if_grade_dependent,
             StatusMap0, StatusMap0, StatusMap),
 
-        make_info_set_dep_file_status_map(StatusMap, !Info),
-        make_info_set_option_args(OptionArgs, !Info),
+        make_info_set_target_status_map(StatusMap, !Info),
+        make_info_set_compiler_params(Params, !Info),
 
         % Reset the target file timestamp cache, as the information it contains
         % is not valid for the changed grade and grade-subdir setting.
@@ -1601,17 +1582,16 @@ install_file(ProgressStream, Globals, FileName, InstallDir, !Succeeded, !IO) :-
 
 %---------------------%
 
-:- pred remove_target_file_if_grade_dependent(dependency_file::in,
-    dependency_status::in,
-    version_hash_table(dependency_file, dependency_status)::in,
-    version_hash_table(dependency_file, dependency_status)::out) is det.
+:- pred remove_target_file_if_grade_dependent(target_id::in, target_status::in,
+    version_hash_table(target_id, target_status)::in,
+    version_hash_table(target_id, target_status)::out) is det.
 
-remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
+remove_target_file_if_grade_dependent(TargetId, _Status, !StatusMap) :-
     ( if
-        File = dep_target(target_file(_, TargetType)),
+        TargetId = merc_target(target_file(_, TargetType)),
         is_target_grade_dependent(TargetType) = grade_dependent
     then
-        version_hash_table.delete(File, !StatusMap)
+        version_hash_table.delete(TargetId, !StatusMap)
     else
         true
     ).

@@ -1731,9 +1731,13 @@ public class MR_MercuryFileStruct {
     // so exactly one of the following two fields will used (and be non-null)
     // for any particular stream.
     // Note also that we use the TextReader class interface to read both
-    // text AND binary files, and like use the TextWriter class interface
+    // text AND binary files, and likewise the TextWriter class interface
     // to write both text and binary files, which to me (zs) looks strange,
     // given that C# also has a System.IO.BinaryReader class.
+    // XXX The bit about using TextReaders and TextWriters to read and write
+    // binary streams is not true. We actually wrap a BufferedStream (which is
+    // what the stream field here is) around the underlying IO.Stream and use
+    // that for binary file operations.
     //
     // XXX Using four subclasses, for text input, binary input,
     // text output and binary output, as the Java code above does,
@@ -1845,6 +1849,11 @@ mercury_close(MR_MercuryFileStruct mf)
         mf.reader = null;
     }
     if (mf.writer != null) {
+        // XXX The call to Flush() here is a workaround for the fact that call
+        // to mf.writer.Close() will dispose of the underlying IO stream and
+        // this will cause the call to mf.stream.Close() below to throw an
+        // an exception *unless* the buffer is empty.
+        mf.stream.Flush();
         mf.writer.Close();
         mf.writer = null;
     }

@@ -76,14 +76,14 @@
 :- include_module arg_info.
 :- include_module code_model.
 :- include_module from_ground_term_util.
+:- include_module goal_contains.
 :- include_module goal_form.
 :- include_module goal_path.
-:- include_module goal_util.
-:- include_module goal_vars.
 :- include_module goal_refs.
-:- include_module goal_contains.
 :- include_module goal_reorder.
 :- include_module goal_transform.
+:- include_module goal_util.
+:- include_module goal_vars.
 :- include_module headvar_names.
 :- include_module hlds_call_tree.
 :- include_module hlds_code_util.
@@ -91,12 +91,19 @@
 :- include_module hlds_dependency_graph.
 :- include_module hlds_proc_util.
 :- include_module hlds_statistics.
+:- include_module inst_lookup.
+:- include_module inst_mode_type_prop.
+:- include_module inst_test.
+:- include_module inst_util.
 :- include_module introduced_call_table.
 :- include_module make_goal.
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
+:- include_module mode_top_functor.
+:- include_module mode_util.
 :- include_module passes_aux.
 :- include_module pred_name.
+:- include_module type_util.
 :- include_module var_origins.
 :- include_module var_table_hlds.
 

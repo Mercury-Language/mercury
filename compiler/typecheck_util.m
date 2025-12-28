@@ -26,7 +26,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func empty_hlds_constraints = hlds_constraints.
+:- func empty_hlds_constraint_db = hlds_constraint_db.
 
 %---------------------------------------------------------------------------%
 
@@ -44,8 +44,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred type_assign_rename_apart(type_assign::in, tvarset::in,
-    list(mer_type)::in, type_assign::out, list(mer_type)::out,
-    tvar_renaming::out) is det.
+    type_assign::out, tvar_renaming::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -58,25 +57,27 @@
 
 %---------------------------------------------------------------------------%
 
-    % higher_order_pred_type(Purity, N, EvalMethod,
+    % higher_order_pred_type(Purity, N,
     %   TypeVarSet, PredType, ArgTypes):
     %
-    % Given an arity N, let TypeVarSet = {T1, T2, ..., TN},
-    % PredType = `Purity EvalMethod pred(T1, T2, ..., TN)', and
+    % Given Purity and an arity N, return
+    % TypeVarSet = {T1, T2, ..., TN},
+    % PredType = `Purity pred(T1, T2, ..., TN)', and
     % ArgTypes = [T1, T2, ..., TN].
     %
-:- pred higher_order_pred_type(purity::in, int::in,
+:- pred general_higher_order_pred_type(purity::in, int::in,
     tvarset::out, mer_type::out, list(mer_type)::out) is det.
 
-    % higher_order_func_type(Purity, N, EvalMethod, TypeVarSet,
-    %   FuncType, ArgTypes, RetType):
+    % higher_order_func_type(Purity, N,
+    %   TypeVarSet, FuncType, ArgTypes, RetType):
     %
-    % Given an arity N, let TypeVarSet = {T0, T1, T2, ..., TN},
-    % FuncType = `Purity EvalMethod func(T1, T2, ..., TN) = T0',
+    % Given Purity and an arity N, return
+    % TypeVarSet = {T0, T1, T2, ..., TN},
+    % FuncType = `Purity func(T1, T2, ..., TN) = T0',
     % ArgTypes = [T1, T2, ..., TN], and
     % RetType = T0.
     %
-:- pred higher_order_func_type(purity::in, int::in,
+:- pred general_higher_order_func_type(purity::in, int::in,
     tvarset::out, mer_type::out, list(mer_type)::out, mer_type::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -88,7 +89,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_construct.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.vartypes.
 
@@ -99,8 +99,8 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-empty_hlds_constraints =
-    hlds_constraints([], [], map.init, map.init).
+empty_hlds_constraint_db =
+    hlds_constraint_db([], [], map.init, map.init).
 
 %---------------------------------------------------------------------------%
 
@@ -123,12 +123,10 @@ type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
 
 %---------------------------------------------------------------------------%
 
-type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
-        TypeAssign, ParentArgTypes, Renaming) :-
+type_assign_rename_apart(TypeAssign0, PredTypeVarSet,
+        TypeAssign, Renaming) :-
     type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
     tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, PredArgTypes,
-        ParentArgTypes),
     type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign).
 
 %---------------------------------------------------------------------------%
@@ -169,15 +167,16 @@ acc_type_assign_if_var_can_have_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
 
 %---------------------------------------------------------------------------%
 
-higher_order_pred_type(Purity, Arity, TypeVarSet, PredType, ArgTypes) :-
+general_higher_order_pred_type(Purity, Arity,
+        TypeVarSet, PredType, ArgTypes) :-
     varset.init(TypeVarSet0),
     varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet),
     % Argument types always have kind `star'.
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     construct_higher_order_type(Purity, pf_predicate, ArgTypes, PredType).
 
-higher_order_func_type(Purity, Arity, TypeVarSet,
-        FuncType, ArgTypes, RetType) :-
+general_higher_order_func_type(Purity, Arity,
+        TypeVarSet, FuncType, ArgTypes, RetType) :-
     varset.init(TypeVarSet0),
     varset.new_vars(Arity, ArgTypeVars, TypeVarSet0, TypeVarSet1),
     varset.new_var(RetTypeVar, TypeVarSet1, TypeVarSet),

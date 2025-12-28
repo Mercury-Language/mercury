@@ -28,33 +28,33 @@
 
 % We export simplify_tasks because it defines the type that
 % clients of simplify use to tell simplify what tasks to perform.
-:- include_module check_hlds.simplify.simplify_tasks.
+:- include_module simplify_tasks.
 % We export simplify_proc because it exports the predicates that
 % clients of simplify call to invoke simplify.
-:- include_module check_hlds.simplify.simplify_proc.
+:- include_module simplify_proc.
 % We export format_call because the presence of calls in a procedure
 % that format_call needs to check (and may be able to optimize) is noticed
 % by code outside the simplify package, in determinism analysis.
 % (We could have simplify look for such calls itself, but that would require
 % an extra traversal of every procedure.)
-:- include_module check_hlds.simplify.format_call.
+:- include_module opt_format_call.
 
 :- implementation.
 
-:- include_module check_hlds.simplify.common.
-:- include_module check_hlds.simplify.mark_trace_goals.
-:- include_module check_hlds.simplify.parse_string_format.
-:- include_module check_hlds.simplify.simplify_goal.
-:- include_module check_hlds.simplify.simplify_goal_call.
-:- include_module check_hlds.simplify.simplify_goal_conj.
-:- include_module check_hlds.simplify.simplify_goal_disj.
-:- include_module check_hlds.simplify.simplify_goal_ite.
-:- include_module check_hlds.simplify.simplify_goal_scope.
-:- include_module check_hlds.simplify.simplify_goal_switch.
-:- include_module check_hlds.simplify.simplify_goal_unify.
-:- include_module check_hlds.simplify.simplify_info.
-:- include_module check_hlds.simplify.split_switch_arms.
-:- include_module check_hlds.simplify.format_call_errors.
+:- include_module common.
+:- include_module mark_trace_goals.
+:- include_module parse_string_format.
+:- include_module simplify_goal.
+:- include_module simplify_goal_call.
+:- include_module simplify_goal_conj.
+:- include_module simplify_goal_disj.
+:- include_module simplify_goal_ite.
+:- include_module simplify_goal_scope.
+:- include_module simplify_goal_switch.
+:- include_module simplify_goal_unify.
+:- include_module simplify_info.
+:- include_module split_switch_arms.
+:- include_module opt_format_call_errors.
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.

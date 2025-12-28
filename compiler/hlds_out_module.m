@@ -431,23 +431,31 @@ format_const_struct_args(HeadConstArg, TailConstArgs, !State) :-
 % #ctors =  1811508, #synonyms =  1811508, #synonyms/ctor =   3.30, max =  9
 %
 % The cons_table entry that had the longest list of du_ctors
-% for a given name was this one:
+% for a given name was this one (long lines have been wrapped):
 %
 % DU_CTORS named error: 24
-%   FQ_DU_CTOR dir.error/0 for type dir.make_single_directory_status/0: #synonyms = 1
+%   FQ_DU_CTOR dir.error/0 for
+%       type dir.make_single_directory_status/0: #synonyms = 1
 %   FQ_DU_CTOR maybe.error/1 for type maybe.maybe_error/0: #synonyms = 3
 %   FQ_DU_CTOR maybe.error/1 for type maybe.maybe_error/2: #synonyms = 3
 %   FQ_DU_CTOR maybe.error/2 for type maybe.maybe_errors/2: #synonyms = 3
 %   FQ_DU_CTOR io.error/1 for type io.maybe_incomplete_result/1: #synonyms = 3
-%   FQ_DU_CTOR getopt.error/1 for type getopt.maybe_option_table/1: #synonyms = 3
-%   FQ_DU_CTOR getopt_io.error/1 for type getopt_io.maybe_option_table/1: #synonyms = 3
-%   FQ_DU_CTOR getopt.error/1 for type getopt.maybe_option_table_se/1: #synonyms = 3
-%   FQ_DU_CTOR getopt_io.error/1 for type getopt_io.maybe_option_table_se/1: #synonyms = 3
+%   FQ_DU_CTOR getopt.error/1 for
+%       type getopt.maybe_option_table/1: #synonyms = 3
+%   FQ_DU_CTOR getopt_io.error/1 for
+%       type getopt_io.maybe_option_table/1: #synonyms = 3
+%   FQ_DU_CTOR getopt.error/1 for
+%       type getopt.maybe_option_table_se/1: #synonyms = 3
+%   FQ_DU_CTOR getopt_io.error/1 for
+%       type getopt_io.maybe_option_table_se/1: #synonyms = 3
 %   FQ_DU_CTOR io.error/2 for type io.maybe_partial_res/1: #synonyms = 3
-%   FQ_DU_CTOR stream.error/2 for type stream.maybe_partial_res/2: #synonyms = 3
-%   FQ_DU_CTOR parsing_utils.error/3 for type parsing_utils.parse_result/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/2 for
+%       type stream.maybe_partial_res/2: #synonyms = 3
+%   FQ_DU_CTOR parsing_utils.error/3 for
+%       type parsing_utils.parse_result/1: #synonyms = 3
 %   FQ_DU_CTOR io.error/2 for type io.read_result/1: #synonyms = 3
-%   FQ_DU_CTOR mercury_term_parser.error/2 for type mercury_term_parser.read_term/1: #synonyms = 3
+%   FQ_DU_CTOR mercury_term_parser.error/2 for
+%       type mercury_term_parser.read_term/1: #synonyms = 3
 %   FQ_DU_CTOR io.error/1 for type io.res/0: #synonyms = 3
 %   FQ_DU_CTOR io.error/1 for type io.res/1: #synonyms = 3
 %   FQ_DU_CTOR stream.error/1 for type stream.res/1: #synonyms = 3
@@ -456,8 +464,10 @@ format_const_struct_args(HeadConstArg, TailConstArgs, !State) :-
 %   FQ_DU_CTOR io.error/1 for type io.result/1: #synonyms = 3
 %   FQ_DU_CTOR stream.error/1 for type stream.result/1: #synonyms = 3
 %   FQ_DU_CTOR stream.error/1 for type stream.result/2: #synonyms = 3
-%   FQ_DU_CTOR term_conversion.error/1 for type term_conversion.term_to_type_result/2: #synonyms = 3
-%   FQ_DU_CTOR mercury_term_lexer.error/1 for type mercury_term_lexer.token/0: #synonyms = 3
+%   FQ_DU_CTOR term_conversion.error/1 for
+%       type term_conversion.term_to_type_result/2: #synonyms = 3
+%   FQ_DU_CTOR mercury_term_lexer.error/1 for
+%       type mercury_term_lexer.token/0: #synonyms = 3
 %
 % Note that *all* of the names that had 18 or more du_ctors were either
 % "error" or "ok".

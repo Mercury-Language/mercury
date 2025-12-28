@@ -210,8 +210,8 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn,
         % The same issue arises for some of the other kinds of types.
     ;
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeUserEqComp,
-            MaybeRepn, _Foreign),
+        TypeBodyDu = type_body_du(_Ctors, _AlphaSortedCtors, MaybeSuperType,
+            MaybeUserEqComp, MaybeRepn, _Foreign),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

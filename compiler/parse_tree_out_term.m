@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2020-2024 The Mercury team.
+% Copyright (C) 2015-2017, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -398,11 +398,11 @@ mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_var_to_name_only(VarSet, Var) =
-    mercury_var_to_string(VarSet, print_name_only, Var).
+mercury_var_to_name_only(VarTable, Var) =
+    mercury_var_to_string(VarTable, print_name_only, Var).
 
-mercury_vars_to_name_only(VarSet, Vars) =
-    mercury_vars_to_string(VarSet, print_name_only, Vars).
+mercury_vars_to_name_only(VarTable, Vars) =
+    mercury_vars_to_string(VarTable, print_name_only, Vars).
 
 %---------------------%
 

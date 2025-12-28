@@ -1,0 +1,24 @@
+This file documents the Linux/x86 and Linux/x86_64 ports.
+For the Linux/AArch64 (ARM64) port, see README.Linux-aarch64.
+For the Linux/PowerPC port, see README.Linux-PPC.
+(Ports to Linux on other architectures have not yet
+been attempted, but should not be difficult.)
+
+
+BUILDING A 32-BIT MERCURY COMPILER ON 64-BIT LINUX
+==================================================
+
+To build a 32-bit Mercury compiler on 64-bit Linux, follow these steps:
+
+(1) Ensure that the 32-bit (e.g. i686 etc) packages for the C compiler and
+    libraries are available on the build system.
+
+(2) Ensure that you have a working Mercury compiler in your PATH
+    to bootstrap from.
+
+(3) Run aclocal -I m4; autoconf as normal. Then invoke configure
+    as follows:
+
+        $ ./configure --host=i686-pc-linux-gnu --with-cc="gcc -m32"
+
+(4) Do mmake; mmake install as normal.

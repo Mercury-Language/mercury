@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.goal_expr_to_goal.
 :- interface.
@@ -16,7 +16,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type loc_kind
     --->    loc_whole_goal
@@ -38,8 +38,8 @@
     goal::in, hlds_goal::out, svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -86,7 +86,7 @@
 :- import_module term_context.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !UrInfo) :-
@@ -218,7 +218,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
             Goal, HLDSGoal, !SVarState, !UrInfo)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_unify_expr for goal/0
     --->    unify_expr(ground, ground, ground, ground).
@@ -253,7 +253,7 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Renaming, Goal, HLDSGoal,
         svar_finish_atomic_goal(LocKind, !SVarState)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_call_expr for goal/0
     --->    call_expr(ground, ground, ground, ground).
@@ -298,21 +298,23 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Renaming, Goal, HLDSGoal,
                 StateVarNameTerms = [variable(_, _)]
             then
                 % This is a state var field assignment:
-                % !Var ^ field := Value,
+                %   !Var ^ field := Value
                 % which is defined as
-                % !:Var = !.Var ^ field := Value.
+                %   !:Var = !.Var ^ field := Value
                 transform_state_var_field_assign(LocKind, Renaming, Purity,
                     RHSTerm0, StateVarNameTerms, Remainder,
                     FieldListContext, StateVarContext, Context,
                     HLDSGoal, !SVarState, !UrInfo)
             else
-                % This is a DCG field assignment goal: ^ field := Field
+                % This is a DCG field assignment goal:
+                %   ^ field := Field
                 transform_dcg_record_syntax(LocKind, Renaming, set,
                     ArgTerms1, Context, HLDSGoal, !SVarState, !UrInfo)
             )
         ;
             Name = "=^",
-            % This is a DCG field access goal: Field =^ field
+            % This is a DCG field access goal:
+            %   Field =^ field
             transform_dcg_record_syntax(LocKind, Renaming, get,
                 ArgTerms1, Context, HLDSGoal, !SVarState, !UrInfo)
         )
@@ -565,7 +567,7 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
         ContextPieces = [words("In DCG field extraction goal:"), nl]
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_conj_expr for goal/0
     --->    conj_expr(ground, ground, ground).
@@ -590,7 +592,7 @@ transform_parse_tree_goal_to_hlds_conj(LocKind, Renaming, Goal, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(HLDSConjuncts, GoalInfo, HLDSGoal).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_par_conj_expr for goal/0
     --->    par_conj_expr(ground, ground, ground).
@@ -615,7 +617,7 @@ transform_parse_tree_goal_to_hlds_par_conj(LocKind, Renaming, Goal, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     par_conj_list_to_goal(HLDSConjuncts, GoalInfo, HLDSGoal).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % accumulate_plain_or_par_conjunct(LocKind, Renaming, PlainOrPar,
     %   Goal, !HLDSConjunctsCord, ...):
@@ -640,7 +642,7 @@ accumulate_plain_or_par_conjunct(LocKind, Renaming, ConjType,
         cord.snoc(HLDSGoal, !HLDSConjunctsCord)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_disj_expr for goal/0
     --->    disj_expr(ground, ground, ground, ground).
@@ -682,7 +684,7 @@ accumulate_disjunct(LocKind, Renaming, SVarStateBefore, Goal,
     DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
     !:RevDisjStates = [DisjState | !.RevDisjStates].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_ite_expr for goal/0
     --->    if_then_else_expr(ground, ground, ground, ground, ground, ground).
@@ -717,7 +719,7 @@ transform_parse_tree_goal_to_hlds_ite(LocKind, Renaming, Goal, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_not_expr for goal/0
     --->    not_expr(ground, ground).
@@ -739,7 +741,7 @@ transform_parse_tree_goal_to_hlds_not(LocKind, Renaming, Goal, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_equivalent_expr for goal/0
     --->    equivalent_expr(ground, ground, ground).
@@ -767,7 +769,7 @@ transform_parse_tree_goal_to_hlds_equivalent(LocKind, Renaming, Goal, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_quant_expr for goal/0
     --->    quant_expr(ground, ground, ground, ground, ground).
@@ -823,7 +825,7 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Renaming, Goal, HLDSGoal,
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_try_expr for goal/0
     --->    try_expr(ground, ground, ground, ground, ground, ground, ground).
@@ -839,6 +841,11 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Renaming, Goal, HLDSGoal,
     Goal = try_expr(Context, MaybeIO0, SubGoal0, Then0, MaybeElse0,
         Catches0, MaybeCatchAny0),
     (
+        MaybeIO0 = no,
+        transform_try_expr_without_io(LocKind, Renaming, SubGoal0, Then0,
+            MaybeElse0, Catches0, MaybeCatchAny0, Context, HLDSGoal,
+            !SVarState, !UrInfo)
+    ;
         MaybeIO0 = yes(IOStateVar0),
         (
             MaybeElse0 = no,
@@ -859,12 +866,106 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Renaming, Goal, HLDSGoal,
             add_unravel_spec(Spec, !UrInfo),
             HLDSGoal = true_goal_with_context(Context)
         )
-    ;
-        MaybeIO0 = no,
-        transform_try_expr_without_io(LocKind, Renaming, SubGoal0, Then0,
-            MaybeElse0, Catches0, MaybeCatchAny0, Context, HLDSGoal,
-            !SVarState, !UrInfo)
     ).
+
+%---------------------%
+
+    % Transform a try_expr which does not need I/O.
+    %
+    % If the try goal has an else part, the end result looks like:
+    %
+    %   magic_exception_result(TryResult),
+    %   (
+    %       TryResult = succeeded({}),
+    %       ( if Goal then
+    %           Then
+    %       else
+    %           Else
+    %       )
+    %   ;
+    %       TryResult = exception(Excp),
+    %       ExcpHandling
+    %   )
+    %
+    % If the try goal does not have an else part, the end result looks like:
+    %
+    %   magic_exception_result(TryResult),
+    %   (
+    %       TryResult = succeeded({}),
+    %       some [] ( Goal ),
+    %       some [] ( Then )
+    %   ;
+    %       TryResult = exception(Excp),
+    %       ExcpHandling
+    %   )
+    %
+:- pred transform_try_expr_without_io(loc_kind::in, prog_var_renaming::in,
+    goal::in, goal::in, maybe(goal)::in, list(catch_expr)::in,
+    maybe(catch_any_expr)::in, prog_context::in, hlds_goal::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+
+transform_try_expr_without_io(LocKind, Renaming, SubGoal, ThenGoal,
+        MaybeElseGoal, Catches, MaybeCatchAny, Context, TryGoal,
+        !SVarState, !UrInfo) :-
+    create_new_named_unravel_var("TryResult", ResultVar, !UrInfo),
+    create_new_unravel_var(ExcpVar, !UrInfo),
+
+    ResultVarTerm = variable(ResultVar, Context),
+    ExcpVarTerm = variable(ExcpVar, Context),
+    NullTupleTerm = functor(atom("{}"), [], Context),
+
+    goal_info_init(Context, GoalInfo),
+
+    % Build the call to magic_exception_result.
+    CallMagicGoal = call_expr(Context, magic_exception_result_sym_name,
+        [ResultVarTerm], purity_pure),
+
+    % Build "TryResult = succeeded({}), ..." disjunct.
+    ResultIsSucceededUnifyGoal = unify_expr(Context,
+        ResultVarTerm,
+        exception_functor("succeeded", NullTupleTerm, Context),
+        purity_pure),
+    (
+        MaybeElseGoal = yes(ElseGoal),
+        SucceededSubGoal = if_then_else_expr(Context, [], [],
+            SubGoal, ThenGoal, ElseGoal)
+    ;
+        MaybeElseGoal = no,
+        SucceededSubGoal =
+            conj_expr(Context,
+                quant_expr(quant_some, quant_ordinary_vars, Context, [],
+                    SubGoal),
+                [quant_expr(quant_some, quant_ordinary_vars, Context, [],
+                    ThenGoal)]
+            )
+    ),
+    ResultIsSucceededDisjunctGoal =
+        conj_expr(Context, ResultIsSucceededUnifyGoal, [SucceededSubGoal]),
+
+    % Build the disjunct for "TryResult = exception(Excp), ...".
+    make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm,
+        Catches, MaybeCatchAny, Context, ResultIsExceptionDisjunctGoal),
+
+    % Build the call followed by the disjunction.
+    CallMagicThenDisjunctionGoal =
+        conj_expr(Context,
+            CallMagicGoal,
+            [disj_expr(Context,
+                ResultIsSucceededDisjunctGoal,
+                ResultIsExceptionDisjunctGoal,
+                []
+            )]
+        ),
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        CallMagicThenDisjunctionGoal, HLDSCallMagicThenDisjunctionGoal,
+        !SVarState, !UrInfo),
+
+    ShortHand = try_goal(no, ResultVar, HLDSCallMagicThenDisjunctionGoal),
+    GoalExpr = shorthand(ShortHand),
+    TryGoal = hlds_goal(GoalExpr, GoalInfo).
+
+%---------------------%
 
     % Transform a try_expr which needs to perform I/O. The end result looks
     % like this:
@@ -993,101 +1094,13 @@ transform_try_expr_with_io(LocKind, Renaming, IOStateVarUnrenamed, IOStateVar,
         CallMagicThenDisjunction)),
     TryGoal = hlds_goal(GoalExpr, GoalInfo).
 
-    % Transform a try_expr which does not need I/O.
+%---------------------%
+
+    % make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches,
+    %   MaybeCatchAny, Context, Goal):
     %
-    % If the try goal has an else part, the end result looks like:
-    %
-    %   magic_exception_result(TryResult),
-    %   (
-    %       TryResult = succeeded({}),
-    %       ( if Goal then
-    %           Then
-    %       else
-    %           Else
-    %       )
-    %   ;
-    %       TryResult = exception(Excp),
-    %       ExcpHandling
-    %   )
-    %
-    % If the try goal does not have an else part, the end result looks like:
-    %
-    %   magic_exception_result(TryResult),
-    %   (
-    %       TryResult = succeeded({}),
-    %       some [] ( Goal ),
-    %       some [] ( Then )
-    %   ;
-    %       TryResult = exception(Excp),
-    %       ExcpHandling
-    %   )
-    %
-:- pred transform_try_expr_without_io(loc_kind::in, prog_var_renaming::in,
-    goal::in, goal::in, maybe(goal)::in, list(catch_expr)::in,
-    maybe(catch_any_expr)::in, prog_context::in, hlds_goal::out,
-    svar_state::in, svar_state::out,
-    unravel_info::in, unravel_info::out) is det.
-
-transform_try_expr_without_io(LocKind, Renaming, SubGoal, ThenGoal,
-        MaybeElseGoal, Catches, MaybeCatchAny, Context, TryGoal,
-        !SVarState, !UrInfo) :-
-    create_new_named_unravel_var("TryResult", ResultVar, !UrInfo),
-    create_new_unravel_var(ExcpVar, !UrInfo),
-
-    ResultVarTerm = variable(ResultVar, Context),
-    ExcpVarTerm = variable(ExcpVar, Context),
-    NullTupleTerm = functor(atom("{}"), [], Context),
-
-    goal_info_init(Context, GoalInfo),
-
-    % Build the call to magic_exception_result.
-    CallMagicGoal = call_expr(Context, magic_exception_result_sym_name,
-        [ResultVarTerm], purity_pure),
-
-    % Build "TryResult = succeeded({}), ..." disjunct.
-    ResultIsSucceededUnifyGoal = unify_expr(Context,
-        ResultVarTerm,
-        exception_functor("succeeded", NullTupleTerm, Context),
-        purity_pure),
-    (
-        MaybeElseGoal = yes(ElseGoal),
-        SucceededSubGoal = if_then_else_expr(Context, [], [],
-            SubGoal, ThenGoal, ElseGoal)
-    ;
-        MaybeElseGoal = no,
-        SucceededSubGoal =
-            conj_expr(Context,
-                quant_expr(quant_some, quant_ordinary_vars, Context, [],
-                    SubGoal),
-                [quant_expr(quant_some, quant_ordinary_vars, Context, [],
-                    ThenGoal)]
-            )
-    ),
-    ResultIsSucceededDisjunctGoal =
-        conj_expr(Context, ResultIsSucceededUnifyGoal, [SucceededSubGoal]),
-
     % Build the disjunct for "TryResult = exception(Excp), ...".
-    make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm,
-        Catches, MaybeCatchAny, Context, ResultIsExceptionDisjunctGoal),
-
-    % Build the call followed by the disjunction.
-    CallMagicThenDisjunctionGoal =
-        conj_expr(Context,
-            CallMagicGoal,
-            [disj_expr(Context,
-                ResultIsSucceededDisjunctGoal,
-                ResultIsExceptionDisjunctGoal,
-                []
-            )]
-        ),
-    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
-        CallMagicThenDisjunctionGoal, HLDSCallMagicThenDisjunctionGoal,
-        !SVarState, !UrInfo),
-
-    ShortHand = try_goal(no, ResultVar, HLDSCallMagicThenDisjunctionGoal),
-    GoalExpr = shorthand(ShortHand),
-    TryGoal = hlds_goal(GoalExpr, GoalInfo).
-
+    %
     % NOTE We need to use the context of the overall try goal, and not the
     % context of the goal in the catch scope, for the code we add in front
     % of the catch scope goal to pick up the value of the exception itself.
@@ -1116,7 +1129,7 @@ transform_try_expr_without_io(LocKind, Renaming, SubGoal, ThenGoal,
     % bootcheck to fail while compiling this module for stage 2, because
     %
     % - the predicates called from make_exception_handling_disjunct
-    %   adds a goal to just before the goal in the catch_any scope
+    %   add a goal to just before the goal in the catch_any scope
     %   to pick up the value of Exp;
     %
     % - they used to use the context of that goal as the context
@@ -1157,13 +1170,14 @@ make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches,
 make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
         Context, Goal) :-
     (
-        Catches = [catch_expr(FirstPattern, FirstGoal) | RestCatches],
-        make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, RestCatches,
-            MaybeCatchAny, Context, ElseGoal),
-        make_catch_pattern_unify_goal(FirstPattern, ExcpVarTerm,
-            Context, FirstPatternGoal),
-        Goal = if_then_else_expr(get_term_context(FirstPattern), [], [],
-            FirstPatternGoal, FirstGoal, ElseGoal)
+        Catches = [HeadCatch | TailCatches],
+        HeadCatch = catch_expr(HeadPattern, HeadCatchGoal),
+        make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, TailCatches,
+            MaybeCatchAny, Context, TailCatchesGoal),
+        make_catch_pattern_unify_goal(HeadPattern, ExcpVarTerm,
+            Context, HeadPatternGoal),
+        Goal = if_then_else_expr(get_term_context(HeadPattern), [], [],
+            HeadPatternGoal, HeadCatchGoal, TailCatchesGoal)
     ;
         Catches = [],
         (
@@ -1211,7 +1225,7 @@ exception_functor(Atom, Arg, Context) = Term :-
     SymName = qualified(mercury_exception_module, Atom),
     construct_qualified_term_with_context(SymName, [Arg], Context, Term).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_atomic_expr for goal/0
     --->    atomic_expr(ground, ground, ground, ground, ground, ground).
@@ -1332,7 +1346,7 @@ transform_orelse_goals(LocKind, Renaming, [Goal | Goals],
     transform_orelse_goals(LocKind, Renaming, Goals, DisjStates,
         SVarStateBefore, !UrInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_disable_warnings_expr for goal/0
     --->    disable_warnings_expr(ground, ground, ground, ground).
@@ -1379,7 +1393,7 @@ transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Renaming,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_trace_expr for goal/0
     --->    trace_expr(ground, ground, ground, ground, ground, ground).
@@ -1478,7 +1492,7 @@ extract_trace_io_var(Context, Renaming, VarSet, StateVar0, StateVar,
     GetGoal = call_expr(Context, GetPredName, [SetVar], GetPurity),
     SetGoal = call_expr(Context, SetPredName, [UseVar], SetPurity).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst goal_event_expr for goal/0
     --->    event_expr(ground, ground, ground).
@@ -1510,8 +1524,8 @@ transform_parse_tree_goal_to_hlds_event(LocKind, Renaming, Goal, HLDSGoal,
         HLDSGoal0, HLDSGoal, !SVarState, !UrInfo),
     svar_finish_atomic_goal(LocKind, !SVarState).
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred rename_and_maybe_expand_dot_var(prog_context::in,
     must_rename::in, prog_var_renaming::in,
@@ -1530,7 +1544,7 @@ rename_and_maybe_expand_dot_var(Context, MustRename, Renaming, PODVar0, Var,
         lookup_dot_state_var(Context, DotVar, Var, !SVarState, !UrInfo)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred transform_promise_eqv_goal(loc_kind::in, prog_var_renaming::in,
     list(prog_var)::in, list(prog_var)::in,
@@ -1558,7 +1572,7 @@ transform_promise_eqv_goal(LocKind, Renaming, Vars0, StateVars0,
         !SVarState, !UrInfo),
     QuantVars = Vars ++ OldStateVars ++ NewStateVars ++ DotSVars ++ ColonSVars.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Produce an invalid goal.
     %
@@ -1574,6 +1588,6 @@ invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !SVarState, !UrInfo) :-
         not_builtin, MaybeUnifyContext, unqualified(UpdateStr)),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.goal_expr_to_goal.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

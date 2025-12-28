@@ -89,8 +89,6 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -98,6 +96,7 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
@@ -654,7 +653,6 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh), ModuleName,
         FileName, _FileNameProposed, !IO),
-    MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",
     io.open_output(TmpFileName, Result, !IO),
     (
@@ -714,12 +712,11 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
                 "#define ", decl_guard(ModuleName), "\n"], !IO),
             list.foldl(
                 output_exported_c_enum(FileStream, MaybeSetLineNumbers,
-                    MaybeThisFileName),
+                    FileName),
                 CExportedEnums, !IO),
             list.map_foldl(
-                output_foreign_decl(FileStream, MaybeSetLineNumbers,
-                    MaybeThisFileName, SourceFileName,
-                    yes(foreign_decl_is_exported)),
+                output_foreign_decl(FileStream, Globals, MaybeSetLineNumbers,
+                    FileName, SourceFileName, yes(foreign_decl_is_exported)),
                 CForeignDeclCodes, CForeignDeclCodeResults, !IO),
             io.write_string(FileStream, "\n#endif\n", !IO)
         ),
@@ -744,7 +741,7 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
             Errors = [_ | _],
             io.file.remove_file(TmpFileName, _, !IO),
             % report_error sets the exit status.
-            list.foldl(report_error(ProgressStream), Errors, !IO)
+            list.foldl(report_arbitrary_error(ProgressStream), Errors, !IO)
         )
     ;
         Result = error(_),
@@ -773,12 +770,12 @@ write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
     ),
     write_export_decls(Stream, ExportDecls, !IO).
 
-:- pred output_foreign_decl(io.text_output_stream::in,
-    maybe_set_line_numbers::in, maybe(string)::in, string::in,
+:- pred output_foreign_decl(io.text_output_stream::in, globals::in,
+    maybe_set_line_numbers::in, string::in, string::in,
     maybe(foreign_decl_is_local)::in, foreign_decl_code::in, maybe_error::out,
     io::di, io::uo) is det.
 
-output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+output_foreign_decl(Stream, Globals, MaybeSetLineNumbers, ThisFileName,
         SourceFileName, MaybeDesiredIsLocal, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $pred, "Lang != lang_c"),
@@ -790,38 +787,37 @@ output_foreign_decl(Stream, MaybeSetLineNumbers, MaybeThisFileName,
             DesiredIsLocal = IsLocal
         )
     then
-        output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
-            MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
+        output_foreign_literal_or_include(Stream, Globals, MaybeSetLineNumbers,
+            ThisFileName, SourceFileName, LiteralOrInclude, Context,
             Res, !IO)
     else
         Res = ok
     ).
 
 :- pred output_foreign_literal_or_include(io.text_output_stream::in,
-    maybe_set_line_numbers::in, maybe(string)::in, string::in,
+    globals::in, maybe_set_line_numbers::in, string::in, string::in,
     foreign_literal_or_include::in, prog_context::in, maybe_error::out,
     io::di, io::uo) is det.
 
-output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
-        MaybeThisFileName, SourceFileName, LiteralOrInclude, Context,
-        Res, !IO) :-
+output_foreign_literal_or_include(Stream, Globals, MaybeSetLineNumbers,
+        ThisFileName, SourceFileName, LiteralOrInclude, Context,
+        Result, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        File = term_context.context_file(Context),
-        Line = term_context.context_line(Context),
+        Context = context(File, Line),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
             !IO),
         io.write_string(Stream, Code, !IO),
-        Res = ok
+        Result = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, IncludePath, 1,
             !IO),
-        write_include_file_contents(Stream, IncludePath, Res, !IO)
+        write_include_file_contents(Stream, Globals, IncludePath, Result, !IO)
     ),
     io.nl(Stream, !IO),
-    c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+    c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers, ThisFileName,
         !IO).
 
 %-----------------------------------------------------------------------------%
@@ -950,10 +946,10 @@ exported_enum_is_for_c(ExportedEnumInfo) :-
     ExportedEnumInfo ^ eei_language = lang_c.
 
 :- pred output_exported_c_enum(io.text_output_stream::in,
-    maybe_set_line_numbers::in, maybe(string)::in,
+    maybe_set_line_numbers::in, string::in,
     exported_enum_info::in, io::di, io::uo) is det.
 
-output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
+output_exported_c_enum(Stream, MaybeSetLineNumbers, ThisFileName,
         ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(_TypeCtor, CtorRepns, Lang,
         NameMapping, Context),
@@ -966,7 +962,7 @@ output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO),
     output_exported_enum_constname_tags(Stream, ForeignNamesAndTags, !IO),
     c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,
-        MaybeThisFileName, !IO).
+        ThisFileName, !IO).
 
     % Values of this type associate the foreign name of an exported
     % enum constructor with the foreign tag of that constructor.

@@ -1,38 +1,41 @@
-# vim: ts=4 sw=4 expandtab
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
-MCFLAGS-abstract_instance_helper_1  += --infer-all
-MCFLAGS-abstract_instance_helper_1  += --no-inform-inferred-types
-MCFLAGS-abstract_instance_helper_1  += --no-inform-inferred-modes
+MCFLAGS-abstract_instance_helper_1      += --infer-all
+MCFLAGS-abstract_instance_helper_1      += --no-inform-inferred-types
+MCFLAGS-abstract_instance_helper_1      += --no-inform-inferred-modes
 
-MCFLAGS-complicated_constraint      += --no-inlining \
-    --user-guided-type-specialization
+MCFLAGS-complicated_constraint          += --no-inlining
+MCFLAGS-complicated_constraint          += --user-guided-type-specialization
 
-MCFLAGS-existential_type_classes    += --infer-all
-MCFLAGS-existential_type_classes    +=  --no-inform-inferred-types
-MCFLAGS-extra_typeinfo              += --optimize-higher-order \
-    --no-type-specialization --body-typeinfo-liveness
-MCFLAGS-inference_test_1            += --infer-all
-MCFLAGS-inference_test_1            += --no-inform-inferred-types
-MCFLAGS-inference_test_1            += --no-inform-inferred-modes
-MCFLAGS-inference_test_2            += --infer-all
-MCFLAGS-inference_test_2            += --no-inform-inferred-types
-MCFLAGS-inference_test_2            += --no-inform-inferred-modes
-MCFLAGS-intermod_typeclass_bug      += --intermodule-optimization
-MCFLAGS-intermod_typeclass_bug_helper_1 += --intermodule-optimization
-MCFLAGS-lambda_multi_constraint_same_tvar += --infer-all
-MCFLAGS-lambda_multi_constraint_same_tvar += --no-inform-inferred-types
-MCFLAGS-lambda_multi_constraint_same_tvar += --no-inform-inferred-modes
-MCFLAGS-module_test_helper_1        += --no-inform-inferred-types
-MCFLAGS-module_test_helper_1        += --no-inform-inferred-modes
-MCFLAGS-no_fundep_infer             += --infer-all
-MCFLAGS-no_fundep_infer             += --no-inform-inferred-types
+MCFLAGS-existential_type_classes        += --infer-all
+MCFLAGS-existential_type_classes        +=  --no-inform-inferred-types
+MCFLAGS-extra_typeinfo                  += --optimize-higher-order
+MCFLAGS-extra_typeinfo                  += --no-type-specialization
+MCFLAGS-extra_typeinfo                  += --body-typeinfo-liveness
+MCFLAGS-inference_test_1                += --infer-all
+MCFLAGS-inference_test_1                += --no-inform-inferred-types
+MCFLAGS-inference_test_1                += --no-inform-inferred-modes
+MCFLAGS-inference_test_2                += --infer-all
+MCFLAGS-inference_test_2                += --no-inform-inferred-types
+MCFLAGS-inference_test_2                += --no-inform-inferred-modes
+MCFLAGS-intermod_typeclass_bug          += --intermodule-optimization
+MCFLAGS-intermod_typeclass_bug_helper_1     += --intermodule-optimization
+MCFLAGS-lambda_multi_constraint_same_tvar   += --infer-all
+MCFLAGS-lambda_multi_constraint_same_tvar   += --no-inform-inferred-types
+MCFLAGS-lambda_multi_constraint_same_tvar   += --no-inform-inferred-modes
+MCFLAGS-module_test_helper_1            += --no-inform-inferred-types
+MCFLAGS-module_test_helper_1            += --no-inform-inferred-modes
+MCFLAGS-no_fundep_infer                 += --infer-all
+MCFLAGS-no_fundep_infer                 += --no-inform-inferred-types
 
 # Check that the exported specialized versions are still created.
-MCFLAGS-type_spec_helper_1          += --no-user-guided-type-specialization
-MCFLAGS-unbound_tvar                += --no-user-guided-type-specialisation
-MCFLAGS-unqualified_method          += --intermodule-optimization
-MCFLAGS-unqualified_method_helper_1 += --intermodule-optimization
-MCFLAGS-unqualified_method_helper_2 += --intermodule-optimization
-MCFLAGS-module_test                 += --infer-all
-MCFLAGS-module_test_helper_1        += --infer-all
-MCFLAGS-module_test_helper_2        += --infer-all
+MCFLAGS-type_spec_helper_1              += --no-user-guided-type-specialization
+MCFLAGS-unbound_tvar                    += --no-user-guided-type-specialisation
+MCFLAGS-unqualified_method              += --intermodule-optimization
+MCFLAGS-unqualified_method_helper_1     += --intermodule-optimization
+MCFLAGS-unqualified_method_helper_2     += --intermodule-optimization
+MCFLAGS-module_test                     += --infer-all
+MCFLAGS-module_test_helper_1            += --infer-all
+MCFLAGS-module_test_helper_2            += --infer-all

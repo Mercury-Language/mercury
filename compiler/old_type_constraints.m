@@ -717,9 +717,9 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
         FunctorTVarSet, NewTVarSet, TVarRenaming),
     !TCInfo ^ tconstr_tvarset := NewTVarSet,
-    prog_type_subst.apply_variable_renaming_to_tvar_list(TVarRenaming,
+    prog_type_subst.apply_renaming_to_tvars(TVarRenaming,
         TypeParams0, TypeParams),
-    prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+    prog_type_subst.apply_renaming_to_types(TVarRenaming,
         FuncArgTypes0, FuncArgTypes),
     Params = list.map(tvar_to_type, TypeParams),
     construct_type(TypeCtor, Params, ResultType),
@@ -750,7 +750,7 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
             PredTVarSet, NewTVarSet, TVarRenaming),
         !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+        prog_type_subst.apply_renaming_to_types(TVarRenaming,
             PredArgTypes0, PredArgTypes),
         ( if
             list.split_list(list.length(ArgTVars), PredArgTypes, HOArgTypes,
@@ -905,7 +905,7 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
             PredTVarSet, NewTVarSet, TVarRenaming),
         !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+        prog_type_subst.apply_renaming_to_types(TVarRenaming,
             PredArgTypes0, PredArgTypes),
         Constraints = list.map_corresponding(create_stconstr, ArgTVars,
             PredArgTypes),
@@ -940,7 +940,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
             PredTVarSet, NewTVarSet, TVarRenaming),
         !TCInfo ^ tconstr_tvarset := NewTVarSet,
-        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+        prog_type_subst.apply_renaming_to_types(TVarRenaming,
             ArgTypes0, ArgTypes),
         list.foldl_corresponding(variable_assignment_constraint(Context),
             ArgVars, ArgTypes, !TCInfo)
@@ -1558,12 +1558,12 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
     else if
         map.search(!.DomainMap, Target, tdomain_singleton(Type0))
     then
-        apply_variable_renaming_to_type(Renaming, Type0, Type),
+        apply_renaming_to_type(Renaming, Type0, Type),
         map.det_update(Target, tdomain_singleton(Type), !DomainMap)
     else if
         map.search(!.DomainMap, Target, tdomain_nonfixed(Types0))
     then
-        set.map(apply_variable_renaming_to_type(Renaming), Types0, Types),
+        set.map(apply_renaming_to_type(Renaming), Types0, Types),
         map.det_update(Target, tdomain_nonfixed(Types), !DomainMap)
     else
         % This will only be reached if there are no constraints on the type of

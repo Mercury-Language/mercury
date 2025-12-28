@@ -55,6 +55,7 @@ BORING_MULTIMODULE_PROGS = \
 
 BORING_SINGLEMODULE_PROGS = \
 	abstract_solver_type \
+	accidental_clause \
 	actual_expected \
 	actual_more_expected \
 	ambiguous_method_1 \
@@ -75,6 +76,7 @@ BORING_SINGLEMODULE_PROGS = \
 	bad_detism \
 	bad_fact_table_data \
 	bad_fact_table_decls \
+	bad_field \
 	bad_format_call \
 	bad_inst_for_type \
 	bad_instance \
@@ -89,7 +91,6 @@ BORING_SINGLEMODULE_PROGS = \
 	bug113 \
 	bug117 \
 	bug150 \
-	bug150_bad_color \
 	bug150_partial_color \
 	bug184 \
 	bug191 \
@@ -195,6 +196,7 @@ BORING_SINGLEMODULE_PROGS = \
 	ho_type_arity_bug \
 	ho_type_mode_bug \
 	ho_unique_error \
+	int_ops \
 	html \
 	impure_method_impl \
 	incompatible_instance_constraints \
@@ -220,6 +222,7 @@ BORING_SINGLEMODULE_PROGS = \
 	merge_ground_any \
 	merge_inst_error \
 	method_impl \
+	missing_closure_arg \
 	missing_concrete_instance \
 	missing_det_decls \
 	mixed_up_streams \
@@ -353,13 +356,6 @@ BORING_SINGLEMODULE_PROGS = \
 	user_field_access_decl_override_2 \
 	wrong_arity_function \
 	wrong_type_arity
-
-#-----------------------------------------------------------------------------#
-
-# The following require that num_tag_bits >= 1.
-# NOTE We don't support reserving tags anymore.
-# RESERVE_TAG_MODULES = \
-# 	reserve_tag
 
 #-----------------------------------------------------------------------------#
 

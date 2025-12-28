@@ -1054,7 +1054,7 @@ is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
 % Please see the comment just above the clause of that predicate.
 
 make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
-    make_standalone_interface_header(ProgressStream, BaseName,
+    make_standalone_interface_header(ProgressStream, Globals, BaseName,
         HdrSucceeded, !IO),
     (
         HdrSucceeded = succeeded,
@@ -1064,9 +1064,10 @@ make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
     ).
 
 :- pred make_standalone_interface_header(io.text_output_stream::in,
-    string::in, maybe_succeeded::out, io::di, io::uo) is det.
+    globals::in, string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_standalone_interface_header(ProgressStream, BaseName, Succeeded, !IO) :-
+make_standalone_interface_header(ProgressStream, Globals,
+        BaseName, Succeeded, !IO) :-
     HdrFileName = BaseName ++ ".h",
     io.open_output(HdrFileName, OpenResult, !IO),
     (
@@ -1095,8 +1096,9 @@ make_standalone_interface_header(ProgressStream, BaseName, Succeeded, !IO) :-
         io.close_output(HdrFileStream, !IO),
         Succeeded = succeeded
     ;
-        OpenResult = error(Error),
-        report_unable_to_open_file(ProgressStream, HdrFileName, Error, !IO),
+        OpenResult = error(IOError),
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            HdrFileName, IOError, !IO),
         Succeeded = did_not_succeed
     ).
 

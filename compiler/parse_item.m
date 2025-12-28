@@ -133,7 +133,6 @@
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.
@@ -604,7 +603,8 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
             Pieces = [words("Error:")] ++
                 color_as_subject([quote(Functor)]) ++
                 color_as_incorrect([words("is not allowed")]) ++
-                [words("at the beginning of a type class method declaration.")] ++
+                [words("at the beginning of"),
+                words("a type class method declaration.")] ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, FunctorContext,
                 Pieces),
@@ -861,8 +861,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                     words("was created by an obsolete compiler,")] ++
                     color_as_incorrect([words("so it must be rebuilt.")]) ++
                     [nl],
-                Spec = conditional_spec($pred, warn_smart_recompilation, yes,
-                    severity_error, phase_t2pt, [msg(Context, Pieces)]),
+                Severity = severity_error(warn_smart_recompilation),
+                Spec = spec($pred, Severity, phase_t2pt, Context, Pieces),
                 MaybeIOM = ok1(iom_handled_error([Spec]))
             )
         else
@@ -1822,10 +1822,10 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
             MaybeVars = ok1(Vars),
             (
                 QuantType = quant_type_exist,
-                !:ExistQVars = !.ExistQVars ++ cord.from_list(Vars)
+                cord.snoc_list(Vars, !ExistQVars)
             ;
                 QuantType = quant_type_univ,
-                !:UnivQVars = !.UnivQVars ++ cord.from_list(Vars)
+                cord.snoc_list(Vars, !UnivQVars)
             )
         )
     ;

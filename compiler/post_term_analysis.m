@@ -38,14 +38,13 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -257,7 +256,7 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
 
 get_user_unify_compare(ModuleInfo, TypeBody, MaybeCanonical) :-
     (
-        TypeBody = hlds_du_type(type_body_du(_, _, MaybeCanonical, _, _))
+        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeCanonical, _, _))
     ;
         TypeBody = hlds_solver_type(DetailsSolver),
         DetailsSolver = type_details_solver(_, MaybeCanonical)

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2021-2023 The Mercury team.
+% Copyright (C) 2017-2018, 2021-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -336,9 +336,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
-:- import_module check_hlds.type_util.
+:- import_module hlds.mode_top_functor.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -1119,8 +1118,8 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
                 CallerIsDummy = is_not_dummy_type,
                 CallerVarRval = ml_lval(CallerVarLval)
             ),
-            ml_gen_box_or_unbox_rval(ModuleInfo, CallerType, CalleeType,
-                bp_native_if_possible, CallerVarRval, ArgRval),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, CallerType, CalleeType,
+                CallerVarRval, ArgRval),
             !:InputRvals = [ArgRval | !.InputRvals]
         ;
             CalleeArgTopFunctorMode = top_out,

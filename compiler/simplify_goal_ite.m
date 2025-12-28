@@ -44,12 +44,12 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_goal.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.
@@ -424,8 +424,8 @@ warn_switch_for_ite_cond(ModuleInfo, VarTable, Cond, !CondCanSwitch) :-
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, _MaybeSuperType, _MaybeUserEq,
-            _MaybeRepn, _MaybeForeignType),
+        TypeBodyDu = type_body_du(Ctors, _AlphaSortedCtors, _MaybeSuperType,
+            _MaybeUserEq, _MaybeRepn, _MaybeForeignType),
         % We don't care about _MaybeUserEq, since the unification with *any*
         % functor of the type indicates that we are deconstructing the physical
         % representation, not the logical value.

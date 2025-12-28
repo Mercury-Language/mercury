@@ -398,8 +398,7 @@ output_current_vars(VarList, StringList, OutputStream, !IO) :-
     "ML_DI_output_current_nth_var").
 
 :- pred output_current_nth_var(univ::in, io.text_output_stream::in,
-    io::di, io::uo)
-    is det.
+    io::di, io::uo) is det.
 
 output_current_nth_var(Var, OutputStream, !IO) :-
     Response = response_current_nth_var(Var),
@@ -555,8 +554,7 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
 :- pred read_request_from_socket(io.text_input_stream::in,
     debugger_request::out, int::out, io::di, io::uo) is det.
 
-:- pragma foreign_export("C",
-    read_request_from_socket(in, out, out, di, uo),
+:- pragma foreign_export("C", read_request_from_socket(in, out, out, di, uo),
     "ML_DI_read_request_from_socket").
 
 read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
@@ -675,16 +673,16 @@ classify_request(retry, 9).
 classify_request(stack, 10).
 classify_request(nondet_stack, 11).
 classify_request(stack_regs, 12).
-classify_request(query(_),13).
-classify_request(cc_query(_),14).
-classify_request(io_query(_),15).
-classify_request(mmc_options(_),16).
-classify_request(browse(_),17).
-classify_request(link_collect(_),18).
-classify_request(collect,19).
-classify_request(current_grade,20).
-classify_request(collect_arg_on,21).
-classify_request(collect_arg_off,22).
+classify_request(query(_), 13).
+classify_request(cc_query(_), 14).
+classify_request(io_query(_), 15).
+classify_request(mmc_options(_), 16).
+classify_request(browse(_), 17).
+classify_request(link_collect(_), 18).
+classify_request(collect, 19).
+classify_request(current_grade, 20).
+classify_request(collect_arg_on, 21).
+classify_request(collect_arg_off, 22).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.debugger_interface.

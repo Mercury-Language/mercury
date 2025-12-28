@@ -196,10 +196,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
@@ -209,12 +206,15 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_lookup.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -325,7 +325,7 @@ is_direct_arg_in_out_posn(ModuleInfo, VarTypes, Var, Mode, IsDAIO) :-
         get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_, _, _, MaybeRepn, _),
+            TypeBodyDu = type_body_du(_, _, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -1433,7 +1433,7 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
             search_type_ctor_defn(TypeTable, ConsIdTypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeBody),
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(_, _, _, MaybeRepn, _),
+            TypeBodyDu = type_body_du(_, _, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2005-2006, 2008 The University of Melbourne.
-% Copyright (C) 2015, 2017 The Mercury team.
+% Copyright (C) 2015, 2017, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,13 +35,22 @@
 
 :- implementation.
 
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 split(Str0, SplitChar, Strs) :-
     string.to_char_list(Str0, Chars0),
-    split_2(Chars0, SplitChar, Strs).
+    split_2(Chars0, SplitChar, StrsA),
+    StrsB = string.split_at_char(SplitChar, Str0),
+    ( if StrsA = StrsB then
+        Strs = StrsA
+    else
+        string.format("split(%s) yields both %s and %s",
+            [s(Str0), s(string(StrsA)), s(string(StrsB))], Msg),
+        unexpected($pred, Msg)
+    ).
 
 :- pred split_2(list(char)::in, char::in, list(string)::out) is det.
 

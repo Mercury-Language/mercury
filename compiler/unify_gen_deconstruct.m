@@ -43,12 +43,11 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.unify_gen_test.
@@ -411,8 +410,8 @@ generate_deconstruct_tagword_unify_args(NonLocals, LHSRval,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth, ArgMode,
-        FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
+generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth,
+        ArgMode, FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     get_module_info(CI, ModuleInfo),
     get_var_table(CI, VarTable),

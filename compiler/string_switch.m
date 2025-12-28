@@ -640,8 +640,7 @@ construct_string_trie_several_soln_lookup_vector(NumLaterColumns,
         LastRowRval = const(llconst_int(LastRowOffset)),
         MainRowRvals = [FirstRowRval, LastRowRval | FirstSolnRvals],
         !:LaterNextRowNum = !.LaterNextRowNum + NumLaterSolns,
-        !:LaterSolnsRowsCord =
-            !.LaterSolnsRowsCord ++ cord.from_list(LaterSolns)
+        cord.snoc_list(LaterSolns, !LaterSolnsRowsCord)
     ),
     cord.snoc(MainRowRvals, !MainRvalsCord),
     construct_string_trie_several_soln_lookup_vector(NumLaterColumns,

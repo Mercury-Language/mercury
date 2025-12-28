@@ -76,13 +76,13 @@ find_transitive_module_dependencies(ProgressStream, Globals, WhichDeps,
         !Info, !IO) :-
     Key = trans_prereqs_key(ModuleIndex, WhichDeps, ProcessModulesWhere),
     ( if search_trans_prereqs_cache(!.Info, Key, Result0) then
-        Result0 = deps_result(Succeeded, ModuleIndexSet)
+        Result0 = prereqs_result(Succeeded, ModuleIndexSet)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
         find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
             WhichDeps, ProcessModulesWhere, Globals, ModuleIndex,
             Succeeded, index_set_init, ModuleIndexSet, !Info, !IO),
-        Result = deps_result(Succeeded, ModuleIndexSet),
+        Result = prereqs_result(Succeeded, ModuleIndexSet),
         add_to_trans_prereqs_cache(Key, Result, !Info)
     ).
 
@@ -102,11 +102,10 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         Succeeded = succeeded,
         ModuleIndexSet = ModuleIndexSet0
     else if
-        Key = trans_prereqs_key(ModuleIndex, WhichDeps,
-            ProcessModulesWhere),
+        Key = trans_prereqs_key(ModuleIndex, WhichDeps, ProcessModulesWhere),
         search_trans_prereqs_cache(!.Info, Key, Result0)
     then
-        Result0 = deps_result(Succeeded, ModuleIndexSet1),
+        Result0 = prereqs_result(Succeeded, ModuleIndexSet1),
         index_set_union(ModuleIndexSet0, ModuleIndexSet1, ModuleIndexSet)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
@@ -235,7 +234,7 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 acc_module_index_trans_prereqs(_, _, _, _, _, [],
-        !Succeeded, !Deps, !Info, !IO).
+        !Succeeded, !ModuleIndexSet, !Info, !IO).
 acc_module_index_trans_prereqs(ProgressStream, Globals, KeepGoing,
         WhichDeps, ProcessModulesWhere, [HeadModuleIndex | TailModuleIndexes],
         !Succeeded, !ModuleIndexSet, !Info, !IO) :-

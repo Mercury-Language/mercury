@@ -28,6 +28,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module one_or_more_map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -181,7 +182,7 @@
 % The table for field names.
 %
 
-:- type ctor_field_table == map(sym_name, list(hlds_ctor_field_defn)).
+:- type ctor_field_table == one_or_more_map(sym_name, hlds_ctor_field_defn).
 
 :- type hlds_ctor_field_defn
     --->    hlds_ctor_field_defn(

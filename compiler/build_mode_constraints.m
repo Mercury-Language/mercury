@@ -189,10 +189,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.inst_test.
+:- import_module hlds.mode_util.
 :- import_module hlds.var_table_hlds.
 
 :- import_module bool.

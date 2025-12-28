@@ -117,6 +117,8 @@
 :- type handle
     --->    handle(c_pointer).
 
+%---------------------%
+
 :- pred is_null(c_pointer::in) is semidet.
 :- pragma no_determinism_warning(pred(is_null/1)).
 
@@ -128,7 +130,9 @@
 ").
 
 is_null(_) :-
-    private_builtin.sorry("is_null").
+    private_builtin.sorry($pred).
+
+%---------------------%
 
 open(FileName, Mode, Scope, Result, !IO) :-
     dlopen(FileName, Mode, Scope, Pointer, !IO),
@@ -138,6 +142,8 @@ open(FileName, Mode, Scope, Result, !IO) :-
     else
         Result = dl_ok(handle(Pointer))
     ).
+
+%---------------------%
 
 :- pred dlopen(string::in, link_mode::in, scope::in, c_pointer::out,
     io::di, io::uo) is det.
@@ -153,7 +159,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLOPEN) \
  && defined(RTLD_NOW) && defined(RTLD_LAZY)
     int mode = (Mode ? RTLD_NOW : RTLD_LAZY);
-    /* not all systems have RTLD_GLOBAL */
+    // not all systems have RTLD_GLOBAL
     #ifdef RTLD_GLOBAL
       if (Scope) mode |= RTLD_GLOBAL;
     #endif
@@ -164,12 +170,16 @@ open(FileName, Mode, Scope, Result, !IO) :-
 }").
 
 dlopen(_, _, _, _, _, _) :-
-    private_builtin.sorry("dlopen").
+    private_builtin.sorry($pred).
+
+%---------------------%
 
 :- pragma foreign_decl("C",
 "
 #include ""mercury_ho_call.h""
 ").
+
+%---------------------%
 
     % Convert the given procedure address to a closure.
     %
@@ -186,7 +196,9 @@ dlopen(_, _, _, _, _, _) :-
 }").
 
 make_closure(_) = _ :-
-    private_builtin.sorry("make_closure").
+    private_builtin.sorry($pred).
+
+%---------------------%
 
     % Check that the result type matches the information in the
     % procedure specification.
@@ -309,6 +321,8 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
         Result = dl_ok(Closure)
     ).
 
+%---------------------%
+
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
     io::di, io::uo) is det.
 :- pragma no_determinism_warning(pred(dlsym/5)).
@@ -325,7 +339,9 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 }").
 
 dlsym(_, _, _, _, _) :-
-    private_builtin.sorry("dlsym").
+    private_builtin.sorry($pred).
+
+%---------------------%
 
 :- pred dlerror(string::out, io::di, io::uo) is det.
 :- pragma no_determinism_warning(pred(dlerror/3)).
@@ -348,12 +364,16 @@ dlsym(_, _, _, _, _) :-
 }").
 
 dlerror(_, _, _) :-
-    private_builtin.sorry("dlerror").
+    private_builtin.sorry($pred).
+
+%---------------------%
 
 close(handle(Handle), Result, !IO) :-
     dlclose(Handle, !IO),
     dlerror(ErrorMsg, !IO),
     Result = (if ErrorMsg = "" then dl_ok else dl_error(ErrorMsg)).
+
+%---------------------%
 
 :- pred dlclose(c_pointer::in, io::di, io::uo) is det.
 :- pragma no_determinism_warning(pred(dlclose/3)).
@@ -371,7 +391,7 @@ close(handle(Handle), Result, !IO) :-
 ").
 
 dlclose(_, _, _) :-
-    private_builtin.sorry("dlclose").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 
@@ -390,7 +410,7 @@ dlclose(_, _, _) :-
 ").
 
 high_level_code :-
-    private_builtin.sorry("high_level_code").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.dl.

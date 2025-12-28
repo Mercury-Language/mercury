@@ -58,8 +58,8 @@
 
     % Write the contents of the given file to the specified output stream.
     %
-:- pred write_include_file_contents(io.text_output_stream::in, string::in,
-    maybe_error::out, io::di, io::uo) is det.
+:- pred write_include_file_contents(io.text_output_stream::in, globals::in,
+    string::in, maybe_error::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -104,15 +104,35 @@
 
 %---------------------------------------------------------------------------%
 
-    % Report why the file is not able to be opened to the specified stream,
-    % set the exit status to 1.
+    % msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg):
+    % msg_for_cannot_open_file_for_output(Globals, FileName, ErrorMsg):
     %
-:- pred report_unable_to_open_file(io.text_output_stream::in, string::in,
-    io.error::in, io::di, io::uo) is det.
+    % Return the error message we should print for when an attempt
+    % to open FileName for input or output results in the error
+    % described by ErrorMsg.
+    %
+    % If the canonicalize_error_path_names option is given, then
+    % delete the parts of path names in error messages that cause
+    % unnecessary differences between .err and .err_exp* files
+    % in our test suite.
+    %
+:- func msg_for_cannot_open_file_for_input(globals, file_name, string)
+    = string.
+:- func msg_for_cannot_open_file_for_output(globals, file_name, string)
+    = string.
+
+    % Print a report to the specified stream about not being able
+    % to open the named file. Set the exit status to indicate
+    % an error exit.
+    %
+:- pred report_cannot_open_file_for_input(io.text_output_stream::in,
+    globals::in, file_name::in, io.error::in, io::di, io::uo) is det.
+:- pred report_cannot_open_file_for_output(io.text_output_stream::in,
+    globals::in, file_name::in, io.error::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred report_error(io.text_output_stream::in, string::in,
+:- pred report_arbitrary_error(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -184,10 +204,8 @@ write_string_to_file(ProgressStream, Globals, FileNameMsg,
         OpenFileResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.format("error opening file `%s' for output: %s",
-            [s(FileName), s(IOErrorMessage)], ErrorMessage),
-        report_error(ProgressStream, ErrorMessage, !IO),
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            FileName, IOError, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -201,9 +219,9 @@ output_to_file_stream(ProgressStream, Globals, FileName, Action0,
     string.format("%% Writing to file `%s'...\n", [s(FileName)], WritingMsg),
     maybe_write_string(ProgressStream, Verbose, WritingMsg, !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
-    io.open_output(FileName, Res, !IO),
+    io.open_output(FileName, OpenResult, !IO),
     (
-        Res = ok(FileStream),
+        OpenResult = ok(FileStream),
         Action =
             ( pred(E::out, S0::di, S::uo) is det :-
                 call(Action0, FileStream, E, S0, S)
@@ -223,7 +241,8 @@ output_to_file_stream(ProgressStream, Globals, FileName, Action0,
             ;
                 Errors = [_ | _],
                 maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-                list.foldl(report_error(ProgressStream), Errors, !IO),
+                list.foldl(report_arbitrary_error(ProgressStream),
+                    Errors, !IO),
                 Succeeded = did_not_succeed
             )
         ;
@@ -231,40 +250,44 @@ output_to_file_stream(ProgressStream, Globals, FileName, Action0,
             rethrow(TryResult)
         )
     ;
-        Res = error(_),
+        OpenResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-        ErrorMessage =
-            string.format("can't open file `%s' for output.", [s(FileName)]),
-        report_error(ProgressStream, ErrorMessage, !IO),
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            FileName, IOError, !IO),
         Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
 
-write_include_file_contents(OutputStream, FileName, Res, !IO) :-
+write_include_file_contents(OutputStream, Globals, FileName, Result, !IO) :-
     FollowSymLinks = yes,
     io.file.file_type(FollowSymLinks, FileName, MaybeFileType, !IO),
     (
         MaybeFileType = ok(FileType),
         ( if possibly_regular_file(FileType) then
-            copy_file_to_stream(FileName, OutputStream, CopyRes, !IO),
+            copy_file_to_stream(FileName, OutputStream, CopyResult, !IO),
             (
-                CopyRes = ok,
-                Res = ok
+                CopyResult = ok,
+                Result = ok
             ;
-                CopyRes = error(Error),
-                Message = io.error_message(Error),
-                Res = error(cannot_open_file_for_input(FileName, Message))
+                CopyResult = error(Error),
+                ErrorMsg = io.error_message(Error),
+                Msg = msg_for_cannot_open_file_for_input(Globals,
+                    FileName, ErrorMsg),
+                Result = error(Msg)
             )
         else
-            Message = "Not a regular file",
-            Res = error(cannot_open_file_for_input(FileName, Message))
+            NotRegular = "Not a regular file",
+            Msg = msg_for_cannot_open_file_for_input(Globals,
+                FileName, NotRegular),
+            Result = error(Msg)
         )
     ;
         MaybeFileType = error(FileTypeError),
-        Message = string.remove_prefix_if_present("can't find file type: ",
+        ErrorMsg = string.remove_prefix_if_present("can't find file type: ",
             io.error_message(FileTypeError)),
-        Res = error(cannot_open_file_for_input(FileName, Message))
+        Msg = msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg),
+        Result = error(Msg)
     ).
 
 :- pred copy_file_to_stream(string::in, io.text_output_stream::in, io.res::out,
@@ -311,11 +334,6 @@ copy_stream(InputStream, OutputStream, Res, !IO) :-
 
 possibly_regular_file(regular_file).
 possibly_regular_file(unknown).
-
-:- func cannot_open_file_for_input(string, string) = string.
-
-cannot_open_file_for_input(FileName, Error) =
-    string.format("can't open `%s' for input: %s", [s(FileName), s(Error)]).
 
 %---------------------------------------------------------------------------%
 
@@ -377,14 +395,71 @@ maybe_flush_output_to_stream(no, !IO).
 
 %---------------------------------------------------------------------------%
 
-report_unable_to_open_file(ProgressStream, FileName, IOErr, !IO) :-
-    io.format(ProgressStream, "Unable to open file '%s': %s\n",
-        [s(FileName), s(io.error_message(IOErr))], !IO),
+msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg) = Msg :-
+    string.format("can't open `%s' for input: %s",
+        [s(FileName), s(ErrorMsg)], Msg0),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
+
+msg_for_cannot_open_file_for_output(Globals, FileName, ErrorMsg) = Msg :-
+    string.format("can't open `%s' for output: %s",
+        [s(FileName), s(ErrorMsg)], Msg0),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
+
+:- pred maybe_canonicalize_error_path_names(globals::in,
+    string::in, string::out) is det.
+
+maybe_canonicalize_error_path_names(Globals, Msg0, Msg) :-
+    globals.lookup_bool_option(Globals, canonicalize_error_path_names, Canon),
+    (
+        Canon = no,
+        Msg = Msg0
+    ;
+        Canon = yes,
+        % ZZZ string.replace_all(Msg0, "`", "'", Msg1),
+        QuoteChunks0 = string.split_at_char('\'', Msg0),
+        canonicalize_quote_chunks(QuoteChunks0, QuoteChunks),
+        Msg = string.join_list("'", QuoteChunks)
+    ).
+
+:- pred canonicalize_quote_chunks(list(string)::in, list(string)::out) is det.
+
+canonicalize_quote_chunks([], []).
+canonicalize_quote_chunks([QChunk0 | QChunks0], [QChunk | QChunks]) :-
+    ( if string.remove_prefix("./", QChunk0, FileName) then
+        QChunk = FileName
+    else if string.remove_prefix(".\\", QChunk0, FileName) then
+        QChunk = FileName
+    else if string.remove_prefix("/", QChunk0, PathName) then
+        PathNameComponents = string.split_at_char('/', PathName),
+        ( if list.last(PathNameComponents, LastComponent) then
+            QChunk = LastComponent
+        else
+            QChunk = QChunk0
+        )
+    else
+        QChunk = QChunk0
+    ),
+    canonicalize_quote_chunks(QChunks0, QChunks).
+
+%---------------------------------------------------------------------------%
+
+report_cannot_open_file_for_input(ProgressStream, Globals,
+        FileName, IOError, !IO) :-
+    IOErrorMsr = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_input(Globals, FileName, IOErrorMsr),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_output(ProgressStream, Globals,
+        FileName, IOError, !IO) :-
+    IOErrorMsr = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_output(Globals, FileName, IOErrorMsr),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
 
-report_error(Stream, ErrorMessage, !IO) :-
+report_arbitrary_error(Stream, ErrorMessage, !IO) :-
     io.format(Stream, "Error: %s\n", [s(ErrorMessage)], !IO),
     io.flush_output(Stream, !IO),
     io.set_exit_status(1, !IO).

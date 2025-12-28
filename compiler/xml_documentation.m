@@ -117,14 +117,16 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
                 ModuleInfo),
             write_xml_doc(XmlStream, MIXmlDoc, !IO)
         ;
-            XmlOpenResult = error(Err),
-            report_unable_to_open_file(ProgressStream, XmlFileName,
-                Err, !IO)
+            XmlOpenResult = error(XmlIOError),
+            module_info_get_globals(ModuleInfo, Globals),
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                XmlFileName, XmlIOError, !IO)
         )
     ;
-        SrcResult = error(SrcErr),
-        report_unable_to_open_file(ProgressStream, SrcFileName,
-            SrcErr, !IO)
+        SrcResult = error(SrcIOError),
+        module_info_get_globals(ModuleInfo, Globals),
+        report_cannot_open_file_for_input(ProgressStream, Globals,
+            SrcFileName, SrcIOError, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -421,7 +423,8 @@ type_param_to_xml(TVarset, TVar) = Xml :-
 
 type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
     (
-        TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _)),
+        TypeDefnBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(OoMCtors, _, _, _, _, _),
         Ctors = one_or_more_to_list(OoMCtors),
         Xmls =
             [xml_list("constructors", constructor_to_xml(C, TVarSet), Ctors)]

@@ -58,11 +58,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_contains.
 :- import_module hlds.goal_util.
@@ -75,9 +73,11 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -3867,8 +3867,8 @@ get_enum_max_int_tag(TypeTable, TypeCtor, MaxIntTag) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( if
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeCanonical,
-            MaybeRepn, _MaybeForeign),
+        TypeBodyDu = type_body_du(_Ctors, _AlphaSortedCtors, MaybeSuperType,
+            MaybeCanonical, MaybeRepn, _MaybeForeign),
         MaybeCanonical = canon,
         MaybeRepn = yes(Repn),
         Repn ^ dur_kind = du_type_kind_mercury_enum

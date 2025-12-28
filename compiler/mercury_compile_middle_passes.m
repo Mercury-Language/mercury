@@ -683,7 +683,7 @@ maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO) :-
                 !HLDS)
         ;
             MaybeNumProcMap = error(Msg),
-            report_error(ErrorStream, Msg, !IO)
+            report_arbitrary_error(ErrorStream, Msg, !IO)
         )
     ).
 

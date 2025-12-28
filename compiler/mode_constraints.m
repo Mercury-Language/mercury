@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury Team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,10 +46,8 @@
 :- implementation.
 
 :- import_module check_hlds.build_mode_constraints.
-:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.ordering_mode_constraints.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
@@ -60,6 +58,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_graph.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.var_table_hlds.
@@ -1850,54 +1850,54 @@ generic_call_constrain_var(Var, GoalId, !Constraint, !GCInfo) :-
             { C = C0 ^ var(Vout) ^ not_var(Vgp) }
         ), InstGraph, Var, !Constraint, !GCInfo).
 
-:- pred constrict_to_vars(list(prog_var)::in, set_of_progvar::in,
-    goal_id::in, mode_constraint::in, mode_constraint::out,
-    goal_constraints_info::in, goal_constraints_info::out) is det.
-:- pragma consider_used(pred(constrict_to_vars/7)).
-
-constrict_to_vars(NonLocals, GoalVars, GoalId, !Constraint, !GCInfo) :-
-    get_forward_goal_path_map(!.GCInfo ^ mc_info, ForwardGoalPathMap),
-    !:Constraint = restrict_filter(
-        keep_var(ForwardGoalPathMap, NonLocals, GoalVars, GoalId,
-            !.GCInfo ^ atomic_goals, !.GCInfo ^ inst_graph),
-        !.GCInfo ^ mc_info, !.Constraint).
-
-:- pred keep_var(goal_forward_path_map::in, list(prog_var)::in,
-    set_of_progvar::in, goal_id::in, set(goal_id)::in, inst_graph::in,
-    rep_var::in) is semidet.
-
-keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
-        InstGraph, RepVar) :-
-    (
-        RepVar = _V `at` RepGoalId,
-        set.member(RepGoalId, AtomicGoals)
-    ;
-        (
-            ( RepVar = in(V)
-            ; RepVar = out(V)
-            ; RepVar = V `at` _
-            ),
-            set_of_var.member(GoalVars, V)
-        )
-        =>
-        (
-            list.member(NonLocal, NonLocals),
-            inst_graph.reachable(InstGraph, NonLocal, V)
-            % The call to list.remove_suffix is equivalent to:
-            % list.append([_ | _], GoalPathSteps, RepGoalPathSteps)
-            % I (zs) do not see how that can possibly make sense,
-            % which is why I have disabled this test.
-%           not (
-%               RepVar = _ `at` RepGoalId,
-%               % XXX What higher level operation is being implemented here?
-%               map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
-%               map.lookup(ForwardGoalPathMap, RepGoalId, RepGoalPath),
-%               GoalPath = fgp(GoalPathSteps),
-%               RepGoalPath = fgp(RepGoalPathSteps),
-%               list.remove_suffix(RepGoalPathSteps, GoalPathSteps, [_ | _])
-%           )
-        )
-    ).
+% :- pred constrict_to_vars(list(prog_var)::in, set_of_progvar::in,
+%     goal_id::in, mode_constraint::in, mode_constraint::out,
+%     goal_constraints_info::in, goal_constraints_info::out) is det.
+% :- pragma consider_used(pred(constrict_to_vars/7)).
+%
+% constrict_to_vars(NonLocals, GoalVars, GoalId, !Constraint, !GCInfo) :-
+%     get_forward_goal_path_map(!.GCInfo ^ mc_info, ForwardGoalPathMap),
+%     !:Constraint = restrict_filter(
+%         keep_var(ForwardGoalPathMap, NonLocals, GoalVars, GoalId,
+%             !.GCInfo ^ atomic_goals, !.GCInfo ^ inst_graph),
+%         !.GCInfo ^ mc_info, !.Constraint).
+%
+% :- pred keep_var(goal_forward_path_map::in, list(prog_var)::in,
+%     set_of_progvar::in, goal_id::in, set(goal_id)::in, inst_graph::in,
+%     rep_var::in) is semidet.
+%
+% keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
+%         InstGraph, RepVar) :-
+%     (
+%         RepVar = _V `at` RepGoalId,
+%         set.member(RepGoalId, AtomicGoals)
+%     ;
+%         (
+%             ( RepVar = in(V)
+%             ; RepVar = out(V)
+%             ; RepVar = V `at` _
+%             ),
+%             set_of_var.member(GoalVars, V)
+%         )
+%         =>
+%         (
+%             list.member(NonLocal, NonLocals),
+%             inst_graph.reachable(InstGraph, NonLocal, V)
+%             % The call to list.remove_suffix is equivalent to:
+%             % list.append([_ | _], GoalPathSteps, RepGoalPathSteps)
+%             % I (zs) do not see how that can possibly make sense,
+%             % which is why I have disabled this test.
+% %           not (
+% %               RepVar = _ `at` RepGoalId,
+% %               % XXX What higher level operation is being implemented here?
+% %               map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
+% %               map.lookup(ForwardGoalPathMap, RepGoalId, RepGoalPath),
+% %               GoalPath = fgp(GoalPathSteps),
+% %               RepGoalPath = fgp(RepGoalPathSteps),
+% %               list.remove_suffix(RepGoalPathSteps, GoalPathSteps, [_ | _])
+% %           )
+%         )
+%     ).
 
 :- type sccs == list(list(pred_id)).
 
@@ -2041,9 +2041,9 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalId,
 :- pred share_ho_modes(prog_var::in, prog_var::in, ho_modes::in, ho_modes::out,
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
-share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
-    get_prog_var_level(!.MCI, VarA, A),
-    get_prog_var_level(!.MCI, VarB, B),
+share_ho_modes(VarA, VarB, HoModes0, HoModes, MCI, MCI) :-
+    get_prog_var_level(MCI, VarA, A),
+    get_prog_var_level(MCI, VarB, B),
     ( if map.search(HoModes0, A, AModes) then
         ( if map.search(HoModes0, B, BModes) then
             Modes = list.sort_and_remove_dups(AModes ++ BModes),

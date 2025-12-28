@@ -36,8 +36,8 @@
     globals::out, io::di, io::uo) is det.
 
     % handle_given_options(ProgressStream, DefaultOptionTable,
-    %   EnvOptFileVariables, Args, OptionArgs, NonOptionArgs,
-    %   Specs, Globals, !IO).
+    %   MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir, Args0,
+    %   OptionArgs, Args, Specs, !:Globals, !IO):
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
     maybe_stdlib_grades::in, maybe1(list(string))::in, list(string)::in,
@@ -129,31 +129,7 @@ handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
     ),
     convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
         MaybeStdLibGrades, MaybeError, OptionTable, OptOptions,
-        MaybeEnvOptFileMerStdLibDir, Specs, !:Globals, !IO),
-    (
-        Specs = [_ | _]
-        % Do NOT set the exit status. This predicate may be called before all
-        % the options are known, so the errors may not be valid.
-    ;
-        Specs = [],
-        % XXX Why is this not tested for at the same time as the other reasons
-        % for disabling smart recompilation?
-        globals.get_op_mode(!.Globals, OpMode),
-        globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
-        ( if
-            Smart = yes,
-            OpMode = opm_top_args(OpModeArgs, _),
-            OpModeArgs = opma_augment(opmau_front_and_middle(
-                opfam_target_object_and_executable))
-        then
-            % XXX Currently smart recompilation doesn't check that all the
-            % files needed to link are present and up-to-date, so disable it.
-            disable_smart_recompilation(ProgressStream, "linking",
-                !Globals, !IO)
-        else
-            true
-        )
-    ).
+        MaybeEnvOptFileMerStdLibDir, Specs, !:Globals, !IO).
 
     % process_given_options(DefaultOptionTable, Args,
     %   OptionArgs, NonOptionArgs, MaybeOptionTable, !IO):
@@ -265,8 +241,8 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
         % may or may not cause unbounded stack growth that can cause
         % the machine to thrash itself to death. Ask me how I know :-(
         %
-        % This problem will arise if even check_option_values returns
-        % errors *even for the default option table*. I (zs) cannot remember
+        % This problem will arise if check_option_values returns errors
+        % *even for the default option table*. I (zs) cannot remember
         % this happening with our usual everything-turned-off-by-default
         % option table, but check_option_values now also checks the values
         % of environment variables, and if they contain some errors, then
@@ -1784,7 +1760,6 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   smart_recompilation
     %   transitive_optimization
     %   warn_wrong_module_name
-    %   warn_unused_interface_imports
     %   inform_generated_type_spec_pragmas
     %   detect_stdlib_grades
     %
@@ -1805,20 +1780,19 @@ handle_op_mode_implications(OpMode, !Globals) :-
             OpModeArgs = opma_make_interface(OpModeArgsMI),
             turn_off_all_only_codegen_warnings(halt_at_warn_make_int,
                 !Globals),
+            % NOTE When generating interface files, --smart-recompilation
+            % calls not for *doing* smart recompilation, but *preparing*
+            % for smart recompilation, in the form of generating item
+            % version numbers.
             (
                 ( OpModeArgsMI = omif_int0
                 ; OpModeArgsMI = omif_int1_int2
                 ),
-                % NOTE When generating interface files, --smart-recompilation
-                % calls not for *doing* smart recompilation, but *preparing*
-                % for smart recompilation, in the form of generating item
-                % version numbers.
                 globals.set_option(generate_item_version_numbers,
                     bool(Smart0), !Globals)
             ;
                 OpModeArgsMI = omif_int3,
-                % We never use version number information in `.int3',
-                % `.opt' or `.trans_opt' files.
+                % We never put version numbers into `.int3' files.
                 globals.set_option(generate_item_version_numbers,
                     bool(no), !Globals)
             ),
@@ -1830,6 +1804,7 @@ handle_op_mode_implications(OpMode, !Globals) :-
                 OpModeAugment = opmau_make_plain_opt,
                 turn_off_all_only_codegen_warnings(halt_at_warn_make_opt,
                     !Globals),
+                % We never put version numbers into `.opt' files.
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -1838,6 +1813,7 @@ handle_op_mode_implications(OpMode, !Globals) :-
                     !Globals),
                 turn_off_all_only_codegen_warnings(halt_at_warn_make_opt,
                     !Globals),
+                % We never put version numbers into `.trans_opt' files.
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -1915,6 +1891,10 @@ handle_op_mode_implications(OpMode, !Globals) :-
     % with a call to globals.set_option, because this way, we would get an
     % error message from the compiler if we added a new op_mode and failed to
     % explicitly consider what the value of Smart should be in its switch arm.
+    %
+    % NOTE All the conditions under which we could set Smart to "yes"
+    % should have code covering them in maybe_disable_smart_recompilation
+    % below.
     ( if Smart = Smart0 then
         true
     else
@@ -1970,7 +1950,6 @@ turn_off_all_only_codegen_warnings(HaltAtWarnSrcOpt, !Globals) :-
     %   use_trans_opt_files
     %   verbose_recompilation
     %   warn_missing_trans_opt_files
-    %   warn_unused_interface_imports
     %
 :- pred handle_option_to_option_implications(op_mode::in,
     globals::in, globals::out) is det.
@@ -2044,17 +2023,7 @@ handle_option_to_option_implications(OpMode, !Globals) :-
     % is done when making the `.opt' file. With `--use-opt-files',
     % that doesn't happen.
     % XXX Should that be "with `--no-use-opt-files'"?
-    globals.set_option(use_opt_files, bool(no), !Globals),
-
-    globals.lookup_bool_option(!.Globals, warn_unused_imports, UnusedImports),
-    (
-        UnusedImports = no
-    ;
-        UnusedImports = yes,
-        % warn_unused_interface_imports does *part* of the job
-        % of warn_unused_imports.
-        globals.set_option(warn_unused_interface_imports, bool(no), !Globals)
-    ).
+    globals.set_option(use_opt_files, bool(no), !Globals).
 
     % --use-opt-files implies --no-warn-missing-opt-files since
     % we are expecting some to be missing.
@@ -2065,7 +2034,7 @@ handle_option_to_option_implications(OpMode, !Globals) :-
 %---------------------%
 
     % Options updated:
-    %   none
+    %   smart_recompilation (done inside disable_smart_recompilation)
     %
 :- pred maybe_disable_smart_recompilation(io.text_output_stream::in,
     op_mode::in, globals::in, globals::out, io::di, io::uo) is det.
@@ -2098,20 +2067,40 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
         ),
         % XXX Smart recompilation does not yet work with
         % `--no-target-code-only'. With `--no-target-code-only'
-        % it becomes difficult to work out what all the target files
-        % are and check whether they are up-to-date. By default, mmake always
+        % it becomes difficult to work out what all the target files are
+        % and check whether they are up-to-date. By default, mmake always
         % enables `--target-code-only' and processes the target code file
         % itself, so this isn't a problem.
-        % XXX I (zs) don't believe that mmake sets --target-code-only anymore.
+        %
+        % NOTE "mmc --make" does NOT set --target-code-only, and in fact
+        % it seems that the test cases in tests/recompilation all fail
+        % in Java and C# grades (the grades that always use mmc --make)
+        % due to this code here turning off smart recompilation. Failing
+        % the smart recompilation tests is the *expected* outcome if you
+        % turn off smart recompilation right out of the gate :-(
         ( if
             OpMode = opm_top_args(OpModeArgs, _),
-            OpModeArgs = opma_augment(
-                opmau_front_and_middle(opfam_target_code_only))
+            OpModeArgs = opma_augment(OpModeAugment),
+            OpModeAugment = opmau_front_and_middle(OpModeFrontAndMiddle)
         then
-            true
+            (
+                OpModeFrontAndMiddle = opfam_errorcheck_only,
+                % decide_op_mode should have set Smart to "no" in this op_mode.
+                unexpected($pred, "opfam_errorcheck_only")
+            ;
+                OpModeFrontAndMiddle = opfam_target_code_only
+            ;
+                OpModeFrontAndMiddle = opfam_target_and_object_code_only,
+                disable_smart_recompilation(ProgressStream,
+                    "compiling target language files", !Globals, !IO)
+            ;
+                OpModeFrontAndMiddle = opfam_target_object_and_executable,
+                disable_smart_recompilation(ProgressStream,
+                    "making executables", !Globals, !IO)
+            )
         else
-            disable_smart_recompilation(ProgressStream,
-                "`--no-target-code-only'", !Globals, !IO)
+            % decide_op_mode should have set Smart to "no" in these op_modes.
+            unexpected($pred, "not opmau_front_and_middle")
         )
     ).
 

@@ -354,7 +354,7 @@ ml_global_data_add_rtti_defn(Defn, !GlobalData) :-
 ml_global_data_add_closure_wrapper_func_defns(FuncDefns, !GlobalData) :-
     ml_global_data_get_closure_wrapper_func_defns(!.GlobalData,
         ClosureWrapperDefns0),
-    ClosureWrapperDefns = ClosureWrapperDefns0 ++ cord.from_list(FuncDefns),
+    cord.snoc_list(FuncDefns, ClosureWrapperDefns0, ClosureWrapperDefns),
     ml_global_data_set_closure_wrapper_func_defns(ClosureWrapperDefns,
         !GlobalData).
 
@@ -572,6 +572,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = logical_or
         ; Op = int_cmp(_, _)
         ; Op = int_as_uint_cmp(_)
+        ; Op = in_range
         ; Op = float_cmp(_)
         ; Op = str_cmp(_)
         ; Op = offset_str_eq(_, _)
@@ -688,7 +689,7 @@ ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
             StartRowNum, NumRows),
 
         Rows0 = !.CellGroup ^ mvcg_rows,
-        Rows = Rows0 ++ cord.from_list(RowInitializers),
+        cord.snoc_list(RowInitializers, Rows0, Rows),
         !CellGroup ^ mvcg_rows := Rows,
 
         map.det_update(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),

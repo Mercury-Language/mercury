@@ -1073,7 +1073,7 @@ construct_several_soln_int_lookup_vector(CurIndex, EndVal,
             LastRowRval = const(llconst_int(LastRowOffset)),
             MainRow = [FirstRowRval, LastRowRval | FirstSolnRvals],
             !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
-            !:LaterSolnArray = !.LaterSolnArray ++ cord.from_list(LaterSolns)
+            cord.snoc_list(LaterSolns, !LaterSolnArray)
         ),
         Remainder = Rest
     ),

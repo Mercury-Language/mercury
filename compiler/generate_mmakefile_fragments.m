@@ -397,12 +397,16 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
     construct_subdir_short_rules(Globals, ModuleName,
         MmakeRulesSubDirShorthand, !Cache),
 
-    have_source_file_map(HaveMap, !IO),
-    construct_any_rules_for_nondefault_file_names(HaveMap,
-        ModuleName, SourceFileTopModuleName, SourceFileName,
-        Date0FileName, DateFileName, Date3FileName,
-        OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
-        MmakeRulesPatterns),
+    ( if SourceFileName = default_source_file_name(ModuleName) then
+        MmakeRulesNonDefault = []
+    else
+        have_source_file_map(HaveMap, !IO),
+        construct_rules_for_nondefault_file_names(HaveMap,
+            SourceFileTopModuleName, SourceFileName,
+            Date0FileName, DateFileName, Date3FileName,
+            OptDateFileName, TransOptDateFileName,
+            CDateFileName, JavaDateFileName, MmakeRulesNonDefault)
+    ),
 
     start_mmakefile(!:MmakeFile),
     add_mmake_entry(MmakeStartComment, !MmakeFile),
@@ -418,7 +422,7 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
     add_mmake_entries(MmakeRulesForeignImports, !MmakeFile),
     add_mmake_entries(MmakeRulesInstallShadows, !MmakeFile),
     add_mmake_entries(MmakeRulesSubDirShorthand, !MmakeFile),
-    add_mmake_entries(MmakeRulesPatterns, !MmakeFile).
+    add_mmake_entries(MmakeRulesNonDefault, !MmakeFile).
 
 %---------------------%
 
@@ -1057,79 +1061,80 @@ construct_subdir_short_rules(Globals, ModuleName,
 
 %---------------------%
 
-:- pred construct_any_rules_for_nondefault_file_names(maybe_found::in,
-    module_name::in, module_name::in, string::in,
-    string::in, string::in, string::in,
+:- pred construct_rules_for_nondefault_file_names(maybe_found::in,
+    module_name::in, string::in, string::in, string::in, string::in,
     string::in, string::in, string::in, string::in,
     list(mmake_entry)::out) is det.
 
-construct_any_rules_for_nondefault_file_names(HaveMap,
-        ModuleName, SourceFileTopModuleName, SourceFileName,
+construct_rules_for_nondefault_file_names(HaveMap,
+        SourceFileTopModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
-        MmakeRulesPatterns) :-
-    ( if SourceFileName = default_source_file_name(ModuleName) then
-        MmakeRulesPatterns = []
-    else
-        % The pattern rules in Mmake.rules won't work, since the source file
-        % name doesn't match the expected source file name for this module
-        % name. This can occur due to just the use of different source file
-        % names, or it can be due to the use of nested modules. So we need
-        % to output hard-coded rules in this case.
-        %
-        % The rules output below won't work in the case of nested modules
-        % with parallel makes, because it will end up invoking the same command
-        % twice (since it produces two output files) at the same time.
-        %
-        % Any changes here will require corresponding changes to
-        % scripts/Mmake.rules. See that file for documentation on these rules.
+        MmakeRulesNonDefault) :-
+    % The pattern rules in Mmake.rules won't work, since the source file name
+    % doesn't match the expected source file name for this module name.
+    % This can occur due to just the use of different source file names,
+    % or it can be due to the use of nested modules. So we need to output
+    % hard-coded rules in this case.
+    %
+    % The rules output below won't work in the case of nested modules
+    % with parallel makes, because it will end up invoking the same command
+    % twice (since it produces two output files) at the same time.
+    %
+    % Any changes here will require corresponding changes to
+    % scripts/Mmake.rules. See that file for documentation on these rules.
 
-        % If we can pass the module name rather than the file name, then do so.
-        % smart recompilation does not work if the file name is passed
-        % and the module name does not match the file name.
-        % XXX And now, neither does the rest of the compiler, and in any case,
-        % smart recompilation is based on mmc --make, NOT on mmake.
-        (
-            HaveMap = found,
-            module_name_to_file_name_stem(SourceFileTopModuleName, ModuleArg)
-        ;
-            HaveMap = not_found,
-            ModuleArg = SourceFileName
-        ),
-        MmakeRulesPatterns = [
-            mmake_simple_rule("date0_on_src",
-                mmake_rule_is_not_phony,
-                Date0FileName, [SourceFileName],
-                ["$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("date_on_src",
-                mmake_rule_is_not_phony,
-                DateFileName, [SourceFileName],
-                ["$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("date3_on_src",
-                mmake_rule_is_not_phony,
-                Date3FileName, [SourceFileName],
-                ["$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("opt_date_on_src",
-                mmake_rule_is_not_phony,
-                OptDateFileName, [SourceFileName],
-                ["$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) " ++ ModuleArg]),
-            mmake_simple_rule("trans_opt_date_on_src",
-                mmake_rule_is_not_phony,
-                TransOptDateFileName, [SourceFileName],
-                ["$(MCTOI) $(ALL_GRADEFLAGS) $(ALL_MCTOIFLAGS) " ++
-                    ModuleArg]),
-            mmake_simple_rule("c_date_on_src",
-                mmake_rule_is_not_phony,
-                CDateFileName, [SourceFileName],
-                ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) " ++ ModuleArg ++
-                    " $(ERR_REDIRECT)"]),
-            mmake_simple_rule("java_date_on_src",
-                mmake_rule_is_not_phony,
-                JavaDateFileName, [SourceFileName],
-                ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
-                    ModuleArg ++ " $(ERR_REDIRECT)"])
-        ]
-    ).
+    % If we can pass the module name rather than the file name, then do so.
+    % smart recompilation does not work if the file name is passed
+    % and the module name does not match the file name.
+    % XXX And now, neither does the rest of the compiler, and in any case,
+    % smart recompilation is based on mmc --make, NOT on mmake.
+    (
+        HaveMap = found,
+        module_name_to_file_name_stem(SourceFileTopModuleName, ModuleArg)
+    ;
+        HaveMap = not_found,
+        ModuleArg = SourceFileName
+    ),
+    MmakeRulesNonDefault = [
+        mmake_simple_rule("date0_on_src",
+            mmake_rule_is_not_phony,
+            Date0FileName, [SourceFileName],
+            % MCPI expands to $(MC) --make-private-interface.
+            ["$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) " ++ ModuleArg]),
+        mmake_simple_rule("date_on_src",
+            mmake_rule_is_not_phony,
+            DateFileName, [SourceFileName],
+            % MCI expands to $(MC) --make-interface.
+            ["$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) " ++ ModuleArg]),
+        mmake_simple_rule("date3_on_src",
+            mmake_rule_is_not_phony,
+            Date3FileName, [SourceFileName],
+            % MCSI expands to $(MC) --make-short-interface.
+            ["$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) " ++ ModuleArg]),
+        mmake_simple_rule("opt_date_on_src",
+            mmake_rule_is_not_phony,
+            OptDateFileName, [SourceFileName],
+            % MCOI expands to $(MC) --make-optimization-interface.
+            ["$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) " ++ ModuleArg]),
+        mmake_simple_rule("trans_opt_date_on_src",
+            mmake_rule_is_not_phony,
+            TransOptDateFileName, [SourceFileName],
+            % MCTOI expands to $(MC) --make-transitive-optimization-interface.
+            ["$(MCTOI) $(ALL_GRADEFLAGS) $(ALL_MCTOIFLAGS) " ++ ModuleArg]),
+        mmake_simple_rule("c_date_on_src",
+            mmake_rule_is_not_phony,
+            CDateFileName, [SourceFileName],
+            % MCG expands to $(MC) --compile-to-c.
+            ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) " ++ ModuleArg ++
+                " $(ERR_REDIRECT)"]),
+        mmake_simple_rule("java_date_on_src",
+            mmake_rule_is_not_phony,
+            JavaDateFileName, [SourceFileName],
+            % MCG expands to $(MC) --compile-to-c, which is out-of-place.
+            ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
+                ModuleArg ++ " $(ERR_REDIRECT)"])
+    ].
 
 %---------------------------------------------------------------------------%
 

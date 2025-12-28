@@ -82,10 +82,10 @@
 %---------------------------------------------------------------------------%
 
 :- type find_prereqs_result
-    --->    could_not_find_some_prereqs(set(dependency_file))
+    --->    could_not_find_some_prereqs(set(target_id))
             % There were some prerequisites that we could not find.
             % The set specifies the prerequisites we *could* find.
-    ;       found_all_prereqs(set(dependency_file)).
+    ;       found_all_prereqs(set(target_id)).
             % We found all prerequisites, and here they are.
 
     % find_direct_prereqs_of_target_file(ProgressStream, Globals,
@@ -93,7 +93,7 @@
     %   PrereqsResult, !Info, !IO):
     %
     % The TargetType and ModuleIndexes arguments define a set of make targets.
-    % Return in PrereqsResult the dependency_file_indexes of all the files
+    % Return in PrereqsResult the target_id_indexes of all the files
     % that these make targets depend on, and which therefore have to be built
     % before we can build those make targets.
     %
@@ -126,6 +126,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module sparse_bitset.
 :- import_module string.
 
@@ -216,14 +217,14 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         % For these reasons, the code here seems to me (zs) to be too crude:
         % it seems to delete far more prereqs than just the ones that may
         % cause the problem that it was added to address.
-        ToDelete = make_dependency_list(ModulesToCheck, module_target_int0),
-        dependency_files_to_index_set(ToDelete, ToDeleteIndexes, !Info),
+        ToDelete = make_target_id_list(ModulesToCheck, module_target_int0),
+        target_ids_to_index_set(ToDelete, ToDeleteIndexes, !Info),
         PrereqIndexes = index_set_difference(PrereqIndexes0, ToDeleteIndexes)
     else
         ToDelete = [],
         PrereqIndexes = PrereqIndexes0
     ),
-    dependency_file_index_set_to_plain_set(!.Info, PrereqIndexes, Prereqs),
+    target_id_index_set_to_plain_set(!.Info, PrereqIndexes, Prereqs),
     (
         Succeeded = did_not_succeed,
         PrereqsResult = could_not_find_some_prereqs(Prereqs)
@@ -238,8 +239,8 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
     ;
         DebugMake = yes,
         % XXX LEGACY
-        set.map2_fold(dependency_file_to_file_name(Globals),
-            Prereqs, PrereqFileNames, _PrereqFileNamesProposed, !IO),
+        set.map2_fold(target_id_to_file_name(Globals), Prereqs,
+            PrereqFileNames, _PrereqFileNamesProposed, !IO),
         WriteFileName =
             ( pred(FN::in, SIO0::di, SIO::uo) is det :-
                 io.format(ProgressStream, "\t%s\n", [s(FN)], SIO0, SIO)
@@ -253,8 +254,8 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         ;
             ToDelete = [_ | _],
             % XXX LEGACY
-            list.map2_foldl(dependency_file_to_file_name(Globals),
-                ToDelete, ToDeleteFileNames, _ToDeleteFileNamesProposed, !IO),
+            list.map2_foldl(target_id_to_file_name(Globals), ToDelete,
+                ToDeleteFileNames, _ToDeleteFileNamesProposed, !IO),
             io.write_string(ProgressStream, "after deleting:\n", !IO),
             list.foldl(WriteFileName, ToDeleteFileNames, !IO)
         ),
@@ -264,8 +265,7 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
 :- pred find_direct_prereqs_of_nested_module_targets(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_target_type::in,
     list(module_index)::in, maybe_succeeded::in, maybe_succeeded::out,
-    dependency_file_index_set::in,
-        dependency_file_index_set::out,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_direct_prereqs_of_nested_module_targets(_, _, _, _, [],
@@ -291,7 +291,7 @@ find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
 :- pred find_direct_prereqs_of_module_target(io.text_output_stream::in,
     maybe_keep_going::in, globals::in,
     module_target_type::in, module_index::in,
-    maybe_succeeded::out, dependency_file_index_set::out,
+    maybe_succeeded::out, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
@@ -337,9 +337,42 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             !Info, !IO)
     ;
         TargetType = module_target_java_class_code,
-        PrereqSpec = self(module_target_java_code),
-        find_prereqs_from_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpec, Succeeded, Prereqs, !Info, !IO)
+        % Generating the .class file of a module obviously requires
+        % its .java file. However, it also seems to need the .java files
+        % of the modules it imports, directly or indirectly.
+        %
+        % For modules in other directories, such as standard library modules,
+        % we don't need to make them now, since they have been made by
+        % mmc --make invocations in those other directories.
+        % For the modules in the current directory, we want to make them now.
+        % This extra set of prerequisites fixes a whole bunch of test case
+        % failures in tests/{valid,valid_seq} in the java grade.
+        %
+        % XXX I (zs) don't know whether doing s/non_intermod/intermod/ on
+        % the specifications below would prevent any more test case failures.
+        % This is because for me the difference is moot, due to java bootchecks
+        % being slow enough that I don't usually do them with intermodule
+        % optimization enabled.
+        %
+        % NOTE When making executables or libraries in a java grade,
+        % make.program_target.m does NOT make the program's .class files
+        % one-by-one using this target. Instead, it gives all the .java files
+        % that do not have an up-to-date corresponding .class file to the
+        % Java compiler all in one invocation. The reason for this is that
+        % the Java compiler will generate .class code not just for the
+        % .java files on its command line, but also for any other reachable
+        % .java files that define classes that the command-line files refer to
+        % but do not define. This means that compiling the .java files
+        % of the program separately, one-by-one, could, about probably would,
+        % recompile many .java files many times.
+        PrereqSpecs = [
+            self(module_target_java_code),
+            direct_imports_non_intermod_local(module_target_java_code),
+            indirect_imports_non_intermod_local(module_target_java_code)
+        ],
+        find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         TargetType = module_target_fact_table_object(PIC, _),
         globals.get_target(Globals, CompilationTarget),
@@ -480,16 +513,35 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
     % The prerequisite specification type.
     %
     % Values of this type indirectly represent the specification of
-    % a set of dependency_files (actually, dependency_file_indexes).
+    % a set of target_ids (actually, target_id_indexes).
     % The "indirect" part is there because they actually represent
     % a specification of a task for find_prereqs_from_spec, which will compute
-    % that set of dependency file indexes when given a prereq_spec.
+    % that set of target_id_indexes when given a prereq_spec.
+    %
+    % NOTE I (zs) considered using a local_modules_only wrapper around
+    % a prereq_spec to replace {direct,indirect}_imports_non_intermod_local,
+    % but this turns out to be a bad idea for two reasons.
+    %
+    % - First, the local-modules-only filter must be applied *between*
+    %   determining a set of maybe-local-or-maybe-not modules, and
+    %   converting the local module names' indexes to target_ids by adding
+    %   a target_type, which means that applying the filter *after* having
+    %   find_prereqs_from_spec return a target_id_index_set requires
+    %   first effectively converting each target_id_index back to
+    %   a module_index.
+    %
+    % - Second, one of the prereq_specs, self_foreign_incl_fact_table_files,
+    %   specifies target_ids that do not *have* a module name component,
+    %   and such targets therefore cannot reasonably be considered as
+    %   either having, or not having, a local Mercury source module.
     %
 :- type prereq_spec
     --->    self(module_target_type)
     ;       ancestors(module_target_type)
+    ;       direct_imports_non_intermod_local(module_target_type)
     ;       direct_imports_non_intermod(module_target_type)
     ;       direct_imports_intermod(module_target_type)
+    ;       indirect_imports_non_intermod_local(module_target_type)
     ;       indirect_imports_non_intermod(module_target_type)
     ;       indirect_imports_intermod(module_target_type)
     ;       intermod_imports(module_target_type)
@@ -511,39 +563,39 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
 
 :- pred find_prereqs_from_specs(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in, list(prereq_spec)::in,
-    dependency_file_index_set::out,
+    target_id_index_set::out,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_prereqs_from_specs(_, _, _, _, [], index_set_init,
         !Succeeded, !Info, !IO).
 find_prereqs_from_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
-        [HeadPrereqSpec | TailPrereqSpecs], DepFileIndexSet,
+        [HeadPrereqSpec | TailPrereqSpecs], TargetIdIndexSet,
         !Succeeded, !Info, !IO) :-
     find_prereqs_from_spec(ProgressStream, KeepGoing, Globals,
-        ModuleIndex, HeadPrereqSpec, HeadSucceeded, HeadDepFileIndexSet,
+        ModuleIndex, HeadPrereqSpec, HeadSucceeded, HeadTargetIdIndexSet,
         !Info, !IO),
     should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
         !Succeeded),
     (
         StopOrContinue = soc_stop,
-        DepFileIndexSet = HeadDepFileIndexSet
+        TargetIdIndexSet = HeadTargetIdIndexSet
     ;
         StopOrContinue = soc_continue,
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, TailPrereqSpecs, TailDepFileIndexSet,
+            ModuleIndex, TailPrereqSpecs, TailTargetIdIndexSet,
             !Succeeded, !Info, !IO),
-        index_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
-            DepFileIndexSet)
+        index_set_union(HeadTargetIdIndexSet, TailTargetIdIndexSet,
+            TargetIdIndexSet)
     ).
 
 :- pred find_prereqs_from_spec(io.text_output_stream::in, maybe_keep_going::in,
     globals::in, module_index::in, prereq_spec::in,
-    maybe_succeeded::out, dependency_file_index_set::out,
+    maybe_succeeded::out, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
-        PrereqSpec, Succeeded, DepFileIndexSet, !Info, !IO) :-
+        PrereqSpec, Succeeded, TargetIdIndexSet, !Info, !IO) :-
     trace [
         compile_time(flag("find_prereqs_from_spec")),
         run_time(env("FIND_PREREQS_FROM_SPEC")),
@@ -558,49 +610,65 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
     % We can wrap caching code around the code of any set of switch arms.
     %
     % XXX Are there are any prereq_spec kinds for which we may return
-    % did_not_succeed AND a nonempty DepFileIndexSet? If not, then
+    % did_not_succeed AND a nonempty TargetIdIndexSet? If not, then
     % those two parameters are effectively a single value of a maybe type.
     (
         PrereqSpec = self(TargetType),
         Succeeded = succeeded,
-        dfmi_target(ModuleIndex, TargetType, DepFileIndexSet, !Info)
+        timi_target(ModuleIndex, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = ancestors(TargetType),
         Succeeded = succeeded,
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
         Ancestors = get_ancestors(ModuleName),
         module_names_to_index_set(Ancestors, ModuleIndexSet, !Info),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
+    ;
+        PrereqSpec = direct_imports_non_intermod_local(TargetType),
+        get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, Succeeded, ModuleIndexSet0, !Info, !IO),
+        ModuleIndexes0 = index_set_to_sorted_list(ModuleIndexSet0),
+        find_local_modules(ProgressStream, ModuleIndexes0,
+            index_set_init, ModuleIndexSet, !Info, !IO),
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = direct_imports_non_intermod(TargetType),
         get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = direct_imports_intermod(TargetType),
         get_direct_imports_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
+    ;
+        PrereqSpec = indirect_imports_non_intermod_local(TargetType),
+        get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, Succeeded, ModuleIndexSet0, !Info, !IO),
+        ModuleIndexes0 = index_set_to_sorted_list(ModuleIndexSet0),
+        find_local_modules(ProgressStream, ModuleIndexes0,
+            index_set_init, ModuleIndexSet, !Info, !IO),
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = indirect_imports_non_intermod(TargetType),
         get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = indirect_imports_intermod(TargetType),
         get_indirect_imports_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = intermod_imports(TargetType),
         get_intermod_imports(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = foreign_imports_intermod_trans(TargetType),
         get_foreign_imports_intermod_trans(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
-        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+        timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info)
     ;
         PrereqSpec = anc0_dir1_indir2_non_intermod,
         SubPrereqSpecs = [
@@ -624,12 +692,12 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
 %           search_anc0_dir1_indir2_non_intermod_cache(!.Info, ModuleIndex,
 %               Result0)
 %       then
-%           Result0 = deps_result(Succeeded, DepFileIndexSet)
+%           Result0 = deps_result(Succeeded, TargetIdIndexSet)
 %       else
             find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-                ModuleIndex, SubPrereqSpecs, DepFileIndexSet,
+                ModuleIndex, SubPrereqSpecs, TargetIdIndexSet,
                 succeeded, Succeeded, !Info, !IO),
-%           Result = deps_result(Succeeded, DepFileIndexSet),
+%           Result = deps_result(Succeeded, TargetIdIndexSet),
 %           add_to_anc0_dir1_indir2_non_intermod_cache(ModuleIndex, Result,
 %               !Info)
 %       ),
@@ -666,12 +734,12 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
             search_anc0_dir1_indir2_intermod_cache(!.Info, ModuleIndex,
                 Result0)
         then
-            Result0 = deps_result(Succeeded, DepFileIndexSet)
+            Result0 = prereqs_result(Succeeded, TargetIdIndexSet)
         else
             find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-                ModuleIndex, SubPrereqSpecs, DepFileIndexSet,
+                ModuleIndex, SubPrereqSpecs, TargetIdIndexSet,
                 succeeded, Succeeded, !Info, !IO),
-            Result = deps_result(Succeeded, DepFileIndexSet),
+            Result = prereqs_result(Succeeded, TargetIdIndexSet),
             add_to_anc0_dir1_indir2_intermod_cache(ModuleIndex, Result, !Info)
         ),
 
@@ -701,7 +769,7 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
 
         get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(
             ProgressStream, KeepGoing, Globals, ModuleIndex,
-            Succeeded, DepFileIndexSet, !Info, !IO),
+            Succeeded, TargetIdIndexSet, !Info, !IO),
 
         trace [
             compile_time(flag("find_prereqs_from_spec")),
@@ -716,7 +784,7 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
     ;
         PrereqSpec = self_foreign_incl_fact_table_files,
         get_foreign_incl_fact_table_files(ProgressStream, Globals,
-            ModuleIndex, Succeeded, DepFileIndexSet, !Info, !IO)
+            ModuleIndex, Succeeded, TargetIdIndexSet, !Info, !IO)
     ),
     trace [
         compile_time(flag("find_prereqs_from_spec")),
@@ -725,56 +793,53 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
     ] (
         module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
         IndexModuleNameStr = sym_name_to_string(IndexModuleName),
-        dependency_file_index_set_to_plain_set(!.Info, DepFileIndexSet,
-            DepFileSet),
-        DepFiles = set.to_sorted_list(DepFileSet),
+        target_id_index_set_to_plain_set(!.Info, TargetIdIndexSet,
+            TargetIdSet),
+        TargetIds = set.to_sorted_list(TargetIdSet),
         (
-            DepFiles = [],
+            TargetIds = [],
             io.format(ProgressStream,
                 "prereq_spec %s for %s yields no prereqs\n\n",
                 [s(string.string(PrereqSpec)), s(IndexModuleNameStr)], !TIO)
         ;
-            DepFiles = [_ | _],
-            DepFileNlStrs = list.map(
-                dependency_file_to_debug_string("    ", "\n"), DepFiles),
+            TargetIds = [_ | _],
+            TargetIdNlStrs = list.map(
+                target_id_to_debug_string("    ", "\n"), TargetIds),
             io.format(ProgressStream,
                 "prereq_spec %s for %s yields these prereqs:\n",
                 [s(string.string(PrereqSpec)), s(IndexModuleNameStr)], !TIO),
-            list.foldl(io.write_string(ProgressStream), DepFileNlStrs, !TIO),
+            list.foldl(io.write_string(ProgressStream), TargetIdNlStrs, !TIO),
             io.write_string(ProgressStream, "prereq list ends\n\n", !TIO)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred dfmi_target(module_index::in, module_target_type::in,
-    dependency_file_index_set::out,
+:- pred timi_target(module_index::in, module_target_type::in,
+    target_id_index_set::out, make_info::in, make_info::out) is det.
+:- pragma inline(pred(timi_target/5)).
+
+timi_target(ModuleIndex, TargetType, TargetIdIndexSet, !Info) :-
+    acc_rev_timi_target(TargetType, ModuleIndex,
+        index_set_init, TargetIdIndexSet, !Info).
+
+:- pred timi_targets(module_index_set::in, module_target_type::in,
+    target_id_index_set::out, make_info::in, make_info::out) is det.
+:- pragma inline(pred(timi_targets/5)).
+
+timi_targets(ModuleIndexSet, TargetType, TargetIdIndexSet, !Info) :-
+    index_set_foldl2(acc_rev_timi_target(TargetType), ModuleIndexSet,
+        index_set_init, TargetIdIndexSet, !Info).
+
+:- pred acc_rev_timi_target(module_target_type::in, module_index::in,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out) is det.
-:- pragma inline(pred(dfmi_target/5)).
+:- pragma inline(pred(acc_rev_timi_target/6)).
 
-dfmi_target(ModuleIndex, TargetType, DepFileIndexSet, !Info) :-
-    acc_rev_dfmi_target(TargetType, ModuleIndex,
-        index_set_init, DepFileIndexSet, !Info).
-
-:- pred dfmi_targets(module_index_set::in, module_target_type::in,
-    dependency_file_index_set::out,
-    make_info::in, make_info::out) is det.
-:- pragma inline(pred(dfmi_targets/5)).
-
-dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
-    index_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
-        index_set_init, DepFileIndexSet, !Info).
-
-:- pred acc_rev_dfmi_target(module_target_type::in, module_index::in,
-    dependency_file_index_set::in,
-        dependency_file_index_set::out,
-    make_info::in, make_info::out) is det.
-:- pragma inline(pred(acc_rev_dfmi_target/6)).
-
-acc_rev_dfmi_target(TargetType, ModuleIndex, !DepFileIndexSet, !Info) :-
-    TargetFile = dfmi_target(ModuleIndex, TargetType),
-    dependency_file_to_index(TargetFile, TargetFileIndex, !Info),
-    index_set_insert(TargetFileIndex, !DepFileIndexSet).
+acc_rev_timi_target(TargetType, ModuleIndex, !TargetIdIndexSet, !Info) :-
+    TargetId = timi_merc(ModuleIndex, TargetType),
+    target_id_to_index(TargetId, TargetIdIndex, !Info),
+    index_set_insert(TargetIdIndex, !TargetIdIndexSet).
 
 %---------------------------------------------------------------------------%
 
@@ -791,11 +856,11 @@ get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
     ( if
         search_direct_imports_non_intermod_cache(!.Info, ModuleIndex, Result0)
     then
-        Result0 = deps_result(Succeeded, Modules)
+        Result0 = prereqs_result(Succeeded, Modules)
     else
         get_direct_imports_non_intermod_uncached(ProgressStream, KeepGoing,
             Globals, ModuleIndex, Succeeded, Modules, !Info, !IO),
-        Result = deps_result(Succeeded, Modules),
+        Result = prereqs_result(Succeeded, Modules),
         add_to_direct_imports_non_intermod_cache(ModuleIndex, Result, !Info)
     ).
 
@@ -853,7 +918,7 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
     ( if
         search_direct_imports_intermod_cache(!.Info, ModuleIndex, Result0)
     then
-        Result0 = deps_result(Succeeded, Modules)
+        Result0 = prereqs_result(Succeeded, Modules)
     else
         get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, Succeeded0, Modules0, !Info, !IO),
@@ -884,7 +949,7 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
                 index_set_delete(ModuleIndex, Modules2, Modules)
             )
         ),
-        Result = deps_result(Succeeded, Modules),
+        Result = prereqs_result(Succeeded, Modules),
         add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info)
     ).
 
@@ -930,14 +995,14 @@ get_indirect_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
     ( if
         search_indirect_imports_intermod_cache(!.Info, ModuleIndex, Result0)
     then
-        Result0 = deps_result(Succeeded, IndirectIntermodImportModules)
+        Result0 = prereqs_result(Succeeded, IndirectIntermodImportModules)
     else
         get_direct_imports_intermod(ProgressStream, KeepGoing, Globals,
             ModuleIndex, DirectSucceeded, DirectImportModules, !Info, !IO),
         get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals,
             ModuleIndex, DirectSucceeded, DirectImportModules,
             Succeeded, IndirectIntermodImportModules, !Info, !IO),
-        Result = deps_result(Succeeded, IndirectIntermodImportModules),
+        Result = prereqs_result(Succeeded, IndirectIntermodImportModules),
         add_to_indirect_imports_intermod_cache(ModuleIndex, Result, !Info)
     ).
 
@@ -1035,7 +1100,7 @@ get_foreign_imports_non_intermod_trans(LangSet, ProgressStream, KeepGoing,
         search_foreign_imports_non_intermod_trans_cache(!.Info, ModuleIndex,
             Result0)
     then
-        Result0 = deps_result(Succeeded, ForeignModules)
+        Result0 = prereqs_result(Succeeded, ForeignModules)
     else
         find_transitive_implementation_imports(ProgressStream, KeepGoing,
             Globals, ModuleIndex, Succeeded0, ImportedModules, !Info, !IO),
@@ -1046,7 +1111,7 @@ get_foreign_imports_non_intermod_trans(LangSet, ProgressStream, KeepGoing,
                 to_sorted_list(insert(ImportedModules, ModuleIndex)),
                 succeeded, Succeeded, index_set_init, ForeignModules,
                 !Info, !IO),
-            Result = deps_result(Succeeded, ForeignModules),
+            Result = prereqs_result(Succeeded, ForeignModules),
             add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex,
                 Result, !Info)
         ;
@@ -1082,11 +1147,12 @@ get_foreign_imports_non_intermod_uncached(LangSet, ProgressStream, _KeepGoing,
     fim_spec::in, module_index_set::in, module_index_set::out,
     make_info::in, make_info::out) is det.
 
-acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
+acc_module_index_if_for_lang_in_set(LangSet, FIMSpec,
+        !ModuleIndexSet, !Info) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     ( if set.contains(LangSet, Lang) then
         module_name_to_index(ModuleName, ModuleIndex, !Info),
-        index_set_insert(ModuleIndex, !DepsSet)
+        index_set_insert(ModuleIndex, !ModuleIndexSet)
     else
         true
     ).
@@ -1096,11 +1162,11 @@ acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
 :- pred get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(
     io.text_output_stream::in, maybe_keep_going::in,
     globals::in, module_index::in,
-    maybe_succeeded::out, dependency_file_index_set::out,
+    maybe_succeeded::out, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
-        KeepGoing, Globals, ModuleIndex, !:Succeeded, DepFileIndexSet,
+        KeepGoing, Globals, ModuleIndex, !:Succeeded, TargetIdIndexSet,
         !Info, !IO) :-
     get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
         ModuleIndex, Succeeded1, Modules1, !Info, !IO),
@@ -1108,13 +1174,13 @@ get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
         succeeded, !:Succeeded),
     (
         StopOrContinue = soc_stop,
-        DepFileIndexSet = index_set_init
+        TargetIdIndexSet = index_set_init
     ;
         StopOrContinue = soc_continue,
         ModuleList1 = index_set_to_sorted_list(Modules1),
         fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_intermod, ModuleList1,
-            !Succeeded, index_set_init, DepFileIndexSet, !Info, !IO)
+            !Succeeded, index_set_init, TargetIdIndexSet, !Info, !IO)
     ).
 
 :- pred get_ancestors_of_intermod_imports(io.text_output_stream::in,
@@ -1152,11 +1218,11 @@ index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
 
 :- pred get_foreign_incl_fact_table_files(io.text_output_stream::in,
     globals::in, module_index::in,
-    maybe_succeeded::out, dependency_file_index_set::out,
+    maybe_succeeded::out, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
-        Succeeded, DepFileIndexSet, !Info, !IO) :-
+        Succeeded, TargetIdIndexSet, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
@@ -1165,7 +1231,7 @@ get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
         Succeeded = succeeded,
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFileNames),
         file_names_to_index_set(set.to_sorted_list(FactTableFileNames),
-            FactDepFileIndexSet, !Info),
+            FactTargetIdIndexSet, !Info),
 
         module_dep_info_get_source_file_name(ModuleDepInfo, SourceFileName),
         module_dep_info_get_foreign_include_files(ModuleDepInfo,
@@ -1175,26 +1241,26 @@ get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
         set.foldl2(
             acc_dep_file_index_for_foreign_include_if_in_langset(LangSet,
                 SourceFileName),
-            ForeignIncludeFiles, FactDepFileIndexSet, DepFileIndexSet, !Info)
+            ForeignIncludeFiles, FactTargetIdIndexSet, TargetIdIndexSet, !Info)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        DepFileIndexSet = index_set_init
+        TargetIdIndexSet = index_set_init
     ).
 
 :- pred acc_dep_file_index_for_foreign_include_if_in_langset(
     set(foreign_language)::in, file_name::in, foreign_include_file_info::in,
-    dependency_file_index_set::in, dependency_file_index_set::out,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out) is det.
 
 acc_dep_file_index_for_foreign_include_if_in_langset(LangSet, SourceFileName,
-        ForeignInclude, !DepFileIndexSet, !Info) :-
+        ForeignInclude, !TargetIdIndexSet, !Info) :-
     ForeignInclude = foreign_include_file_info(Lang, IncludeFileName),
     ( if set.contains(LangSet, Lang) then
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        DepFile = dfmi_file(IncludePath),
-        dependency_file_to_index(DepFile, DepFileIndex, !Info),
-        index_set_insert(DepFileIndex, !DepFileIndexSet)
+        TargetId = timi_non_merc(IncludePath),
+        target_id_to_index(TargetId, TargetIdIndex, !Info),
+        index_set_insert(TargetIdIndex, !TargetIdIndexSet)
     else
         true
     ).
@@ -1213,8 +1279,9 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
     % from a directory far down a search path to create a reference
     % to a module that exists in the *current* directory, if its name
     % duplicates the name of a module in the .module_dep file's directory.
-    % This causes the failure of e.g. the warnings/bug311 test case,
-    % with the module in the current directory being time.m.
+    % This caused the failure of e.g. the warnings/bug311 test case,
+    % with the module in the current directory being time.m (until
+    % that module was renamed specially in order to avoid such failures).
     find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
         process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
         !Info, !IO),
@@ -1237,6 +1304,42 @@ find_transitive_implementation_imports(ProgressStream, _KeepGoing, Globals,
         io.write_string(ProgressStream,
             "trans impl imports list ends\n\n", !TIO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_local_modules(io.text_output_stream::in, list(module_index)::in,
+    module_index_set::in, module_index_set::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_local_modules(_ProgressStream, [], !LocalModuleIndexSet, !Info, !IO).
+find_local_modules(ProgressStream, [ModuleIndex | ModuleIndexes],
+        !LocalModuleIndexSet, !Info, !IO) :-
+    SrcIsLocalMap0 = make_info_get_module_src_is_local_map(!.Info),
+    ( if map.search(SrcIsLocalMap0, ModuleIndex, IsLocal0) then
+        (
+            IsLocal0 = src_is_local,
+            index_set_insert(ModuleIndex, !LocalModuleIndexSet)
+        ;
+            IsLocal0 = src_is_not_local
+        )
+    else
+        module_index_to_name(!.Info, ModuleIndex, ModuleName),
+        module_name_to_source_file_name(ModuleName, FileName, !IO),
+        io.open_input(FileName, OpenResult, !IO),
+        (
+            OpenResult = ok(InputStream),
+            io.close_input(InputStream, !IO),
+            index_set_insert(ModuleIndex, !LocalModuleIndexSet),
+            IsLocal = src_is_local
+        ;
+            OpenResult = error(_),
+            IsLocal = src_is_not_local
+        ),
+        map.det_insert(ModuleIndex, IsLocal, SrcIsLocalMap0, SrcIsLocalMap),
+        make_info_set_module_src_is_local_map(SrcIsLocalMap, !Info)
+    ),
+    find_local_modules(ProgressStream, ModuleIndexes,
+        !LocalModuleIndexSet, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1289,11 +1392,11 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindModules,
 %---------------------%
 
     % fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
-    %   PrereqSpec, ModuleIndexes, !Succeeded, !DepFileIndexSet, !Info, !IO):
+    %   PrereqSpec, ModuleIndexes, !Succeeded, !TargetIdIndexSet, !Info, !IO):
     %
     % Invoke find_prereqs_from_spec with PrereqSpec on each element of
     % ModuleIndexes, adding the union of the resulting dependency file
-    % index sets to !DepFileIndexSet.
+    % index sets to !TargetIdIndexSet.
     %
     % Stop only if an invocation of find_prereqs_from_spec returns
     % did_not_succeed *and* KeepGoing is do_not_keep_going.
@@ -1301,16 +1404,16 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindModules,
 :- pred fold_prereq_spec_over_modules(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, prereq_spec::in, list(module_index)::in,
     maybe_succeeded::in, maybe_succeeded::out,
-    dependency_file_index_set::in, dependency_file_index_set::out,
+    target_id_index_set::in, target_id_index_set::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 fold_prereq_spec_over_modules(_, _, _, _,
-        [], !Succeeded, !DepFileIndexSet, !Info, !IO).
+        [], !Succeeded, !TargetIdIndexSet, !Info, !IO).
 fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals, PrereqSpec,
-        [MI | MIs], !Succeeded, !DepFileIndexSet, !Info, !IO) :-
+        [MI | MIs], !Succeeded, !TargetIdIndexSet, !Info, !IO) :-
     find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, MI, PrereqSpec,
-        HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
-    index_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
+        HeadSucceeded, HeadTargetIdIndexSet, !Info, !IO),
+    index_set_union(HeadTargetIdIndexSet, !TargetIdIndexSet),
     should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
         !Succeeded),
     (
@@ -1318,26 +1421,25 @@ fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals, PrereqSpec,
     ;
         StopOrContinue = soc_continue,
         fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
-            PrereqSpec, MIs, !Succeeded, !DepFileIndexSet, !Info, !IO)
+            PrereqSpec, MIs, !Succeeded, !TargetIdIndexSet, !Info, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- func dependency_file_to_debug_string(string, string, dependency_file)
-    = string.
+:- func target_id_to_debug_string(string, string, target_id) = string.
 
-dependency_file_to_debug_string(Prefix, Suffix, DepFile) = Str :-
+target_id_to_debug_string(Prefix, Suffix, TargetId) = Str :-
     (
-        DepFile = dep_target(TargetFile),
+        TargetId = merc_target(TargetFile),
         TargetFile = target_file(ModuleName, TargetType),
         ModuleNameStr = sym_name_to_string(ModuleName),
         TargetTypeStr = string.string(TargetType),
-        string.format("dep_target %s of %s",
+        string.format("merc_target %s of %s",
             [s(TargetTypeStr), s(ModuleNameStr)], Str0)
     ;
-        DepFile = dep_file(FileName),
-        string.format("dep_file %s", [s(FileName)], Str0)
+        TargetId = non_merc_target(FileName),
+        string.format("non_term_target %s", [s(FileName)], Str0)
     ),
     Str = Prefix ++ Str0 ++ Suffix.
 

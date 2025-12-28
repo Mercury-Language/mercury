@@ -176,13 +176,10 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
         IntermodAnalysisSucceeded = succeeded,
         get_default_options(Globals, DefaultOptionTable),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
-        EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-        EnvVarArgs = make_info_get_env_var_args(!.Info),
-        OptionArgs = make_info_get_option_args(!.Info),
+        Params = make_info_get_compiler_params(!.Info),
         setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
             MaybeStdLibGrades, invoked_by_mmc_make, MainModuleName,
-            EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions,
-            MayBuild, !IO),
+            Params, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_build(_AllOptionArgs, BuildGlobals),
             make_linked_target_2(ProgressStream, BuildGlobals,
@@ -238,22 +235,22 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         ),
 
         AllModulesList = set.to_sorted_list(AllModules),
-        % XXX This assignment to ObjModulesAlpha represents inlining
+        % XXX This assignment to ProgModulesAlpha represents inlining
         %   get_target_modules(Globals, IntermediateTargetType, AllModulesList,
-        %       ObjModulesAlpha, !Info, !IO),
+        %       ProgModulesAlpha, !Info, !IO),
         % knowing that IntermediateTargetType cannot be module_target_errors.
-        ObjModulesAlpha = AllModulesList,
+        ProgModulesAlpha = AllModulesList,
         order_target_modules(ProgressStream, Globals,
-            ObjModulesAlpha, ObjModules, !Info, !IO),
+            ProgModulesAlpha, ProgModules, !Info, !IO),
         filter_out_nested_modules(ProgressStream, Globals,
-            ObjModules, ObjModulesNonnested, !Info, !IO),
+            ProgModules, ProgModulesNonnested, !Info, !IO),
         IntermediateTargetsNonnested =
-            make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
-        ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
+            make_target_id_list(ProgModulesNonnested, IntermediateTargetType),
+        ObjTargets = make_target_id_list(ProgModules, ObjectTargetType),
 
         list.map_foldl2(
             get_foreign_object_targets(ProgressStream, Globals, PIC),
-            ObjModules, ForeignObjTargetsList, !Info, !IO),
+            ProgModules, ForeignObjTargetsList, !Info, !IO),
         ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
         % Ensure all interface files are present before continuing.
@@ -275,9 +272,9 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 BuildDepsSucceeded0 = succeeded,
                 (
                     ObjectTargetType = module_target_java_class_code,
-                    make_java_files(ProgressStream, Globals,
-                        MainModuleName, ObjModules, BuildJavaSucceeded,
-                        !Info, !IO),
+                    make_class_files_for_all_program_modules(ProgressStream,
+                        Globals, MainModuleName, ProgModules,
+                        BuildJavaSucceeded, !Info, !IO),
                     (
                         BuildJavaSucceeded = succeeded,
                         % Disable the `--rebuild' option during this pass,
@@ -353,11 +350,11 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 Succeeded0 = did_not_succeed
             ;
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
-                build_linked_target(ProgressStream, Globals,
+                build_linked_target_with_any_prelink(ProgressStream, Globals,
                     MainModuleName, LinkedTargetType,
                     FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
-                    AllModules, ObjModules, CompilationTarget, PIC,
+                    AllModules, ProgModules, CompilationTarget, PIC,
                     ShouldRebuildLhs, Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, MESI, ErrorStream, !.Info, !IO)
@@ -472,7 +469,7 @@ collect_nested_modules(ProgressStream, Globals, ModuleName,
 %---------------------%
 
 :- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
-    pic::in, module_name::in, list(dependency_file)::out,
+    pic::in, module_name::in, list(target_id)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_object_targets(ProgressStream, Globals, PIC,
@@ -499,7 +496,7 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
         CompilationTarget = target_c,
         FactFileToTarget =
             ( func(FactFile) =
-                dep_target(target_file(ModuleName,
+                merc_target(target_file(ModuleName,
                     module_target_fact_table_object(PIC, FactFile)))
             ),
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
@@ -515,16 +512,18 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
 
 %---------------------------------------------------------------------------%
 
-:- pred build_linked_target(io.text_output_stream::in, globals::in,
-    module_name::in, linked_target_type::in, file_name::in, file_name::in,
-    maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
+:- pred build_linked_target_with_any_prelink(io.text_output_stream::in,
+    globals::in, module_name::in, linked_target_type::in,
+    file_name::in, file_name::in, maybe_oldest_lhs_file::in,
+    set(module_name)::in, list(module_name)::in,
     compilation_target::in, pic::in, should_rebuild_lhs::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_linked_target(ProgressStream, Globals, MainModuleName, LinkedTargetType,
+build_linked_target_with_any_prelink(ProgressStream,
+        Globals, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-        MaybeOldestLhsTimestamp, AllModules, ObjModules,
+        MaybeOldestLhsTimestamp, AllModules, ProgModules,
         CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, make_pre_link_command,
         MaybePreLinkCommand),
@@ -541,27 +540,27 @@ build_linked_target(ProgressStream, Globals, MainModuleName, LinkedTargetType,
     ),
     (
         PreLinkSucceeded = succeeded,
-        build_linked_target_2(ProgressStream, Globals,
+        maybe_build_linked_target(ProgressStream, Globals,
             MainModuleName, LinkedTargetType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-            MaybeOldestLhsTimestamp, AllModules, ObjModules,
+            MaybeOldestLhsTimestamp, AllModules, ProgModules,
             CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred build_linked_target_2(io.text_output_stream::in, globals::in,
+:- pred maybe_build_linked_target(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
     maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
     compilation_target::in, pic::in, should_rebuild_lhs::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_linked_target_2(ProgressStream, Globals0, MainModuleName,
-        LinkedTargetType,
+maybe_build_linked_target(ProgressStream,
+        Globals0, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-        MaybeOldestLhsTimestamp, AllModules, ObjModules,
+        MaybeOldestLhsTimestamp, AllModules, ProgModules,
         CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
     % Clear the link_objects option -- we will pass the list of files directly.
     globals.lookup_accumulating_option(Globals0, link_objects, LinkObjects),
@@ -591,33 +590,34 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName,
 
     % Report errors if any of the extra objects aren't present.
     ObjectsToCheck = InitObjects ++ LinkObjects,
-    ObjectsToCheckDepFiles = list.map((func(F) = dep_file(F)), ObjectsToCheck),
+    ObjectsToCheckTargets =
+        list.map((func(F) = non_merc_target(F)), ObjectsToCheck),
     list.map_foldl2(
-        get_dependency_file_status(ProgressStream, NoLinkObjsGlobals),
-        ObjectsToCheckDepFiles, ExtraObjDepStatuses, !Info, !IO),
+        get_target_id_status(ProgressStream, NoLinkObjsGlobals),
+        ObjectsToCheckTargets, ExtraObjTargetStatuses, !Info, !IO),
     ( if
-        some [ExtraObjDepStatus] (
-            list.member(ExtraObjDepStatus, ExtraObjDepStatuses),
-            ExtraObjDepStatus =
-                dependency_status_result(_, _, deps_status_error)
+        some [ExtraObjTargetStatus] (
+            list.member(ExtraObjTargetStatus, ExtraObjTargetStatuses),
+            ExtraObjTargetStatus =
+                target_status_result(_, _, target_status_error)
         )
     then
         ExtraObjSucceeded = did_not_succeed
     else
         ExtraObjSucceeded = succeeded
     ),
-    BuildDepsSucceeded = InitObjSucceeded `and` ExtraObjSucceeded,
+    BuildObjsSucceeded = InitObjSucceeded `and` ExtraObjSucceeded,
 
     list.map2_foldl2(get_file_timestamp(search_auth_cur_dir),
         ObjectsToCheck, _SearchDirs, ExtraObjectTimestamps, !Info, !IO),
-    % XXX We pass BuildDepsSucceeded here, but BuildDepsSucceeded being
+    % XXX We pass BuildObjsSucceeded here, but BuildObjsSucceeded being
     % did_not_succeed does not prevent LhsResult being can_rebuild_lhs(_).
     % This means that we can go on to attempt to (re)build the target
     % even if we couldn't build all its prerequisites. To me (zs),
     % that looks like a bug, even if the keep_going flag is set.
     should_we_rebuild_lhs_given_timestamps(ProgressStream, NoLinkObjsGlobals,
         FullMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
-        BuildDepsSucceeded, ExtraObjDepStatuses, ExtraObjectTimestamps,
+        BuildObjsSucceeded, ExtraObjTargetStatuses, ExtraObjectTimestamps,
         ExtraObjectLhsResult, !IO),
     (
         ExtraObjectLhsResult = rhs_error,
@@ -636,14 +636,14 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName,
             ShouldRebuildLhs = all_lhs_files_up_to_date,
             ExtraObjShouldRebuildLhs = all_lhs_files_up_to_date
         then
-            post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
+            maybe_warn_linked_target_up_to_date(ProgressStream,
                 NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
                 Succeeded, !Info, !IO)
         else
-            rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
+            build_linked_target(ProgressStream, NoLinkObjsGlobals,
                 MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
-                AllModulesList, ObjModules, InitObjects, LinkObjects,
+                AllModulesList, ProgModules, InitObjects, LinkObjects,
                 CompilationTarget, PIC, Succeeded, !Info, !IO)
         )
     ).
@@ -676,13 +676,12 @@ make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
         InitObjects = []
     ).
 
-:- pred post_link_maybe_warn_linked_target_up_to_date(
-    io.text_output_stream::in, globals::in,
-    module_name::in, linked_target_type::in, file_name::in, file_name::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred maybe_warn_linked_target_up_to_date(io.text_output_stream::in,
+    globals::in, module_name::in, linked_target_type::in,
+    file_name::in, file_name::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
+maybe_warn_linked_target_up_to_date(ProgressStream,
         NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         Succeeded, !Info, !IO) :-
@@ -695,6 +694,9 @@ post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
         maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
         Succeeded = succeeded
     else
+        % We did not just perform a link, but check whether the other copy
+        % of the would-have-been-linked-if-that-were-needed file has to be
+        % re-copied.
         post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals, ProgressStream,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
             MainModuleName, LinkedTargetType, Succeeded,
@@ -713,16 +715,16 @@ post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
         )
     ).
 
-:- pred rebuild_linked_target(io.text_output_stream::in, globals::in,
+:- pred build_linked_target(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in,
     list(module_name)::in, list(module_name)::in,
     list(file_name)::in, list(file_name)::in, compilation_target::in, pic::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
+build_linked_target(ProgressStream, NoLinkObjsGlobals,
         MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
-        AllModulesList, ObjModules, InitObjectFileNames, LinkObjectFileNames,
+        AllModulesList, ProgModules, InitObjectFileNames, LinkObjectFileNames,
         CompilationTarget, PIC, Succeeded, !Info, !IO) :-
     maybe_making_filename_msg(NoLinkObjsGlobals,
         FullMainModuleLinkedFileName, MakingMsg),
@@ -752,11 +754,11 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
     ),
     % XXX LEGACY
     list.map2(module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
-        ObjModules, ModuleObjFileNames, _ModuleObjFileNamesProposed),
+        ProgModules, ProgModuleObjFileNames, _ProgModuleObjFileNamesProposed),
 
     % LinkObjectFileNames may contain `.a' files which must come
     % after all the object files on the linker command line.
-    AllObjects = InitObjectFileNames ++ ModuleObjFileNames ++
+    AllObjects = InitObjectFileNames ++ ProgModuleObjFileNames ++
         ForeignObjectFileNames ++ LinkObjectFileNames,
     (
         ( CompilationTarget = target_c
@@ -855,81 +857,91 @@ linked_target_cleanup(ProgressStream, Globals,
 
 %---------------------------------------------------------------------------%
 
-    % When compiling to Java we want to invoke `javac' just once, passing it a
-    % list of all out-of-date `.java' files. This is a lot quicker than
-    % compiling each Java file individually.
+    % In java grades, we want to invoke `javac' just once, passing it
+    % a list of all the program's out-of-date `.java' files. This is
+    % a lot quicker than compiling each Java file individually.
+    % (For the reason, see the comment on the module_target_java_class_code
+    % arm of the big switch in the find_direct_prereqs_of_module_target
+    % predicate in make.prereqs.m.)
     %
-:- pred make_java_files(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in, maybe_succeeded::out,
+:- pred make_class_files_for_all_program_modules(io.text_output_stream::in,
+    globals::in, module_name::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
-        Succeeded, !Info, !IO) :-
-    find_out_of_date_java_modules(ProgressStream, Globals,
-        ObjModules, OutOfDateModules, !Info, !IO),
+make_class_files_for_all_program_modules(ProgressStream, Globals,
+        MainModuleName, ProgModules, Succeeded, !Info, !IO) :-
+    find_java_files_to_recompile(ProgressStream, Globals,
+        ProgModules, JavaFilesToRecompile, !Info, !IO),
     (
-        OutOfDateModules = [],
+        JavaFilesToRecompile = [],
         Succeeded = succeeded
     ;
-        OutOfDateModules = [_ | _],
-        build_java_files(ProgressStream, Globals,
-            MainModuleName, OutOfDateModules, Succeeded, !.Info, !IO),
-        % javac might write more `.class' files than we anticipated (though
-        % it probably won't) so clear out all the timestamps which might be
-        % affected.
-        TimestampMap0 = make_info_get_file_timestamp_map(!.Info),
-        map.foldl(reinsert_timestamps_for_non_class_files, TimestampMap0,
-            map.init, TimestampMap),
-        make_info_set_file_timestamp_map(TimestampMap, !Info),
-        % For simplicity, clear out all target file timestamps.
-        make_info_set_target_file_timestamp_map(init_target_file_timestamp_map,
-            !Info)
-    ).
-
-:- pred find_out_of_date_java_modules(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-find_out_of_date_java_modules(ProgressStream, Globals,
-        ObjModules, OutOfDateModules, !Info, !IO) :-
-    (
-        ObjModules = [],
-        OutOfDateModules = []
-    ;
-        ObjModules = [ModuleName | ModuleNames],
-        find_out_of_date_java_modules(ProgressStream, Globals,
-            ModuleNames, OutOfDateModules0, !Info, !IO),
-        JavaTarget = target_file(ModuleName, module_target_java_code),
-        ClassTarget = target_file(ModuleName, module_target_java_class_code),
-        get_target_timestamp(ProgressStream, Globals,
-            JavaTarget, MaybeJavaTimestamp, !Info, !IO),
-        get_target_timestamp(ProgressStream, Globals,
-            ClassTarget, MaybeClassTimestamp, !Info, !IO),
-        ( if
-            MaybeJavaTimestamp = ok(JavaTimestamp),
-            MaybeClassTimestamp = ok(ClassTimestamp),
-            ClassTimestamp @>= JavaTimestamp
-        then
-            OutOfDateModules = OutOfDateModules0
-        else
-            OutOfDateModules = [ModuleName | OutOfDateModules0]
+        JavaFilesToRecompile = [HeadJavaFile | TailJavaFiles],
+        recompile_given_java_files(ProgressStream, Globals,
+            MainModuleName, HeadJavaFile, TailJavaFiles,
+            Succeeded, !.Info, !IO),
+        (
+            Succeeded = did_not_succeed
+        ;
+            Succeeded = succeeded,
+            % javac may write not just the .class files corresponding to
+            % JavaFilesToRecompile, but also other .class files.
+            % Since we have no simple, efficient way to predict what .class
+            % files the recompilation may have affected, we intentionally
+            % forget all our previously-recorded timestamps for .class files.
+            TimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+            map.foldl(reinsert_timestamps_for_non_class_files, TimestampMap0,
+                map.init, TimestampMap),
+            make_info_set_file_timestamp_map(TimestampMap, !Info),
+            % For simplicity, clear out all target file timestamps.
+            make_info_set_target_file_timestamp_map(
+                init_target_file_timestamp_map, !Info)
         )
     ).
 
-:- pred build_java_files(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in, maybe_succeeded::out,
+:- pred find_java_files_to_recompile(io.text_output_stream::in,
+    globals::in, list(module_name)::in, list(file_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_java_files_to_recompile(_, _, [], [], !Info, !IO).
+find_java_files_to_recompile(ProgressStream, Globals,
+        [HeadModuleName | TailModuleNames], JavaFilesToRecompile,
+        !Info, !IO) :-
+    find_java_files_to_recompile(ProgressStream, Globals,
+        TailModuleNames, TailJavaFilesToRecompile, !Info, !IO),
+    JavaTarget = target_file(HeadModuleName, module_target_java_code),
+    ClassTarget = target_file(HeadModuleName, module_target_java_class_code),
+    get_target_timestamp(ProgressStream, Globals,
+        JavaTarget, MaybeJavaTimestamp, !Info, !IO),
+    get_target_timestamp(ProgressStream, Globals,
+        ClassTarget, MaybeClassTimestamp, !Info, !IO),
+    ( if
+        MaybeJavaTimestamp = ok(JavaTimestamp),
+        MaybeClassTimestamp = ok(ClassTimestamp),
+        ClassTimestamp @>= JavaTimestamp
+    then
+        JavaFilesToRecompile = TailJavaFilesToRecompile
+    else
+        % XXX Note that get_target_timestamp *also* converts HeadModuleName
+        % to HeadJavaFile, but *only* if the timestamp of JavaTarget
+        % is not in the cache.
+        %
+        % XXX FILE_NAMES
+        % XXX LEGACY
+        JavaExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
+        module_name_to_file_name(Globals, $pred, JavaExt, HeadModuleName,
+            HeadJavaFile, _HeadJavaFileProposed),
+        JavaFilesToRecompile = [HeadJavaFile | TailJavaFilesToRecompile]
+    ).
+
+:- pred recompile_given_java_files(io.text_output_stream::in, globals::in,
+    module_name::in, file_name::in, list(file_name)::in, maybe_succeeded::out,
     make_info::in, io::di, io::uo) is det.
 
-build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
-        Succeeded, Info, !IO) :-
+recompile_given_java_files(ProgressStream, Globals, MainModuleName,
+        HeadJavaFile, TailJavaFiles, Succeeded, Info, !IO) :-
     verbose_make_one_part_msg(Globals, "Making Java class files", MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
-    % XXX FILE_NAMES
-    % XXX LEGACY
-    list.map2_foldl(
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
-        ModuleNames, JavaFiles, _JavaFilesProposed, !IO),
     % We redirect errors to a file named after the main module.
     open_module_error_stream(ProgressStream, Globals, Info, MainModuleName,
         MaybeErrorStream, !IO),
@@ -938,20 +950,13 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
         Succeeded = did_not_succeed
     ;
         MaybeErrorStream = es_ok(MESI, ErrorStream),
-        build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded, !IO),
+        call_in_forked_process(
+            compile_java_files(Globals, ProgressStream,
+                HeadJavaFile, TailJavaFiles),
+            Succeeded, !IO),
         close_module_error_stream_handle_errors(ProgressStream, Globals,
             MESI, ErrorStream, Info, !IO)
     ).
-
-:- pred build_java_files_2(io.text_output_stream::in, globals::in,
-    list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
-
-build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded, !IO) :-
-    list.det_head_tail(JavaFiles, HeadJavaFile, TailJavaFiles),
-    call_in_forked_process(
-        compile_java_files(Globals, ProgressStream,
-            HeadJavaFile, TailJavaFiles),
-        Succeeded, !IO).
 
 :- pred reinsert_timestamps_for_non_class_files(string::in,
     {list(dir_name), maybe_error(timestamp)}::in,
@@ -971,14 +976,11 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
         Succeeded, !Info, !Specs, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
-    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-    EnvVarArgs = make_info_get_env_var_args(!.Info),
-    OptionArgs = make_info_get_option_args(!.Info),
+    Params = make_info_get_compiler_params(!.Info),
     ExtraOptions = [],
     setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         MaybeStdLibGrades, invoked_by_mmc_make, MainModuleName,
-        EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions,
-        MayBuild, !IO),
+        Params, ExtraOptions, MayBuild, !IO),
     (
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         make_misc_target_builder(ProgressStream, BuildGlobals, MainModuleName,
@@ -998,26 +1000,13 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
 
 make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         Succeeded, !Info, !Specs, !IO) :-
-    % Don't rebuild .module_dep files when cleaning up.
-    RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
-    ( if
-        ( TargetType = misc_target_clean
-        ; TargetType = misc_target_realclean
-        )
-    then
-        make_info_set_rebuild_module_deps(do_not_rebuild_module_deps, !Info)
-    else
-        true
-    ),
-    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        Succeeded0, AllModulesSet, !Info, !IO),
-    make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info),
-    AllModules = set.to_sorted_list(AllModulesSet),
+    find_reachable_local_modules_for_misc(ProgressStream, Globals,
+        MainModuleName, TargetType, Succeeded0, AllModuleNames, !Info, !IO),
     (
         TargetType = misc_target_clean,
         Succeeded = succeeded,
         list.foldl2(make_module_clean(ProgressStream, Globals),
-            AllModules, !Info, !IO),
+            AllModuleNames, !Info, !IO),
         remove_init_files(ProgressStream, Globals, very_verbose,
             MainModuleName, !Info, !IO)
     ;
@@ -1025,12 +1014,12 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         Succeeded = succeeded,
         make_main_module_realclean(ProgressStream, Globals, MainModuleName,
             !Info, !IO),
-        list.foldl2(make_module_realclean(ProgressStream, Globals), AllModules,
-            !Info, !IO)
+        list.foldl2(make_module_realclean(ProgressStream, Globals),
+            AllModuleNames, !Info, !IO)
     ;
         TargetType = misc_target_build_all(ModuleTargetType),
         get_target_modules(ProgressStream, Globals, ModuleTargetType,
-            AllModules, TargetModules, !Info, !IO),
+            AllModuleNames, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
@@ -1049,17 +1038,17 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             ;
                 ModuleTargetType = module_target_int0,
                 build_int_opt_files(ProgressStream, Globals,
-                    build_int3s, AllModules, Succeeded1, !Info, !IO)
+                    build_int3s, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_int1
                 ; ModuleTargetType = module_target_int2
                 ),
                 build_int_opt_files(ProgressStream, Globals,
-                    build_int3s_int0s, AllModules, Succeeded1, !Info, !IO)
+                    build_int3s_int0s, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ModuleTargetType = module_target_opt,
                 build_int_opt_files(ProgressStream, Globals,
-                    build_all_ints, AllModules, Succeeded1, !Info, !IO)
+                    build_all_ints, AllModuleNames, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_errors
                 ; ModuleTargetType = module_target_analysis_registry
@@ -1073,7 +1062,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 ; ModuleTargetType = module_target_xml_doc
                 ),
                 build_int_opt_files(ProgressStream, Globals,
-                    build_all_ints_opts, AllModules, Succeeded1, !Info, !IO)
+                    build_all_ints_opts, AllModuleNames, Succeeded1, !Info, !IO)
             ),
             ( if
                 Succeeded1 = did_not_succeed,
@@ -1081,8 +1070,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             then
                 Succeeded = did_not_succeed
             else
-                Targets =
-                    make_dependency_list(TargetModules, ModuleTargetType),
+                Targets = make_target_id_list(TargetModules, ModuleTargetType),
                 maybe_with_analysis_cache_dir_2(ProgressStream, Globals,
                     foldl2_make_module_targets_maybe_parallel_build2(KeepGoing,
                         [], Globals, Targets),
@@ -1094,16 +1082,16 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         TargetType = misc_target_build_analyses,
         maybe_with_analysis_cache_dir_2(ProgressStream, Globals,
             build_analysis_files(Globals, MainModuleName,
-                AllModules, Succeeded0),
+                AllModuleNames, Succeeded0),
             Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
         build_int_opt_files(ProgressStream, Globals, build_all_ints_opts,
-            AllModules, IntSucceeded, !Info, !IO),
+            AllModuleNames, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = succeeded,
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,
-                build_library(MainModuleName, AllModules, Globals),
+                build_library(MainModuleName, AllModuleNames, Globals),
                 Succeeded, !Info, !Specs, !IO)
         ;
             IntSucceeded = did_not_succeed,
@@ -1116,36 +1104,67 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         make_misc_target(ProgressStream, Globals,
             MainModuleName - misc_target_build_library, LibSucceeded,
             !Info, !Specs, !IO),
+        SucceededSoFar = Succeeded0 `and` LibSucceeded,
         (
-            LibSucceeded = succeeded,
+            SucceededSoFar = succeeded,
             (
                 TargetType = misc_target_install_library,
                 install_library(ProgressStream, Globals,
-                    MainModuleName, Succeeded, !Info, !IO)
+                    MainModuleName, AllModuleNames, Succeeded, !Info, !IO)
             ;
                 TargetType = misc_target_install_library_gs_gas,
                 install_library_gs_gas(ProgressStream, Globals,
-                    MainModuleName, Succeeded, !Info, !IO)
+                    MainModuleName, AllModuleNames, Succeeded, !Info, !IO)
             )
         ;
-            LibSucceeded = did_not_succeed,
+            SucceededSoFar = did_not_succeed,
             Succeeded = did_not_succeed
         )
     ;
         TargetType = misc_target_build_xml_docs,
         get_target_modules(ProgressStream, Globals, module_target_xml_doc,
-            AllModules, TargetModules, !Info, !IO),
+            AllModuleNames, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
             XmlDocs =
-                make_dependency_list(TargetModules, module_target_xml_doc),
+                make_target_id_list(TargetModules, module_target_xml_doc),
             foldl2_make_module_targets(KeepGoing, [],
                 ProgressStream, Globals, XmlDocs, Succeeded1, !Info, !IO),
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ).
+
+:- pred find_reachable_local_modules_for_misc(io.text_output_stream::in,
+    globals::in, module_name::in, misc_target_type::in,
+    maybe_succeeded::out, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_reachable_local_modules_for_misc(ProgressStream, Globals,
+        MainModuleName, TargetType, Succeeded, AllModuleNames, !Info, !IO) :-
+    (
+        ( TargetType = misc_target_clean
+        ; TargetType = misc_target_realclean
+        ),
+        % Don't rebuild .module_dep files when cleaning up.
+        RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
+        make_info_set_rebuild_module_deps(do_not_rebuild_module_deps, !Info),
+        find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
+            Succeeded, AllModuleNamesSet, !Info, !IO),
+        make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info)
+    ;
+        ( TargetType = misc_target_build_all(_)
+        ; TargetType = misc_target_build_analyses
+        ; TargetType = misc_target_build_library
+        ; TargetType = misc_target_install_library
+        ; TargetType = misc_target_install_library_gs_gas
+        ; TargetType = misc_target_build_xml_docs
+        ),
+        find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
+            Succeeded, AllModuleNamesSet, !Info, !IO)
+    ),
+    AllModuleNames = set.to_sorted_list(AllModuleNamesSet).
 
 %---------------------------------------------------------------------------%
 
@@ -1164,13 +1183,13 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
     get_nonnested_and_parent_modules(ProgressStream, Globals, AllModules0,
         NonnestedModules, ParentModules, !Info, !IO),
 
-    Int3s = make_dependency_list(NonnestedModules, module_target_int3),
-    Int0s = make_dependency_list(ParentModules, module_target_int0),
-    Int1s = make_dependency_list(NonnestedModules, module_target_int1),
+    Int3s = make_target_id_list(NonnestedModules, module_target_int3),
+    Int0s = make_target_id_list(ParentModules, module_target_int0),
+    Int1s = make_target_id_list(NonnestedModules, module_target_int1),
     globals.get_any_intermod(Globals, AnyIntermod),
     (
         AnyIntermod = yes,
-        Opts = make_dependency_list(NonnestedModules, module_target_opt)
+        Opts = make_target_id_list(NonnestedModules, module_target_opt)
     ;
         AnyIntermod = no,
         Opts = []
@@ -1214,39 +1233,41 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
 
 %---------------------------------------------------------------------------%
 
-:- type build2(Info) == pred(io.text_output_stream, maybe_succeeded,
-    Info, Info, io, io).
+:- type build2 == pred(io.text_output_stream, maybe_succeeded,
+    make_info, make_info, io, io).
 :- inst build2 == (pred(in, out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
-    % After P is finished, remove the cache directory completely.
+    % After Pred is finished, remove the cache directory completely.
     %
 :- pred maybe_with_analysis_cache_dir_2(io.text_output_stream::in, globals::in,
-    build2(make_info)::in(build2), maybe_succeeded::out,
+    build2::in(build2), maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
+maybe_with_analysis_cache_dir_2(ProgressStream, Globals, Pred, Succeeded,
         !Info, !IO) :-
     should_we_use_analysis_cache_dir(ProgressStream, Globals, !.Info,
         UseAnalysisCacheDir, !IO),
     (
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
-        P(ProgressStream, Succeeded, !Info, !IO)
+        Pred(ProgressStream, Succeeded, !Info, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = make_info_get_option_args(!.Info),
+        OrigParams = make_info_get_compiler_params(!.Info),
+        OrigOptionArgs = OrigParams ^ cp_option_args,
         % Pass the name of the cache directory to child processes.
         NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
-        make_info_set_option_args(NewOptionArgs, !Info),
+        NewParams = OrigParams ^ cp_option_args := NewOptionArgs,
+        make_info_set_compiler_params(NewParams, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, TaskSucceeded, !Info, !IO),
+        Pred(ProgressStream, TaskSucceeded, !Info, !IO),
         CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
-        make_info_set_option_args(OrigOptionArgs, !Info)
+        make_info_set_compiler_params(OrigParams, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1254,40 +1275,41 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
 
 %---------------------%
 
-:- type build3(Info) == pred(io.text_output_stream, maybe_succeeded,
-    Info, Info, list(error_spec), list(error_spec), io, io).
+:- type build3 == pred(io.text_output_stream, maybe_succeeded,
+    make_info, make_info, list(error_spec), list(error_spec), io, io).
 :- inst build3 == (pred(in, out, in, out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
-    % After P is finished, remove the cache directory completely.
+    % After Pred is finished, remove the cache directory completely.
     %
 :- pred maybe_with_analysis_cache_dir_3(io.text_output_stream::in, globals::in,
-    build3(make_info)::in(build3), maybe_succeeded::out,
-    make_info::in, make_info::out,
+    build3::in(build3), maybe_succeeded::out, make_info::in, make_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
+maybe_with_analysis_cache_dir_3(ProgressStream, Globals, Pred, Succeeded,
         !Info, !Specs, !IO) :-
     should_we_use_analysis_cache_dir(ProgressStream, Globals, !.Info,
         UseAnalysisCacheDir, !IO),
     (
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
-        P(ProgressStream, Succeeded, !Info, !Specs, !IO)
+        Pred(ProgressStream, Succeeded, !Info, !Specs, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = make_info_get_option_args(!.Info),
+        OrigParams = make_info_get_compiler_params(!.Info),
+        OrigOptionArgs = OrigParams ^ cp_option_args,
         % Pass the name of the cache directory to child processes.
         NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
-        make_info_set_option_args(NewOptionArgs, !Info),
+        NewParams = OrigParams ^ cp_option_args := NewOptionArgs,
+        make_info_set_compiler_params(NewParams, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
+        Pred(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
         CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
             TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
-        make_info_set_option_args(OrigOptionArgs, !Info)
+        make_info_set_compiler_params(OrigParams, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1302,6 +1324,8 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files.
+    %
+    % XXX This oversimplifies the logic in the code.
     %
 :- pred should_we_use_analysis_cache_dir(io.text_output_stream::in,
     globals::in, make_info::in, maybe_use_analysis_cache_dir::out,
@@ -1321,10 +1345,17 @@ should_we_use_analysis_cache_dir(ProgressStream, Globals, Info,
             Caching = no
         ;
             % Cache directory given on command line.
+            % XXX I (zs) find it strange to take the cache directory's name
+            % being specified on the command line as a sign that
+            % we should NOT use an analysis cache directory,
+            % but that is what we do.
             CacheDir0 \= ""
         ;
             % Analysis file cache directory already set up in a parent call.
-            list.member(CacheDirOption, make_info_get_option_args(Info))
+            % XXX The comment just above applies here as well.
+            Params = make_info_get_compiler_params(Info),
+            Params = compiler_params(_, _, OpttonArgs),
+            list.member(CacheDirOption, OpttonArgs)
         )
     then
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir
@@ -1441,7 +1472,7 @@ build_analysis_files_2(ProgressStream, Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
     Registries =
-        make_dependency_list(TargetModules, module_target_analysis_registry),
+        make_target_id_list(TargetModules, module_target_analysis_registry),
     foldl2_make_module_targets(KeepGoing, LocalModulesOpts, ProgressStream,
         Globals, Registries, Succeeded1, !Info, !IO),
     % Maybe we should have an option to reanalyse cliques before moving
@@ -1532,10 +1563,10 @@ get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.condense(SccLists, Modules).
 
     % add_module_relations(LookupModuleImports, ModuleName,
-    %   !IntDepsRel, !ImplDepsRel)
+    %   !IntDepsRel, !ImpDepsRel)
     %
     % Add a module's interface and implementation dependencies to IntDepsRel
-    % and ImplDepsRel respectively. Dependencies are found using the
+    % and ImpDepsRel respectively. Dependencies are found using the
     % LookupModuleImports function.
     %
 :- pred add_module_relations(lookup_module_dep_info_func::in, module_name::in,
@@ -1543,10 +1574,10 @@ get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     digraph(module_name)::in, digraph(module_name)::out) is det.
 
 add_module_relations(LookupModuleImportsFunc, ModuleName,
-        !IntDepsGraph, !ImplDepsGraph) :-
+        !IntDepsGraph, !ImpDepsGraph) :-
     ModuleDepInfo = LookupModuleImportsFunc(ModuleName),
     add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImportsFunc,
-        !IntDepsGraph, !ImplDepsGraph).
+        !IntDepsGraph, !ImpDepsGraph).
 
 %---------------------------------------------------------------------------%
 
@@ -1597,11 +1628,12 @@ modules_needing_reanalysis(ReanalyseSuboptimal, Globals, [Module | Modules],
     make_info::in, make_info::out) is det.
 
 reset_analysis_registry_dependency_status(ModuleName, !Info) :-
-    Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)),
-    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
-    version_hash_table.set(Dep, deps_status_not_considered,
-        DepStatusMap0, DepStatusMap),
-    make_info_set_dep_file_status_map(DepStatusMap, !Info).
+    TargetFile = target_file(ModuleName, module_target_analysis_registry),
+    TargetId = merc_target(TargetFile),
+    TargetStatusMap0 = make_info_get_target_status_map(!.Info),
+    version_hash_table.set(TargetId, target_status_not_considered,
+        TargetStatusMap0, TargetStatusMap),
+    make_info_set_target_status_map(TargetStatusMap, !Info).
 
 %---------------------------------------------------------------------------%
 

@@ -19,9 +19,11 @@ of the source code repository.
 The Mercury compiler has two different
 [backends](https://www.mercurylang.org/about/backends.html)
 and works on different operating systems.
-Specific information is contained in individual README files:
+Specific information is contained in individual README files in the
+[Documentation](Documentation) directory:
 
-  * [Bootstrapping](README.bootstrap) discusses how to get Mercury installed.
+  * [Bootstrapping](Documentation/README.bootstrap) discusses
+    how to get Mercury installed.
 
     This is important, as the Mercury compiler is written in Mercury.
 
@@ -29,41 +31,42 @@ Specific information is contained in individual README files:
 
     This backend works well with GCC but also works with:
 
-      * [Clang](README.clang.md)
+      * [Clang](Documentation/README.clang.md)
 
   * High-level backend targets
 
       * C
-      * [C#](README.CSharp.md)
-      * [Java](README.Java.md)
+      * [C#](Documentation/README.CSharp.md)
+      * [Java](Documentation/README.Java.md)
 
   * Supported operating systems
 
-      * [Linux](README.Linux)
-        ([AArch64](README.Linux-aarch64.md),
-        [PPC](README.Linux-PPC),
-        [m68k](README.Linux-m68k))
-      * [macOS](README.macOS.md)
-      * [FreeBSD](README.FreeBSD.md)
-      * [OpenBSD](README.OpenBSD.md)
-      * [AIX](README.AIX.md)
-      * [HP-UX](README.HPUX.md)
-      * [Solaris](README.Solaris.md)
-      * [Windows](README.MS-Windows.md)
-        ([Visual C](README.MS-VisualC.md),
-        [MinGW](README.MinGW),
-        [Cygwin](README.Cygwin.md))
+      * [Linux](Documentation/README.Linux)
+        ([AArch64](Documentation/README.Linux-aarch64.md),
+        [PPC](Documentation/README.Linux-PPC),
+        [m68k](Documentation/README.Linux-m68k))
+      * [macOS](Documentation/README.macOS.md)
+      * [FreeBSD](Documentation/README.FreeBSD.md)
+      * [OpenBSD](Documentation/README.OpenBSD.md)
+      * [AIX](Documentation/README.AIX.md)
+      * [HP-UX](Documentation/README.HPUX.md)
+      * [Solaris](Documentation/README.Solaris.md)
+      * [Windows](Documentation/README.MS-Windows.md)
+        ([Visual C](Documentation/README.MS-VisualC.md),
+        [MinGW](Documentation/README.MinGW),
+        [Cygwin](Documentation/README.Cygwin.md))
 
   * Other platform information
-      * [Cross compilation](README.cross.md)
-      * [Docker](README.Docker)
-      * [x86](README.x86)
+      * [Cross compilation](Documentation/README.cross.md)
+      * [Docker](Documentation/README.Docker)
+      * [x86](Documentation/README.x86)
 
 ## Other information
 
 See the current [release notes](RELEASE_NOTES) for the latest stable release.
 The [news](NEWS.md) file lists any recent changes.
-The [history](HISTORY) file is relevant
+The files in the Documentation directory
+whose names start with `NEWS` are relevant
 if you want to find out more about the past development of Mercury.
 The [limitations](LIMITATIONS.md) file lists some ways
 in which the Mercury implementation does not yet meet its goals.

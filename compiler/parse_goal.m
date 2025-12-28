@@ -523,7 +523,7 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         parse_goal_true_fail(GoalKind, Args, Context, ContextPieces, MaybeGoal)
     ;
         GoalKind = gk_equal,
-        parse_goal_equal(Args, Context, ContextPieces, MaybeGoal)
+        parse_goal_equal(!.VarSet, Args, Context, ContextPieces, MaybeGoal)
     ).
 
 %---------------------%
@@ -1632,15 +1632,36 @@ parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal) :-
 
 %---------------------%
 
-:- pred parse_goal_equal(list(term)::in, term.context::in,
+:- pred parse_goal_equal(prog_varset::in, list(term)::in, term.context::in,
     cord(format_piece)::in, maybe2(goal, list(warning_spec))::out) is det.
-:- pragma inline(pred(parse_goal_equal/4)).
+:- pragma inline(pred(parse_goal_equal/5)).
 
-parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal) :-
+parse_goal_equal(VarSet, ArgTerms, Context, ContextPieces, MaybeGoal) :-
     ( if ArgTerms = [TermA0, TermB0] then
         term.coerce(TermA0, TermA),
         term.coerce(TermB0, TermB),
-        MaybeGoal = ok2(unify_expr(Context, TermA, TermB, purity_pure), [])
+        Goal = unify_expr(Context, TermA, TermB, purity_pure),
+        ( if
+            TermA = functor(atom("^"), [TermAA, TermAB], Context),
+            TermAA = functor(atom("!"), [variable(Var, _)], _Context),
+            TermAB = functor(atom(FieldName), [], _)
+        then
+            VarName = mercury_var_to_string_vs(VarSet, print_name_only, Var),
+            string.format("!%s ^ %s", [s(VarName), s(FieldName)], ExprStr),
+            Pieces = [words("Warning: if the expression")] ++
+                color_as_subject([quote(ExprStr)]) ++
+                [words("is intended to be part of a field update,"),
+                words("then it should be followed by")] ++
+                color_as_correct([quote(":="), suffix(",")]) ++
+                [words("not")] ++
+                color_as_incorrect([quote("="), suffix(".")]) ++ [nl],
+            Severity = severity_warning(warn_dodgy_simple_code),
+            WarningSpec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+            WarningSpecs = [WarningSpec]
+        else
+            WarningSpecs = []
+        ),
+        MaybeGoal = ok2(Goal, WarningSpecs)
     else
         Spec = should_have_two_terms_infix(ContextPieces, Context, "="),
         MaybeGoal = error2([Spec])
@@ -1951,163 +1972,30 @@ parse_trace_params(VarSet, Context, Term, MaybeComponentsContexts) :-
 parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
     ( if
         Term = term.functor(Functor, SubTerms, Context),
-        Functor = term.atom(Atom)
-    then
-        ( if
+        Functor = term.atom(Atom),
+        (
             ( Atom = "compiletime"
             ; Atom = "compile_time"
-            )
-        then
-            ( if SubTerms = [SubTerm] then
-                parse_trace_tree(parse_trace_compiletime(VarSet), SubTerm,
-                    MaybeCompileTime),
-                (
-                    MaybeCompileTime = ok1(CompileTime),
-                    Component = trace_component_compiletime(CompileTime),
-                    MaybeComponentContext = ok1(Component - Context)
-                ;
-                    MaybeCompileTime = error1(Specs),
-                    MaybeComponentContext = error1(Specs)
-                )
-            else
-                Pieces = [words("Error:")] ++
-                    color_as_subject([fixed(Atom)]) ++
-                    color_as_subject(
-                        [words("should have exactly one argument,")]) ++
-                    [words("which should be a boolean expression"),
-                    words("of compile-time tests."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    Context, Pieces),
-                MaybeComponentContext = error1([Spec])
-            )
-        else if
+            ),
+            parse_trace_component_compiletime(VarSet, Atom, Context, SubTerms,
+                MaybeComponentContextPrime)
+        ;
             ( Atom = "runtime"
             ; Atom = "run_time"
-            )
-        then
-            ( if SubTerms = [SubTerm] then
-                parse_trace_tree(parse_trace_runtime(VarSet), SubTerm,
-                    MaybeRunTime),
-                (
-                    MaybeRunTime = ok1(RunTime),
-                    Component = trace_component_runtime(RunTime),
-                    MaybeComponentContext = ok1(Component - Context)
-                ;
-                    MaybeRunTime = error1(Specs),
-                    MaybeComponentContext = error1(Specs)
-                )
-            else
-                Pieces = [words("Error:")] ++
-                    color_as_subject([fixed(Atom)]) ++
-                    color_as_incorrect(
-                        [words("should have exactly one argument,")])++
-                    [words("which should be a boolean expression"),
-                    words("of run-time tests."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    Context, Pieces),
-                MaybeComponentContext = error1([Spec])
-            )
-        else if
-            Atom = "io"
-        then
-            ( if SubTerms = [SubTerm] then
-                ( if
-                    SubTerm = term.functor(term.atom("!"),
-                        [term.variable(Var, _)], _)
-                then
-                    term.coerce_var(Var, ProgVar),
-                    Component = trace_component_maybe_io(ProgVar),
-                    MaybeComponentContext = ok1(Component - Context)
-                else
-                    Pieces = [words("Error: the argument of")] ++
-                        color_as_subject([fixed(Atom)]) ++
-                        color_as_incorrect(
-                            [words("should be a state variable.")]) ++
-                        [nl],
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(SubTerm), Pieces),
-                    MaybeComponentContext = error1([Spec])
-                )
-            else
-                Pieces = [words("Error:")] ++
-                    color_as_subject([fixed(Atom)]) ++
-                    color_as_incorrect(
-                        [words("should have exactly one argument,")]) ++
-                    [words("which should be a state variable name."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    Context, Pieces),
-                MaybeComponentContext = error1([Spec])
-            )
-        else if
-            Atom = "state"
-        then
-            ( if SubTerms = [SubTermA, SubTermB] then
-                ( if
-                    SubTermA = term.functor(term.atom(MutableName), [], _)
-                then
-                    MaybeMutable = ok1(MutableName)
-                else
-                    MutablePieces = [words("Error: the")] ++
-                        color_as_subject([words("first argument of"),
-                            fixed(Atom)]) ++
-                        color_as_incorrect([words("should be"),
-                            words("the name of a mutable variable.")]) ++
-                        [nl],
-                    MutableSpec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(SubTermA), MutablePieces),
-                    MaybeMutable = error1([MutableSpec])
-                ),
-                ( if
-                    SubTermB = term.functor(term.atom("!"),
-                        [term.variable(Var, _)], _)
-                then
-                    MaybeVar = ok1(Var)
-                else
-                    VarPieces = [words("Error: the")] ++
-                        color_as_subject([words("second argument of"),
-                            fixed(Atom)]) ++
-                        color_as_incorrect([words("should be"),
-                            words("a state variable name.")]) ++
-                        [nl],
-                    VarSpec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(SubTermB), VarPieces),
-                    MaybeVar = error1([VarSpec])
-                ),
-                ( if
-                    MaybeMutable = ok1(FinalMutable),
-                    MaybeVar = ok1(FinalVar)
-                then
-                    term.coerce_var(FinalVar, ProgVar),
-                    MutableVar = trace_mutable_var(FinalMutable, ProgVar),
-                    Component = trace_component_mutable_var(MutableVar),
-                    MaybeComponentContext = ok1(Component - Context)
-                else
-                    Specs = get_any_errors1(MaybeVar) ++
-                        get_any_errors1(MaybeMutable),
-                    MaybeComponentContext = error1(Specs)
-                )
-            else
-                Pieces = [words("Error:")] ++
-                    color_as_subject([fixed(Atom)]) ++
-                    color_as_incorrect(
-                        [words("should have exactly two arguments,")]) ++
-                    [words("which should be"),
-                    words("the name of a mutable variable"),
-                    words("and a state variable name."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    Context, Pieces),
-                MaybeComponentContext = error1([Spec])
-            )
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: expected a")] ++
-                color_as_correct([words("trace goal parameter,")]) ++
-                [words("got")] ++
-                color_as_incorrect([quote(TermStr), suffix(".")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeComponentContext = error1([Spec])
+            ),
+            parse_trace_component_runtime(VarSet, Atom, Context, SubTerms,
+                MaybeComponentContextPrime)
+        ;
+            Atom = "io",
+            parse_trace_component_io(Atom, Context, SubTerms,
+                MaybeComponentContextPrime)
+        ;
+            Atom = "state",
+            parse_trace_component_state(Atom, Context, SubTerms,
+                MaybeComponentContextPrime)
         )
+    then
+        MaybeComponentContext = MaybeComponentContextPrime
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a")] ++
@@ -2119,6 +2007,151 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
             get_term_context(Term), Pieces),
         MaybeComponentContext = error1([Spec])
     ).
+
+%---------------------%
+
+:- pred parse_trace_component_compiletime(varset::in, string::in,
+    term_context::in, list(term)::in,
+    maybe1(pair(trace_component, term.context))::out) is det.
+
+parse_trace_component_compiletime(VarSet, Atom, Context, SubTerms,
+        MaybeComponentContext) :-
+    ( if SubTerms = [SubTerm] then
+        parse_trace_tree(parse_trace_compiletime(VarSet), SubTerm,
+            MaybeCompileTime),
+        (
+            MaybeCompileTime = ok1(CompileTime),
+            Component = trace_component_compiletime(CompileTime),
+            MaybeComponentContext = ok1(Component - Context)
+        ;
+            MaybeCompileTime = error1(Specs),
+            MaybeComponentContext = error1(Specs)
+        )
+    else
+        Pieces = [words("Error:")] ++
+            color_as_subject([fixed(Atom)]) ++
+            color_as_subject([words("should have exactly one argument,")]) ++
+            [words("which should be a boolean expression"),
+            words("of compile-time tests."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeComponentContext = error1([Spec])
+    ).
+
+:- pred parse_trace_component_runtime(varset::in, string::in,
+    term_context::in, list(term)::in,
+    maybe1(pair(trace_component, term.context))::out) is det.
+
+parse_trace_component_runtime(VarSet, Atom, Context, SubTerms,
+        MaybeComponentContext) :-
+    ( if SubTerms = [SubTerm] then
+        parse_trace_tree(parse_trace_runtime(VarSet), SubTerm, MaybeRunTime),
+        (
+            MaybeRunTime = ok1(RunTime),
+            Component = trace_component_runtime(RunTime),
+            MaybeComponentContext = ok1(Component - Context)
+        ;
+            MaybeRunTime = error1(Specs),
+            MaybeComponentContext = error1(Specs)
+        )
+    else
+        Pieces = [words("Error:")] ++
+            color_as_subject([fixed(Atom)]) ++
+            color_as_incorrect([words("should have exactly one argument,")])++
+            [words("which should be a boolean expression"),
+            words("of run-time tests."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeComponentContext = error1([Spec])
+    ).
+
+:- pred parse_trace_component_io(string::in, term_context::in,
+    list(term)::in, maybe1(pair(trace_component, term.context))::out) is det.
+
+parse_trace_component_io(Atom, Context, SubTerms, MaybeComponentContext) :-
+    ( if SubTerms = [SubTerm] then
+        ( if
+            SubTerm = term.functor(term.atom("!"), [term.variable(Var, _)], _)
+        then
+            term.coerce_var(Var, ProgVar),
+            Component = trace_component_maybe_io(ProgVar),
+            MaybeComponentContext = ok1(Component - Context)
+        else
+            Pieces = [words("Error: the argument of")] ++
+                color_as_subject([fixed(Atom)]) ++
+                color_as_incorrect([words("should be a state variable.")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(SubTerm), Pieces),
+            MaybeComponentContext = error1([Spec])
+        )
+    else
+        Pieces = [words("Error:")] ++
+            color_as_subject([fixed(Atom)]) ++
+            color_as_incorrect([words("should have exactly one argument,")]) ++
+            [words("which should be a state variable name."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeComponentContext = error1([Spec])
+    ).
+
+:- pred parse_trace_component_state(string::in, term_context::in,
+    list(term)::in, maybe1(pair(trace_component, term.context))::out) is det.
+
+parse_trace_component_state(Atom, Context, SubTerms, MaybeComponentContext) :-
+    ( if SubTerms = [SubTermA, SubTermB] then
+        ( if
+            SubTermA = term.functor(term.atom(MutableName), [], _)
+        then
+            MaybeMutable = ok1(MutableName)
+        else
+            MutablePieces = [words("Error: the")] ++
+                color_as_subject([words("first argument of"), fixed(Atom)]) ++
+                color_as_incorrect([words("should be"),
+                    words("the name of a mutable variable.")]) ++
+                [nl],
+            MutableSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(SubTermA), MutablePieces),
+            MaybeMutable = error1([MutableSpec])
+        ),
+        ( if
+            SubTermB = term.functor(term.atom("!"),
+                [term.variable(Var, _)], _)
+        then
+            MaybeVar = ok1(Var)
+        else
+            VarPieces = [words("Error: the")] ++
+                color_as_subject([words("second argument of"), fixed(Atom)]) ++
+                color_as_incorrect([words("should be"),
+                    words("a state variable name.")]) ++
+                [nl],
+            VarSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(SubTermB), VarPieces),
+            MaybeVar = error1([VarSpec])
+        ),
+        ( if
+            MaybeMutable = ok1(FinalMutable),
+            MaybeVar = ok1(FinalVar)
+        then
+            term.coerce_var(FinalVar, ProgVar),
+            MutableVar = trace_mutable_var(FinalMutable, ProgVar),
+            Component = trace_component_mutable_var(MutableVar),
+            MaybeComponentContext = ok1(Component - Context)
+        else
+            Specs = get_any_errors1(MaybeVar) ++
+                get_any_errors1(MaybeMutable),
+            MaybeComponentContext = error1(Specs)
+        )
+    else
+        Pieces = [words("Error:")] ++
+            color_as_subject([fixed(Atom)]) ++
+            color_as_incorrect(
+                [words("should have exactly two arguments,")]) ++
+            [words("which should be"),
+            words("the name of a mutable variable"),
+            words("and a state variable name."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeComponentContext = error1([Spec])
+    ).
+
+%---------------------%
 
 :- pred parse_trace_tree(pred(term, maybe1(T))::in(pred(in, out) is det),
     term::in, maybe1(trace_expr(T))::out) is det.
@@ -2169,132 +2202,32 @@ parse_trace_tree(BaseParser, Term, MaybeTree) :-
         )
     ).
 
+%---------------------%
+
 :- pred parse_trace_compiletime(varset::in, term::in,
     maybe1(trace_compiletime)::out) is det.
 
 parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
     ( if
         Term = term.functor(Functor, SubTerms, TermContext),
-        Functor = term.atom(Atom)
-    then
-        ( if Atom = "flag" then
-            ( if SubTerms = [SubTerm] then
-                ( if SubTerm = term.functor(term.string(FlagName), [], _) then
-                    Compiletime = trace_flag(FlagName),
-                    MaybeCompiletime = ok1(Compiletime)
-                else
-                    SubTermStr = describe_error_term(VarSet, SubTerm),
-                    Pieces = [words("Error: expexted a")] ++
-                        color_as_correct([words("string")]) ++
-                        [words("as the argument of"), quote("flag"),
-                            suffix(","), words("got")] ++
-                        color_as_incorrect([quote(SubTermStr), suffix(".")]) ++
-                        [nl],
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        TermContext, Pieces),
-                    MaybeCompiletime = error1([Spec])
-                )
-            else
-                Pieces = [words("Error: compile_time parameter")] ++
-                    color_as_subject([quote("flag")]) ++
-                    color_as_incorrect(
-                        [words("should have just one argument.")]) ++
-                    [nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
-                MaybeCompiletime = error1([Spec])
-            )
-        else if Atom = "grade" then
-            ( if SubTerms = [SubTerm] then
-                ( if
-                    SubTerm = term.functor(term.atom(GradeName), [], _),
-                    parse_trace_grade_name(GradeName, TraceGrade)
-                then
-                    Compiletime = trace_grade(TraceGrade),
-                    MaybeCompiletime = ok1(Compiletime)
-                else
-                    SubTermStr = describe_error_term(VarSet, SubTerm),
-                    solutions(valid_trace_grade_name, ValidGradeNames),
-                    Pieces = [words("Error:")] ++
-                        color_as_subject([quote(SubTermStr)]) ++
-                        color_as_incorrect(
-                            [words("is not a valid grade test.")]) ++
-                        [words("The valid grade tests are")] ++
-                        fixed_list_to_color_pieces(color_correct, "and",
-                            [suffix(".")], ValidGradeNames) ++
-                        [nl],
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        TermContext, Pieces),
-                    MaybeCompiletime = error1([Spec])
-                )
-            else
-                Pieces = [words("Error: compile_time parameter"),
-                    quote("grade"), words("takes just one argument."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
-                MaybeCompiletime = error1([Spec])
-            )
-        else if ( Atom = "tracelevel" ; Atom = "trace_level" ) then
-            ( if SubTerms = [SubTerm] then
-                ( if
-                    SubTerm = term.functor(term.atom(LevelName), [], _),
-                    (
-                        LevelName = "shallow",
-                        Level = trace_level_shallow
-                    ;
-                        LevelName = "deep",
-                        Level = trace_level_deep
-                    )
-                then
-                    Compiletime = trace_trace_level(Level),
-                    MaybeCompiletime = ok1(Compiletime)
-                else
-                    SubTermStr = describe_error_term(VarSet, SubTerm),
-                    Pieces = [words("Error:")] ++
-                        color_as_incorrect([quote(SubTermStr)]) ++
-                        color_as_incorrect(
-                            [words("is not a valid trace level.")]) ++
-                        [words("The valid trace levels are")] ++
-                        color_as_correct([quote("shallow")]) ++
-                        [words("and")] ++
-                        color_as_correct([quote("deep"), suffix(".")]) ++
-                        [nl],
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        TermContext, Pieces),
-                    MaybeCompiletime = error1([Spec])
-                )
-            else
-                Pieces = [words("Error: compile_time parameter")] ++
-                    color_as_subject([quote(Atom)]) ++
-                    color_as_incorrect(
-                        [words("should have just one argument.")]) ++
-                    [nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
-                MaybeCompiletime = error1([Spec])
-            )
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Form1 = "flag(""name of --trace-flag parameter"")",
-            Form2 = "grade(<grade test>)",
-            Form3 = "tracelevel(shallow)",
-            Form4 = "tracelevel(deep)",
-            Pieces = [words("Error:")] ++
-                color_as_subject([quote(TermStr)]) ++
-                color_as_incorrect(
-                    [words("is not a valid compile_time parameter.")]) ++
-                [words("The valid compile_time paramaters"),
-                words("have one of the following forms:"),
-                nl_indent_delta(1)] ++
-                color_as_correct([quote(Form1)]) ++ [nl] ++
-                color_as_correct([quote(Form2)]) ++ [nl] ++
-                color_as_correct([quote(Form3)]) ++ [nl] ++
-                color_as_correct([quote(Form4)]) ++
-                [nl_indent_delta(-1)],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
-            MaybeCompiletime = error1([Spec])
+        Functor = term.atom(Atom),
+        (
+            Atom = "flag",
+            parse_trace_compiletime_flag(VarSet, TermContext, SubTerms,
+                MaybeCompiletimePrime)
+        ;
+            Atom = "grade",
+            parse_trace_compiletime_grade(VarSet, TermContext, SubTerms,
+                MaybeCompiletimePrime)
+        ;
+            ( Atom = "tracelevel"
+            ; Atom = "trace_level"
+            ),
+            parse_trace_compiletime_trace_level(VarSet, Atom, TermContext,
+                SubTerms, MaybeCompiletimePrime)
         )
+    then
+        MaybeCompiletime = MaybeCompiletimePrime
     else
         TermStr = describe_error_term(VarSet, Term),
         Form1 = "flag(""name of --trace-flag parameter"")",
@@ -2318,61 +2251,119 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
         MaybeCompiletime = error1([Spec])
     ).
 
+:- pred parse_trace_compiletime_flag(varset::in, term_context::in,
+    list(term)::in, maybe1(trace_compiletime)::out) is det.
+
+parse_trace_compiletime_flag(VarSet, Context, SubTerms, MaybeCompiletime) :-
+    ( if SubTerms = [SubTerm] then
+        ( if SubTerm = term.functor(term.string(FlagName), [], _) then
+            Compiletime = trace_flag(FlagName),
+            MaybeCompiletime = ok1(Compiletime)
+        else
+            SubTermStr = describe_error_term(VarSet, SubTerm),
+            Pieces = [words("Error: expexted a")] ++
+                color_as_correct([words("string")]) ++
+                [words("as the argument of"), quote("flag"),
+                    suffix(","), words("got")] ++
+                color_as_incorrect([quote(SubTermStr), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            MaybeCompiletime = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: compile_time parameter")] ++
+            color_as_subject([quote("flag")]) ++
+            color_as_incorrect([words("should have just one argument.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeCompiletime = error1([Spec])
+    ).
+
+:- pred parse_trace_compiletime_grade(varset::in, term_context::in,
+    list(term)::in, maybe1(trace_compiletime)::out) is det.
+
+parse_trace_compiletime_grade(VarSet, Context, SubTerms, MaybeCompiletime) :-
+    ( if SubTerms = [SubTerm] then
+        ( if
+            SubTerm = term.functor(term.atom(GradeName), [], _),
+            parse_trace_grade_name(GradeName, TraceGrade)
+        then
+            Compiletime = trace_grade(TraceGrade),
+            MaybeCompiletime = ok1(Compiletime)
+        else
+            SubTermStr = describe_error_term(VarSet, SubTerm),
+            solutions(valid_trace_grade_name, ValidGradeNames),
+            Pieces = [words("Error:")] ++
+                color_as_subject([quote(SubTermStr)]) ++
+                color_as_incorrect([words("is not a valid grade test.")]) ++
+                [words("The valid grade tests are")] ++
+                fixed_list_to_color_pieces(color_correct, "and",
+                    [suffix(".")], ValidGradeNames) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            MaybeCompiletime = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: compile_time parameter"),
+            quote("grade"), words("takes just one argument."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeCompiletime = error1([Spec])
+    ).
+
+:- pred parse_trace_compiletime_trace_level(varset::in, string::in,
+    term_context::in, list(term)::in, maybe1(trace_compiletime)::out) is det.
+
+parse_trace_compiletime_trace_level(VarSet, Atom, Context, SubTerms,
+        MaybeCompiletime) :-
+    ( if SubTerms = [SubTerm] then
+        ( if
+            SubTerm = term.functor(term.atom(LevelName), [], _),
+            (
+                LevelName = "shallow",
+                Level = trace_level_shallow
+            ;
+                LevelName = "deep",
+                Level = trace_level_deep
+            )
+        then
+            Compiletime = trace_trace_level(Level),
+            MaybeCompiletime = ok1(Compiletime)
+        else
+            SubTermStr = describe_error_term(VarSet, SubTerm),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([quote(SubTermStr)]) ++
+                color_as_incorrect([words("is not a valid trace level.")]) ++
+                [words("The valid trace levels are")] ++
+                color_as_correct([quote("shallow")]) ++
+                [words("and")] ++
+                color_as_correct([quote("deep"), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            MaybeCompiletime = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: compile_time parameter")] ++
+            color_as_subject([quote(Atom)]) ++
+            color_as_incorrect(
+                [words("should have just one argument.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeCompiletime = error1([Spec])
+    ).
+
+%---------------------%
+
 :- pred parse_trace_runtime(varset::in, term::in,
     maybe1(trace_runtime)::out) is det.
 
 parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
     ( if
-        Term = term.functor(Functor, SubTerms, TermContext),
-        Functor = term.atom(Atom)
+        Term = term.functor(Functor, SubTerms, Context),
+        Functor = term.atom(Atom),
+        Atom = "env",
+        parse_trace_runtime_env(VarSet, Context, SubTerms, MaybeRuntimePrime)
     then
-        ( if Atom = "env" then
-            ( if SubTerms = [SubTerm] then
-                ( if
-                    SubTerm = term.functor(SubFunctor, [], _),
-                    ( SubFunctor = term.string(EnvVarName)
-                    ; SubFunctor = term.atom(EnvVarName)
-                    ),
-                    EnvVarChars = string.to_char_list(EnvVarName),
-                    list.filter(env_var_is_acceptable_char,
-                        EnvVarChars, _, [])
-                then
-                    Runtime = trace_envvar(EnvVarName),
-                    MaybeRuntime = ok1(Runtime)
-                else
-                    SubTermStr = describe_error_term(VarSet, SubTerm),
-                    Pieces = [words("Error: expected an")] ++
-                        color_as_correct([words("identifier")]) ++
-                        [words("as the argument of the run_time parameter"),
-                            quote("env"), suffix(","), words("got")] ++
-                        color_as_incorrect([quote(SubTermStr),
-                            suffix(".")]) ++
-                        [nl],
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(SubTerm), Pieces),
-                    MaybeRuntime = error1([Spec])
-                )
-            else
-                Pieces = [words("Error: run_time parameter"),
-                    quote("env"), words("takes just one argument."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
-                MaybeRuntime = error1([Spec])
-            )
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: expected a run_time parameter"),
-                words("of the form")] ++
-                color_as_correct(
-                    [quote("env(""name of an environment variable"")"),
-                    suffix(",")]) ++
-                [words("got")] ++
-                color_as_incorrect([quote(TermStr), suffix(".")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
-            MaybeRuntime = error1([Spec])
-        )
+        MaybeRuntime = MaybeRuntimePrime
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a run_time parameter"),
@@ -2388,6 +2379,40 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
         MaybeRuntime = error1([Spec])
     ).
 
+:- pred parse_trace_runtime_env(varset::in, term_context::in, list(term)::in,
+    maybe1(trace_runtime)::out) is det.
+
+parse_trace_runtime_env(VarSet, Context, SubTerms,  MaybeRuntime) :-
+    ( if SubTerms = [SubTerm] then
+        ( if
+            SubTerm = term.functor(SubFunctor, [], _),
+            ( SubFunctor = term.string(EnvVarName)
+            ; SubFunctor = term.atom(EnvVarName)
+            ),
+            EnvVarChars = string.to_char_list(EnvVarName),
+            list.filter(env_var_is_acceptable_char, EnvVarChars, _, [])
+        then
+            Runtime = trace_envvar(EnvVarName),
+            MaybeRuntime = ok1(Runtime)
+        else
+            SubTermStr = describe_error_term(VarSet, SubTerm),
+            Pieces = [words("Error: expected an")] ++
+                color_as_correct([words("identifier")]) ++
+                [words("as the argument of the run_time parameter"),
+                    quote("env"), suffix(","), words("got")] ++
+                color_as_incorrect([quote(SubTermStr), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(SubTerm), Pieces),
+            MaybeRuntime = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: run_time parameter"),
+            quote("env"), words("takes just one argument."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        MaybeRuntime = error1([Spec])
+    ).
+
 :- pred env_var_is_acceptable_char(char::in) is semidet.
 
 env_var_is_acceptable_char(Char) :-
@@ -2396,6 +2421,8 @@ env_var_is_acceptable_char(Char) :-
     ( char.is_alnum(Char)
     ; Char = '_'
     ).
+
+%---------------------%
 
 :- pred convert_trace_params(assoc_list(trace_component, term.context)::in,
     maybe4(maybe(trace_expr(trace_compiletime)),

@@ -13,10 +13,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.mode_top_functor.
+:- module hlds.mode_top_functor.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
@@ -57,10 +56,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_lookup.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
+:- import_module hlds.mode_util.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
@@ -190,5 +189,5 @@ modes_to_top_functor_modes(ModuleInfo, [Mode | Modes], [Type | Types],
     modes_to_top_functor_modes(ModuleInfo, Modes, Types, TopFunctorModes).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.mode_top_functor.
+:- end_module hlds.mode_top_functor.
 %---------------------------------------------------------------------------%

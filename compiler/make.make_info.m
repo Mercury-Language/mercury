@@ -75,46 +75,44 @@
 
 %---------------------%
 
-:- type dependency_file
-    --->    dep_target(target_file)
-            % A target which could be made.
+:- type target_id
+    --->    merc_target(target_file)
+            % A target that `mmc --make' knows how to build.
 
-    ;       dep_file(file_name).
-            % An ordinary file which `mmc --make' does not know how to rebuild.
+    ;       non_merc_target(file_name).
+            % An ordinary file that `mmc --make' does not know how to build.
 
-    % Like dependency_file but refers to a module by index instead of by name,
-    % which is more efficient when the name is not required.
+    % This type is like target_id, but refers to each module by its index
+    % instead of by name, which is more efficient. at least in situations
+    % where the name is not required.
     %
-:- type dependency_file_with_module_index
-    --->    dfmi_target(module_index, module_target_type)
-    ;       dfmi_file(file_name).
+:- type target_id_module_index
+    --->    timi_merc(module_index, module_target_type)
+    ;       timi_non_merc(file_name).
 
-:- type dependency_file_index_map
-    --->    dependency_file_index_map(
-                dfim_forward_map        :: version_hash_table(
-                                            dependency_file_with_module_index,
-                                            dependency_file_index),
-                dfim_reverse_map        :: version_array(
-                                            dependency_file_with_module_index),
-                dfim_counter            :: uint
+:- type target_id_index_map
+    --->    target_id_index_map(
+                tiim_fwd_map    :: version_hash_table(target_id_module_index,
+                                    target_id_index),
+                tiim_rev_map    :: version_array(target_id_module_index),
+                tiim_counter    :: uint
             ).
 
 %---------------------%
 
-:- type dependency_status
-    --->    deps_status_not_considered
-    ;       deps_status_being_built
-    ;       deps_status_up_to_date
-    ;       deps_status_error.
+:- type target_status
+    --->    target_status_not_considered
+    ;       target_status_being_built
+    ;       target_status_up_to_date
+    ;       target_status_error.
 
     % An old, previously inappropriately-placed comment says:
     %
     % There should be a definite improvement if we could replace
-    % this hash table indexed by dependency_file terms with an array
-    % indexed by the uints inside values of type dependency_file_index.
+    % this hash table indexed by target_id terms with an array
+    % indexed by the uints inside values of type target_id_index.
     %
-:- type dep_file_status_map ==
-    version_hash_table(dependency_file, dependency_status).
+:- type target_status_map == version_hash_table(target_id, target_status).
 
 %---------------------%
 
@@ -158,7 +156,7 @@
     --->    header_mh    % For `:- pragma foreign_export' declarations.
     ;       header_mih.  % Declarations for hlc grades, for compiler use only.
 
-% :- type linked_target_type is in compile_target_code.m.
+% :- type linked_target_type is in link_target_code.m.
 
 :- type misc_target_type
     --->    misc_target_clean
@@ -229,18 +227,50 @@
 
 %---------------------------------------------------------------------------%
 
+    % Does the Mercury source file of a module exist either
+    %
+    % - in Mercury.modules, or
+    % - in the current directory?
+    %
+    % Given a module named say module_a, we use values of this type to decide,
+    % for each module imported by module_a, directly or indirectly, whether
+    % we should require its .java file to be built before we compile
+    % module_a.java to module_a.class. The idea is that it *the responsibility
+    % to build module_b.java* that is local to this invocation of mmc --make.
+    % We assume that src_is_not_local modules are in libraries that we are
+    % now using, meaning that their .java files should have been built
+    % when the library itself was built.
+    %
+    % We do not normally build .class files one by one. In java grades,
+    % the make_linked_target_2 predicate in make.program_target.m invokes
+    % make_class_files_for_all_program_modules, which first (re)builds
+    % all java files in the program, and then compiles them to .class files.
+    % The only situation in which values of this type come into play is
+    % when a java grade compilation wants to generate .class files but
+    % does not want to proceed to build an executable or library.
+    % This happens e.g. when we execute the test cases in tests/valid.
+    %
+    % NOTE The mmake script cannot handle properly situations in which
+    % Mercury.modules contains references to modules whose sources are
+    % in a directory other than the current directory. For example, when
+    % invoked on programs with such modules, mmake fails to create .d
+    % and .int* files for the non-current-directory modules.
+    %
+:- type is_src_local
+    --->    src_is_not_local
+    ;       src_is_local.
+
+%---------------------------------------------------------------------------%
+
 :- type make_info.
 
-:- func init_make_info(env_optfile_variables, maybe_stdlib_grades,
-    maybe_keep_going, list(string), list(string), set(top_target_file), int,
-    target_file_timestamp_map, module_index_map, dependency_file_index_map,
-    dep_file_status_map) = make_info.
+:- func init_make_info(maybe_stdlib_grades, maybe_keep_going, compiler_params,
+    set(top_target_file), int, target_file_timestamp_map,
+    module_index_map, target_id_index_map, target_status_map) = make_info.
 
-:- func make_info_get_env_optfile_variables(make_info) = env_optfile_variables.
+:- func make_info_get_compiler_params(make_info) = compiler_params.
 :- func make_info_get_maybe_stdlib_grades(make_info) = maybe_stdlib_grades.
 :- func make_info_get_keep_going(make_info) = maybe_keep_going.
-:- func make_info_get_env_var_args(make_info) = list(string).
-:- func make_info_get_option_args(make_info) = list(string).
 :- func make_info_get_command_line_targets(make_info) = set(top_target_file).
 :- func make_info_get_rebuild_module_deps(make_info) =
     maybe_rebuild_module_deps.
@@ -251,9 +281,8 @@
 :- func make_info_get_target_file_timestamp_map(make_info) =
     target_file_timestamp_map.
 :- func make_info_get_module_index_map(make_info) = module_index_map.
-:- func make_info_get_dep_file_index_map(make_info) =
-    dependency_file_index_map.
-:- func make_info_get_dep_file_status_map(make_info) = dep_file_status_map.
+:- func make_info_get_target_id_index_map(make_info) = target_id_index_map.
+:- func make_info_get_target_status_map(make_info) = target_status_map.
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
 :- func make_info_get_mi_read_module_maps(make_info) = have_parse_tree_maps.
@@ -268,12 +297,14 @@
 :- func make_info_get_foreign_imports_non_intermod_trans_cache(make_info) =
     module_to_module_set_cache.
 % :- func make_info_get_anc0_dir1_indir2_non_intermod_cache(make_info) =
-%     module_to_dep_file_set_cache.
+%     module_to_target_id_set_cache.
 :- func make_info_get_anc0_dir1_indir2_intermod_cache(make_info) =
-    module_to_dep_file_set_cache.
+    module_to_target_id_set_cache.
 :- func make_info_get_trans_prereqs_cache(make_info) = trans_prereqs_cache.
+:- func make_info_get_module_src_is_local_map(make_info) =
+    map(module_index, is_src_local).
 
-:- pred make_info_set_option_args(list(string)::in,
+:- pred make_info_set_compiler_params(compiler_params::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_command_line_targets(set(top_target_file)::in,
     make_info::in, make_info::out) is det.
@@ -290,9 +321,9 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_module_index_map(module_index_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_dep_file_index_map(dependency_file_index_map::in,
+:- pred make_info_set_target_id_index_map(target_id_index_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_dep_file_status_map(dep_file_status_map::in,
+:- pred make_info_set_target_status_map(target_status_map::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_importing_module(maybe(import_or_include)::in,
     make_info::in, make_info::out) is det.
@@ -314,12 +345,15 @@
     module_to_module_set_cache::in,
     make_info::in, make_info::out) is det.
 % :- pred make_info_set_anc0_dir1_indir2_non_intermod_cache(
-%     module_to_dep_file_set_cache::in,
+%     module_to_target_id_set_cache::in,
 %     make_info::in, make_info::out) is det.
 :- pred make_info_set_anc0_dir1_indir2_intermod_cache(
-    module_to_dep_file_set_cache::in,
+    module_to_target_id_set_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_trans_prereqs_cache(trans_prereqs_cache::in,
+    make_info::in, make_info::out) is det.
+:- pred make_info_set_module_src_is_local_map(
+    map(module_index, is_src_local)::in,
     make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -328,10 +362,7 @@
 
 :- type make_info
     --->    make_info(
-                % The first few fields are read-only.
-
-                % The contents of the Mercury.options file.
-                mki_env_optfile_variables   :: env_optfile_variables,
+            % The first few fields are read-only.
 
                 % The set of detected library grades, if known.
                 % (By the time we construct the initial make_info,
@@ -342,17 +373,13 @@
                 % The value of the --keep-going option.
                 mki_keep_going              :: maybe_keep_going,
 
-                % A sequence of option values that express the values
-                % of environment variables such as MERCURY_COLOR_SCHEME
-                % and NO_COLOR.
-                mki_env_var_args            :: list(string),
+            % The remaining fields are read-write.
 
-                % The remaining fields are read-write.
-
-                % Initially, the original set of options passed to mmc,
-                % not including the targets to be made.
-                % Can be modified later,
-                mki_option_args             :: list(string),
+                % The overall parameters of the compiler invocation.
+                % The cp_eov and cp_env_var_args fields are readonly,
+                % but in some places, we temporarily override the value
+                % of the cp_option_args field.
+                mki_compiler_params         :: compiler_params,
 
                 % Initially, the targets specified on the command line.
                 % Can be modified later,
@@ -399,13 +426,13 @@
                 % to a target_file.
                 mki_target_file_timestamp_map :: target_file_timestamp_map,
 
-                % The mapping between module_names and indices.
+                % The mapping between module_names and their index values.
                 mki_module_index_map        :: module_index_map,
 
-                % The mapping between dependency_files and indices.
-                mki_dep_file_index_map      :: dependency_file_index_map,
+                % The mapping between target_ids and their index values.
+                mki_target_id_index_map     :: target_id_index_map,
 
-                mki_dep_file_status_map     :: dep_file_status_map,
+                mki_target_status_map       :: target_status_map,
 
                 % Used for reporting which module imported or included
                 % a nonexistent module.
@@ -453,31 +480,33 @@
                 % This cache holds dependency sets that are a simple
                 % computation (union) on other dependency sets.
 %               mki_anc0_dir1_indir2_non_intermod_cache
-%                                           :: module_to_dep_file_set_cache,
+%                                           :: module_to_target_id_set_cache,
                 mki_anc0_dir1_indir2_intermod_cache
-                                            :: module_to_dep_file_set_cache,
+                                            :: module_to_target_id_set_cache,
 
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
                 % XXX zs: What sets?
-                mki_trans_prereqs_cache     :: trans_prereqs_cache
+                mki_trans_prereqs_cache     :: trans_prereqs_cache,
+
+                % Maps modules for which we have tested whether their source
+                % file is the current module to the result of that test.
+                mki_module_src_is_local_map :: map(module_index, is_src_local)
             ).
 
-init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
-        EnvVarArgs, OptionArgs, CmdLineTargets, AnalysisRepeat,
-        TargetTimestamps, ModuleIndexMap, DepIndexMap, DepStatusMap)
-        = MakeInfo :-
+init_make_info(MaybeStdLibGrades, KeepGoing, Params, CmdLineTargets,
+        AnalysisRepeat, TargetTimestamps, ModuleIndexMap, TargetIdIndexMap,
+        TargetStatusMap) = MakeInfo :-
     map.init(ModuleDependencies),
     map.init(FileTimestamps),
     ShouldRebuildModuleDeps = do_rebuild_module_deps,
     MaybeImportingModule = maybe.no,
     MaybeStdoutLock = maybe.no,
+    map.init(SrcCurDirMap),
     MakeInfo = make_info(
-        EnvOptFileVariables,
         MaybeStdLibGrades,
         KeepGoing,
-        EnvVarArgs,
-        OptionArgs,
+        Params,
         CmdLineTargets,
         ShouldRebuildModuleDeps,
         AnalysisRepeat,
@@ -485,8 +514,8 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         FileTimestamps,
         TargetTimestamps,
         ModuleIndexMap,
-        DepIndexMap,
-        DepStatusMap,
+        TargetIdIndexMap,
+        TargetStatusMap,
         MaybeImportingModule,
         MaybeStdoutLock,
         init_have_parse_tree_maps,
@@ -495,21 +524,18 @@ init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
 %       init_module_to_module_set_cache,
         init_module_to_module_set_cache,
         init_module_to_module_set_cache,
-%       init_module_to_dep_file_set_cache,
-        init_module_to_dep_file_set_cache,
-        init_trans_prereqs_cache
+%       init_module_to_target_id_set_cache,
+        init_module_to_target_id_set_cache,
+        init_trans_prereqs_cache,
+        SrcCurDirMap
     ).
 
-make_info_get_env_optfile_variables(Info) = X :-
-    X = Info ^ mki_env_optfile_variables.
+make_info_get_compiler_params(Info) = X :-
+    X = Info ^ mki_compiler_params.
 make_info_get_maybe_stdlib_grades(Info) = X :-
     X = Info ^ mki_maybe_stdlib_grades.
 make_info_get_keep_going(Info) = X :-
     X = Info ^ mki_keep_going.
-make_info_get_env_var_args(Info) = X :-
-    X = Info ^ mki_env_var_args.
-make_info_get_option_args(Info) = X :-
-    X = Info ^ mki_option_args.
 make_info_get_command_line_targets(Info) = X :-
     X = Info ^ mki_command_line_targets.
 make_info_get_rebuild_module_deps(Info) = X :-
@@ -524,10 +550,10 @@ make_info_get_target_file_timestamp_map(Info) = X :-
     X = Info ^ mki_target_file_timestamp_map.
 make_info_get_module_index_map(Info) = X :-
     X = Info ^ mki_module_index_map.
-make_info_get_dep_file_index_map(Info) = X :-
-    X = Info ^ mki_dep_file_index_map.
-make_info_get_dep_file_status_map(Info) = X :-
-    X = Info ^ mki_dep_file_status_map.
+make_info_get_target_id_index_map(Info) = X :-
+    X = Info ^ mki_target_id_index_map.
+make_info_get_target_status_map(Info) = X :-
+    X = Info ^ mki_target_status_map.
 make_info_get_importing_module(Info) = X :-
     X = Info ^ mki_importing_module.
 make_info_get_maybe_stdout_lock(Info) = X :-
@@ -550,9 +576,11 @@ make_info_get_anc0_dir1_indir2_intermod_cache(Info) = X :-
     X = Info ^ mki_anc0_dir1_indir2_intermod_cache.
 make_info_get_trans_prereqs_cache(Info) = X :-
     X = Info ^ mki_trans_prereqs_cache.
+make_info_get_module_src_is_local_map(Info) = X :-
+    X = Info ^ mki_module_src_is_local_map.
 
-make_info_set_option_args(X, !Info) :-
-    !Info ^ mki_option_args := X.
+make_info_set_compiler_params(X, !Info) :-
+    !Info ^ mki_compiler_params := X.
 make_info_set_command_line_targets(X, !Info) :-
     !Info ^ mki_command_line_targets := X.
 make_info_set_rebuild_module_deps(X, !Info) :-
@@ -567,10 +595,10 @@ make_info_set_target_file_timestamp_map(X, !Info) :-
     !Info ^ mki_target_file_timestamp_map := X.
 make_info_set_module_index_map(X, !Info) :-
     !Info ^ mki_module_index_map := X.
-make_info_set_dep_file_index_map(X, !Info) :-
-    !Info ^ mki_dep_file_index_map := X.
-make_info_set_dep_file_status_map(X, !Info) :-
-    !Info ^ mki_dep_file_status_map := X.
+make_info_set_target_id_index_map(X, !Info) :-
+    !Info ^ mki_target_id_index_map := X.
+make_info_set_target_status_map(X, !Info) :-
+    !Info ^ mki_target_status_map := X.
 make_info_set_importing_module(X, !Info) :-
     !Info ^ mki_importing_module := X.
 make_info_set_maybe_stdout_lock(X, !Info) :-
@@ -591,6 +619,8 @@ make_info_set_anc0_dir1_indir2_intermod_cache(X, !Info) :-
     !Info ^ mki_anc0_dir1_indir2_intermod_cache := X.
 make_info_set_trans_prereqs_cache(X, !Info) :-
     !Info ^ mki_trans_prereqs_cache := X.
+make_info_set_module_src_is_local_map(X, !Info) :-
+    !Info ^ mki_module_src_is_local_map := X.
 
 %---------------------------------------------------------------------------%
 :- end_module make.make_info.

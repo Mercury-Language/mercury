@@ -276,7 +276,7 @@ then
 [
 **** Note that this version of Xcode 11 has bugs that prevent Mercury programs
 **** from working correctly.  Please use Xcode 11.4 or later.
-**** See README.MacOS for further details.])
+**** See Documentation/README.macOS.md for further details.])
             ;;
             esac }
          ;;
@@ -605,7 +605,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --subtype-int2-2025-07-07 \
+            --scout-disj-2025-11-15 \
             --warn-include-and-non-include \
             --allow-ho-insts-as-modes \
             --no-ssdb \
@@ -1928,12 +1928,10 @@ case "$mercury_cv_bits_per_word" in
     32)
         mercury_cv_log_bits_per_word=5
         AC_DEFINE(MR_MERCURY_IS_32_BITS)
-        AC_SUBST(MERCURY_IS_32_BITS)
         ;;
     64)
         mercury_cv_log_bits_per_word=6
         AC_DEFINE(MR_MERCURY_IS_64_BITS)
-        AC_SUBST(MERCURY_IS_64_BITS)
         ;;
     *)
         AC_MSG_ERROR([unexpected number of bits per word: expected 32 or 64])
@@ -4531,7 +4529,8 @@ case "$mercury_cv_cc_type" in
         # Suppress the MSVC banner message.
         CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
-        # XXX See README.MS-Visual C for details of why we disable this.
+        # XXX See Documentation/README.MS-VisualC.md for details of why we
+        # disable this.
         #CFLAGS_FOR_DEBUG="-Zi"
         CFLAGS_FOR_DEBUG=
         CFLAGS_FOR_NO_STRICT_ALIASING=

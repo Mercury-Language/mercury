@@ -215,11 +215,10 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mode_top_functor.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -614,7 +613,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+        TypeDefnBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

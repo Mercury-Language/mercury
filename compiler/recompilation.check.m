@@ -1151,8 +1151,10 @@ check_field_ambiguities(RecompAvail, ResolvedCtor, CtorArg,
         CtorFieldName = ctor_field_name(FieldName, _Ctxt),
         % XXX The arities to match below will need to change if we ever
         % allow taking the address of field access functions.
-        field_access_function_name(get, FieldName, ExtractFuncSymName),
-        field_access_function_name(set, FieldName, UpdateFuncSymName),
+        construct_field_access_function_name(get, FieldName,
+            ExtractFuncSymName),
+        construct_field_access_function_name(set, FieldName,
+            UpdateFuncSymName),
         check_functor_ambiguities_by_name(RecompAvail, ExtractFuncSymName,
             match_arity_exact(1), ResolvedCtor, !MaybeStoppingReason, !Info),
         check_functor_ambiguities_by_name(RecompAvail, UpdateFuncSymName,

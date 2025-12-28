@@ -110,7 +110,7 @@
 %   for some string X,
 % - a grade-specific subdirectory, which will be
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
-%   (See the comment in make_gs_dir_names for the rationale for this scheme.)
+%   (See the comment in make_gs_dir_names for the "rationale" for this scheme.)
 %
 % (Some Java extensions are an exception; they include an extra "jmercury"
 % component in the path.)
@@ -137,7 +137,7 @@
 % of the C declarations of the Mercury predicates and functions that
 % the program exports to C, their content will be the same in *all* C grades.
 % Because of this latter property, we treat pgs extensions the same way
-% as we treat ngs extensions, but we do not expect to handle then at all
+% as we treat ngs extensions, but we do not expect to handle them at all
 % in all grades.
 %
 % There are several approaches we can use to decide which directory the files
@@ -161,8 +161,7 @@
 % (Note that --use-grade-subdirs is not *intended* to be actually usable
 % with mmake.)
 %
-% However, other approaches also exist, though they are all variations
-% on these themes.
+% Other approaches also exist, though they are all variations on these themes.
 %
 % One common variation is that when constructing a filename to search for,
 % we omit either some, or (usually) all directory name components from
@@ -2078,9 +2077,9 @@ create_any_dirs_on_path(DirComponents, !IO) :-
     ;
         DirComponents = [_ | _],
         DirName = dir.relative_path_name_from_components(DirComponents),
-        % We avoid trying to create a directory if we have created it
-        % before, because a set membership check here should be *much*
-        % cheaper than a system call.
+        % We avoid trying to create a directory if we have created it before,
+        % because a set membership check here should be *much* cheaper
+        % than a system call.
         %
         % We could try to check not just whether we have created
         % DirName before, but also any directory that corresponds

@@ -118,16 +118,16 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.

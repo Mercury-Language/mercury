@@ -1072,8 +1072,8 @@ are compatible with grade modifiers from other groups.
 * Grade modifiers for debugging Mercury programs::
 * Grade modifiers for profiling Mercury programs::
 * Grade modifiers for trailing::
-* Grade modifiers for minimal model tabling::
 * Grade modifiers for parallelism::
+* Grade modifiers for minimal model tabling::
 * Grade modifiers for flexible stack sizes::
 * Grade modifiers for garbage collection::
 * Grade modifiers for single precision floats::

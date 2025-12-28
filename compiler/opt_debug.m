@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2021, 2024 The Mercury team.
+% Copyright (C) 2013-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -871,7 +871,8 @@ dump_binop(int_cmp(_, CmpOp)) = cmp_op_c_operator(CmpOp).
 dump_binop(str_cmp(CmpOp)) = "str" ++ cmp_op_c_operator(CmpOp).
 dump_binop(float_cmp(CmpOp)) = "fl" ++ cmp_op_c_operator(CmpOp).
 dump_binop(int_as_uint_cmp(CmpOp)) =
-    "unsigned" ++ cmp_op_c_operator(coerce(CmpOp)).
+    "unsigned_" ++ cmp_op_c_operator(coerce(CmpOp)).
+dump_binop(in_range) = "in_range".
 dump_binop(int_arith(_, ArithOp)) = arith_op_c_operator(ArithOp).
 dump_binop(float_arith(ArithOp)) =
     "fl" ++ arith_op_c_operator(coerce(ArithOp)).

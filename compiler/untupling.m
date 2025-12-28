@@ -113,7 +113,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -122,6 +121,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

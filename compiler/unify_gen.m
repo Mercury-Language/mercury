@@ -44,9 +44,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.type_util.
 :- import_module ll_backend.unify_gen_construct.
 :- import_module ll_backend.unify_gen_deconstruct.
 :- import_module parse_tree.

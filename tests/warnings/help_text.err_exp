@@ -528,7 +528,8 @@ Grade options
         Enable support for profiling parallel execution. using Threadscope.
         This option is supported only when targeting C in parallel grades with
         `--no-high-level-code', and only on some processors. See
-        README.ThreadScope and the "Using threadscope" section for details.
+        Documentation/README.ThreadScope and the "Using threadscope" section
+        for details.
 
   Optional feature grade options
 
@@ -893,11 +894,7 @@ Warning options
     --warn-unused-imports
         Warn about modules that are imported but not used.
 
-    PRIVATE OPTION
     --no-warn-unused-interface-imports
-        Warn about modules that are imported in the interface but not used
-        there.
-
     --no-warn-interface-imports
         Do not warn about modules imported in the interface, but which are not
         used in the interface.
@@ -1304,9 +1301,9 @@ Warning options
         function do not all immediately follow its `pred' or `func'
         declaration.
 
-    --warn-non-contiguous-clauses
-        Generate a warning if the clauses of a predicate or function are not
-        contiguous.
+    --no-warn-non-contiguous-clauses
+        Do not generate a warning if the clauses of a predicate or function are
+        not contiguous.
 
     --warn-non-contiguous-foreign-procs
         Generate a warning if the clauses and foreign_procs of a predicate or
@@ -2669,6 +2666,7 @@ Options for target language compilation
         Specify options to be passed to the C compiler. These options will not
         be quoted when passed to the shell.
 
+    --quoted-cflag <option>
     --cflag <option>
         Specify a single word option to be passed to the C compiler. The word
         will be quoted when passed to the shell.
@@ -2679,6 +2677,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-gcc-flag <flag>
     --gcc-flag <flag>
         There is no help text available.
 
@@ -2688,6 +2687,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-clang-flag <flag>
     --clang-flag <flag>
         There is no help text available.
 
@@ -2697,6 +2697,7 @@ Options for target language compilation
         There is no help text available.
 
     PRIVATE OPTION
+    --quoted-msvc-flag <flag>
     --msvc-flag <flag>
         There is no help text available.
 
@@ -2764,6 +2765,8 @@ Options for target language compilation
         Specify options to be passed to the Java compiler. These options will
         not be quoted when passed to the shell.
 
+    --quoted-javac-flag <option>
+    --quoted-java-flag <option>
     --javac-flag <option>
     --java-flag <option>
         Specify a single word option to be passed to the Java compiler. The
@@ -2778,6 +2781,7 @@ Options for target language compilation
         Specify options to be passed to the Java interpreter. These options
         will not be quoted when passed to the shell.
 
+    --quoted-java-runtime-flag <option>
     --java-runtime-flag <option>
         Specify a single word option to be passed to the Java interpreter. The
         word will be quoted when passed to the shell.
@@ -2800,6 +2804,7 @@ Options for target language compilation
         Specify options to be passed to the C# compiler. These options will not
         be quoted when passed to the shell.
 
+    --quoted-csharp-flag <option>
     --csharp-flag <option>
         Specify a single word option to be passed to the C# compiler. The word
         will be quoted when passed to the shell.
@@ -2882,6 +2887,7 @@ Options for linking
         executable. These options will not be quoted when passed to the shell.
         Use `mmc --output-link-command' to find out what the linker command is.
 
+    --quoted-ld-flag <option>
     --ld-flag <option>
         Specify a single word option to be passed to the linker command that
         will create an executable. The word will be quoted when passed to the
@@ -2895,6 +2901,7 @@ Options for linking
         shell. Use `mmc --output-shared-lib-link-command' to find out what the
         linker command is.
 
+    --quoted-ld-libflag <option>
     --ld-libflag <option>
         Specify a single word option to be passed to the linker command that
         will create a shared library. The word will be quoted when passed to
@@ -3231,7 +3238,10 @@ Options specifying properties of the environment
         Add <filename> to the list of options files to be processed. If
         <filename> is `-', an options file will be read from the standard
         input. By default, the compiler will read the file named
-        `Mercury.options' in the current directory.
+        `Mercury.options' in the current directory. Note that this option is
+        intended to be used only on command lines. When specified in options
+        files (i.e. in files named by other --options-file options), it has no
+        effect.
 
     --config-file <filename>
     --no-config-file
@@ -3697,6 +3707,8 @@ Options for developers only
     --unused-statevar-warn-2025-05-16
     --allow-non-contig-for-2025-06-01
     --subtype-int2-2025-07-07
+    --inrange-2025-10-01
+    --scout-disj-2025-11-15
         Is the compiler sufficiently recent to contain the new feature or
         bugfix referred to by each name?
 
@@ -3766,6 +3778,14 @@ Options for developers only
     UNNAMED OPTION optopt_enable_const_struct_poly
         Disable the gathering of constant structures holding typeinfos and
         typeclass_infos in global_data structures.
+
+    PRIVATE OPTION
+    --canonicalize-error-path-names
+        Canonicalize path names in error messages that report being unable to
+        open files, in two ways. The first is deleting any initial './' or '.'
+        prefix; the second is deleting the directory component of any absolute
+        path name, leaving only the within-directory component. This option
+        considers any string between single quotes to be a path name.
 
   Verbosity options for developers only
 

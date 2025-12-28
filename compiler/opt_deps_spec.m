@@ -551,10 +551,8 @@ output_module_order_file(ProgressStream, Globals, ModuleName, ExtCur,
         OrdResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.format("error opening file `%s' for output: %s",
-            [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
-        report_error(ProgressStream, OrdMessage, !IO)
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            OrdFileName, IOError, !IO)
     ).
 
 :- pred add_module_sccs(list(set(module_name))::in,

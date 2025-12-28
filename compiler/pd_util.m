@@ -162,10 +162,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_util.
-:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.recompute_instmap_deltas.
@@ -174,6 +171,9 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_reorder.
 :- import_module hlds.goal_vars.
+:- import_module hlds.inst_lookup.
+:- import_module hlds.inst_test.
+:- import_module hlds.inst_util.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.

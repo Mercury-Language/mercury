@@ -81,6 +81,14 @@
 :- pred get_all_transformed_type_stuffs((func(type_stuff) = T)::in,
     type_assign_set::in, prog_var::in, list(T)::out) is det.
 
+    % Given a type assignment set and a variable, return the accumulated
+    % result of invoking the specified predicate on each of the possible
+    % different types for the variable in turn.
+    %
+:- pred acc_transformed_type_stuffs(
+    pred(type_stuff, Acc, Acc)::in(pred(in, in, out) is det),
+    type_assign_set::in, prog_var::in, Acc::in, Acc::out) is det.
+
 :- type arg_type_stuff
     --->    arg_type_stuff(
                 arg_type_stuff_var_type             :: mer_type,
@@ -129,11 +137,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_error_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
@@ -299,7 +307,7 @@ type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, MaybeSource, MaybeSeq)
     ),
     type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
+    type_assign_get_constraint_db(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
@@ -381,17 +389,17 @@ type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
         Type1, Type),
     Str = mercury_type_to_string(TypeVarSet, print_name_only, Type).
 
-:- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
+:- func type_assign_hlds_constraints_to_pieces(hlds_constraint_db,
     tsubst, tvarset) = list(format_piece).
 
-type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
+type_assign_hlds_constraints_to_pieces(ConstraintDb, TypeBindings, TypeVarSet)
         = Pieces1 ++ Pieces2 :-
-    Constraints =
-        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
+    ConstraintDb =
+        hlds_constraint_db(UnprovenConstraints, AssumedConstraints, _, _),
     PiecesList1 = type_assign_constraints_to_pieces_list("&",
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",
-        ConstraintsToProve, TypeBindings, TypeVarSet, no),
+        UnprovenConstraints, TypeBindings, TypeVarSet, no),
     LinePieces1 = pieces_list_to_line_pieces(PiecesList1),
     LinePieces2 = pieces_list_to_line_pieces(PiecesList2),
     Pieces1 = add_suffix_if_nonempty(LinePieces1, [nl]),
@@ -440,6 +448,8 @@ get_all_type_stuffs_remove_dups([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         TypeStuffs = [TypeStuff | TailTypeStuffs]
     ).
 
+%---------------------%
+
     % Given a type assignment set and a variable, return the list of possible
     % different types for the variable. The returned list may contain
     % duplicates.
@@ -456,12 +466,24 @@ get_all_type_stuffs([TypeAssign | TypeAssigns], Var,
     get_type_stuff(TypeAssign, Var, TypeStuff),
     get_all_type_stuffs(TypeAssigns, Var, TypeStuffs).
 
+%---------------------%
+
 get_all_transformed_type_stuffs(_TransformFunc, [], _Var, []).
 get_all_transformed_type_stuffs(TransformFunc, [TypeAssign | TypeAssigns], Var,
         [Result | Results]) :-
     get_type_stuff(TypeAssign, Var, TypeStuff),
     Result = TransformFunc(TypeStuff),
     get_all_transformed_type_stuffs(TransformFunc, TypeAssigns, Var, Results).
+
+%---------------------%
+
+acc_transformed_type_stuffs(_AccPred, [], _Var, !Acc).
+acc_transformed_type_stuffs(AccPred, [TypeAssign | TypeAssigns], Var, !Acc) :-
+    get_type_stuff(TypeAssign, Var, TypeStuff),
+    AccPred(TypeStuff, !Acc),
+    acc_transformed_type_stuffs(AccPred, TypeAssigns, Var, !Acc).
+
+%---------------------%
 
     % Given a type assignment and a variable, return information about
     % the type of that variable in that type assignment.

@@ -1,8 +1,8 @@
 impure_func_t5.m:025: In clause for predicate `main'/2:
-impure_func_t5.m:025:   in argument 1 of functor `foo/1':
-impure_func_t5.m:025:   type error in unification of argument
+impure_func_t5.m:025:   type error in unification of argument 1 of functor
+impure_func_t5.m:025:   `foo/1'
 impure_func_t5.m:025:   and constant `get_counter'.
-impure_func_t5.m:025:   [38;5;87mArgument[39;49m has type
+impure_func_t5.m:025:   [38;5;87mArgument 1 of functor `foo/1'[39;49m has type
 impure_func_t5.m:025:     [38;5;203mfunc(int) = int,[39;49m
 impure_func_t5.m:025:   [38;5;87mconstant `get_counter'[39;49m has type
 impure_func_t5.m:025:     [38;5;40mimpure func(int) = int.[39;49m

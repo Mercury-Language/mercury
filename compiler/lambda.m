@@ -133,17 +133,17 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

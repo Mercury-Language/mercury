@@ -421,6 +421,7 @@ natural_negate_rval(TestRval0, TestRval) :-
             ; Binop0 = str_nzp
             ; Binop0 = offset_str_eq(_, _)
             ; Binop0 = int_as_uint_cmp(_)
+            ; Binop0 = in_range
             ; Binop0 = float_arith(_)
             ; Binop0 = float_from_dword
             ; Binop0 = int64_from_dword

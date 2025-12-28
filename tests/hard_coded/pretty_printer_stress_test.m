@@ -19,8 +19,10 @@
 :- implementation.
 
 :- import_module deconstruct.
+:- import_module int.
 :- import_module io.file.
 :- import_module list.
+:- import_module maybe.
 :- import_module mercury_term_parser.
 :- import_module pretty_printer.
 :- import_module string.
@@ -40,39 +42,77 @@ main(!IO) :-
         OutputResult = ok(OutputStream)
     then
         setup_pretty_printer(!IO),
-        test_loop(InputStream, OutputStream, !IO),
+        read_test_terms(InputStream, MaybeErrorMsg, [], RevDocs, !IO),
         io.close_input(InputStream, !IO),
-        io.close_output(OutputStream, !IO),
-        % We remove OutputFileName because it is big (several Mb)
-        % and it is of interest only when someone is actively working
-        % on this test case. Anyone whose does so can just comment this out.
-        io.file.remove_file(OutputFileName, _RemoveResult, !IO),
-        io.write_string("done\n", !IO)
+        (
+            MaybeErrorMsg = yes(ErrorMsg),
+            io.write_string(ErrorMsg, !IO),
+            io.set_exit_status(1, !IO)
+        ;
+            MaybeErrorMsg = no,
+            get_default_formatter_map(FormatterMap, !IO),
+            Params = pp_params(80, 1000000, linear(1000000)),
+            % Increase Repeats if you want to time the code writing out docs,
+            % since writing Docs out just once is too fast for reliable
+            % measurement. Note that the size of the output file will increase
+            % accordingly.
+            Repeats = 1,
+            list.reverse(RevDocs, Docs),
+            repeat_write_test_docs(OutputStream, FormatterMap, Params, Repeats,
+                Docs, !IO),
+            io.close_output(OutputStream, !IO),
+            % We remove OutputFileName because it is big (several Mb)
+            % and it is of interest only when someone is actively working
+            % on this test case. Anyone whose does so can just
+            % comment this out.
+            io.file.remove_file(OutputFileName, _RemoveResult, !IO),
+            io.write_string("done\n", !IO)
+        )
     else
         io.write_string("could not open a file\n", !IO)
     ).
 
-:- pred test_loop(io.text_input_stream::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- pred read_test_terms(io.text_input_stream::in, maybe(string)::out,
+    list(doc)::in, list(doc)::out, io::di, io::uo) is det.
 
-test_loop(InputStream, OutputStream, !IO) :-
+read_test_terms(InputStream, MaybeErrorMsg, !RevDocs, !IO) :-
     read_term(InputStream, ReadResult, !IO),
     (
         ReadResult = term(_VarSet, Term : term),
-        Params = pp_params(80, 1000000, linear(1000000)),
-        get_default_formatter_map(Formatters, !IO),
         Doc = format(Term),
-        put_doc(OutputStream, canonicalize, Formatters, Params, Doc, !IO),
-        io.nl(OutputStream, !IO),
-        test_loop(InputStream, OutputStream, !IO)
+        !:RevDocs = [Doc | !.RevDocs],
+        read_test_terms(InputStream, MaybeErrorMsg, !RevDocs, !IO)
     ;
         ReadResult = eof,
-        io.write_string(OutputStream, "eof\n", !IO)
+        MaybeErrorMsg = no
     ;
         ReadResult = error(Msg, Line),
-        io.format(OutputStream, "error %s on line %d\n",
-            [s(Msg), i(Line)], !IO)
+        string.format("error %s on line %d\n", [s(Msg), i(Line)], ErrorMsg),
+        MaybeErrorMsg = yes(ErrorMsg)
     ).
+
+:- pred repeat_write_test_docs(io.text_output_stream::in,
+    formatter_map::in, pp_params::in, int::in, list(doc)::in,
+    io::di, io::uo) is det.
+
+repeat_write_test_docs(OutputStream, FormatterMap, Params, Repeats,
+        Docs, !IO) :-
+    ( if Repeats > 0 then
+        write_test_docs(OutputStream, FormatterMap, Params, Docs, !IO),
+        repeat_write_test_docs(OutputStream, FormatterMap, Params, Repeats - 1,
+            Docs, !IO)
+    else
+        true
+    ).
+
+:- pred write_test_docs(io.text_output_stream::in,
+    formatter_map::in, pp_params::in, list(doc)::in, io::di, io::uo) is det.
+
+write_test_docs(_OutputStream, _FormatterMap, _Params, [], !IO).
+write_test_docs(OutputStream, FormatterMap, Params, [Doc | Docs], !IO) :-
+    put_doc(OutputStream, canonicalize, FormatterMap, Params, Doc, !IO),
+    io.nl(OutputStream, !IO),
+    write_test_docs(OutputStream, FormatterMap, Params, Docs, !IO).
 
 %---------------------------------------------------------------------------%
 

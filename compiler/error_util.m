@@ -48,6 +48,8 @@
 :- func actual_spec_severity(globals, error_spec) = maybe(actual_severity).
 :- func actual_spec_severity_opt_table(option_table, error_spec) =
     maybe(actual_severity).
+:- pred severity_to_maybe_actual_severity(option_table::in,
+    spec_severity::in, maybe(actual_severity)::out) is det.
 
     % Succeeds if and only if the given error_spec has a severity,
     % and it is severity_error.
@@ -161,15 +163,6 @@ does_spec_print_anything_2(Globals, Spec) = Prints :-
         Spec = error_spec(_, _, _, Msgs),
         PrintsList = list.map(does_msg_print_anything(Globals), Msgs),
         bool.or_list(PrintsList, Prints)
-    ;
-        Spec = conditional_spec(_, Option, MatchValue, _, _, Msgs),
-        globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            PrintsList = list.map(does_msg_print_anything(Globals), Msgs),
-            bool.or_list(PrintsList, Prints)
-        else
-            Prints = no
-        )
     ).
 
 :- func does_msg_print_anything(globals, error_msg) = bool.
@@ -241,32 +234,28 @@ actual_spec_severity(Globals, Spec) = MaybeSeverity :-
     MaybeSeverity = actual_spec_severity_opt_table(OptionTable, Spec).
 
 actual_spec_severity_opt_table(OptionTable, Spec) = MaybeActualSeverity :-
-    (
-        ( Spec = error_spec(_, Severity, _, _)
-        ; Spec = spec(_, Severity, _, _, _)
-        ; Spec = no_ctxt_spec(_, Severity, _, _)
-        ),
-        severity_to_maybe_actual_severity(OptionTable, Severity,
-            MaybeActualSeverity)
-    ;
-        Spec = conditional_spec(_, Option, MatchValue, Severity, _, _),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            severity_to_maybe_actual_severity(OptionTable, Severity,
-                MaybeActualSeverity)
-        else
-            MaybeActualSeverity = no
-        )
-    ).
-
-:- pred severity_to_maybe_actual_severity(option_table::in,
-    error_severity::in, maybe(actual_severity)::out) is det.
+    ( Spec = error_spec(_, Severity, _, _)
+    ; Spec = spec(_, Severity, _, _, _)
+    ; Spec = no_ctxt_spec(_, Severity, _, _)
+    ),
+    severity_to_maybe_actual_severity(OptionTable,
+        Severity, MaybeActualSeverity).
 
 severity_to_maybe_actual_severity(OptionTable, Severity,
         MaybeActualSeverity) :-
     (
         Severity = severity_error,
         MaybeActualSeverity = yes(actual_severity_error)
+    ;
+        Severity = severity_error(Option),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        (
+            OptionValue = yes,
+            MaybeActualSeverity = yes(actual_severity_error)
+        ;
+            OptionValue = no,
+            MaybeActualSeverity = no
+        )
     ;
         Severity = severity_warning(Option),
         getopt.lookup_bool_option(OptionTable, Option, OptionValue),
@@ -484,7 +473,7 @@ accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
         !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
     ).
 
-:- func project_spec_phase(error_spec) = error_phase.
+:- func project_spec_phase(error_spec) = spec_phase.
 
 project_spec_phase(Spec) = Phase :-
     (
@@ -493,15 +482,13 @@ project_spec_phase(Spec) = Phase :-
         Spec = spec(_, _, Phase, _, _)
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
-    ;
-        Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
 error_spec_accumulator_to_list(no) = [].
 error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
     set.to_sorted_list(set.union(AnyModeSpecSet, AllModeSpecSet)).
 
-:- func get_maybe_mode_report_control(error_phase) =
+:- func get_maybe_mode_report_control(spec_phase) =
     maybe(mode_report_control).
 
 get_maybe_mode_report_control(phase_options) = no.

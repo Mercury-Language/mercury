@@ -77,18 +77,18 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.types_into_modes.
 :- import_module hlds.goal_contains.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.inst_mode_type_prop.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module hlds.var_origins.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
@@ -306,8 +306,8 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     MainPieces = [words("Error:")] ++ PredDescPieces ++
         [words("contains"),
         words(choose_number(Constraints,
-            "an unsatisified typeclass constraint:",
-            "some unsatisified typeclass constraints:")),
+            "an unsatisfied typeclass constraint:",
+            "some unsatisfied typeclass constraints:")),
             nl_indent_delta(1)] ++
         pieces_list_to_color_line_pieces(color_incorrect, [suffix(".")],
             list.map(constraint_to_error_pieces(TVarSet), Constraints)) ++
@@ -694,7 +694,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         VarTable = ClausesInfo ^ cli_var_table,
         compute_var_origins_in_pred(
             explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars),
-            PredInfo, _OriginMap, cord.init, AnonVarMsgsCord0),
+            ModuleInfo, PredInfo, _OriginMap, cord.init, AnonVarMsgsCord0),
         AnonVarMsgs0 = cord.list(AnonVarMsgsCord0),
         list.sort_and_remove_dups(AnonVarMsgs0, AnonVarMsgs)
     ),
@@ -786,7 +786,7 @@ explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars,
         _OriginsMap, Var, Origin, !AnonVarMsgsCord) :-
     ( if set.contains(AnonVars,  Var) then
         explain_var_origin(ModuleInfo, VarTable, Var, Origin, VarOriginMsgs),
-        !:AnonVarMsgsCord = !.AnonVarMsgsCord ++ cord.from_list(VarOriginMsgs)
+        cord.snoc_list(VarOriginMsgs, !AnonVarMsgsCord)
     else
         true
     ).

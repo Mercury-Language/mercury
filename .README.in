@@ -8,25 +8,25 @@ In some cases, additional steps may be needed for particular operating systems
 or particular architectures, so first read the README file for your particular
 platform, if there is one:
 
-	README.AIX		AIX on POWER
-	README.FreeBSD		FreeBSD on Intel x86 and x86_64
-	README.HPUX		HPPA systems running HPUX
-	README.Linux		Linux on Intel x86 and x86_64
-	README.Linux-aarch64    Linux on AArch64 (ARM64)
-	README.Linux-PPC	Linux on PowerPC
-	README.Linux-m68k	Linux on Motorola 68000
-	README.MacOS		Apple Mac systems running Mac OS X
-	README.MS-Windows	Microsoft Windows
-	README.OpenBSD		OpenBSD on x86_64
-	README.Solaris		Solaris (SunOS) on SPARC or Intel x86.
+    Documentation/README.AIX            AIX on POWER
+    Documentation/README.FreeBSD        FreeBSD on Intel x86 and x86_64
+    Documentation/README.HPUX           HPPA systems running HPUX
+    Documentation/README.Linux          Linux on Intel x86 and x86_64
+    Documentation/README.Linux-aarch64  Linux on AArch64 (ARM64)
+    Documentation/README.Linux-PPC      Linux on PowerPC
+    Documentation/README.Linux-m68k     Linux on Motorola 68000
+    Documentation/README.MacOS          Apple Mac systems running Mac OS X
+    Documentation/README.MS-Windows     Microsoft Windows
+    Documentation/README.OpenBSD        OpenBSD on x86_64
+    Documentation/README.Solaris        Solaris (SunOS) on SPARC or Intel x86.
 
 The documentation sources are in the `doc' subdirectory.
 The installation process will install INFO, HTML, and DVI versions under the
 nominated installation prefix, by default /usr/local/mercury-@VERSION@.
 It will also install Unix-style man pages under the same prefix.
 
-The files RELEASE_NOTES, NEWS, HISTORY, LIMITATIONS, and BUGS
-also contain useful information.  If you're interested in looking
+The files RELEASE_NOTES, NEWS.md, Documentation/NEWS_*, LIMITATIONS.md,
+and BUGS also contain useful information. If you are interested in looking
 at the source code, the file compiler/notes/compiler_design.html is
 a good place to start.
 

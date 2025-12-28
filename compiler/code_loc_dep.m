@@ -52,6 +52,7 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
+:- import_module ll_backend.var_locn.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -81,7 +82,6 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.trace_gen.
-:- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
@@ -338,7 +338,7 @@ pre_goal_update(GoalInfo, HasSubGoals, !CLD) :-
     % NOTE We must be careful to apply deaths before births.
     goal_info_get_pre_deaths(GoalInfo, PreDeaths),
     rem_forward_live_vars(PreDeaths, !CLD),
-    maybe_make_vars_forward_dead(PreDeaths, no, !CLD),
+    maybe_make_vars_forward_dead(maybe_not_first_death, PreDeaths, !CLD),
     goal_info_get_pre_births(GoalInfo, PreBirths),
     add_forward_live_vars(PreBirths, !CLD),
     (
@@ -353,7 +353,7 @@ post_goal_update(GoalInfo, CI, !CLD) :-
     % NOTE We must be careful to apply deaths before births.
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
     rem_forward_live_vars(PostDeaths, !CLD),
-    maybe_make_vars_forward_dead(PostDeaths, no, !CLD),
+    maybe_make_vars_forward_dead(maybe_not_first_death, PostDeaths, !CLD),
     goal_info_get_post_births(GoalInfo, PostBirths),
     add_forward_live_vars(PostBirths, !CLD),
     make_vars_forward_live(PostBirths, CI, !CLD),
@@ -2481,7 +2481,7 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode,
 :- pred make_vars_forward_dead(set_of_progvar::in,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-:- pred maybe_make_vars_forward_dead(set_of_progvar::in, bool::in,
+:- pred maybe_make_vars_forward_dead(maybe_first_death::in, set_of_progvar::in,
     code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred pickup_zombies(set_of_progvar::out,
@@ -2562,28 +2562,28 @@ find_unused_reg(VLI, RegType, N0, N) :-
     ).
 
 make_vars_forward_dead(Vars, !CLD) :-
-    maybe_make_vars_forward_dead(Vars, yes, !CLD).
+    maybe_make_vars_forward_dead(first_death, Vars, !CLD).
 
-maybe_make_vars_forward_dead(Vars0, FirstTime, !CLD) :-
+maybe_make_vars_forward_dead(FirstDeath, Vars0, !CLD) :-
     ResumeVars = current_resume_point_vars(!.CLD),
     set_of_var.intersect(Vars0, ResumeVars, FlushVars),
     get_zombies(!.CLD, Zombies0),
     set_of_var.union(Zombies0, FlushVars, Zombies),
     set_zombies(Zombies, !CLD),
     set_of_var.difference(Vars0, Zombies, Vars),
-    VarList = set_of_var.to_sorted_list(Vars),
     get_var_locn_info(!.CLD, VarLocnInfo0),
-    maybe_make_vars_forward_dead_2(VarList, FirstTime,
+    var_locn_vars_become_dead(FirstDeath, set_of_var.to_sorted_list(Vars),
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CLD).
 
-:- pred maybe_make_vars_forward_dead_2(list(prog_var)::in, bool::in,
+:- pred var_locn_vars_become_dead(maybe_first_death::in, list(prog_var)::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-maybe_make_vars_forward_dead_2([], _, !VLI).
-maybe_make_vars_forward_dead_2([Var | Vars], FirstTime, !VLI) :-
-    var_locn_var_becomes_dead(Var, FirstTime, !VLI),
-    maybe_make_vars_forward_dead_2(Vars, FirstTime, !VLI).
+
+var_locn_vars_become_dead(_FirstDeath, [], !VLI).
+var_locn_vars_become_dead(FirstDeath, [Var | Vars], !VLI) :-
+    var_locn_var_becomes_dead(FirstDeath, Var, !VLI),
+    var_locn_vars_become_dead(FirstDeath, Vars, !VLI).
 
 pickup_zombies(Zombies, !CLD) :-
     get_zombies(!.CLD, Zombies),

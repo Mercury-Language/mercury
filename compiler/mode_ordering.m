@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -233,9 +233,9 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = plain_call(PredId, _, Args, _, _, _),
-        set_atomic_prod_vars(ProducingVars, !GoalInfo, !MOI),
-        find_matching_proc(PredId, Args, ProducingVars, ProcId, ConsumingVars,
-            !MOI),
+        set_atomic_prod_vars(!.MOI, ProducingVars, !GoalInfo),
+        find_matching_proc(!.MOI, PredId, Args, ProducingVars,
+            ProcId, ConsumingVars),
         ArgsSet = set_of_var.list_to_set(Args),
         set_of_var.intersect(ArgsSet, ProducingVars, MakeVisibleVars),
         set_of_var.intersect(ArgsSet, ConsumingVars, NeedVisibleVars),
@@ -251,7 +251,7 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
         unexpected($pred, "switch")
     ;
         GoalExpr0 = unify(VarA, RHS0, UnifyMode, Unification0, Context),
-        set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI),
+        set_atomic_prod_vars(!.MOI, ProdVars, !GoalInfo),
         InstGraph = !.MOI ^ moi_inst_graph,
         (
             RHS0 = rhs_var(VarB),
@@ -542,13 +542,12 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
         unexpected($pred, "tsort failed")
     ).
 
-:- pred set_atomic_prod_vars(set_of_progvar::out,
-    hlds_goal_info::in, hlds_goal_info::out,
-    mode_ordering_info::in, mode_ordering_info::out) is det.
+:- pred set_atomic_prod_vars(mode_ordering_info::in, set_of_progvar::out,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
-set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
-    LambdaNesting = !.MOI ^ moi_lambda_nesting,
-    AtomicProdVars = !.MOI ^ moi_prodvars_map,
+set_atomic_prod_vars(MOI, ProdVars, !GoalInfo) :-
+    LambdaNesting = MOI ^ moi_lambda_nesting,
+    AtomicProdVars = MOI ^ moi_prodvars_map,
     GoalId = goal_info_get_goal_id(!.GoalInfo),
     ( if
         map.search(AtomicProdVars, stack.push(LambdaNesting, GoalId),
@@ -564,7 +563,7 @@ set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI) :-
     mode_constraint::in, proc_id::out, pred_info::in, pred_info::out) is det.
 
 pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
-        ProcId, !PredInfo) :-
+        ProcId, PredInfo, PredInfo) :-
     ( if semidet_succeed then
         % XXX
         sorry($pred, "NYI")
@@ -573,14 +572,14 @@ pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
         ProcId = initial_proc_id
     ).
 
-:- pred find_matching_proc(pred_id::in, list(prog_var)::in, set_of_progvar::in,
-    proc_id::out, set_of_progvar::out,
-    mode_ordering_info::in, mode_ordering_info::out) is det.
+:- pred find_matching_proc(mode_ordering_info::in, pred_id::in,
+    list(prog_var)::in, set_of_progvar::in,
+    proc_id::out, set_of_progvar::out) is det.
 
-find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
-    ModuleInfo = !.MOI ^ moi_module_info,
-    CallerInstGraph = !.MOI ^ moi_inst_graph,
-    PredConstraintMap = !.MOI ^ moi_pred_constraint_map,
+find_matching_proc(MOI, PredId, Args, ProdVars, ProcId, ConsumingVars) :-
+    ModuleInfo = MOI ^ moi_module_info,
+    CallerInstGraph = MOI ^ moi_inst_graph,
+    PredConstraintMap = MOI ^ moi_pred_constraint_map,
     lookup_pred_constraint(PredConstraintMap, PredId, _, MCInfo),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

@@ -180,8 +180,6 @@
 :- implementation.
 
 :- import_module check_hlds.det_check_goal.
-:- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_transform.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -190,6 +188,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.inst_test.
+:- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -519,7 +519,7 @@ does_switch_violate_type_order(DetInfo, VarType, Cases,
     search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(TypeBodyDu),
-    TypeBodyDu = type_body_du(OoMTypeConstructors, _, _, _, _),
+    TypeBodyDu = type_body_du(OoMTypeConstructors, _, _, _, _, _),
     TypeConstructors = one_or_more_to_list(OoMTypeConstructors),
     gather_switch_arms_cons_ids_in_order(Cases,
         map.init, ContextMap),
@@ -1011,12 +1011,10 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             ( if
                 search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
                 hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                TypeBody = hlds_du_type(TypeBodyDu),
-                TypeBodyDu = type_body_du(TypeConstructors, _, _, _, _)
+                TypeBody = hlds_du_type(TypeBodyDu)
             then
                 SortedTypeConsIds =
-                    constructor_cons_ids(VarTypeCtor,
-                        one_or_more_to_list(TypeConstructors)),
+                    type_cons_ids_in_alpha_order(VarTypeCtor, TypeBodyDu),
                 set_tree234.sorted_list_to_set(SortedTypeConsIds,
                     TypeConsIdsSet),
                 set_tree234.intersect(TypeConsIdsSet, BoundConsIdsSet,
@@ -1028,10 +1026,8 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             TypeBody = hlds_du_type(TypeBodyDu),
-            TypeBodyDu = type_body_du(TypeConstructors, _, _, _, _),
             SortedTypeConsIds =
-                constructor_cons_ids(VarTypeCtor,
-                    one_or_more_to_list(TypeConstructors)),
+                type_cons_ids_in_alpha_order(VarTypeCtor, TypeBodyDu),
             set_tree234.sorted_list_to_set(SortedTypeConsIds, TypeConsIdsSet),
             PossibleConsIdsSet = TypeConsIdsSet
         )
@@ -1133,6 +1129,27 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
     set_tree234.insert(MainConsId, !CoveredConsIds),
     set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
     compute_covered_cons_ids(Cases, !CoveredConsIds).
+
+    % Return the cons_ids for the data constructors of the given type,
+    % sorted first on the names of the constructors, and then, if necessary,
+    % on their arity.
+    %
+:- func type_cons_ids_in_alpha_order(type_ctor, type_body_du) = list(cons_id).
+
+type_cons_ids_in_alpha_order(TypeCtor, TypeBodyDu) = SortedConsIds :-
+    TypeBodyDu = type_body_du(_, SortedOoMCtors, _, _, _, _),
+    SortedCtors = one_or_more_to_list(SortedOoMCtors),
+    ctors_to_cons_ids_loop(TypeCtor, SortedCtors, SortedConsIds).
+
+:- pred ctors_to_cons_ids_loop(type_ctor::in, list(constructor)::in,
+    list(cons_id)::out) is det.
+
+ctors_to_cons_ids_loop(_TypeCtor, [], []).
+ctors_to_cons_ids_loop(TypeCtor, [Ctor | Ctors], [ConsId | ConsIds]) :-
+    Ctor = ctor(_Ordinal, _MaybeExist, SymName, _Args, Arity, _Ctxt),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
+    ConsId = du_data_ctor(DuCtor),
+    ctors_to_cons_ids_loop(TypeCtor, Ctors, ConsIds).
 
 %---------------------------------------------------------------------------%
 

@@ -1,10 +1,13 @@
-#
-# These options are required to get access to some reenterant versions of
-# socket functions.
-#
-EXTRA_CFLAGS=-D_BSD_SOURCE=1 -D_DEFAULT_SOURCE=1
+#---------------------------------------------------------------------------#
+# vim: ts=4 sw=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
 
-# Workaround a bug in Mercury's pack bits optimisation.
-MCFLAGS=--arg-pack-bits 0 \
-	--libgrades-exclude java \
-	--libgrades-exclude csharp
+# These options are required to get access to some reenterant versions
+# of socket functions.
+EXTRA_CFLAGS = -D_BSD_SOURCE=1 -D_DEFAULT_SOURCE=1
+
+# Work around a bug in Mercury's pack bits optimisation.
+MCFLAGS = \
+    --arg-pack-bits 0           \
+    --libgrades-exclude java    \
+    --libgrades-exclude csharp

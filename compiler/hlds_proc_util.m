@@ -133,7 +133,7 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
+:- import_module hlds.mode_util.
 :- import_module hlds.var_table_hlds.
 :- import_module parse_tree.prog_type_test.
 

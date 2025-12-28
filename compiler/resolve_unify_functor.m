@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,12 +51,12 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
+:- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -156,7 +156,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % We don't do this for the clause introduced by the compiler for
             % a field access function -- that needs to be expanded into
             % unifications below.
-            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo,
+                _, _, _),
 
             % Check if any of the candidate functions have argument/return
             % types which subsume the actual argument/return types of this
@@ -199,7 +200,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % We don't do this for the clause introduced by the compiler
             % for a field access function -- that needs to be expanded
             % into unifications below.
-            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo,
+                _, _, _),
 
             % Find the pred_id of the constant.
             lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
@@ -256,7 +258,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % to check that the types match for functions calls and
             % higher-order terms.
             is_field_access_function_name(ModuleInfo, SymName0, Arity,
-                AccessType, FieldName),
+                AccessType, FieldName, _OoMFieldDefns),
             Arity = Arity0,
 
             % We don't do this for compiler-generated predicates --
@@ -425,7 +427,7 @@ translate_get_function(ModuleInfo, FieldName, UnifyContext,
         lookup_var_type(!.VarTable, FieldVar, FieldType),
         list.det_index1(ArgTypes0, FieldNumber, FieldArgType),
         type_subsumes_det(FieldArgType, FieldType, FieldSubst),
-        apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
+        apply_rec_subst_to_types(FieldSubst, ArgTypes0, ArgTypes)
     ;
         ExistQVars = [],
         ArgTypes = ArgTypes0
@@ -541,9 +543,9 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
         pred_info_set_typevarset(TVarSet, !PredInfo),
         map.from_corresponding_lists(ConsExistQVars, ParentExistQVars,
             ConsToParentRenaming),
-        apply_variable_renaming_to_type_list(ConsToParentRenaming,
+        apply_renaming_to_types(ConsToParentRenaming,
             ConsArgTypes, ParentArgTypes),
-        apply_variable_renaming_to_prog_constraint_list(ConsToParentRenaming,
+        apply_renaming_to_prog_constraints(ConsToParentRenaming,
             ConsConstraints, ParentConstraints),
 
         % Constrained existentially quantified tvars will have already been
@@ -557,12 +559,12 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
             NumConstraints, ActualConstraints),
         constraint_list_subsumes_det(ParentConstraints, ActualConstraints,
             ExistTSubst),
-        apply_rec_subst_to_type_list(ExistTSubst, ParentArgTypes,
+        apply_rec_subst_to_types(ExistTSubst, ParentArgTypes,
             ActualArgTypes0),
 
         % The kinds will be ignored when the types are converted back to tvars.
         map.init(KindMap),
-        apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
+        apply_rec_subst_to_tvars(KindMap, ExistTSubst, ParentExistQVars,
             ActualExistQVarTypes),
         ( if
             type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0)
@@ -574,7 +576,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
     ),
     type_to_ctor_and_args_det(TermType, _, TypeArgs),
     map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst),
-    apply_subst_to_type_list(UnivTSubst, ActualArgTypes0, ActualArgTypes).
+    apply_subst_to_types(UnivTSubst, ActualArgTypes0, ActualArgTypes).
 
 :- pred constraint_list_subsumes_det(list(prog_constraint)::in,
     list(prog_constraint)::in, tsubst::out) is det.
@@ -632,7 +634,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
     lookup_type_ctor_defn(TypeTable, TermTypeCtor, TermTypeDefn),
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
-        TermTypeBody = hlds_du_type(type_body_du(Ctors, _, _, _, _)),
+        TermTypeBody = hlds_du_type(type_body_du(Ctors, _, _, _, _, _)),
         FieldName = unqualify_name(FieldSymName),
         get_constructor_containing_field_loop(TermTypeCtor,
             one_or_more_to_list(Ctors), FieldName, DuCtor, FieldNumber)

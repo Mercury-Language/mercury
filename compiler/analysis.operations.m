@@ -702,7 +702,7 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
 
     % The algorithm is from Nick's thesis, pp. 108-9.
     % Or my corruption thereof.
-    % See the `analysis/README' file for a reference.
+    % See the file `compiler/notes/analysis.html' for a reference.
     %
     % XXX The lack of indentation beyond the first level makes this hard to
     % read: exactly what range of lines does the "we don't do that" comment

@@ -29,10 +29,7 @@
     --->    apr_failure
     ;       apr_success(
                 aprs_globals                :: globals,
-                aprs_env_optfile_variables  :: env_optfile_variables,
-                aprs_env_var_args           :: list(string),
-                aprs_option_args            :: list(string),
-                aprs_nonoption_args         :: list(string)
+                aprs_arg_pack               :: compiler_arg_pack
             ).
 
 :- pred setup_all_args(io.text_output_stream::in, io.text_output_stream::in,
@@ -139,8 +136,9 @@ setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO) :-
                 ArgResult = apr_failure
             ;
                 Specs = [],
-                ArgResult = apr_success(Globals, EnvOptFileVariables,
-                    EnvVarArgs, OptionArgs, NonOptionArgs)
+                ArgPack = compiler_arg_pack(EnvOptFileVariables, EnvVarArgs,
+                    OptionArgs, NonOptionArgs),
+                ArgResult = apr_success(Globals, ArgPack)
             )
         ;
             OptResult = opr_failure(OptionSpecs),
@@ -276,16 +274,15 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         get_short_option(ShortOption),
         get_long_option(LongOption),
         % Separate the option args from the non-option args.
-        getopt.record_arguments(ShortOption, LongOption, DefaultOptionTable,
-            Args1, NonOptionArgs, OptionArgs, MaybeError, _OptionValues),
+        getopt.recognize_all_options(ShortOption, LongOption,
+            DefaultOptionTable, Args1, Errors, _OptionValues,
+            OptionArgs, NonOptionArgs),
         (
-            MaybeError = found_option_error(OptionError),
-            OptionErrorStr = option_error_to_string(OptionError),
-            Spec = no_ctxt_spec($pred, severity_error,
-                phase_options, [words(OptionErrorStr), suffix("."), nl]),
-            Result = opr_failure([Spec])
+            Errors = [_ | _],
+            OptionSpecs = list.map(option_error_to_error_spec, Errors),
+            Result = opr_failure(OptionSpecs)
         ;
-            MaybeError = no_option_error,
+            Errors = [],
             Result = opr_success(EnvOptFileVariables, [],
                 OptionArgs, NonOptionArgs, Specs)
         )
@@ -296,6 +293,13 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         Result = opr_success(EnvOptFileVariables, [],
             OptionArgs, NonOptionArgs, Specs)
     ).
+
+:- func option_error_to_error_spec(option_error(option)) = error_spec.
+
+option_error_to_error_spec(OptionError) = Spec :-
+    OptionErrorStr = option_error_to_string(OptionError),
+    Pieces = [words(OptionErrorStr), suffix("."), nl],
+    Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces).
 
 %---------------------%
 
@@ -334,6 +338,9 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
         ),
         io.environment.get_environment_var_map(EnvVarMap, !IO),
         (
+            OptFileSpecs = [_ | _],
+            Result = opr_failure(OptFileSpecs)
+        ;
             OptFileSpecs = [],
             maybe_dump_options_file(ErrorStream, ArgsOptionTable,
                 EnvOptFileVariables0, !IO),
@@ -353,29 +360,35 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
                 ),
                 % Process the options again to find out which configuration
                 % file to read.
-                % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
+                %
+                % Note that MaybeErrorMC can be yes(_) even though MaybeError
+                % was no, due to the addition of MCFlags0 to the argument list.
                 getopt.process_options_userdata_io(OptionOps,
                     MCFlags0 ++ CmdLineArgs, _OptionArgsMC, _NonOptionArgsMC,
-                    _MaybeErrorMC, _OptionsSetMC,
+                    MaybeErrorMC, _OptionsSetMC,
                     DefaultOptionTable, FlagsArgsOptionTable,
                     cord.init, _UserDataMC, !IO),
-                process_options_std_config_file(ProgressStream,
-                    FlagsArgsOptionTable, EnvVarMap, WarnUndef,
-                    EnvOptFileVariables0, EnvOptFileVariables,
-                    MaybeMCFlags, OptFileOkSpecs, !IO),
-                Specs = OptFileSpecs ++ OptFileOkSpecs,
                 (
-                    MaybeMCFlags = no,
+                    MaybeErrorMC = yes(OptionError),
+                    Specs = report_option_error(OptionError),
                     Result = opr_failure(Specs)
                 ;
-                    MaybeMCFlags = yes(MCFlags),
-                    Result = opr_success(EnvOptFileVariables, MCFlags,
-                        OptionArgs, NonOptionArgs, Specs)
+                    MaybeErrorMC = no,
+                    process_options_std_config_file(ProgressStream,
+                        FlagsArgsOptionTable, EnvVarMap, WarnUndef,
+                        EnvOptFileVariables0, EnvOptFileVariables,
+                        MaybeMCFlags, OptFileOkSpecs, !IO),
+                    Specs = OptFileSpecs ++ OptFileOkSpecs,
+                    (
+                        MaybeMCFlags = no,
+                        Result = opr_failure(Specs)
+                    ;
+                        MaybeMCFlags = yes(MCFlags),
+                        Result = opr_success(EnvOptFileVariables, MCFlags,
+                            OptionArgs, NonOptionArgs, Specs)
+                    )
                 )
             )
-        ;
-            OptFileSpecs = [_ | _],
-            Result = opr_failure(OptFileSpecs)
         )
     ).
 

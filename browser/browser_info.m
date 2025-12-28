@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
-% Copyright (C) 2017-2023 The Mercury team.
+% Copyright (C) 2017-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -466,8 +466,7 @@ set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
 
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma foreign_export("C",
-    set_format_from_mdb(in, in, in, in, in, out),
+:- pragma foreign_export("C", set_format_from_mdb(in, in, in, in, in, out),
     "ML_BROWSE_set_format_from_mdb").
 
 set_format_from_mdb(P, B, A, Format, !Browser) :-
@@ -674,8 +673,7 @@ set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
     maybe_set_param(B, F, Pr, V, NPr, Setting, BParams0, BParams),
     maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
     !:State = browser_persistent_state(PParams, BParams, AParams,
-        !.State ^ num_printed_io_actions,
-        !.State ^ web_browser_cmd).
+        !.State ^ num_printed_io_actions, !.State ^ web_browser_cmd).
 
 set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
         F0, Pr0, V0, NPr0, Setting, !State) :-

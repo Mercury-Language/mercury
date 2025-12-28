@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
@@ -114,15 +115,21 @@
                 % position that is occupied by the variable mapped
                 % to this origin. (If that variable is only a *component*
                 % of the argument, and not the whole argument, then its
-                % origin will be unification introduced by the code of
+                % origin will be the unification introduced by the code of
                 % superhomoneous.m.)
-                vopc_callee     :: pred_id,
+                %
+                % We include the sym_name of the callee, because if the
+                % callee's identity is unresolved, then the pred will be
+                % invalid.
+                vopc_callee_id  :: pred_id,
+                vopc_callee_sn  :: sym_name,
                 vopc_arg_num    :: uint
             )
     ;       var_origin_foreign_call(
                 vofc_context    :: prog_context,
                 % We treat foreign language calls the same way as plain calls.
-                vofc_callee     :: pred_id,
+                vofc_callee_id  :: pred_id,
+                vofc_callee_sn  :: sym_name,
                 vofc_arg_num    :: uint
             )
     ;       var_origin_generic_call(
@@ -160,7 +167,8 @@
     %   count as branches of a branched control structure.
 :- type var_origins_map == map(prog_var, set(var_origin)).
 
-    % compute_var_origins_in_pred(CollectPred, PredInfo0, OriginsMap, !Acc):
+    % compute_var_origins_in_pred(CollectPred, ModuleInfo, PredInfo0,
+    %   OriginsMap, !Acc):
     %
     % Given a predicate, construct and return OriginsMap, which will map
     % each variable in its clauses to its set of origins.
@@ -179,7 +187,8 @@
     %
 :- pred compute_var_origins_in_pred(
     record_var_origin(T)::in(record_var_origin),
-    pred_info::in, var_origins_map::out, T::in, T::out) is det.
+    module_info::in, pred_info::in, var_origins_map::out,
+    T::in, T::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -202,7 +211,6 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
@@ -210,30 +218,32 @@
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module maybe.
 :- import_module pair.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
 
-compute_var_origins_in_pred(CollectPred, PredInfo0, OriginsMap, !Acc) :-
+compute_var_origins_in_pred(CollectPred, ModuleInfo, PredInfo0,
+        OriginsMap, !Acc) :-
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
     get_clause_list(Clauses, ClausesRep0, _ClausesRep),
-    compute_var_origins_in_clauses(CollectPred, HeadVars, 1u, Clauses,
-        [], RevOriginsMapList, !Acc),
+    compute_var_origins_in_clauses(CollectPred, ModuleInfo, HeadVars,
+        1u, Clauses, [], RevOriginsMapList, !Acc),
     list.reverse(RevOriginsMapList, OriginsMapList),
     represent_origins_on_all_branches(OriginsMapList, OriginsMap).
 
 :- pred compute_var_origins_in_clauses(
-    record_var_origin(T)::in(record_var_origin), list(prog_var)::in,
-    uint::in, list(clause)::in,
+    record_var_origin(T)::in(record_var_origin), module_info::in,
+    list(prog_var)::in, uint::in, list(clause)::in,
     list(var_origins_map)::in, list(var_origins_map)::out,
     T::in, T::out) is det.
 
-compute_var_origins_in_clauses(_CollectPred, _HeadVars,
+compute_var_origins_in_clauses(_CollectPred, _ModuleInfo, _HeadVars,
         _CurClauseNum, [], !RevOriginsMapList, !Acc).
-compute_var_origins_in_clauses(CollectPred, HeadVars,
+compute_var_origins_in_clauses(CollectPred, ModuleInfo, HeadVars,
         CurClauseNum, [Clause | Clauses], !RevOriginsMapList, !Acc) :-
     Clause = clause(_ApplicableProcs, BodyGoal, Lang, Context,
         _StateVarWarnings, _UnusedSVarDescs, _MaybeFact),
@@ -242,7 +252,7 @@ compute_var_origins_in_clauses(CollectPred, HeadVars,
         OriginClauseHead = origin_clause_head(Context, CurClauseNum, HeadVars),
         update_var_origins_clause_head(CollectPred, OriginClauseHead,
             OriginsMap1, !Acc),
-        compute_var_origins_in_goal(CollectPred, BodyGoal,
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, BodyGoal,
             OriginsMap1, OriginsMap, !Acc),
         !:RevOriginsMapList = [OriginsMap | !.RevOriginsMapList],
         NextClauseNum = CurClauseNum + 1u
@@ -250,16 +260,18 @@ compute_var_origins_in_clauses(CollectPred, HeadVars,
         Lang = impl_lang_foreign(_),
         NextClauseNum = CurClauseNum
     ),
-    compute_var_origins_in_clauses(CollectPred, HeadVars,
+    compute_var_origins_in_clauses(CollectPred, ModuleInfo, HeadVars,
         NextClauseNum, Clauses, !RevOriginsMapList, !Acc).
 
 %---------------------------------------------------------------------------%
 
 :- pred compute_var_origins_in_goal(
-    record_var_origin(T)::in(record_var_origin), hlds_goal::in,
-    var_origins_map::in, var_origins_map::out, T::in, T::out) is det.
+    record_var_origin(T)::in(record_var_origin), module_info::in,
+    hlds_goal::in, var_origins_map::in, var_origins_map::out,
+    T::in, T::out) is det.
 
-compute_var_origins_in_goal(CollectPred, Goal, !OriginsMap, !Acc) :-
+compute_var_origins_in_goal(CollectPred, ModuleInfo, Goal,
+        !OriginsMap, !Acc) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     (
@@ -282,17 +294,21 @@ compute_var_origins_in_goal(CollectPred, Goal, !OriginsMap, !Acc) :-
                 VarsModes),
             update_var_origins_lambda_head(CollectPred, OriginLambdaHead,
                 !.OriginsMap, OriginsMapAfterLambdaHead, !Acc),
-            compute_var_origins_in_goal(CollectPred, LambdaGoal,
+            compute_var_origins_in_goal(CollectPred, ModuleInfo, LambdaGoal,
                 OriginsMapAfterLambdaHead, _OriginsMapAfterLambda, !Acc)
         )
     ;
-        GoalExpr = plain_call(PredId, _, ArgVars, _, _, _),
-        OriginPlainCall = origin_plain_call(Context, PredId, ArgVars),
+        GoalExpr = plain_call(PredId, _, ArgVars, _, _, CalleeSymName),
+        OriginPlainCall = origin_plain_call(Context, PredId, CalleeSymName,
+            ArgVars),
         update_var_origins_plain_call(CollectPred, OriginPlainCall,
             !OriginsMap, !Acc)
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, ArgVars, _, _, _),
-        OriginForeignCall = origin_foreign_call(Context, PredId, ArgVars),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_sym_name(PredInfo, CalleeSymName),
+        OriginForeignCall =
+            origin_foreign_call(Context, PredId, CalleeSymName, ArgVars),
         update_var_origins_foreign_call(CollectPred, OriginForeignCall,
             !OriginsMap, !Acc)
     ;
@@ -302,32 +318,34 @@ compute_var_origins_in_goal(CollectPred, Goal, !OriginsMap, !Acc) :-
             !OriginsMap, !Acc)
     ;
         GoalExpr = conj(_ConjType, Conjuncts),
-        compute_var_origins_in_conj(CollectPred, Conjuncts, !OriginsMap, !Acc)
+        compute_var_origins_in_conj(CollectPred, ModuleInfo, Conjuncts,
+            !OriginsMap, !Acc)
     ;
         GoalExpr = disj(Disjuncts),
-        compute_var_origins_in_disj(CollectPred, !.OriginsMap, Disjuncts,
-            [], OriginsMaps, !Acc),
+        compute_var_origins_in_disj(CollectPred, ModuleInfo,
+            !.OriginsMap, Disjuncts, [], OriginsMaps, !Acc),
         represent_origins_on_all_branches(OriginsMaps, !:OriginsMap)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
-        compute_var_origins_in_cases(CollectPred, !.OriginsMap, Cases,
-            [], OriginsMaps, !Acc),
+        compute_var_origins_in_cases(CollectPred, ModuleInfo,
+            !.OriginsMap, Cases, [], OriginsMaps, !Acc),
         represent_origins_on_all_branches(OriginsMaps, !:OriginsMap)
     ;
         GoalExpr = negation(SubGoal),
-        compute_var_origins_in_goal(CollectPred, SubGoal,
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, SubGoal,
             !.OriginsMap, _OriginsMapAfterNegation, !Acc)
     ;
         GoalExpr = scope(_, SubGoal),
-        compute_var_origins_in_goal(CollectPred, SubGoal, !OriginsMap, !Acc)
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, SubGoal,
+            !OriginsMap, !Acc)
     ;
         GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
         OriginsMap0 = !.OriginsMap,
-        compute_var_origins_in_goal(CollectPred, CondGoal,
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, CondGoal,
             OriginsMap0, OriginsMapAfterCond, !Acc),
-        compute_var_origins_in_goal(CollectPred, ThenGoal,
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, ThenGoal,
             OriginsMapAfterCond, OriginsMapAfterThen, !Acc),
-        compute_var_origins_in_goal(CollectPred, ElseGoal,
+        compute_var_origins_in_goal(CollectPred, ModuleInfo, ElseGoal,
             OriginsMap0, OriginsMapAfterElse, !Acc),
         OriginsMaps = [OriginsMapAfterThen, OriginsMapAfterElse],
         represent_origins_on_all_branches(OriginsMaps, !:OriginsMap)
@@ -341,7 +359,7 @@ compute_var_origins_in_goal(CollectPred, Goal, !OriginsMap, !Acc) :-
             % These are not yet used.
         ;
             Shorthand = try_goal(_, _, SubGoal),
-            compute_var_origins_in_goal(CollectPred, SubGoal,
+            compute_var_origins_in_goal(CollectPred, ModuleInfo, SubGoal,
                 !OriginsMap, !Acc)
         )
     ).
@@ -349,48 +367,51 @@ compute_var_origins_in_goal(CollectPred, Goal, !OriginsMap, !Acc) :-
 %---------------------%
 
 :- pred compute_var_origins_in_conj(
-    record_var_origin(T)::in(record_var_origin), list(hlds_goal)::in,
-    var_origins_map::in, var_origins_map::out, T::in, T::out) is det.
+    record_var_origin(T)::in(record_var_origin), module_info::in,
+    list(hlds_goal)::in, var_origins_map::in, var_origins_map::out,
+    T::in, T::out) is det.
 
-compute_var_origins_in_conj(_CollectPred, [], !OriginsMap, !Acc).
-compute_var_origins_in_conj(CollectPred, [Conjunct | Conjuncts],
+compute_var_origins_in_conj(_CollectPred, _ModuleInfo, [], !OriginsMap, !Acc).
+compute_var_origins_in_conj(CollectPred, ModuleInfo, [Conjunct | Conjuncts],
         !OriginsMap, !Acc) :-
-    compute_var_origins_in_goal(CollectPred, Conjunct, !OriginsMap, !Acc),
-    compute_var_origins_in_conj(CollectPred, Conjuncts, !OriginsMap, !Acc).
+    compute_var_origins_in_goal(CollectPred, ModuleInfo, Conjunct,
+        !OriginsMap, !Acc),
+    compute_var_origins_in_conj(CollectPred, ModuleInfo, Conjuncts,
+        !OriginsMap, !Acc).
 
 %---------------------%
 
 :- pred compute_var_origins_in_disj(
-    record_var_origin(T)::in(record_var_origin), var_origins_map::in,
-    list(hlds_goal)::in,
+    record_var_origin(T)::in(record_var_origin), module_info::in,
+    var_origins_map::in, list(hlds_goal)::in,
     list(var_origins_map)::in, list(var_origins_map)::out,
     T::in, T::out) is det.
 
-compute_var_origins_in_disj(_CollectPred, _InitialOriginsMap,
+compute_var_origins_in_disj(_CollectPred, _ModuleInfo, _InitialOriginsMap,
         [], !RevOriginsMaps, !Acc).
-compute_var_origins_in_disj(CollectPred, InitialOriginsMap,
+compute_var_origins_in_disj(CollectPred, ModuleInfo, InitialOriginsMap,
         [Disjunct | Disjuncts], !RevOriginsMaps, !Acc) :-
-    compute_var_origins_in_goal(CollectPred, Disjunct,
+    compute_var_origins_in_goal(CollectPred, ModuleInfo, Disjunct,
         InitialOriginsMap, DisjunctOriginsMap, !Acc),
     !:RevOriginsMaps = [DisjunctOriginsMap | !.RevOriginsMaps],
-    compute_var_origins_in_disj(CollectPred, InitialOriginsMap,
+    compute_var_origins_in_disj(CollectPred, ModuleInfo, InitialOriginsMap,
         Disjuncts, !RevOriginsMaps, !Acc).
 
 :- pred compute_var_origins_in_cases(
-    record_var_origin(T)::in(record_var_origin), var_origins_map::in,
-    list(case)::in,
+    record_var_origin(T)::in(record_var_origin), module_info::in,
+    var_origins_map::in, list(case)::in,
     list(var_origins_map)::in, list(var_origins_map)::out,
     T::in, T::out) is det.
 
-compute_var_origins_in_cases(_CollectPred, _InitialOriginsMap,
+compute_var_origins_in_cases(_CollectPred, _ModuleInfo, _InitialOriginsMap,
         [], !RevOriginsMaps, !Acc).
-compute_var_origins_in_cases(CollectPred, InitialOriginsMap,
+compute_var_origins_in_cases(CollectPred, ModuleInfo, InitialOriginsMap,
         [Case | Cases], !RevOriginsMaps, !Acc) :-
     Case = case(_MainConsId, _OtherConsIds, SubGoal),
-    compute_var_origins_in_goal(CollectPred, SubGoal,
+    compute_var_origins_in_goal(CollectPred, ModuleInfo, SubGoal,
         InitialOriginsMap, CaseOriginsMap, !Acc),
     !:RevOriginsMaps = [CaseOriginsMap | !.RevOriginsMaps],
-    compute_var_origins_in_cases(CollectPred, InitialOriginsMap,
+    compute_var_origins_in_cases(CollectPred, ModuleInfo, InitialOriginsMap,
         Cases, !RevOriginsMaps, !Acc).
 
 %---------------------------------------------------------------------------%
@@ -435,14 +456,16 @@ compute_var_origins_in_cases(CollectPred, InitialOriginsMap,
 :- type origin_plain_call
     --->    origin_plain_call(
                 opc_context     :: prog_context,
-                opc_callee      :: pred_id,
+                opc_callee_id   :: pred_id,
+                opc_callee_sn   :: sym_name,
                 opc_args        :: list(prog_var)
             ).
 
 :- type origin_foreign_call
     --->    origin_foreign_call(
                 ofc_context     :: prog_context,
-                ofc_callee      :: pred_id,
+                ofc_callee_id   :: pred_id,
+                ofc_callee_sn   :: sym_name,
                 ofc_args        :: list(foreign_arg)
             ).
 
@@ -559,23 +582,25 @@ update_var_origins_unify_func_args(CollectPred, Context, LHSVar, ConsId,
 
 update_var_origins_plain_call(CollectPred, OriginPlainCall,
         !OriginsMap, !Acc) :-
-    OriginPlainCall = origin_plain_call(Context, PredId, ArgVars),
-    update_var_origins_plain_call_args(CollectPred, Context, PredId,
-        1u, ArgVars, !OriginsMap, !Acc).
+    OriginPlainCall =
+        origin_plain_call(Context, PredId, CalleeSymName, ArgVars),
+    update_var_origins_plain_call_args(CollectPred, Context,
+        PredId, CalleeSymName, 1u, ArgVars, !OriginsMap, !Acc).
 
 :- pred update_var_origins_plain_call_args(
     record_var_origin(T)::in(record_var_origin),
-    prog_context::in, pred_id::in, uint::in, list(prog_var)::in,
+    prog_context::in, pred_id::in, sym_name::in, uint::in, list(prog_var)::in,
     var_origins_map::in, var_origins_map::out, T::in, T::out) is det.
 
-update_var_origins_plain_call_args(_CollectPred, _Context, _PredId,
-        _CurArgNum, [], !OriginsMap, !Acc).
-update_var_origins_plain_call_args(CollectPred, Context, PredId,
+update_var_origins_plain_call_args(_CollectPred, _Context,
+        _PredId, _CalleeSymName, _CurArgNum, [], !OriginsMap, !Acc).
+update_var_origins_plain_call_args(CollectPred, Context, PredId, CalleeSymName,
         CurArgNum, [ArgVar | ArgVars], !OriginsMap, !Acc) :-
-    OriginArg = var_origin_plain_call(Context, PredId, CurArgNum),
+    OriginArg =
+        var_origin_plain_call(Context, PredId, CalleeSymName, CurArgNum),
     update_var_origin(CollectPred, ArgVar, OriginArg, !OriginsMap, !Acc),
-    update_var_origins_plain_call_args(CollectPred, Context, PredId,
-        CurArgNum + 1u, ArgVars, !OriginsMap, !Acc).
+    update_var_origins_plain_call_args(CollectPred, Context,
+        PredId, CalleeSymName, CurArgNum + 1u, ArgVars, !OriginsMap, !Acc).
 
 %---------------------%
 
@@ -585,24 +610,28 @@ update_var_origins_plain_call_args(CollectPred, Context, PredId,
 
 update_var_origins_foreign_call(CollectPred, OriginPlainCall,
         !OriginsMap, !Acc) :-
-    OriginPlainCall = origin_foreign_call(Context, PredId, ForeignArgs),
-    update_var_origins_foreign_call_args(CollectPred, Context, PredId,
-        1u, ForeignArgs, !OriginsMap, !Acc).
+    OriginPlainCall =
+        origin_foreign_call(Context, PredId, CalleeSymName, ForeignArgs),
+    update_var_origins_foreign_call_args(CollectPred, Context,
+        PredId, CalleeSymName, 1u, ForeignArgs, !OriginsMap, !Acc).
 
 :- pred update_var_origins_foreign_call_args(
     record_var_origin(T)::in(record_var_origin),
-    prog_context::in, pred_id::in, uint::in, list(foreign_arg)::in,
-    var_origins_map::in, var_origins_map::out, T::in, T::out) is det.
+    prog_context::in, pred_id::in, sym_name::in,
+    uint::in, list(foreign_arg)::in, var_origins_map::in, var_origins_map::out,
+    T::in, T::out) is det.
 
-update_var_origins_foreign_call_args(_CollectPred, _Context, _PredId,
-        _CurArgNum, [], !OriginsMap, !Acc).
-update_var_origins_foreign_call_args(CollectPred, Context, PredId,
-        CurArgNum, [ForeignArg | ForeignArgs], !OriginsMap, !Acc) :-
+update_var_origins_foreign_call_args(_CollectPred, _Context,
+        _PredId, _CalleeSymName, _CurArgNum, [], !OriginsMap, !Acc).
+update_var_origins_foreign_call_args(CollectPred, Context,
+        PredId, CalleeSymName, CurArgNum, [ForeignArg | ForeignArgs],
+        !OriginsMap, !Acc) :-
     ArgVar = foreign_arg_var(ForeignArg),
-    OriginArg = var_origin_foreign_call(Context, PredId, CurArgNum),
+    OriginArg =
+        var_origin_foreign_call(Context, PredId, CalleeSymName, CurArgNum),
     update_var_origin(CollectPred, ArgVar, OriginArg, !OriginsMap, !Acc),
-    update_var_origins_foreign_call_args(CollectPred, Context, PredId,
-        CurArgNum + 1u, ForeignArgs, !OriginsMap, !Acc).
+    update_var_origins_foreign_call_args(CollectPred, Context,
+        PredId, CalleeSymName, CurArgNum + 1u, ForeignArgs, !OriginsMap, !Acc).
 
 %---------------------%
 
@@ -707,15 +736,26 @@ explain_var_origin(ModuleInfo, VarTable, Var, Origin, [Msg]) :-
                 quote(LHSVarStr), suffix("."), nl]
         )
     ;
-        ( Origin = var_origin_plain_call(Context, PredId, ArgNum)
-        ; Origin = var_origin_foreign_call(Context, PredId, ArgNum)
+        (
+            Origin = var_origin_plain_call(Context, PredId, CalleeSymName,
+                ArgNum)
+        ;
+            Origin = var_origin_foreign_call(Context, PredId, CalleeSymName,
+                ArgNum)
         ),
-        pred_arg_num_description(ModuleInfo, PredId, ArgNum,
-            PredOrFunc, SymName, ArgNumDescPieces),
+        pred_arg_num_description(ModuleInfo, PredId, CalleeSymName, ArgNum,
+            MaybePredOrFunc, SymName, ArgNumDescPieces),
+        (
+            MaybePredOrFunc = yes(PredOrFunc),
+            PFPieces = [p_or_f(PredOrFunc)]
+        ;
+            MaybePredOrFunc = no,
+            PFPieces = []
+        ),
         Pieces = [quote(VarStr), words("is the")] ++
-            ArgNumDescPieces ++ [words("of the"),
-            p_or_f(PredOrFunc), words("call to"),
-            qual_sym_name(SymName), words("here."), nl]
+            ArgNumDescPieces ++ [words("of the")] ++
+            PFPieces ++
+            [words("call to"), qual_sym_name(SymName), words("here."), nl]
     ;
         Origin = var_origin_generic_call(Context, GenericCall, ArgNum),
         (
@@ -777,16 +817,29 @@ explain_var_origin(ModuleInfo, VarTable, Var, Origin, [Msg]) :-
     ),
     Msg = msg(Context, Pieces).
 
-:- pred pred_arg_num_description(module_info::in, pred_id::in, uint::in,
-    pred_or_func::out, sym_name::out, list(format_piece)::out) is det.
+:- pred pred_arg_num_description(module_info::in, pred_id::in, sym_name::in,
+    uint::in, maybe(pred_or_func)::out, sym_name::out,
+    list(format_piece)::out) is det.
 
-pred_arg_num_description(ModuleInfo, PredId, ArgNum,
-        PredOrFunc, SymName, Pieces) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_sym_name(PredInfo, SymName),
-    pred_form_arity(NumArgs) = pred_info_pred_form_arity(PredInfo),
-    Pieces = arg_num_description(PredOrFunc, NumArgs, ArgNum).
+pred_arg_num_description(ModuleInfo, PredId, CalleeSymName, ArgNum,
+        MaybePredOrFunc, SymName, ArgNumPieces) :-
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    ( if map.search(PredIdTable, PredId, PredInfo) then
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        MaybePredOrFunc = yes(PredOrFunc),
+        pred_info_get_sym_name(PredInfo, SymName),
+        pred_form_arity(NumArgs) = pred_info_pred_form_arity(PredInfo),
+        ArgNumPieces = arg_num_description(PredOrFunc, NumArgs, ArgNum)
+    else
+        % We get here when the source of an unresolved ambiguity
+        % in the type of a variable is caused by an unresolved ambiguity
+        % about which of several predicates (or functions) a particular
+        % call actually refers to. This occurred in an example program
+        % posted by Volver Wysk to m-rev on 2025 oct 19 (Melbourne time).
+        MaybePredOrFunc = no,
+        SymName = CalleeSymName,
+        ArgNumPieces = [unth_fixed(ArgNum), words("argument")]
+    ).
 
 :- func arg_num_description(pred_or_func, int, uint) = list(format_piece).
 

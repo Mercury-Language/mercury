@@ -337,11 +337,10 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
 
     % Is it a field access function?
     ( if
-        is_field_access_function_name(ModuleInfo, SymName, Arity,
-            _, FieldName),
-        module_info_get_ctor_field_table(ModuleInfo, CtorFields),
-        map.search(CtorFields, FieldName, FieldDefns)
+        is_field_access_function_name(ModuleInfo, SymName,
+            Arity, _AccessType, _FieldName, OoMFieldDefns)
     then
+        FieldDefns = one_or_more_to_list(OoMFieldDefns),
         MatchingFieldAccessRFs = list.map(
             ( func(FieldDefn) = FieldAccessRF :-
                 FieldDefn =
@@ -659,7 +658,7 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 find_items_used_by_type_body(TypeBody, !Info) :-
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _, _, _),
+        TypeBodyDu = type_body_du(Ctors, _, MaybeSuperType, _, _, _),
         (
             MaybeSuperType = subtype_of(SuperType),
             find_items_used_by_type(SuperType, !Info)

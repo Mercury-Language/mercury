@@ -1,9 +1,0 @@
-multiply_star.m:031: In clause for predicate `p'/2:
-multiply_star.m:031:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`*'/2.[39;49m
-multiply_star.m:031:   That symbol is defined in modules [38;5;87m`int',[39;49m [38;5;87m`int16',[39;49m
-multiply_star.m:031:   [38;5;87m`int32',[39;49m [38;5;87m`int64',[39;49m [38;5;87m`int8',[39;49m [38;5;87m`uint',[39;49m [38;5;87m`uint16',[39;49m [38;5;87m`uint32',[39;49m
-multiply_star.m:031:   [38;5;87m`uint64'[39;49m and [38;5;87m`uint8',[39;49m [38;5;226mnone of which have[39;49m
-multiply_star.m:031:   [38;5;226m`:- import_module' declarations.[39;49m
-multiply_star.m:031:   Note that symbols defined in modules accessed via
-multiply_star.m:031:   `:- use_module' declarations must always be fully module
-multiply_star.m:031:   qualified.

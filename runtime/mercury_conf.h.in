@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab
 
 // Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
-// Copyright (C) 2013-2021, 2023-2024 The Mercury team.
+// Copyright (C) 2013-2021, 2023-2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_conf.h.in defines various configuration parameters.
@@ -50,10 +50,10 @@
 
 #undef  MR_BITS_PER_WORD
 
-// MR_MERCURY_IS_{32,64}_BIT: we define MR_MERCURY_IS_32_BIT on 32 bit
-// systems, and we defined MR_MERCURY_IS_64_BIT on 64 bit systems.
-#undef  MR_MERCURY_IS_32_BIT
-#undef  MR_MERCURY_IS_64_BIT
+// MR_MERCURY_IS_{32,64}_BITS: we define MR_MERCURY_IS_32_BITS on 32 bit
+// systems, and we defined MR_MERCURY_IS_64_BITS on 64 bit systems.
+#undef  MR_MERCURY_IS_32_BITS
+#undef  MR_MERCURY_IS_64_BITS
 
 // MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
 

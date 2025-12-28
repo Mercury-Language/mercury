@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2022 The Mercury team.
+% Copyright (C) 2016, 2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,15 +16,15 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
-:- import_module set.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
 :- type used_modules
     --->    used_modules(
                 % The modules used in the interface and implementation.
-                int_used_modules    :: set(module_name),
-                imp_used_modules    :: set(module_name)
+                int_used_modules    :: set_tree234(module_name),
+                imp_used_modules    :: set_tree234(module_name)
             ).
 
 :- type item_visibility
@@ -58,7 +58,7 @@
 
 :- import_module list.
 
-used_modules_init = used_modules(set.init, set.init).
+used_modules_init = used_modules(set_tree234.init, set_tree234.init).
 
 record_sym_name_module_as_used(Visibility, SymName, !UsedModules) :-
     (
@@ -83,10 +83,10 @@ record_module_and_ancestors_as_used(Visibility, ModuleName, !UsedModules) :-
     ).
 
 :- pred add_module_and_ancestors(sym_name::in,
-    set(module_name)::in, set(module_name)::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out) is det.
 
 add_module_and_ancestors(ModuleName, !UsedModuleNames) :-
-    set.insert(ModuleName, !UsedModuleNames),
+    set_tree234.insert(ModuleName, !UsedModuleNames),
     (
         ModuleName = unqualified(_)
     ;
@@ -98,7 +98,7 @@ record_format_modules_as_used(!UsedModules) :-
     ImpUsedModules0 = !.UsedModules ^ imp_used_modules,
     FormatModules = [mercury_string_format_module,
         mercury_string_parse_util_module, mercury_stream_module],
-    set.insert_list(FormatModules, ImpUsedModules0, ImpUsedModules),
+    set_tree234.insert_list(FormatModules, ImpUsedModules0, ImpUsedModules),
     !UsedModules ^ imp_used_modules := ImpUsedModules.
 
 %---------------------------------------------------------------------------%

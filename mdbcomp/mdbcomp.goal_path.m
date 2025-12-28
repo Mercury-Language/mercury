@@ -2,21 +2,22 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: goal_path.m
 % Authors: zs, pbone
 %
-% This module defines the representation of goal paths and goal ids.
-% These identify locations within a procedure body.
+% We can think of the Mercury goal that defines a procedure as a tree, where
 %
-% We can think of the goal that defines a procedure to be a tree, whose leaves
-% are primitive goals and whose interior nodes are compound goals. The goal_id,
-% forward_goal_path and reverse_goal_path types describe the position of a goal
-% in this tree. Therefore values of these three types can uniquely identify
-% a goal within its defining procedure.
+% - the leaves are primitive goals, and
+% - the interior nodes are compound goals.
+%
+% The goal_id, forward_goal_path and reverse_goal_path types that this module
+% defines all describe the position of a goal in this tree. Therefore values
+% of these three types can uniquely identify a goal within its defining
+% procedure.
 %
 % Goal ids are allocated in a depth-first manner that guarantees the following
 % invariants:
@@ -25,24 +26,53 @@
 % - the goal id of a goal will be greater than the goal ids of all the goals
 %   that contain it.
 %
-% A goal_path_step type says which branch to take at an interior node;
-% such as which conjunct of a conjunction we want to select.
+% A value of the goal_path_step type says which branch to take at an
+% interior node, such as which conjunct of a conjunction we want to select.
 %
 % A forward goal path lists the steps from the root of the tree to the goal
-% being identified.
+% being identified. (These are the kinds of goal paths you can see
+% on mdb events, for example.)
 %
-% A reverse goal path lists the steps from to the goal being identified to
-% the root of the tree.
+% A reverse goal path lists the steps from to the goal being identified
+% back to the root of the tree.
 %
-% The code in the compiler that allocates goal ids also returns a containing
-% goal map, which maps each goal id to the id of its innermost containing goal
-% (if there is one), and the step from that containing goal to this one.
-% When possible, new code should use this data structure, though code
-% that needs to identify goals in files outside the compiler will probably
-% continue to need to use goal paths. The string representations of
-% goal paths always list the steps in the forward order. In contrast,
-% most operations inside the compiler use reverse goal paths, because most
-% operations on goal paths focus on the last element, not the first.
+% HISTORY
+%
+% Of these three types, the first one that the compiler used is forward goal
+% paths. It used these for purposes such as identifying which subgoal
+% of a procedure body an mdb event occurred at. However, the code constructing
+% these forward goal paths to put into the static data structures used by mdb
+% operated on *reversed* lists of goal_path_steps in order to avoid the O(N^2)
+% complexity of repeatedly appending new steps to the end of a list.
+% Replacing the list(goal_path_step) type with separate forward_goal_path and
+% reverse_goal_path types made understanding the code doing that significantly
+% easier.
+%
+% Later on, other compiler passes also needed ways to uniquely identify
+% each subgoal in a procedure body. Using goal paths for this works,
+% but it is overkill, and therefore adds unnecessary overhead. This is
+% why we added goal_ids. A map whose keys are goal_ids can be expected to be
+% *much* faster than a map whose keys are (forward or reverse) goal paths,
+% because comparing two integers is much less work than comparing two nested
+% (possibly deeply nested) structured terms.
+%
+% Having two separate slots in a hlds_goal_info for a goal_id and a goal path
+% would also be wasteful. This is why hlds_goal_infos have only one slot,
+% containing a goal_id. Nevertheless, code that wants to do so can convert
+% this goal_id into a goal path (of either kind), because the code in the
+% compiler that allocates goal ids also returns a map, the containing goal
+% map, to make this possible. This data structure maps each goal id to the id
+% of its innermost containing goal (if there is one), and the step from
+% that containing goal to this one.
+%
+% THE FUTURE
+%
+% There are some compiler modules that use goal_paths to identify subgoals,
+% because goal_ids did not yet exist when they were written. Later modules
+% use goal_ids for that purpose, and any new code should follow their example.
+% Ideally, the use of goal paths in the future should be restricted to
+% use cases where we want to communicate the identity of a goal to a human,
+% who may be using e.g. mdb or mdprof.
 %
 %---------------------------------------------------------------------------%
 

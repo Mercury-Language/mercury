@@ -1,4 +1,4 @@
-typeclass_test_8.m:009: Error: predicate [38;5;87m`main'/2[39;49m contains an unsatisified
+typeclass_test_8.m:009: Error: predicate [38;5;87m`main'/2[39;49m contains an unsatisfied
 typeclass_test_8.m:009:   typeclass constraint:
 typeclass_test_8.m:009:     [38;5;203m`typeclass_test_8.fooable(T)'.[39;49m
 typeclass_test_8.m:009:   The constraint is due to:

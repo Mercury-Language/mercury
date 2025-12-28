@@ -1491,7 +1491,7 @@
     % - the N'th line contains the N'th string in each column;
     % - that string will be padded to the width of the widest string
     %   in that column;
-    % - each field will be left justfied within that width if the column
+    % - each field will be left justified within that width if the column
     %   has a "left()" wrapper, and right justified if it has a "right()"
     %   wrapper;
     % - the fields on each line are separated with Separator;
@@ -1502,7 +1502,7 @@
     %
     % This predicate considers the length of a string to be the number of
     % code points in the string. Note that this is only an approximation:
-    % it will be unaccurate in the presence of e.g. combining characters.
+    % it will be inaccurate in the presence of e.g. combining characters.
     %
     % This predicate requires all the columns to contain the same number
     % of strings, and throws an exception if this is not the case.
@@ -1626,6 +1626,10 @@
 % Converting values of builtin types to strings.
 %
 
+%---------------------%
+% Converting chars to strings.
+
+
     % char_to_string(Char, String):
     %
     % Converts a character to a string, or vice versa.
@@ -1647,15 +1651,10 @@
     %
 :- func from_char(char::in) = (string::uo) is det.
 
-    % Convert an integer to a string in base 10.
-    % See int_to_base_string for the string format.
-    %
-:- func int_to_string(int::in) = (string::uo) is det.
-:- pred int_to_string(int::in, string::uo) is det.
+%---------------------%
+% Converting integers to strings.
 
-    % A synonym for int_to_string/1.
-    %
-:- func from_int(int::in) = (string::uo) is det.
+% The more complex conversions that build on the simpler conversions below.
 
     % int_to_base_string(Int, Base, String):
     %
@@ -1689,6 +1688,18 @@
     %
 :- func int_to_base_string_group(int, int, int, string) = string.
 :- mode int_to_base_string_group(in, in, in, in) = uo is det.
+
+% The simpler conversions.
+
+    % Convert an integer to a string in base 10.
+    % See int_to_base_string for the string format.
+    %
+:- func int_to_string(int::in) = (string::uo) is det.
+:- pred int_to_string(int::in, string::uo) is det.
+
+    % A synonym for int_to_string/1.
+    %
+:- func from_int(int::in) = (string::uo) is det.
 
     % Convert an unsigned integer to a string in base 10.
     %
@@ -1735,6 +1746,9 @@
     %
 :- func uint64_to_octal_string(uint64::in) = (string::uo) is det.
 
+%---------------------%
+% Converting floats to strings.
+
     % Convert a float to a string.
     % In the current implementation, the resulting float will be in the form
     % that it was printed using the format string "%#.<prec>g".
@@ -1749,6 +1763,9 @@
     % A synonym for float_to_string/1.
     %
 :- func from_float(float::in) = (string::uo) is det.
+
+%---------------------%
+% Converting c_pointers to strings.
 
     % Convert a c_pointer to a string. The format is "c_pointer(0xXXXX)"
     % where XXXX is the hexadecimal representation of the pointer.
@@ -1886,7 +1903,7 @@
 % from outside the string module, since they need to be visible to the
 % compiler (specifically, to format_call.m and its submodule
 % parse_format_string.m.). However, they should not be part of the
-% publically documented interface of the Mercury standard library,
+% publicly documented interface of the Mercury standard library,
 % since we don't want any user code to depend on the implementation
 % details they contain.
 :- interface.
@@ -1910,7 +1927,11 @@
 :- import_module uint.
 :- import_module uint8.
 
+%---------------------------------------------------------------------------%
+
 % Many routines in this module are implemented using foreign language code.
+% And many of the integer-to-string conversion operations use common
+% components.
 
 :- pragma foreign_decl("C",
 "
@@ -1921,6 +1942,322 @@
 
 #include ""mercury_string.h""   // for MR_allocate_aligned_string*() etc.
 #include ""mercury_tags.h""     // for MR_list_*()
+
+    // Doing a binary search for the correct value of num_digits
+    // would yield better expected-case performance if values of U8
+    // were randomly distributed along its entire range, but this
+    // linear search is better for use cases where smaller values of the U8
+    // are more likely than larger values.
+
+#define get_num_decimal_digits_in_uint8(U8, num_digits) \
+    do {                                                                \
+        if ((U8) < 10U) {                               /* 10^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U8) < 100U) {                       /* 10^2 */      \
+            (num_digits) = 2;                                           \
+        } else {                                                        \
+            /* UINT8_MAX = (2^8)-1 = 255, which needs 3 digits. */      \
+            (num_digits) = 3;                                           \
+        }                                                               \
+    } while (0)
+
+#define get_num_decimal_digits_in_uint16(U16, num_digits) \
+    do {                                                                \
+        if ((U16) < 10U) {                              /* 10^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U16) < 100U) {                      /* 10^2 */      \
+            (num_digits) = 2;                                           \
+        } else if ((U16) < 1000U) {                     /* 10^3 */      \
+            (num_digits) = 3;                                           \
+        } else if ((U16) < 10000U) {                    /* 10^4 */      \
+            (num_digits) = 4;                                           \
+        } else {                                                        \
+            /* UINT16_MAX = (2^16)-1 = 65_535 which needs 5 digits. */  \
+            (num_digits) = 5;                                           \
+        }                                                               \
+    } while (0)
+
+#define get_num_decimal_digits_in_uint32(U32, num_digits) \
+    do {                                                                \
+        if ((U32) < 10U) {                              /* 10^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U32) < 100U) {                      /* 10^2 */      \
+            (num_digits) = 2;                                           \
+        } else if ((U32) < 1000U) {                     /* 10^3 */      \
+            (num_digits) = 3;                                           \
+        } else if ((U32) < 10000U) {                    /* 10^4 */      \
+            (num_digits) = 4;                                           \
+        } else if ((U32) < 100000U) {                   /* 10^5 */      \
+            (num_digits) = 5;                                           \
+        } else if ((U32) < 1000000U) {                  /* 10^6 */      \
+            (num_digits) = 6;                                           \
+        } else if ((U32) < 10000000U) {                 /* 10^7 */      \
+            (num_digits) = 7;                                           \
+        } else if ((U32) < 100000000U) {                /* 10^8 */      \
+            (num_digits) = 8;                                           \
+        } else if ((U32) < 1000000000U) {               /* 10^9 */      \
+            (num_digits) = 9;                                           \
+        } else {                                                        \
+            /* UINT32_MAX = (2^32)-1 = 4_294_967_295, */                \
+            /* which needs 10 digits. */                                \
+            (num_digits) = 10;                                          \
+        }                                                               \
+    } while (0)
+
+#define get_num_decimal_digits_in_uint64(U64, num_digits) \
+    do {                                                                \
+        if ((U64) < 10U) {                              /* 10^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U64) < 100U) {                      /* 10^2 */      \
+            (num_digits) = 2;                                           \
+        } else if ((U64) < 1000U) {                     /* 10^3 */      \
+            (num_digits) = 3;                                           \
+        } else if ((U64) < 10000U) {                    /* 10^4 */      \
+            (num_digits) = 4;                                           \
+        } else if ((U64) < 100000U) {                   /* 10^5 */      \
+            (num_digits) = 5;                                           \
+        } else if ((U64) < 1000000U) {                  /* 10^6 */      \
+            (num_digits) = 6;                                           \
+        } else if ((U64) < 10000000U) {                 /* 10^7 */      \
+            (num_digits) = 7;                                           \
+        } else if ((U64) < 100000000U) {                /* 10^8 */      \
+            (num_digits) = 8;                                           \
+        } else if ((U64) < 1000000000U) {               /* 10^9 */      \
+            (num_digits) = 9;                                           \
+        } else if ((U64) < 10000000000U) {              /* 10^10 */     \
+            (num_digits) = 10;                                          \
+        } else if ((U64) < 100000000000U) {             /* 10^11 */     \
+            (num_digits) = 11;                                          \
+        } else if ((U64) < 1000000000000U) {            /* 10^12 */     \
+            (num_digits) = 12;                                          \
+        } else if ((U64) < 10000000000000U) {           /* 10^13 */     \
+            (num_digits) = 13;                                          \
+        } else if ((U64) < 100000000000000U) {          /* 10^14 */     \
+            (num_digits) = 14;                                          \
+        } else if ((U64) < 1000000000000000U) {         /* 10^15 */     \
+            (num_digits) = 15;                                          \
+        } else if ((U64) < 10000000000000000U) {        /* 10^16 */     \
+            (num_digits) = 16;                                          \
+        } else if ((U64) < 100000000000000000U) {       /* 10^17 */     \
+            (num_digits) = 17;                                          \
+        } else if ((U64) < 1000000000000000000U) {      /* 10^18 */     \
+            (num_digits) = 18;                                          \
+        } else if ((U64) < 10000000000000000000U) {     /* 10^19 */     \
+            (num_digits) = 19;                                          \
+        } else {                                                        \
+            /* UINT64_MAX = (2^64)-1 = 18_446_744_073_709_551_615, */   \
+            /* which needs 20 digits. */                                \
+            (num_digits) = 20;                                          \
+        }                                                               \
+    } while (0)
+
+#define get_num_octal_digits_in_uint32(U32, num_digits) \
+    do {                                                                \
+        if ((U32) < 010) {                              /* 8^1 */       \
+            (num_digits) = 1;                                           \
+        } else if ((U32) < 0100) {                      /* 8^2 */       \
+            (num_digits) = 2;                                           \
+        } else if ((U32) < 01000) {                     /* 8^3 */       \
+            (num_digits) = 3;                                           \
+        } else if ((U32) < 010000) {                    /* 8^4 */       \
+            (num_digits) = 4;                                           \
+        } else if ((U32) < 0100000) {                   /* 8^5 */       \
+            (num_digits) = 5;                                           \
+        } else if ((U32) < 01000000) {                  /* 8^6 */       \
+            (num_digits) = 6;                                           \
+        } else if ((U32) < 010000000) {                 /* 8^7 */       \
+            (num_digits) = 7;                                           \
+        } else if ((U32) < 0100000000) {                /* 8^8 */       \
+            (num_digits) = 8;                                           \
+        } else if ((U32) < 01000000000) {               /* 8^9 */       \
+            (num_digits) = 9;                                           \
+        } else if ((U32) < 010000000000) {              /* 8^10 */      \
+            (num_digits) = 10;                                          \
+        } else {                                                        \
+            /* 32 bits is 10 groups of three bits, plus two bits. */    \
+            (num_digits) = 11;                                          \
+        }                                                               \
+    } while (0)
+
+#define get_num_octal_digits_in_uint64(U64, num_digits) \
+    do {                                                                \
+        if ((U64) < 010) {                              /* 8^1 */       \
+            (num_digits) = 1;                                           \
+        } else if ((U64) < 0100) {                      /* 8^2 */       \
+            (num_digits) = 2;                                           \
+        } else if ((U64) < 01000) {                     /* 8^3 */       \
+            (num_digits) = 3;                                           \
+        } else if ((U64) < 010000) {                    /* 8^4 */       \
+            (num_digits) = 4;                                           \
+        } else if ((U64) < 0100000) {                   /* 8^5 */       \
+            (num_digits) = 5;                                           \
+        } else if ((U64) < 01000000) {                  /* 8^6 */       \
+            (num_digits) = 6;                                           \
+        } else if ((U64) < 010000000) {                 /* 8^7 */       \
+            (num_digits) = 7;                                           \
+        } else if ((U64) < 0100000000) {                /* 8^8 */       \
+            (num_digits) = 8;                                           \
+        } else if ((U64) < 01000000000) {               /* 8^9 */       \
+            (num_digits) = 9;                                           \
+        } else if ((U64) < 010000000000) {              /* 8^10 */      \
+            (num_digits) = 10;                                          \
+        } else if ((U64) < 0100000000000) {             /* 8^11 */      \
+            (num_digits) = 11;                                          \
+        } else if ((U64) < 01000000000000) {            /* 8^12 */      \
+            (num_digits) = 12;                                          \
+        } else if ((U64) < 010000000000000) {           /* 8^13 */      \
+            (num_digits) = 13;                                          \
+        } else if ((U64) < 0100000000000000) {          /* 8^14 */      \
+            (num_digits) = 14;                                          \
+        } else if ((U64) < 01000000000000000) {         /* 8^15 */      \
+            (num_digits) = 15;                                          \
+        } else if ((U64) < 010000000000000000) {        /* 8^16 */      \
+            (num_digits) = 16;                                          \
+        } else if ((U64) < 0100000000000000000) {       /* 8^17 */      \
+            (num_digits) = 17;                                          \
+        } else if ((U64) < 01000000000000000000) {      /* 8^18 */      \
+            (num_digits) = 18;                                          \
+        } else if ((U64) < 010000000000000000000) {     /* 8^19 */      \
+            (num_digits) = 19;                                          \
+        } else if ((U64) < 0100000000000000000000) {    /* 8^20 */      \
+            (num_digits) = 20;                                          \
+        } else if ((U64) < 01000000000000000000000) {   /* 8^21 */      \
+            (num_digits) = 21;                                          \
+        } else {                                                        \
+            /* 64 bits is 21 groups of three bits, plus one bit. */     \
+            (num_digits) = 22;                                          \
+        }                                                               \
+    } while (0)
+
+#define get_num_hex_digits_in_uint32(U32, num_digits) \
+    do {                                                                \
+        if ((U32) < 0x10) {                             /* 16^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U32) < 0x100) {                     /* 16^2 */      \
+            (num_digits) = 2;                                           \
+        } else if ((U32) < 0x1000) {                    /* 16^3 */      \
+            (num_digits) = 3;                                           \
+        } else if ((U32) < 0x10000) {                   /* 16^4 */      \
+            (num_digits) = 4;                                           \
+        } else if ((U32) < 0x100000) {                  /* 16^5 */      \
+            (num_digits) = 5;                                           \
+        } else if ((U32) < 0x1000000) {                 /* 16^6 */      \
+            (num_digits) = 6;                                           \
+        } else if ((U32) < 0x10000000) {                /* 16^7 */      \
+            (num_digits) = 7;                                           \
+        } else if ((U32) < 0x100000000) {               /* 16^8 */      \
+            (num_digits) = 8;                                           \
+        } else {                                                        \
+            /* 32 bits is 8 groups of four bits. */                     \
+            (num_digits) = 16;                                          \
+        }                                                               \
+    } while (0)
+
+#define get_num_hex_digits_in_uint64(U64, num_digits) \
+    do {                                                                \
+        if ((U64) < 0x10) {                             /* 16^1 */      \
+            (num_digits) = 1;                                           \
+        } else if ((U64) < 0x100) {                     /* 16^2 */      \
+            (num_digits) = 2;                                           \
+        } else if ((U64) < 0x1000) {                    /* 16^3 */      \
+            (num_digits) = 3;                                           \
+        } else if ((U64) < 0x10000) {                   /* 16^4 */      \
+            (num_digits) = 4;                                           \
+        } else if ((U64) < 0x100000) {                  /* 16^5 */      \
+            (num_digits) = 5;                                           \
+        } else if ((U64) < 0x1000000) {                 /* 16^6 */      \
+            (num_digits) = 6;                                           \
+        } else if ((U64) < 0x10000000) {                /* 16^7 */      \
+            (num_digits) = 7;                                           \
+        } else if ((U64) < 0x100000000) {               /* 16^8 */      \
+            (num_digits) = 8;                                           \
+        } else if ((U64) < 0x1000000000) {              /* 16^9 */      \
+            (num_digits) = 9;                                           \
+        } else if ((U64) < 0x10000000000) {             /* 16^10 */     \
+            (num_digits) = 10;                                          \
+        } else if ((U64) < 0x100000000000) {            /* 16^11 */     \
+            (num_digits) = 11;                                          \
+        } else if ((U64) < 0x1000000000000) {           /* 16^12 */     \
+            (num_digits) = 12;                                          \
+        } else if ((U64) < 0x10000000000000) {          /* 16^13 */     \
+            (num_digits) = 13;                                          \
+        } else if ((U64) < 0x100000000000000) {         /* 16^14 */     \
+            (num_digits) = 14;                                          \
+        } else if ((U64) < 0x1000000000000000) {        /* 16^15 */     \
+            (num_digits) = 15;                                          \
+        } else {                                                        \
+            /* 64 bits is 16 groups of four bits. */                    \
+            (num_digits) = 16;                                          \
+        }                                                               \
+    } while (0)
+
+// NOTE The expression <('0' + (U % 10))> is likely to be faster than
+// <\"0123456789\"[U % 10]>. However, we have to use the latter approach
+// for hex digits, both because ASCII 'a' does not immediately follow '9',
+// and because we want both lower case and upper case versions.
+
+// NOTE All the following macros fill in S back-to-front.
+
+#define fill_string_with_unsigned_decimal(S, U, num_digits, alloc) \
+    do {                                                                \
+        MR_allocate_aligned_string_msg((S), (num_digits), (alloc));     \
+        (S)[(num_digits)] = '\\0';                                      \
+        int i = (num_digits) - 1;                                       \
+        do {                                                            \
+            (S)[i] = (char) ('0' + ((U) % 10));                         \
+            (U) = (U) / 10;                                             \
+            i--;                                                        \
+        } while ((U) > 0);                                              \
+    } while (0)
+
+#define fill_string_with_negative_unsigned_decimal(S, U, num_digits, alloc) \
+    do {                                                                \
+        MR_allocate_aligned_string_msg((S), (1 + (num_digits)), (alloc));  \
+        (S)[1 + (num_digits)] = '\\0';                                  \
+        int i = (num_digits);                                           \
+        do {                                                            \
+            (S)[i] = (char) ('0' + ((U) % 10));                         \
+            (U) = (U) / 10;                                             \
+            i--;                                                        \
+        } while ((U) > 0);                                              \
+        (S)[0] = '-';                                                   \
+    } while (0)
+
+#define fill_string_with_unsigned_octal(S, U, num_digits, alloc) \
+    do {                                                                \
+        MR_allocate_aligned_string_msg((S), (num_digits), (alloc));     \
+        (S)[(num_digits)] = '\\0';                                      \
+        int i = (num_digits) - 1;                                       \
+        do {                                                            \
+            (S)[i] = (char) ('0' + ((U) & 07));                         \
+            (U) = (U) >> 3;                                             \
+            i--;                                                        \
+        } while ((U) > 0);                                              \
+    } while (0)
+
+#define fill_string_with_unsigned_hex_lc(S, U, num_digits, alloc) \
+    do {                                                                \
+        MR_allocate_aligned_string_msg((S), (num_digits), (alloc));     \
+        (S)[(num_digits)] = '\\0';                                      \
+        int i = (num_digits) - 1;                                       \
+        do {                                                            \
+            (S)[i] = \"0123456789abcdef\"[(U) & 0xf];                   \
+            (U) = (U) >> 4;                                             \
+            i--;                                                        \
+        } while ((U) > 0);                                              \
+    } while (0)
+
+#define fill_string_with_unsigned_hex_uc(S, U, num_digits, alloc) \
+    do {                                                                \
+        MR_allocate_aligned_string_msg((S), (num_digits), (alloc));     \
+        (S)[(num_digits)] = '\\0';                                      \
+        int i = (num_digits) - 1;                                       \
+        do {                                                            \
+            (S)[i] = \"0123456789ABCDEF\"[(U) & 0xf];                   \
+            (U) = (U) >> 4;                                             \
+            i--;                                                        \
+        } while ((U) > 0);                                              \
+    } while (0)
 ").
 
 %---------------------------------------------------------------------------%
@@ -2614,7 +2951,7 @@ duplicate_char(Char, Count, String) :-
 
 index(Str, Index, Char) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index, Len) then
+    ( if private_builtin.in_range(Index, Len) then
         unsafe_index(Str, Index, Char)
     else
         fail
@@ -2683,7 +3020,7 @@ index_next(Str, Index, NextIndex, Char) :-
 
 index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index, Len) then
+    ( if private_builtin.in_range(Index, Len) then
         unsafe_index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced)
     else
         fail
@@ -2777,7 +3114,7 @@ prev_index(Str, Index, PrevIndex, Char) :-
 
 prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced) :-
     Len = string.count_code_units(Str),
-    ( if string_index_is_in_bounds(Index - 1, Len) then
+    ( if private_builtin.in_range(Index - 1, Len) then
         unsafe_prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced)
     else
         fail
@@ -2880,35 +3217,6 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
 
 %---------------------%
 
-    % XXX We should consider making this routine a compiler built-in.
-    %
-:- pred string_index_is_in_bounds(int::in, int::in) is semidet.
-
-:- pragma foreign_proc("C",
-    string_index_is_in_bounds(Index::in, Length::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    // We do not test for negative values of Index because (a) MR_Unsigned
-    // is unsigned and hence a negative argument will appear as a very large
-    // positive one after the cast and (b) anybody dealing with the case
-    // where strlen(Str) > MAXINT is clearly barking mad (and one may well get
-    // an integer overflow error in this case).
-    SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
-").
-:- pragma foreign_proc("C#",
-    string_index_is_in_bounds(Index::in, Length::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = ((uint) Index < (uint) Length);
-").
-
-string_index_is_in_bounds(Index, Length) :-
-    Index >= 0,
-    Index < Length.
-
-%---------------------%
-
 :- pragma foreign_proc("C",
     unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2944,7 +3252,7 @@ set_char(Char, Index, Str0, Str) :-
         unexpected($pred, "surrogate code point")
     else
         Len0 = string.count_code_units(Str0),
-        ( if string_index_is_in_bounds(Index, Len0) then
+        ( if private_builtin.in_range(Index, Len0) then
             unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
         else
             fail
@@ -5950,37 +6258,6 @@ from_char(Char) = char_to_string(Char).
 
 %---------------------%
 
-:- pragma foreign_proc("C",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    char buffer[21]; // 1 for sign, 19 for digits, 1 for nul.
-    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", I);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
-").
-
-:- pragma foreign_proc("C#",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S = I.ToString();
-").
-
-:- pragma foreign_proc("Java",
-    int_to_string(I::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S = java.lang.Integer.toString(I);
-").
-
-int_to_string(N, Str) :-
-    Str = int_to_string(N).
-
-from_int(N) = int_to_string(N).
-
-%---------------------%
-
 int_to_base_string(N1, N2) = S2 :-
     int_to_base_string(N1, N2, S2).
 
@@ -6021,6 +6298,8 @@ int_to_base_string_loop(NegN, Base, !RevChars) :-
         int_to_base_string_loop(NegN1, Base, !RevChars),
         !:RevChars = [DigitChar | !.RevChars]
     ).
+
+%---------------------%
 
 int_to_string_thousands(N) =
     int_to_base_string_group(N, 10, 3, ",").
@@ -6082,14 +6361,65 @@ int_to_base_string_group_loop(NegN, Base, Curr, GroupLength, Sep, Str) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
+"
+    int         num_digits;
+    MR_Unsigned U;
+    if (I < 0) {
+        U = (MR_Unsigned) -I;
+#ifdef MR_MERCURY_IS_64_BITS
+        get_num_decimal_digits_in_uint64(U, num_digits);
+#else
+        get_num_decimal_digits_in_uint32(U, num_digits);
+#endif
+        fill_string_with_negative_unsigned_decimal(S, U, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U = (MR_Unsigned) I;
+#ifdef MR_MERCURY_IS_64_BITS
+        get_num_decimal_digits_in_uint64(U, num_digits);
+#else
+        get_num_decimal_digits_in_uint32(U, num_digits);
+#endif
+        fill_string_with_unsigned_decimal(S, U, num_digits, MR_ALLOC_ID);
+    }
+").
+
+:- pragma foreign_proc("C#",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = I.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Integer.toString(I);
+").
+
+int_to_string(N, Str) :-
+    Str = int_to_string(N).
+
+from_int(N) = int_to_string(N).
+
+%---------------------%
+
+:- pragma foreign_proc("C",
     uint_to_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[21]; // 20 for digits, 1 for nul.
-    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""u"", U);
-    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
-    strcpy(Str, buffer);
+    int num_digits;
+#ifdef MR_MERCURY_IS_64_BITS
+    get_num_decimal_digits_in_uint64(U, num_digits);
+#else
+    get_num_decimal_digits_in_uint32(U, num_digits);
+#endif
+    fill_string_with_unsigned_decimal(Str, U, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6116,12 +6446,15 @@ uint_to_hex_string(UInt) =
 :- pragma foreign_proc("C",
     uint_to_lc_hex_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[17]; // 16 for digits, 1 for nul.
-    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""x"", U);
-    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
-    strcpy(Str, buffer);
+    int num_digits;
+#ifdef MR_MERCURY_IS_64_BITS
+    get_num_hex_digits_in_uint64(U, num_digits);
+#else
+    get_num_hex_digits_in_uint32(U, num_digits);
+#endif
+    fill_string_with_unsigned_hex_lc(Str, U, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6143,12 +6476,15 @@ uint_to_hex_string(UInt) =
 :- pragma foreign_proc("C",
     uint_to_uc_hex_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[17]; // 16 for digits, 1 for nul.
-    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""X"", U);
-    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
-    strcpy(Str, buffer);
+    int num_digits;
+#ifdef MR_MERCURY_IS_64_BITS
+    get_num_hex_digits_in_uint64(U, num_digits);
+#else
+    get_num_hex_digits_in_uint32(U, num_digits);
+#endif
+    fill_string_with_unsigned_hex_uc(Str, U, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6170,12 +6506,15 @@ uint_to_hex_string(UInt) =
 :- pragma foreign_proc("C",
     uint_to_octal_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[23]; // 22 for digits, 1 for nul.
-    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""o"", U);
-    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
-    strcpy(Str, buffer);
+    int num_digits;
+#ifdef MR_MERCURY_IS_64_BITS
+    get_num_octal_digits_in_uint64(U, num_digits);
+#else
+    get_num_octal_digits_in_uint32(U, num_digits);
+#endif
+    fill_string_with_unsigned_octal(Str, U, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6196,12 +6535,21 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     int8_to_string(I8::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[5]; // 1 for sign, 3 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRId8, I8);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int         num_digits;
+    uint8_t     U8;
+    if (I8 < 0) {
+        U8 = (uint8_t) -I8;
+        get_num_decimal_digits_in_uint8(U8, num_digits);
+        fill_string_with_negative_unsigned_decimal(S, U8, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U8 = (uint8_t) I8;
+        get_num_decimal_digits_in_uint8(U8, num_digits);
+        fill_string_with_unsigned_decimal(S, U8, num_digits, MR_ALLOC_ID);
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -6222,14 +6570,12 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     uint8_to_string(U8::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    // Use a larger buffer than necessary (3 bytes for digits, 1 for nul)
-    // to avoid spurious warning from gcc -Werror=format-overflow.
-    char buffer[24];
-    sprintf(buffer, ""%"" PRIu8, U8);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int num_digits;
+    get_num_decimal_digits_in_uint8(U8, num_digits);
+    fill_string_with_unsigned_decimal(S, U8, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6250,12 +6596,21 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     int16_to_string(I16::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[7]; // 1 for sign, 5 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRId16, I16);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int         num_digits;
+    uint16_t    U16;
+    if (I16 < 0) {
+        U16 = (uint16_t) -I16;
+        get_num_decimal_digits_in_uint16(U16, num_digits);
+        fill_string_with_negative_unsigned_decimal(S, U16, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U16 = (uint16_t) I16;
+        get_num_decimal_digits_in_uint16(U16, num_digits);
+        fill_string_with_unsigned_decimal(S, U16, num_digits, MR_ALLOC_ID);
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -6276,12 +6631,12 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     uint16_to_string(U16::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[6]; // 5 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRIu16, U16);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int num_digits;
+    get_num_decimal_digits_in_uint16(U16, num_digits);
+    fill_string_with_unsigned_decimal(S, U16, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6302,12 +6657,21 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     int32_to_string(I32::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[12]; // 1 for sign, 10 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRId32, I32);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int         num_digits;
+    uint32_t    U32;
+    if (I32 < 0) {
+        U32 = (uint32_t) -I32;
+        get_num_decimal_digits_in_uint32(U32, num_digits);
+        fill_string_with_negative_unsigned_decimal(S, U32, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U32 = (uint32_t) I32;
+        get_num_decimal_digits_in_uint32(U32, num_digits);
+        fill_string_with_unsigned_decimal(S, U32, num_digits, MR_ALLOC_ID);
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -6328,39 +6692,12 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     uint32_to_string(U32::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
     int num_digits;
-    if (U32 < 10) {
-        num_digits = 1;
-    } else if (U32 < 100) {
-        num_digits = 2;
-    } else if (U32 < 1000) {
-        num_digits = 3;
-    } else if (U32 < 10000) {
-        num_digits = 4;
-    } else if (U32 < 100000) {
-        num_digits = 5;
-    } else if (U32 < 1000000) {
-        num_digits = 6;
-    } else if (U32 < 10000000) {
-        num_digits = 7;
-    } else if (U32 < 100000000) {
-        num_digits = 8;
-    } else if (U32 < 1000000000) {
-        num_digits = 9;
-    } else {
-        num_digits = 10;
-    }
-
-    MR_allocate_aligned_string_msg(S, num_digits, MR_ALLOC_ID);
-    S[num_digits] = '\\0';
-    int i = num_digits - 1;
-    do {
-        S[i] = \"0123456789\"[U32 % 10];
-        i--;
-        U32 /= 10;
-    } while(U32 > 0);
+    get_num_decimal_digits_in_uint32(U32, num_digits);
+    fill_string_with_unsigned_decimal(S, U32, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -6381,12 +6718,21 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     int64_to_string(I64::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[21]; // 1 for sign, 19 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRId64, I64);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int         num_digits;
+    uint64_t    U64;
+    if (I64 < 0) {
+        U64 = (uint64_t) -I64;
+        get_num_decimal_digits_in_uint64(U64, num_digits);
+        fill_string_with_negative_unsigned_decimal(S, U64, num_digits,
+            MR_ALLOC_ID);
+    } else {
+        U64 = (uint64_t) I64;
+        get_num_decimal_digits_in_uint64(U64, num_digits);
+        fill_string_with_unsigned_decimal(S, U64, num_digits, MR_ALLOC_ID);
+    }
 ").
 
 :- pragma foreign_proc("C#",
@@ -6407,12 +6753,12 @@ uint_to_hex_string(UInt) =
 
 :- pragma foreign_proc("C",
     uint64_to_string(U64::in) = (S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing, may_not_export_body],
 "
-    char buffer[21]; // 20 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRIu64, U64);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int num_digits;
+    get_num_decimal_digits_in_uint64(U64, num_digits);
+    fill_string_with_unsigned_decimal(S, U64, num_digits, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",

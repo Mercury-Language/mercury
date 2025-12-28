@@ -28,10 +28,10 @@ Once upon a time, it could also translate
 a (smaller or larger) subset of Mercury to Aditi, to Erlang, to .NET's IL,
 and to bytecode for a once-planned but never implemented bytecode interpreter.
 <p>
-The top-level of the compiler is in the file mercury_compile.m.
+The main module of the compiler is in the file mercury_compile.m.
 This forwards all of the work to the file mercury_compiler_main.m,
 which is a submodule of the top_level.m package.
-The basic design is that compilation is broken into the following stages:
+The basic design is that compilation is broken into the following steps:
 
 <ul>
 <li>
@@ -61,21 +61,20 @@ For example, elimination of assignments to dead variables
 is done in mode analysis;
 middle-recursion optimization is done during code generation;
 and a few low-level optimizations are done
-in llds_out_instr.m as we are spitting out the C code.
+in llds_out_instr.m as we are spitting out C code.
 <p>
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
 <p>
 mercury_compile_main.m starts by
-invoking mercury_compile_args.m to process mmc's arguments.
-It then fully implements the simpler op_modes,
-such as those that ask for reports.
-The remaining op_modes are implemented by mercury_compile_augment.m.
-<li>
-mercury_compile_args.m does argument and option processing,
-which is complicated by the fact that
-options can come from Mercury.options files,
-as well as from files named by other options.
+invoking mercury_compile_args.m to process mmc's options and other arguments.
+(Note that options can come from Mercury.options files,
+as well as from files named by other options.)
+mercury_compile_main.m then fully implements the simpler op_modes,
+such as those that ask for reports,
+and invokes mercury_compile_augment.m
+to implement the more complex ones.
+<ul>
 <li>
 Step 1, the conversion of parse trees to the initial version of the HLDS,
 is managed by mercury_compile_make_hlds.m.
@@ -88,10 +87,10 @@ is managed by done mercury_compile_middle_passes.m.
 <li>
 Steps 4, 5 and 6, code generation, optimization and output,
 are all managed by
-<ul>
-<li> mercury_compile_llds_backend.m for the LLDS backend, and
-<li> mercury_compile_mlds_backend.m for the MLDS backend.
-</ul>
+    <ul>
+    <li> mercury_compile_llds_backend.m for the LLDS backend, and
+    <li> mercury_compile_mlds_backend.m for the MLDS backend.
+    </ul>
 </ul>
 <p>
 The LLDS backend is so named because
@@ -239,8 +238,8 @@ both before the HLDS is built and after it is no longer needed.
 <p>
 After we have processed the options,
 the rest of the action is co-ordinated
-either from mercury_compile.m or from make.m,
-depending on whether the `--make' option is in effect.
+either from make.m, if the `--make' option is in effect,
+or from the mercury_compile_*.m modules, otherwise.
 <p>
 The rest of this document contains
 a brief introduction each module of the compiler.
@@ -331,7 +330,8 @@ This part produces the parse_tree.m data structure,
 which is intended to match up as closely as possible with the source code,
 so that it is suitable for tasks such as pretty-printing.
 <p>
-We transform the results of lexical analysis (done by library/mercury_term_lexer.m)
+We transform the results of lexical analysis
+(done by library/mercury_term_lexer.m)
 into the Mercury parse tree in two stages:
 
 <ul>
@@ -549,8 +549,12 @@ write_module_interface_files.m has the code to write out
 comp_unit_interface.m figures out which parts of a raw parse_tree_module_src
 belong in its .int3, .int0, .int and .int2 files.
 <li>
-check_type_inst_mode_defns.m checks whether the items in a module
-related to a given type, inst or more are all consistent with one another.
+type_inst_mode_map.m creates maps that group together
+all the definitions for a given type, inst, or mode constructor.
+<li>
+check_type_inst_mode_defns.m uses those maps to check
+whether the definitions for a given type, inst, or mode constructor
+are all consistent with one another.
 It uses prog_foreign_enum.m
 to check the validity of foreign enum declarations,
 using code that also does the same job for foreign export enum declarations.
@@ -785,7 +789,7 @@ add_pragma.m adds the easiest-to-implement kinds of pragmas to the HLDS,
 i.e. those that don't need their own module.
 </ul>
 
-Fact table pragmas are handled by fact_table.m
+Fact table pragmas are handled by fact_table_gen.m
 (which is part of the ll_backend.m package).
 That module also reads the facts from the declared file
 and compiles them into a separate C file
@@ -1082,7 +1086,14 @@ The type checker consists of several modules.
     and in resolve_unify_functor.m for function calls).
     <li>
     typecheck_unify_var_functor.m does typechecking
-    Jof unifications of the form X = f(Y1, ..., Yn).
+    of unifications of the form X = f(Y1, ..., Yn).
+    <li>
+    typecheck_cons_infos.m provides the data needed by
+    typecheck_unify_var_functor.m about the various kinds of cons_ids
+    that may play the role of the `f' in its unifications.
+    Besides the data constructors in discriminated union types,
+    they may also be the data constructors of builtin types,
+    the tuple constructor, user-defined functions and field access functions.
     <li>
     typecheck_coerce.m typecheck coerce goals.
     <li>
@@ -1276,7 +1287,9 @@ and a whole bunch of service modules.
     <li>
     inst_test.m contains various kinds of tests on insts.
     <li>
-    inst_util.m contains code for creating new insts and modifying old insts.
+    inst_make.m contains predicates for creating new insts.
+    <li>
+    inst_util.m contains some utility operations.
     <li>
     mode_comparison.m module compares different modes of a predicate.
     <li>
@@ -1505,9 +1518,9 @@ simplify.m is a package of submodules.
     mark_trace_goals.m ensures that goals have the contains_trace_goal feature
     if and only if they actually contain trace goals.
     <li>
-    format_call.m looks for calls to predicates
+    opt_format_call.m looks for calls to predicates
     such as string.format and io.format.
-    It uses the facilities of format_call_errors.m to report calls
+    It uses the facilities of opt_format_call_errors.m to report calls
     in which the types of the values to be printed
     disagree with the format string,
     and/or calls in which the agreement cannot be established.

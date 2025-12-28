@@ -799,7 +799,7 @@ get_ptag_counts(ModuleInfo, Type, MaxPrimary, PtagSectagMap) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

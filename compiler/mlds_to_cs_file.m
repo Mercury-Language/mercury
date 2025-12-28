@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -384,7 +384,9 @@ output_csharp_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
         InitialFileContext = context(IncludePath, 1),
         cs_output_context(Stream, PrintLineNumbers, InitialFileContext, !IO),
-        write_include_file_contents(Stream, IncludePath, Res, !IO)
+        ModuleInfo = Info ^ csoi_module_info,
+        module_info_get_globals(ModuleInfo, Globals),
+        write_include_file_contents(Stream, Globals, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO),
     cs_output_default_context(Stream, PrintLineNumbers, !IO).

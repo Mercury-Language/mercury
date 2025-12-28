@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,7 +74,6 @@
 :- implementation.
 
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_code_util.
@@ -84,6 +83,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
@@ -251,7 +251,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
     % Work out which superclass typeclass_info to take.
     map.from_corresponding_lists(SubClassDefn ^ classdefn_vars, SubClassTypes,
         SubTypeSubst),
-    apply_subst_to_prog_constraint_list(SubTypeSubst,
+    apply_subst_to_prog_constraints(SubTypeSubst,
         SubClassDefn ^ classdefn_supers, SuperClasses),
     ( if
         list.index1_of_first_occurrence(SuperClasses, Constraint,
@@ -495,28 +495,26 @@ do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars, Context,
     % the arguments of the instance, and all such variables are bound
     % when we call type_list_subsumes then apply the resulting bindings.
     tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes,
-        RenamedInstanceTypes),
+    apply_renaming_to_types(Renaming, InstanceTypes, RenamedInstanceTypes),
     type_list_subsumes_det(RenamedInstanceTypes, ConstrainedTypes,
         InstanceSubst),
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         InstanceConstraints, RenamedInstanceConstraints),
-    apply_rec_subst_to_prog_constraint_list(InstanceSubst,
+    apply_rec_subst_to_prog_constraints(InstanceSubst,
         RenamedInstanceConstraints, ActualInstanceConstraints0),
     % XXX document diamond as guess
     % XXX does anyone know what the preceding line means?
     list.delete_elems(ActualInstanceConstraints0, Seen,
         ActualInstanceConstraints),
-    apply_variable_renaming_to_constraint_proof_map(Renaming,
+    apply_renaming_to_constraint_proof_map(Renaming,
         InstanceProofMap, RenamedInstanceProofMap),
     apply_rec_subst_to_constraint_proof_map(InstanceSubst,
         RenamedInstanceProofMap, ActualInstanceProofMap),
 
-    apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars,
-        RenamedUnconstrainedTvars),
-    apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap,
-        RenamedKindMap),
-    apply_rec_subst_to_tvar_list(RenamedKindMap, InstanceSubst,
+    apply_renaming_to_tvars(Renaming,
+        UnconstrainedTvars, RenamedUnconstrainedTvars),
+    apply_renaming_to_tvar_kind_map(Renaming, KindMap, RenamedKindMap),
+    apply_rec_subst_to_tvars(RenamedKindMap, InstanceSubst,
         RenamedUnconstrainedTvars, ActualUnconstrainedTypes),
 
     map.overlay(ProofMap0, ActualInstanceProofMap, ProofMap),
@@ -776,12 +774,12 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
     tvarset_merge_renaming(TVarSet0, ClassTVarSet, TVarSet1, Renaming),
     poly_info_set_typevarset(TVarSet1, !Info),
 
-    apply_variable_renaming_to_tvar_list(Renaming, ClassVars0, ClassVars),
+    apply_renaming_to_tvars(Renaming, ClassVars0, ClassVars),
     map.from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
-    apply_variable_renaming_to_prog_constraint_list(Renaming,
+    apply_renaming_to_prog_constraints(Renaming,
         SuperClasses0, SuperClasses1),
-    apply_rec_subst_to_prog_constraint_list(TypeSubst,
+    apply_rec_subst_to_prog_constraints(TypeSubst,
         SuperClasses1, SuperClasses),
 
     poly_info_set_proof_map(SuperClassProofMap, !Info),

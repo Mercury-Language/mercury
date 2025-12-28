@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
                 ta_coerce_constraints   :: list(coerce_constraint),
 
                 % The set of class constraints collected so far.
-                ta_class_constraints    :: hlds_constraints,
+                ta_class_constraints    :: hlds_constraint_db,
 
                 % For each constraint found to be redundant, why is it so?
                 ta_constraint_proof_map :: constraint_proof_map,
@@ -82,8 +82,8 @@
     tsubst::out) is det.
 :- pred type_assign_get_coerce_constraints(type_assign::in,
     list(coerce_constraint)::out) is det.
-:- pred type_assign_get_typeclass_constraints(type_assign::in,
-    hlds_constraints::out) is det.
+:- pred type_assign_get_constraint_db(type_assign::in,
+    hlds_constraint_db::out) is det.
 :- pred type_assign_get_constraint_proof_map(type_assign::in,
     constraint_proof_map::out) is det.
 :- pred type_assign_get_constraint_map(type_assign::in,
@@ -99,7 +99,7 @@
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_coerce_constraints(list(coerce_constraint)::in,
     type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_typeclass_constraints(hlds_constraints::in,
+:- pred type_assign_set_constraint_db(hlds_constraint_db::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_constraint_proof_map(constraint_proof_map::in,
     type_assign::in, type_assign::out) is det.
@@ -107,7 +107,7 @@
     type_assign::in, type_assign::out) is det.
 
 :- pred type_assign_set_reduce_results(tvarset::in, tsubst::in,
-    hlds_constraints::in, constraint_proof_map::in, constraint_map::in,
+    hlds_constraint_db::in, constraint_proof_map::in, constraint_map::in,
     type_assign::in, type_assign::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -118,7 +118,7 @@
 :- type type_assign_set == list(type_assign).
 
 :- pred type_assign_set_init(tvarset::in, vartypes::in, list(tvar)::in,
-    hlds_constraints::in, type_assign_set::out) is det.
+    hlds_constraint_db::in, type_assign_set::out) is det.
 
     % type_assign_set_get_final_info(TypeAssignSet, OldExternalTypeParams,
     %   OldExistQVars, OldExplicitVarTypes, NewTypeVarSet, New* ...,
@@ -182,10 +182,12 @@
                 ata_caller_arg_assign       :: type_assign,
 
                 % Types of callee/cons_id args, renamed apart.
+                % XXX Renamed apart ... from what?
                 ata_expected_arg_types      :: list(mer_type),
 
                 % Constraints from callee/cons_id, renamed apart.
-                ata_expected_constraints    :: hlds_constraints,
+                % XXX Renamed apart ... from what?
+                ata_expected_constraints    :: hlds_constraint_db,
 
                 % The source of the expected arg types and their constraints.
                 ata_source                  :: args_type_assign_source
@@ -193,7 +195,7 @@
 
 :- func get_caller_arg_assign(args_type_assign) = type_assign.
 :- func get_expected_arg_types(args_type_assign) = list(mer_type).
-:- func get_expected_constraints(args_type_assign) = hlds_constraints.
+:- func get_expected_constraints(args_type_assign) = hlds_constraint_db.
 
 %---------------------------------------------------------------------------%
 %
@@ -204,7 +206,8 @@
 
     % XXX document me
     %
-:- func convert_args_type_assign_set(args_type_assign_set) = type_assign_set.
+:- func args_type_assign_set_to_type_assign_set(args_type_assign_set)
+    = type_assign_set.
 
 %---------------------------------------------------------------------------%
 %
@@ -232,7 +235,7 @@
                 % Constraints introduced by this constructor (e.g. if it is
                 % actually a function, or if it is an existentially quantified
                 % data constructor).
-                cti_constraints     :: hlds_constraints,
+                cti_constraints     :: hlds_constraint_db,
 
                 cti_source          :: cons_type_info_source
             ).
@@ -240,8 +243,7 @@
 :- type cons_type_info_source
     --->    source_type(type_ctor, du_ctor)
     ;       source_builtin_type(string)
-    ;       source_field_access(field_access_type, type_ctor, du_ctor,
-                string)
+    ;       source_field_access(field_access_type, type_ctor, du_ctor, string)
             % get or set, type, user cons_id, field name
     ;       source_apply(string)
     ;       source_pred(pred_id).
@@ -253,7 +255,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
+:- import_module hlds.type_util.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 
@@ -274,7 +276,7 @@ type_assign_get_type_bindings(TA, X) :-
     X = TA ^ ta_type_bindings.
 type_assign_get_coerce_constraints(TA, X) :-
     X = TA ^ ta_coerce_constraints.
-type_assign_get_typeclass_constraints(TA, X) :-
+type_assign_get_constraint_db(TA, X) :-
     X = TA ^ ta_class_constraints.
 type_assign_get_constraint_proof_map(TA, X) :-
     X = TA ^ ta_constraint_proof_map.
@@ -291,7 +293,7 @@ type_assign_set_type_bindings(X, !TA) :-
     !TA ^ ta_type_bindings := X.
 type_assign_set_coerce_constraints(X, !TA) :-
     !TA ^ ta_coerce_constraints := X.
-type_assign_set_typeclass_constraints(X, !TA) :-
+type_assign_set_constraint_db(X, !TA) :-
     !TA ^ ta_class_constraints := X.
 type_assign_set_constraint_proof_map(X, !TA) :-
     !TA ^ ta_constraint_proof_map := X.
@@ -320,7 +322,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         OldExternalTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewExternalTypeParams,
         NewVarTypes, NewTypeConstraints, NewConstraintProofMap,
-        NewConstraintMap, TSubst, ExistTypeRenaming) :-
+        NewConstraintMap, OldToNewTRename, ExistTypeRenaming) :-
     (
         TypeAssignSet = [TypeAssign | _]
         % XXX Why are we using only the first TypeAssign?
@@ -357,7 +359,13 @@ type_assign_set_get_final_info(TypeAssignSet,
     % Additionally, existential constraints are assumed so don't need to be
     % eliminated during context reduction, so they need to be put in the
     % constraint map now.
-    HLDSTypeConstraints = hlds_constraints(HLDSUnivConstraints,
+    %
+    % XXX The definition of hlds_constraint_db states that the first two
+    % fields contain *unproven* and *assumed* constraints respectively.
+    % While unproven constraints are *usually* universal and assumed
+    % constraints are *usually* existential (both in the goal being checked),
+    % this is NOT GUARANTEED TO BE ALWAYS THE CASE.
+    HLDSTypeConstraints = hlds_constraint_db(HLDSUnivConstraints,
         HLDSExistConstraints, _, _),
     list.foldl(update_constraint_map, HLDSUnivConstraints,
         ConstraintMap1, ConstraintMap2),
@@ -386,38 +394,39 @@ type_assign_set_get_final_info(TypeAssignSet,
     % There may also be some type variables in the ExternalTypeParams
     % which do not occur in the type of any variable (e.g. this can happen
     % in the case of code containing type errors). We'd better keep those,
-    % too, to avoid errors when we apply the TSubst to the ExternalTypeParams.
+    % too, to avoid errors when we apply the TRename to the ExternalTypeParams.
     % (XXX should we do the same for TypeConstraints and ConstraintProofMap
     % too?)
     vartypes_types(OldExplicitVarTypes, ExplicitTypes),
     type_vars_in_types(ExplicitTypes, ExplicitTypeVars0),
     map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
-    list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
-        ExistQVarsToRemain),
+    list.delete_elems(OldExistQVars,
+        ExistQVarsToBeRenamed, ExistQVarsToRemain),
     list.condense([ExistQVarsToRemain, ExternalTypeParams,
         TypeVars1, ExplicitTypeVars0], TypeVars2),
     list.sort_and_remove_dups(TypeVars2, TypeVars),
 
     % Next, create a new typevarset with the same number of variables.
-    varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
+    varset.squash(OldTypeVarSet, TypeVars, NewTypeVarSet, OldToNewTRename),
 
     % Finally, if necessary, rename the types and type class constraints
     % to use the new typevarset type variables.
     retrieve_univ_exist_constraints(HLDSTypeConstraints, TypeConstraints),
-    ( if map.is_empty(TSubst) then
+    ( if map.is_empty(OldToNewTRename) then
         NewVarTypes = VarTypes1,
         NewExternalTypeParams = ExternalTypeParams,
         NewTypeConstraints = TypeConstraints,
         NewConstraintProofMap = ConstraintProofMap,
         NewConstraintMap = ConstraintMap
     else
-        apply_variable_renaming_to_vartypes(TSubst, VarTypes1, NewVarTypes),
-        map.apply_to_list(ExternalTypeParams, TSubst, NewExternalTypeParams),
-        apply_variable_renaming_to_univ_exist_constraints(TSubst,
+        rename_vars_in_vartypes(OldToNewTRename, VarTypes1, NewVarTypes),
+        map.apply_to_list(ExternalTypeParams, OldToNewTRename,
+            NewExternalTypeParams),
+        apply_renaming_to_univ_exist_constraints(OldToNewTRename,
             TypeConstraints, NewTypeConstraints),
-        apply_variable_renaming_to_constraint_proof_map(TSubst,
+        apply_renaming_to_constraint_proof_map(OldToNewTRename,
             ConstraintProofMap, NewConstraintProofMap),
-        apply_variable_renaming_to_constraint_map(TSubst,
+        apply_renaming_to_constraint_map(OldToNewTRename,
             ConstraintMap, NewConstraintMap)
     ).
 
@@ -481,20 +490,20 @@ get_expected_constraints(ArgsTypeAssign) =
 
 %---------------------------------------------------------------------------%
 
-convert_args_type_assign_set([]) = [].
-convert_args_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
-    [convert_args_type_assign(ArgsTypeAssign) |
-    convert_args_type_assign_set(ArgsTypeAssigns)].
+args_type_assign_set_to_type_assign_set([]) = [].
+args_type_assign_set_to_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
+    [args_type_assign_to_type_assign(ArgsTypeAssign) |
+    args_type_assign_set_to_type_assign_set(ArgsTypeAssigns)].
 
-:- func convert_args_type_assign(args_type_assign) = type_assign.
+:- func args_type_assign_to_type_assign(args_type_assign) = type_assign.
 
-convert_args_type_assign(ArgsTypeAssign) = TypeAssign :-
-    ArgsTypeAssign = args_type_assign(TypeAssign0, _, Constraints0, _),
-    type_assign_get_typeclass_constraints(TypeAssign0, OldConstraints),
+args_type_assign_to_type_assign(ArgsTypeAssign) = TypeAssign :-
+    ArgsTypeAssign = args_type_assign(TypeAssign0, _, ConstraintDb0, _),
+    type_assign_get_constraint_db(TypeAssign0, OldConstraintDb),
     type_assign_get_type_bindings(TypeAssign0, Bindings),
-    apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
-    merge_hlds_constraints(Constraints, OldConstraints, NewConstraints),
-    type_assign_set_typeclass_constraints(NewConstraints,
+    apply_rec_subst_to_constraint_db(Bindings, ConstraintDb0, ConstraintDb),
+    merge_hlds_constraint_dbs(ConstraintDb, OldConstraintDb, NewConstraintDb),
+    type_assign_set_constraint_db(NewConstraintDb,
         TypeAssign0, TypeAssign).
 
 %-----------------------------------------------------------------------------%

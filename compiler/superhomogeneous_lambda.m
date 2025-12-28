@@ -44,7 +44,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -53,6 +52,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
 :- import_module mdbcomp.
@@ -839,8 +839,8 @@ build_lambda_expression(LHSVar, UnificationPurity,
 
             % Fix up any state variable unifications.
             FinalSVarState = !.SVarState,
-            svar_finish_lambda_body(Context, NewSVars, FinalSVarMap,
-                [HeadBefore, Body, HeadAfter], HLDS_Goal0,
+            svar_finish_lambda_body(Context, Modes, NewSVars, FinalSVarMap,
+                BodyGoal, [HeadBefore, Body, HeadAfter], HLDS_Goal0,
                 InitialSVarState, FinalSVarState, !UrInfo),
 
             % Figure out which variables we need to explicitly existentially

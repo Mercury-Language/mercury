@@ -134,7 +134,7 @@ copy_file_to_file_name(Globals, ProgressStream, SourceFile, DestinationFile,
             string.format("could not copy %s to %s: %s.",
                 [s(SourceFile), s(DestinationFile),
                 s(io.error_message(Error))], Msg),
-            report_error(ProgressStream, Msg, !IO),
+            report_arbitrary_error(ProgressStream, Msg, !IO),
             Succeeded = did_not_succeed
         )
     ).
@@ -163,13 +163,13 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
                 string.format("could not copy %s to %s: %.s",
                     [s(SourceFile), s(DestinationFile),
                     s(io.error_message(Error))], Msg),
-                report_error(ProgressStream, Msg, !IO),
+                report_arbitrary_error(ProgressStream, Msg, !IO),
                 Succeeded = did_not_succeed
             )
         else
             string.format("could not copy %s: it is a root directory.",
                 [s(SourceFile)], Msg),
-            report_error(ProgressStream, Msg, !IO),
+            report_arbitrary_error(ProgressStream, Msg, !IO),
             Succeeded = did_not_succeed
         )
     ).

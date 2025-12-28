@@ -66,9 +66,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.type_util.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module parse_tree.prog_type.
@@ -931,7 +930,7 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
     ( if
         search_type_defn(CI, Type, TypeDefn),
         get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
         MaybeRepn = yes(Repn)
     then
         CheaperTagTest = Repn ^ dur_cheaper_tag_test

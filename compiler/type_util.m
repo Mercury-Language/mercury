@@ -18,15 +18,14 @@
 % Put the contents of this type into meaningful groups.
 % XXX TYPE_REPN
 % Consider which of these predicates are used only during semantic checking,
-% and which are used afterwards as well. Consider moving the latter
-% to a new module in the hlds (as opposed to the check_hlds) package.
+% and which are used afterwards as well. Consider moving the former
+% to a new module in the check_hlds (as opposed to the hlds) package.
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.type_util.
+:- module hlds.type_util.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
@@ -283,7 +282,9 @@
 
     % Is this type a du type?
     %
-:- pred type_is_du_type(module_info::in, mer_type::in) is semidet.
+% ZZZ
+:- pred type_is_du_type(module_info::in, mer_type::in,
+    hlds_type_defn::out, type_body_du::out) is semidet.
 
     % Given a type constructor and one of its cons_ids, look up the definition
     % of that cons_id. Fails if the cons_id is not user-defined.
@@ -395,7 +396,7 @@
 % Predicates for doing renamings and substitutions on HLDS data structures.
 %
 
-:- pred apply_variable_renaming_to_constraint(tvar_renaming::in,
+:- pred apply_renaming_to_constraint(tvar_renaming::in,
     hlds_constraint::in, hlds_constraint::out) is det.
 
 :- pred apply_subst_to_constraint(tsubst::in, hlds_constraint::in,
@@ -406,29 +407,29 @@
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_list(tvar_renaming::in,
+:- pred apply_renaming_to_constraints(tvar_renaming::in,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-:- pred apply_subst_to_constraint_list(tsubst::in, list(hlds_constraint)::in,
+:- pred apply_subst_to_constraints(tsubst::in, list(hlds_constraint)::in,
     list(hlds_constraint)::out) is det.
 
-:- pred apply_rec_subst_to_constraint_list(tsubst::in,
+:- pred apply_rec_subst_to_constraints(tsubst::in,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraints(tvar_renaming::in,
-    hlds_constraints::in, hlds_constraints::out) is det.
+:- pred apply_renaming_to_constraint_db(tvar_renaming::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
-:- pred apply_subst_to_constraints(tsubst::in, hlds_constraints::in,
-    hlds_constraints::out) is det.
+:- pred apply_subst_to_constraint_db(tsubst::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
-:- pred apply_rec_subst_to_constraints(tsubst::in, hlds_constraints::in,
-    hlds_constraints::out) is det.
+:- pred apply_rec_subst_to_constraint_db(tsubst::in,
+    hlds_constraint_db::in, hlds_constraint_db::out) is det.
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_proof_map(tvar_renaming::in,
+:- pred apply_renaming_to_constraint_proof_map(tvar_renaming::in,
     constraint_proof_map::in, constraint_proof_map::out) is det.
 
 :- pred apply_subst_to_constraint_proof_map(tsubst::in,
@@ -439,7 +440,7 @@
 
 %-------------%
 
-:- pred apply_variable_renaming_to_constraint_map(tvar_renaming::in,
+:- pred apply_renaming_to_constraint_map(tvar_renaming::in,
     constraint_map::in, constraint_map::out) is det.
 
 :- pred apply_subst_to_constraint_map(tsubst::in,
@@ -559,7 +560,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, NonCanonical) :-
     require_complete_switch [TypeBody]
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, _, MaybeForeignType),
+        TypeBodyDu = type_body_du(_, _, _, _, _, MaybeForeignType),
         ( if
             MaybeForeignType = yes(ForeignTypeBody),
             module_info_get_globals(ModuleInfo, Globals),
@@ -871,7 +872,7 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_du_type(TypeBodyDu),
-                    TypeBodyDu = type_body_du(_, _, _, MaybeTypeRepn, _),
+                    TypeBodyDu = type_body_du(_, _, _, _, MaybeTypeRepn, _),
                     (
                         MaybeTypeRepn = no,
                         % Code setting up var_table entries invokes
@@ -989,7 +990,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     require_complete_switch [Body]
     (
         Body = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, _, IsForeignType),
+        TypeBodyDu = type_body_du(_, _, _, _, _, IsForeignType),
         (
             IsForeignType = yes(_),
             HasHandDefinedRtti = no
@@ -1019,7 +1020,7 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
     require_complete_switch [TypeBody]
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, MaybeSuperType, _, _, _),
+        TypeBodyDu = type_body_du(_, _, MaybeSuperType, _, _, _),
         (
             MaybeSuperType = not_a_subtype,
             BaseTypeCtor = TypeCtor
@@ -1063,18 +1064,17 @@ get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
     hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(TypeBodyDu),
-    TypeBodyDu = type_body_du(_, subtype_of(SuperType0), _, _, _),
+    TypeBodyDu = type_body_du(_, _, subtype_of(SuperType0), _, _, _),
     require_det (
         % Create substitution from type parameters to ArgTypes.
         hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
         tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
-        apply_variable_renaming_to_tvar_list(Renaming,
-            TypeParams0, TypeParams),
+        apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
         map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
 
         % Apply substitution to the declared supertype.
-        apply_variable_renaming_to_type(Renaming, SuperType0, SuperType1),
+        apply_renaming_to_type(Renaming, SuperType0, SuperType1),
         apply_rec_subst_to_type(TSubst, SuperType1, SuperType)
     ).
 
@@ -1253,7 +1253,7 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
     % XXX Why do we classify abstract_enum_types as general?
     (
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, _, _, MaybeTypeRepn, _),
+        TypeBodyDu = type_body_du(_, _, _, _, MaybeTypeRepn, _),
         (
             MaybeTypeRepn = no,
             unexpected($pred, "MaybeTypeRepn = no")
@@ -1471,7 +1471,7 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(type_body_du(OoMConstructors, _, _, _, _)),
+        TypeBody = hlds_du_type(type_body_du(OoMConstructors, _, _, _, _, _)),
         OoMConstructors = one_or_more(_HeadCtor, TailCtors),
         NumFunctors = 1 + list.length(TailCtors)
     ).
@@ -1558,7 +1558,7 @@ get_user_data_arg_types_2(EQVarAction, ModuleInfo, Type, DuCtor,
 
             map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
             ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-            apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes)
+            apply_subst_to_types(TSubst, ArgTypes0, ArgTypes)
         else
             ArgTypes = []
         )
@@ -1568,53 +1568,43 @@ get_user_data_arg_types_2(EQVarAction, ModuleInfo, Type, DuCtor,
 
 all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes) :-
     ( if
-        type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+        type_to_ctor_and_args(Type, TypeCtor, TypeCtorArgTypes),
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-        TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _))
+        TypeDefnBody = hlds_du_type(TypeBodyDu)
     then
-        module_info_get_cons_table(ModuleInfo, ConsTable),
+        get_type_defn_tparams(TypeDefn, TypeParams),
+        TypeBodyDu = type_body_du(OoMCtors, _, _, _, _, _),
         Ctors = one_or_more_to_list(OoMCtors),
-        list.filter_map(get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs),
+        list.filter_map(get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes),
             Ctors, NamesAritiesArgTypes)
     else
         NamesAritiesArgTypes = []
     ).
 
-:- pred get_user_ctor_arg_types(cons_table::in, type_ctor::in,
+:- pred get_user_ctor_arg_types(list(type_param)::in,
     list(mer_type)::in, constructor::in,
     {string, arity, list(mer_type)}::out) is semidet.
 
-get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs, Ctor,
-        {Name, Arity, ArgTypes}) :-
-    Ctor =
-        ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
-    % The module qualifier in SymName should be the module name in TypeCtor,
-    % and thus should be the same for all the data constructors in TypeCtor.
-    DuCtor = du_ctor(SymName, Arity, TypeCtor),
-    % XXX Why this lookup? What is the difference between the info in ConsDefn
-    % and the info in Ctor? TypeParams should be available in TypeCtor's entry
-    % in the type table; it should not need to be looked up separately
-    % for every one of its data constructors.
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
-    ConsDefn =
-        hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints, Args, _),
-
+get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes, Ctor,
+        {Name, Arity, CtorArgTypes}) :-
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, CtorArgs,
+        Arity, _Ctxt),
     % XXX handle ExistConstraints
     MaybeExistConstraints = no_exist_constraints,
 
-    map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-    apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes),
+    map.from_corresponding_lists(TypeParams, TypeCtorArgTypes, TSubst),
+    CtorArgTypes0 = list.map(func(C) = C ^ arg_type, CtorArgs),
+    apply_subst_to_types(TSubst, CtorArgTypes0, CtorArgTypes),
     Name = unqualify_name(SymName).
 
-type_is_du_type(ModuleInfo, Type) :-
+type_is_du_type(ModuleInfo, Type, TypeDefn, TypeBodyDu) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     type_to_ctor(Type, TypeCtor),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(_).
+    TypeDefnBody = hlds_du_type(TypeBodyDu).
 
 get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
@@ -1633,7 +1623,7 @@ get_cons_repn_defn(ModuleInfo, DuCtor, UserDataCTorConsRepn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
+    TypeBody = hlds_du_type(type_body_du(_, _, _, _, MaybeRepn, _)),
     MaybeRepn = yes(Repn),
     Repn = du_type_repn(_, ConsRepnMap, _, _, _),
     ConsName = unqualify_name(ConsSymName),
@@ -1800,36 +1790,36 @@ var_is_introduced_type_info_type(VarTable, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint(Renaming, !Constraint) :-
+apply_renaming_to_constraint(Renaming, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_variable_renaming_to_type_list(Renaming, ArgTypes0, ArgTypes),
+    apply_renaming_to_types(Renaming, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_subst_to_constraint(Subst, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    apply_subst_to_types(Subst, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_rec_subst_to_constraint(Subst, !Constraint) :-
     !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
-    apply_rec_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    apply_rec_subst_to_types(Subst, ArgTypes0, ArgTypes),
     !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
-    list.map(apply_variable_renaming_to_constraint(Renaming), !Constraints).
+apply_renaming_to_constraints(Renaming, !Constraints) :-
+    list.map(apply_renaming_to_constraint(Renaming), !Constraints).
 
-apply_subst_to_constraint_list(Subst, !Constraints) :-
+apply_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_subst_to_constraint(Subst), !Constraints).
 
-apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
+apply_rec_subst_to_constraints(Subst, !Constraints) :-
     list.map(apply_rec_subst_to_constraint(Subst), !Constraints).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_renaming_to_constraint_db(Renaming, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
     % Most of the time, !.Constraints contains nothing. Even when some
     % of its fields are not empty, some others may be.
@@ -1841,18 +1831,15 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
     then
         true
     else
-        apply_variable_renaming_to_constraint_list(Renaming,
-            Unproven0, Unproven),
-        apply_variable_renaming_to_constraint_list(Renaming,
-            Assumed0, Assumed),
+        apply_renaming_to_constraints(Renaming, Unproven0, Unproven),
+        apply_renaming_to_constraints(Renaming, Assumed0, Assumed),
         ( if map.is_empty(Redundant0) then
             Redundant = Redundant0
         else
             Pred =
                 ( pred(C0::in, C::out) is det :-
                     set.to_sorted_list(C0, L0),
-                    apply_variable_renaming_to_constraint_list(Renaming,
-                        L0, L),
+                    apply_renaming_to_constraints(Renaming, L0, L),
                     set.list_to_set(L, C)
                 ),
             map.map_values_only(Pred, Redundant0, Redundant)
@@ -1862,61 +1849,62 @@ apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
         else
             map.keys(Ancestors0, AncestorsKeys0),
             map.values(Ancestors0, AncestorsValues0),
-            apply_variable_renaming_to_prog_constraint_list(Renaming,
+            apply_renaming_to_prog_constraints(Renaming,
                 AncestorsKeys0, AncestorsKeys),
-            list.map(apply_variable_renaming_to_prog_constraint_list(Renaming),
+            list.map(apply_renaming_to_prog_constraints(Renaming),
                 AncestorsValues0, AncestorsValues),
             map.from_corresponding_lists(AncestorsKeys, AncestorsValues,
                 Ancestors)
         ),
-        !:Constraints =
-            hlds_constraints(Unproven, Assumed, Redundant, Ancestors)
+        !:ConstraintDb =
+            hlds_constraint_db(Unproven, Assumed, Redundant, Ancestors)
     ).
 
-apply_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_subst_to_constraint_db(Subst, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
-    apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
-    apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
+    apply_subst_to_constraints(Subst, Unproven0, Unproven),
+    apply_subst_to_constraints(Subst, Assumed0, Assumed),
     Pred =
         ( pred(C0::in, C::out) is det :-
             set.to_sorted_list(C0, L0),
-            apply_subst_to_constraint_list(Subst, L0, L),
+            apply_subst_to_constraints(Subst, L0, L),
             set.list_to_set(L, C)
         ),
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_subst_to_prog_constraint_list(Subst, AncestorsKeys0, AncestorsKeys),
-    list.map(apply_subst_to_prog_constraint_list(Subst),
+    apply_subst_to_prog_constraints(Subst, AncestorsKeys0, AncestorsKeys),
+    list.map(apply_subst_to_prog_constraints(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
-apply_rec_subst_to_constraints(Subst, !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed0,
+apply_rec_subst_to_constraint_db(Subst, !ConstraintDb) :-
+    !.ConstraintDb = hlds_constraint_db(Unproven0, Assumed0,
         Redundant0, Ancestors0),
-    apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
-    apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
+    apply_rec_subst_to_constraints(Subst, Unproven0, Unproven),
+    apply_rec_subst_to_constraints(Subst, Assumed0, Assumed),
     Pred =
         ( pred(C0::in, C::out) is det :-
             set.to_sorted_list(C0, L0),
-            apply_rec_subst_to_constraint_list(Subst, L0, L),
+            apply_rec_subst_to_constraints(Subst, L0, L),
             set.list_to_set(L, C)
         ),
     map.map_values_only(Pred, Redundant0, Redundant),
     map.keys(Ancestors0, AncestorsKeys0),
     map.values(Ancestors0, AncestorsValues0),
-    apply_rec_subst_to_prog_constraint_list(Subst,
-        AncestorsKeys0, AncestorsKeys),
-    list.map(apply_rec_subst_to_prog_constraint_list(Subst),
+    apply_rec_subst_to_prog_constraints(Subst, AncestorsKeys0, AncestorsKeys),
+    list.map(apply_rec_subst_to_prog_constraints(Subst),
         AncestorsValues0, AncestorsValues),
     map.from_corresponding_lists(AncestorsKeys, AncestorsValues, Ancestors),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+    !:ConstraintDb = hlds_constraint_db(Unproven, Assumed,
+        Redundant, Ancestors).
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_proof_map(Renaming,
+apply_renaming_to_constraint_proof_map(Renaming,
         ProofMap0, ProofMap) :-
     ( if map.is_empty(ProofMap0) then
         % Optimize the simple case.
@@ -1924,7 +1912,7 @@ apply_variable_renaming_to_constraint_proof_map(Renaming,
     else
         map.keys(ProofMap0, Keys0),
         map.values(ProofMap0, Values0),
-        apply_variable_renaming_to_prog_constraint_list(Renaming, Keys0, Keys),
+        apply_renaming_to_prog_constraints(Renaming, Keys0, Keys),
         list.map(rename_constraint_proof(Renaming), Values0, Values),
         map.from_corresponding_lists(Keys, Values, ProofMap)
     ).
@@ -1940,7 +1928,7 @@ rename_constraint_proof(TSubst, Proof0, Proof) :-
         Proof = Proof0
     ;
         Proof0 = superclass(ClassConstraint0),
-        apply_variable_renaming_to_prog_constraint(TSubst,
+        apply_renaming_to_prog_constraint(TSubst,
             ClassConstraint0, ClassConstraint),
         Proof = superclass(ClassConstraint)
     ).
@@ -1988,8 +1976,8 @@ apply_rec_subst_to_constraint_proof_map_2(Subst, Constraint0, Proof0,
 
 %-----------------------------------------------------------------------------%
 
-apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
-    map.map_values_only(apply_variable_renaming_to_prog_constraint(Renaming),
+apply_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
+    map.map_values_only(apply_renaming_to_prog_constraint(Renaming),
         !ConstraintMap).
 
 apply_subst_to_constraint_map(Subst, !ConstraintMap) :-
@@ -2000,5 +1988,5 @@ apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
         !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.type_util.
+:- end_module hlds.type_util.
 %-----------------------------------------------------------------------------%

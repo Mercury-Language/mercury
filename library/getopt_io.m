@@ -173,6 +173,7 @@
     %
     %   % Nondeterministically returns all the options with their
     %   % corresponding types and default values.
+    %   % This predicate may also have determinism "nondet".
     %   %
     % :- pred option_default(option::out, option_data::out) is multi.
     %
@@ -616,8 +617,10 @@
     --->    no_option_error
     ;       found_option_error(option_error(OptionType)).
 
-    % record_arguments(ShortOptionPred, LongOptionPred, OptionTable,
-    %   Args, NonOptionArgs, OptionArgs, MaybeError, OptionValues):
+    % recognize_options(ShortOptionPred, LongOptionPred, OptionTable,
+    %   Args, MaybeError, OptionValues, OptionArgs, NonOptionArgs):
+    % recognize_all_options(ShortOptionPred, LongOptionPred, OptionTable,
+    %   Args, Errors, OptionValues, OptionArgs, NonOptionArgs):
     %
     % Given Args, which is a list of command line arguments,
     %
@@ -630,29 +633,61 @@
     % - use OptionTable to figure out what kind of value, if any,
     %   each of those user-defined options has as its argument,
     %
-    % - find those arguments and convert them to the expected type, and
+    % - find those arguments and convert them to the expected type,
+    %   and return them OptionValues.
     %
-    % - provided no errors occurred in any of the above steps,
-    %   return a list of those options and their values in OptionValues,
-    %   and set MaybeError to no_option_error.
+    % The two predicates differ in what they do when they find an error.
     %
-    % - If some errors *did* occur, then set MaybeError to found_option_error
-    %   wrapped around a description of one of them. This will probably be
-    %   the first, but we do not guarantee that. Also, in this error case,
-    %   OptionValues will probably contain the values of the options processed
-    %   before the error, but we do not guarantee that either.
+    % - When it finds an error, recognize_options stops processing Args,
+    %   and returns a description of the error in MaybeError. Any arguments
+    %   after the error will not be includes in any of OptionValues,
+    %   OptionsArgs, or NonOptionArgs.
+    %
+    % - When it finds an error, recognize_all_options keeps processing Args,
+    %   looking for more errors. It can therefore return more than one error
+    %   in Errors. Any arguments between and after errors *will* be included
+    %   either in OptionValues and OptionArgs, or in NonOptionArgs.
+    %   Note though it is possible for recognize_all_options to mistake
+    %   an argument that what was intended to be an argument of a previous
+    %   option to be something else (either an option in its own right, or
+    %   a nonoption argument) if the previous argument is not recogizable
+    %   as an option that has an argument because of e.g. a typo in its name.
+    %
+    % recognize_options indicates the lack of any errors by returning
+    % no_option_error in MaybeError. recognize_all_options indicates the same
+    % by returning the empty list as Errors.
     %
     % Note that unlike the process_options_... predicates above,
-    % this predicate does *not* update the option table in any way.
-    % It also simply returns file_special options in OptionValues;
-    % it does not process them. That processing can be done by
-    % expand_file_specials below.
+    % these predicates do *not* update the option table in any way.
+    % They also simply return file_special options in OptionValues;
+    % they does not process them. That processing can be done by
+    % the expand_file_specials predicate below.
+    %
+:- pred recognize_options(short_option(OptionType)::in(short_option),
+    long_option(OptionType)::in(long_option), option_table(OptionType)::in,
+    list(string)::in, maybe_option_error(OptionType)::out,
+    list(option_value(OptionType))::out,
+    list(string)::out, list(string)::out) is det.
+:- pred recognize_all_options(short_option(OptionType)::in(short_option),
+    long_option(OptionType)::in(long_option), option_table(OptionType)::in,
+    list(string)::in,
+    list(option_error(OptionType))::out, list(option_value(OptionType))::out,
+    list(string)::out, list(string)::out) is det.
+
+    % record_arguments(ShortOptionPred, LongOptionPred, OptionTable,
+    %   Args, NonOptionArgs, OptionArgs, MaybeError, OptionValues):
+    %
+    % This predicate is an obsolete synonym for
+    %
+    %   recognize_options(ShortOptionPred, LongOptionPred, OptionTable,
+    %       Args, MaybeError, OptionValues, OptionArgs, NonOptionArgs).
     %
 :- pred record_arguments(short_option(OptionType)::in(short_option),
     long_option(OptionType)::in(long_option), option_table(OptionType)::in,
     list(string)::in, list(string)::out, list(string)::out,
     maybe_option_error(OptionType)::out,
     list(option_value(OptionType))::out) is det.
+:- pragma obsolete(pred(record_arguments/8), [recognize_arguments/8]).
 
 %---------------------------------------------------------------------------%
 
@@ -676,16 +711,16 @@
     %   OptionValues, MaybeError, NonFileSpecialOptionValues, !MaybeIO):
     %
     % Given a list of OptionValues as generated for example by
-    % record_arguments, replace each ov_file_special option value in that list
+    % recognize_options, replace each ov_file_special option value in that list
     % with the option values in the file named by that option.
     % If there are any errors, return a description of one of them
     % in MaybeError; otherwise, return the fully expanded list of options
     % in NonFileSpecialOptionValues, and set MaybeError to no_option_error.
     %
     % The ShortOptionPred, LongOptionPred and OptionTable arguments
-    % play the same role as in record_arguments, since expand_file_specials
-    % must of course record all the options in files named by ov_file_special
-    % option values.
+    % play the same role as in recognize_options, since expand_file_specials
+    % must of course recognize all the options in files named by
+    % ov_file_special option values.
     %
 :- pred expand_file_specials(short_option(OptionType)::in(short_option),
     long_option(OptionType)::in(long_option), option_table(OptionType)::in,
@@ -981,12 +1016,6 @@ init_option_table_multi(OptionDefaultsPred, OptionTable) :-
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_option_arg
-    --->    no_option_arg
-    ;       option_arg(string).
-
-%---------------------------------------------------------------------------%
-
 :- pred process_arguments(
     short_option(OptionType)::in(short_option),
     long_option(OptionType)::in(long_option),
@@ -1003,10 +1032,10 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
         !OptionTable, !OptionsSet, !UserData, !MaybeIO) :-
     % We process the argument list in three phases.
     %
-    % - In phase 1, record_arguments process all the arguments, sorts them
-    %   into option arguments and non-option arguments, and then recognizes
-    %   and records the options (and if relevant, their values) in option
-    %   arguments.
+    % - In phase 1, recognize_options loops over all the arguments, and
+    %   separates them into the option arguments and the non-option arguments,
+    %   recognizing and recording the options (and if relevant, their values)
+    %   in option arguments.
     %
     % - In phase 2, expand_file_specials loops over all the recorded option
     %   values, looking for file_special options. When it finds one, it
@@ -1028,8 +1057,8 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
     % run every phase on the outputs of the earlier phases, even if those
     % outputs are only partial due to earlier failures.
     %
-    record_arguments(ShortOptionPred, LongOptionPred, !.OptionTable,
-        Args, NonOptionArgs, OptionArgs, MaybeRecordError, OptionValues),
+    recognize_options(ShortOptionPred, LongOptionPred, !.OptionTable,
+        Args, MaybeRecordError, OptionValues, OptionArgs, NonOptionArgs),
     (
         MaybeRecordError = no_option_error,
         expand_file_specials_check(ShortOptionPred, LongOptionPred,
@@ -1061,27 +1090,225 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
 
 %---------------------------------------------------------------------------%
 
+recognize_options(ShortOptionPred, LongOptionPred, OptionTable, Args,
+        MaybeError, OptionValues, OptionArgs, NonOptionArgs) :-
+    recognize_options_loop(ShortOptionPred, LongOptionPred, OptionTable,
+        Args, MaybeError, cord.init, OptionValuesCord,
+        cord.init, OptionArgsCord, cord.init, NonOptionArgsCord),
+    OptionValues = cord.to_list(OptionValuesCord),
+    OptionArgs = cord.list(OptionArgsCord),
+    NonOptionArgs = cord.list(NonOptionArgsCord).
+
+recognize_all_options(ShortOptionPred, LongOptionPred, OptionTable, Args,
+        Errors, OptionValues, OptionArgs, NonOptionArgs) :-
+    record_all_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
+        Args, cord.init, ErrorCord, cord.init, OptionValuesCord,
+        cord.init, OptionArgsCord, cord.init, NonOptionArgsCord),
+    Errors = cord.list(ErrorCord),
+    OptionValues = cord.to_list(OptionValuesCord),
+    OptionArgs = cord.list(OptionArgsCord),
+    NonOptionArgs = cord.list(NonOptionArgsCord).
+
 record_arguments(ShortOptionPred, LongOptionPred, OptionTable, Args,
         NonOptionArgs, OptionArgs, MaybeError, OptionValues) :-
-    record_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable, Args,
-        NonOptionArgs, [], RevOptionArgs, MaybeError,
-        cord.init, OptionValuesCord),
-    list.reverse(RevOptionArgs, OptionArgs),
-    OptionValues = cord.to_list(OptionValuesCord).
+    recognize_options(ShortOptionPred, LongOptionPred, OptionTable, Args,
+        MaybeError, OptionValues, OptionArgs, NonOptionArgs).
 
-:- pred record_arguments_loop(short_option(OptionType)::in(short_option),
+:- pred recognize_options_loop(short_option(OptionType)::in(short_option),
+    long_option(OptionType)::in(long_option), option_table(OptionType)::in,
+    list(string)::in, maybe_option_error(OptionType)::out,
+    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out,
+    cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+recognize_options_loop(_, _, _, [],
+        no_option_error, !OptionValues, !OptionArgs, !NonOptionArgs).
+recognize_options_loop(ShortOptionPred, LongOptionPred, OptionTable,
+        CLArgs0, MaybeError, !OptionValues, !OptionArgs, !NonOptionArgs) :-
+    CLArgs0 = [_ | _],
+    recognize_option(ShortOptionPred, LongOptionPred, OptionTable,
+        CLArgs0, CLArgs1, Result),
+    (
+        (
+            (
+                Result = ror_long_option(CLArg, MaybeSepOptionCLArg, OV),
+                OVs = [OV]
+            ;
+                Result = ror_short_options(CLArg, MaybeSepOptionCLArg, OVs)
+            ),
+            cord.snoc(CLArg, !OptionArgs),
+            (
+                MaybeSepOptionCLArg = no_sep_arg
+            ;
+                MaybeSepOptionCLArg = sep_arg(SepOptionCLArg),
+                cord.snoc(SepOptionCLArg, !OptionArgs)
+            ),
+            cord.snoc_list(OVs, !OptionValues)
+        ;
+            Result = ror_nonoption(CLArg),
+            cord.snoc(CLArg, !NonOptionArgs)
+        ),
+        % As a GNU extension, even after we find a non-option argument,
+        % we keep searching for options.
+        recognize_options_loop(ShortOptionPred, LongOptionPred, OptionTable,
+            CLArgs1, MaybeError, !OptionValues, !OptionArgs, !NonOptionArgs)
+    ;
+        Result = ror_error(Error),
+        MaybeError = found_option_error(Error)
+    ;
+        Result = ror_end_of_options,
+        MaybeError = no_option_error
+    ).
+
+:- pred record_all_arguments_loop(short_option(OptionType)::in(short_option),
+    long_option(OptionType)::in(long_option), option_table(OptionType)::in,
+    list(string)::in,
+    cord(option_error(OptionType))::in, cord(option_error(OptionType))::out,
+    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out,
+    cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out) is det.
+
+record_all_arguments_loop(_, _, _, [],
+        !Errors, !OptionValues, !OptionArgs, !NonOptionArgs).
+record_all_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
+        CLArgs0, !Errors, !OptionValues, !OptionArgs, !NonOptionArgs) :-
+    CLArgs0 = [_ | _],
+    recognize_option(ShortOptionPred, LongOptionPred, OptionTable,
+        CLArgs0, CLArgs1, Result),
+    (
+        (
+            (
+                Result = ror_long_option(CLArg, MaybeSepOptionCLArg, OV),
+                OVs = [OV]
+            ;
+                Result = ror_short_options(CLArg, MaybeSepOptionCLArg, OVs)
+            ),
+            cord.snoc(CLArg, !OptionArgs),
+            (
+                MaybeSepOptionCLArg = no_sep_arg
+            ;
+                MaybeSepOptionCLArg = sep_arg(SepOptionCLArg),
+                cord.snoc(SepOptionCLArg, !OptionArgs)
+            ),
+            cord.snoc_list(OVs, !OptionValues)
+        ;
+            Result = ror_nonoption(CLArg),
+            cord.snoc(CLArg, !NonOptionArgs)
+        ;
+            Result = ror_error(Error),
+            cord.snoc(Error, !Errors)
+        ),
+        % As a GNU extension, even after we find a non-option argument,
+        % we keep searching for options.
+        record_all_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
+            CLArgs1, !Errors, !OptionValues, !OptionArgs, !NonOptionArgs)
+    ;
+        Result = ror_end_of_options
+    ).
+
+%---------------------%
+
+:- type recognize_option_result(OptionType)
+    --->    ror_long_option(
+                % This command line word represents a long option.
+                % If the option takes an argument, then
+                % - either this string has the form --optionname=VALUE,
+                % - or it contains just --optionname, and ...
+                string,
+
+                % ... VALUE is given by the next word on the command line,
+                % which is stored in this field.
+                maybe_sep_arg,
+
+                % The representation of the long option and its value.
+                option_value(OptionType)
+            )
+    ;       ror_short_options(
+                % This command line word represents one *or more*
+                % short options. If a short option has an argument, then
+                % the *rest* of the word, if any, becomes its argument,
+                % so only the last short option may have an argument.
+                % Given this fact, this word will always contain
+                % a string of the form -abcd. This may represent
+                % - the short option -a with argument "bcd";
+                % - the short option -a with no argument and
+                %   the short option -b with argument "cd";
+                % - the short options -a and -b with no argument and
+                %   the short option -c with argument "d";
+                % - the short options -a, -b and -c with no argument and
+                %   the short option -d with the argument being given
+                %   by the next field; or
+                % - the short options -a, -b, -c and -d with no argument.
+                string,
+
+                % In the second-to-last situation above, this field
+                % will contain the value of the last option's argument.
+                % In all the other situations, it will contain nothing.
+                maybe_sep_arg,
+
+                % The representation of the option kinds and their values.
+                % There will be at least one item in the list.
+                % (Using one_or_more to encode this invariant would be
+                % overkill, since the only thing we do with these fields
+                % is concatenate their values.)
+                list(option_value(OptionType))
+            )
+    ;       ror_nonoption(
+                % This command line word is neither an option, nor
+                % the argument of an option.
+                string
+            )
+    ;       ror_error(
+                % This command line word looks like it should represent
+                % one or more options, but it does not.
+                option_error(OptionType)
+            )
+    ;       ror_end_of_options.
+                % Either we have come to the end of the command line,
+                % or we have come to the word ("--") that tells us that
+                % we should stop processing any later words.
+
+    % Values of this type represent either the presence of an option's argument
+    % in a separate word of the argument list, or its absence.
+:- type maybe_sep_arg
+    --->    no_sep_arg
+    ;       sep_arg(string).
+
+    % Values of this type represent either the presence of an option's argument
+    % - either in a "=value" suffix after a long option,
+    % - or in a just plain "value suffix after one or more short options,
+    % or its absence.
+:- type maybe_after_eq_arg
+    --->    no_after_eq_arg
+    ;       after_eq_arg(string).
+
+:- type value_or_error(OptionType) ==
+    maybe_error(option_value(OptionType), option_error(OptionType)).
+
+% NOTE: In the following predicates, we talk about two kinds of arguments.
+%
+% - Command line arguments are the words that the command line consists of
+%   This code refers to these as CLArgs, CL being short for "command line".
+%
+% - Some options take arguments. Sometimes, an option's argument is in fact
+%   a command line argument, but sometimes, it is just *a part* of a command
+%   line argument. Specifically,
+%
+%   - the argument of a long option may follow the name of the option
+%     in a command line argument of the form --long-option-name=OPTARG, and
+%
+%   - the argument of a short option may follow the character identifying
+%     the option (e.g. z) in a command line argument of the form -xyzOPTARG.
+
+:- pred recognize_option(short_option(OptionType)::in(short_option),
     long_option(OptionType)::in(long_option), option_table(OptionType)::in,
     list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out,
-    maybe_option_error(OptionType)::out,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+    recognize_option_result(OptionType)::out) is det.
 
-record_arguments_loop(_, _, _, [], [], !RevOptionArgs,
-        no_option_error, !OptionValues).
-record_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
-        [Arg0 | Args0], NonOptionArgs, !RevOptionArgs,
-        MaybeError, !OptionValues) :-
+recognize_option(_ShortOptionPred, _LongOptionPred, _OptionTable,
+        [], [], ror_end_of_options).
+recognize_option(ShortOptionPred, LongOptionPred, OptionTable,
+        [CLArg0 | CLArgs0], CLArgs, Result) :-
     ( if
         % Test for an initial "--" just this once, instead of doing three
         % times, one for each of the "--", "--no-.." and "--..."
@@ -1091,139 +1318,115 @@ record_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
         % but allocating memory for it on the first two code paths as well
         % should not be a performance issue, since both of those paths
         % are quite rare, the first structurally, the second statistically.
-        string.remove_prefix("--", Arg0, MaybeLongOption)
+        string.remove_prefix("--", CLArg0, MaybeLongOption)
     then
         ( if MaybeLongOption = "" then
             % "--" terminates option processing
-            NonOptionArgs = Args0,
-            MaybeError = no_option_error
+            CLArgs = CLArgs0,
+            Result = ror_end_of_options
         else if string.remove_prefix("no-", MaybeLongOption, LongOption) then
+            % A negated long option. Negated options may not have arguments.
+            CLArgs = CLArgs0,
             ( if LongOptionPred(LongOption, Flag) then
                 OptName = "--" ++ LongOption,
-                record_negated_option(OptionTable, Flag, OptName,
-                    NegMaybeError, !OptionValues),
+                record_negated_option(OptionTable, Flag, OptName, MaybeOption),
                 (
-                    NegMaybeError = no_option_error,
-                    !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
-                    record_arguments_loop(ShortOptionPred, LongOptionPred,
-                        OptionTable, Args0, NonOptionArgs, !RevOptionArgs,
-                        MaybeError, !OptionValues)
+                    MaybeOption = ok(OptionValue),
+                    Result = ror_long_option(CLArg0, no_sep_arg, OptionValue)
                 ;
-                    NegMaybeError = found_option_error(_),
-                    MaybeError = NegMaybeError,
-                    NonOptionArgs = Args0
+                    MaybeOption = error(Error),
+                    Result = ror_error(Error)
                 )
             else
-                Error = unrecognized_option(Arg0),
-                MaybeError = found_option_error(Error),
-                NonOptionArgs = Args0
+                Error = unrecognized_option(CLArg0),
+                Result = ror_error(Error)
             )
         else
+            % An unnegated long option. Unnegated options may have arguments.
             ( if string.sub_string_search(MaybeLongOption, "=", OptionLen) then
                 string.split(MaybeLongOption, OptionLen,
                     LongOption, EqualOptionArg),
+                OptName = "--" ++ LongOption,
                 ( if string.first_char(EqualOptionArg, '=', OptionArg) then
-                    MaybeArg = option_arg(OptionArg)
+                    MaybeAfterEqArg = after_eq_arg(OptionArg)
                 else
                     error("bad split of --longoption=arg")
                 )
             else
                 LongOption = MaybeLongOption,
-                MaybeArg = no_option_arg
+                OptName = CLArg0,
+                MaybeAfterEqArg = no_after_eq_arg
             ),
-            OptName = "--" ++ LongOption,
             ( if LongOptionPred(LongOption, Flag) then
                 ( if map.search(OptionTable, Flag, OptionData) then
-                    !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
-                    record_unnegated_long_option(Flag, OptName,
-                        OptionData, MaybeArg, Args0, Args1, !RevOptionArgs,
-                        LongMaybeError, !OptionValues),
-                    (
-                        LongMaybeError = no_option_error,
-                        record_arguments_loop(ShortOptionPred, LongOptionPred,
-                            OptionTable, Args1, NonOptionArgs, !RevOptionArgs,
-                            MaybeError, !OptionValues)
-                    ;
-                        LongMaybeError = found_option_error(_),
-                        MaybeError = LongMaybeError,
-                        NonOptionArgs = Args0
-                    )
+                    record_unnegated_long_option(CLArg0, MaybeAfterEqArg,
+                        Flag, OptName, OptionData, CLArgs0, CLArgs, Result)
                 else
-                    Error = option_error(Flag, Arg0, unknown_type),
-                    MaybeError = found_option_error(Error),
-                    NonOptionArgs = Args0
+                    CLArgs = CLArgs0,
+                    Error = option_error(Flag, CLArg0, unknown_type),
+                    Result = ror_error(Error)
                 )
             else
+                CLArgs = CLArgs0,
                 Error = unrecognized_option(OptName),
-                MaybeError = found_option_error(Error),
-                NonOptionArgs = Args0
+                Result = ror_error(Error)
             )
         )
     else if
-        string.first_char(Arg0, '-', ShortOptions),
+        string.first_char(CLArg0, '-', ShortOptions),
         ShortOptions \= ""
     then
         string.to_char_list(ShortOptions, ShortOptionsList),
-        % Process a single negated option `-x-'.
         ( if ShortOptionsList = [SingleShortOpt, '-'] then
+            CLArgs = CLArgs0,
+            % A negated short option `-x-'.
+            % Negation may be applied only to a single option.
             ( if ShortOptionPred(SingleShortOpt, Flag) then
                 string.from_char_list(['-', SingleShortOpt], OptName),
-                record_negated_option(OptionTable, Flag, OptName,
-                    NegMaybeError, !OptionValues),
+                record_negated_option(OptionTable, Flag, OptName, MaybeOption),
                 (
-                    NegMaybeError = no_option_error,
-                    !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
-                    record_arguments_loop(ShortOptionPred, LongOptionPred,
-                        OptionTable, Args0, NonOptionArgs, !RevOptionArgs,
-                        MaybeError, !OptionValues)
+                    MaybeOption = ok(OptionValue),
+                    Result = ror_short_options(CLArg0, no_sep_arg,
+                        [OptionValue])
                 ;
-                    NegMaybeError = found_option_error(_),
-                    MaybeError = NegMaybeError,
-                    NonOptionArgs = Args0
+                    MaybeOption = error(Error),
+                    Result = ror_error(Error)
                 )
             else
                 Error = unrecognized_option("-" ++ ShortOptions),
-                MaybeError = found_option_error(Error),
-                NonOptionArgs = Args0
+                Result = ror_error(Error)
             )
         else
-            % Process a list of options `-xyz'.
-            % -xyz may be several boolean options,
+            % One or more unnegated short options `-xyz'.
+            % The initial `-' may be followed by several boolean options,
             % or part of it may be the argument of an option.
             % The first element of Args0 may also be an argument of an option.
-            !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
             record_unnegated_short_options(ShortOptionPred, OptionTable,
-                ShortOptionsList, Args0, Args1, !RevOptionArgs,
-                ShortMaybeError, !OptionValues),
+                ShortOptionsList, CLArgs0, CLArgs,
+                MaybeShortCLArg, MaybeError, cord.init, OVsCord),
             (
-                ShortMaybeError = no_option_error,
-                record_arguments_loop(ShortOptionPred, LongOptionPred,
-                    OptionTable, Args1, NonOptionArgs, !RevOptionArgs,
-                    MaybeError, !OptionValues)
+                MaybeError = no_option_error,
+                OVs = cord.list(OVsCord),
+                % We have tested ShortOptions and it contains at least one
+                % short option, so in the absence of an error, there must be
+                % at least one item in OVs.
+                Result = ror_short_options(CLArg0, MaybeShortCLArg, OVs)
             ;
-                ShortMaybeError = found_option_error(_),
-                MaybeError = ShortMaybeError,
-                NonOptionArgs = Args0
+                MaybeError = found_option_error(Error),
+                Result = ror_error(Error)
             )
         )
     else
-        % It is a normal non-option argument.
-        % As a GNU extension, keep searching for options
-        % in the remaining arguments.
-        record_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
-            Args0, NonOptionArgsTail, !RevOptionArgs,
-            MaybeError, !OptionValues),
-        NonOptionArgs = [Arg0 | NonOptionArgsTail]
+        Result = ror_nonoption(CLArg0),
+        CLArgs = CLArgs0
     ).
 
 %---------------------%
 
 :- pred record_negated_option(option_table(OptionType)::in,
-    OptionType::in, string::in, maybe_option_error(OptionType)::out,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+    OptionType::in, string::in, value_or_error(OptionType)::out) is det.
 
-record_negated_option(OptionTable, Flag, OptName, MaybeError, !OptionValues) :-
+record_negated_option(OptionTable, Flag, OptName, MaybeOptionValue) :-
     ( if map.search(OptionTable, Flag, OptionData) then
         (
             (
@@ -1245,8 +1448,7 @@ record_negated_option(OptionTable, Flag, OptName, MaybeError, !OptionValues) :-
                 OptionData = maybe_string_special,
                 OV = ov_maybe_string_special(Flag, OptName, maybe.no)
             ),
-            MaybeError = no_option_error,
-            cord.snoc(OV, !OptionValues)
+            MaybeOptionValue = ok(OV)
         ;
             ( OptionData = int_special
             ; OptionData = string_special
@@ -1256,52 +1458,51 @@ record_negated_option(OptionTable, Flag, OptName, MaybeError, !OptionValues) :-
             ; OptionData = file_special
             ),
             Error = option_error(Flag, OptName, cannot_negate),
-            MaybeError = found_option_error(Error)
+            MaybeOptionValue = error(Error)
         )
     else
         Error = option_error(Flag, OptName, unknown_type),
-        MaybeError = found_option_error(Error)
+        MaybeOptionValue = error(Error)
     ).
 
 %---------------------%
 
-:- pred record_unnegated_long_option(
+:- pred record_unnegated_long_option(string::in, maybe_after_eq_arg::in,
     OptionType::in, string::in, option_data::in,
-    maybe_option_arg::in, list(string)::in, list(string)::out,
     list(string)::in, list(string)::out,
-    maybe_option_error(OptionType)::out,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+    recognize_option_result(OptionType)::out) is det.
 
-record_unnegated_long_option(Flag, OptName, OptionData,
-        MaybeOptionArg0, Args0, Args1, !RevOptionArgs,
-        MaybeError, !OptionValues) :-
+record_unnegated_long_option(CLArg0, MaybeAfterEqArg,
+        Flag, OptName, OptionData, CLArgs0, CLArgs1, Result) :-
     (
         OptionData = special,
-        Args1 = Args0,
-        record_option_none(OptionData, Flag, OptName, !OptionValues),
-        report_any_unexpected_arg(MaybeOptionArg0, Flag, OptName, MaybeError)
+        CLArgs1 = CLArgs0,
+        OV = ov_special(Flag, OptName),
+        Result0 = ror_long_option(CLArg0, no_sep_arg, OV),
+        report_any_unexpected_arg(MaybeAfterEqArg, Flag, OptName,
+            Result0, Result)
     ;
         ( OptionData = bool(_)
         ; OptionData = bool_special
         ),
-        Args1 = Args0,
-        record_option_bool(OptionData, Flag, OptName, yes, !OptionValues),
-        report_any_unexpected_arg(MaybeOptionArg0, Flag, OptName, MaybeError)
+        CLArgs1 = CLArgs0,
+        record_option_bool(CLArg0, Flag, OptName, OptionData, yes, Result0),
+        report_any_unexpected_arg(MaybeAfterEqArg, Flag, OptName,
+            Result0, Result)
     ;
         ( OptionData = int(_)
         ; OptionData = maybe_int(_)
         ; OptionData = int_special
         ),
-        get_long_option_arg(Flag, OptName, MaybeOptionArg0, OptionArgOrError,
-            Args0, Args1, !RevOptionArgs),
+        get_option_arg(CLArgs0, MaybeAfterEqArg, MaybeOptArg, CLArgs1),
         (
-            OptionArgOrError = option_arg_no_error(Arg),
-            record_option_int(OptionData, Flag, OptName, Arg,
-                MaybeError, !OptionValues)
+            MaybeOptArg = yes({OptArg, MaybeSepArg}),
+            record_option_int(CLArg0, MaybeSepArg,
+                Flag, OptName, OptionData, OptArg, Result)
         ;
-            OptionArgOrError = option_arg_error(Error),
-            MaybeError = found_option_error(Error)
+            MaybeOptArg = no,
+            Error = option_error(Flag, OptName, requires_argument),
+            Result = ror_error(Error)
         )
     ;
         ( OptionData = string(_)
@@ -1311,60 +1512,56 @@ record_unnegated_long_option(Flag, OptName, OptionData,
         ; OptionData = maybe_string_special
         ; OptionData = file_special
         ),
-        get_long_option_arg(Flag, OptName, MaybeOptionArg0, OptionArgOrError,
-            Args0, Args1, !RevOptionArgs),
+        get_option_arg(CLArgs0, MaybeAfterEqArg, MaybeOptArg, CLArgs1),
         (
-            OptionArgOrError = option_arg_no_error(Arg),
-            record_option_string(OptionData, Flag, OptName, Arg,
-                !OptionValues),
-            MaybeError = no_option_error
+            MaybeOptArg = yes({OptArg, MaybeSepArg}),
+            record_option_string(CLArg0, MaybeSepArg,
+                Flag, OptName, OptionData, OptArg, Result)
         ;
-            OptionArgOrError = option_arg_error(Error),
-            MaybeError = found_option_error(Error)
+            MaybeOptArg = no,
+            Error = option_error(Flag, OptName, requires_argument),
+            Result = ror_error(Error)
         )
     ).
 
-:- pred report_any_unexpected_arg(maybe_option_arg::in, OptionType::in,
-    string::in, maybe_option_error(OptionType)::out) is det.
+:- pred report_any_unexpected_arg(maybe_after_eq_arg::in,
+    OptionType::in, string::in, recognize_option_result(OptionType)::in,
+    recognize_option_result(OptionType)::out) is det.
 
-report_any_unexpected_arg(MaybeOptionArg, Flag, OptName, MaybeError) :-
+report_any_unexpected_arg(MaybeAfterEqArg, Flag, OptName, Result0, Result) :-
+    % Note that there cannot ever be any unexpected *separate* arguments,
+    % because they would just be considered either the next option
+    % or the non-option argument. On the other hand, the VALUE in
+    % --optionname=VALUE does represent an unexpected argument
+    % if --optionname does not take an argument.
     (
-        MaybeOptionArg = no_option_arg,
-        MaybeError = no_option_error
+        MaybeAfterEqArg = no_after_eq_arg,
+        Result = Result0
     ;
-        MaybeOptionArg = option_arg(Arg),
+        MaybeAfterEqArg = after_eq_arg(Arg),
         ErrorReason = does_not_allow_argument(Arg),
         Error = option_error(Flag, OptName, ErrorReason),
-        MaybeError = found_option_error(Error)
+        Result = ror_error(Error)
     ).
 
-:- type option_arg_or_error(OptionType)
-    --->    option_arg_no_error(string)
-    ;       option_arg_error(option_error(OptionType)).
+:- pred get_option_arg(list(string)::in, maybe_after_eq_arg::in,
+    maybe({string, maybe_sep_arg})::out, list(string)::out) is det.
 
-:- pred get_long_option_arg(OptionType::in, string::in,
-    maybe_option_arg::in, option_arg_or_error(OptionType)::out,
-    list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out) is det.
-
-get_long_option_arg(Flag, OptName, MaybeOptionArg0, OptionArgOrError,
-        Args0, Args1, !RevOptionArgs) :-
+get_option_arg(CLArgs0, MaybeAfterEqArg, MaybeOptArg, CLArgs1) :-
     (
-        MaybeOptionArg0 = no_option_arg,
+        MaybeAfterEqArg = no_after_eq_arg,
         (
-            Args0 = [Arg | Args1],
-            OptionArgOrError = option_arg_no_error(Arg),
-            !:RevOptionArgs = [Arg | !.RevOptionArgs]
+            CLArgs0 = [CLArg | CLArgs1],
+            MaybeOptArg = yes({CLArg, sep_arg(CLArg)})
         ;
-            Args0 = [],
-            Error = option_error(Flag, OptName, requires_argument),
-            OptionArgOrError = option_arg_error(Error),
-            Args1 = Args0
+            CLArgs0 = [],
+            MaybeOptArg = no,
+            CLArgs1 = []
         )
     ;
-        MaybeOptionArg0 = option_arg(Arg),
-        OptionArgOrError = option_arg_no_error(Arg),
-        Args1 = Args0
+        MaybeAfterEqArg = after_eq_arg(Arg),
+        MaybeOptArg = yes({Arg, no_sep_arg}),
+        CLArgs1 = CLArgs0
     ).
 
 %---------------------%
@@ -1372,40 +1569,51 @@ get_long_option_arg(Flag, OptName, MaybeOptionArg0, OptionArgOrError,
 :- pred record_unnegated_short_options(
     short_option(OptionType)::in(short_option), option_table(OptionType)::in,
     list(char)::in, list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out, maybe_option_error(OptionType)::out,
+    maybe_sep_arg::out, maybe_option_error(OptionType)::out,
     cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
     is det.
 
-record_unnegated_short_options(_, _OptionTable, [],
-        Args, Args, !RevOptionArgs, no_option_error, !OptionValues).
+record_unnegated_short_options(_, _, [],
+        CLArgs0, CLArgs0, no_sep_arg, no_option_error, !OptionValues).
 record_unnegated_short_options(ShortOptionPred, OptionTable, [Opt | Opts0],
-        Args0, Args, !RevOptionArgs, MaybeError, !OptionValues) :-
+        CLArgs0, CLArgs, MaybeSepArg, MaybeError, !OptionValues) :-
     ( if ShortOptionPred(Opt, Flag) then
         ( if map.search(OptionTable, Flag, OptionData) then
             string.from_char_list(['-', Opt], OptName),
             (
                 OptionData = special,
-                record_option_none(OptionData, Flag, OptName, !OptionValues),
+                option_none_to_ov(Flag, OptName, OptionData, OV),
+                cord.snoc(OV, !OptionValues),
                 record_unnegated_short_options(ShortOptionPred, OptionTable,
-                    Opts0, Args0, Args, !RevOptionArgs,
-                    MaybeError, !OptionValues)
+                    Opts0, CLArgs0, CLArgs, MaybeSepArg, MaybeError,
+                    !OptionValues)
             ;
                 ( OptionData = bool(_)
                 ; OptionData = bool_special
                 ),
-                record_option_bool(OptionData, Flag, OptName, yes,
-                    !OptionValues),
+                option_bool_to_ov(Flag, OptName, OptionData, yes, OV),
+                cord.snoc(OV, !OptionValues),
                 record_unnegated_short_options(ShortOptionPred, OptionTable,
-                    Opts0, Args0, Args, !RevOptionArgs,
-                    MaybeError, !OptionValues)
+                    Opts0, CLArgs0, CLArgs, MaybeSepArg, MaybeError,
+                    !OptionValues)
             ;
                 ( OptionData = int(_)
                 ; OptionData = maybe_int(_)
                 ; OptionData = int_special
                 ),
-                get_short_option_arg(Opts0, Arg, Args0, Args, !RevOptionArgs),
-                record_option_int(OptionData, Flag, OptName, Arg,
-                    MaybeError, !OptionValues)
+                get_short_option_arg(Opts0, CLArgs0, OptArgPair, CLArgs),
+                OptArgPair = {OptArg, MaybeSepArg},
+                option_int_to_maybe_ov(Flag, OptName, OptionData, OptArg,
+                    MaybeOV),
+                (
+                    MaybeOV = yes(OV),
+                    cord.snoc(OV, !OptionValues),
+                    MaybeError = no_option_error
+                ;
+                    MaybeOV = no,
+                    numeric_argument_error(Flag, OptName, OptArg, Error),
+                    MaybeError = found_option_error(Error)
+                )
             ;
                 ( OptionData = string(_)
                 ; OptionData = maybe_string(_)
@@ -1414,39 +1622,41 @@ record_unnegated_short_options(ShortOptionPred, OptionTable, [Opt | Opts0],
                 ; OptionData = maybe_string_special
                 ; OptionData = file_special
                 ),
-                get_short_option_arg(Opts0, Arg, Args0, Args, !RevOptionArgs),
-                record_option_string(OptionData, Flag, OptName, Arg,
-                    !OptionValues),
+                get_short_option_arg(Opts0, CLArgs0, OptArgPair, CLArgs),
+                OptArgPair = {OptArg, MaybeSepArg},
+                option_string_to_ov(Flag, OptName, OptionData, OptArg, OV),
+                cord.snoc(OV, !OptionValues),
                 MaybeError = no_option_error
             )
         else
+            CLArgs = CLArgs0,
+            MaybeSepArg = no_sep_arg,
             string.char_to_string(Opt, OptString),
-            Args = Args0,
             Error = option_error(Flag, "-" ++ OptString, unknown_type),
             MaybeError = found_option_error(Error)
         )
     else
-        Args = Args0,
+        CLArgs = CLArgs0,
+        MaybeSepArg = no_sep_arg,
         string.char_to_string(Opt, OptString),
         Error = unrecognized_option("-" ++ OptString),
         MaybeError = found_option_error(Error)
     ).
 
-:- pred get_short_option_arg(list(char)::in, string::out,
-    list(string)::in, list(string)::out, list(string)::in, list(string)::out)
-    is det.
+:- pred get_short_option_arg(list(char)::in, list(string)::in,
+    {string, maybe_sep_arg}::out, list(string)::out) is det.
 
-get_short_option_arg(Opts, Arg, Args0, Args, !RevOptionArgs) :-
+get_short_option_arg(Opts, CLArgs0, OptArgPair, CLArgs) :-
     ( if
         Opts = [],
-        Args0 = [ArgPrime | ArgsPrime]
+        CLArgs0 = [CLArg0 | CLArgs1]
     then
-        !:RevOptionArgs = [ArgPrime | !.RevOptionArgs],
-        Arg = ArgPrime,
-        Args = ArgsPrime
+        OptArgPair = {CLArg0, sep_arg(CLArg0)},
+        CLArgs = CLArgs1
     else
-        string.from_char_list(Opts, Arg),
-        Args = Args0
+        string.from_char_list(Opts, OptArg),
+        OptArgPair = {OptArg, no_sep_arg},
+        CLArgs = CLArgs0
     ).
 
 %---------------------------------------------------------------------------%
@@ -1473,74 +1683,88 @@ get_short_option_arg(Opts, Arg, Args0, Args, !RevOptionArgs) :-
 
 %---------------------%
 
-:- pred record_option_none(option_data::in(option_data_none), OptionType::in,
-    string::in,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+:- pred option_none_to_ov(
+    OptionType::in, string::in, option_data::in(option_data_none),
+    option_value(OptionType)::out) is det.
 
-record_option_none(OptionData, Flag, OptName, !OptionValues) :-
+option_none_to_ov(Flag, OptName, OptionData, OV) :-
     (
         OptionData = special,
         OV = ov_special(Flag, OptName)
-    ),
-    cord.snoc(OV, !OptionValues).
+    ).
 
-:- pred record_option_bool(option_data::in(option_data_bool),
-    OptionType::in, string::in, bool::in,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+:- pred record_option_bool(string::in,
+    OptionType::in, string::in, option_data::in(option_data_bool),
+    bool::in, recognize_option_result(OptionType)::out) is det.
 
-record_option_bool(OptionData, Flag, OptName, BoolValue, !OptionValues) :-
+record_option_bool(Arg0, Flag, OptName, OptionData,
+        BoolValue, Result) :-
+    option_bool_to_ov(Flag, OptName, OptionData, BoolValue, OV),
+    Result = ror_long_option(Arg0, no_sep_arg, OV).
+
+:- pred option_bool_to_ov(
+    OptionType::in, string::in, option_data::in(option_data_bool),
+    bool::in, option_value(OptionType)::out) is det.
+
+option_bool_to_ov(Flag, OptName, OptionData, BoolValue, OV) :-
     (
         OptionData = bool(_),
         OV = ov_bool(Flag, OptName, BoolValue)
     ;
         OptionData = bool_special,
         OV = ov_bool_special(Flag, OptName, BoolValue)
-    ),
-    cord.snoc(OV, !OptionValues).
-
-:- pred record_option_int(option_data::in(option_data_int),
-    OptionType::in, string::in, string::in, maybe_option_error(OptionType)::out,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
-
-record_option_int(OptionData, Flag, OptName, Arg, MaybeError, !OptionValues) :-
-    (
-        OptionData = int(_),
-        ( if string.to_int(Arg, IntValue) then
-            MaybeError = no_option_error,
-            OV = ov_int(Flag, OptName, IntValue),
-            cord.snoc(OV, !OptionValues)
-        else
-            numeric_argument_error(Flag, OptName, Arg, MaybeError)
-        )
-    ;
-        OptionData = maybe_int(_),
-        ( if string.to_int(Arg, IntValue) then
-            MaybeError = no_option_error,
-            OV = ov_maybe_int(Flag, OptName, yes(IntValue)),
-            cord.snoc(OV, !OptionValues)
-        else
-            numeric_argument_error(Flag, OptName, Arg, MaybeError)
-        )
-    ;
-        OptionData = int_special,
-        ( if string.to_int(Arg, IntValue) then
-            MaybeError = no_option_error,
-            OV = ov_int_special(Flag, OptName, IntValue),
-            cord.snoc(OV, !OptionValues)
-        else
-            numeric_argument_error(Flag, OptName, Arg, MaybeError)
-        )
     ).
 
-:- pred record_option_string(option_data::in(option_data_string),
-    OptionType::in, string::in, string::in,
-    cord(option_value(OptionType))::in, cord(option_value(OptionType))::out)
-    is det.
+:- pred record_option_int(string::in, maybe_sep_arg::in,
+    OptionType::in, string::in, option_data::in(option_data_int),
+    string::in, recognize_option_result(OptionType)::out) is det.
 
-record_option_string(OptionData, Flag, OptName, Arg, !OptionValues) :-
+record_option_int(Arg0, MaybeSepArg, Flag, OptName, OptionData, Arg, Result) :-
+    option_int_to_maybe_ov(Flag, OptName, OptionData, Arg, MaybeOV),
+    (
+        MaybeOV = yes(OV),
+        Result = ror_long_option(Arg0, MaybeSepArg, OV)
+    ;
+        MaybeOV = no,
+        numeric_argument_error(Flag, OptName, Arg, Error),
+        Result = ror_error(Error)
+    ).
+
+:- pred option_int_to_maybe_ov(
+    OptionType::in, string::in, option_data::in(option_data_int),
+    string::in, maybe(option_value(OptionType))::out) is det.
+
+option_int_to_maybe_ov(Flag, OptName, OptionData, Arg, MaybeOV) :-
+    ( if string.to_int(Arg, IntValue) then
+        (
+            OptionData = int(_),
+            OV = ov_int(Flag, OptName, IntValue)
+        ;
+            OptionData = maybe_int(_),
+            OV = ov_maybe_int(Flag, OptName, yes(IntValue))
+        ;
+            OptionData = int_special,
+            OV = ov_int_special(Flag, OptName, IntValue)
+        ),
+        MaybeOV = yes(OV)
+    else
+        MaybeOV = no
+    ).
+
+:- pred record_option_string(string::in, maybe_sep_arg::in,
+    OptionType::in, string::in, option_data::in(option_data_string),
+    string::in, recognize_option_result(OptionType)::out) is det.
+
+record_option_string(Arg0, MaybeSepArg, Flag, OptName, OptionData,
+        Arg, Result) :-
+    option_string_to_ov(Flag, OptName, OptionData, Arg, OV),
+    Result = ror_long_option(Arg0, MaybeSepArg, OV).
+
+:- pred option_string_to_ov(
+    OptionType::in, string::in, option_data::in(option_data_string),
+    string::in, option_value(OptionType)::out) is det.
+
+option_string_to_ov(Flag, OptName, OptionData, Arg, OV) :-
     (
         OptionData = string(_),
         OV = ov_string(Flag, OptName, Arg)
@@ -1559,8 +1783,7 @@ record_option_string(OptionData, Flag, OptName, Arg, !OptionValues) :-
     ;
         OptionData = file_special,
         OV = ov_file_special(Flag, OptName, Arg)
-    ),
-    cord.snoc(OV, !OptionValues).
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1655,8 +1878,8 @@ expand_file_special_option(ShortOptionPred, LongOptionPred, OptionTable,
     (
         ReadFromFileResult = read_success(Contents),
         Words = string.words(Contents),
-        record_arguments(ShortOptionPred, LongOptionPred, OptionTable,
-            Words, NonOptionArgs, _OptionArgs, FileMaybeError, FileOVs),
+        recognize_options(ShortOptionPred, LongOptionPred, OptionTable,
+            Words, FileMaybeError, FileOVs, _OptionArgs, NonOptionArgs),
         (
             FileMaybeError = no_option_error,
             (
@@ -1858,12 +2081,11 @@ process_special_option(SpecialHandler, Flag, OptName, OptionData,
 %---------------------------------------------------------------------------%
 
 :- pred numeric_argument_error(OptionType::in, string::in, string::in,
-    maybe_option_error(OptionType)::out) is det.
+    option_error(OptionType)::out) is det.
 
-numeric_argument_error(Flag, OptName, Arg, MaybeError) :-
+numeric_argument_error(Flag, OptName, Arg, Error) :-
     Reason = requires_numeric_argument(Arg),
-    Error = option_error(Flag, OptName, Reason),
-    MaybeError = found_option_error(Error).
+    Error = option_error(Flag, OptName, Reason).
 
 %---------------------------------------------------------------------------%
 

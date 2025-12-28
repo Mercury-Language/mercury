@@ -96,20 +96,20 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.switch_detection.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -399,40 +399,10 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
-            Reason0 = from_ground_term(_, FGTReason),
-            (
-                FGTReason = from_ground_term_construct,
-                % There are no deconstructions at all inside these scopes.
-                GoalExpr = GoalExpr0
-            ;
-                FGTReason = from_ground_term_deconstruct,
-                % We want to know whether the redo flag is set during the
-                % processing of SubGoal0.
-                OldRedo = !.CseInfo ^ csei_redo,
-                !CseInfo ^ csei_redo := no,
-                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
-                SubGoalRedo = !.CseInfo ^ csei_redo,
-                !CseInfo ^ csei_redo := bool.or(OldRedo, SubGoalRedo),
-                (
-                    SubGoalRedo = no,
-                    GoalExpr = scope(Reason0, SubGoal)
-                ;
-                    SubGoalRedo = yes,
-                    % If we remove a goal from such a scope, what is left
-                    % may no longer satisfy the invariants we expect it
-                    % to satisfy.
-                    SubGoal = hlds_goal(GoalExpr, _)
-                )
-            ;
-                FGTReason = from_ground_term_other,
-                detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0),
-                GoalExpr = scope(Reason0, SubGoal)
-            ;
-                FGTReason = from_ground_term_initial,
-                % Mode analysis should have replaced this kind of fgt scope
-                % with one of the other kinds.
-                unexpected($pred, "from_ground_term_initial")
-            )
+            Reason0 = from_ground_term(_, _),
+            % These scopes cannot contain any disjunctions, so we cannot pull
+            % common deconstructions out of any disjuncts.
+            GoalExpr = GoalExpr0
         ;
             Reason0 = require_switch_arms_detism(_, _),
             SubGoal0 = hlds_goal(SubGoalExpr0, SubGoalInfo0),
@@ -1139,7 +1109,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    apply_variable_renaming_to_var_table(Renaming, VarTable0, VarTable),
+    rename_vars_in_var_table(Renaming, VarTable0, VarTable),
 
     !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
     !CseInfo ^ csei_var_table := VarTable.

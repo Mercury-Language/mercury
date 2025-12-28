@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015, 2021, 2023-2024 The Mercury team.
+% Copyright (C) 2015, 2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,10 +15,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.inst_lookup.
+:- module hlds.inst_lookup.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -60,14 +59,13 @@
     %       we update the entry of the pair in the unify inst table
     %       to record the actual result.
     %
-    % We handle the merging of two insts, or making an inst ground,
-    % similarly.
+    % We handle the merging of two insts, or making an inst ground, similarly.
     %
     % Regardless of the form of the input inst_name, the value recorded
     % for it in the appropriate part of the inst table (the parts being
     % the unify inst table, the merge inst table, and so on) should be
-    % inst_unknown or inst_det_unknown *only while a recursive operation
-    % on insts is executing steps 1 through 3. As soon as the last recursive
+    % inst_unknown or inst_det_unknown ONLY WHILE A RECURSIVE OPERATION
+    % ON INSTS IS EXECUTING STEPS 1 THROUGH 3. As soon as the last recursive
     % call of that operation is finished, all the entries it has set
     % to inst_unknown or inst_det_unknown should have been set to inst_known
     % or inst_det_known.
@@ -76,7 +74,7 @@
     % once the HLDS has been fully built, including module qualification.
     %
     % - The module qualification process should find and report any reference
-    %   to undefined user_inst names, and should let the compiler proceed
+    %   to undefined user_inst names, and should not let the compiler proceed
     %   any further if it finds any.
     %
     % - Non-user_inst inst names should only start being introduced
@@ -89,7 +87,7 @@
     %   should ever introduce any new *user_inst* inst names, since
     %   the compiler is not a user. The inst_lookup_debug predicate below
     %   does introduce such user_inst inst names, but the compiler does
-    %   nothing with the those inst names except print them out.)
+    %   nothing with those inst names except print them out.)
     %
 :- pred inst_lookup(module_info::in, inst_name::in, mer_inst::out) is det.
 
@@ -168,8 +166,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.inst_mode_type_prop.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_to_term.
@@ -280,7 +278,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup(ModuleInfo, TypedInstName, Inst0),
         % XXX Each invocation of inst_lookup expands out one inst_name.
-        % An inst_name of nonzeero arity will be applied to a list of insts,
+        % An inst_name of nonzero arity will be applied to a list of insts,
         % some of which may contain other inst_names, whose arguments
         % may contain other inst_names, and so on.
         %
@@ -434,7 +432,7 @@ inst_lookup_debug(ModuleInfo, InstName, Inst) :-
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup_debug(ModuleInfo, TypedInstName, Inst0),
         % XXX Each invocation of inst_lookup expands out one inst_name.
-        % An inst_name of nonzeero arity will be applied to a list of insts,
+        % An inst_name of nonzero arity will be applied to a list of insts,
         % some of which may contain other inst_names, whose arguments
         % may contain other inst_names, and so on.
         %
@@ -468,42 +466,42 @@ is_unknown_or_missing_user_inst_name(user_inst(SymName, _ArgInsts)) :-
 
 %---------------------------------------------------------------------------%
 
-inst_expand(ModuleInfo, !Inst) :-
+inst_expand(ModuleInfo, Inst0, Inst) :-
     (
-        !.Inst = defined_inst(InstName),
-        inst_lookup(ModuleInfo, InstName, !:Inst),
-        disable_warning [suspicious_recursion] (
-            inst_expand(ModuleInfo, !Inst)
-        )
+        Inst0 = defined_inst(InstName),
+        inst_lookup(ModuleInfo, InstName, Inst1),
+        inst_expand(ModuleInfo, Inst1, Inst)
     ;
-        ( !.Inst = free
-        ; !.Inst = not_reached
-        ; !.Inst = ground(_, _)
-        ; !.Inst = any(_, _)
-        ; !.Inst = bound(_, _, _)
-        ; !.Inst = constrained_inst_vars(_, _)
-        ; !.Inst = inst_var(_)
-        )
+        ( Inst0 = free
+        ; Inst0 = not_reached
+        ; Inst0 = ground(_, _)
+        ; Inst0 = any(_, _)
+        ; Inst0 = bound(_, _, _)
+        ; Inst0 = constrained_inst_vars(_, _)
+        ; Inst0 = inst_var(_)
+        ),
+        Inst = Inst0
     ).
 
-inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
+inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst0, Inst) :-
     (
-        !.Inst = defined_inst(InstName),
-        inst_lookup(ModuleInfo, InstName, !:Inst),
-        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst)
+        Inst0 = defined_inst(InstName),
+        inst_lookup(ModuleInfo, InstName, Inst1),
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst1, Inst)
     ;
-        !.Inst = constrained_inst_vars(_, !:Inst),
-        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst)
+        Inst0 = constrained_inst_vars(_, Inst1),
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst1, Inst)
     ;
-        ( !.Inst = free
-        ; !.Inst = not_reached
-        ; !.Inst = ground(_, _)
-        ; !.Inst = any(_, _)
-        ; !.Inst = bound(_, _, _)
-        ; !.Inst = inst_var(_)
-        )
+        ( Inst0 = free
+        ; Inst0 = not_reached
+        ; Inst0 = ground(_, _)
+        ; Inst0 = any(_, _)
+        ; Inst0 = bound(_, _, _)
+        ; Inst0 = inst_var(_)
+        ),
+        Inst = Inst0
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.inst_lookup.
+:- end_module hlds.inst_lookup.
 %---------------------------------------------------------------------------%

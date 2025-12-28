@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1039,7 +1039,7 @@ extern  int MR_DD_debug_origin;
     Flag = MR_DD_debug_origin;
 ").
 debug_origin(_, _, _) :-
-    private_builtin.sorry("declarative_debugger.debug_origin").
+    private_builtin.sorry($pred).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.declarative_debugger.

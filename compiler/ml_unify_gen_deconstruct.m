@@ -73,11 +73,10 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -86,7 +85,6 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_test.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -740,16 +738,16 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
             LHSRval = ml_binop(float_from_dword,
                 ml_lval(LHSLvalA), ml_lval(LHSLvalB))
         else
-            ml_gen_box_or_unbox_rval(ModuleInfo, LHSType, RHSType,
-                bp_native_if_possible, ml_lval(LHSLval), LHSRval)
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, LHSType, RHSType,
+                ml_lval(LHSLval), LHSRval)
         ),
         Stmt = ml_gen_assign(RHSLval, LHSRval, Context),
         Stmts = [Stmt]
     ;
         ArgPosWidth = apw_full(_, _),
         FilledBitfields = [],
-        ml_gen_box_or_unbox_rval(ModuleInfo, LHSType, RHSType,
-            bp_native_if_possible, ml_lval(LHSLval), LHSRval),
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, LHSType, RHSType,
+            ml_lval(LHSLval), LHSRval),
         Stmt = ml_gen_assign(RHSLval, LHSRval, Context),
         Stmts = [Stmt]
     ;
@@ -781,17 +779,17 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         LHSLval, LHSType, RHSLval, RHSType, ArgPosWidth, Context, Stmts) :-
     (
         ArgPosWidth = apw_double(_, _, _),
-        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-            bp_native_if_possible, ml_lval(RHSLval), RHSRval),
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, LHSType,
+            ml_lval(RHSLval), RHSRval),
         ( if ml_field_offset_pair(LHSLval, LHSLvalA, LHSLvalB) then
             FloatWordA = ml_unop(dword_float_get_word0, RHSRval),
             FloatWordB = ml_unop(dword_float_get_word1, RHSRval),
             ml_type_as_field(ModuleInfo, HighLevelData, int_type,
                 aw_full_word, IntLHSType),
-            ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntLHSType,
-                bp_native_if_possible, FloatWordA, RHSRvalA),
-            ml_gen_box_or_unbox_rval(ModuleInfo, int_type, IntLHSType,
-                bp_native_if_possible, FloatWordB, RHSRvalB),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, int_type, IntLHSType,
+                FloatWordA, RHSRvalA),
+            ml_gen_box_or_unbox_rval_native(ModuleInfo, int_type, IntLHSType,
+                FloatWordB, RHSRvalB),
             StmtA = ml_gen_assign(LHSLvalA, RHSRvalA, Context),
             StmtB = ml_gen_assign(LHSLvalB, RHSRvalB, Context),
             Stmts = [StmtA, StmtB]
@@ -801,8 +799,8 @@ ml_gen_dynamic_deconstruct_arg_unify_assign_left(ModuleInfo, HighLevelData,
         )
     ;
         ArgPosWidth = apw_full(_, _),
-        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-            bp_native_if_possible, ml_lval(RHSLval), RHSRval),
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, LHSType,
+            ml_lval(RHSLval), RHSRval),
         Stmt = ml_gen_assign(LHSLval, RHSRval, Context),
         Stmts = [Stmt]
     ;
@@ -980,8 +978,8 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, NonLocals, Ptag, LHSVar, RHSVar,
         LHSType, ArgMode, Dir),
     (
         Dir = assign_nondummy_right,
-        ml_gen_box_or_unbox_rval(ModuleInfo, LHSType, RHSType,
-            bp_native_if_possible, ml_lval(LHSLval), LHSRval),
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, LHSType, RHSType,
+            ml_lval(LHSLval), LHSRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, RHSType),
         Ptag = ptag(PtagUint8),
         ( if PtagUint8 = 0u8 then
@@ -997,8 +995,8 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, NonLocals, Ptag, LHSVar, RHSVar,
         Stmts = [Stmt]
     ;
         Dir = assign_nondummy_left,
-        ml_gen_box_or_unbox_rval(ModuleInfo, RHSType, LHSType,
-            bp_native_if_possible, ml_lval(RHSLval), RHSRval),
+        ml_gen_box_or_unbox_rval_native(ModuleInfo, RHSType, LHSType,
+            ml_lval(RHSLval), RHSRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
         CastRval = ml_cast(MLDS_Type, ml_mkword(Ptag, RHSRval)),
         Stmt = ml_gen_assign(LHSLval, CastRval, Context),

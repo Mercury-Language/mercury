@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -46,6 +45,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.
@@ -66,6 +66,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -179,8 +180,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
         Body0 = hlds_du_type(BodyDu0),
-        BodyDu0 = type_body_du(Ctors0, MaybeSuperType0, MaybeCanonical,
-            MaybeRepn0, MaybeForeign),
+        BodyDu0 = type_body_du(Ctors0, _AlphaSortedCtors0, MaybeSuperType0,
+            MaybeCanonical, MaybeRepn0, MaybeForeign),
         (
             MaybeSuperType0 = subtype_of(SuperType0),
             hlds_replace_in_type(TypeEqvMap, SuperType0, SuperType,
@@ -193,6 +194,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         ),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
             TVarSet1, TVarSet2, EquivTypeInfo0, EquivTypeInfo1),
+        one_or_more.sort(compare_ctors_by_name_arity,
+            Ctors, AlphaSortedCtors),
         (
             MaybeRepn0 = no,
             MaybeRepn = no,
@@ -209,8 +212,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
                 CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
         ),
-        BodyDu = type_body_du(Ctors, MaybeSuperType, MaybeCanonical,
-            MaybeRepn, MaybeForeign),
+        BodyDu = type_body_du(Ctors, AlphaSortedCtors, MaybeSuperType,
+            MaybeCanonical, MaybeRepn, MaybeForeign),
         Body = hlds_du_type(BodyDu)
     ;
         Body0 = hlds_eqv_type(Type0),
@@ -263,7 +266,7 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
         MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
         ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
             UnconstrainedExistQVars, ConstrainedExistQVars),
-        replace_in_prog_constraint_list(TypeEqvMap, Constraints0, Constraints,
+        replace_in_prog_constraints(TypeEqvMap, Constraints0, Constraints,
             !TVarSet, !EquivTypeInfo),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             UnconstrainedExistQVars, ConstrainedExistQVars),
@@ -844,7 +847,7 @@ hlds_replace_type_ctor(TypeEqvMap, TypeCtorsAlreadyExpanded0, Type0,
         AlreadyExpanded = no
     then
         map.apply_to_list(Params0, Renaming, Params),
-        apply_variable_renaming_to_type(Renaming, Body0, Body1),
+        apply_renaming_to_type(Renaming, Body0, Body1),
         map.from_corresponding_lists(Params, ArgTypes, Subst),
         apply_subst_to_type(Subst, Body1, Body),
         TypeCtorsAlreadyExpanded = [TypeCtor | TypeCtorsAlreadyExpanded0],
@@ -1074,7 +1077,8 @@ type_may_occur_in_inst(Inst) = MayOccur :-
                         MayOccur = OldMayOccur
                     ;
                         Found = no,
-                        MayOccur = type_may_occur_in_bound_functors(BoundInsts),
+                        MayOccur =
+                            type_may_occur_in_bound_functors(BoundInsts),
                         impure record_inst_may_occur(Inst, MayOccur)
                     )
                 )

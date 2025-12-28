@@ -45,7 +45,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
@@ -59,6 +58,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
@@ -885,21 +885,19 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
     Instance = hlds_instance_defn(_, _, InstanceTVarSet, _, InstanceTypes0,
         Constraints0, _, _, _, _, _),
     tvarset_merge_renaming(TVarSet0, InstanceTVarSet, TVarSet, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
-        InstanceTypes),
-    apply_variable_renaming_to_prog_constraint_list(Renaming, Constraints0,
-        Constraints1),
+    apply_renaming_to_types(Renaming, InstanceTypes0, InstanceTypes),
+    apply_renaming_to_prog_constraints(Renaming, Constraints0, Constraints1),
     type_vars_in_types(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, Constraints1, UnconstrainedTVars0),
 
     type_list_subsumes(InstanceTypes, ClassTypes, Subst),
-    apply_rec_subst_to_prog_constraint_list(Subst, Constraints1, Constraints),
+    apply_rec_subst_to_prog_constraints(Subst, Constraints1, Constraints),
 
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(KindMap),
-    apply_rec_subst_to_tvar_list(KindMap, Subst, UnconstrainedTVars0,
-        UnconstrainedTVarTypes).
+    apply_rec_subst_to_tvars(KindMap, Subst,
+        UnconstrainedTVars0, UnconstrainedTVarTypes).
 
     % Build calls to
     % `private_builtin.instance_constraint_from_typeclass_info/3'
@@ -1392,15 +1390,14 @@ type_subst_makes_some_instance_known(ModuleInfo, CalleeUnivConstraints0,
         CalleeExistQVars, CalleeArgTypes0) :-
     CalleeUnivConstraints0 = [_ | _],
     tvarset_merge_renaming(TVarSet0, CalleeTVarSet, TVarSet, TypeRenaming),
-    apply_variable_renaming_to_type_list(TypeRenaming, CalleeArgTypes0,
-        CalleeArgTypes1),
+    apply_renaming_to_types(TypeRenaming, CalleeArgTypes0, CalleeArgTypes1),
 
     % Substitute the types in the callee's class constraints.
     compute_caller_callee_type_substitution(CalleeArgTypes1, ArgTypes,
         CallerHeadTypeParams, CalleeExistQVars, TypeSubn),
-    apply_variable_renaming_to_prog_constraint_list(TypeRenaming,
+    apply_renaming_to_prog_constraints(TypeRenaming,
         CalleeUnivConstraints0, CalleeUnivConstraints1),
-    apply_rec_subst_to_prog_constraint_list(TypeSubn,
+    apply_rec_subst_to_prog_constraints(TypeSubn,
         CalleeUnivConstraints1, CalleeUnivConstraints),
     some_updated_constraint_makes_an_instance_known_loop(ModuleInfo, TVarSet,
         CalleeUnivConstraints0, CalleeUnivConstraints).
