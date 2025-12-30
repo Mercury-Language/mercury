@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
-# Copyright (C) 2013-2022 The Mercury team.
+# Copyright (C) 2013-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -483,7 +483,6 @@ AC_SUBST([CSHARP_COMPILER_TYPE])
 AC_SUBST([MS_AL])
 AC_SUBST([MS_DOTNET_SDK_DIR])
 AC_SUBST([MS_DOTNET_LIBRARY_VERSION])
-AC_SUBST([MS_VISUALCPP_DIR])
 AC_SUBST([CLI_INTERPRETER])
 ])
 
