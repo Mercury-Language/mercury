@@ -295,11 +295,6 @@ AC_MSG_RESULT([$mercury_cv_microsoft_dotnet])
 ILASM=`basename "$ILASM"`
 GACUTIL=`basename "$GACUTIL"`
 
-# Check for the assembly linker.
-# ilalink is the DotGNU assembly linker.
-AC_PATH_PROGS([MS_AL], [al ilalink])
-MS_AL=`basename "$MS_AL"`
-
 # Check for an implementation of the Common Language Infrastructure.
 AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 
@@ -480,7 +475,6 @@ AC_SUBST([ILASM])
 AC_SUBST([GACUTIL])
 AC_SUBST([CSC])
 AC_SUBST([CSHARP_COMPILER_TYPE])
-AC_SUBST([MS_AL])
 AC_SUBST([MS_DOTNET_SDK_DIR])
 AC_SUBST([MS_DOTNET_LIBRARY_VERSION])
 AC_SUBST([CLI_INTERPRETER])
