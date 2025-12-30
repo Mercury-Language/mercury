@@ -282,12 +282,8 @@ AC_PATH_PROG([GACUTIL], [gacutil])
 AC_MSG_CHECKING([for Microsoft.NET Framework SDK])
 AC_CACHE_VAL([mercury_cv_microsoft_dotnet], [
 if test "$ILASM" != ""; then
-	changequote(<<,>>)
-	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
-	changequote([,])
 	mercury_cv_microsoft_dotnet="yes"
 else
-	MS_DOTNET_SDK_DIR=""
 	mercury_cv_microsoft_dotnet="no"
 fi
 ])
@@ -431,52 +427,10 @@ case "$CSC" in
     ;;
 esac
 
-# We default to the Beta 2 version of the library.
-mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
-if	test $mercury_cv_microsoft_dotnet = "yes" &&
-	test "$CSC" != "";
-then
-	AC_MSG_CHECKING([version of .NET libraries])
-	cat > conftest.cs << EOF
-	using System;
-	using System.Reflection;
-	public class version {
-	    public static void Main()
-	    {
-		Assembly asm = Assembly.Load("mscorlib");
-		AssemblyName name = asm.GetName();
-		Version version = name.Version;
-		Console.Write(version);
-		Console.Write("\n");
-	    }
-	}
-EOF
-	if
-		echo $CSC conftest.cs >&AS_MESSAGE_LOG_FD 2>&1 && \
-			$CSC conftest.cs  >&AS_MESSAGE_LOG_FD 2>&1 && \
-			$CLI_INTERPRETER ./conftest.exe > conftest.out 2>&1
-	then
-		mercury_cv_microsoft_dotnet_library_version=`cat conftest.out`
-		AC_MSG_RESULT([$mercury_cv_microsoft_dotnet_library_version])
-		rm -f conftest*
-	else
-		rm -f conftest*
-		if test "$enable_dotnet_grades" = "yes"; then
-			AC_MSG_ERROR([unable to determine version])
-			exit 1
-		else
-			AC_MSG_WARN([unable to determine version])
-		fi
-	fi
-fi
-MS_DOTNET_LIBRARY_VERSION=$mercury_cv_microsoft_dotnet_library_version
-
 AC_SUBST([ILASM])
 AC_SUBST([GACUTIL])
 AC_SUBST([CSC])
 AC_SUBST([CSHARP_COMPILER_TYPE])
-AC_SUBST([MS_DOTNET_SDK_DIR])
-AC_SUBST([MS_DOTNET_LIBRARY_VERSION])
 AC_SUBST([CLI_INTERPRETER])
 ])
 
