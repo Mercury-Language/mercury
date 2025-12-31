@@ -55,6 +55,8 @@ MERCURY_CSHARP_COMPILER=@CSC@
 MERCURY_CSHARP_COMPILER_TYPE=@CSHARP_COMPILER_TYPE@
 MERCURY_CLI_INTERPRETER=@CLI_INTERPRETER@
 MERCURY_TARGET_ARCH=@FULLARCH@
+MERCURY_HOST_ENV_TYPE=@HOST_ENV_TYPE@
+MERCURY_TARGET_ENV_TYPE=@TARGET_ENV_TYPE@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -148,9 +150,9 @@ DEFAULT_MCFLAGS=\
         --linker-error-undefined-flag "@ERROR_UNDEFINED@" \
     --install-prefix "@PREFIX@" \
     --default-opt-level "$(MERCURY_DEFAULT_OPT_LEVEL)" \
-    --host-env-type "@HOST_ENV_TYPE@" \
+    --host-env-type "$(MERCURY_HOST_ENV_TYPE)" \
         --target-arch "$(MERCURY_TARGET_ARCH)" \
-        --target-env-type "@TARGET_ENV_TYPE@" \
+        --target-env-type "$(MERCURY_TARGET_ENV_TYPE)" \
         --num-real-r-regs "@NUM_REAL_R_REGS@" \
         --num-real-r-temps "@NUM_REAL_R_TEMPS@" \
         --conf-low-tag-bits "@LOW_TAG_BITS@" \

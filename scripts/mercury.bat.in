@@ -2,7 +2,7 @@
 rem @configure_input@
 rem ---------------------------------------------------------------------------
 rem Copyright (C) 2001, 2003, 2005, 2011 The University of Melbourne.
-rem Copyright (C) 2020, 2024 The Mercury team.
+rem Copyright (C) 2020, 2024-2025 The Mercury team.
 rem This file may only be copied under the terms of the GNU General
 rem Public License - see the file COPYING in the Mercury distribution.
 rem ---------------------------------------------------------------------------
@@ -23,5 +23,7 @@ setlocal enableextensions
 
 set "MERCURY_CONFIG_DIR=@CONFIG_LIBDIR@"
 set "MERCURY_COMPILER=@PREFIX@\bin\mercury_compile"
+set "MERCURY_HOST_ENV_TYPE=windows"
+set "MERCURY_TARGET_ENV_TYPE=windows"
 
 %MERCURY_COMPILER% %*
