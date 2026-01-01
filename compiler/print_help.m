@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -120,7 +120,7 @@ compiler_id_line = "Name: mmc - Melbourne Mercury Compiler".
 
 copyright_notice_lines = [
     "Copyright (C) 1993-2012 The University of Melbourne",
-    "Copyright (C) 2013-2025 The Mercury team"
+    "Copyright (C) 2013-2026 The Mercury team"
 ].
 
 :- func long_usage_header_lines = list(string).

@@ -180,7 +180,7 @@ long_usage(OutStream, !IO) :-
 write_copyright_notice(OutStream, !IO) :-
     io.write_strings(OutStream, [
         "Copyright (C) 2005-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2025 The Mercury team\n"
+        "Copyright (C) 2013-2026 The Mercury team\n"
     ], !IO).
 
 %---------------------------------------------------------------------------%
