@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2059,7 +2059,7 @@ compute_subtype_ctors_diff(Ctors, SuperCtors, DiffPieces) :-
         list.map(ctor_to_string, SuperCtors, SuperCtorStrs0),
         list.filter(list.contains(SuperCtorStrs0), CtorStrs0, CtorStrs),
         list.filter(list.contains(CtorStrs0), SuperCtorStrs0, SuperCtorStrs),
-        EditParams = edit_params(1, 1, 1),
+        EditParams = edit_params(1u, 1u, 1u),
         construct_diff_for_string_seqs(EditParams, SuperCtorStrs, CtorStrs,
             DiffPieces)
     ).

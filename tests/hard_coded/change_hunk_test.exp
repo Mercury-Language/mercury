@@ -5,7 +5,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
 Params: replace
 
-Edits:  [delete(17), insert(18, "Sherman"), insert(33, "Nixon"), delete(36), replace(44, "Clinton")]
+Edits:  [delete(17u), insert(18u, "Sherman"), insert(33u, "Nixon"), delete(36u), replace(44u, "Clinton")]
 
 Diff:
  Washington
@@ -91,7 +91,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
 Params: replace
 
-Edits:  [replace(1, "George III"), replace(16, "Douglas"), insert(27, "Pershing"), replace(39, "Mondale"), replace(40, "Perot"), delete(44)]
+Edits:  [replace(1u, "George III"), replace(16u, "Douglas"), insert(27u, "Pershing"), replace(39u, "Mondale"), replace(40u, "Perot"), delete(44u)]
 
 Diff:
 -Washington
@@ -187,7 +187,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [delete(2), delete(3), delete(4), insert(18, "Sherman"), insert(18, "Sheridan"), insert(31, "Garner"), insert(31, "Wallace")]
+Edits:  [delete(2u), delete(3u), delete(4u), insert(18u, "Sherman"), insert(18u, "Sheridan"), insert(31u, "Garner"), insert(31u, "Wallace")]
 
 Diff:
  Washington
@@ -273,7 +273,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [insert(16, "Johnson"), delete(18), delete(34), insert(36, "Nixon"), replace(44, "Trump")]
+Edits:  [insert(16u, "Johnson"), delete(18u), delete(34u), insert(36u, "Nixon"), replace(44u, "Trump")]
 
 Diff:
  Washington
@@ -359,7 +359,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
 Params: replace
 
-Edits:  [replace(1, "George III"), replace(16, "Douglas"), insert(16, "Johnson"), delete(18), insert(27, "Pershing"), delete(34), insert(36, "Nixon"), replace(39, "Mondale"), replace(40, "Perot"), delete(44)]
+Edits:  [replace(1u, "George III"), replace(16u, "Douglas"), insert(16u, "Johnson"), delete(18u), insert(27u, "Pershing"), delete(34u), insert(36u, "Nixon"), replace(39u, "Mondale"), replace(40u, "Perot"), delete(44u)]
 
 Diff:
 -Washington
@@ -465,7 +465,7 @@ SeqA:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [delete(2), delete(3), delete(4), insert(16, "Johnson"), insert(18, "Sheridan"), insert(31, "Garner"), insert(31, "Wallace"), delete(34), insert(36, "Nixon"), replace(44, "Trump")]
+Edits:  [delete(2u), delete(3u), delete(4u), insert(16u, "Johnson"), insert(18u, "Sheridan"), insert(31u, "Garner"), insert(31u, "Wallace"), delete(34u), insert(36u, "Nixon"), replace(44u, "Trump")]
 
 Diff:
  Washington
@@ -567,7 +567,7 @@ SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [replace(1, "Washington"), replace(16, "Lincoln"), delete(28), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Trump")]
+Edits:  [replace(1u, "Washington"), replace(16u, "Lincoln"), delete(28u), replace(40u, "Reagan"), replace(41u, "Bush"), insert(44u, "Trump")]
 
 Diff:
 -George III
@@ -663,7 +663,7 @@ SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
 Params: replace
 
-Edits:  [replace(1, "Washington"), replace(16, "Lincoln"), delete(17), insert(18, "Sherman"), delete(28), insert(34, "Nixon"), delete(37), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Clinton")]
+Edits:  [replace(1u, "Washington"), replace(16u, "Lincoln"), delete(17u), insert(18u, "Sherman"), delete(28u), insert(34u, "Nixon"), delete(37u), replace(40u, "Reagan"), replace(41u, "Bush"), insert(44u, "Clinton")]
 
 Diff:
 -George III
@@ -769,7 +769,7 @@ SeqA:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams"
 SeqB:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Sherman", "Sheridan", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Garner", "Wallace", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [replace(1, "Washington"), delete(2), delete(3), delete(4), replace(16, "Lincoln"), insert(18, "Sherman"), insert(18, "Sheridan"), delete(28), insert(32, "Garner"), insert(32, "Wallace"), replace(40, "Reagan"), replace(41, "Bush"), insert(44, "Trump")]
+Edits:  [replace(1u, "Washington"), delete(2u), delete(3u), delete(4u), replace(16u, "Lincoln"), insert(18u, "Sherman"), insert(18u, "Sheridan"), delete(28u), insert(32u, "Garner"), insert(32u, "Wallace"), replace(40u, "Reagan"), replace(41u, "Bush"), insert(44u, "Trump")]
 
 Diff:
 -George III
@@ -882,7 +882,7 @@ SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harris
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Trump"]
 Params: replace
 
-Edits:  [insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), delete(16), delete(17), delete(31), delete(32)]
+Edits:  [insert(1u, "Adams"), insert(1u, "Jefferson"), insert(1u, "Madison"), delete(16u), delete(17u), delete(31u), delete(32u)]
 
 Diff:
  Washington
@@ -968,7 +968,7 @@ SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harris
 SeqB:   ["Washington", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Lincoln", "Grant", "Sherman", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Nixon", "Kennedy", "Johnson", "Ford", "Carter", "Reagan", "Bush", "Clinton", "Bush", "Obama", "Clinton"]
 Params: replace
 
-Edits:  [insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), delete(14), delete(17), delete(31), delete(32), insert(34, "Nixon"), delete(37), replace(45, "Clinton")]
+Edits:  [insert(1u, "Adams"), insert(1u, "Jefferson"), insert(1u, "Madison"), delete(14u), delete(17u), delete(31u), delete(32u), insert(34u, "Nixon"), delete(37u), replace(45u, "Clinton")]
 
 Diff:
  Washington
@@ -1070,7 +1070,7 @@ SeqA:   ["Washington", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harris
 SeqB:   ["George III", "Adams", "Jefferson", "Madison", "Monroe", "Quincy Adams", "Jackson", "Van Buren", "Harrison", "Tyler", "Polk", "Taylor", "Fillmore", "Pierce", "Buchanan", "Douglas", "Johnson", "Grant", "Hayes", "Garfield", "Arthur", "Cleveland", "Harrison", "McKinley", "Roosevelt", "Taft", "Wilson", "Pershing", "Harding", "Coolidge", "Hoover", "Roosevelt", "Truman", "Eisenhower", "Kennedy", "Johnson", "Nixon", "Ford", "Carter", "Mondale", "Perot", "Clinton", "Bush", "Obama"]
 Params: replace
 
-Edits:  [replace(1, "George III"), insert(1, "Adams"), insert(1, "Jefferson"), insert(1, "Madison"), replace(13, "Douglas"), delete(16), delete(17), insert(26, "Pershing"), delete(31), delete(32), replace(40, "Mondale"), replace(41, "Perot"), delete(45)]
+Edits:  [replace(1u, "George III"), insert(1u, "Adams"), insert(1u, "Jefferson"), insert(1u, "Madison"), replace(13u, "Douglas"), delete(16u), delete(17u), insert(26u, "Pershing"), delete(31u), delete(32u), replace(40u, "Mondale"), replace(41u, "Perot"), delete(45u)]
 
 Diff:
 -Washington

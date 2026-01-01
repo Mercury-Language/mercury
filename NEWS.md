@@ -257,6 +257,13 @@ Changes to the Mercury standard library
   is closest to the query sequence, in terms of the configurable `distances`
   added by operations such as inserting or replacing elements in sequences.
 
+### Changes to the `edit_seq` module
+
+* This module deals with many integers, including row numbers, column numbers,
+  and operation costs) that cannot be negative. To ensure that this restriction
+  is enforced automatically, we have changed the types of all these integers
+  from `int` to `uint`.
+
 ### Changes to the `enum` module
 
 * The following typeclass has been modified:

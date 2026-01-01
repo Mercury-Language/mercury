@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2020, 2023-2025 The Mercury team.
+% Copyright (C) 2019-2020, 2023-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,14 +49,14 @@
     %
 :- type edit_seq(T) == list(edit(T)).
 :- type edit(T)
-    --->    delete(int)
+    --->    delete(uint)
             % Delete item #N in sequence A.
 
-    ;       insert(int, T)
+    ;       insert(uint, T)
             % Insert the given item from sequence B
             % after item #N in sequence A.
 
-    ;       replace(int, T).
+    ;       replace(uint, T).
             % Replace item #N in sequence A with the given item
             % from sequence B.
 
@@ -67,9 +67,9 @@
                 % if these are fixed, their *absolute* values are irrelevant
                 % (unless they are so high that they cause arithmetic
                 % overflows).
-                cost_of_delete      :: int,
-                cost_of_insert      :: int,
-                cost_of_replace     :: int
+                cost_of_delete      :: uint,
+                cost_of_insert      :: uint,
+                cost_of_replace     :: uint
             ).
 
     % find_shortest_edit_seq(Params, SeqA, SeqB, Edits):
@@ -112,10 +112,10 @@
     % This type and its fields are documented below.
 :- type change_hunk(T)
     --->    change_hunk(
-                ch_seq_a_start      :: int,
-                ch_seq_a_length     :: int,
-                ch_seq_b_start      :: int,
-                ch_seq_b_length     :: int,
+                ch_seq_a_start      :: uint,
+                ch_seq_a_length     :: uint,
+                ch_seq_b_start      :: uint,
+                ch_seq_b_length     :: uint,
                 ch_diff             :: diff_seq(T)
             ).
 
@@ -174,9 +174,9 @@
     % hunk.
     %
     % To make sense, ContextSize must be least one. This predicate throws
-    % an exception if ContextSize is zero or negative.
+    % an exception if ContextSize is zero.
     %
-:- pred find_change_hunks(int::in, diff_seq(T)::in,
+:- pred find_change_hunks(uint::in, diff_seq(T)::in,
     list(change_hunk(T))::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -185,9 +185,9 @@
 :- implementation.
 
 :- import_module cord.
-:- import_module int.
 :- import_module map.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -201,30 +201,30 @@ find_shortest_edit_seq(Params, SeqA, SeqB, Edits) :-
     %
     % Note that the complexity of this algorithm is O(MN) where
     % M and N are the lengths of SeqA and SeqB.
-    list.length(SeqA, LenA),
-    list.length(SeqB, LenB),
+    ulength(SeqA, LenA),
+    ulength(SeqB, LenB),
     some [!Table] (
         init_table(!:Table),
-        add_entry(0, 0, entry(cord.init, 0), !Table),
-        init_row_zero_inserts(Params, 1, SeqB, cord.init, !Table),
-        init_col_zero_deletes(Params, 1, SeqA, cord.init, !Table),
-        process_rows(Params, 1, SeqA, SeqB, !Table),
+        add_entry(0u, 0u, entry(cord.init, 0u), !Table),
+        init_row_zero_inserts(Params, 1u, SeqB, cord.init, !Table),
+        init_col_zero_deletes(Params, 1u, SeqA, cord.init, !Table),
+        process_rows(Params, 1u, SeqA, SeqB, !Table),
         lookup_entry(!.Table, LenA, LenB, CornerEntry),
         Edits = cord.list(CornerEntry ^ e_edits)
     ).
 
-:- pred init_row_zero_inserts(edit_params::in, int::in, list(T)::in,
+:- pred init_row_zero_inserts(edit_params::in, uint::in, list(T)::in,
     cord(edit(T))::in, dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 init_row_zero_inserts(_Params, _ColNum, [], _CurEdits, !Table).
 init_row_zero_inserts(Params, ColNum, [HeadSeqB | TailSeqB], PrevEdits,
         !Table) :-
-    CurEdits = cord.snoc(PrevEdits, insert(1, HeadSeqB)),
+    cord.snoc(insert(1u, HeadSeqB), PrevEdits, CurEdits),
     Entry = entry(CurEdits, ColNum * Params ^ cost_of_insert),
-    add_entry(0, ColNum, Entry, !Table),
-    init_row_zero_inserts(Params, ColNum + 1, TailSeqB, CurEdits, !Table).
+    add_entry(0u, ColNum, Entry, !Table),
+    init_row_zero_inserts(Params, ColNum + 1u, TailSeqB, CurEdits, !Table).
 
-:- pred init_col_zero_deletes(edit_params::in, int::in, list(T)::in,
+:- pred init_col_zero_deletes(edit_params::in, uint::in, list(T)::in,
     cord(edit(T))::in, dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 init_col_zero_deletes(_Params, _RowNum, [], _CurEdits, !Table).
@@ -232,37 +232,38 @@ init_col_zero_deletes(Params, RowNum, [_HeadSeqA | TailSeqA],
         PrevEdits, !Table) :-
     CurEdits = cord.snoc(PrevEdits, delete(RowNum)),
     Entry = entry(CurEdits, RowNum * Params ^ cost_of_delete),
-    add_entry(RowNum, 0, Entry, !Table),
-    init_col_zero_deletes(Params, RowNum + 1, TailSeqA, CurEdits, !Table).
+    add_entry(RowNum, 0u, Entry, !Table),
+    init_col_zero_deletes(Params, RowNum + 1u, TailSeqA, CurEdits, !Table).
 
-:- pred process_rows(edit_params::in, int::in, list(T)::in, list(T)::in,
+:- pred process_rows(edit_params::in, uint::in, list(T)::in, list(T)::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 process_rows(_Params, _RowNum, [], _SeqB, !Table).
 process_rows(Params, RowNum, [HeadSeqA | TailSeqA], SeqB, !Table) :-
     % We need only the current row and the one before it.
-    delete_row(RowNum - 2, !Table),
-    process_columns(Params, RowNum, HeadSeqA, 1, SeqB, !Table),
-    process_rows(Params, RowNum + 1, TailSeqA, SeqB, !Table).
+    delete_row(RowNum - 2u, !Table),
+    process_columns(Params, RowNum, HeadSeqA, 1u, SeqB, !Table),
+    process_rows(Params, RowNum + 1u, TailSeqA, SeqB, !Table).
 
-:- pred process_columns(edit_params::in, int::in, T::in, int::in, list(T)::in,
+:- pred process_columns(edit_params::in,
+    uint::in, T::in, uint::in, list(T)::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 process_columns(_Params, _RowNum, _RowA, _ColNum, [], !Table).
 process_columns(Params, RowNum, RowA, ColNum, [HeadSeqB | TailSeqB], !Table) :-
     process_entry(Params, RowNum, RowA, ColNum, HeadSeqB, !Table),
-    process_columns(Params, RowNum, RowA, ColNum + 1, TailSeqB, !Table).
+    process_columns(Params, RowNum, RowA, ColNum + 1u, TailSeqB, !Table).
 
-:- pred process_entry(edit_params::in, int::in, T::in, int::in, T::in,
+:- pred process_entry(edit_params::in, uint::in, T::in, uint::in, T::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 process_entry(Params, RowNum, A, ColNum, B, !Table) :-
     ( if A = B then
-        lookup_entry(!.Table, RowNum - 1, ColNum - 1, Entry)
+        lookup_entry(!.Table, RowNum - 1u, ColNum - 1u, Entry)
     else
-        lookup_entry(!.Table, RowNum - 1, ColNum, EntryUp),
-        lookup_entry(!.Table, RowNum, ColNum - 1, EntryLeft),
-        lookup_entry(!.Table, RowNum - 1, ColNum - 1, EntryDiag),
+        lookup_entry(!.Table, RowNum - 1u, ColNum, EntryUp),
+        lookup_entry(!.Table, RowNum, ColNum - 1u, EntryLeft),
+        lookup_entry(!.Table, RowNum - 1u, ColNum - 1u, EntryDiag),
         EntryUp = entry(EditsUp, CostUp0),
         EntryLeft = entry(EditsLeft, CostLeft0),
         EntryDiag = entry(EditsDiag, CostDiag0),
@@ -318,12 +319,12 @@ process_entry(Params, RowNum, A, ColNum, B, !Table) :-
 % the parameters, which give the cost of each basic edit operation.
 %
 
-:- type dynprog_table(T) == map(int, map(int, dynprog_entry(T))).
+:- type dynprog_table(T) == map(uint, map(uint, dynprog_entry(T))).
 
 :- type dynprog_entry(T)
     --->    entry(
                 e_edits     ::  cord(edit(T)),
-                e_cost      ::  int
+                e_cost      ::  uint
             ).
 
 :- pred init_table(dynprog_table(T)::out) is det.
@@ -331,14 +332,14 @@ process_entry(Params, RowNum, A, ColNum, B, !Table) :-
 init_table(Table) :-
     map.init(Table).
 
-:- pred lookup_entry(dynprog_table(T)::in, int::in, int::in,
+:- pred lookup_entry(dynprog_table(T)::in, uint::in, uint::in,
     dynprog_entry(T)::out) is det.
 
 lookup_entry(Table, RowNum, ColNum, Entry) :-
     map.lookup(Table, RowNum, Row),
     map.lookup(Row, ColNum, Entry).
 
-:- pred add_entry(int::in, int::in, dynprog_entry(T)::in,
+:- pred add_entry(uint::in, uint::in, dynprog_entry(T)::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 add_entry(RowNum, ColNum, Entry, !Table) :-
@@ -350,7 +351,7 @@ add_entry(RowNum, ColNum, Entry, !Table) :-
         map.det_insert(RowNum, Row, !Table)
     ).
 
-:- pred delete_row(int::in,
+:- pred delete_row(uint::in,
     dynprog_table(T)::in, dynprog_table(T)::out) is det.
 
 delete_row(RowNum, !Table) :-
@@ -363,27 +364,27 @@ find_diff_seq(SeqA, Edits, DiffSeq) :-
     Deletes0 = cord.init,
     Inserts0 = cord.init,
     DiffCord0 = cord.init,
-    find_diff_cord(1, SeqA, Edits, Deletes0, Inserts0, DiffCord0, DiffCord),
+    find_diff_cord(1u, SeqA, Edits, Deletes0, Inserts0, DiffCord0, DiffCord),
     DiffSeq = cord.list(DiffCord).
 
 :- type diff_cord(T) == cord(diff(T)).
 
-:- pred find_diff_cord(int::in, list(T)::in,
+:- pred find_diff_cord(uint::in, list(T)::in,
     edit_seq(T)::in, diff_cord(T)::in, diff_cord(T)::in,
     diff_cord(T)::in, diff_cord(T)::out) is det.
 
 find_diff_cord(CurA, SeqA, [Edit | Edits], !.Deletes, !.Inserts, !Diffs) :-
     (
         Edit = delete(A),
-        uncons(SeqA, HeadA, TailA),
+        det_head_tail(SeqA, HeadA, TailA),
         ( if A = CurA then
-            !:Deletes = cord.snoc(!.Deletes, deleted(HeadA)),
-            find_diff_cord(CurA + 1, TailA, Edits,
+            cord.snoc(deleted(HeadA), !Deletes),
+            find_diff_cord(CurA + 1u, TailA, Edits,
                 !.Deletes, !.Inserts, !Diffs)
         else
             flush_deletes_inserts(!Deletes, !Inserts, !Diffs),
-            !:Diffs = cord.snoc(!.Diffs, unchanged(HeadA)),
-            find_diff_cord(CurA + 1, TailA, [Edit | Edits],
+            cord.snoc(unchanged(HeadA), !Diffs),
+            find_diff_cord(CurA + 1u, TailA, [Edit | Edits],
                 !.Deletes, !.Inserts, !Diffs)
         )
     ;
@@ -391,49 +392,43 @@ find_diff_cord(CurA, SeqA, [Edit | Edits], !.Deletes, !.Inserts, !Diffs) :-
         % The insert(A, Item) operation means inserting Item *after* item A
         % in SeqA. We implement this as inserting Item before item A+1
         % *if* there is an item A+1, and before the end of the list otherwise.
-        ( if A+1 = CurA then
+        ( if A + 1u = CurA then
             !:Inserts = cord.snoc(!.Inserts, inserted(Item)),
             find_diff_cord(CurA, SeqA, Edits,
                 !.Deletes, !.Inserts, !Diffs)
         else
             (
                 SeqA = [],
-                !:Inserts = cord.snoc(!.Inserts, inserted(Item)),
+                cord.snoc(inserted(Item), !Inserts),
                 find_diff_cord(CurA, SeqA, Edits,
                     !.Deletes, !.Inserts, !Diffs)
             ;
                 SeqA = [HeadA | TailA],
                 flush_deletes_inserts(!Deletes, !Inserts, !Diffs),
-                !:Diffs = cord.snoc(!.Diffs, unchanged(HeadA)),
-                find_diff_cord(CurA + 1, TailA, [Edit | Edits],
+                cord.snoc(unchanged(HeadA), !Diffs),
+                find_diff_cord(CurA + 1u, TailA, [Edit | Edits],
                     !.Deletes, !.Inserts, !Diffs)
             )
         )
     ;
         Edit = replace(A, Item),
-        uncons(SeqA, HeadA, TailA),
+        det_head_tail(SeqA, HeadA, TailA),
         ( if CurA = A then
             !:Deletes = cord.snoc(!.Deletes, deleted(HeadA)),
             !:Inserts = cord.snoc(!.Inserts, inserted(Item)),
-            find_diff_cord(CurA + 1, TailA, Edits,
+            find_diff_cord(CurA + 1u, TailA, Edits,
                 !.Deletes, !.Inserts, !Diffs)
         else
             flush_deletes_inserts(!Deletes, !Inserts, !Diffs),
             !:Diffs = cord.snoc(!.Diffs, unchanged(HeadA)),
-            find_diff_cord(CurA + 1, TailA, [Edit | Edits],
+            find_diff_cord(CurA + 1u, TailA, [Edit | Edits],
                 !.Deletes, !.Inserts, !Diffs)
         )
     ).
 find_diff_cord(_, SeqA, [], !.Deletes, !.Inserts, !Diffs) :-
     flush_deletes_inserts(!.Deletes, _, !.Inserts, _, !Diffs),
     LeftOvers = list.map(func(I) = unchanged(I), SeqA),
-    !:Diffs = !.Diffs ++ cord.from_list(LeftOvers).
-
-:- pred uncons(list(T)::in, T::out, list(T)::out) is det.
-
-uncons([], _, _) :-
-    unexpected($pred, "empty list").
-uncons([Head | Tail], Head, Tail).
+    cord.snoc_list(LeftOvers, !Diffs).
 
 :- pred flush_deletes_inserts(
     diff_cord(T)::in, diff_cord(T)::out,
@@ -449,24 +444,24 @@ flush_deletes_inserts(!Deletes, !Inserts, !Diffs) :-
 %---------------------------------------------------------------------------%
 
 find_change_hunks(ContextSize, Diffs, CHunks) :-
-    ( if ContextSize > 0 then
-        find_change_hunks_loop(ContextSize, Diffs, 1, 1, [], RevCHunks),
+    ( if ContextSize > 0u then
+        find_change_hunks_loop(ContextSize, Diffs, 1u, 1u, [], RevCHunks),
         list.reverse(RevCHunks, CHunks)
     else
         unexpected($pred,
             "A context size must be strictly positive to make sense.")
     ).
 
-:- pred find_change_hunks_loop(int::in, diff_seq(T)::in, int::in, int::in,
+:- pred find_change_hunks_loop(uint::in, diff_seq(T)::in, uint::in, uint::in,
     list(change_hunk(T))::in, list(change_hunk(T))::out) is det.
 
 find_change_hunks_loop(ContextSize, Diffs, InitPosA, InitPosB, !RevCHunks) :-
     scan_initial_unchanged_diffs(Diffs, AfterInitUnchangedsDiffs,
-        [], RevUnchangedDiffs, 0, NumUnchangedDiffs),
+        [], RevUnchangedDiffs, 0u, NumUnchangedDiffs),
     scan_change_hunk_diffs(ContextSize, AfterInitUnchangedsDiffs,
         LeftOverDiffs, [], RevChangeTrailContextDiffs,
-        0, NumCHunkDeleted, 0, NumCHunkInserted,
-        0, NumCHunkUnchanged, 0, _),
+        0u, NumCHunkDeleted, 0u, NumCHunkInserted,
+        0u, NumCHunkUnchanged, 0u, _),
     (
         RevChangeTrailContextDiffs = []
         % Diffs does not contain any change hunk.
@@ -475,9 +470,10 @@ find_change_hunks_loop(ContextSize, Diffs, InitPosA, InitPosB, !RevCHunks) :-
         list.reverse(RevChangeTrailContextDiffs, ChangeTrailContextDiffs),
         % ChangeTrailContextDiffs contains the trailing context,
         % but the initial context is in RevUnchangedDiffs.
-        list.take_upto(ContextSize, RevUnchangedDiffs, RevInitContextDiffs),
+        list.take_upto(uint.cast_to_int(ContextSize),
+            RevUnchangedDiffs, RevInitContextDiffs),
         list.reverse(RevInitContextDiffs, InitContextDiffs),
-        list.length(InitContextDiffs, NumInitContextDiffs),
+        ulength(InitContextDiffs, NumInitContextDiffs),
         CHunkDiffs = InitContextDiffs ++ ChangeTrailContextDiffs,
         NumSkippedUnchangedDiffs = NumUnchangedDiffs - NumInitContextDiffs,
         StartA = InitPosA + NumSkippedUnchangedDiffs,
@@ -494,7 +490,7 @@ find_change_hunks_loop(ContextSize, Diffs, InitPosA, InitPosB, !RevCHunks) :-
     ).
 
 :- pred scan_initial_unchanged_diffs(list(diff(T))::in, list(diff(T))::out,
-    list(diff(T))::in, list(diff(T))::out, int::in, int::out) is det.
+    list(diff(T))::in, list(diff(T))::out, uint::in, uint::out) is det.
 
 scan_initial_unchanged_diffs(Diffs, LeftOverDiffs,
         !RevUnchangedDiffs, !NumUnchanged) :-
@@ -506,7 +502,7 @@ scan_initial_unchanged_diffs(Diffs, LeftOverDiffs,
         (
             HeadDiff = unchanged(_),
             !:RevUnchangedDiffs = [HeadDiff | !.RevUnchangedDiffs],
-            !:NumUnchanged = !.NumUnchanged + 1,
+            !:NumUnchanged = !.NumUnchanged + 1u,
             scan_initial_unchanged_diffs(TailDiffs, LeftOverDiffs,
                 !RevUnchangedDiffs, !NumUnchanged)
         ;
@@ -517,10 +513,10 @@ scan_initial_unchanged_diffs(Diffs, LeftOverDiffs,
         )
     ).
 
-:- pred scan_change_hunk_diffs(int::in, list(diff(T))::in, list(diff(T))::out,
+:- pred scan_change_hunk_diffs(uint::in, list(diff(T))::in, list(diff(T))::out,
     list(diff(T))::in, list(diff(T))::out,
-    int::in, int::out, int::in, int::out,
-    int::in, int::out, int::in, int::out) is det.
+    uint::in, uint::out, uint::in, uint::out,
+    uint::in, uint::out, uint::in, uint::out) is det.
 
 scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
         !NumDeleted, !NumInserted, !NumUnchanged, !NumContigUnchanged) :-
@@ -536,7 +532,7 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
                     scan_joined_context(ContextSize, Diffs, AfterContextDiffs,
                         !RevCHunkDiffs, !NumUnchanged)
                 then
-                    !:NumContigUnchanged = 0,
+                    !:NumContigUnchanged = 0u,
                     scan_change_hunk_diffs(ContextSize, AfterContextDiffs,
                         LeftOverDiffs,
                         !RevCHunkDiffs, !NumDeleted, !NumInserted,
@@ -546,8 +542,8 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
                 )
             else
                 !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
-                !:NumUnchanged = !.NumUnchanged + 1,
-                !:NumContigUnchanged = !.NumContigUnchanged + 1,
+                !:NumUnchanged = !.NumUnchanged + 1u,
+                !:NumContigUnchanged = !.NumContigUnchanged + 1u,
                 scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
                     !RevCHunkDiffs, !NumDeleted, !NumInserted,
                     !NumUnchanged, !NumContigUnchanged)
@@ -555,16 +551,16 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
         ;
             HeadDiff = deleted(_),
             !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
-            !:NumDeleted = !.NumDeleted + 1,
-            !:NumContigUnchanged = 0,
+            !:NumDeleted = !.NumDeleted + 1u,
+            !:NumContigUnchanged = 0u,
             scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
                 !RevCHunkDiffs, !NumDeleted, !NumInserted,
                 !NumUnchanged, !NumContigUnchanged)
         ;
             HeadDiff = inserted(_),
             !:RevCHunkDiffs = [HeadDiff | !.RevCHunkDiffs],
-            !:NumInserted = !.NumInserted + 1,
-            !:NumContigUnchanged = 0,
+            !:NumInserted = !.NumInserted + 1u,
+            !:NumContigUnchanged = 0u,
             scan_change_hunk_diffs(ContextSize, TailDiffs, LeftOverDiffs,
                 !RevCHunkDiffs, !NumDeleted, !NumInserted,
                 !NumUnchanged, !NumContigUnchanged)
@@ -579,18 +575,18 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
     % !RevUnchangedDiffs, counting them in !NumUnchanged. We leave the
     % changed items in LeftOverDiffs.
     %
-:- pred scan_joined_context(int::in, list(diff(T))::in, list(diff(T))::out,
-    list(diff(T))::in, list(diff(T))::out, int::in, int::out) is semidet.
+:- pred scan_joined_context(uint::in, list(diff(T))::in, list(diff(T))::out,
+    list(diff(T))::in, list(diff(T))::out, uint::in, uint::out) is semidet.
 
 scan_joined_context(MaxUnchanged, Diffs, LeftOverDiffs,
         !RevUnchangedDiffs, !NumUnchanged) :-
     Diffs = [HeadDiff | TailDiffs],
     (
         HeadDiff = unchanged(_),
-        MaxUnchanged > 0,
+        MaxUnchanged > 0u,
         !:RevUnchangedDiffs = [HeadDiff | !.RevUnchangedDiffs],
-        !:NumUnchanged = !.NumUnchanged + 1,
-        scan_joined_context(MaxUnchanged - 1, TailDiffs, LeftOverDiffs,
+        !:NumUnchanged = !.NumUnchanged + 1u,
+        scan_joined_context(MaxUnchanged - 1u, TailDiffs, LeftOverDiffs,
             !RevUnchangedDiffs, !NumUnchanged)
     ;
         ( HeadDiff = deleted(_)
@@ -598,6 +594,12 @@ scan_joined_context(MaxUnchanged, Diffs, LeftOverDiffs,
         ),
         LeftOverDiffs = Diffs
     ).
+
+:- pred ulength(list(T)::in, uint::out) is det.
+
+ulength(List, Len) :-
+    list.length(List, IntLen),
+    Len = uint.cast_from_int(IntLen).
 
 %---------------------------------------------------------------------------%
 :- end_module edit_seq.

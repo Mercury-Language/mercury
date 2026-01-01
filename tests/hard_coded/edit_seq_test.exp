@@ -20,7 +20,7 @@ Diff:
 SeqA:   []
 SeqB:   [3]
 Params: replace
-Edits:  [insert(1, 3)]
+Edits:  [insert(1u, 3)]
 Diff:
 + 3
 
@@ -29,7 +29,7 @@ Diff:
 SeqA:   []
 SeqB:   [3]
 Params: delete/insert
-Edits:  [insert(1, 3)]
+Edits:  [insert(1u, 3)]
 Diff:
 + 3
 
@@ -38,7 +38,7 @@ Diff:
 SeqA:   []
 SeqB:   [42]
 Params: replace
-Edits:  [insert(1, 42)]
+Edits:  [insert(1u, 42)]
 Diff:
 + 42
 
@@ -47,7 +47,7 @@ Diff:
 SeqA:   []
 SeqB:   [42]
 Params: delete/insert
-Edits:  [insert(1, 42)]
+Edits:  [insert(1u, 42)]
 Diff:
 + 42
 
@@ -56,7 +56,7 @@ Diff:
 SeqA:   []
 SeqB:   [3, 4, 5, 12, 13]
 Params: replace
-Edits:  [insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [insert(1u, 3), insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
 + 3
 + 4
@@ -69,7 +69,7 @@ Diff:
 SeqA:   []
 SeqB:   [3, 4, 5, 12, 13]
 Params: delete/insert
-Edits:  [insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [insert(1u, 3), insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
 + 3
 + 4
@@ -82,7 +82,7 @@ Diff:
 SeqA:   []
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), insert(1u, 3), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
 + 1
 + 2
@@ -98,7 +98,7 @@ Diff:
 SeqA:   []
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), insert(1u, 3), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
 + 1
 + 2
@@ -114,7 +114,7 @@ Diff:
 SeqA:   []
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 3), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
 + 1
 + 19
@@ -134,7 +134,7 @@ Diff:
 SeqA:   []
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 3), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
 + 1
 + 19
@@ -154,7 +154,7 @@ Diff:
 SeqA:   [3]
 SeqB:   []
 Params: replace
-Edits:  [delete(1)]
+Edits:  [delete(1u)]
 Diff:
 - 3
 
@@ -163,7 +163,7 @@ Diff:
 SeqA:   [3]
 SeqB:   []
 Params: delete/insert
-Edits:  [delete(1)]
+Edits:  [delete(1u)]
 Diff:
 - 3
 
@@ -190,7 +190,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [42]
 Params: replace
-Edits:  [replace(1, 42)]
+Edits:  [replace(1u, 42)]
 Diff:
 - 3
 + 42
@@ -200,7 +200,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [42]
 Params: delete/insert
-Edits:  [delete(1), insert(1, 42)]
+Edits:  [delete(1u), insert(1u, 42)]
 Diff:
 - 3
 + 42
@@ -210,7 +210,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [3, 4, 5, 12, 13]
 Params: replace
-Edits:  [insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
   3
 + 4
@@ -223,7 +223,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [3, 4, 5, 12, 13]
 Params: delete/insert
-Edits:  [insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
   3
 + 4
@@ -236,7 +236,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 2), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
   3
 + 1
@@ -252,7 +252,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 2), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
   3
 + 1
@@ -268,7 +268,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
   3
 + 1
@@ -288,7 +288,7 @@ Diff:
 SeqA:   [3]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
   3
 + 1
@@ -308,7 +308,7 @@ Diff:
 SeqA:   [42]
 SeqB:   []
 Params: replace
-Edits:  [delete(1)]
+Edits:  [delete(1u)]
 Diff:
 - 42
 
@@ -317,7 +317,7 @@ Diff:
 SeqA:   [42]
 SeqB:   []
 Params: delete/insert
-Edits:  [delete(1)]
+Edits:  [delete(1u)]
 Diff:
 - 42
 
@@ -326,7 +326,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [3]
 Params: replace
-Edits:  [replace(1, 3)]
+Edits:  [replace(1u, 3)]
 Diff:
 - 42
 + 3
@@ -336,7 +336,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [3]
 Params: delete/insert
-Edits:  [delete(1), insert(1, 3)]
+Edits:  [delete(1u), insert(1u, 3)]
 Diff:
 - 42
 + 3
@@ -346,15 +346,6 @@ Diff:
 SeqA:   [42]
 SeqB:   [42]
 Params: replace
-Edits:  []
-Diff:
-  42
-
-------------------
-
-SeqA:   [42]
-SeqB:   [42]
-Params: delete/insert
 Edits:  []
 Diff:
   42
@@ -362,9 +353,18 @@ Diff:
 ------------------
 
 SeqA:   [42]
+SeqB:   [42]
+Params: delete/insert
+Edits:  []
+Diff:
+  42
+
+------------------
+
+SeqA:   [42]
 SeqB:   [3, 4, 5, 12, 13]
 Params: replace
-Edits:  [replace(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [replace(1u, 3), insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
 - 42
 + 3
@@ -378,7 +378,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [3, 4, 5, 12, 13]
 Params: delete/insert
-Edits:  [delete(1), insert(1, 3), insert(1, 4), insert(1, 5), insert(1, 12), insert(1, 13)]
+Edits:  [delete(1u), insert(1u, 3), insert(1u, 4), insert(1u, 5), insert(1u, 12), insert(1u, 13)]
 Diff:
 - 42
 + 3
@@ -392,7 +392,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: replace
-Edits:  [replace(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [replace(1u, 1), insert(1u, 2), insert(1u, 3), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
 - 42
 + 1
@@ -409,7 +409,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: delete/insert
-Edits:  [delete(1), insert(1, 1), insert(1, 2), insert(1, 3), insert(1, 4), insert(1, 11), insert(1, 12), insert(1, 13), insert(1, 14)]
+Edits:  [delete(1u), insert(1u, 1), insert(1u, 2), insert(1u, 3), insert(1u, 4), insert(1u, 11), insert(1u, 12), insert(1u, 13), insert(1u, 14)]
 Diff:
 - 42
 + 1
@@ -426,7 +426,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: replace
-Edits:  [replace(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [replace(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 3), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
 - 42
 + 1
@@ -447,7 +447,7 @@ Diff:
 SeqA:   [42]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: delete/insert
-Edits:  [delete(1), insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 3), insert(1, 38), insert(1, 39), insert(1, 4), insert(1, 12), insert(1, 11), insert(1, 13), insert(1, 14)]
+Edits:  [delete(1u), insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 3), insert(1u, 38), insert(1u, 39), insert(1u, 4), insert(1u, 12), insert(1u, 11), insert(1u, 13), insert(1u, 14)]
 Diff:
 - 42
 + 1
@@ -468,7 +468,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   []
 Params: replace
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u)]
 Diff:
 - 3
 - 4
@@ -481,7 +481,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   []
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u)]
 Diff:
 - 3
 - 4
@@ -494,7 +494,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [3]
 Params: replace
-Edits:  [delete(2), delete(3), delete(4), delete(5)]
+Edits:  [delete(2u), delete(3u), delete(4u), delete(5u)]
 Diff:
   3
 - 4
@@ -507,7 +507,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [3]
 Params: delete/insert
-Edits:  [delete(2), delete(3), delete(4), delete(5)]
+Edits:  [delete(2u), delete(3u), delete(4u), delete(5u)]
 Diff:
   3
 - 4
@@ -520,7 +520,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [42]
 Params: replace
-Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5)]
+Edits:  [replace(1u, 42), delete(2u), delete(3u), delete(4u), delete(5u)]
 Diff:
 - 3
 - 4
@@ -534,7 +534,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [42]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), insert(5, 42)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), insert(5u, 42)]
 Diff:
 - 3
 - 4
@@ -574,7 +574,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 2), replace(3, 11), insert(5, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), replace(3u, 11), insert(5u, 14)]
 Diff:
   3
 + 1
@@ -591,7 +591,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 2), delete(3), insert(3, 11), insert(5, 14)]
+Edits:  [insert(1u, 1), insert(1u, 2), delete(3u), insert(3u, 11), insert(5u, 14)]
 Diff:
   3
 + 1
@@ -608,7 +608,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: replace
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), replace(2, 38), replace(3, 39), insert(3, 4), insert(4, 11), insert(5, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), replace(2u, 38), replace(3u, 39), insert(3u, 4), insert(4u, 11), insert(5u, 14)]
 Diff:
   3
 - 4
@@ -630,7 +630,7 @@ Diff:
 SeqA:   [3, 4, 5, 12, 13]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 1), insert(1, 19), insert(1, 2), insert(1, 29), insert(1, 38), insert(1, 39), delete(3), insert(4, 11), insert(5, 14)]
+Edits:  [insert(1u, 1), insert(1u, 19), insert(1u, 2), insert(1u, 29), insert(1u, 38), insert(1u, 39), delete(3u), insert(4u, 11), insert(5u, 14)]
 Diff:
   3
 + 1
@@ -651,7 +651,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   []
 Params: replace
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u)]
 Diff:
 - 1
 - 2
@@ -667,7 +667,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   []
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u)]
 Diff:
 - 1
 - 2
@@ -683,7 +683,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [3]
 Params: replace
-Edits:  [delete(1), delete(2), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Edits:  [delete(1u), delete(2u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u)]
 Diff:
 - 1
 - 2
@@ -699,7 +699,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [3]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Edits:  [delete(1u), delete(2u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u)]
 Diff:
 - 1
 - 2
@@ -715,7 +715,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [42]
 Params: replace
-Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8)]
+Edits:  [replace(1u, 42), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u)]
 Diff:
 - 1
 - 2
@@ -732,7 +732,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [42]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), insert(8, 42)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u), insert(8u, 42)]
 Diff:
 - 1
 - 2
@@ -749,7 +749,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [3, 4, 5, 12, 13]
 Params: replace
-Edits:  [delete(1), delete(2), replace(5, 5), delete(8)]
+Edits:  [delete(1u), delete(2u), replace(5u, 5), delete(8u)]
 Diff:
 - 1
 - 2
@@ -766,7 +766,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [3, 4, 5, 12, 13]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(5), insert(5, 5), delete(8)]
+Edits:  [delete(1u), delete(2u), delete(5u), insert(5u, 5), delete(8u)]
 Diff:
 - 1
 - 2
@@ -815,7 +815,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: replace
-Edits:  [insert(1, 19), insert(2, 29), replace(4, 38), replace(5, 39), insert(5, 4), insert(6, 11)]
+Edits:  [insert(1u, 19), insert(2u, 29), replace(4u, 38), replace(5u, 39), insert(5u, 4), insert(6u, 11)]
 Diff:
   1
 + 19
@@ -837,7 +837,7 @@ Diff:
 SeqA:   [1, 2, 3, 4, 11, 12, 13, 14]
 SeqB:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 Params: delete/insert
-Edits:  [insert(1, 19), insert(2, 29), insert(3, 38), insert(3, 39), delete(5), insert(6, 11)]
+Edits:  [insert(1u, 19), insert(2u, 29), insert(3u, 38), insert(3u, 39), delete(5u), insert(6u, 11)]
 Diff:
   1
 + 19
@@ -858,7 +858,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   []
 Params: replace
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -878,7 +878,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   []
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -898,7 +898,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [3]
 Params: replace
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -918,7 +918,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [3]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -938,7 +938,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [42]
 Params: replace
-Edits:  [replace(1, 42), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12)]
+Edits:  [replace(1u, 42), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -959,7 +959,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [42]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(5), delete(6), delete(7), delete(8), delete(9), delete(10), delete(11), delete(12), insert(12, 42)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(5u), delete(6u), delete(7u), delete(8u), delete(9u), delete(10u), delete(11u), delete(12u), insert(12u, 42)]
 Diff:
 - 1
 - 19
@@ -980,7 +980,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [3, 4, 5, 12, 13]
 Params: replace
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), insert(8, 5), delete(10), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(6u), delete(7u), insert(8u, 5), delete(10u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -1001,7 +1001,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [3, 4, 5, 12, 13]
 Params: delete/insert
-Edits:  [delete(1), delete(2), delete(3), delete(4), delete(6), delete(7), insert(8, 5), delete(10), delete(12)]
+Edits:  [delete(1u), delete(2u), delete(3u), delete(4u), delete(6u), delete(7u), insert(8u, 5), delete(10u), delete(12u)]
 Diff:
 - 1
 - 19
@@ -1022,7 +1022,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: replace
-Edits:  [delete(2), delete(4), delete(6), delete(7), delete(9), insert(10, 12)]
+Edits:  [delete(2u), delete(4u), delete(6u), delete(7u), delete(9u), insert(10u, 12)]
 Diff:
   1
 - 19
@@ -1043,7 +1043,7 @@ Diff:
 SeqA:   [1, 19, 2, 29, 3, 38, 39, 4, 12, 11, 13, 14]
 SeqB:   [1, 2, 3, 4, 11, 12, 13, 14]
 Params: delete/insert
-Edits:  [delete(2), delete(4), delete(6), delete(7), delete(9), insert(10, 12)]
+Edits:  [delete(2u), delete(4u), delete(6u), delete(7u), delete(9u), insert(10u, 12)]
 Diff:
   1
 - 19

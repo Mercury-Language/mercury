@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019 The Mercury team.
+% Copyright (C) 2019, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -32,8 +32,10 @@
 :- import_module string.
 
 main(!IO) :-
-    Params1 = edit_params(1, 1, 1), % replace cost same as insert OR delete
-    Params2 = edit_params(1, 1, 2), % replace cost same as insert PLUS delete
+    % replace cost same as insert OR delete
+    Params1 = edit_params(1u, 1u, 1u),
+    % replace cost same as insert PLUS delete
+    Params2 = edit_params(1u, 1u, 2u),
     ParamsList = ["replace" - Params1, "delete/insert" - Params2],
     Lists = [
         [],

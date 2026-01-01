@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019 The Mercury team.
+% Copyright (C) 2019, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -26,7 +26,6 @@
 
 :- import_module assoc_list.
 :- import_module list.
-:- import_module int.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -35,7 +34,7 @@ main(!IO) :-
     % Params1 = edit_params(1, 1, 1), % replace cost same as insert OR delete
     % Params2 = edit_params(1, 1, 2), % replace cost same as insert PLUS delete
     % ParamsList = ["replace" - Params1, "delete/insert" - Params2],
-    Params1 = edit_params(1, 1, 1), % replace cost same as insert OR delete
+    Params1 = edit_params(1u, 1u, 1u), % replace cost same as insert OR delete
     ParamsList = ["replace" - Params1],
     ListA = [
         "Washington",
@@ -289,7 +288,7 @@ test(SeqA, SeqB, ParamsName - Params, !IO) :-
         find_diff_seq(SeqA, Edits, DiffSeq),
         io.write_string("\nDiff:\n", !IO),
         write_diff_seq(DiffSeq, !IO),
-        find_change_hunks(3, DiffSeq, CHunks),
+        find_change_hunks(3u, DiffSeq, CHunks),
         io.write_string("\nChange hunks:\n", !IO),
         write_chunk_seq(CHunks, !IO)
     ).
@@ -316,8 +315,8 @@ write_diff_seq([Diff | Diffs], !IO) :-
 write_chunk_seq([], !IO).
 write_chunk_seq([CHunk | CHunks], !IO) :-
     CHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),
-    io.format("@@ -%d,%d +%d,%d @@\n",
-        [i(StartA), i(LenA), i(StartB), i(LenB)], !IO),
+    io.format("@@ -%u,%u +%u,%u @@\n",
+        [u(StartA), u(LenA), u(StartB), u(LenB)], !IO),
     write_diff_seq(Diffs, !IO),
     write_chunk_seq(CHunks, !IO).
 

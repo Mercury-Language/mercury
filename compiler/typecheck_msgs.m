@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -178,7 +178,8 @@ construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
         func_decl_lines(TVarSet, OtherArgTypes, OtherReturnType,
             OtherLines)
     ),
-    EditParams = edit_params(1, 1, 2), % cost(replace) = cost(delete + insert).
+    % cost(replace) = cost(delete + insert).
+    EditParams = edit_params(1u, 1u, 2u),
     find_shortest_edit_seq(EditParams, OtherLines, ActualLines, EditSeq),
     find_diff_seq(OtherLines, EditSeq, DiffSeq),
     DiffPieceLists = list.map(diff_to_pieces, DiffSeq),

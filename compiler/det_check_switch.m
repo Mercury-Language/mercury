@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -540,7 +540,7 @@ generate_type_order_switch_spec(GoalInfo, TypeCtor, VarName,
     Context = goal_info_get_context(GoalInfo),
     TypeSNAStrs = list.map(mercury_sym_name_arity_to_string, TypeSNAs),
     CaseSNAStrs = list.map(mercury_sym_name_arity_to_string, CaseSNAs),
-    EditParams = edit_params(1, 1, 2),
+    EditParams = edit_params(1u, 1u, 2u),
     construct_diff_for_string_seqs(EditParams, TypeSNAStrs, CaseSNAStrs,
         DiffPieces),
 % Possible alternate wording.

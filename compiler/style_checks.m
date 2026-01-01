@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2019-2025 The Mercury team.
+% Copyright (C) 2016, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -897,9 +897,9 @@ generate_inconsistent_pred_order_warnings(ModuleContext, ItemKind,
     else
         list.map(desc_pred_decl_item_numbers, DeclOrder, DeclStrs),
         list.map(desc_pred_decl_item_numbers, DefnOrder, DefnStrs),
-        CostDelete = 1,
-        CostInsert = 1,
-        CostReplace = 1,
+        CostDelete = 1u,
+        CostInsert = 1u,
+        CostReplace = 1u,
         EditParams = edit_params(CostDelete, CostInsert, CostReplace),
         construct_diff_for_string_seqs(EditParams, DeclStrs, DefnStrs,
             DiffPieces),

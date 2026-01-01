@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1087,7 +1087,7 @@ maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
 construct_diff_for_string_seqs(Params, StrsA, StrsB, Pieces) :-
     find_shortest_edit_seq(Params, StrsA, StrsB, EditSeq),
     find_diff_seq(StrsA, EditSeq, DiffSeq),
-    find_change_hunks(3, DiffSeq, ChangeHunks),
+    find_change_hunks(3u, DiffSeq, ChangeHunks),
     list.map(change_hunk_to_pieces, ChangeHunks, PieceLists),
     list.condense(PieceLists, Pieces).
 
@@ -1099,8 +1099,8 @@ construct_diff_for_string_seqs(Params, StrsA, StrsB, Pieces) :-
 
 change_hunk_to_pieces(ChangeHunk, ChangeHunkPieces) :-
     ChangeHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),
-    string.format("@@ -%d,%d +%d,%d @@",
-        [i(StartA), i(LenA), i(StartB), i(LenB)], HeaderStr),
+    string.format("@@ -%u,%u +%u,%u @@",
+        [u(StartA), u(LenA), u(StartB), u(LenB)], HeaderStr),
     HeaderPieces = [fixed(HeaderStr), nl],
     list.map(diff_seq_line_to_pieces, Diffs, DiffPieceLists),
     list.condense([HeaderPieces | DiffPieceLists], ChangeHunkPieces).
