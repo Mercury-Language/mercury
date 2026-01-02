@@ -11,13 +11,13 @@ Setting up the build environment
 --------------------------------
 
 A Unix-like environment is required for building and installing Mercury.
-Any one of [Cygwin](https://www.cygwin.com/), [MSYS](https://osdn.net/projects/mingw/)
-or [MSYS2](https://www.msys2.org) will suffice.
+[Cygwin](https://www.cygwin.com/) or [MSYS2](https://www.msys2.org) will
+suffice.
 
 A Unix-like environment is *not* required in order to use Mercury once it
 has been installed.
 
-To make MSVC and its supporting tools available under the Cygwin, MSYS or MSYS2
+To make MSVC and its supporting tools available under the Cygwin or MSYS2
 shells do the following:
 
 1. Open the Visual Studio Command Prompt.
@@ -42,11 +42,7 @@ shells do the following:
    with Visual Studio (e.g. `vcvarsall.bat`, `vcvars32.bat` or `vcvars64.bat`) to
    set up the environment for MSVC.
 
-2. Enter the following command to start the MSYS shell:
-
-        C:\> C:\MinGW\MSYS\1.0\msys.bat
-
-   or this one to start the MSYS2 shell with 32-bit MSVC:
+2. Enter the following command to start MSYS2 shell 32-bit MSVC:
 
         C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
 
@@ -58,7 +54,7 @@ shells do the following:
 
         C:\> C:\cygwin64\Cygwin.bat
 
-(We assume the default installation locations for MinGW/MSYS and Cygwin above.)
+(We assume the default installation locations for MSYS2 and Cygwin above.)
 
 Users of MSYS2 should note that it is required that the configuration type
 returned by autoconf match `*mingw*`; in particular it must *not* match
@@ -96,8 +92,8 @@ runtime.
 
 On Cygwin, `configure` and `mmake` will do translation of Unix style paths, so
 you may specify the installation directory using either a Unix- or
-Windows-style path. On MSYS or MSYS2, you must use a full Windows-style path
-with a drive letter, except that you must use `/` instead of `\` as a directory
+Windows-style path. On MSYS2, you must use a full Windows-style path with a
+drive letter, except that you must use `/` instead of `\` as a directory
 separator. For example, this is acceptable:
 
 ```
@@ -157,7 +153,7 @@ The MSVC port currently has a number of limitations:
 
 * When used directly from the Windows command prompt, mmake will not work.
   You should use `mmc --make` instead. (`mmake` requires a POSIX-like shell
-  and GNU `make`; it will however work with the Cygwin or MSYS shells.)
+  and GNU `make`; it will however work with the Cygwin or MSYS2 shells.)
   We do not intend to support `mmake` directly on Windows.
 
 * Creation of shared libraries (DLLs) is not currently supported.
@@ -176,7 +172,7 @@ Post-installation configuration
 -------------------------------
 
 The above instructions create a Mercury installation that targets MSVC that
-works from within the Cygwin, MSYS or MSYS2 shells. If you want to be able to
+works from within the Cygwin or MSYS2 shells. If you want to be able to
 run the Mercury compiler directly from the Windows command prompt (e.g.
 `cmd.exe`) then you need to manually edit some configuration files in the
 installation. (In future releases, this will all hopefully be automated.)
