@@ -53,7 +53,7 @@ Specific information is contained in individual README files in the
       * [Solaris](Documentation/README.Solaris.md)
       * [Windows](Documentation/README.MS-Windows.md)
         ([Visual C](Documentation/README.MS-VisualC.md),
-        [MinGW](Documentation/README.MinGW),
+        [MSYS2](Documentation/README.MSYS2.md),
         [Cygwin](Documentation/README.Cygwin.md))
 
   * Other platform information
