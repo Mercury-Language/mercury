@@ -1,157 +1,226 @@
-This file documents the port of Mercury to Windows using either the MinGW
-or MinGW-w64 ports of GCC, i.e. the i686-pc-mingw32, i686-w64-mingw32 or
-x86_64-w64-mingw32, x86_64-pc-mingw32 and x86_64-pc-mingw64 configurations.
+Mercury on MSYS2
+================
 
------------------------------------------------------------------------------
+This file documents the port of Mercury to Windows using the environments
+provided by the [MSYS2](https://www.msys2.org) platform.
 
-BUILDING WITH MINGW OR MINGW-W64
+Note that MSYS2 is separate from the older MSYS  / MinGW project.
+The latter appears to be dead, and we do not recommend its use with Mercury.
 
-MinGW is a port of 32-bit GCC to Windows available from
-<https://osdn.net/projects/mingw/>.
+Contents
+--------
 
-MinGW-w64 is a (different) port of both 64-bit and 32-bit GCC to Windows
-available from <https://www.mingw-w64.org>.
+* Overview
+* Installing Mercury with MSYS2
+* Using Mercury in the MSYS2 shell
+* Missing `libwinpthread-1.dll`
 
-MSYS is a POSIX-like environment available from <https://osdn.net/projects/mingw/>.
+Overview
+--------
 
-MSYS2 is a (different) POSIX-like environment.  It provides a package manager,
-and among the packages it provides are the MinGW-w64 ports of GCC.
-Note that MSYS2 is separate from the original MSYS.
-It is available at <https://www.msys2.org>.
+[MSYS2](https://www.msys2.org) is a POSIX-like native build environment for
+Windows. It provides a package manager, and tools like `bash`, `make` and `gcc`
+(via the [MinGW-w64](https://www.mingw-w64.org/) port).
 
-Using the MinGW or MinGW-w64 ports of GCC you can build a Mercury compiler that
-can generate executables that will run natively on Windows without the need for
-a support environments like Cygwin, MSYS or MSYS2.  Using the standard MinGW
-version of GCC will result in a Mercury compiler that generates 32-bit
-executables.  To build a Mercury compiler that generates 64-bit executables for
-Windows you will need to use the MinGW-w64 port of GCC.
+Using MSYS2 and the MinGW-w64 ports of GCC, you can build and install a Mercury
+compiler that generates executables that will run natively on Windows *without*
+the need for a support environment like MSYS2 or Cygwin.
 
-NOTE: a Unix like environment is required to build and install the Mercury
-compiler.  MSYS, MSYS2 or Cygwin can be used for this purpose.  A Unix like
-environment is only required for installing Mercury, you do *not* require one
-to use Mercury once it is installed.
+In this document we assume that MSYS2 is installed in its default installation
+directory (`C:\msys64`). If this is not the case on your system, then you will
+need to adjust the examples below to use your MSYS2 installation path instead.
 
------------------------------------------------------------------------------
+Installing Mercury with MSYS2
+-----------------------------
 
-BUILDING A MINGW OR MINGW-W64 COMPILER UNDER MSYS
+To build and install the Mercury source distribution under MSYS2, follow these
+steps:
 
-To build the source distribution under MSYS follow these steps:
+1. Select which of the MSYS2 environments you are going to use.
+   An MSYS2 environment controls what architecture, C compiler, linker
+   and system libraries are used. Further details can be found on the
+   [Environments](https://www.msys2.org/docs/environments) page of the
+   MSYS2 website.
 
-1a. Download and install MinGW and MSYS from <https://osdn.net/projects/mingw/>
+   Only the `UCRT64` and `MINGW64` environments are currently supported.
+   These environments correspond to the `MSYS2 UCRT64` and `MSYS2 MINGW64`
+   launchers installed by MSYS2 in the Windows Start Menu. Mercury compilers
+   built in these environments create 64-bit Windows executables. We recommend
+   using the `UCRT64` environment unless you require your executable to be
+   dependent on the Microsoft Visual C++ Runtime (MSVCRT) for some reason (e.g.
+   because it contains foreign code that has a dependency on the MSVCRT). If that
+   is the case, then use the `MINGW64` environment instead.
 
-    In order to build and install Mercury you will require at least the
-    following components:
+   The legacy `MINGW32` environment should also work and can be used to build
+   32-bit Windows executables, although we no longer actively support it.
+   The `MINGW32` environment corresponds to the `MSYS2 MING32` launcher in
+   the Windows Start Menu.
 
-    - MinGW Compiler Suite (C compiler)
-    - MSYS Basic System
-    - MinGW Developer Toolkit
+   The `MSYS`, `CLANG64`, `CLANGARM64` and `CLANG32` environments do *not*
+   currently work with Mercury.
 
-    Details of alternative MinGW and MSYS installation methods may be found
-    on the MinGW website.
+   In the MSYS2 shell the value of the `MSYSTEM` environment variable
+   identifies which of the MSYS2 environments you are using.
 
-    To build a version of the Mercury compiler that generates 64-bit
-    executables using the MSYS shell, you will need to install the
-    MinGW-w64 version of GCC (available from <http://mingw-w64.org>) and
-    ensure that it occurs in your PATH before the MinGW GCC.
+2. Ensure that prerequisite packages are installed. The following packages
+   must be installed in order to build Mercury in your MSYS2 system:
 
-1b. Alternatively, download and install MSYS2 environment from
-    <https://www.msys2.org>
+   * `tar`
+   * `gzip` (if you have the `.tar.gz` download)
+   * `xz` (if you have the `.tar.xz` download)
+   * `make`
+   * `gcc`
+   * `binutils`
+   * `diffutils`
 
-    You can use the MinGW-w64 version of GCC to build a copy of Mercury that
-    generates 32-bit or 64-bit executables.  Start the "MinGW-w64 Win32 Shell"
-    or "MinGW-w64 Win64 Shell".  First refresh the package database and install
-    a few necessary tools:
+   The `gcc` package must be the one provided by the selected environment (e.g.
+   `mingw-w64-ucrt-x86_64-gcc` for `UCRT64`  or `mingw-w64-x86_64_gcc` for
+   `MING64). Be careful not to use the `gcc` package for the `MSYS` environment
+   as that will *not* work.
 
-	pacman -Sy tar make bison flex diffutils
+   In addition, to build the documentation you will need the following
+   packages:
 
-    then install the desired version of gcc:
+   * `texinfo`
+   * `lynx` (to convert HTML to plain text)
 
-        pacman -S mingw-w64-i686-gcc
-        pacman -S mingw-w64-x86_64-gcc
+   If you are building the compiler directly from `git`, then you will also
+   need the following packages:
 
-2.  Optional: To build the java grade with MinGW and MSYS / MSYS2 you will
-    require the Windows version of the JDK to be installed on your system.
-    The Java compiler (javac), Java archive tool (jar), and Java runtime (java)
-    needs to be in the MSYS PATH, for example do the following in the shell:
+   * `m4`
+   * `autoconf`
+   * `flex`
+   * `bison`
 
-        export PATH=/c/Program\ Files/Java/jdk1.6.0_23/bin/:$PATH 
+   All of the above can be installed using `pacman` from within the appropriate
+   MSYS2 shell.
 
-    See README.Java.md for further details.
+3. Optional: To build and install the `java` grade with MSYS2, you will
+   require a Windows version of the JDK to be installed on your system. The
+   following tools must be present in the MSYS2 `PATH`:
 
-    Optional: To build the C# grade with MinGW, MSYS / MSYS2 and .NET, you will
-    need Visual C# compiler installed on your system.
-    The C# compiler (csc.exe) needs to be in your PATH, for example do the
-    following in the shell:
+   * The Java compiler (`javac`).
+   * The Java archive tool (`jar`).
+   * The Java runtime (`java`).
 
-        export PATH=/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/:$PATH
+   To add them to the MSYS2 `PATH`, do the following:
+
+       export PATH="/c/Program\ Files/Java/jdk-21/bin":$PATH
+
+   (The details will vary depending on which distribution and version
+   of Java you are using.)
+
+   The Java tools must be Windows-native executables, not MSYS2-packaged
+   Java binaries.
+
+   See [README.Java.md](README.Java.md) for further details.
+
+4. Optional: To build and install the `csharp` grade with MSYS2, you will
+   require the Visual C# compiler to be installed on your system. The C#
+   compiler (`csc.exe`) must be in the MSYS2 `PATH`.
+
+   To add it to the MSYS2 `PATH`, do the following:
+
+        export PATH="/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/":$PATH
+
+   (The details will vary depending on which version of .NET you are using.)
+
+   See [README.CSharp.md](README.CSharp.md) for further details.
+
+5. Unpack the Mercury source distribution:
     
-    See README.CSharp.md for further details.
+        tar -xvzf mercury-compiler-VERSION.tar.gz
 
-3.  Unpack the source distribution with a command like:
-    
-        tar -xvzf mercury-compiler-<VERSION>.tar.gz
+   `VERSION` will be the Mercury version number like `22.01` or
+   `rotd-2025-12-27`.
 
-4.  cd into the new directory and run configure:
+6. Change into the Mercury source directory and run the `configure` script:
 
         ./configure --prefix=c:/mercury
 
-    It is important to specify the installation prefix as a full windows
-    path with a drive letter (except use `/' instead of `\').  
-    Do not use a path like `/mercury', because that
-    will be interpreted differently by the MSYS or MSYS2 shells than by the
-    generated executables, resulting in a broken installation.
+   The value of the `--prefix` option specifies the installation prefix for
+   Mercury (here `c:/mercury`). It is _important_ to specify the installation
+   prefix as a _full_ Windows path with a drive letter. In the installation
+   prefix, you _must_ use `/` as a path separator instead of `\`.
 
-    If you are using the MSYS (not the MSYS2) shell with MinGW-w64 then you
-    must also invoke configure with the following option:
+   Do _NOT_ set the installation prefix to be a Unix-style path
+   (e.g. `/c/mercury`), because the MSYS2 shell and the generated executables
+   will each interpret that differently and the resulting Mercury installation
+   will be broken. Specifically, MSYS2 performs path translation for Unix-style
+   paths, while the generated Windows executables do not.
 
-       --host=x86_64-w64-mingw32
+   Other options to the `configure` script behave as they do on other systems.
 
-    This will cause mmake to use the MinGW-w64 tool chain.  Ensure that the
-    MinGW-w64 tools are in your PATH before running configure.
+7. Run `make` and then `make install`.
 
-    If you are using the MSYS2 shell then you need to launch it in either
-    the "MSYS2 MinGW 32-bit" mode or the "MSYS2 MinGW 64-bit" mode to build
-    a 32- or 64-bit Mercury system respectively.  You do not need to pass the
-    --host option to configure script; it will detect the 32-bit or 64-bit
-    MSYS2 environment you are running in.
+Using Mercury in the MSYS2 shell
+--------------------------------
 
-5.  run: `make' and then `make install'.
+This section describes how to use a Mercury compiler that was installed using
+the instructions in the previous section from within an MSYS2 environment. The
+MSYS2 environment that you run the compiler in *must* match the one it was
+built in (i.e. do not use a Mercury compiler built using the `MINGW64` in the
+`UCRT64` environment).
 
-Add /c/mercury/bin (or whatever path you installed Mercury to) to the MSYS or
-MSYS2 PATH (you cannot add `c:/mercury/bin' to the PATH because `:' is used
-to separate directories in the MSYS or MSYS2 PATH).
+Add the Mercury `bin` directory to the MSYS2 `PATH` using a Unix-style path.
+For example, if Mercury is installed in "C:\mercury", then you would add
+`/c/mercury/bin` to the MSYS2 `PATH`. You cannot add a Windows-style path with
+a drive letter to the MSYS2 `PATH` since `:` is used as the path separator.
 
-NOTE TO DEVELOPERS: the tools/bootcheck script does not work properly
-on MSYS at the moment -- it will build stage 3, but will not run the tests
-correctly.  To run the tests you should first install the compiler and add
-it to the PATH.  Next set the DIFF_OPTS environment variable to "-c -b".  This
-will cause the test scripts to ignore the extra carriage return character that
-gets added to the end of each line under MinGW.  Then run mmake from the tests
-directory.
+After the Mercury `bin` has been added to the MSYS2 `PATH`, then you should be
+able to use the compiler.
 
------------------------------------------------------------------------------
+Note that while `mmake` does work in the MSYS2 shell, it is quite slow.
+This is largely due to the MSYS2 port of GNU `cp` being relatively slow on
+Windows filesystems. We suggest using `mmc --make`, which does not use `cp`
+by default, when possible.
 
-BUILDING A CYGWIN COMPILER WHICH TARGETS MINGW
+Missing `libwinpthread-1.dll`
+-----------------------------
 
-NOTE: recent versions of Cygwin no longer support the -mno-cygwin option.
-Unfortunately the Cygwin documentation is silent on the matter of how
-exactly you are now supposed to invoke the MinGW compiler from Cygwin;
-until it is updated we recommend using MinGW/MSYS to build a MinGW
-targeted compiler rather than Cygwin.
+This issue typically occurs when C grade executables are run outside of an
+MSYS2 shell (e.g. from `cmd.exe` or PowerShell). Executables run in `cmd.exe`
+may abort and display a Windows loader error dialog with a message like the
+following:
 
-To build a compiler which targets MinGW from Cygwin do the following:
+    The code execution cannot proceed because libwinpthread-1.dll was
+    not found. Reinstalling the program may fix this problem.
 
-- First, install the Cygwin version of Mercury, and put it in your PATH.
-- Second, configure the source distribution of Mercury using
-  --with-cc="gcc -mno-cygwin".
-- Third, run "make" and "make install".
-- Fourth, replace the following files in the installed Mingw Mercury
-  directories with copies of the corresponding file from the installed
-  Cygwin Mercury directories:
-        mercury_compile.exe (in <prefix>/lib/mercury/bin/<config>)
-        mercury_profile.exe (in <prefix>/lib/mercury/bin/<config>)
-        mdemangle.exe (in <prefix>/bin)
-        mfiltercc.exe (in <prefix>/bin)
-        mkinit.exe (in <prefix>/bin)
+The problem here is that `libwinpthread-1.dll`, which is required by Mercury
+executables, cannot be found. There are several possible resolutions:
+
+1. Statically link against all libraries. This can be done by passing the
+   option `--linkage=static` to the Mercury compiler. This will increase the
+   size of the executables.
+
+2. Modify the dynamic-link library search order on Windows to include
+   the directory containing `libwinpthread-1.dll`. There are a lot
+   of ways to do this, but the two simple ones are to either copy the file
+   `libwinpthread-1.dll` into the same directory as the executable
+   or to add the directory containing that DLL to the Windows PATH.
+
+   For the `UCRT64` MSYS2 environment, `libwinpthread-1.dll` can be found in
+   the directory `C:\msys64\ucrt64\bin`. Add it to the Windows `PATH` by doing:
+
+       set PATH=C:\msys64\ucrt64\bin;%PATH%
+
+   For the `MINGW64` MSYS2 environment, `libwinpthread-1.dll` can be found in
+   the directory `C:\msys64\mingw64\bin`. Add it to the Windows `PATH` by
+   doing:
+
+       set PATH=C:\msys64\mingw64\bin;%PATH%
+
+   For a more complete discussion of how Windows searches for DLLs, consult the
+   following documentation from Microsoft:
+
+       <https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order>
+
+If you are running a Mercury executable from within PowerShell, then the same
+problem with a "missing" `libwinpthread-1.dll` can occur.
+In PowerShell, no error dialog is displayed. (PowerShell does not display the
+Windows loader error dialog for missing DLLs.) Instead, the value of the
+built-in variable `$LASTEXITCODE` is set to a non-zero value.
+This issue can be resolved in PowerShell using the same resolutions described
+above.
 
 -----------------------------------------------------------------------------
