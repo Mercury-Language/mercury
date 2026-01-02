@@ -42,7 +42,7 @@ shells do the following:
    with Visual Studio (e.g. `vcvarsall.bat`, `vcvars32.bat` or `vcvars64.bat`) to
    set up the environment for MSVC.
 
-2. Enter the following command to start MSYS2 shell 32-bit MSVC:
+2. Enter the following command to start MSYS2 shell with 32-bit MSVC:
 
         C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
 
