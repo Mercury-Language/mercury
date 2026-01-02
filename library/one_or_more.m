@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020-2025 The Mercury team.
+% Copyright (C) 2020-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -108,6 +108,8 @@
     %
 :- func length(one_or_more(T)) = int.
 :- pred length(one_or_more(T)::in, int::out) is det.
+:- func ulength(one_or_more(T)) = uint.
+:- pred ulength(one_or_more(T)::in, uint::out) is det.
 
     % same_length(ListA, ListB):
     %
@@ -1807,6 +1809,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1862,6 +1865,12 @@ length(OoM) = Length :-
 
 length(one_or_more(_H, T), Length) :-
     Length = 1 + list.length(T).
+
+ulength(OoM) = Length :-
+    one_or_more.ulength(OoM, Length).
+
+ulength(one_or_more(_H, T), Length) :-
+    Length = 1u + list.ulength(T).
 
 %---------------------------------------------------------------------------%
 

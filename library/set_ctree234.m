@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -318,6 +318,7 @@
     % count(Set, Count) is true if-and-only-if Set has Count elements.
     %
 :- func count(set_ctree234(T)) = int.
+:- func ucount(set_ctree234(T)) = uint.
 
 :- pred verify_depths(set_ctree234(T)::in, list(int)::out) is det.
 
@@ -472,6 +473,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.  % for var/1.
+:- import_module uint.
 
 :- pragma type_spec(pred(contains/2),           T = var(_)).
 :- pragma type_spec(pred(do_is_member/3),       T = var(_)).
@@ -2912,6 +2914,12 @@ count(ct(N, Tree)) = N :-
     trace [compile_time(flag("verify_set_ctree234"))] (
         expect(unify(N, do_count(Tree)), $pred, "mismatch")
     ).
+
+ucount(ct(IN, Tree)) = N :-
+    trace [compile_time(flag("verify_set_ctree234"))] (
+        expect(unify(IN, do_count(Tree)), $pred, "mismatch")
+    ),
+    N = uint.cast_from_int(IN).
 
 :- func do_count(set_tree234(T)) = int.
 

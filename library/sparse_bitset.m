@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -369,6 +369,7 @@
     % Takes O(card(Set)) time.
     %
 :- func count(sparse_bitset(T)) = int <= uenum(T).
+:- func ucount(sparse_bitset(T)) = uint <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -1586,6 +1587,8 @@ to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
 %---------------------------------------------------------------------------%
 
 count(Set) = sparse_bitset.foldl((func(_, Acc) = Acc + 1), Set, 0).
+
+ucount(Set) = sparse_bitset.foldl((func(_, Acc) = Acc + 1u), Set, 0u).
 
 %---------------------------------------------------------------------------%
 

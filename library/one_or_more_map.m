@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2020, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -325,11 +325,15 @@
     %
 :- func count(one_or_more_map(K, V)) = int.
 :- pred count(one_or_more_map(K, V)::in, int::out) is det.
+:- func ucount(one_or_more_map(K, V)) = uint.
+:- pred ucount(one_or_more_map(K, V)::in, uint::out) is det.
 
     % Count the number of key-value pairs in the one_or_more_map.
     %
 :- func all_count(one_or_more_map(K, V)) = int.
 :- pred all_count(one_or_more_map(K, V)::in, int::out) is det.
+:- func all_ucount(one_or_more_map(K, V)) = uint.
+:- pred all_ucount(one_or_more_map(K, V)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -337,9 +341,9 @@
 :- implementation.
 
 :- import_module cord.
-:- import_module int.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -677,23 +681,38 @@ values(OneOrMoreMap, Values) :-
 
 %---------------------------------------------------------------------------%
 
-count(OneOrMoreMap0) = Count :-
-    one_or_more_map.count(OneOrMoreMap0, Count).
+count(OneOrMoreMap) = Count :-
+    map.count(OneOrMoreMap, Count).
 
 count(OneOrMoreMap, Count) :-
     map.count(OneOrMoreMap, Count).
 
-all_count(OneOrMoreMap0) = Count :-
-    one_or_more_map.all_count(OneOrMoreMap0, Count).
+ucount(OneOrMoreMap) = Count :-
+    map.ucount(OneOrMoreMap, Count).
 
-all_count(OneOrMoreMap, Count) :-
+ucount(OneOrMoreMap, Count) :-
+    map.ucount(OneOrMoreMap, Count).
+
+all_count(OneOrMoreMap) = ICount :-
+    one_or_more_map.all_ucount(OneOrMoreMap, Count),
+    ICount = uint.cast_to_int(Count).
+
+all_count(OneOrMoreMap, ICount) :-
+    one_or_more_map.all_ucount(OneOrMoreMap, Count),
+    ICount = uint.cast_to_int(Count).
+
+all_ucount(OneOrMoreMap) = Count :-
     map.foldl_values(one_or_more_map.accumulate_length, OneOrMoreMap,
-        0, Count).
+        0u, Count).
 
-:- pred accumulate_length(one_or_more(V)::in, int::in, int::out) is det.
+all_ucount(OneOrMoreMap, Count) :-
+    map.foldl_values(one_or_more_map.accumulate_length, OneOrMoreMap,
+        0u, Count).
+
+:- pred accumulate_length(one_or_more(V)::in, uint::in, uint::out) is det.
 
 accumulate_length(Vs, !Count) :-
-    one_or_more.length(Vs, NumVs),
+    one_or_more.ulength(Vs, NumVs),
     !:Count = !.Count + NumVs.
 
 %---------------------------------------------------------------------------%

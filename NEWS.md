@@ -125,6 +125,15 @@ Changes to the Mercury standard library
 
     - func `array_to_doc/1` (replacement: `pretty_printer.array_to_doc/1`)
 
+### Changes to the `bag` module
+
+* The following predicates and functions have been added:
+
+    - func `ucount/1`
+    - func `ucount_unique/1`
+    - func `ucount_value/2`
+    - pred `ucount_value/3`
+
 ### Changes to the `benchmarking` module
 
 * The following predicates have been added:
@@ -224,10 +233,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `diet` module
 
-* The following function and predicate have been added:
+* The following functions and predicates have been added:
 
     - func `from_sorted_list/1`
     - pred `nondet_member/2`
+    - func `ucount/1`
 
 * The following obsolete predicate has been removed:
 
@@ -295,10 +305,11 @@ Changes to the Mercury standard library
     - func `sorted_list_to_set/1`
     - pred `sorted_list_to_set/2`
 
-* The following functions and predicate have been added:
+* The following functions and predicates have been added:
 
     - func `from_list/1`
     - func `from_sorted_list/1`
+    - func `ucount/1`
     - pred `nondet_member/1`
 
 * The following obsolete predicate has been removed:
@@ -653,40 +664,24 @@ Changes to the Mercury standard library
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`
+    - func `ulength/1`
+    - pred `ulength/2`
 
 * The following function has been marked obsolete:
 
     - func `list_to_doc/1`  (replacement: `pretty_printer.list_to_doc/1`)
 
-### Changes to the `one_or_more` module
-
-* The following predicate has been added:
-
-    - pred `is_non_empty/1`
-    - pred `nondet_member/2`
-
-* The following function has been marked obsolete:
-
-    - func `one_or_more_to_doc/1`
-                        (replacement: `pretty_printer.one_or_more_to_doc/1`)
-
-### Changes to the `one_or_more_map` module
-
-* The following predicates and functions have been added:
-
-    - func `get_values_for_key/2`
-    - func `reverse_add/3`
-    - pred `reverse_add/4`
-
 ### Changes to the `map` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `is_non_empty/1`
     - pred `max_key/2`
     - pred `min_key/2`
     - pred `compose_maps/3`
     - pred `sorted_keys_match/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * We have added `cc_multi` versions of many of the higher-order predicates in
   this module
@@ -702,9 +697,39 @@ Changes to the Mercury standard library
 
 ### Changes to the `multi_map` module
 
-* The following function has been added:
+* The following predicates and functions has been added:
 
+    - func `all_ucount/1`
+    - pred `all_ucount/2`
     - func `get_values_for_key/2`
+    - func `ucount/1`
+    - pred `ucount/2`
+
+### Changes to the `one_or_more` module
+
+* The following predicates and functions have been added:
+
+    - pred `is_non_empty/1`
+    - pred `nondet_member/2`
+    - func `ulength/1`
+    - pred `ulength/2`
+
+* The following function has been marked obsolete:
+
+    - func `one_or_more_to_doc/1`
+                        (replacement: `pretty_printer.one_or_more_to_doc/1`)
+
+### Changes to the `one_or_more_map` module
+
+* The following predicates and functions have been added:
+
+    - func `all_ucount/1`
+    - pred `all_ucount/2`
+    - func `get_values_for_key/2`
+    - func `reverse_add/3`
+    - pred `reverse_add/4`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 ### Changes to the `ops` module
 
@@ -875,6 +900,7 @@ Changes to the Mercury standard library
     - pred `search_range/4`
     - func `set_to_ranges/1`
     - pred `set_to_ranges/2`
+    - func `ucount/1`
     - pred `union/3`
 
 * The following function and predicate have been marked obsolete:
@@ -890,13 +916,17 @@ Changes to the Mercury standard library
     - pred `foldr/4`
     - pred `foldr2/6`
     - pred `foldr_values/4`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 ### Changes to the `set` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `map2_fold/6`
     - pred `nondet_member/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following obsolete predicates and function have been removed:
 
@@ -906,9 +936,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_bbbtree` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
     - pred `nondet_member/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following obsolete predicates have been removed:
 
@@ -918,10 +950,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_ctree234` module
 
-* The following function and predicate have been added:
+* The following predicates and functions have been added:
 
     - func `from_sorted_list/1`
     - pred `nondet_member/2`
+    - func `ucount/1`
 
 * The following predicate has been marked obsolete:
 
@@ -934,9 +967,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_ordlist` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
     - pred `nondet_member/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following obsolete predicates have been removed:
 
@@ -945,10 +980,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_tree234` module
 
-* The following function and predicate have been added:
+* The following predicates and functions have been added:
 
     - func `from_sorted_list/1`
     - pred `nondet_member/2`
+    - func `ucount/1`
 
 * The following obsolete predicates have been removed:
 
@@ -961,9 +997,11 @@ Changes to the Mercury standard library
   predicate `member/2` so that it does not return any element of the set more
   than once.
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
-   - pred `nondet_member/2`
+    - pred `nondet_member/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following obsolete predicates have been removed:
 
@@ -975,14 +1013,15 @@ Changes to the Mercury standard library
 * The following type has had its typeclass memberships changed:
 
     - The `sparse_bitset(T)` type now requires `T` to be an instance of the
-     `uenum` typeclass, replacing the earlier requirement that it be
-     a member of the `enum` typeclass.
+      `uenum` typeclass, replacing the earlier requirement that it be
+      a member of the `enum` typeclass.
 
-* The following functions and predicate have been added:
+* The following predicates and functions have been added:
 
     - func `from_list/1`
     - func `from_sorted_list/`
     - pred `nondet_member/2`
+    - func `ucount/1`
 
 * The following obsolete predicate has been removed:
 
@@ -1303,13 +1342,14 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree_bitset` module
 
-* The following functions and predicates have been added:
+* The following predicates and functions have been added:
 
     - func `from_list/1`
     - func `from_sorted_list/1`
     - pred `nondet_member/2`
     - pred `remove_leq/3`
     - pred `remove_gt/3`
+    - func `ucount/1`
 
 * The documentation of the following predicates and functions have been
   clarified:
@@ -1319,12 +1359,14 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree234` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `is_non_empty/1`
     - pred `max_key/2`
     - pred `min_key/2`
     - pred `sorted_keys_match/2`
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following function has been marked obsolete:
 
@@ -1335,6 +1377,11 @@ Changes to the Mercury standard library
   this module
 
 ### Changes to the `tree_bitset` module
+
+* The following predicates and functions have been added:
+
+    - func `ucount/1`
+    - pred `ucount/2`
 
 * The following obsolete predicate has been removed:
 

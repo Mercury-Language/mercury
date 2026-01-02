@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017-2019, 2022-2025 The Mercury team.
+% Copyright (C) 2017-2019, 2022-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -15,12 +15,12 @@
 % Each contiguous block of integers in a set is stored as a range that
 % specifies the bounds of the block, and these ranges are kept in a list-like
 % structure. Elements of these sets must be in (min_int + 1) .. max_int
-% (inclusive). The value min_int cannot be included in any set.
+% (both inclusive). The value min_int cannot be included in any set.
 % Predicates and functions in this module that attempt to construct sets
 % containing min_int will throw an exception.
 %
 % This module provides predicates and functions that operate on either the
-% individual elements in a set or on the pairs of integers that define the
+% individual elements in a set, or on the pairs of integers that define the
 % bounds of the blocks used in the representation. Predicates and functions
 % that do the latter have names containing "range" (e.g. range_foldr,
 % nondet_range_member).
@@ -273,6 +273,7 @@
     % (as opposed to the number of ranges).
     %
 :- func count(ranges) = int.
+:- func ucount(ranges) = uint.
 
     % A synonym for count/1.
     % NOTE_TO_IMPLEMENTORS XXX mark this obsolete and eventually remove it.
@@ -542,6 +543,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1110,14 +1112,18 @@ to_sorted_list_2(Lo, Hi, List) =
 :- pragma foreign_export("Java", ranges.count(in) = out, "count").
 
 count(Set) = N :-
-    count_acc(Set, 0, N).
+    ucount_acc(Set, 0u, UN),
+    N = uint.cast_to_int(UN).
 
-:- pred count_acc(ranges::in, int::in, int::out) is det.
+ucount(Set) = N :-
+    ucount_acc(Set, 0u, N).
 
-count_acc(nil, !N).
-count_acc(range(Lo, Hi, Rest), !N) :-
-    !:N = (Hi - Lo) + !.N,
-    count_acc(Rest, !N).
+:- pred ucount_acc(ranges::in, uint::in, uint::out) is det.
+
+ucount_acc(nil, !N).
+ucount_acc(range(Lo, Hi, Rest), !N) :-
+    !:N = !.N + uint.cast_from_int(Hi - Lo),
+    ucount_acc(Rest, !N).
 
 :- pragma foreign_export("C",    ranges.size(in) = out, "ML_ranges_size").
 :- pragma foreign_export("Java", ranges.size(in) = out, "size").

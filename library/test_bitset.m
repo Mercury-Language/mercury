@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -181,6 +181,7 @@
 %
 
 :- func count(test_bitset(T)) = int <= uenum(T).
+:- func ucount(test_bitset(T)) = uint <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -899,6 +900,18 @@ count(tb(SetA, SetB, SetC, SetD, SetS)) = Cnt :-
     CntC = fat_sparse_bitset.count(SetC),
     CntD = fatter_sparse_bitset.count(SetD),
     CntS = set_ordlist.count(SetS),
+    ( if CntA = CntS, CntB = CntS, CntC = CntS, CntD = CntS then
+        Cnt = CntS
+    else
+        unexpected($pred, "failed")
+    ).
+
+ucount(tb(SetA, SetB, SetC, SetD, SetS)) = Cnt :-
+    CntA = tree_bitset.ucount(SetA),
+    CntB = sparse_bitset.ucount(SetB),
+    CntC = fat_sparse_bitset.ucount(SetC),
+    CntD = fatter_sparse_bitset.ucount(SetD),
+    CntS = set_ordlist.ucount(SetS),
     ( if CntA = CntS, CntB = CntS, CntC = CntS, CntD = CntS then
         Cnt = CntS
     else

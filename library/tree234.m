@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997,1999-2000,2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -192,6 +192,8 @@
     %
 :- func count(tree234(K, V)) = int.
 :- pred count(tree234(K, V)::in, int::out) is det.
+:- func ucount(tree234(K, V)) = uint.
+:- pred ucount(tree234(K, V)::in, uint::out) is det.
 
     % Given a tree234, return an association list of all the keys and values
     % in the tree. The association list that is returned is sorted on the keys.
@@ -931,6 +933,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module uint.
 
 :- inst two(K, V, T) for tree234/2
     --->    two(K, V, T, T).
@@ -3781,35 +3784,41 @@ sorted_keys_match_in_tree(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3),
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-count(T) = N :-
-    tree234.acc_count(T, 0, N).
+count(T) = uint.cast_to_int(N) :-
+    ucount_acc(T, 0u, N).
 
-count(T, N) :-
-    tree234.acc_count(T, 0, N).
+count(T, uint.cast_to_int(N)) :-
+    ucount_acc(T, 0u, N).
 
-:- pred acc_count(tree234(K, V)::in, int::in, int::out) is det.
+ucount(T) = N :-
+    ucount_acc(T, 0u, N).
 
-acc_count(T, !N) :-
+ucount(T, N) :-
+    ucount_acc(T, 0u, N).
+
+:- pred ucount_acc(tree234(K, V)::in, uint::in, uint::out) is det.
+
+ucount_acc(T, !N) :-
     (
         T = empty
     ;
         T = two(_, _, T0, T1),
-        !:N = !.N + 1,
-        acc_count(T0, !N),
-        acc_count(T1, !N)
+        !:N = !.N + 1u,
+        ucount_acc(T0, !N),
+        ucount_acc(T1, !N)
     ;
         T = three(_, _, _, _, T0, T1, T2),
-        !:N = !.N + 2,
-        acc_count(T0, !N),
-        acc_count(T1, !N),
-        acc_count(T2, !N)
+        !:N = !.N + 2u,
+        ucount_acc(T0, !N),
+        ucount_acc(T1, !N),
+        ucount_acc(T2, !N)
     ;
         T = four(_, _, _, _, _, _, T0, T1, T2, T3),
-        !:N = !.N + 3,
-        acc_count(T0, !N),
-        acc_count(T1, !N),
-        acc_count(T2, !N),
-        acc_count(T3, !N)
+        !:N = !.N + 3u,
+        ucount_acc(T0, !N),
+        ucount_acc(T1, !N),
+        ucount_acc(T2, !N),
+        ucount_acc(T3, !N)
     ).
 
 %---------------------------------------------------------------------------%

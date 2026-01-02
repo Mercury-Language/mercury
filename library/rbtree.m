@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2000, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021, 2023-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -169,6 +169,8 @@
     %
 :- func count(rbtree(K, V)) = int.
 :- pred count(rbtree(K, V)::in, int::out) is det.
+:- func ucount(rbtree(K, V)) = uint.
+:- pred ucount(rbtree(K, V)::in, uint::out) is det.
 
 :- func assoc_list_to_rbtree(assoc_list(K, V)) = rbtree(K, V).
 :- pred assoc_list_to_rbtree(assoc_list(K, V)::in, rbtree(K, V)::out) is det.
@@ -290,10 +292,10 @@
 :- implementation.
 
 :- import_module bool.
-:- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1054,18 +1056,26 @@ values(black(_K0, V0, L, R), List) :-
 
 %---------------------------------------------------------------------------%
 
-count(RBT) = N :-
-    rbtree.count(RBT, N).
+count(RBT) = IN :-
+    rbtree.ucount(RBT, N),
+    IN = uint.cast_to_int(N).
 
-count(empty, 0).
-count(red(_K, _V, L, R), N) :-
-    rbtree.count(L, NO),
-    rbtree.count(R, N1),
-    N = 1 + NO + N1.
-count(black(_K, _V, L, R), N) :-
-    rbtree.count(L, NO),
-    rbtree.count(R, N1),
-    N = 1 + NO + N1.
+count(RBT, IN) :-
+    rbtree.ucount(RBT, N),
+    IN = uint.cast_to_int(N).
+
+ucount(RBT) = N :-
+    rbtree.ucount(RBT, N).
+
+ucount(empty, 0u).
+ucount(red(_K, _V, L, R), N) :-
+    rbtree.ucount(L, NO),
+    rbtree.ucount(R, N1),
+    N = 1u + NO + N1.
+ucount(black(_K, _V, L, R), N) :-
+    rbtree.ucount(L, NO),
+    rbtree.ucount(R, N1),
+    N = 1u + NO + N1.
 
 %---------------------------------------------------------------------------%
 

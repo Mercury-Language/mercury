@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -316,6 +316,8 @@
     %
 :- func count(set_bbbtree(T)) = int.
 :- pred count(set_bbbtree(T)::in, int::out) is det.
+:- func ucount(set_bbbtree(T)) = uint.
+:- pred ucount(set_bbbtree(T)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -460,6 +462,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module uint.
 
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.
@@ -1381,6 +1384,13 @@ count(Set) = Count :-
 
 count(empty, 0).
 count(tree(_V, N, _L, _R), N).
+
+ucount(Set) = Count :-
+    ucount(Set, Count).
+
+ucount(empty, 0u).
+ucount(tree(_V, IN, _L, _R), N) :-
+    N = uint.cast_from_int(IN).
 
 %---------------------------------------------------------------------------%
 

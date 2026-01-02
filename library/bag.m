@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -56,6 +56,8 @@
     %
 :- func count_value(bag(T), T) = int.
 :- pred count_value(bag(T)::in, T::in, int::out) is det.
+:- func ucount_value(bag(T), T) = uint.
+:- pred ucount_value(bag(T)::in, T::in, uint::out) is det.
 
     % member(X, Bag):
     %
@@ -358,11 +360,13 @@
     % If an element X is present N times, count it N times.
     %
 :- func count(bag(T)) = int.
+:- func ucount(bag(T)) = uint.
 
     % Return the number of unique values in a bag.
     % Even if an element X is present N times, count it just one.
     %
 :- func count_unique(bag(T)) = int.
+:- func ucount_unique(bag(T)) = uint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -393,7 +397,27 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
+    % We should use uints instead of ints here to represent the counts.
+    % Unfortunately, that has two unpleasant side effects:
+    %
+    % - the conversion of bags to assoc_lists requires an extra cast, and
+    % - so does the implementation of the fold operations.
+    %
+    % Inserting the casts into both of those operations would require one of
+    %
+    % - an extra pass over the data to perform those casts;
+    %
+    % - duplicating the external predicates we now call to perform those
+    %   operations, and adding the casts into those copies; or
+    %
+    % - changing the interface of those operations to operate on uints,
+    %   not on ints.
+    %
+    % XXX There are also some other niggles, such as int.min and int.max
+    % having both predicate and function forms, while uint.min and uint.max
+    % have only function forms.
 :- type bag(T)
     --->    bag(map(T, int)).
 
@@ -430,6 +454,16 @@ count_value(bag(Map), X, N) :-
         N = NPrime
     else
         N = 0
+    ).
+
+ucount_value(Bag, X) = N :-
+    bag.ucount_value(Bag, X, N).
+
+ucount_value(bag(Map), X, N) :-
+    ( if map.search(Map, X, IN) then
+        N = uint.cast_from_int(IN)
+    else
+        N = 0u
     ).
 
 %---------------------%
@@ -1034,7 +1068,6 @@ intersect_loop(AXNs, BXNs, !RevAuBXNs) :-
     ;
         AXNs = [],
         BXNs = [_HeadBXN | TailBXNs],
-        % ZZZ modes
         bag.intersect_loop(AXNs, TailBXNs, !RevAuBXNs)
     ;
         AXNs = [_HeadAXN | TailAXNs],
@@ -1239,11 +1272,23 @@ foldl2(Pred, bag(Map), !Acc1, !Acc2) :-
 
 %---------------------------------------------------------------------------%
 
-count(bag(Map)) = list.foldl(int.plus, map.values(Map), 0).
+count(bag(Map)) = IN :-
+    map.foldl_values(add_int_to_uint, Map, 0u, N),
+    IN = uint.cast_to_int(N).
+
+ucount(bag(Map)) = N :-
+    map.foldl_values(add_int_to_uint, Map, 0u, N).
+
+:- pred add_int_to_uint(int::in, uint::in, uint::out) is det.
+
+add_int_to_uint(I, UI0, UI) :-
+    UI = UI0 + uint.cast_from_int(I).
 
 %---------------------%
 
 count_unique(bag(Map)) = map.count(Map).
+
+ucount_unique(bag(Map)) = map.ucount(Map).
 
 %---------------------------------------------------------------------------%
 :- end_module bag.

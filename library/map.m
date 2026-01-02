@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -605,6 +605,8 @@
     %
 :- func count(map(K, V)) = int.
 :- pred count(map(K, V)::in, int::out) is det.
+:- func ucount(map(K, V)) = uint.
+:- pred ucount(map(K, V)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -2282,11 +2284,17 @@ compose_maps_loop(MapBC, [A - B | ABs], !RevAssocListAC) :-
 
 %---------------------------------------------------------------------------%
 
-count(M) = N :-
-    map.count(M, N).
+count(Map) = Count :-
+    tree234.count(Map, Count).
 
 count(Map, Count) :-
     tree234.count(Map, Count).
+
+ucount(Map) = Count :-
+    tree234.ucount(Map, Count).
+
+ucount(Map, Count) :-
+    tree234.ucount(Map, Count).
 
 %---------------------------------------------------------------------------%
 

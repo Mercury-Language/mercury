@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012-2014 YesLogic Pty. Ltd.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -312,6 +312,7 @@
     % count(Set) returns the number of elements in Set.
     %
 :- func count(diet(T)) = int <= enum(T).
+:- func ucount(diet(T)) = uint <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -479,6 +480,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1574,20 +1576,35 @@ cons_interval(X, Y, L, [{X, Y} | L]).
 %---------------------------------------------------------------------------%
 
 count(T) = Count :-
-    count(T, 0, Count).
+    count_acc(T, 0, Count).
 
-:- pred count(diet(T)::in, int::in, int::out) is det <= enum(T).
+:- pred count_acc(diet(T)::in, int::in, int::out) is det <= enum(T).
 
-count(T, Acc0, Acc) :-
+count_acc(T, Acc0, Acc) :-
     (
         T = empty,
         Acc = Acc0
     ;
         T = node({X, Y}, _, L, R),
-
         Acc1 = Acc0 + (to_int(Y) - to_int(X)) + 1,
-        count(L, Acc1, Acc2),
-        count(R, Acc2, Acc)
+        count_acc(L, Acc1, Acc2),
+        count_acc(R, Acc2, Acc)
+    ).
+
+ucount(T) = Count :-
+    ucount_acc(T, 0u, Count).
+
+:- pred ucount_acc(diet(T)::in, uint::in, uint::out) is det <= uenum(T).
+
+ucount_acc(T, Acc0, Acc) :-
+    (
+        T = empty,
+        Acc = Acc0
+    ;
+        T = node({X, Y}, _, L, R),
+        Acc1 = Acc0 + (to_uint(Y) - to_uint(X)) + 1u,
+        ucount_acc(L, Acc1, Acc2),
+        ucount_acc(R, Acc2, Acc)
     ).
 
 %---------------------------------------------------------------------------%

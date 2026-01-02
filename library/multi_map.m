@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997, 2000, 2002-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -319,11 +319,15 @@
     %
 :- func count(multi_map(K, V)) = int.
 :- pred count(multi_map(K, V)::in, int::out) is det.
+:- func ucount(multi_map(K, V)) = uint.
+:- pred ucount(multi_map(K, V)::in, uint::out) is det.
 
     % Count the number of key-value pairs in the multi_map.
     %
 :- func all_count(multi_map(K, V)) = int.
 :- pred all_count(multi_map(K, V)::in, int::out) is det.
+:- func all_ucount(multi_map(K, V)) = uint.
+:- pred all_ucount(multi_map(K, V)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -331,9 +335,9 @@
 :- implementation.
 
 :- import_module cord.
-:- import_module int.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -666,22 +670,36 @@ values(MultiMap, Values) :-
 
 %---------------------------------------------------------------------------%
 
-count(MultiMap0) = Count :-
-    multi_map.count(MultiMap0, Count).
+count(MultiMap) = Count :-
+    map.count(MultiMap, Count).
 
 count(MultiMap, Count) :-
     map.count(MultiMap, Count).
 
-all_count(MultiMap0) = Count :-
-    multi_map.all_count(MultiMap0, Count).
+ucount(MultiMap) = Count :-
+    map.ucount(MultiMap, Count).
 
-all_count(MultiMap, Count) :-
-    map.foldl_values(multi_map.accumulate_length, MultiMap, 0, Count).
+ucount(MultiMap, Count) :-
+    map.ucount(MultiMap, Count).
 
-:- pred accumulate_length(list(V)::in, int::in, int::out) is det.
+all_count(MultiMap) = ICount :-
+    multi_map.all_ucount(MultiMap, Count),
+    ICount = uint.cast_to_int(Count).
+
+all_count(MultiMap, ICount) :-
+    multi_map.all_ucount(MultiMap, Count),
+    ICount = uint.cast_to_int(Count).
+
+all_ucount(MultiMap) = Count :-
+    multi_map.all_ucount(MultiMap, Count).
+
+all_ucount(MultiMap, Count) :-
+    map.foldl_values(multi_map.accumulate_length, MultiMap, 0u, Count).
+
+:- pred accumulate_length(list(V)::in, uint::in, uint::out) is det.
 
 accumulate_length(Vs, !Count) :-
-    list.length(Vs, NVs),
+    list.ulength(Vs, NVs),
     !:Count = !.Count + NVs.
 
 %---------------------------------------------------------------------------%

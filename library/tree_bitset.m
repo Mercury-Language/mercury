@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -344,6 +344,7 @@
     % Takes O(card(Set)) time.
     %
 :- func count(tree_bitset(T)) = int <= uenum(T).
+:- func ucount(tree_bitset(T)) = uint <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -3709,7 +3710,9 @@ to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
 
 %---------------------------------------------------------------------------%
 
-count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
+count(Set) = tree_bitset.foldl((func(_, Acc) = Acc + 1), Set, 0).
+
+ucount(Set) = tree_bitset.foldl((func(_, Acc) = Acc + 1u), Set, 0u).
 
 %---------------------------------------------------------------------------%
 

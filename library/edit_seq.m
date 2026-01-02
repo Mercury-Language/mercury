@@ -595,12 +595,6 @@ scan_joined_context(MaxUnchanged, Diffs, LeftOverDiffs,
         LeftOverDiffs = Diffs
     ).
 
-:- pred ulength(list(T)::in, uint::out) is det.
-
-ulength(List, Len) :-
-    list.length(List, IntLen),
-    Len = uint.cast_from_int(IntLen).
-
 %---------------------------------------------------------------------------%
 :- end_module edit_seq.
 %---------------------------------------------------------------------------%

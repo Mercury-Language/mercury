@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -321,6 +321,7 @@
     % count(Set, Count) is true if-and-only-if Set has Count elements.
     %
 :- func count(set_tree234(T)) = int.
+:- func ucount(set_tree234(T)) = uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -580,6 +581,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.  % for var/1.
+:- import_module uint.
 
 :- pragma type_spec(func(sorted_list_to_set/1),         T = var(_)).
 :- pragma type_spec(pred(sorted_list_to_set/2),         T = var(_)).
@@ -2965,22 +2967,26 @@ to_set(Tree) =
 
 %---------------------------------------------------------------------------%
 
-count(empty) = 0.
-count(two(_, T0, T1)) = N :-
-    N0 = count(T0),
-    N1 = count(T1),
-    N = 1 + N0 + N1.
-count(three(_, _, T0, T1, T2)) = N :-
-    N0 = count(T0),
-    N1 = count(T1),
-    N2 = count(T2),
-    N = 2 + N0 + N1 + N2.
-count(four(_, _, _, T0, T1, T2, T3)) = N :-
-    N0 = count(T0),
-    N1 = count(T1),
-    N2 = count(T2),
-    N3 = count(T3),
-    N = 3 + N0 + N1 + N2 + N3.
+count(T) = IN :-
+    N = ucount(T),
+    IN = uint.cast_to_int(N).
+
+ucount(empty) = 0u.
+ucount(two(_, T0, T1)) = N :-
+    N0 = ucount(T0),
+    N1 = ucount(T1),
+    N = 1u + N0 + N1.
+ucount(three(_, _, T0, T1, T2)) = N :-
+    N0 = ucount(T0),
+    N1 = ucount(T1),
+    N2 = ucount(T2),
+    N = 2u + N0 + N1 + N2.
+ucount(four(_, _, _, T0, T1, T2, T3)) = N :-
+    N0 = ucount(T0),
+    N1 = ucount(T1),
+    N2 = ucount(T2),
+    N3 = ucount(T3),
+    N = 3u + N0 + N1 + N2 + N3.
 
 %---------------------------------------------------------------------------%
 

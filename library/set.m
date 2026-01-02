@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -11,7 +11,32 @@
 % Stability: high.
 %
 % This module is one of several that implement the `set' abstract data type.
-% This module represents sets using ordered lists without duplicates.
+% These modules offer roughly the same set of operations on sets, but
+% they differ in how they represent those sets. As a result, both the
+% asymptotic complexities and the constant factors of their operations
+% differ. None of these modules has better performance on all operations
+% than all other modules, so there is no module that is "always best".
+% Instead, different modules suit different workloads.
+%
+% Some modules are general purpose, in the sense that their sets
+% can store values of any type. These modules are
+%
+% - set_unordlist           unsorted lists with possible duplicates
+% - set_ordlist             sorted lists without any duplicates
+% - set_bbbtree             bounded-balance binary trees
+% - set_ctree234            234-trees with counts
+% - set_tree234             234-trees without counts
+%
+% Some of modules are not general purpose, because they can store only
+% integers, or values that can be transformed into integers.
+% These modules are
+%
+% - diet                    discrete interval encoding trees
+% - ranges                  a list of arbitrary ranges
+% - sparse_bitset           a list of words, each word being a bitmap
+% - fat_sparse_bitset       a fat list of words, each word being a bitmap
+% - fatter_sparse_bitset    a fat list of word pairs, each pair being a bitmap
+% - tree_bitset             a tree of words, each word being a bitmap
 %
 % This module just calls the equivalent predicates in set_ordlist.
 %
@@ -311,6 +336,8 @@
     %
 :- func count(set(T)) = int.
 :- pred count(set(T)::in, int::out) is det.
+:- func ucount(set(T)) = uint.
+:- pred ucount(set(T)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -821,11 +848,17 @@ to_sorted_list(Set, List) :-
 
 %---------------------------------------------------------------------------%
 
-count(S) = N :-
-    set.count(S, N).
+count(Set) = N :-
+    set_ordlist.count(Set, N).
 
-count(Set, Count) :-
-    set_ordlist.count(Set, Count).
+count(Set, N) :-
+    set_ordlist.count(Set, N).
+
+ucount(Set) = N :-
+    set_ordlist.ucount(Set, N).
+
+ucount(Set, N) :-
+    set_ordlist.ucount(Set, N).
 
 %---------------------------------------------------------------------------%
 

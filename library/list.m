@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -181,6 +181,11 @@
 :- mode length(in, out) is det.
 % NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle this mode.
 % NOTE_TO_IMPLEMENTORS :- mode length(input_list_skel, out) is det.
+
+    % Does the same job as length, but returns the result as an unsigned int.
+    %
+:- func ulength(list(T)) = uint.
+:- pred ulength(list(_T)::in, uint::out) is det.
 
     % same_length(ListA, ListB):
     %
@@ -2461,6 +2466,7 @@
 :- import_module require.
 :- import_module set_tree234.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -2535,29 +2541,35 @@ remove_suffix(List, Suffix, Prefix) :-
 % in pure Mercury that works in both directions unless you make it semidet
 % rather than det.
 
-length(Xs) = N :-
-    list.length(Xs, N).
+length(L) = uint.cast_to_int(N) :-
+    ulength_acc(L, 0u, N).
 
-length(L, N) :-
-    list.length_acc(L, 0, N).
+length(L, uint.cast_to_int(N)) :-
+    ulength_acc(L, 0u, N).
 
-:- pred length_acc(list(T), int, int).
-:- mode length_acc(in, in, out) is det.
+ulength(L) = N :-
+    ulength_acc(L, 0u, N).
 
-length_acc([], N, N).
-length_acc([_ | L1], N0, N) :-
-    N1 = N0 + 1,
-    list.length_acc(L1, N1, N).
+ulength(L, N) :-
+    ulength_acc(L, 0u, N).
+
+:- pred ulength_acc(list(T), uint, uint).
+:- mode ulength_acc(in, in, out) is det.
+
+ulength_acc([], N, N).
+ulength_acc([_ | Tail], N0, N) :-
+    N1 = N0 + 1u,
+    ulength_acc(Tail, N1, N).
 
 %---------------------------------------------------------------------------%
 
 same_length([], []).
-same_length([_ | L1], [_ | L2]) :-
-    list.same_length(L1, L2).
+same_length([_ | TailA], [_ | TailB]) :-
+    list.same_length(TailA, TailB).
 
 same_length3([], [], []).
-same_length3([_ | L1], [_ | L2], [_ | L3]) :-
-    list.same_length3(L1, L2, L3).
+same_length3([_ | TailA], [_ | TailB], [_ | TailC]) :-
+    list.same_length3(TailA, TailB, TailC).
 
 %---------------------------------------------------------------------------%
 

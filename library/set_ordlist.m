@@ -1,8 +1,9 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2022, 2024-2025 The Mercury team.
+% Copyright (C) 1996-1997,1999-2002 The University of Melbourne.
+% Copyright (C) 2004-2006, 2008-2012 The University of Melbourne.
+% Copyright (C) 2014-2015, 2018-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -315,6 +316,8 @@
     %
 :- func count(set_ordlist(T)) = int.
 :- pred count(set_ordlist(T)::in, int::out) is det.
+:- func ucount(set_ordlist(T)) = uint.
+:- pred ucount(set_ordlist(T)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -1002,11 +1005,17 @@ to_sorted_list(sol(List), List).
 
 %---------------------------------------------------------------------------%
 
-count(S) = N :-
-    count(S, N).
+count(sol(L)) = N :-
+    list.length(L, N).
 
-count(sol(Set), Count) :-
-    list.length(Set, Count).
+count(sol(L), N) :-
+    list.length(L, N).
+
+ucount(sol(L)) = N :-
+    list.ulength(L, N).
+
+ucount(sol(L), N) :-
+    list.ulength(L, N).
 
 %---------------------------------------------------------------------------%
 

@@ -1,8 +1,9 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 1995-1997,1999-2002, The University of Melbourne.
+% Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
+% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -298,6 +299,8 @@
 
 :- func count(set_unordlist(T)) = int.
 :- pred count(set_unordlist(T)::in, int::out) is det.
+:- func ucount(set_unordlist(T)) = uint.
+:- pred ucount(set_unordlist(T)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -710,9 +713,16 @@ to_sorted_list(sul(Set), SortedList) :-
 count(Set) = Count :-
     set_unordlist.count(Set, Count).
 
-count(sul(Set), Count) :-
-    list.remove_dups(Set, Elems),
-    list.length(Elems, Count).
+count(sul(List), Count) :-
+    list.remove_dups(List, NoDupList),
+    list.length(NoDupList, Count).
+
+ucount(Set) = Count :-
+    set_unordlist.ucount(Set, Count).
+
+ucount(sul(List), Count) :-
+    list.remove_dups(List, NoDupList),
+    list.ulength(NoDupList, Count).
 
 %---------------------------------------------------------------------------%
 
