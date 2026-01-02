@@ -29,13 +29,11 @@ The Mercury build process requires the use of a number of Unix tools such as
 `sh` and `make`. This means that a Unix emulation environment is required to
 build Mercury on Windows.
 
-Three such environments are supported:
+Two such environments are supported:
 
 1. [Cygwin](https://www.cygwin.com). See [README.Cygwin.md](README.Cygwin.md).
 
-2. [MSYS](https://osdn.net/projects/mingw/). See [README.MinGW](README.MinGW).
-
-3. [MSYS2](https://www.msys2.org). See [README.MinGW](README.MinGW).
+2. [MSYS2](https://www.msys2.org). See [README.MSYS2.md](README.MSYS2.md).
 
 Mercury can also be built using the MS Visual C compiler (MSVC), although one
 of the above environments is still required for the build process.
