@@ -685,17 +685,15 @@ insert_duplicate_into_node(K, V, Tree0, Tree) :-
         % Work out which side of the rbtree to insert.
         compare(Result, K, K0),
         (
-            Result = (<),
+            ( Result = (<)
+            ; Result = (=)
+            ),
             insert_duplicate_into_node(K, V, L0, L),
             Tree = red(K0, V0, L, R0)
         ;
             Result = (>),
             insert_duplicate_into_node(K, V, R0, R),
             Tree = red(K0, V0, L0, R)
-        ;
-            Result = (=),
-            insert_duplicate_into_node(K, V, L0, L),
-            Tree = red(K0, V0, L, R0)
         )
     ;
         Tree0 = black(K0, V0, L0, R0),
@@ -972,16 +970,14 @@ delete_from_node(K, MaybeV, Tree0, Tree) :-
         compare(Result, K, K0),
         (
             Result = (=),
+            % If we cannot remove the largest or smallest from a tree,
+            % that tree must be empty.
             ( if rbtree.remove_largest(NewK, NewV, L0, L) then
                 Tree = red(NewK, NewV, L, R0)
+            else if rbtree.remove_smallest(NewK, NewV, R0, R) then
+                Tree = red(NewK, NewV, empty, R)
             else
-                % L0 must be empty.
-                ( if rbtree.remove_smallest(NewK, NewV, R0, R) then
-                    Tree = red(NewK, NewV, empty, R)
-                else
-                    % R0 must be empty
-                    Tree = empty
-                )
+                Tree = empty
             ),
             MaybeV = yes(V0)
         ;
@@ -998,16 +994,14 @@ delete_from_node(K, MaybeV, Tree0, Tree) :-
         compare(Result, K, K0),
         (
             Result = (=),
+            % If we cannot remove the largest or smallest from a tree,
+            % that tree must be empty.
             ( if rbtree.remove_largest(NewK, NewV, L0, L) then
                 Tree = black(NewK, NewV, L, R0)
+            else if rbtree.remove_smallest(NewK, NewV, R0, R) then
+                Tree = black(NewK, NewV, empty, R)
             else
-                % L0 must be empty
-                ( if rbtree.remove_smallest(NewK, NewV, R0, R) then
-                    Tree = black(NewK, NewV, empty, R)
-                else
-                    % R0 must be empty
-                    Tree = empty
-                )
+                Tree = empty
             ),
             MaybeV = yes(V0)
         ;
