@@ -270,7 +270,6 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -932,14 +931,17 @@ delete(!.RBT, K) = !:RBT :-
     rbtree.delete(K, !RBT).
 
 delete(K, !Tree) :-
-    rbtree.delete_from_node(K, no, _, !Tree).
+    rbtree.delete_from_node(K, _MaybeValue, !Tree).
 
-    % delete_from_node(Key, MustRemove, MaybeValue, Tree0, Tree):
+    % delete_from_node(Key, MaybeValue, Tree0, Tree):
     %
     % Search the tree Tree0, looking for a node with key Key to delete.
-    % If MustRemove is `yes' and we don't find the key, fail.
-    % If we find the key, return it in MaybeValue and delete the node.
-    % Tree is the resulting tree, whether a node was removed or not.
+    %
+    % If we find the key, return it in MaybeValue and delete the node,
+    % returning the result as Tree.
+    %
+    % If we do not find the key, return 'no' as MaybeValue, and return Tree0
+    % as Tree.
     %
     % Deletion algorithm:
     %
@@ -956,15 +958,13 @@ delete(K, !Tree) :-
     %
     % The algorithm complexity is O(log N).
     %
-:- pred delete_from_node(K, bool, maybe(V), rbtree(K, V), rbtree(K, V)).
-:- mode delete_from_node(in, in, out, in, out) is semidet.
-:- mode delete_from_node(in, in(bound(no)), out, in, out) is det.
+:- pred delete_from_node(K::in, maybe(V)::out,
+    rbtree(K, V)::in, rbtree(K, V)::out) is det.
 
-delete_from_node(K, MustRemove, MaybeV, Tree0, Tree) :-
+delete_from_node(K, MaybeV, Tree0, Tree) :-
     require_complete_switch [Tree0]
     (
         Tree0 = empty,
-        MustRemove = no,
         MaybeV = no,
         Tree = empty
     ;
@@ -986,11 +986,11 @@ delete_from_node(K, MustRemove, MaybeV, Tree0, Tree) :-
             MaybeV = yes(V0)
         ;
             Result = (<),
-            delete_from_node(K, MustRemove, MaybeV, L0, L),
+            delete_from_node(K, MaybeV, L0, L),
             Tree = red(K0, V0, L, R0)
         ;
             Result = (>),
-            delete_from_node(K, MustRemove, MaybeV, R0, R),
+            delete_from_node(K, MaybeV, R0, R),
             Tree = red(K0, V0, L0, R)
         )
     ;
@@ -1012,11 +1012,11 @@ delete_from_node(K, MustRemove, MaybeV, Tree0, Tree) :-
             MaybeV = yes(V0)
         ;
             Result = (<),
-            delete_from_node(K, MustRemove, MaybeV, L0, L),
+            delete_from_node(K, MaybeV, L0, L),
             Tree = black(K0, V0, L, R0)
         ;
             Result = (>),
-            delete_from_node(K, MustRemove, MaybeV, R0, R),
+            delete_from_node(K, MaybeV, R0, R),
             Tree = black(K0, V0, L0, R)
         )
     ).
@@ -1024,7 +1024,7 @@ delete_from_node(K, MustRemove, MaybeV, Tree0, Tree) :-
 %---------------------------------------------------------------------------%
 
 remove(K, V, !Tree) :-
-    rbtree.delete_from_node(K, yes, MaybeV, !Tree),
+    rbtree.delete_from_node(K, MaybeV, !Tree),
     MaybeV = yes(V).
 
 remove_smallest(SmallestK, SmallestV, Tree0, Tree) :-
