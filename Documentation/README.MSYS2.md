@@ -4,7 +4,7 @@ Mercury on MSYS2
 This file documents the port of Mercury to Windows using the environments
 provided by the [MSYS2](https://www.msys2.org) platform.
 
-Note that MSYS2 is separate from the older MSYS  / MinGW project.
+Note that MSYS2 is separate from the older MSYS / MinGW project.
 The latter appears to be dead, and we do not recommend its use with Mercury.
 
 Contents
@@ -13,6 +13,7 @@ Contents
 * Overview
 * Installing Mercury with MSYS2
 * Using Mercury in the MSYS2 shell
+* Using Mercury in the Command Prompt
 * Missing `libwinpthread-1.dll`
 
 Overview
@@ -74,8 +75,8 @@ steps:
    * `diffutils`
 
    The `gcc` package must be the one provided by the selected environment (e.g.
-   `mingw-w64-ucrt-x86_64-gcc` for `UCRT64`  or `mingw-w64-x86_64_gcc` for
-   `MING64). Be careful not to use the `gcc` package for the `MSYS` environment
+   `mingw-w64-ucrt-x86_64-gcc` for `UCRT64`  or `mingw-w64-x86_64-gcc` for
+   `MINGW64`). Be careful not to use the `gcc` package for the `MSYS` environment
    as that will *not* work.
 
    In addition, to build the documentation you will need the following
@@ -143,11 +144,14 @@ steps:
    prefix as a _full_ Windows path with a drive letter. In the installation
    prefix, you _must_ use `/` as a path separator instead of `\`.
 
-   Do _NOT_ set the installation prefix to be a Unix-style path
-   (e.g. `/c/mercury`), because the MSYS2 shell and the generated executables
-   will each interpret that differently and the resulting Mercury installation
-   will be broken. Specifically, MSYS2 performs path translation for Unix-style
-   paths, while the generated Windows executables do not.
+   Do _NOT_ set the installation prefix to be a Unix-style path, for example:
+
+      ./configure --prefix=/c/mercury
+
+   This will *not* work because the MSYS2 shell and the generated executables
+   will each interpret it differently. Specifically, MSYS2 performs path
+   translation for Unix-style paths, while the generated Windows executables do
+   not. The resulting Mercury installation will be broken.
 
    Other options to the `configure` script behave as they do on other systems.
 
@@ -165,7 +169,8 @@ built in (i.e. do not use a Mercury compiler built using the `MINGW64` in the
 Add the Mercury `bin` directory to the MSYS2 `PATH` using a Unix-style path.
 For example, if Mercury is installed in "C:\mercury", then you would add
 `/c/mercury/bin` to the MSYS2 `PATH`. You cannot add a Windows-style path with
-a drive letter to the MSYS2 `PATH` since `:` is used as the path separator.
+a drive letter to the MSYS2 `PATH` since `:` is used as the path separator in
+MSYS2.
 
 After the Mercury `bin` has been added to the MSYS2 `PATH`, then you should be
 able to use the compiler.
@@ -174,6 +179,43 @@ Note that while `mmake` does work in the MSYS2 shell, it is quite slow.
 This is largely due to the MSYS2 port of GNU `cp` being relatively slow on
 Windows filesystems. We suggest using `mmc --make`, which does not use `cp`
 by default, when possible.
+
+Using Mercury in the Command Prompt
+-----------------------------------
+
+This section describes how to use a Mercury compiler that was installed using
+the instructions above from the Windows Command Prompt (i.e. `cmd.exe`).
+
+Ensure that the following directories are present in the Windows `PATH`:
+
+1. The `bin` directory of the MSYS2 environment you used to build Mercury.
+   For the `UCRT64` environment this will be `C:\msys64\ucrt64\bin`.
+   For the `MINGW64` environment this will be `C:\msys64\mingw64\bin`.
+
+2. The directory containing the Java toolchain (`javac`, `jar` and `java`),
+   if the `java` grade was installed.
+
+3. The directory containing the C# toolchain, if the `csharp` grade was
+   installed.
+
+4. The Mercury `bin` directory. For example, if Mercury is installed in
+   `C:\mercury`, then you would add `C:\mercury\bin` to the Windows `PATH`.
+
+You can then invoke the Mercury compiler using the command `mercury`, which is
+a batch file that is equivalent to `mmc` in other environments.
+We do not use `mmc` in the Windows Command Prompt because that name clashes
+with the executable for the Microsoft Management Console.
+
+For example, to build the "Hello, World" example in the `samples` directory
+of the Mercury distribution, do:
+
+    mercury hello.m
+
+or, using the `--make` option:
+
+    mercury --make hello
+
+Note that `mmake` is not supported in the Windows Command Prompt.
 
 Missing `libwinpthread-1.dll`
 -----------------------------
