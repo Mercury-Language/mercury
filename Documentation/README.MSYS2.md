@@ -255,7 +255,7 @@ executables, cannot be found. There are several possible resolutions:
    For a more complete discussion of how Windows searches for DLLs, consult the
    following documentation from Microsoft:
 
-       <https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order>
+   <https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order>
 
 If you are running a Mercury executable from within PowerShell, then the same
 problem with a "missing" `libwinpthread-1.dll` can occur.
