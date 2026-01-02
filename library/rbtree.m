@@ -10,32 +10,9 @@
 % Main author: petdr.
 % Stability: high.
 %
-% Contains an implementation of red black trees.
-%
-% *** Exit conditions of main predicates ***
-% insert:
-%   fails if key already in tree.
-% update:
-%   changes value of key already in tree. fails if key doesn't exist.
-% transform_value:
-%   looks up an existing value in the tree, applies a transformation to the
-%   value and then updates the value. fails if the key doesn't exist.
-% set:
-%   inserts or updates. Never fails.
-%
-% insert_duplicate:
-%   inserts duplicate keys into the tree, never fails. Search doesn't
-%   yet support looking for duplicates.
-%
-% delete:
-%   deletes a node from the tree if it exists.
-% remove:
-%   fails if node to remove doesn't exist in the tree.
-%
-% lookup:
-%   Throws an exception if key looked up doesn't exist.
-% search:
-%   Fails if key looked up doesn't exist.
+% The file implements the 'map' abstract data type using red/black trees,
+% a version of binary search trees that ensures that the tree always stays
+% roughly in balance.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -64,18 +41,18 @@
 :- func singleton(K, V) = rbtree(K, V).
 
     % Inserts a new key-value pair into the tree.
-    % Fails if key already in the tree.
+    % Fails if the key is already in the tree.
     %
 :- pred insert(K::in, V::in, rbtree(K, V)::in, rbtree(K, V)::out) is semidet.
 
-    % Updates the value associated with a key.
-    % Fails if the key does not exist.
+    % Updates the value associated with the given key.
+    % Fails if the key is not already in the tree.
     %
 :- pred update(K::in, V::in, rbtree(K, V)::in, rbtree(K, V)::out) is semidet.
 
-    % Update the value at the given key by applying the supplied
-    % transformation to it. Fails if the key is not found. This is faster
-    % than first searching for the value and then updating it.
+    % Update the value for the given key by applying the given transformation
+    % to the old value. Fails if the key is not already in the tree.
+    % This is faster than first searching for the value and then updating it.
     %
 :- pred transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     rbtree(K, V)::in, rbtree(K, V)::out) is semidet.
@@ -87,19 +64,21 @@
 
     % Insert a duplicate key into the tree.
     %
+    % Note: search does not support looking for duplicate keys.
+    %
 :- func insert_duplicate(rbtree(K, V), K, V) = rbtree(K, V).
 :- pred insert_duplicate(K::in, V::in,
     rbtree(K, V)::in, rbtree(K, V)::out) is det.
 
 :- pred member(rbtree(K, V)::in, K::out, V::out) is nondet.
 
-    % Search for a key-value pair using the key.
-    % Fails if the key does not exist.
+    % Search for the value stored with the given the key.
+    % Fails if the key is not in the tree.
     %
 :- pred search(rbtree(K, V)::in, K::in, V::out) is semidet.
 
-    % Lookup the value associated with a key.
-    % Throws an exception if the key does not exist.
+    % Looks ip the value stored with the given the key.
+    % Throws an exception if the key is not in the tree.
     %
 :- func lookup(rbtree(K, V), K) = V.
 :- pred lookup(rbtree(K, V)::in, K::in, V::out) is det.
@@ -130,14 +109,14 @@
     %
 :- pred upper_bound_lookup(rbtree(K, V)::in, K::in, K::out, V::out) is det.
 
-    % Delete the key-value pair associated with a key.
-    % Does nothing if the key does not exist.
+    % Delete the given key and its associated value from the tree.
+    % Do nothing if the key is not in the tree.
     %
 :- func delete(rbtree(K, V), K) = rbtree(K, V).
 :- pred delete(K::in, rbtree(K, V)::in, rbtree(K, V)::out) is det.
 
-    % Remove the key-value pair associated with a key.
-    % Fails if the key does not exist.
+    % Delete the given key and its associated value from the tree.
+    % Fail if the key is not in the tree.
     %
 :- pred remove(K::in, V::out, rbtree(K, V)::in, rbtree(K, V)::out)
     is semidet.
