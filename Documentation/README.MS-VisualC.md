@@ -1,17 +1,21 @@
 Mercury with Microsoft Visual C++
 =================================
 
-Mercury has been ported to use the Microsoft Visual C++ compiler (MSVC).
-It requires at least version 12.0 (2013); older versions lack sufficient C99
-support. Version 19.0 (2022) is recommended when using the 64-bit (x64) version
-of MSVC. Support for 64-bit code and MSVC has *not* been tested with older
-versions.
+This file documents the port of Mercury to Windows using Microsoft Visual
+C++ (MSVC) as a C compiler. Version 19.0 or later of MSVC is required.
+Version 19 shipped with Visual Studio 2022. Mercury is *not* supported
+with older versions of MSVC.
+
+With MSVC, you can install a Mercury compiler that generates either x86
+(32-bit) or x64 (64-bit) Windows native code in C grades, but not both.
+(You can, of course, have multiple Mercury installations that use MSVC,
+and have one that targets x86 and another that targets x64.)
 
 Setting up the build environment
 --------------------------------
 
 A Unix-like environment is required for building and installing Mercury.
-[Cygwin](https://www.cygwin.com/) or [MSYS2](https://www.msys2.org) will
+[Cygwin](https://www.cygwin.com) or [MSYS2](https://www.msys2.org) will
 suffice.
 
 A Unix-like environment is *not* required in order to use Mercury once it
@@ -36,7 +40,7 @@ shells do the following:
         * x64 Native Tools Command Prompt for VS 2022
         * x86 Native Tools Command Prompt for VS 2022
 
-   These allow you to select between the x64 and x86 versions of MSVC toolchain.
+   These let you choose between the x64 and x86 versions of MSVC toolchain.
 
    Alternatively, you can start a `cmd.exe` session and use the batch files supplied
    with Visual Studio (e.g. `vcvarsall.bat`, `vcvars32.bat` or `vcvars64.bat`) to
@@ -74,17 +78,17 @@ the Mercury source distribution. The `asm_fast*` and `reg*` grades will not work
 with MSVC (see below). When using the prebuilt C files the compiler will be
 built in the `hlc.gc.pregen` grade.
 
-Alternatively, if you have an existing Mercury installation that uses the MinGW
-or Cygwin GCC ports, or clang, then you can checkout the Mercury source from the
-git repository and use your existing installation to cross-compile the MSVC
-port.
+Alternatively, if you have an existing Mercury installation that uses the
+MinGW-w64 or Cygwin GCC ports, or clang, then you can checkout the Mercury
+source from the git repository and use your existing installation to
+cross-compile the MSVC port.
 
 In either case, to use MSVC as the C compiler with Mercury, invoke `configure`
 as follows:
 
-```
+
     ./configure --with-cc=cl [--with-msvcrt] [<any other options>]
-```
+
 
 The `--with-msvcrt` flag causes executables built with this install of Mercury
 to be linked with the MS Visual C runtime, instead of the standard libC
@@ -96,27 +100,27 @@ Windows-style path. On MSYS2, you must use a full Windows-style path with a
 drive letter, except that you must use `/` instead of `\` as a directory
 separator. For example, this is acceptable:
 
-```
+
     ./configure --prefix="c:/where/to/install/mercury"
-```
+
 
 but this is not:
 
-```
+
     ./configure --prefix="c:\where\to\install\mercury"
-```
 
-Once `configure` has successfully finished, then you should do
 
-```
+Once `configure` has successfully finished, then do
+
+
     make
-```
+
 
 and then
 
-```
+
     make install
-```
+
 
 as normal.
 
@@ -143,7 +147,7 @@ The MSVC port currently has a number of limitations:
   (It might be possible to use the [pthreads-win32](https://sourceforge.net/projects/pthreads4w/)
   library with MSVC to provide POSIX threads but we have not tested that yet.) 
 
-* Deep profiling (e.g. the `*.profdeep grades`) does not (currently) work
+* Deep profiling (e.g. the `*.profdeep` grades) does not (currently) work
   with MSVC. (In principle, it should work if the clock tick metric is
   disabled.)
 
@@ -171,10 +175,10 @@ The MSVC port currently has a number of limitations:
 Post-installation configuration
 -------------------------------
 
-The above instructions create a Mercury installation that targets MSVC that
-works from within the Cygwin or MSYS2 shells. If you want to be able to
-run the Mercury compiler directly from the Windows command prompt (e.g.
-`cmd.exe`) then you need to manually edit some configuration files in the
+The above instructions create a Mercury installation using MSVC that works
+from within the Cygwin or MSYS2 shells. If you want to be able to run the
+Mercury compiler directly from the Windows Command Prompt (e.g. `cmd.exe`)
+or PowerShell, then you need to manually edit some configuration files in the
 installation. (In future releases, this will all hopefully be automated.)
 
 All references to files in the following are within the Mercury installation
@@ -184,18 +188,11 @@ directory
   
   + Replace any Unix-style paths with their Windows-style equivalent. 
 
-  + Modify the values of the options` --host-env-type` and `--target-env-type`
-    in the value of the variable `DEFAULT_MCFLAGS` so that their values are as
-    follows:
-
-        --host-env-type "windows"
-        --target-env-type "windows"
-
 * In the file `lib/mercury/mdb/mdbrc`
 
   + The backslash character, `\`, is used as an escape character in mdbrc
-    files. You need to escape it if it occurs in any paths used in the
-    argument of source commands, for example
+    files. It must be escaped it if it occurs in any paths used in the
+    argument of `source` commands, for example
 
         source c:\mercury-11.07\lib\mercury\mdb\mdb_doc
 
@@ -218,27 +215,6 @@ directory
 
 * The other shell scripts in the `bin` directory do not have (or need) Windows
   equivalents. (Most of them are part of the implementation of `mmake` which
-  is not supported on Windows systems.)
-
-Installing on network drives (Cygwin only)
-------------------------------------------
-
-If you want to install on the machine, `foo`, in the directory `\usr\local`
-you need to add `--prefix //foo/usr/local` as an option to `configure`.
-
-Then ensure that the directory that you wish to install into is mounted
-somewhere, i.e.
-
-```
-    mount //foo/usr/local /temp_mount_point
-```
-
-and then use that mount point as the location to install into
-
-```
-    make install INSTALL_PREFIX=/temp_mount_point
-```
-
-This avoids the problem that `mkdir -p //foo/usr/local/xxx` fails.
+  in the Windows Command Prompt or PowerShell.)
 
 -----------------------------------------------------------------------------

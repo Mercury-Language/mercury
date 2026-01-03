@@ -72,6 +72,9 @@ Changes that may break compatibility
 
 * We have dropped support for the x86 (32-bit) version of Cygwin.
 
+* We have dropped support for versions of MSVC before version 19 (Visual Studio
+  2022).
+
 * The `--use-subdirs` and `--use-grade-subdirs` options now cause `.mh` files
   to be placed in a `Mercury/mhs` subdirectory instead of the current
   directory. This reduces clutter in the current directory, but may require
