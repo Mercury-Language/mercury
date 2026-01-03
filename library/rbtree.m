@@ -77,7 +77,7 @@
     %
 :- pred search(rbtree(K, V)::in, K::in, V::out) is semidet.
 
-    % Looks ip the value stored with the given the key.
+    % Looks up the value stored with the given the key.
     % Throws an exception if the key is not in the tree.
     %
 :- func lookup(rbtree(K, V), K) = V.
