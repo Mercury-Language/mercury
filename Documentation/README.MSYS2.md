@@ -54,7 +54,7 @@ steps:
 
    The legacy `MINGW32` environment should also work and can be used to build
    32-bit Windows executables, although we no longer actively support it.
-   The `MINGW32` environment corresponds to the `MSYS2 MING32` launcher in
+   The `MINGW32` environment corresponds to the `MSYS2 MINGW32` launcher in
    the Windows Start Menu.
 
    The `MSYS`, `CLANG64`, `CLANGARM64` and `CLANG32` environments do *not*
@@ -241,16 +241,20 @@ executables, cannot be found. There are several possible resolutions:
    `libwinpthread-1.dll` into the same directory as the executable
    or to add the directory containing that DLL to the Windows PATH.
 
-   For the `UCRT64` MSYS2 environment, `libwinpthread-1.dll` can be found in
-   the directory `C:\msys64\ucrt64\bin`. Add it to the Windows `PATH` by doing:
+   For the `UCRT64` MSYS2 environment, `libwinpthread-1.dll` is in the
+   directory `C:\msys64\ucrt64\bin`. Add it to the Windows `PATH` by doing:
 
        set PATH=C:\msys64\ucrt64\bin;%PATH%
 
-   For the `MINGW64` MSYS2 environment, `libwinpthread-1.dll` can be found in
-   the directory `C:\msys64\mingw64\bin`. Add it to the Windows `PATH` by
-   doing:
+   For the `MINGW64` MSYS2 environment, `libwinpthread-1.dll` is in the
+   directory `C:\msys64\mingw64\bin`. Add it to the Windows `PATH` by doing:
 
        set PATH=C:\msys64\mingw64\bin;%PATH%
+
+   For the `MINGW32` MSYS2 environment, `libwinpthread-1.dll` is in the
+   directory `C:\msys64\mingw32\bin`. Add it to the Windows `PATH` by doing:
+
+       set PATH=C:\msys64\mingw32\bin;%PATH%
 
    For a more complete discussion of how Windows searches for DLLs, consult the
    following documentation from Microsoft:
