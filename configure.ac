@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2025 The Mercury team.
+# Copyright (C) 2013-2026 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -285,14 +285,15 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-# Ensure that the user does not try to build MSYS executables; we do not
-# (currently) support that.
+# Check that we are not using an older version of the MSYS2 MSYS environment
+# where the configuration triple is *-pc-msys. Those do not work. Versions
+# that return the configuration triple as *-pc-cygwin *do* work.
 
 case "$host" in *-pc-msys)
     AC_MSG_ERROR(
 [
 ***** The $host architecture is not supported.
-***** You probably meant to use one of: x86_64-pc-mingw32, x86_64-pc-mingw64.])
+***** You will need to update to a more recent version of MSYS2.])
     ;;
 esac
 

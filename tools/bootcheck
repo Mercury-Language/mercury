@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
-# Copyright (C) 2013-2025 The Mercury team.
+# Copyright (C) 2013-2026 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -613,7 +613,7 @@ fi
 # libraries or executables must be built using a single invocation of
 # mmc --make. Multiple invocation of mmc --make in the same directory
 # will conflict with each other.
-# XXX This should not prevent us from using paralelism *within* a single
+# XXX This should not prevent us from using parallelism *within* a single
 # invocations of mmc --make.
 #
 # Directories containing target code only, such as the runtime and trace
@@ -656,27 +656,42 @@ SED=${SED:-sed}
 
 #-----------------------------------------------------------------------------#
 
-# Work out if we are running in one of the MSYS2 environments on Windows.
-# On these systems some tools, e.g. the shell and make, use POSIX style paths
-# overlaid on Windows file system, but the Mercury compiler uses Windows style
-# paths. There is some automatic translation done between the two, but we need
-# to ensure that paths put in .options or _FLAGS files are in the appropriate
-# format. For the MSYS2 environment, we also need to set some things up (e.g.
-# options to diff) for the test suite to work properly.
+# Are we in one of the MSYS2 environments on Windows? If so, the work out which
+# one and set up any necessary path translation and diff options. We are
+# concerned with two classes of MSYS2 environment:
+#
+# 1. MSYS. This environment is similar to Cygwin. Executables are linked
+# against msys-2.0.dll, which is a POSIX emulation layer. In this environment
+# we can use Unix-style paths and LF line endings.
+#
+# 2. Environments that create native Windows executables (e.g MING64, UCRT64).
+# In these environments, the shell and tools like make will use POSIX-style
+# paths (overlaid on the Windows file system), but the Mercury compiler will
+# use Windows-style paths. There is some automatic translation done between the
+# two, but we need to ensure that paths put in .options or _FLAGS files are in
+# the appropriate format. We also need to set some things for the test suite
+# to work properly (e.g. tell diff to ignore differences due the presence of
+# CRLF line endings).
+
 case "${MSYSTEM}" in
 
     MINGW64|MINGW32|UCRT64|CLANG64)
-        env_is_msys2=true
+        env_is_msys2_native=true
         windows=true
         ;;
 
-    CLANGARM64|MSYS)
+    MSYS)
+        env_is_msys2_native=false
+        windows=true
+        ;;
+
+    CLANGARM64)
         echo "bootchecking using MSYS2 environment ${MSYSTEM} is not supported."
         exit 1
         ;;
 
     *)
-        env_is_msys2=false
+        env_is_msys2_native=false
         ;;
 esac
 
@@ -2146,7 +2161,7 @@ then
         stage2_insert=""
     fi
 
-    if "$env_is_msys2"
+    if "$env_is_msys2_native"
     then
         WORKSPACE=$($CYGPATH "${root}${stage2_insert}")
     else
@@ -2172,7 +2187,7 @@ then
     export DIFF_OPTS
 fi
 
-if "$env_is_msys2"
+if "$env_is_msys2_native"
 then
     DIFF_OPTS="${DIFF_OPTS:-} -u --strip-trailing-cr"
     export DIFF_OPTS
