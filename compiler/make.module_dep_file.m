@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -160,7 +160,7 @@ do_write_module_dep_file_to_stream(Stream, Globals,
         Baggage, ParseTreeModuleSrc, !IO) :-
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
-    SourceFileName = Baggage ^ mb_source_file_name,
+    SourceFileName = term_io.escaped_string(Baggage ^ mb_source_file_name),
     SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
     SourceFileTopModuleNameStr =
         mercury_bracketed_sym_name_to_string(SourceFileTopModuleName),
