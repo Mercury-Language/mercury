@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2001-2007, 2011 The University of Melbourne.
-# Copyright (C) 2019-2020 The Mercury team.
+# Copyright (C) 2019-2020, 2023, 2026 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -54,6 +54,7 @@ make_shared_lib=false
 leave_shlib_dirs_relative=false
 user_shlib_dirs=""
 use_thread_libs=false
+use_msvc_setargv_extension=false
 print_grade=false
 print_gc_grade=false
 print_link_command=false
@@ -213,6 +214,12 @@ Threads options:
         Link with the POSIX thread libraries. This option is useful
         if a C library being linked with uses threads, but the
         Mercury code being linked doesn't.
+
+Other options:
+    --use-msvc-setargv-extension
+       If using MSVC, then enable the optional C runtime component
+       that provides wildcard argument expansion. This option has
+       no effect with non-MSVC compilers.
 
 ${grade_usage}
 
@@ -400,6 +407,13 @@ EOF
             ;;
         --no-use-thread-libs)
             use_thread_libs=false
+            ;;
+
+        --use-msvc-setargv-extension)
+            use_msvc_setargv_extension=true
+            ;;
+        --no-use-msvc-setargv-extension)
+            use_msvc_setargv_extension=false
             ;;
 
         --print-grade)

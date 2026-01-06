@@ -2,7 +2,7 @@
 // vim:sw=4 ts=4 expandtab
 //
 // Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
-// Copyright (C) 2014-2016, 2019-2020, 2022, 2025 The Mercury team.
+// Copyright (C) 2014-2016, 2019-2020, 2022, 2025-2026 The Mercury team.
 // This file may only be copied under the terms of the GNU General
 // Public License - see the file COPYING in the Mercury distribution.
 
@@ -591,6 +591,9 @@ static const char mercury_grade_check_func[] =
     "\n"
     ;
 
+// If you change main function for the MSVC case to something other than
+// wmain(), then you must also update the value of MSVC_SETARGV in
+// ../scripts/ml.in.
 static const char main_func[] =
     "#if defined(MR_MSVC)\n"
     "\n"

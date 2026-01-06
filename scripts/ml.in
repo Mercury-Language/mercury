@@ -559,17 +559,25 @@ case "${MKFIFO}" in
         ;;
 esac
 
+# MSVC_SETARGV is set to the name of the object file that contains the
+# Microsoft C runtime extension that implements wildcard argument expansion,
+# when we want to use that extension. It is empty otherwise.
+# There are several versions of this object file, the one we choose below must
+# match the program entry point set in value of the variable main_func in
+# ../util/mkinit.c.
+MSVC_SETARGV=
+NOLOGO_OPTS=
 case "${C_COMPILER_TYPE}" in
     msvc*)
         NOLOGO_OPTS="-nologo"
-        ;;
-    *)
-        NOLOGO_OPTS=""
+        case "${use_msvc_setargv_extension}" in
+            true) MSVC_SETARGV="wsetargv.obj" ;;
+        esac
         ;;
 esac
 
 LINKER_PRE_FLAGS="${NOLOGO_OPTS} ${MSVCRT_OPTS} ${PRINT_MAP_OPT} ${UNDEF_OPT} ${STRIP_OPTS} ${LTO_OPTS} ${MAYBE_STATIC_OPT} ${ARCH_OPTS} ${SANITIZER_OPTS}"
-LINKER_POST_FLAGS="@LINK_OPT_SEP@ ${NODEFAULTLIB_FLAG} ${DEBUG_FLAG} ${LIBDIR_OPTS} ${RPATH_OPT_LIST} ${LIBS}"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ ${MSVC_SETARGV} ${NODEFAULTLIB_FLAG} ${DEBUG_FLAG} ${LIBDIR_OPTS} ${RPATH_OPT_LIST} ${LIBS}"
 
 case "${verbose}" in
     true)
