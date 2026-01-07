@@ -8,6 +8,9 @@ MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
+# The test cases listed in the following make variable definitions
+# are always executed.
+
 ORDINARY_PROGS = \
 	abstract_eqv \
 	address_of_builtins \
@@ -560,13 +563,10 @@ TRACE_GOAL_ENV_PROGS = \
 	trace_goal_env_2 \
 	trace_goal_env_3
 
-# --transitive-intermodule-optimization is incompatible with mmc --make.
-ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-	NON_MMC_MAKE_PROGS =
-else
-	NON_MMC_MAKE_PROGS = \
-		trans_intermod_user_eq
-endif
+#-----------------------------------------------------------------------------#
+
+# The test cases listed in the following make variable definitions
+# are executed only in some grades.
 
 # Solver types only work in C grades.
 #
@@ -714,48 +714,14 @@ endif
 ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
 	DEAD_PROC_PROGS =
 else
-  ifeq "$(findstring profdeep,$(GRADE))" ""
-	DEAD_PROC_PROGS = \
-		constant_prop_2 \
-		constant_prop_loop_inv
-  else
-	DEAD_PROC_PROGS =
-  endif
+	ifeq "$(findstring profdeep,$(GRADE))" ""
+		DEAD_PROC_PROGS = \
+			constant_prop_2 \
+			constant_prop_loop_inv
+	else
+		DEAD_PROC_PROGS =
+	endif
 endif
-
-# We do not pass the following tests at all:
-#
-# XXX export_test_2
-#     Fails in hl* grades. I think this never passed.
-#
-# XXX float_consistency:
-#     floats in Mercury aren't consistent -- see the comments at the
-#     top of library/float.m.
-#
-# XXX loop_inv_extra_test_1, loop_inv_extra_test_2:
-#     These test cases test some more sophisticated cases of loop invariant
-#     optimization which our current loop_inv pass is not capable of
-#     optimizing.
-#
-# XXX var_not_found -- mode error in automatically generated unification
-#     predicate. This test uses partially instantiated modes,
-#     which are not yet fully supported.
-#
-# XXX needs_init doesn't work yet in profiling grades.
-#
-# XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
-#     not yet implemented for arrays.
-#
-# XXX we fail some of the commented-out tests in write_binary
-#
-# XXX bug441
-# XXX test_generic_ref
-
-# NOTE: bad_indirect_reuse_1 exists, but is not currently listed anywhere.
-# I (zs) have no idea whether it was ever enabled, or whether it would have
-# ever passed.
-
-# The following tests are passed only in some grades.
 
 # The following tests do not work in the .profdeep grades.
 # All of them, aside from backend_external* and backjump_test, don't work
@@ -888,7 +854,6 @@ ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
 	else
 		FACT_TABLE_PROGS =
 	endif
-
 	LLDS_ONLY_PROGS = \
 		$(FACT_TABLE_PROGS) \
 		no_refs_to_deleted_labels \
@@ -944,29 +909,78 @@ else
 	SETENV_PROGS =
 endif
 
+#-----------------------------------------------------------------------------#
+
+# The test cases listed in the following make variable definitions
+# are executed only if some non-grade-related tests are satisfied.
+
+# --transitive-intermodule-optimization is incompatible with mmc --make.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+	NON_MMC_MAKE_PROGS =
+else
+	NON_MMC_MAKE_PROGS = \
+		trans_intermod_user_eq
+endif
+
+#-----------------------------------------------------------------------------#
+
+# We do not pass the following tests at all:
+#
+# XXX export_test_2
+#     Fails in hl* grades. I think this never passed.
+#
+# XXX float_consistency:
+#     floats in Mercury aren't consistent -- see the comments at the
+#     top of library/float.m.
+#
+# XXX loop_inv_extra_test_1, loop_inv_extra_test_2:
+#     These test cases test some more sophisticated cases of loop invariant
+#     optimization which our current loop_inv pass is not capable of
+#     optimizing.
+#
+# XXX var_not_found -- mode error in automatically generated unification
+#     predicate. This test uses partially instantiated modes,
+#     which are not yet fully supported.
+#
+# XXX needs_init doesn't work yet in profiling grades.
+#
+# XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
+#     not yet implemented for arrays.
+#
+# XXX we fail some of the commented-out tests in write_binary
+#
+# XXX bug441
+# XXX test_generic_ref
+
+# NOTE: bad_indirect_reuse_1.m exists, but it seems to have been accidentally
+# disabled in commit 8700de18b7d29c08341aa2c42c4389464b99de5a (when it was
+# still named just bad_indirect_reuse.m).
+
+#-----------------------------------------------------------------------------#
+
 PROGS = \
 	$(ORDINARY_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) \
 	$(MUTABLE_PROGS) \
 	$(RANDOM_PROGS) \
 	$(TRACE_GOAL_ENV_PROGS) \
-	$(NON_MMC_MAKE_PROGS) \
-	$(DEAD_PROC_PROGS) \
-	$(NON_PROFDEEP_PROGS) \
-	$(LLDS_ONLY_PROGS) \
-	$(C_AND_GC_ONLY_PROGS) \
-	$(DEBUG_PROGS) \
-	$(C_ONLY_PROGS) \
-	$(JAVA_ONLY_PROGS) \
-	$(CSHARP_ONLY_PROGS) \
 	$(SOLVER_PROGS) \
 	$(FOREIGN_ENUM_PROGS) \
 	$(TRAIL_ONLY_PROGS) \
 	$(STACK_SEGMENT_ONLY_PROGS) \
 	$(CTGC_PROGS) \
 	$(BIG_DATA_PROGS) \
+	$(JAVA_ONLY_PROGS) \
+	$(CSHARP_ONLY_PROGS) \
+	$(C_ONLY_PROGS) \
+	$(DEAD_PROC_PROGS) \
+	$(NON_PROFDEEP_PROGS) \
+	$(LLDS_ONLY_PROGS) \
+	$(C_AND_GC_ONLY_PROGS) \
+	$(DEBUG_PROGS) \
 	$(CONCURRENCY_PROGS) \
-	$(SETENV_PROGS)
+	$(SETENV_PROGS) \
+	$(NON_MMC_MAKE_PROGS)
 
 #-----------------------------------------------------------------------------#
 
@@ -982,6 +996,166 @@ include Mercury.options
 mapped_module.depend: Mercury.modules
 
 #-----------------------------------------------------------------------------#
+#
+# Please keep this list of test-specific make rules sorted on the test name,
+# and separated from other tests using #----------# lines.
+#
+
+# For the constant_prop_1 test case, we test that constant propagation
+# has been achieved by grepping the generated target code for particular
+# patterns that will only arise if the Mercury compiler did the intended
+# constant propagation.
+constant_prop_1.c: constant_prop_1.c_date
+	grep foobar $@
+	grep 1234 $@
+	grep '5678\.0' $@
+	grep 2468U $@
+constant_prop_1.java: constant_prop_1.java_date
+	grep foobar $@
+	grep 1234 $@
+	grep '5678\.0' $@
+	grep 2468 $@
+
+#----------#
+
+dir_test.out: prepare_for_dir_test
+
+prepare_for_dir_test:
+	rm -rf test_dir unwritable
+	touch unwritable
+	chmod -w unwritable
+
+dir_test.clean: clean_dir_test
+
+.PHONY: clean_dir_test
+clean_dir_test:
+	rm -rf test_dir unwritable
+
+#----------#
+
+# dst_test checks various predicates associated with Daylight Savings.
+# Since all the test data is based on Melbourne's DST conventions,
+# the timezone environment variable TZ must be set accordingly.
+dst_test.out: dst_test
+	TZ="Australia/Melbourne" ./$< > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
+
+#----------#
+
+# final_excp.out is expected to fail (it calls throw/1).
+final_excp.out: final_excp
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./final_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+#----------#
+
+# functor_ho_inst_excp_1.out is expected to throw an exception or cause
+# a runtime abort.
+functor_ho_inst_excp_1.out: functor_ho_inst_excp_1
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_1 \
+		> $@.tmp 2>&1; \
+	then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+#----------#
+
+# functor_ho_inst_excp_2.out is expected to throw an exception or cause
+# a runtime abort.
+functor_ho_inst_excp_2.out: functor_ho_inst_excp_2
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_2 \
+		> $@.tmp 2>&1; \
+	then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+#----------#
+
+# init_excp.out is expected to fail (it calls throw/1).
+# We need to filter the output for the C# and Java backends in order to remove
+# the stack trace in those grades.   Because the exception is thrown from
+# an initialiser rather than from main/2 we don't have any control over
+# whether the stack trace is printed or not.
+init_excp.out: init_excp
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./init_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		grep -v "at\ j\?mercury\|System\|\-\-\-" $@.tmp > $@; \
+		rm -f $@.tmp; \
+	fi
+
+#----------#
+
+# Force intermod_unused_args_helper_1.m to be compiled and analysed before
+# intermod_unused_args.m.
+intermod_unused_args.c: intermod_unused_args_helper_1.c
+
+#----------#
+
+# mutable_excp.out is expected to fail (it calls throw/1).
+mutable_excp.out: mutable_excp
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./mutable_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+#----------#
+
+# no_fully_strict is expected to fail (it calls error/1).
+# We also need to pipe the output through sed to avoid hard-coding
+# dependencies on particular line numbers in the standard library source code.
+# We filter lines matching "at mercury" in order to avoid the stack trace
+# caused by the uncaught exception in the C# grade (on Mono). Ditto for lines
+# containing "jmercury" in the Java grade.
+no_fully_strict.out: no_fully_strict
+	if ./no_fully_strict > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
+			-e '/at\ mercury/d' \
+			-e '/jmercury/d' < $@.tmp > $@; \
+		rm -f $@.tmp; \
+	fi
+
+#----------#
+
+nonascii.out:	nonascii.data
+
+nonascii.data:	nonascii_gen$(EXT_FOR_EXE)
+	./nonascii_gen > nonascii.data
+
+ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
+nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
+	cl -nologo -Fenonascii_gen$(EXT_FOR_EXE) nonascii_gen.c
+else
+nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
+	$(CC) nonascii_gen.c -o nonascii_gen
+endif
+
+#----------#
+
+stream_test.out: stream_test
+	./stream_test < stream_test.data > stream_test.out
+
+stream_ignore_ws.out: stream_ignore_ws
+	./stream_ignore_ws < stream_ignore_ws.data > stream_ignore_ws.out
+
+#----------#
 
 # For term_io_test, we want to run it once using the supplied input file.
 # But we want to check that the output parses the same as the input did,
@@ -1003,154 +1177,7 @@ term_io_test.res: term_io_test.out term_io_test.fix_out
 		cat $@; \
 		exit 1; }
 
-nonascii.out:	nonascii.data
-
-nonascii.data:	nonascii_gen$(EXT_FOR_EXE)
-	./nonascii_gen > nonascii.data
-
-ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
-nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
-	cl -nologo -Fenonascii_gen$(EXT_FOR_EXE) nonascii_gen.c
-else
-nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
-	$(CC) nonascii_gen.c -o nonascii_gen
-endif
-
-stream_test.out: stream_test
-	./stream_test < stream_test.data > stream_test.out
-
-stream_ignore_ws.out: stream_ignore_ws
-	./stream_ignore_ws < stream_ignore_ws.data > stream_ignore_ws.out
-
-# The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
-# only in that the latter is executed with the TRACE_ABC environment variable
-# set.
-trace_goal_env_1.out:	trace_goal_env_1
-	./trace_goal_env_1 > trace_goal_env_1.out
-
-trace_goal_env_2.out:	trace_goal_env_2
-	TRACE_ABC=set ./trace_goal_env_2 > trace_goal_env_2.out
-
-# no_fully_strict is expected to fail (it calls error/1).
-# We also need to pipe the output through sed to avoid hard-coding
-# dependencies on particular line numbers in the standard library source code.
-# We filter lines matching "at mercury" in order to avoid the stack trace
-# caused by the uncaught exception in the C# grade (on Mono). Ditto for lines
-# containing "jmercury" in the Java grade.
-no_fully_strict.out: no_fully_strict
-	if ./no_fully_strict > $@.tmp 2>&1; then \
-		grep . $@.tmp; \
-		exit 1; \
-	else \
-		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
-			-e '/at\ mercury/d' \
-			-e '/jmercury/d' < $@.tmp > $@; \
-		rm -f $@.tmp; \
-	fi
-
-# final_excp.out is expected to fail (it calls throw/1).
-#
-final_excp.out: final_excp
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./final_excp > $@.tmp 2>&1; then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		mv $@.tmp $@; \
-	fi
-
-# init_excp.out is expected to fail (it calls throw/1).
-# We need to filter the output for the C# and Java backends in order to remove
-# the stack trace in those grades.   Because the exception is thrown from
-# an initialiser rather than from main/2 we don't have any control over
-# whether the stack trace is printed or not.
-#
-init_excp.out: init_excp
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./init_excp > $@.tmp 2>&1; then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		grep -v "at\ j\?mercury\|System\|\-\-\-" $@.tmp > $@; \
-		rm -f $@.tmp; \
-	fi
-
-# functor_ho_inst_excp_1.out is expected to throw an exception or cause
-# a runtime abort
-functor_ho_inst_excp_1.out: functor_ho_inst_excp_1
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_1 \
-			> $@.tmp 2>&1; \
-	then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		mv $@.tmp $@; \
-	fi
-
-# functor_ho_inst_excp_2.out is expected to throw an exception or cause
-# a runtime abort
-functor_ho_inst_excp_2.out: functor_ho_inst_excp_2
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_2 \
-			> $@.tmp 2>&1; \
-	then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		mv $@.tmp $@; \
-	fi
-
-# mutable_excp.out is expected to fail (it calls throw/1).
-#
-mutable_excp.out: mutable_excp
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./mutable_excp > $@.tmp 2>&1; then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		mv $@.tmp $@; \
-	fi
-
-# try_syntax_3.out is expected to fail (it calls throw/1).
-#
-try_syntax_3.out: try_syntax_3
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./try_syntax_3 > $@.tmp 2>&1; \
-	then \
-		grep  . $@.tmp; \
-		exit 1; \
-	else \
-		mv $@.tmp $@; \
-	fi
-
-# For the constant_prop_1 test case, we test that constant propagation
-# has been achieved by grepping the generated target code for particular
-# patterns that will only arise if the Mercury compiler did the intended
-# constant propagation.
-constant_prop_1.c: constant_prop_1.c_date
-	grep foobar $@
-	grep 1234 $@
-	grep '5678\.0' $@
-	grep 2468U $@
-constant_prop_1.java: constant_prop_1.java_date
-	grep foobar $@
-	grep 1234 $@
-	grep '5678\.0' $@
-	grep 2468 $@
-
-# Force intermod_unused_args_helper_1.m to be compiled and analysed before
-# intermod_unused_args.m.
-intermod_unused_args.c: intermod_unused_args_helper_1.c
-
-# The runtime_opt test needs to be run a number of different times with the
-# MERCURY_OPTIONS environment variable set to a different value each time.
-# The options to try are in runtime_opt.inp, one per line. The .out file
-# is created by concatenating all of the outputs from each run.
-runtime_opt.out: runtime_opt runtime_opt.inp
-	( \
-		cat runtime_opt.inp | while read option; do \
-			echo "Option \`$$option':"; \
-			MERCURY_OPTIONS="$$option --deep-std-name" \
-				./runtime_opt 2>&1 || true; \
-			echo ""; \
-		done \
-	) > runtime_opt.out 2>&1
+#----------#
 
 # The test checks the output from multiple threads and since that output
 # may be interleaved arbitrarily we need to filter it so that all the output
@@ -1166,38 +1193,53 @@ tl_backjump_test.out: tl_backjump_test
 		exit 1; \
 	fi
 
-# weak_ptr's output is extremely volatile, it depends on Boehm GC's behaviour
+#----------#
+
+# The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
+# only in that the latter is executed with the TRACE_ABC environment variable
+# set.
+trace_goal_env_1.out:	trace_goal_env_1
+	./trace_goal_env_1 > trace_goal_env_1.out
+
+trace_goal_env_2.out:	trace_goal_env_2
+	TRACE_ABC=set ./trace_goal_env_2 > trace_goal_env_2.out
+
+#----------#
+
+# try_syntax_3.out is expected to fail (it calls throw/1).
+try_syntax_3.out: try_syntax_3
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./try_syntax_3 > $@.tmp 2>&1; \
+	then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+#----------#
+
+# The runtime_opt test needs to be run a number of different times with the
+# MERCURY_OPTIONS environment variable set to a different value each time.
+# The options to try are in runtime_opt.inp, one per line. The .out file
+# is created by concatenating all of the outputs from each run.
+runtime_opt.out: runtime_opt runtime_opt.inp
+	( \
+		cat runtime_opt.inp | while read option; do \
+			echo "Option \`$$option':"; \
+			MERCURY_OPTIONS="$$option --deep-std-name" \
+				./runtime_opt 2>&1 || true; \
+			echo ""; \
+		done \
+	) > runtime_opt.out 2>&1
+
+#----------#
+
+# weak_ptr's output is extremely volatile, it depends on Boehm GC's behaviour,
 # which can vary depending on many different things. All we can hope to do
 # is check that it doesn't crash.
-
 weak_ptr.out: weak_ptr
 	./weak_ptr > weak_ptr.discarded_output
 	echo "Output is not part of test, see Mmakefile" > $@
-
-#-----------------------------------------------------------------------------#
-
-dir_test.out: prepare_for_dir_test
-
-prepare_for_dir_test:
-	rm -rf test_dir unwritable
-	touch unwritable
-	chmod -w unwritable
-
-dir_test.clean: clean_dir_test
-
-.PHONY: clean_dir_test
-clean_dir_test:
-	rm -rf test_dir unwritable
-
-#-----------------------------------------------------------------------------#
-
-# dst_test checks various predicates associated with Daylight Savings.
-# Since all the test data is based on Melbourne's DST conventions, the
-# timezone environment variable TZ must be set accordingly.
-
-dst_test.out: dst_test
-	TZ="Australia/Melbourne" ./$< > $@ 2>&1 || \
-		{ grep . $@ /dev/null; exit 1; }
 
 #-----------------------------------------------------------------------------#
 
