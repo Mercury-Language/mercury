@@ -540,10 +540,32 @@ ORDINARY_PROGS = \
 	xmlable_test \
 	zinc_pack_bug
 
+# These tests require the implementation to support closure layouts.
+CLOSURE_LAYOUT_PROGS = \
+	copy_pred_1 \
+	copy_pred_2
+
+MUTABLE_PROGS = \
+	float_gv
+
+RANDOM_PROGS = \
+	random_1 \
+	random_2 \
+	random_3 \
+	random_shuffle_1 \
+	random_shuffle_2
+
+TRACE_GOAL_ENV_PROGS = \
+	trace_goal_env_1 \
+	trace_goal_env_2 \
+	trace_goal_env_3
+
 # --transitive-intermodule-optimization is incompatible with mmc --make.
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-ORDINARY_PROGS += \
-	trans_intermod_user_eq
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+	NON_MMC_MAKE_PROGS =
+else
+	NON_MMC_MAKE_PROGS = \
+		trans_intermod_user_eq
 endif
 
 # Solver types only work in C grades.
@@ -551,7 +573,6 @@ endif
 # Additionally, solver_default_eq_cmp does not yet work in deep profiling
 # grades because deep profiling cannot yet handle exceptions being caught and
 # this test does that.
-#
 ifeq "$(filter csharp% java%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		SOLVER_PROGS_2 = \
@@ -578,42 +599,26 @@ else
 	FOREIGN_ENUM_PROGS =
 endif
 
-RANDOM_PROGS = \
-	random_1 \
-	random_2 \
-	random_3 \
-	random_shuffle_1 \
-	random_shuffle_2
-
 # Some tests only link in trailing grades.
 ifeq "$(filter tr%,$(GRADE))" ""
-	TRAILED_PROGS =
+	TRAIL_ONLY_PROGS =
 else
-	TRAILED_PROGS = \
+	TRAIL_ONLY_PROGS = \
 		mutable_decl
 endif
 
 # Some tests are intended to test the handling of stack segments,
 # and would generate stack overflows in grades that don't use stack segments.
 ifeq "$(filter stseg%,$(GRADE))" ""
-	STACK_SEGMENT_PROGS =
+	STACK_SEGMENT_ONLY_PROGS =
 else
-	STACK_SEGMENT_PROGS = \
+	STACK_SEGMENT_ONLY_PROGS = \
 		bug314
 endif
-
-MUTABLE_PROGS = \
-	float_gv
-
-TRACE_GOAL_ENV_PROGS = \
-	trace_goal_env_1 \
-	trace_goal_env_2 \
-	trace_goal_env_3
 
 # Compile-time garbage collection is currently incompatible with debugging
 # grades.
 # The programs listed in CTGC_PROGS_2 do not currently work in non-C grades.
-#
 ifeq "$(findstring debug,$(GRADE))" ""
 	ifeq "$(filter csharp% java%,$(GRADE))" ""
 		CTGC_PROGS_2 = \
@@ -640,7 +645,6 @@ endif
 # Programs that deal with large amounts of data need tail recursion. Don't
 # execute them in grades that do not allow tail recursion, since their failures
 # would be spurious.
-
 ifeq "$(findstring debug,$(GRADE))$(findstring deep,$(GRADE))" ""
 	BIG_DATA_PROGS = \
 		big_array_from_list \
@@ -652,22 +656,20 @@ else
 endif
 
 # Tests of the Java foreign language interface only work in Java grades.
-#
 ifeq "$(filter java%,$(GRADE))" ""
-	JAVA_PROGS =
+	JAVA_ONLY_PROGS =
 else
-	JAVA_PROGS = \
+	JAVA_ONLY_PROGS = \
 		java_print_foreign  \
 		java_test \
 		test_java_foreign_primitive
 endif
 
 # Tests of the C# foreign language interface only work in the C# grades.
-
 ifeq "$(filter csharp%,$(GRADE))" ""
-	CSHARP_PROGS =
+	CSHARP_ONLY_PROGS =
 else
-	CSHARP_PROGS = \
+	CSHARP_ONLY_PROGS = \
 		csharp_print_foreign
 endif
 
@@ -698,7 +700,7 @@ endif
 # so link_error is now dead. But dead proc elimination doesn't get run
 # again, so we go ahead and emit a declaration for link_error, and in
 # MLDS profiling grades also a reference, which causes the test case to fail.
-
+#
 # constant_prop_2 relies on deleting all references to an external predicate,
 # but the appearance of the call in the caller puts a reference to its proc
 # layout structure into the call sites array of its caller, even if the call
@@ -709,23 +711,17 @@ endif
 # worth doing.
 #
 # constant_prop_loop_inv is a cut_down version of constant_prop_2.
-
 ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
-	PROF_PROGS =
+	DEAD_PROC_PROGS =
 else
   ifeq "$(findstring profdeep,$(GRADE))" ""
-	PROF_PROGS = \
+	DEAD_PROC_PROGS = \
 		constant_prop_2 \
 		constant_prop_loop_inv
   else
-	PROF_PROGS =
+	DEAD_PROC_PROGS =
   endif
 endif
-
-# These tests require the implementation to support closure layouts
-CLOSURE_LAYOUT_PROGS = \
-	copy_pred_1 \
-	copy_pred_2
 
 # We do not pass the following tests at all:
 #
@@ -762,11 +758,11 @@ CLOSURE_LAYOUT_PROGS = \
 # The following tests are passed only in some grades.
 
 # The following tests do not work in the .profdeep grades.
-# All of them, aside from backend_external and backjump_test, don't work
+# All of them, aside from backend_external* and backjump_test, don't work
 # because deep profiling cannot yet handle exceptions being caught and
 # these test cases do that.
 #
-# backend_external fails because the predicates whose implementation
+# backend_external* fail because the predicates whose implementation
 # is handwritten in C do not have the necessary proc_statics etc,
 # defined.
 #
@@ -774,10 +770,9 @@ CLOSURE_LAYOUT_PROGS = \
 # tl_backjump_test fails because the deep profiler cannot yet handle
 # backjumps and threads.
 #
-# Additionally, The programs listed in NON_PROFDEEP_PROGS_2 don't
+# Additionally, the programs listed in NON_PROFDEEP_PROGS_2 don't
 # work in non-C grades, either because they contain C code or
 # they use backjumping, which is NI for the non-C grades.
-#
 ifeq "$(findstring profdeep,$(GRADE))" ""
 	ifeq "$(filter csharp% java%,$(GRADE))" ""
 		NON_PROFDEEP_PROGS_2 = \
@@ -884,19 +879,18 @@ endif
 # is a quick hack that assumes the use of the LLDS backend; it should
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
-
 ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
-		BACKEND_PROGS_2 = \
+		FACT_TABLE_PROGS = \
 			factt_non \
 			fact_table_test_1 \
 			fact_table_test_2
 	else
-		BACKEND_PROGS_2 =
+		FACT_TABLE_PROGS =
 	endif
 
-	BACKEND_PROGS = \
-		$(BACKEND_PROGS_2) \
+	LLDS_ONLY_PROGS = \
+		$(FACT_TABLE_PROGS) \
 		no_refs_to_deleted_labels \
 		closure_arg_comparison \
 		compare_representation \
@@ -904,7 +898,7 @@ ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
 		stable_foreign \
 		type_tables
 else
-	BACKEND_PROGS =
+	LLDS_ONLY_PROGS =
 endif
 
 # string_hash tests features of the Mercury C runtime.
@@ -926,13 +920,13 @@ endif
 # Concurrency tests are only supported in C grades with a "par" grade
 # component or java or csharp grades.
 ifeq "$(findstring par,$(GRADE))" "par"
-	CONC_PROGS = thread_barrier_test
+	CONCURRENCY_PROGS = thread_barrier_test
 else
-  ifeq "$(filter csharp% java%,$(GRADE))" ""
-	CONC_PROGS =
-  else
-	CONC_PROGS = thread_barrier_test
-  endif
+	ifeq "$(filter csharp% java%,$(GRADE))" ""
+		CONCURRENCY_PROGS =
+	else
+		CONCURRENCY_PROGS = thread_barrier_test
+	endif
 endif
 
 # Setting environment variables is not supported in Java grades.
@@ -952,25 +946,26 @@ endif
 
 PROGS = \
 	$(ORDINARY_PROGS) \
-	$(PROF_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) \
+	$(MUTABLE_PROGS) \
+	$(RANDOM_PROGS) \
+	$(TRACE_GOAL_ENV_PROGS) \
+	$(NON_MMC_MAKE_PROGS) \
+	$(DEAD_PROC_PROGS) \
 	$(NON_PROFDEEP_PROGS) \
-	$(BACKEND_PROGS) \
+	$(LLDS_ONLY_PROGS) \
 	$(C_AND_GC_ONLY_PROGS) \
 	$(DEBUG_PROGS) \
 	$(C_ONLY_PROGS) \
-	$(JAVA_PROGS) \
-	$(CSHARP_PROGS) \
+	$(JAVA_ONLY_PROGS) \
+	$(CSHARP_ONLY_PROGS) \
 	$(SOLVER_PROGS) \
 	$(FOREIGN_ENUM_PROGS) \
-	$(RANDOM_PROGS) \
-	$(TRAILED_PROGS) \
-	$(STACK_SEGMENT_PROGS) \
-	$(MUTABLE_PROGS) \
-	$(TRACE_GOAL_ENV_PROGS) \
+	$(TRAIL_ONLY_PROGS) \
+	$(STACK_SEGMENT_ONLY_PROGS) \
 	$(CTGC_PROGS) \
 	$(BIG_DATA_PROGS) \
-	$(CONC_PROGS) \
+	$(CONCURRENCY_PROGS) \
 	$(SETENV_PROGS)
 
 #-----------------------------------------------------------------------------#
