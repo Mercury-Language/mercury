@@ -188,16 +188,8 @@ mercury: lib_std
 
 #-----------------------------------------------------------------------------#
 
-# XXX Don't use depend_ints on Windows as it is very slow on that platform.
-#
-ifneq ("$(findstring x86_64-w64-mingw32,$(FULLARCH))","")
-DEPEND_TARGET=depend
-else
-DEPEND_TARGET=depend_ints
-endif
-
 .PHONY: depend
-depend:	LIB_FLAGS getopt.m copy_java_runtime_files $(STD_LIB_NAME).$(DEPEND_TARGET)
+depend:	LIB_FLAGS getopt.m copy_java_runtime_files $(STD_LIB_NAME).depend_ints
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
