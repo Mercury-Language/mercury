@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -14,7 +14,7 @@
 % or updating the current offset on streams, and finding some standard streams.
 %
 % We communicate results from foreign_procs as separate simple arguments
-% so the C/Java/etc code does not depend on how Mercury stores its
+% so the C/Java/C# code does not depend on how Mercury stores its
 % discriminated union data types. It also avoids memory allocation in
 % inner loops.
 %
