@@ -4,7 +4,7 @@ hard_coded/construct_mangle
 hard_coded/dst_test
 hard_coded/final_excp
 hard_coded/foreign_name_mutable
-hard_coded/functor_ho_inst_excp
+hard_coded/functor_ho_inst_excp_1
 hard_coded/functor_ho_inst_excp_2
 hard_coded/init_excp
 hard_coded/intermod_foreign_type
