@@ -21,6 +21,7 @@
 :- import_module array.
 :- import_module exception.
 :- import_module list.
+:- import_module uint.
 
 :- type fruit
     --->    orange
@@ -86,7 +87,23 @@ test_resize(Elems, Size, Init, !IO) :-
         array.resize(Size, Init, Array0, Array)
     ) then
         io.write_string("Array = ", !IO),
-        io.write_line(Array, !IO)
+        io.write_line(Array, !IO),
+
+        array.from_list(Elems, ArrayU0),
+        ( try [] (
+            array.uresize(uint.cast_from_int(Size), Init, ArrayU0, ArrayU)
+        ) then
+            array.to_list(Array, ArrayList),
+            array.to_list(ArrayU, ArrayListU),
+            ( if ArrayList = ArrayListU then
+                true
+            else
+                io.write_string("resize and uresize results differ\n", !IO)
+            )
+        catch software_error(S) ->
+            io.write_string("URESIZE EXCEPTION: ", !IO),
+            io.write_line(S, !IO)
+        )
     catch software_error(S) ->
         io.write_string("EXCEPTION: ", !IO),
         io.write_line(S, !IO)

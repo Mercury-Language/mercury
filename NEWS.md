@@ -111,10 +111,42 @@ Changes to the Mercury standard library
 
 ### Changes to the `array` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `semidet_least_index/2`
     - pred `semidet_greatest_index/2`
+    - func `uinit/2`
+    - pred `uinit/3`
+    - func `ugenerate/3`
+    - pred `ugenerate_foldl/5`
+    - pred `ugenerate_foldl2/7`
+    - func `ulookup/2`
+    - pred `ulookup/3`
+    - pred `semidet_ulookup/3`
+    - pred `unsafe_ulookup/3`
+    - func `uelem/2`
+    - func `unsafe_uelem/2`
+    - func `uset/3`
+    - pred `uset/4`
+    - pred `semidet_uset/4`
+    - pred `unsafe_uset/4`
+    - func `uelem :=/3`
+    - func `unsafe_uelem :=/3`
+    - pred `uswap/4`
+    - pred `unsafe_uswap/4`
+    - func `umin/1`
+    - pred `umin/2`
+    - func `umax/1`
+    - pred `umax/2`
+    - pred `ubounds/3`
+    - func `usize/1`
+    - pred `usize/2`
+    - pred `in_ubounds/2`
+    - func `uresize/3`
+    - pred `uresize/4`
+    - func `ushrink/2`
+    - pred `ushrink/3`
+    - pred `fill_urange/5`
 
 * The following predicates have been removed:
 

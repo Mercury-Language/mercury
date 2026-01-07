@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
-% Copyright (C) 2013-2023, 2025 The Mercury team.
+% Copyright (C) 2013-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -91,6 +91,8 @@
     %
 :- func init(int::in, T::in) = (array(T)::array_uo) is det.
 :- pred init(int::in, T::in, array(T)::array_uo) is det.
+:- func uinit(uint::in, T::in) = (array(T)::array_uo) is det.
+:- pred uinit(uint::in, T::in, array(T)::array_uo) is det.
 
     % make_empty_array(Array):
     %
@@ -107,11 +109,14 @@
     % calling the function Generate(K). Throws an exception if Size < 0.
     %
 :- func generate(int::in, (func(int) = T)::in) = (array(T)::array_uo) is det.
+:- func ugenerate(uint::in, (func(uint) = T)::in) =
+    (array(T)::array_uo) is det.
 
     % generate_foldl(Size, Generate, Array, !AccA):
     %
-    % As above, but using a predicate with an accumulator threaded through it
-    % to generate the initial value of each element.
+    % Does the same job as generate, but using a predicate with
+    % an accumulator threaded through it to generate the initial value
+    % of each element.
     %
 :- pred generate_foldl(int, pred(int, T, A, A), array(T), A, A).
 :- mode generate_foldl(in, in(pred(in, out, in, out) is det),
@@ -127,10 +132,27 @@
 :- mode generate_foldl(in, in(pred(in, out, di, uo) is semidet),
     array_uo, di, uo) is semidet.
 
+    % ugenerate_foldl(Size, Generate, Array, !AccA):
+    %
+    % As above, but using uints.
+    %
+:- pred ugenerate_foldl(uint, pred(uint, T, A, A), array(T), A, A).
+:- mode ugenerate_foldl(in, in(pred(in, out, in, out) is det),
+    array_uo, in, out) is det.
+:- mode ugenerate_foldl(in, in(pred(in, out, mdi, muo) is det),
+    array_uo, mdi, muo) is det.
+:- mode ugenerate_foldl(in, in(pred(in, out, di, uo) is det),
+    array_uo, di, uo) is det.
+:- mode ugenerate_foldl(in, in(pred(in, out, in, out) is semidet),
+    array_uo, in, out) is semidet.
+:- mode ugenerate_foldl(in, in(pred(in, out, mdi, muo) is semidet),
+    array_uo, mdi, muo) is semidet.
+:- mode ugenerate_foldl(in, in(pred(in, out, di, uo) is semidet),
+    array_uo, di, uo) is semidet.
+
     % generate_foldl2(Size, Generate, Array, !AccA, !AccB):
     %
-    % As above, but using a predicate with two accumulators threaded through it
-    % to generate the initial value of each element.
+    % Does the same job as generate_foldl, but using two accumulators.
     %
 :- pred generate_foldl2(int, pred(int, T, A, A, B, B), array(T), A, A, B, B).
 :- mode generate_foldl2(in, in(pred(in, out, in, out, in, out) is det),
@@ -144,6 +166,25 @@
 :- mode generate_foldl2(in, in(pred(in, out, mdi, muo, mdi, muo) is semidet),
     array_uo, mdi, muo, mdi, muo) is semidet.
 :- mode generate_foldl2(in, in(pred(in, out, di, uo, di, uo) is semidet),
+    array_uo, di, uo, di, uo) is semidet.
+
+    % ugenerate_foldl2(Size, Generate, Array, !AccA, !AccB):
+    %
+    % Does the same job as generate_foldl2, but using uints.
+    %
+:- pred ugenerate_foldl2(uint, pred(uint, T, A, A, B, B),
+    array(T), A, A, B, B).
+:- mode ugenerate_foldl2(in, in(pred(in, out, in, out, in, out) is det),
+    array_uo, in, out, in, out) is det.
+:- mode ugenerate_foldl2(in, in(pred(in, out, mdi, muo, mdi, muo) is det),
+    array_uo, mdi, muo, mdi, muo) is det.
+:- mode ugenerate_foldl2(in, in(pred(in, out, di, uo, di, uo) is det),
+    array_uo, di, uo, di, uo) is det.
+:- mode ugenerate_foldl2(in, in(pred(in, out, in, out, in, out) is semidet),
+    array_uo, in, out, in, out) is semidet.
+:- mode ugenerate_foldl2(in, in(pred(in, out, mdi, muo, mdi, muo) is semidet),
+    array_uo, mdi, muo, mdi, muo) is semidet.
+:- mode ugenerate_foldl2(in, in(pred(in, out, di, uo, di, uo) is semidet),
     array_uo, di, uo, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -162,12 +203,23 @@
 %:- mode lookup(array_ui, in, out) is det.
 :- mode lookup(in, in, out) is det.
 
+:- func ulookup(array(T), uint) = T.
+%:- mode ulookup(array_ui, in) = out is det.
+:- mode ulookup(in, in) = out is det.
+
+:- pred ulookup(array(T), uint, T).
+%:- mode lookup(array_ui, in, out) is det.
+:- mode ulookup(in, in, out) is det.
+
     % semidet_lookup(Array, I) returns the element at index I in Array.
     % It fails if the index is out of bounds.
     %
 :- pred semidet_lookup(array(T), int, T).
 %:- mode semidet_lookup(array_ui, in, out) is semidet.
 :- mode semidet_lookup(in, in, out) is semidet.
+:- pred semidet_ulookup(array(T), uint, T).
+%:- mode semidet_ulookup(array_ui, in, out) is semidet.
+:- mode semidet_ulookup(in, in, out) is semidet.
 
     % unsafe_lookup(Array, I) returns the element at index I in Array.
     % Its behavior is undefined if the index is out of bounds.
@@ -175,6 +227,9 @@
 :- pred unsafe_lookup(array(T), int, T).
 %:- mode unsafe_lookup(array_ui, in, out) is det.
 :- mode unsafe_lookup(in, in, out) is det.
+:- pred unsafe_ulookup(array(T), uint, T).
+%:- mode unsafe_lookup(array_ui, in, out) is det.
+:- mode unsafe_ulookup(in, in, out) is det.
 
     % Array ^ elem(Index) = lookup(Array, Index):
     %
@@ -183,12 +238,18 @@
 :- func elem(int, array(T)) = T.
 %:- mode elem(in, array_ui) = out is det.
 :- mode elem(in, in) = out is det.
+:- func uelem(uint, array(T)) = T.
+%:- mode elem(in, array_ui) = out is det.
+:- mode uelem(in, in) = out is det.
 
     % As above, but omit the bounds check.
     %
 :- func unsafe_elem(int, array(T)) = T.
 %:- mode unsafe_elem(in, array_ui) = out is det.
 :- mode unsafe_elem(in, in) = out is det.
+:- func unsafe_uelem(uint, array(T)) = T.
+%:- mode unsafe_uelem(in, array_ui) = out is det.
+:- mode unsafe_uelem(in, in) = out is det.
 
     % Returns every element of the array, one by one.
     %
@@ -209,6 +270,10 @@
 :- func set(array(T)::array_di, int::in, T::in) = (array(T)::array_uo) is det.
 :- pred set(int::in, T::in, array(T)::array_di, array(T)::array_uo) is det.
 
+:- func uset(array(T)::array_di, uint::in, T::in) = (array(T)::array_uo)
+    is det.
+:- pred uset(uint::in, T::in, array(T)::array_di, array(T)::array_uo) is det.
+
     % semidet_set(I, Val, Array0, Array):
     %
     % Destructively updates the element at index I of Array0 to Val,
@@ -216,6 +281,8 @@
     % It fails if the index is out of bounds.
     %
 :- pred semidet_set(int::in, T::in, array(T)::array_di, array(T)::array_uo)
+    is semidet.
+:- pred semidet_uset(uint::in, T::in, array(T)::array_di, array(T)::array_uo)
     is semidet.
 
     % unsafe_set(I, Val, Array0, Array):
@@ -225,6 +292,8 @@
     % Its behavior is undefined if the index is out of bounds.
     %
 :- pred unsafe_set(int::in, T::in, array(T)::array_di, array(T)::array_uo)
+    is det.
+:- pred unsafe_uset(uint::in, T::in, array(T)::array_di, array(T)::array_uo)
     is det.
 
     % slow_set(Array0, I, Val) = Array:
@@ -259,23 +328,33 @@
 :- func 'elem :='(int, array(T), T) = array(T).
 :- mode 'elem :='(in, array_di, in) = array_uo is det.
 
+:- func 'uelem :='(uint, array(T), T) = array(T).
+:- mode 'uelem :='(in, array_di, in) = array_uo is det.
+
     % As above, but omit the bounds check.
     %
 :- func 'unsafe_elem :='(int, array(T), T) = array(T).
 :- mode 'unsafe_elem :='(in, array_di, in) = array_uo is det.
+
+:- func 'unsafe_uelem :='(uint, array(T), T) = array(T).
+:- mode 'unsafe_uelem :='(in, array_di, in) = array_uo is det.
 
     % swap(I, J, !Array):
     %
     % Swap the value stored at index I with the value stored at index J.
     % Throws an exception if either of I or J is out of bounds.
     %
-:- pred swap(int::in, int::in, array(T)::array_di, array(T)::array_uo)
-    is det.
+:- pred swap(int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
+:- pred uswap(uint::in, uint::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
     % As above, but omit the bounds checks.
     %
-:- pred unsafe_swap(int::in, int::in, array(T)::array_di, array(T)::array_uo)
-    is det.
+:- pred unsafe_swap(int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
+:- pred unsafe_uswap(uint::in, uint::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -288,10 +367,16 @@
 :- func min(array(_T)) = int.
 %:- mode min(array_ui) = out is det.
 :- mode min(in) = out is det.
+:- func umin(array(_T)) = uint.
+%:- mode min(array_ui) = out is det.
+:- mode umin(in) = out is det.
 
 :- pred min(array(_T), int).
 %:- mode min(array_ui, out) is det.
 :- mode min(in, out) is det.
+:- pred umin(array(_T), uint).
+%:- mode umin(array_ui, out) is det.
+:- mode umin(in, out) is det.
 
     % max returns the upper bound of the array.
     % Returns lower bound - 1 for an empty array
@@ -300,10 +385,16 @@
 :- func max(array(_T)) = int.
 %:- mode max(array_ui) = out is det.
 :- mode max(in) = out is det.
+:- func umax(array(_T)) = uint.
+%:- mode umax(array_ui) = out is det.
+:- mode umax(in) = out is det.
 
 :- pred max(array(_T), int).
 %:- mode max(array_ui, out) is det.
 :- mode max(in, out) is det.
+:- pred umax(array(_T), uint).
+%:- mode umax(array_ui, out) is det.
+:- mode umax(in, out) is det.
 
 %---------------------%
 
@@ -352,6 +443,9 @@
 :- pred bounds(array(_T), int, int).
 %:- mode bounds(array_ui, out, out) is det.
 :- mode bounds(in, out, out) is det.
+:- pred ubounds(array(_T), uint, uint).
+%:- mode ubounds(array_ui, out, out) is det.
+:- mode ubounds(in, out, out) is det.
 
     % size returns the length of the array,
     % i.e. upper bound - lower bound + 1.
@@ -363,6 +457,14 @@
 :- pred size(array(_T), int).
 %:- mode size(array_ui, out) is det.
 :- mode size(in, out) is det.
+
+:- func usize(array(_T)) = uint.
+%:- mode usize(array_ui) = out is det.
+:- mode usize(in) = out is det.
+
+:- pred usize(array(_T), uint).
+%:- mode size(array_ui, out) is det.
+:- mode usize(in, out) is det.
 
 %---------------------%
 
@@ -379,6 +481,9 @@
 :- pred in_bounds(array(_T), int).
 %:- mode in_bounds(array_ui, in) is semidet.
 :- mode in_bounds(in, in) is semidet.
+:- pred in_ubounds(array(_T), uint).
+%:- mode in_bounds(array_ui, in) is semidet.
+:- mode in_ubounds(in, in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -416,10 +521,14 @@
     % Any new entries are filled with Init. Throws an exception if
     % Size < 0.
     %
-:- func resize(array(T)::array_di, int::in, T::in) = (array(T)::array_uo)
-    is det.
-:- pred resize(int::in, T::in, array(T)::array_di, array(T)::array_uo)
-    is det.
+:- func resize(array(T)::array_di, int::in, T::in)
+    = (array(T)::array_uo) is det.
+:- pred resize(int::in, T::in,
+    array(T)::array_di, array(T)::array_uo) is det.
+:- func uresize(array(T)::array_di, uint::in, T::in)
+    = (array(T)::array_uo) is det.
+:- pred uresize(uint::in, T::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
     % shrink(Array0, Size) = Array:
     % shrink(Size, Array0, Array):
@@ -430,6 +539,8 @@
     %
 :- func shrink(array(T)::array_di, int::in) = (array(T)::array_uo) is det.
 :- pred shrink(int::in, array(T)::array_di, array(T)::array_uo) is det.
+:- func ushrink(array(T)::array_di, uint::in) = (array(T)::array_uo) is det.
+:- pred ushrink(uint::in, array(T)::array_di, array(T)::array_uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -450,6 +561,8 @@
     % Throws an index_out_of_bounds/0 exception if Lo or Hi is out of bounds.
     %
 :- pred fill_range(T::in, int::in, int::in,
+     array(T)::array_di, array(T)::array_uo) is det.
+:- pred fill_urange(T::in, uint::in, uint::in,
      array(T)::array_di, array(T)::array_uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -948,6 +1061,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -1530,6 +1644,27 @@ init(Size, Item, Array) :-
         array.init_2(Size, Item, Array)
     ).
 
+uinit(N, X) = A :-
+    array.uinit(N, X, A).
+
+uinit(Size, Item, Array) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    % Note that for sufficiently large values of Size, SizeI may be negative
+    % (even though obviously Size cannot be).
+    SizeI = uint.cast_to_int(Size),
+    ( if SizeI < 0 then
+        unexpected($pred, "negative size (after cast to int)")
+    else
+        array.init_2(SizeI, Item, Array)
+    ).
+
+    % init_2(Size, Item, Array):
+    %
+    % Size must be at least zero, and at most maxint for the signed
+    % integer type representing a Mercury int on the current backend.
+    % The upper limit is enforced by Size's type, while our caller
+    % are required to have enforced the lower limit.
+    %
 :- pred init_2(int::in, T::in, array(T)::array_uo) is det.
 
 :- pragma foreign_proc("C",
@@ -1594,6 +1729,7 @@ make_empty_array = A :-
 %---------------------%
 
 generate(Size, GenFunc) = Array :-
+    % Enforce the limits on Size (documented by the comment on init_2).
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1606,6 +1742,25 @@ generate(Size, GenFunc) = Array :-
         FirstElem = GenFunc(0),
         unsafe_init(Size, FirstElem, 0, Array0),
         generate_loop(GenFunc, 1, Size, Array0, Array)
+    ).
+
+ugenerate(Size, GenFunc) = Array :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    % Note that for sufficiently large values of Size, SizeI may be negative
+    % (even though obviously Size cannot be).
+    SizeI = uint.cast_to_int(Size),
+    compare(Result, SizeI, 0),
+    (
+        Result = (<),
+        unexpected($pred, "negative size (after cast to int)")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        FirstElem = GenFunc(0u),
+        unsafe_init(SizeI, FirstElem, 0, Array0),
+        ugenerate_loop(GenFunc, 1u, Size, Array0, Array)
     ).
 
 :- pred unsafe_init(int::in, T::in, int::in, array(T)::array_uo) is det.
@@ -1652,9 +1807,22 @@ generate_loop(GenFunc, Index, Size, !Array) :-
         true
     ).
 
+:- pred ugenerate_loop((func(uint) = T)::in, uint::in, uint::in,
+    array(T)::array_di, array(T)::array_uo) is det.
+
+ugenerate_loop(GenFunc, Index, Size, !Array) :-
+    ( if Index < Size then
+        Elem = GenFunc(Index),
+        array.unsafe_uset(Index, Elem, !Array),
+        ugenerate_loop(GenFunc, Index + 1u, Size, !Array)
+    else
+        true
+    ).
+
 %---------------------%
 
 generate_foldl(Size, GenPred, Array, !AccA) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1693,9 +1861,53 @@ generate_foldl_loop(GenPred, Index, Size, !Array, !AccA) :-
         true
     ).
 
+ugenerate_foldl(Size, GenPred, Array, !AccA) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    % Note that for sufficiently large values of Size, SizeI may be negative
+    % (even though obviously Size cannot be).
+    SizeI = uint.cast_to_int(Size),
+    compare(Result, SizeI, 0),
+    (
+        Result = (<),
+        unexpected($pred, "negative size (after cast to int)")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        GenPred(0u, FirstElem, !AccA),
+        unsafe_init(SizeI, FirstElem, 0, Array0),
+        ugenerate_foldl_loop(GenPred, 1u, Size, Array0, Array, !AccA)
+    ).
+
+:- pred ugenerate_foldl_loop(pred(uint, T, A, A),
+    uint, uint, array(T), array(T), A, A).
+:- mode ugenerate_foldl_loop(in(pred(in, out, in, out) is det),
+    in, in, array_di, array_uo, in, out) is det.
+:- mode ugenerate_foldl_loop(in(pred(in, out, mdi, muo) is det),
+    in, in, array_di, array_uo, mdi, muo) is det.
+:- mode ugenerate_foldl_loop(in(pred(in, out, di, uo) is det),
+    in, in, array_di, array_uo, di, uo) is det.
+:- mode ugenerate_foldl_loop(in(pred(in, out, in, out) is semidet),
+    in, in, array_di, array_uo, in, out) is semidet.
+:- mode ugenerate_foldl_loop(in(pred(in, out, mdi, muo) is semidet),
+    in, in, array_di, array_uo, mdi, muo) is semidet.
+:- mode ugenerate_foldl_loop(in(pred(in, out, di, uo) is semidet),
+    in, in, array_di, array_uo, di, uo) is semidet.
+
+ugenerate_foldl_loop(GenPred, Index, Size, !Array, !AccA) :-
+    ( if Index < Size then
+        GenPred(Index, Elem, !AccA),
+        array.unsafe_uset(Index, Elem, !Array),
+        ugenerate_foldl_loop(GenPred, Index + 1u, Size, !Array, !AccA)
+    else
+        true
+    ).
+
 %---------------------%
 
 generate_foldl2(Size, GenPred, Array, !AccA, !AccB) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1734,10 +1946,53 @@ generate_foldl2_loop(GenPred, Index, Size, !Array, !AccA, !AccB) :-
         true
     ).
 
+ugenerate_foldl2(Size, GenPred, Array, !AccA, !AccB) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    % Note that for sufficiently large values of Size, SizeI may be negative
+    % (even though obviously Size cannot be).
+    SizeI = uint.cast_to_int(Size),
+    compare(Result, SizeI, 0),
+    (
+        Result = (<),
+        unexpected($pred, "negative size (after cast to int)")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        GenPred(0u, FirstElem, !AccA, !AccB),
+        unsafe_init(SizeI, FirstElem, 0, Array0),
+        ugenerate_foldl2_loop(GenPred, 1u, Size, Array0, Array, !AccA, !AccB)
+    ).
+
+:- pred ugenerate_foldl2_loop(pred(uint, T, A, A, B, B),
+    uint, uint, array(T), array(T), A, A, B, B).
+:- mode ugenerate_foldl2_loop(in(pred(in, out, in, out, in, out) is det),
+    in, in, array_di, array_uo, in, out, in, out) is det.
+:- mode ugenerate_foldl2_loop(in(pred(in, out, mdi, muo, mdi, muo) is det),
+    in, in, array_di, array_uo, mdi, muo, mdi, muo) is det.
+:- mode ugenerate_foldl2_loop(in(pred(in, out, di, uo, di, uo) is det),
+    in, in, array_di, array_uo, di, uo, di, uo) is det.
+:- mode ugenerate_foldl2_loop(in(pred(in, out, in, out, in, out) is semidet),
+    in, in, array_di, array_uo, in, out, in, out) is semidet.
+:- mode ugenerate_foldl2_loop(in(pred(in, out, mdi, muo, mdi, muo) is semidet),
+    in, in, array_di, array_uo, mdi, muo, mdi, muo) is semidet.
+:- mode ugenerate_foldl2_loop(in(pred(in, out, di, uo, di, uo) is semidet),
+    in, in, array_di, array_uo, di, uo, di, uo) is semidet.
+
+ugenerate_foldl2_loop(GenPred, Index, Size, !Array, !AccA, !AccB) :-
+    ( if Index < Size then
+        GenPred(Index, Elem, !AccA, !AccB),
+        array.unsafe_uset(Index, Elem, !Array),
+        ugenerate_foldl2_loop(GenPred, Index + 1u, Size, !Array, !AccA, !AccB)
+    else
+        true
+    ).
+
 %---------------------------------------------------------------------------%
 
-lookup(Array, N) = X :-
-    array.lookup(Array, N, X).
+lookup(Array, Index) = Item :-
+    array.lookup(Array, Index, Item).
 
 lookup(Array, Index, Item) :-
     ( if
@@ -1749,9 +2004,35 @@ lookup(Array, Index, Item) :-
         array.unsafe_lookup(Array, Index, Item)
     ).
 
+ulookup(Array, Index) = Item :-
+    array.ulookup(Array, Index, Item).
+
+ulookup(Array, Index, Item) :-
+    ( if
+        bounds_checks,
+        not array.in_ubounds(Array, Index)
+    then
+        out_of_bounds_error(Array, uint.cast_to_int(Index), "array.ulookup")
+    else
+        % Array size must be at least zero, and at most maxint for the signed
+        % integer type representing a Mercury int on the current backend.
+        % Valid index values (i.e. the values that pass the in-bounds test)
+        % must also fall between these two extremes. For numbers
+        % in this range, casts between signed and unsigned integers
+        % always yield the mathematically correct value.
+        array.unsafe_ulookup(Array, Index, Item)
+    ).
+
 semidet_lookup(Array, Index, Item) :-
     ( if array.in_bounds(Array, Index) then
         array.unsafe_lookup(Array, Index, Item)
+    else
+        fail
+    ).
+
+semidet_ulookup(Array, Index, Item) :-
+    ( if array.in_ubounds(Array, Index) then
+        array.unsafe_ulookup(Array, Index, Item)
     else
         fail
     ).
@@ -1798,11 +2079,20 @@ semidet_lookup(Array, Index, Item) :-
     }
 ").
 
+unsafe_ulookup(Array, Index, Item) :-
+    unsafe_lookup(Array, uint.cast_to_int(Index), Item).
+
 elem(Index, Array) = Elem :-
     array.lookup(Array, Index, Elem).
 
+uelem(Index, Array) = Elem :-
+    array.ulookup(Array, Index, Elem).
+
 unsafe_elem(Index, Array) = Elem :-
     array.unsafe_lookup(Array, Index, Elem).
+
+unsafe_uelem(Index, Array) = Elem :-
+    array.unsafe_ulookup(Array, Index, Elem).
 
 member(A, X) :-
     nondet_int_in_range(array.min(A), array.max(A), N),
@@ -1823,9 +2113,29 @@ set(Index, Item, !Array) :-
         array.unsafe_set(Index, Item, !Array)
     ).
 
+uset(A1, N, X) = A2 :-
+    array.uset(N, X, A1, A2).
+
+uset(Index, Item, !Array) :-
+    ( if
+        bounds_checks,
+        not array.in_ubounds(!.Array, Index)
+    then
+        out_of_bounds_error(!.Array, uint.cast_to_int(Index), "array.set")
+    else
+        array.unsafe_uset(Index, Item, !Array)
+    ).
+
 semidet_set(Index, Item, !Array) :-
     ( if array.in_bounds(!.Array, Index) then
         array.unsafe_set(Index, Item, !Array)
+    else
+        fail
+    ).
+
+semidet_uset(Index, Item, !Array) :-
+    ( if array.in_ubounds(!.Array, Index) then
+        array.unsafe_uset(Index, Item, !Array)
     else
         fail
     ).
@@ -1876,6 +2186,9 @@ semidet_set(Index, Item, !Array) :-
     Array = Array0;         // destructive update!
 ").
 
+unsafe_uset(Index, Item, !Array) :-
+    unsafe_set(uint.cast_to_int(Index), Item, !Array).
+
 slow_set(!.Array, N, X) = !:Array :-
     array.slow_set(N, X, !Array).
 
@@ -1893,8 +2206,14 @@ semidet_slow_set(Index, Item, !Array) :-
 'elem :='(Index, !.Array, Value) = !:Array :-
     array.set(Index, Value, !Array).
 
+'uelem :='(Index, !.Array, Value) = !:Array :-
+    array.uset(Index, Value, !Array).
+
 'unsafe_elem :='(Index, !.Array, Value) = !:Array :-
     array.unsafe_set(Index, Value, !Array).
+
+'unsafe_uelem :='(Index, !.Array, Value) = !:Array :-
+    array.unsafe_uset(Index, Value, !Array).
 
 swap(I, J, !Array) :-
     ( if not in_bounds(!.Array, I) then
@@ -1905,16 +2224,33 @@ swap(I, J, !Array) :-
         unsafe_swap(I, J, !Array)
     ).
 
+uswap(I, J, !Array) :-
+    ( if not in_ubounds(!.Array, I) then
+        arg_out_of_bounds_error(!.Array, "first", "array.swap",
+            uint.cast_to_int(I))
+    else if not in_ubounds(!.Array, J) then
+        arg_out_of_bounds_error(!.Array, "second", "array.swap",
+            uint.cast_to_int(J))
+    else
+        unsafe_uswap(I, J, !Array)
+    ).
+
 unsafe_swap(I, J, !Array) :-
     array.unsafe_lookup(!.Array, I, IVal),
     array.unsafe_lookup(!.Array, J, JVal),
     array.unsafe_set(I, JVal, !Array),
     array.unsafe_set(J, IVal, !Array).
 
+unsafe_uswap(I, J, !Array) :-
+    array.unsafe_ulookup(!.Array, I, IVal),
+    array.unsafe_ulookup(!.Array, J, JVal),
+    array.unsafe_uset(I, JVal, !Array),
+    array.unsafe_uset(J, IVal, !Array).
+
 %---------------------------------------------------------------------------%
 
-min(A) = N :-
-    array.min(A, N).
+min(A) = Min :-
+    array.min(A, Min).
 
 :- pragma foreign_proc("C",
     min(Array::in, Min::out),
@@ -1939,8 +2275,16 @@ min(A) = N :-
     Min = 0;
 ").
 
-max(A) = N :-
-    array.max(A, N).
+umin(A) = Min :-
+    array.min(A, IMin),
+    Min = uint.cast_from_int(IMin).
+
+umin(A, Min) :-
+    array.min(A, IMin),
+    Min = uint.cast_from_int(IMin).
+
+max(A) = Max :-
+    array.max(A, Max).
 
 :- pragma foreign_proc("C",
     max(Array::in, Max::out),
@@ -1969,6 +2313,14 @@ max(A) = N :-
         Max = -1;
     }
 ").
+
+umax(A) = Max :-
+    array.max(A, IMax),
+    Max = uint.cast_from_int(IMax).
+
+umax(A, Max) :-
+    array.max(A, IMax),
+    Max = uint.cast_from_int(IMax).
 
 %---------------------%
 
@@ -2012,8 +2364,12 @@ bounds(Array, Min, Max) :-
     array.min(Array, Min),
     array.max(Array, Max).
 
-size(A) = N :-
-    array.size(A, N).
+ubounds(Array, Min, Max) :-
+    array.umin(Array, Min),
+    array.umax(Array, Max).
+
+size(A) = Size :-
+    array.size(A, Size).
 
 :- pragma foreign_proc("C",
     size(Array::in, Max::out),
@@ -2039,6 +2395,14 @@ size(A) = N :-
     Max = jmercury.array.ML_array_size(Array);
 ").
 
+usize(A) = Size :-
+    array.size(A, ISize),
+    Size = uint.cast_from_int(ISize).
+
+usize(A, Size) :-
+    array.size(A, ISize),
+    Size = uint.cast_from_int(ISize).
+
 %---------------------%
 
 is_empty(Array) :-
@@ -2048,11 +2412,17 @@ in_bounds(Array, Index) :-
     array.bounds(Array, Min, Max),
     % We cannot apply private_builtin.in_range directly because
     % the minimum index value is not zero.
+    % XXX Except some comments above imply that yes, it is always zero.
     %
     % We *could* apply private_builtin.in_range indirectly
     % by subtracting Min from both Index and Max, but two subtractions
     % and an unsigned comparison is not that likely to be faster than two
-    % comparisons.
+    % comparisons that should always succeed.
+    Min =< Index, Index =< Max.
+
+in_ubounds(Array, Index) :-
+    array.ubounds(Array, Min, Max),
+    % The comment for in_bounds applies here as well.
     Min =< Index, Index =< Max.
 
 %---------------------------------------------------------------------------%
@@ -2276,14 +2646,27 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
-resize(!.Array, N, X) = !:Array :-
-    array.resize(N, X, !Array).
+resize(!.Array, NewSize, Init) = !:Array :-
+    array.resize(NewSize, Init, !Array).
 
-resize(N, X, !Array) :-
-    ( if N  < 0 then
+resize(NewSize, Init, !Array) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    ( if NewSize < 0 then
         unexpected($pred, "cannot resize to a negative size")
     else
-        do_resize(N, X, !Array)
+        do_resize(NewSize, Init, !Array)
+    ).
+
+uresize(!.Array, NewSize, Init) = !:Array :-
+    uresize(NewSize, Init, !Array).
+
+uresize(NewSize, Init, !Array) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    NewSizeI = uint.cast_to_int(NewSize),
+    ( if NewSizeI < 0 then
+        unexpected($pred, "cannot resize to a negative size (after cast)")
+    else
+        do_resize(NewSizeI, Init, !Array)
     ).
 
 :- pred do_resize(int::in, T::in, array(T)::array_di, array(T)::array_uo)
@@ -2350,25 +2733,43 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
-shrink(!.Array, N) = !:Array :-
-    array.shrink(N, !Array).
+shrink(!.Array, NewSize) = !:Array :-
+    array.shrink(NewSize, !Array).
 
-shrink(Size, !Array) :-
+shrink(NewSize, !Array) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
     OldSize = array.size(!.Array),
-    ( if Size < 0 then
+    ( if NewSize < 0 then
         unexpected($pred, "cannot shrink to a negative size")
-    else if Size > OldSize then
+    else if NewSize > OldSize then
         unexpected($pred, "cannot shrink to a larger size")
-    else if Size = OldSize then
+    else if NewSize = OldSize then
         true
     else
-        array.shrink_2(Size, !Array)
+        array.do_shrink(NewSize, !Array)
     ).
 
-:- pred shrink_2(int::in, array(T)::array_di, array(T)::array_uo) is det.
+ushrink(!.Array, NewSize) = !:Array :-
+    array.ushrink(NewSize, !Array).
+
+ushrink(NewSize, !Array) :-
+    % Enforce the limits on Size (documented by the comment on init_2).
+    OldSizeI = array.size(!.Array),
+    NewSizeI = uint.cast_to_int(NewSize),
+    ( if NewSizeI < 0 then
+        unexpected($pred, "cannot shrink to a negative size (after cast)")
+    else if NewSizeI > OldSizeI then
+        unexpected($pred, "cannot shrink to a larger size")
+    else if NewSizeI = OldSizeI then
+        true
+    else
+        array.do_shrink(NewSizeI, !Array)
+    ).
+
+:- pred do_shrink(int::in, array(T)::array_di, array(T)::array_uo) is det.
 
 :- pragma foreign_proc("C",
-    shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    do_shrink(NewSize::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, array(T), array(T)), [
@@ -2376,43 +2777,43 @@ shrink(Size, !Array) :-
         ])
     ],
 "
-    ML_alloc_array(Array, Size + 1, MR_ALLOC_ID);
-    ML_shrink_array(Array, Array0, Size);
+    ML_alloc_array(Array, NewSize + 1, MR_ALLOC_ID);
+    ML_shrink_array(Array, Array0, NewSize);
 ").
 :- pragma foreign_proc("C#",
-    shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    do_shrink(NewSize::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = array.ML_shrink_array(Array0, Size);
+    Array = array.ML_shrink_array(Array0, NewSize);
 ").
 :- pragma foreign_proc("Java",
-    shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    do_shrink(NewSize::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 == null) {
         Array = null;
     } else if (Array0 instanceof int[]) {
-        Array = new int[Size];
+        Array = new int[NewSize];
     } else if (Array0 instanceof double[]) {
-        Array = new double[Size];
+        Array = new double[NewSize];
     } else if (Array0 instanceof byte[]) {
-        Array = new byte[Size];
+        Array = new byte[NewSize];
     } else if (Array0 instanceof short[]) {
-        Array = new short[Size];
+        Array = new short[NewSize];
     } else if (Array0 instanceof long[]) {
-        Array = new long[Size];
+        Array = new long[NewSize];
     } else if (Array0 instanceof char[]) {
-        Array = new char[Size];
+        Array = new char[NewSize];
     } else if (Array0 instanceof float[]) {
-        Array = new float[Size];
+        Array = new float[NewSize];
     } else if (Array0 instanceof boolean[]) {
-        Array = new boolean[Size];
+        Array = new boolean[NewSize];
     } else {
-        Array = new Object[Size];
+        Array = new Object[NewSize];
     }
 
     if (Array != null) {
-        System.arraycopy(Array0, 0, Array, 0, Size);
+        System.arraycopy(Array0, 0, Array, 0, NewSize);
     }
 ").
 
@@ -2431,6 +2832,19 @@ fill_range(Item, Lo, Hi, !Array) :-
         arg_out_of_bounds_error(!.Array, "third", "fill_range", Hi)
     else
         do_fill_range(Item, Lo, Hi, !Array)
+    ).
+
+fill_urange(Item, Lo, Hi, !Array) :-
+    ( if Lo > Hi then
+        unexpected($pred, "empty urange")
+    else if not in_ubounds(!.Array, Lo) then
+        arg_out_of_bounds_error(!.Array, "second", "fill_urange",
+            uint.cast_to_int(Lo))
+    else if not in_ubounds(!.Array, Hi) then
+        arg_out_of_bounds_error(!.Array, "third", "fill_urange",
+            uint.cast_to_int(Hi))
+    else
+        do_fill_range(Item, uint.cast_to_int(Lo), uint.cast_to_int(Hi), !Array)
     ).
 
 :- pred do_fill_range(T::in, int::in, int::in,

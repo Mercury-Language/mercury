@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -159,7 +159,7 @@
 %
 
 find_edit_distance(Params, SeqA, SeqB, Cost) :-
-    find_edit_distance_ceiling(Params, SeqA, SeqB, no, Cost).
+    find_edit_distance_up_to_ceiling(Params, SeqA, SeqB, no, Cost).
 
 %---------------------------------------------------------------------------%
 
@@ -225,7 +225,7 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 find_first_close_enough_seq(Params, SourceSeq,
         [HeadTargetSeq | TailTargetSeqs], MaxCost,
         FirstCost, FirstTargetSeq, RestTargetSeqs) :-
-    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+    find_edit_distance_up_to_ceiling(Params, SourceSeq, HeadTargetSeq,
         yes(MaxCost), HeadCost),
     ( if HeadCost =< MaxCost then
         FirstCost = HeadCost,
@@ -243,7 +243,7 @@ find_first_close_enough_seq(Params, SourceSeq,
 find_closest_seqs_loop(_, _, [], !Cost, !CostSeqCord).
 find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
         !Cost, !CostSeqCord) :-
-    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+    find_edit_distance_up_to_ceiling(Params, SourceSeq, HeadTargetSeq,
         yes(!.Cost), HeadCost),
     ( if HeadCost < !.Cost then
         % Update the best known cost, ...
@@ -276,29 +276,23 @@ find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
     % but this is ok; since it will be beyond the ceiling, our caller
     % will throw the edit away.
     %
-:- pred find_edit_distance_ceiling(edit_params(T)::in,
+:- pred find_edit_distance_up_to_ceiling(edit_params(T)::in,
     list(T)::in, list(T)::in, maybe(uint)::in, uint::out) is det.
 
-find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
+find_edit_distance_up_to_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
     % The gcc code on which the implementation of this predicate is based
     % is included at the bottom of this module in a big comment. It has been
     % reformatted to follow *our* code style for C (though the code is in C++).
     trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
         io.output_stream(CurStream, !IO),
-        io.format(CurStream, "\nfind_edit_distance(%s, %s)\n",
+        io.format(CurStream, "\nfind_edit_distance_up_to_ceiling(%s, %s)\n",
             [s(string.string(SeqA)), s(string.string(SeqB))], !IO)
     ),
 
-    list.length(SeqA, LenIntA),
-    list.length(SeqB, LenIntB),
-    LenA = uint.det_from_int(LenIntA),
-    LenB = uint.det_from_int(LenIntB),
-    ItemMapA = array.from_list(SeqA),
-    ItemMapB = array.from_list(SeqB),
-
+    list.ulength(SeqA, LenA),
+    list.ulength(SeqB, LenB),
     InsertCost = Params ^ cost_of_insert,
     DeleteCost = Params ^ cost_of_delete,
-
     ( if LenA = 0u then
         Cost = LenB * InsertCost
     else if LenB = 0u then
@@ -354,14 +348,16 @@ find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
         % This also helps with the second cause, but we can do better still
         % by only ever using the *same* three arrays, meaning that we don't
         % allocate any memory in build_rows at all.
-        RowTwoAgo = array.init(uint.cast_to_int(LenA + 1u), 0u),
+        ItemMapA = array.from_list(SeqA),
+        ItemMapB = array.from_list(SeqB),
+        RowTwoAgo = array.uinit(LenA + 1u, 0u),
         init_delete_cost_row(DeleteCost, 0u, LenA, RowOneAgoList),
         RowOneAgo = array.from_list(RowOneAgoList),
-        RowSpare = array.init(uint.cast_to_int(LenA + 1u), 0u),
+        RowSpare = array.uinit(LenA + 1u, 0u),
 
         build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
             0u, RowTwoAgo, RowOneAgo, RowSpare, FinalRow),
-        array.lookup(FinalRow, uint.cast_to_int(LenA), Cost)
+        array.ulookup(FinalRow, LenA, Cost)
     ).
 
 %---------------------%
@@ -453,10 +449,10 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
         % - diag        is RowOneAgo(J)
         % - trans_diag  is RowTwoAgo(J - 1u)
 
-        array.lookup(!.RowOneAgo, uint.cast_to_int(J), DiagCost),
+        array.ulookup(!.RowOneAgo, J, DiagCost),
         I = RowNum,
-        array.lookup(ItemMapA, uint.cast_to_int(J), CurAJ),
-        array.lookup(ItemMapB, uint.cast_to_int(I), CurBI),
+        array.ulookup(ItemMapA, J, CurAJ),
+        array.ulookup(ItemMapB, I, CurBI),
         ( if CurAJ = CurBI then
             MinCost = DiagCost,
             trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
@@ -467,10 +463,10 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             ReplacementCostFunc = Params ^ cost_of_replace,
             ReplacementCost = DiagCost + ReplacementCostFunc(CurAJ, CurBI),
 
-            array.lookup(!.RowNext, uint.cast_to_int(J), LeftCost),
+            array.ulookup(!.RowNext, J, LeftCost),
             DeleteCost = LeftCost + Params ^ cost_of_delete,
 
-            array.lookup(!.RowOneAgo, uint.cast_to_int(ColNum), UpCost),
+            array.ulookup(!.RowOneAgo, ColNum, UpCost),
             InsertCost = UpCost + Params ^ cost_of_insert,
 
             MinCost0 = min(InsertCost, min(DeleteCost, ReplacementCost)),
@@ -478,11 +474,10 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             ( if
                 I > 0u,
                 J > 0u,
-                array.lookup(ItemMapB, uint.cast_to_int(I - 1u), CurAJ),
-                array.lookup(ItemMapA, uint.cast_to_int(J - 1u), CurBI)
+                array.ulookup(ItemMapB, I - 1u, CurAJ),
+                array.ulookup(ItemMapA, J - 1u, CurBI)
             then
-                array.lookup(!.RowTwoAgo, uint.cast_to_int(J - 1u),
-                    TransDiagCost),
+                array.ulookup(!.RowTwoAgo, J - 1u, TransDiagCost),
                 TransposeCost = TransDiagCost + Params ^ cost_of_transpose,
                 MinCost = min(MinCost0, TransposeCost),
                 trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
@@ -501,7 +496,7 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
                 )
             )
         ),
-        array.set(uint.cast_to_int(ColNum), MinCost, !RowNext),
+        array.uset(ColNum, MinCost, !RowNext),
         ( if MinCost < !.MinCostInRow then
             !:MinCostInRow = MinCost
         else

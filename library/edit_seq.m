@@ -201,8 +201,8 @@ find_shortest_edit_seq(Params, SeqA, SeqB, Edits) :-
     %
     % Note that the complexity of this algorithm is O(MN) where
     % M and N are the lengths of SeqA and SeqB.
-    ulength(SeqA, LenA),
-    ulength(SeqB, LenB),
+    list.ulength(SeqA, LenA),
+    list.ulength(SeqB, LenB),
     some [!Table] (
         init_table(!:Table),
         add_entry(0u, 0u, entry(cord.init, 0u), !Table),
