@@ -2,14 +2,288 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2007, 2009-2014 The University of Melbourne.
-% Copyright (C) 2013-2023, 2025 The Mercury team.
+% Copyright (C) 2013-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% This module imports all the modules in the Mercury library.
+% This module imports all the modules in the Mercury standard library.
 %
-% It is used as a way for the Makefiles to know which library interface
-% files, objects, etc., need to be installed.
+% Its main use is telling build systems what modules are part of
+% the Mercury standard library. This implicitly specifies what files
+% (such as interface files, optimization files, header files, object files,
+% and so on) need to be installed as part of installing the library.
+%
+% It also provides functions that return version and architecture
+% information for the Mercury installation.
+%
+%---------------------------------------------------------------------------%
+%
+% Many modules in the Mercury standard library are standalone, but
+% many others are part of clusters (i.e. groups) of related modules.
+% Typically, the modules in each such cluster
+%
+% - either implement the exact same abstract data type,
+% - or they implement slight variations on an abstract data type.
+%
+% In both cases, the different modules have different strengths and
+% weaknesses, with different ones being suitable for different workloads.
+% (If one was better than all the others for all workloads, then
+% there would be no need for any of the others.)
+%
+% The main clusters are
+%
+% - sets
+% - lists
+% - queues
+% - arrays
+% - maps
+%
+% The following sections describe each cluster in detail.
+%
+%---------------------%
+%
+% The *set* cluster.
+%
+% This consists of modules that implement the set abstract data type.
+% The modules in this cluster fall into two subclusters.
+%
+% The first subcluster consists of modules whose sets can store values
+% of any type. These modules are
+%
+% - set_unordlist, which represents sets as unsorted lists
+%   with possible duplicates.
+%
+%   This has the fastest insertion operation, but is suitable
+%   only for very small sets.
+%
+% - set_ordlist, which represents sets as sorted lists without duplicates.
+%
+%   This has a slower insertion operation than set_unordlist, but faster
+%   membership test operations. It is suitable only for small sets.
+%
+% - set_bbbtree, which represents sets as bounded-balance binary trees
+% - set_tree234, which represents sets as 234-trees
+%
+%   These modules use balanced trees to achieve logarithmic complexity
+%   for both insertion and membership test operations (and for some other
+%   operations, such as deletion). This makes them suitable for
+%   significantly larger sets than set_unordlist or set_ordlist, with
+%   the tradeoff being that their higher complexity results in higher
+%   constant factors.
+%
+% - set_ctree234, which represents sets as 234-trees with counts
+%
+%   This module differs from set_tree234 only in that it explicitly records
+%   the count of items in the tree. This makes the "count items" operation
+%   constant time, at the cost of extra work on every insertion and deletion
+%   to update the count.
+%
+% - set, which is effectively a short name for one of the modules above.
+%   For a long time now, it has been a shorthand for set_ordlist, which is
+%   a good general choice for small sets. It has the separate, generic name
+%   to allow this to be changed in the future.
+%
+% The second subcluster consists of modules whose sets can store only
+% integers, or values that can be transformed into integers. These modules are
+%
+% - sparse_bitset, which represents sets as a list of words, with
+%   each word being a bitmap that is constrained to represent the integers
+%   in the range [N * wordsize, (N * wordsize) + wordsize-1]. The list
+%   contains only bitmaps in which at least one bit is set.
+%
+%   This representation can be thought of a version of set_ordlist with
+%   smaller constant factors whenever a bitmap has two or more bits set.
+%
+%   The point of the alignment constraint is to simplify and speed up
+%   union, intersection and difference operations.
+%
+% - fat_sparse_bitset is a variant of sparse_bitset. Whereas sparse_bitset
+%   uses two two-word cells on the heap to represent a bitmap (one cell
+%   for the list constructor, and one for the <N,bitmap> pair), this module
+%   uses just one three-word heap cell containing N, the bitmap, and the
+%   rest of the list.
+%
+%   fat_sparse_bitset avoids a pointer indirection on each access,
+%   but it gets its heap cells from a different list in the memory allocator
+%   than sparse_bitset. This is the list of four-word cells, since the Boehm
+%   collector, and most others, round up requests to the next multiple of two.
+%
+%   Whether fat_sparse_bitset is better than sparse_bitset itself depends
+%   on the machine architecture and on the workload.
+%
+% - fatter_sparse_bitset is a variant of fat_sparse_bitset. It is intended
+%   to make use of the otherwise-fallow fourth word in a four-word allocation,
+%   by storing two adjacent bitmaps between the value of N and the
+%   next pointer.
+%
+%   fatter_sparse_bitset can be faster than fat_sparse_bitset if the
+%   probability of some set members falling into each extra bitmap
+%   is high enough. If it is too low, then its higher constant factors
+%   will make it slower than fat_sparse_bitset.
+%
+% - tree_bitset is another variant of sparse_bitset. While sparse_bitset
+%   represents a set using a list of bitmaps of unlimited length, in which
+%   getting to a bitmap representing a large integer requires following
+%   a lot of pointers, tree_bitset represents them using a tree whose leaves
+%   consist of relatively short lists (up to 32 bitmaps), and whose interior
+%   nodes each contain lists of up to 32 nodes at the next lower level.
+%
+%   This structure can speed up operations by significantly reducing the
+%   number of list element traversals, but it also has higher constant
+%   factors.
+%
+% - ranges represents sets using a simple list of ranges, where every integer
+%   in a range is in the set.
+%
+%   This representation is suitable only for sets in which most ranges contain
+%   more than one integer. (If most contain only one integer, then either
+%   set_ordlist or sparse_bitset would probably be faster.)
+%
+% - diet represents sets using discrete interval encoding trees.
+%   This data structure is also based on ranges (which it calls intervals),
+%   but the superstructure it builds on top of them is not a list (as with
+%   the ranges module) but a balanced tree (specifically, an AVL tree).
+%
+%   This representation is also suitable only for sets in which most ranges
+%   contain more than one integer, but it has better worst-case complexity
+%   (logarithmic rather than linear) for membership test operations.
+%
+%---------------------%
+%
+% The *list* cluster.
+%
+% This consists of modules that implement ordered sequences.
+%
+% - list is the standard implementation of ordered sequences.
+%
+% - one_or_more is a variant of the list module that is specifically
+%   intended to represent *nonempty* ordered sequences, with empty
+%   sequences being ruled out by the type system.
+%
+% - cord represents lists using a data structure that can append two cords
+%   in constant time. (In both the list and one_or_more modules, appending
+%   two lists takes time that is proportional to the length of the
+%   first list.) The cord representation uses a tree whose shape
+%   corresponds to the append operations that created it.
+%
+%   If you need to build up a long list piece by piece, represent the pieces
+%   using cords, and then convert the final cord to a list.
+%
+% - ra_list also uses trees (actually, a list of perfectly balanced
+%   binary trees) to represent ordered sequences, but its objective is
+%   to speed up random access to selected list elements (the "ra" part of
+%   the name stands for "random access"), instead append operations.
+%
+% - assoc_list implements one popular use of lists, which is lists of
+%   key/value pairs.
+%
+% - kv_list is a variant of assoc_list that is intended to have
+%   better memory behavior. Whereas as assoc_list stores each key/value pair
+%   two two-word cells on the heap (one cell for the list constructor,
+%   and one for the <key,value> pair), this module uses just one three-word
+%   heap cell containing the key, the value, and the pointer to the rest
+%   of the list. This can yield better performance on some architectures
+%   and for some workloads, at the price of not being able to apply standard
+%   list operations to kv_lists (other than the ones supplied by the kv_list
+%   module itself).
+%
+%---------------------%
+%
+% The *queue* cluster.
+%
+% This consists of modules that implement ordered sequences which have
+% separate operations to *put* items into the sequence, and to *get* items
+% out of the sequence.
+%
+% - queue is the standard implementation of this abstract data type.
+%   The sequences it supports have two distinct ends: the tail where
+%   new items are put onto the queue, and the front where items get
+%   taken off the queue.
+%
+% - pqueue implements a variant of this abstract data type, the priority
+%   queue, which stores key/value pairs, and whose get operation removes from
+%   the queue not the pair at the front, but the pair whose key is the
+%   smallest. In this abstract data type, the list is ordered not from
+%   oldest to newest insertion time, but from low keys to high keys.
+%
+% - psqueue, which is short for "priority search queue", implements a variant
+%   of priority queue which allows operations that return the value associated
+%   with a key in the queue (if the key exists in the queue).
+%
+%---------------------%
+%
+% The *array* cluster.
+%
+% This consists of modules that implement arrays, which, conceptually,
+% are maps from integers (in the range of 0 to some N) to values.
+%
+% - array defines the standard one-dimensional array data structure.
+%   It supports constant time lookup and update, but guarantees
+%   correct operation only if the user never performs any operation
+%   whatsoever on any array that has had any updates applied to.
+%   This is because its updates are destructive updates. Since the
+%   Mercury mode system is not expressive enough to prevent access
+%   to outdated versions of arrays, that task falls to programmers.
+%
+% - array2d defines two-dimensional arrays, but in every other respect,
+%   its behavior matches that of the array module.
+%
+% - version_array is a version of the array module that allows both
+%   efficient access to the latest version of the array, and less efficient
+%   but still safe access to earlier versions of the array. In general,
+%   the more outdated an array is, the less efficient access to its elements
+%   will be. This is because a version array effectively consists of
+%   the latest version of the array, and a list of "diffs" that allow
+%   the reconstruction of earlier and earlier versions.
+%
+% - version_array2d is effectively a two-dimensional array version
+%   of the version_array module.
+%
+% - bt_array solves the same problem as version_array (safe access
+%   to non-current versions of the array), but using a different
+%   data structure: random access lists, as in the ra_list module.
+%   This has different performance characteristics: it has faster access
+%   to old versions, at the cost of logarithmic and not constant time access
+%   to the current version.
+%
+%---------------------%
+%
+% The *map* cluster.
+%
+% This consists of modules that store key/value pairs, and support
+% the lookup of the value (if any) associated with a given key.
+%
+% - map is the standard implementation of maps. For a long time now,
+%   it has been a shorthand for the tree234 implementation of maps.
+%   It has the separate, generic name to allow this to be changed
+%   in the future.
+%
+% - tree234 is the implementation of maps using 2-3-4 trees, which are
+%   a kind of balanced tree.
+%
+% - rbtree is the implementation of maps using red-black trees, which are
+%   a different kind of balanced tree.
+%
+% - multi_map implements one popular kind of maps: maps that allow each key
+%   to be mapped to a *list* of values. If a key is mapped to the empty list
+%   of values, then operations in this module will delete the key, but since
+%   the definition of multi_map is visible from outside its module, it is
+%   possible for users of the module to create map entries that map a key
+%   to the empty list of values.
+%
+% - one_or_more_map is a version of multi_maps which does enforce
+%   the invariant that if a key exists in the map, then the list of values
+%   corresponding to it will be nonempty.
+%
+% - bimap implements a bidirectional map, which in mathematics is called
+%   a bijection. This requires that each key maps to a unique value,
+%   and for each value is mapped from a unique key. Bimaps allow
+%   not just a lookup of a value given the key, but also the key given value.
+%
+% - injection implements an injection, which is closely related to, but
+%   nevertheless different from, a bijection. Like a bijection, an injection
+%   requires that each key map to a unique value, but unlike a bijection,
+%   it allows a value to be mapped from more than one key.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -32,6 +306,8 @@
     % Return the package version string.
     %
 :- func package_version = string.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -75,9 +351,12 @@
 %   only for Mercury system implementors.
 %
 % - Add the module name to the definition of mercury_std_library_module below.
-%   This is regardless of whether the module is for implementors or not,
-%   and whether it is a private submodule or not. The
-%   mercury_std_library_module predicate should list all the modules
+%   This is regardless of whether
+%
+%   - the module is for implementors or not, and
+%   - whether it is a private submodule or not.
+%
+%   The mercury_std_library_module predicate should list all the modules
 %   in a Mercury source file in the library directory.
 %
 % - Add the file name either to MODULES_DOC (if it is intended for application
@@ -91,7 +370,6 @@
 % NOTES_TO_IMPLEMENTORS screws up the ordering of e.g. int8 vs int16.
 
 % The modules intended for application programmers.
-
 :- import_module array.
 :- import_module array2d.
 :- import_module assoc_list.
@@ -224,7 +502,6 @@
 % The modules intended for Mercury system implementors.
 % NOTE: changes to this list may need to be reflected
 % in mdbcomp/builtin_modules.m.
-%
 :- import_module mutvar.
 :- import_module par_builtin.
 :- import_module private_builtin.
