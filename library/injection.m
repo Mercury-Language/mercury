@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -20,11 +20,11 @@
 % The invariants on this data structure, which are enforced by this module,
 % are as follows:
 %
-% 1) For any key K, if a forward lookup succeeds with value V then a reverse
-% lookup of value V will succeed with key K.
+% 1) For any key K, if a forward lookup succeeds with value V, then
+% a reverse lookup of value V will succeed with key K.
 %
-% 2) For any value V, if a reverse lookup succeeds with key K then a forward
-% lookup of key K will succeed with some value (not necessarily V).
+% 2) For any value V, if a reverse lookup succeeds with key K, then
+% a forward lookup of key K will succeed with some value (not necessarily V).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
