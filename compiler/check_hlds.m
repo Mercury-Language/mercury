@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2006, 2009-2010 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,6 +105,9 @@
 % Indexing analysis.
 :- include_module cse_detection.
 :- include_module switch_detection.
+:- include_module find_bind_var.
+:- include_module switch_candidates.
+:- include_module scout_disjunctions.
 
 % Determinism analysis.
 % :- module determinism_analysis.

@@ -1402,6 +1402,21 @@ The indexing and determinism analysis system also consists of several modules.
     switch_detection.m transforms into switches
     those disjunctions in which several disjuncts
     test the same variable against different function symbols.
+    The next three modules are its subcontractors.
+    <li>
+    scout_disjunctions.m builds a database of which disjuncts
+    deconstruct which variables with which function symbols.
+    It is the intended replacement for the next module.
+    <li>
+    find_bind_var.m looks for deconstructions
+    of a specific variable in a specific disjunct.
+    (It is used, at least for now,
+    by cse_detection.m as well as switch_detection.m)
+    <li>
+    switch_candidates.m tests whether
+    a disjunction can be considered a switch on a given variable,
+    and if it can be considered a switch on two or more variables,
+    which one should be chosen.
     <li>
     cse_detection.m looks for disjunctions in which
     each disjunct tests the same variable against the same function symbols,
@@ -1410,7 +1425,7 @@ The indexing and determinism analysis system also consists of several modules.
     it will re-run mode analysis and switch detection.
     This rerun of switch detection can then find switches
     that were buried too deeply for it to see
-    in the original code cse_detection.m was invoked with.
+    in the code cse_detection.m was originally invoked with.
     <li>
     det_analysis.m manages the determinism inference process.
     <li>
@@ -1423,8 +1438,8 @@ The indexing and determinism analysis system also consists of several modules.
     Any errors that involve the determinisms of whole procedures
     are checked for and reported
     by det_check_proc.m, det_check_goal.m and det_check_switch.m,
-    which look for errors with procedure interfaces, goals in general,
-    and switch goals in particular respectively.
+    which respectively look for errors with
+    procedure interfaces, goals in general, and switch goals in particular.
     <li>
     det_util.m contains utility predicates used in several modules.
     </ul>

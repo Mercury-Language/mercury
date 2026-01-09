@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -157,6 +157,8 @@
     %
 :- func unify_rhs_to_string(module_info, var_table, var_name_print, unify_rhs)
     = string.
+
+:- func case_to_string(hlds_out_info_goal, indent, prog_var, case) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -2137,34 +2139,39 @@ format_goal_switch(InfoGoal, Indent, Follow, GoalExpr, !State) :-
         [s(IndentStr), s(CanFailStr), s(VarStr)], !State),
     (
         CasesList = [Case | Cases],
-        write_case(InfoGoal, Indent, Var, Case, !State),
-        write_cases(InfoGoal, Indent, Var, Cases, !State)
+        format_case(InfoGoal, Indent, Var, Case, !State),
+        format_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = [],
         string.builder.format("%sfail\n", [s(IndentStr)], !State)
     ),
     string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
-:- pred write_cases(hlds_out_info_goal::in,
+:- pred format_cases(hlds_out_info_goal::in,
     indent::in, prog_var::in, list(case)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-write_cases(InfoGoal, Indent, Var, CasesList, !State) :-
+format_cases(InfoGoal, Indent, Var, CasesList, !State) :-
     (
         CasesList = [Case | Cases],
         IndentStr = indent2_string(Indent),
         string.builder.format("%s;\n", [s(IndentStr)], !State),
-        write_case(InfoGoal, Indent, Var, Case, !State),
-        write_cases(InfoGoal, Indent, Var, Cases, !State)
+        format_case(InfoGoal, Indent, Var, Case, !State),
+        format_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = []
     ).
 
-:- pred write_case(hlds_out_info_goal::in,
+case_to_string(InfoGoal, Indent, Var, Case) = Str :-
+    State0 = string.builder.init,
+    format_case(InfoGoal, Indent, Var, Case, State0, State),
+    Str = string.builder.to_string(State).
+
+:- pred format_case(hlds_out_info_goal::in,
     indent::in, prog_var::in, case::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-write_case(InfoGoal, Indent, Var, Case, !State) :-
+format_case(InfoGoal, Indent, Var, Case, !State) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     IndentStr = indent2_string(Indent),
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
