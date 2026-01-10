@@ -328,14 +328,15 @@ categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
     list(hlds_goal)::out) is det.
 
 can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
-        CanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
-    ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
+        SwitchCanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
+    ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, BoundFunctors) then
         type_to_ctor_det(VarType, TypeCtor),
-        bound_functors_to_cons_ids(TypeCtor, Functors, ConsIds),
-        set_tree234.list_to_set(ConsIds, ConsIdSet),
-        delete_unreachable_cases(Cases0, ConsIdSet,
+        bound_functors_to_cons_ids(TypeCtor, BoundFunctors, InstConsIds),
+        set_tree234.list_to_set(InstConsIds, InstConsIdSet),
+        delete_unreachable_cases(Cases0, InstConsIdSet,
             Cases, UnreachableCaseGoals),
-        compute_can_fail(ConsIdSet, Cases, CanFail, CasesMissing)
+        switch_can_fail_with_bound_functors(InstConsIdSet, Cases,
+            SwitchCanFail, CasesMissing)
     else
         % We do not have any inst information that would allow us to decide
         % that any case is unreachable.
@@ -348,22 +349,23 @@ can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
             % whether the cardinalities of the two sets match is *equivalent*
             % to checking whether they are the same set.
             does_switch_cover_n_cases(NumFunctors, Cases,
-                CanFail, CasesMissing)
+                SwitchCanFail, CasesMissing)
         else
             % switch_type_num_functors fails only for types on which
             % you cannot have a complete switch, e.g. integers and strings.
-            CanFail = can_fail,
+            SwitchCanFail = can_fail,
             CasesMissing = unbounded_cases
         )
     ).
 
-:- pred compute_can_fail(set_tree234(cons_id)::in, list(case)::in,
-    can_fail::out, cases_missing::out) is det.
+:- pred switch_can_fail_with_bound_functors(set_tree234(cons_id)::in,
+    list(case)::in, can_fail::out, cases_missing::out) is det.
 
-compute_can_fail(Functors, Cases, SwitchCanFail, CasesMissing) :-
-    UncoveredFunctors0 = Functors,
-    delete_covered_functors(Cases, UncoveredFunctors0, UncoveredFunctors),
-    ( if set_tree234.is_empty(UncoveredFunctors) then
+switch_can_fail_with_bound_functors(InstConsIds, Cases,
+        SwitchCanFail, CasesMissing) :-
+    acc_covered_functors(Cases, set_tree234.init, CoveredConsIds),
+    set_tree234.difference(InstConsIds, CoveredConsIds, UncoveredConsIds),
+    ( if set_tree234.is_empty(UncoveredConsIds) then
         SwitchCanFail = cannot_fail,
         CasesMissing = no_cases_missing
     else
@@ -373,15 +375,15 @@ compute_can_fail(Functors, Cases, SwitchCanFail, CasesMissing) :-
 
     % Delete from !UncoveredConsIds all cons_ids mentioned in any of the cases.
     %
-:- pred delete_covered_functors(list(case)::in,
+:- pred acc_covered_functors(list(case)::in,
     set_tree234(cons_id)::in, set_tree234(cons_id)::out) is det.
 
-delete_covered_functors([], !UncoveredConsIds).
-delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
+acc_covered_functors([], !CoveredConsIds).
+acc_covered_functors([Case | Cases], !CoveredConsIds) :-
     Case = case(MainConsId, OtherConsIds, _Goal),
-    set_tree234.delete(MainConsId, !UncoveredConsIds),
-    set_tree234.delete_list(OtherConsIds, !UncoveredConsIds),
-    delete_covered_functors(Cases, !UncoveredConsIds).
+    set_tree234.insert(MainConsId, !CoveredConsIds),
+    set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
+    acc_covered_functors(Cases, !CoveredConsIds).
 
     % Check whether a switch handles the given number of cons_ids.
     %
@@ -389,7 +391,7 @@ delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
     can_fail::out, cases_missing::out) is det.
 
 does_switch_cover_n_cases(NumFunctors, Cases, SwitchCanFail, CasesMissing) :-
-    NumCoveredConsIds = count_covered_cons_ids(Cases),
+    count_covered_cons_ids(Cases, 0, NumCoveredConsIds),
     ( if NumCoveredConsIds = NumFunctors then
         SwitchCanFail = cannot_fail,
         CasesMissing = no_cases_missing
@@ -398,13 +400,13 @@ does_switch_cover_n_cases(NumFunctors, Cases, SwitchCanFail, CasesMissing) :-
         CasesMissing = some_cases_missing
     ).
 
-:- func count_covered_cons_ids(list(case)) = int.
+:- pred count_covered_cons_ids(list(case)::in, int::in, int::out) is det.
 
-count_covered_cons_ids([]) = 0.
-count_covered_cons_ids([Case | Cases]) = CaseCount + CasesCount :-
+count_covered_cons_ids([], !NumCoveredConsIds).
+count_covered_cons_ids([Case | Cases], !NumCoveredConsIds) :-
     Case = case(_MainConsId, OtherConsIds, _Goal),
-    CaseCount = 1 + list.length(OtherConsIds),
-    CasesCount = count_covered_cons_ids(Cases).
+    !:NumCoveredConsIds = !.NumCoveredConsIds + 1 + list.length(OtherConsIds),
+    count_covered_cons_ids(Cases, !NumCoveredConsIds).
 
 %---------------------------------------------------------------------------%
 
