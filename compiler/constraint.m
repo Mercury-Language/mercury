@@ -174,10 +174,7 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
             propagate_goal(Constraints, SubGoal0, SubGoal, !Info),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
-            ( Reason = exist_quant(_, _)
-            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
-            ; Reason = from_ground_term(_, from_ground_term_other)
-            ),
+            Reason = exist_quant(_, _),
             propagate_goal(Constraints, SubGoal0, SubGoal, !Info),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
@@ -208,6 +205,14 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
             % scopes or propagating local constraints within these scopes.
             flatten_constraints(Constraints, ConstraintGoals),
             FinalGoals = [hlds_goal(GoalExpr, GoalInfo) | ConstraintGoals]
+        ;
+            ( Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
+            ),
+            propagate_goal(Constraints, SubGoal0, SubGoal, !Info),
+            % The propagate_goal may have destroyed the invariants
+            % of the from_ground_term scope.
+            FinalGoals = [SubGoal]
         )
     ;
         GoalExpr = negation(NegGoal0),

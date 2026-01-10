@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1367,19 +1367,18 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
         % possible for solver types, it is possible for UnifyTermGoal
         % to contain a unification other than one involving TermVar.
         UnifyTermGoal ^ hg_expr = unify(TermVar, _, _, _, _),
-        all_plain_construct_unifies([UnifyTermGoal | UnifyArgGoals])
+        all_plain_functor_unifies([UnifyTermGoal | UnifyArgGoals])
     then
         ( if TermVarInst = free then
-            % UnifyTerGoalm unifies TermVar with the arguments created
+            % UnifyTermGoal unifies TermVar with the arguments created
             % by UnifyArgGoals. Since TermVar is now free and the
             % argument variables haven't been encountered yet,
             % UnifyTermGoal cannot succeed until *after* the argument
             % variables become ground.
             %
-            % Putting UnifyTerGoalm after UnifyArgGoals here is MUCH faster
+            % Putting UnifyTermGoal after UnifyArgGoals here is MUCH faster
             % than letting the usual more ordering algorithm delay it
             % repeatedly: it is linear instead of quadratic.
-
             list.reverse([UnifyTermGoal | UnifyArgGoals], RevConj),
             MaybeGroundTermMode = yes(construct_ground_term(RevConj))
         else if TermVarInst = ground(shared, none_or_default_func) then
@@ -1392,14 +1391,14 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
         MaybeGroundTermMode = no
     ).
 
-:- pred all_plain_construct_unifies(list(hlds_goal)::in) is semidet.
+:- pred all_plain_functor_unifies(list(hlds_goal)::in) is semidet.
 
-all_plain_construct_unifies([]).
-all_plain_construct_unifies([Goal | Goals]) :-
+all_plain_functor_unifies([]).
+all_plain_functor_unifies([Goal | Goals]) :-
     Goal = hlds_goal(GoalExpr, _),
     GoalExpr = unify(_LHSVar, RHS, _, _, _),
     RHS = rhs_functor(_ConsId, is_not_exist_constr, _RHSVars),
-    all_plain_construct_unifies(Goals).
+    all_plain_functor_unifies(Goals).
 
 :- pred modecheck_ground_term_construct(prog_var::in, list(hlds_goal)::in,
     hlds_goal_info::in, hlds_goal::out,

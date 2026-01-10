@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -417,7 +417,9 @@ expand_try_goals_in_goal(InstMap0, Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = scope(Reason, InnerGoal0),
         (
-            Reason = from_ground_term(_, from_ground_term_construct),
+            ( Reason = from_ground_term(_, from_ground_term_construct)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ),
             % There can be no try goals inside this scope.
             Goal = Goal0
         ;
@@ -430,7 +432,6 @@ expand_try_goals_in_goal(InstMap0, Goal0, Goal, !Info) :-
             ; Reason = require_switch_arms_detism(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
             ; Reason = trace_goal(_, _, _, _, _)
             ; Reason = loop_control(_, _, _)

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -400,7 +400,7 @@
     % 1. The only nonlocal variable of the scope is the one listed in the
     %    scope_reason.
     % 2. The shape of the code inside the scope is a plain conjunction of
-    %    unifications.
+    %    unifications, all of which have rhs_functor as their right hand side.
     % 3. These unifications are construct unifications whose construct_how
     %    field says construct_statically, and in which the nonlocals,
     %    instmap_delta and determinism fields of the goal_info are
