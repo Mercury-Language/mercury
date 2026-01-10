@@ -131,7 +131,6 @@
 
 :- implementation.
 
-:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
@@ -145,6 +144,7 @@
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
+:- import_module counter.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -180,6 +180,8 @@ switchable_cons_id_to_cons_id(ConsId) = coerce(ConsId).
                 % inside switches.
                 scdi_module_info            :: module_info,
                 scdi_var_table              :: var_table,
+
+                scdi_goal_id_counter        :: ucounter,
 
                 % These are the data structures we are constructing.
                 % The one we really want is the disjunction_info_map;
@@ -238,6 +240,18 @@ switchable_cons_id_to_cons_id(ConsId) = coerce(ConsId).
             % compared to a hypothetical alternative arrangement in which
             % we allow unifications from the ends of possibly-long disjuncts
             % to provide the cons_id that identifies a switch arm.
+    ;       not_in_zone
+    ;       new_disjunct.
+            % This goal is a disjunct in a disjunction. Once it has been
+            % assigned its goal_ids, use it to initialize its disjunct_info
+            % in the scout_disj_info.
+            %
+            % The only time when a value of time maybe_in_zone is bound
+            % to new_disjunct will be when scout_disjunctions_in_disjuncts
+            % calls scout_disjunctions_in_goal.
+
+:- inst in_or_out_zone for maybe_in_zone/0
+    --->    in_zone(ground)
     ;       not_in_zone.
 
 :- type disjunct_id_info
@@ -276,20 +290,19 @@ switchable_cons_id_to_cons_id(ConsId) = coerce(ConsId).
 %---------------------------------------------------------------------------%
 
 scout_disjunctions_in_proc(ModuleInfo, !ProcInfo, DisjunctionInfoMap) :-
-    % XXX TODO Deforest with scout_disjunctions_in_goal.
-    fill_goal_id_slots_in_proc(ModuleInfo, _ContainingGoalMap, !ProcInfo),
-
     SubstDb0 = init_subst_db,
     proc_info_get_var_table(!.ProcInfo, VarTable),
+    GoalIdCounter0 = counter.uinit(1u),
     map.init(DisjunctionInfoMap0),
     map.init(DisjunctInfoMap0),
-    ScoutInfo0 = scout_disj_info(ModuleInfo, VarTable,
+    ScoutInfo0 = scout_disj_info(ModuleInfo, VarTable, GoalIdCounter0,
         DisjunctionInfoMap0, DisjunctInfoMap0),
-    proc_info_get_goal(!.ProcInfo, Goal),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
-    scout_disjunctions_in_goal(Goal, InstMap0, _InstMap,
+    scout_disjunctions_in_goal(Goal0, Goal, InstMap0, _InstMap,
         not_in_zone, _InZone, SubstDb0, _SubstDb, ScoutInfo0, ScoutInfo),
-    ScoutInfo = scout_disj_info(_, _, DisjunctionInfoMap, _),
+    proc_info_set_goal(Goal, !ProcInfo),
+    ScoutInfo = scout_disj_info(_, _, _, DisjunctionInfoMap, _),
     trace [
         compile_time(flag("scout-disjunctions")),
         runtime(env("SCOUT_DISJUNCTIONS")),
@@ -308,65 +321,78 @@ scout_disjunctions_in_proc(ModuleInfo, !ProcInfo, DisjunctionInfoMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred scout_disjunctions_in_goal(hlds_goal::in, instmap::in, instmap::out,
-    maybe_in_zone::in, maybe_in_zone::out, subst_db::in, subst_db::out,
+:- pred scout_disjunctions_in_goal(hlds_goal::in, hlds_goal::out,
+    instmap::in, instmap::out,
+    maybe_in_zone::in, maybe_in_zone::out(in_or_out_zone),
+    subst_db::in, subst_db::out,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_goal(Goal, InstMap0, InstMap,
+scout_disjunctions_in_goal(Goal0, Goal, InstMap0, InstMap,
         !InZone, !SubstDb, !ScoutInfo) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    Counter0 = !.ScoutInfo ^ scdi_goal_id_counter,
+    counter.uallocate(GoalNum, Counter0, Counter),
+    !ScoutInfo ^ scdi_goal_id_counter := Counter,
+    GoalId = goal_id(GoalNum),
+    goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
+    initialize_disjunct_if_needed(GoalId, !InZone, !ScoutInfo),
     (
-        GoalExpr = unify(_, _, _, _, _),
-        scout_disjunctions_in_unify_expr(GoalExpr, GoalInfo, InstMap0,
-            !.InZone, !SubstDb, !ScoutInfo)
+        GoalExpr0 = unify(_, _, _, _, _),
+        scout_disjunctions_in_unify_expr(GoalExpr0, GoalExpr,
+            GoalInfo, InstMap0, !.InZone, !SubstDb, !ScoutInfo)
     ;
-        ( GoalExpr = generic_call(_, _, _, _, _)
-        ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
+        GoalExpr = GoalExpr0,
         ( if goal_info_has_feature(GoalInfo, feature_from_head) then
             true
         else
             !:InZone = not_in_zone
         )
     ;
-        GoalExpr = conj(ConjType, Conjuncts),
+        GoalExpr0 = conj(ConjType, Conjuncts0),
         (
             ConjType = plain_conj,
-            scout_disjunctions_in_conjuncts(Conjuncts, InstMap0,
+            scout_disjunctions_in_conjuncts(Conjuncts0, Conjuncts, InstMap0,
                 !InZone, !SubstDb, !ScoutInfo)
         ;
             ConjType = parallel_conj,
             (
+                Conjuncts0 = [],
                 Conjuncts = []
             ;
-                Conjuncts = [HeadConjunct | TailConjuncts],
+                Conjuncts0 = [HeadConjunct0 | TailConjuncts0],
                 % The first parallel conjunct can be in the zone;
                 % any later conjuncts cannot be in the zone.
-                scout_disjunctions_in_goal(HeadConjunct, InstMap0, InstMap1,
-                    !.InZone, _, !SubstDb, !ScoutInfo),
-                scout_disjunctions_in_conjuncts(TailConjuncts, InstMap1,
-                    not_in_zone, _, !SubstDb, !ScoutInfo),
+                scout_disjunctions_in_goal(HeadConjunct0, HeadConjunct,
+                    InstMap0, InstMap1, !.InZone, _, !SubstDb, !ScoutInfo),
+                scout_disjunctions_in_conjuncts(TailConjuncts0, TailConjuncts,
+                    InstMap1, not_in_zone, _, !SubstDb, !ScoutInfo),
+                Conjuncts = [HeadConjunct | TailConjuncts],
                 !:InZone = not_in_zone
             )
-        )
+        ),
+        GoalExpr = conj(ConjType, Conjuncts)
     ;
-        GoalExpr = disj(Disjuncts),
+        GoalExpr0 = disj(Disjuncts0),
         (
+            Disjuncts0 = [],
             Disjuncts = []
         ;
-            Disjuncts = [HeadDisjunct | TailDisjuncts],
-            scout_disjunctions_in_disjuncts(HeadDisjunct, TailDisjuncts,
-                InstMap0, !.SubstDb,
+            Disjuncts0 = [HeadDisjunct0 | TailDisjuncts0],
+            scout_disjunctions_in_disjuncts(HeadDisjunct0, HeadDisjunct,
+                TailDisjuncts0, TailDisjuncts, InstMap0, !.SubstDb,
                 HeadDisjunctIdInfo, TailDisjunctIdInfos, !ScoutInfo),
+            Disjuncts = [HeadDisjunct | TailDisjuncts],
 
             OoMDisjunctIdsInfos =
                 one_or_more(HeadDisjunctIdInfo, TailDisjunctIdInfos),
             construct_scout_disjunction_info(!.ScoutInfo, OoMDisjunctIdsInfos,
                 DisjunctionInfo),
 
-            DisjunctionGoalId = goal_info_get_goal_id(GoalInfo),
-            DisjunctionId = disjunction_id(DisjunctionGoalId),
+            DisjunctionId = disjunction_id(GoalId),
             DisjunctionInfoMap0 = !.ScoutInfo ^ scdi_disjunction_info_map,
             map.det_insert(DisjunctionId, DisjunctionInfo,
                 DisjunctionInfoMap0, DisjunctionInfoMap),
@@ -389,40 +415,47 @@ scout_disjunctions_in_goal(Goal, InstMap0, InstMap,
                 !.InZone = not_in_zone
             ),
             !:InZone = not_in_zone
-        )
+        ),
+        GoalExpr = disj(Disjuncts)
     ;
-        GoalExpr = switch(Var, _CanFail, Cases),
-        scout_disjunctions_in_cases(Var, Cases, InstMap0,
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        scout_disjunctions_in_cases(Var, Cases0, Cases, InstMap0,
             !.SubstDb, !ScoutInfo),
+        GoalExpr = switch(Var, CanFail, Cases),
         !:InZone = not_in_zone
     ;
-        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        scout_disjunctions_in_goal(Cond, InstMap0, InstMap1,
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        scout_disjunctions_in_goal(Cond0, Cond, InstMap0, InstMap1,
             not_in_zone, _, !.SubstDb, SubstDbCond, !ScoutInfo),
-        scout_disjunctions_in_goal(Then, InstMap1, _,
+        scout_disjunctions_in_goal(Then0, Then, InstMap1, _,
             not_in_zone, _, SubstDbCond, _, !ScoutInfo),
-        scout_disjunctions_in_goal(Else, InstMap0, _,
+        scout_disjunctions_in_goal(Else0, Else, InstMap0, _,
             not_in_zone, _, !.SubstDb, _, !ScoutInfo),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
         !:InZone = not_in_zone
     ;
+        GoalExpr0 = negation(SubGoal0),
+        scout_disjunctions_in_goal(SubGoal0, SubGoal, InstMap0, _,
+            not_in_zone, _, !.SubstDb, _, !ScoutInfo),
         GoalExpr = negation(SubGoal),
-        scout_disjunctions_in_goal(SubGoal, InstMap0, _,
-            not_in_zone, _, !.SubstDb, _, !ScoutInfo),
         !:InZone = not_in_zone
     ;
-        GoalExpr = scope(Reason, SubGoal),
+        GoalExpr0 = scope(Reason, SubGoal0),
         (
             Reason = from_ground_term(_, FgtKind),
+            SubGoal = SubGoal0,
             (
                 FgtKind = from_ground_term_deconstruct,
-                SubGoal = hlds_goal(SubGoalExpr, _),
+                SubGoal0 = hlds_goal(SubGoalExpr0, _),
                 ( if
-                    SubGoalExpr = conj(plain_conj, [HeadSubGoal | _]),
-                    HeadSubGoal = hlds_goal(HeadSubGoalExpr, HeadSubGoalInfo),
-                    HeadSubGoalExpr = unify(_, _, _, _, _)
+                    SubGoalExpr0 = conj(plain_conj, [HeadSubGoal0 | _]),
+                    HeadSubGoal0 =
+                        hlds_goal(HeadSubGoalExpr0, HeadSubGoalInfo0),
+                    HeadSubGoalExpr0 = unify(XVar, RHS0, _, Unification0, _),
+                    RHS0 = rhs_functor(ConsId, _, YVars)
                 then
-                    scout_disjunctions_in_unify_expr(HeadSubGoalExpr,
-                        HeadSubGoalInfo, InstMap0, !.InZone,
+                    record_var_rhs_functor_unify(XVar, ConsId, YVars,
+                        Unification0, HeadSubGoalInfo0, !.InZone,
                         !SubstDb, !ScoutInfo)
                     % Ignore the goals after HeadSubGoal; nothing in them
                     % could interest us, since none of the variables
@@ -448,48 +481,75 @@ scout_disjunctions_in_goal(Goal, InstMap0, InstMap,
             ; Reason = trace_goal(_, _, _, _, _)
             ; Reason = loop_control(_, _, _)
             ),
-            scout_disjunctions_in_goal(SubGoal, InstMap0, _,
+            scout_disjunctions_in_goal(SubGoal0, SubGoal, InstMap0, _,
                 !.InZone, _, !.SubstDb, _, !ScoutInfo)
         ;
             ( Reason = require_complete_switch(_RequiredVar)
             ; Reason = require_switch_arms_detism(_RequiredVar, _)
             ),
-            scout_disjunctions_in_goal(SubGoal, InstMap0, _,
+            scout_disjunctions_in_goal(SubGoal0, SubGoal, InstMap0, _,
                 not_in_zone, !:InZone, !.SubstDb, _, !ScoutInfo),
             expect(unify(!.InZone, not_in_zone), $pred,
                 "in_zone after switch-related reason")
-        )
+        ),
+        GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr = shorthand(ShortHand),
+        GoalExpr0 = shorthand(ShortHand0),
         (
-            ShortHand = atomic_goal(_GoalType, _Outer, _Inner,
-                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
-            scout_disjunctions_in_goal(MainGoal, InstMap0, _,
-                not_in_zone, _, !.SubstDb, _, !ScoutInfo),
-            scout_disjunctions_in_orelse_goals(OrElseGoals, InstMap0,
-                !.SubstDb, !ScoutInfo),
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
+            scout_disjunctions_in_goal(MainGoal0, MainGoal,
+                InstMap0, _, not_in_zone, _, !.SubstDb, _, !ScoutInfo),
+            scout_disjunctions_in_orelse_goals(OrElseGoals0, OrElseGoals,
+                InstMap0, !.SubstDb, !ScoutInfo),
+            ShortHand = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
             !:InZone = not_in_zone
         ;
-            ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
-            scout_disjunctions_in_goal(SubGoal, InstMap0, _,
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            scout_disjunctions_in_goal(SubGoal0, SubGoal, InstMap0, _,
                 not_in_zone, _, !.SubstDb, _, !ScoutInfo),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             !:InZone = not_in_zone
         ;
-            ShortHand = bi_implication(_, _),
+            ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
             unexpected($pred, "bi_implication")
-        )
+        ),
+        GoalExpr = shorthand(ShortHand)
     ),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     apply_goal_instmap_delta(Goal, InstMap0, InstMap).
 
-:- pred scout_disjunctions_in_unify_expr(hlds_goal_expr::in(goal_expr_unify),
-    hlds_goal_info::in, instmap::in, maybe_in_zone::in,
+:- pred initialize_disjunct_if_needed(goal_id::in,
+    maybe_in_zone::in, maybe_in_zone::out(in_or_out_zone),
+    scout_disj_info::in, scout_disj_info::out) is det.
+
+initialize_disjunct_if_needed(GoalId, !InZone, !ScoutInfo) :-
+    (
+        ( !.InZone = in_zone(_)
+        ; !.InZone = not_in_zone
+        )
+    ;
+        !.InZone = new_disjunct,
+        DisjunctInfoMap0 = !.ScoutInfo ^ scdi_disjunct_info_map,
+        DisjunctId = disjunct_id(GoalId),
+        DisjunctInfo0 = disjunct_info(map.init, no),
+        map.det_insert(DisjunctId, DisjunctInfo0,
+            DisjunctInfoMap0, DisjunctInfoMap1),
+        !ScoutInfo ^ scdi_disjunct_info_map := DisjunctInfoMap1,
+        !:InZone = in_zone(DisjunctId)
+    ).
+
+:- pred scout_disjunctions_in_unify_expr(
+    hlds_goal_expr::in(goal_expr_unify), hlds_goal_expr::out(goal_expr_unify),
+    hlds_goal_info::in, instmap::in, maybe_in_zone::in(in_or_out_zone),
     subst_db::in, subst_db::out,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_unify_expr(GoalExpr, GoalInfo, InstMap0,
+scout_disjunctions_in_unify_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0,
         InZone0, !SubstDb, !ScoutInfo) :-
-    GoalExpr = unify(XVar, RHS, _, Unification, _),
+    GoalExpr0 = unify(XVar, RHS0, UnifyMode, Unification0, Context),
     % For both rhs_var and rhs_functor, we record the effect of the
     % unification on the substitution database even when we are
     % outside the zone. This extra info won't help us find more
@@ -498,7 +558,8 @@ scout_disjunctions_in_unify_expr(GoalExpr, GoalInfo, InstMap0,
     % in the substitution database may help us find more aliases inside
     % nested disjunctions.
     (
-        RHS = rhs_lambda_goal(_, _, _, _, VarsModes, _, LambdaGoal),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ClosureVars,
+            VarsModes, Detism, LambdaGoal0),
         % We need to insert the initial insts for the lambda variables
         % into the instmap before processing the lambda goal.
         ModuleInfo = !.ScoutInfo ^ scdi_module_info,
@@ -507,58 +568,73 @@ scout_disjunctions_in_unify_expr(GoalExpr, GoalInfo, InstMap0,
         % outside this unification, but the proper perspective for
         % this call is the code *inside* the lambda goal. And from that
         % point of view, LambdaGoal is not inside *any* disjunction.
-        scout_disjunctions_in_goal(LambdaGoal, InstMap1, _,
-            not_in_zone, _, !.SubstDb, _, !ScoutInfo)
+        scout_disjunctions_in_goal(LambdaGoal0, LambdaGoal, InstMap1, _,
+            not_in_zone, _, !.SubstDb, _, !ScoutInfo),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ClosureVars,
+            VarsModes, Detism, LambdaGoal),
+        GoalExpr = unify(XVar, RHS, UnifyMode, Unification0, Context)
     ;
-        RHS = rhs_var(YVar),
-        record_var_var_unify(XVar, YVar, !SubstDb)
+        RHS0 = rhs_var(YVar),
+        record_var_var_unify(XVar, YVar, !SubstDb),
+        GoalExpr = GoalExpr0
     ;
-        RHS = rhs_functor(ConsId, _IsExistConstr, YVars),
+        RHS0 = rhs_functor(ConsId, _IsExistConstr, YVars),
+        record_var_rhs_functor_unify(XVar, ConsId, YVars, Unification0,
+            GoalInfo, InZone0, !SubstDb, !ScoutInfo),
+        GoalExpr = GoalExpr0
+    ).
+
+:- pred record_var_rhs_functor_unify(prog_var::in,
+    cons_id::in, list(prog_var)::in, unification::in, hlds_goal_info::in,
+    maybe_in_zone::in(in_or_out_zone), subst_db::in, subst_db::out,
+    scout_disj_info::in, scout_disj_info::out) is det.
+
+record_var_rhs_functor_unify(XVar, ConsId, YVars, Unification0, GoalInfo,
+        InZone0, !SubstDb, !ScoutInfo) :-
+    (
+        ( ConsId = du_data_ctor(_)
+        ; ConsId = some_int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ),
         (
-            ( ConsId = du_data_ctor(_)
-            ; ConsId = some_int_const(_)
-            ; ConsId = float_const(_)
-            ; ConsId = char_const(_)
-            ; ConsId = string_const(_)
-            ),
-            (
-                Unification = assign(_, _),
-                unexpected($pred, "assign")
-            ;
-                Unification = simple_test(_, _),
-                unexpected($pred, "simple_test")
-            ;
-                Unification = construct(_, _, _, _, _, _, _)
-            ;
-                Unification = deconstruct(_, _, _, _, _, _),
-                (
-                    InZone0 = in_zone(DisjunctId),
-                    GoalId = goal_info_get_goal_id(GoalInfo),
-                    record_deconstruct(GoalId, XVar, coerce(ConsId),
-                        !.SubstDb, DisjunctId, !ScoutInfo)
-                ;
-                    InZone0 = not_in_zone
-                )
-            ;
-                Unification = complicated_unify(_, _, _),
-                unexpected($pred, "complicated_unify")
-            ),
-            record_var_functor_unify(XVar, ConsId, YVars, !SubstDb)
+            Unification0 = assign(_, _),
+            unexpected($pred, "assign")
         ;
-            ( ConsId = tuple_cons(_)
-            ; ConsId = closure_cons(_)
-            ; ConsId = impl_defined_const(_)
-            ; ConsId = type_ctor_info_const(_, _, _)
-            ; ConsId = base_typeclass_info_const(_, _, _, _)
-            ; ConsId = type_info_cell_constructor(_)
-            ; ConsId = typeclass_info_cell_constructor
-            ; ConsId = type_info_const(_)
-            ; ConsId = typeclass_info_const(_)
-            ; ConsId = ground_term_const(_, _)
-            ; ConsId = tabling_info_const(_)
-            ; ConsId = table_io_entry_desc(_)
-            ; ConsId = deep_profiling_proc_layout(_)
+            Unification0 = simple_test(_, _),
+            unexpected($pred, "simple_test")
+        ;
+            Unification0 = construct(_, _, _, _, _, _, _)
+        ;
+            Unification0 = deconstruct(_, _, _, _, _, _),
+            (
+                InZone0 = in_zone(DisjunctId),
+                GoalId = goal_info_get_goal_id(GoalInfo),
+                record_deconstruct(GoalId, XVar, coerce(ConsId),
+                    !.SubstDb, DisjunctId, !ScoutInfo)
+            ;
+                InZone0 = not_in_zone
             )
+        ;
+            Unification0 = complicated_unify(_, _, _),
+            unexpected($pred, "complicated_unify")
+        ),
+        record_var_functor_unify(XVar, ConsId, YVars, !SubstDb)
+    ;
+        ( ConsId = tuple_cons(_)
+        ; ConsId = closure_cons(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         )
     ).
 
@@ -588,82 +664,79 @@ maybe_add_deconstruct(DeconstructInfo, XEqvVar, !DeconstructMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred scout_disjunctions_in_conjuncts(list(hlds_goal)::in, instmap::in,
-    maybe_in_zone::in, maybe_in_zone::out, subst_db::in, subst_db::out,
+:- pred scout_disjunctions_in_conjuncts(
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in,
+    maybe_in_zone::in(in_or_out_zone), maybe_in_zone::out(in_or_out_zone),
+    subst_db::in, subst_db::out,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_conjuncts([], _InstMap0,
+scout_disjunctions_in_conjuncts([], [], _InstMap0,
         !InZone, !SubstDb, !ScoutInfo).
-scout_disjunctions_in_conjuncts([Conjunct | Conjuncts], InstMap0,
-        !InZone, !SubstDb, !ScoutInfo) :-
-    scout_disjunctions_in_goal(Conjunct, InstMap0, InstMap1,
+scout_disjunctions_in_conjuncts([Conjunct0 | Conjuncts0],
+        [Conjunct | Conjuncts], InstMap0, !InZone, !SubstDb, !ScoutInfo) :-
+    scout_disjunctions_in_goal(Conjunct0, Conjunct, InstMap0, InstMap1,
         !InZone, !SubstDb, !ScoutInfo),
-    scout_disjunctions_in_conjuncts(Conjuncts, InstMap1,
+    scout_disjunctions_in_conjuncts(Conjuncts0, Conjuncts, InstMap1,
         !InZone, !SubstDb, !ScoutInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred scout_disjunctions_in_disjuncts(hlds_goal::in, list(hlds_goal)::in,
-    instmap::in, subst_db::in,
+:- pred scout_disjunctions_in_disjuncts(hlds_goal::in, hlds_goal::out,
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in, subst_db::in,
     disjunct_id_info::out, list(disjunct_id_info)::out,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_disjuncts(HeadDisjunct, TailDisjuncts, InstMap0,
-        SubstDb0, HeadDisjunctIdInfo, TailDisjunctIdInfos, !ScoutInfo) :-
-    % We pass in_zone here because a deconstruction unification
-    % near the start of Disjunct could make Disjunct one arm of a switch.
+scout_disjunctions_in_disjuncts(HeadDisjunct0, HeadDisjunct,
+        TailDisjuncts0, TailDisjuncts, InstMap0, SubstDb0,
+        HeadDisjunctIdInfo, TailDisjunctIdInfos, !ScoutInfo) :-
+    scout_disjunctions_in_goal(HeadDisjunct0, HeadDisjunct, InstMap0, _,
+        new_disjunct, _, SubstDb0, _, !ScoutInfo),
+    DisjunctInfoMap = !.ScoutInfo ^ scdi_disjunct_info_map,
     HeadDisjunct = hlds_goal(_, HeadDisjunctGoalInfo),
     HeadDisjunctGoalId = goal_info_get_goal_id(HeadDisjunctGoalInfo),
     HeadDisjunctId = disjunct_id(HeadDisjunctGoalId),
-    DisjunctInfoMap0 = !.ScoutInfo ^ scdi_disjunct_info_map,
-    HeadDisjunctInfo0 = disjunct_info(map.init, no),
-    map.det_insert(HeadDisjunctId, HeadDisjunctInfo0,
-        DisjunctInfoMap0, DisjunctInfoMap1),
-    !ScoutInfo ^ scdi_disjunct_info_map := DisjunctInfoMap1,
-
-    scout_disjunctions_in_goal(HeadDisjunct, InstMap0, _,
-        in_zone(HeadDisjunctId), _, SubstDb0, _, !ScoutInfo),
-    DisjunctInfoMap = !.ScoutInfo ^ scdi_disjunct_info_map,
     map.lookup(DisjunctInfoMap, HeadDisjunctId, HeadDisjunctInfo),
     HeadDisjunctIdInfo = disjunct_id_info(HeadDisjunctId, HeadDisjunctInfo),
     (
+        TailDisjuncts0 = [],
         TailDisjuncts = [],
         TailDisjunctIdInfos = []
     ;
-        TailDisjuncts = [HeadTailDisjunct | TailTailDisjuncts],
-        scout_disjunctions_in_disjuncts(HeadTailDisjunct, TailTailDisjuncts,
-            InstMap0, SubstDb0,
+        TailDisjuncts0 = [HeadTailDisjunct0 | TailTailDisjuncts0],
+        scout_disjunctions_in_disjuncts(HeadTailDisjunct0, HeadTailDisjunct,
+            TailTailDisjuncts0, TailTailDisjuncts, InstMap0, SubstDb0,
             HeadTailDisjunctIdInfo, TailTailDisjunctIdInfos, !ScoutInfo),
+        TailDisjuncts = [HeadTailDisjunct | TailTailDisjuncts],
         TailDisjunctIdInfos =
             [HeadTailDisjunctIdInfo | TailTailDisjunctIdInfos]
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred scout_disjunctions_in_orelse_goals(list(hlds_goal)::in,
-    instmap::in, subst_db::in,
+:- pred scout_disjunctions_in_orelse_goals(
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in, subst_db::in,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_orelse_goals([], _InstMap0, _Subst0, !ScoutInfo).
-scout_disjunctions_in_orelse_goals([OrElseGoal | OrElseGoals], InstMap0,
-        Subst0, !ScoutInfo) :-
+scout_disjunctions_in_orelse_goals([], [], _InstMap0, _Subst0, !ScoutInfo).
+scout_disjunctions_in_orelse_goals([OrElseGoal0 | OrElseGoals0],
+        [OrElseGoal | OrElseGoals], InstMap0, Subst0, !ScoutInfo) :-
     % We pass not_in_zone here because a deconstruction unification
     % near the start of OrElseGoal *cannot* OrElseGoal an arm of a switch.
-    scout_disjunctions_in_goal(OrElseGoal, InstMap0, _,
+    scout_disjunctions_in_goal(OrElseGoal0, OrElseGoal, InstMap0, _,
         not_in_zone, _, Subst0, _, !ScoutInfo),
-    scout_disjunctions_in_orelse_goals(OrElseGoals, InstMap0,
+    scout_disjunctions_in_orelse_goals(OrElseGoals0, OrElseGoals, InstMap0,
         Subst0, !ScoutInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred scout_disjunctions_in_cases(prog_var::in, list(case)::in,
-    instmap::in, subst_db::in,
+:- pred scout_disjunctions_in_cases(prog_var::in,
+    list(case)::in, list(case)::out, instmap::in, subst_db::in,
     scout_disj_info::in, scout_disj_info::out) is det.
 
-scout_disjunctions_in_cases(_Var, [], _InstMap0, _SubstDb0, !ScoutInfo).
-scout_disjunctions_in_cases(Var, [Case | Cases], InstMap0,
-        SubstDb0, !ScoutInfo) :-
-    Case = case(MainConsId, OtherConsIds, Goal),
+scout_disjunctions_in_cases(_Var, [], [], _InstMap0, _SubstDb0, !ScoutInfo).
+scout_disjunctions_in_cases(Var, [Case0 | Cases0], [Case | Cases],
+        InstMap0, SubstDb0, !ScoutInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     VarTable = !.ScoutInfo ^ scdi_var_table,
     lookup_var_type(VarTable, Var, VarType),
     ModuleInfo0 = !.ScoutInfo ^ scdi_module_info,
@@ -671,9 +744,11 @@ scout_disjunctions_in_cases(Var, [Case | Cases], InstMap0,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     !ScoutInfo ^ scdi_module_info := ModuleInfo,
 
-    scout_disjunctions_in_goal(Goal, InstMap1, _,
+    scout_disjunctions_in_goal(Goal0, Goal, InstMap1, _,
         not_in_zone, _, SubstDb0, _, !ScoutInfo),
-    scout_disjunctions_in_cases(Var, Cases, InstMap0, SubstDb0, !ScoutInfo).
+    Case = case(MainConsId, OtherConsIds, Goal),
+    scout_disjunctions_in_cases(Var, Cases0, Cases,
+        InstMap0, SubstDb0, !ScoutInfo).
 
 %---------------------------------------------------------------------------%
 
