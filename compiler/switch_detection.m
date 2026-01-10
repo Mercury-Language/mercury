@@ -420,6 +420,428 @@ detect_switches_in_orelse(InstMap,
 
 %---------------------------------------------------------------------------%
 
+:- pred detect_switches_in_disj(instmap::in, maybe_required_switch_var::in,
+    list(hlds_goal)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
+        GoalExpr, !LocalInfo) :-
+    NonLocals = goal_info_get_nonlocals(GoalInfo),
+    set_of_var.to_sorted_list(NonLocals, VarsToTry),
+    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord, !LocalInfo),
+    Candidates = cord.to_list(CandidatesCord),
+    (
+        Candidates = [],
+        detect_sub_switches_in_disj(InstMap0, Disjuncts0, Disjuncts,
+            !LocalInfo),
+        GoalExpr = disj(Disjuncts)
+    ;
+        Candidates = [FirstCandidate | LaterCandidates],
+        select_best_candidate_switch(FirstCandidate, LaterCandidates,
+            BestCandidate),
+        BestRank = BestCandidate ^ cs_rank,
+        (
+            BestRank = no_leftover_one_case,
+            % Leave the disjunction unchanged for now. Let cse_detection
+            % lift the unification that occurs in all the disjunct out of
+            % those disjuncts, and let the invocation of switch detection
+            % *after* cse look for switches in the transformed disjunction.
+            %
+            % We don't even look for switches *inside* each disjunct,
+            % since that could hide the common unifications inside them
+            % from the code of cse_detection.m (by wrapping them up
+            % inside switches). This is why we don't call
+            % detect_sub_switches_in_disj here.
+            GoalExpr = disj(Disjuncts0)
+        ;
+            ( BestRank = some_leftover_can_fail(_)
+            ; BestRank = some_leftover_cannot_fail(_)
+            ; BestRank = no_leftover_twoplus_cases_finite_can_fail
+            ; BestRank = no_leftover_twoplus_cases_infinite_can_fail
+            ; BestRank = no_leftover_twoplus_cases_finite_cannot_fail
+            ; BestRank = all_disjuncts_are_unreachable
+            ; BestRank = no_leftover_twoplus_cases_explicitly_selected
+            ),
+            cases_to_switch(BestCandidate, InstMap0, SwitchGoalExpr,
+                !LocalInfo),
+            LeftDisjuncts0 = BestCandidate ^ cs_left_over_disjuncts,
+            (
+                LeftDisjuncts0 = [],
+                GoalExpr = SwitchGoalExpr
+            ;
+                LeftDisjuncts0 = [_ | _],
+                detect_switches_in_disj(InstMap0, MaybeRequiredVar,
+                    LeftDisjuncts0, GoalInfo, LeftGoal, !LocalInfo),
+                goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
+                    LeftDisjuncts),
+                SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
+                GoalExpr = disj([SwitchGoal | LeftDisjuncts])
+            )
+        )
+    ).
+
+    % This is the interesting bit - we have found a non-empty disjunction,
+    % and we have got a list of the non-local variables of that disjunction.
+    % Now for each non-local variable, we check whether there is a partition
+    % of the disjuncts such that each group of disjunctions can only succeed
+    % if the variable is bound to a different functor.
+    %
+:- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
+    list(hlds_goal)::in, instmap::in, maybe_required_switch_var::in,
+    list(prog_var)::in,
+    cord(candidate_switch)::in, cord(candidate_switch)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switch_candidates_in_disj(_GoalInfo, _Disjuncts0, _InstMap0,
+        _MaybeRequiredVar, [], !Candidates, !LocalInfo).
+detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, [Var | Vars], !Candidates, !LocalInfo) :-
+    % Can we do at least a partial switch on this variable?
+    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+    instmap_lookup_var(InstMap0, Var, VarInst0),
+    ( if
+        inst_is_bound(ModuleInfo, VarInst0),
+        partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo),
+        is_candidate_switch(Cases, Left)
+    then
+        VarTable = !.LocalInfo ^ lsdi_var_table,
+        lookup_var_type(VarTable, Var, VarType),
+        categorize_candidate_switch(ModuleInfo, MaybeRequiredVar,
+            Var, VarType, VarInst0, Cases, Left, Candidate),
+        !:Candidates = cord.snoc(!.Candidates, Candidate)
+    else
+        true
+    ),
+    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
+
+%---------------------------------------------------------------------------%
+
+    % partition_disj(Var, Disjuncts, GoalInfo, Left, Cases, !LocalInfo):
+    %
+    % Attempts to partition the disjunction Disjuncts into a switch on Var.
+    % If at least partially successful, returns the resulting Cases, with
+    % any disjunction goals not fitting into the switch in Left.
+    %
+    % Given the list of goals in a disjunction, and an input variable to switch
+    % on, we attempt to partition the goals into a switch. For each constructor
+    % id, we record the list of disjuncts which unify the variable with that
+    % constructor. We partition the goals by abstractly interpreting the
+    % unifications at the start of each disjunction, to build up a
+    % substitution.
+    %
+:- pred partition_disj(prog_var::in, list(hlds_goal)::in,
+    hlds_goal_info::in, list(hlds_goal)::out, list(case)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is semidet.
+
+partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
+    CasesTable0 = cases_table(map.init, set_tree234.init),
+    partition_disj_trial(!.LocalInfo, Var, Disjuncts0,
+        [], Left1, CasesTable0, CasesTable1),
+    (
+        Left1 = [],
+        % There must be at least one case in CasesTable1.
+        num_cases_in_table(CasesTable1) >= 1,
+        Left = Left1,
+        Cases = cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable1)
+    ;
+        Left1 = [_ | _],
+        % We do not insist on there being at least one case in CasesTable1,
+        % to allow for switches in which *all* cases contain subsidiary
+        % disjunctions.
+        ( if
+            expand_sub_disjs(!.LocalInfo, Var, Left1, CasesTable1, CasesTable)
+        then
+            Left = [],
+            num_cases_in_table(CasesTable) >= 1,
+            Cases =
+                cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable),
+            !LocalInfo ^ lsdi_requant := need_to_requantify
+        else
+            trace [
+                compile_time(flag("scout-disjunctions")),
+                runtime(env("SCOUT_DISJUNCTIONS")),
+                io(!IO)
+            ] (
+                ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+                VarTable = !.LocalInfo ^ lsdi_var_table,
+                varset.init(TVarSet),
+                varset.init(InstVarSet),
+                io.stderr_stream(StrErr, !IO),
+
+                VarStr = mercury_var_to_string(VarTable,
+                    print_name_and_num, Var),
+                io.format(StrErr, "\nVar = %s\n", [s(VarStr)], !IO),
+
+                io.write_string(StrErr, "\nLEFT GOALS\n", !IO),
+                list.foldl(
+                    dump_goal_nl(StrErr, ModuleInfo, vns_var_table(VarTable),
+                        TVarSet, InstVarSet),
+                    Left1, !IO),
+                io.write_string(StrErr, "END LEFT GOALS\n", !IO)
+            ),
+
+            Left = Left1,
+            Cases =
+                cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable1)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
+    list(hlds_goal)::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    cases_table::in, cases_table::out) is det.
+
+partition_disj_trial(_, _, [], !Left, !CasesTable).
+partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
+        !Left, !CasesTable) :-
+    find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
+        Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
+    trace [compile_time(flag("partition_disj")), io(!IO)] (
+        ModuleInfo = LocalInfo ^ lsdi_module_info,
+        VarTable = LocalInfo ^ lsdi_var_table,
+        io.output_stream(Stream, !IO),
+        DisjunctDesc0 =
+            describe_structured_goal(ModuleInfo, VarTable, 1u, Disjunct0),
+        (
+            MaybeConsId = no,
+            ResultStr = "no"
+        ;
+            MaybeConsId = yes(ConsId0),
+            ResultStr = "yes(" ++ cons_id_and_arity_to_string(ConsId0) ++ ")"
+        ),
+        io.format(Stream, "\nfind_bind_var for %s on\n",
+            [s(describe_var(VarTable, Var))], !IO),
+        io.write_string(Stream, DisjunctDesc0, !IO),
+        io.format(Stream, "MaybeConsId = %s\n\n", [s(ResultStr)], !IO)
+    ),
+    (
+        MaybeConsId = yes(ConsId),
+        add_single_entry_to_cases_table(ConsId, Disjunct, !CasesTable)
+    ;
+        MaybeConsId = no,
+        !:Left = [Disjunct0 | !.Left]
+    ),
+    partition_disj_trial(LocalInfo, Var, Disjuncts0, !Left, !CasesTable).
+
+:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
+    list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
+    unit::in, unit::out) is det.
+
+find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
+        _Result0, Result, _, unit) :-
+    GoalExpr0 = unify(_, _, _, Unification0, _),
+    Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _),
+    Result = yes(Functor),
+    ( if
+        ArgVars = [],
+        SwitchVar = UnifyVar
+    then
+        % The test will get carried out in the switch, there are no
+        % argument values to pick up, and the test was on the switch
+        % variable (not on one of its aliases), so the unification
+        % serve no further purpose. We delete it here, so simplify
+        % doesn't have to.
+        Goals = []
+    else
+        % The deconstruction unification now becomes deterministic, since
+        % the test will get carried out in the switch.
+        Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
+        GoalExpr = GoalExpr0 ^ unify_kind := Unification,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
+        Goals = [Goal]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred expand_sub_disjs(local_switch_detect_info::in, prog_var::in,
+    list(hlds_goal)::in, cases_table::in, cases_table::out) is semidet.
+
+expand_sub_disjs(_, _, [], !CasesTable).
+expand_sub_disjs(LocalInfo, Var, [LeftGoal | LeftGoals], !CasesTable) :-
+    expand_sub_disj(LocalInfo, Var, LeftGoal, !CasesTable),
+    expand_sub_disjs(LocalInfo, Var, LeftGoals, !CasesTable).
+
+:- pred expand_sub_disj(local_switch_detect_info::in, prog_var::in,
+    hlds_goal::in, cases_table::in, cases_table::out) is semidet.
+
+expand_sub_disj(LocalInfo, Var, Goal, !CasesTable) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
+    ( if GoalExpr = conj(plain_conj, SubGoals) then
+        expand_sub_disj_process_conj(LocalInfo, Var, SubGoals, GoalInfo,
+            [], !CasesTable)
+    else if GoalExpr = disj(_) then
+        expand_sub_disj_process_conj(LocalInfo, Var, [Goal], GoalInfo,
+            [], !CasesTable)
+    else
+        fail
+    ).
+
+:- pred expand_sub_disj_process_conj(local_switch_detect_info::in,
+    prog_var::in, list(hlds_goal)::in, hlds_goal_info::in, list(hlds_goal)::in,
+    cases_table::in, cases_table::out) is semidet.
+
+expand_sub_disj_process_conj(LocalInfo, Var, ConjGoals, GoalInfo,
+        !.RevUnifies, !CasesTable) :-
+    (
+        ConjGoals = [],
+        fail
+    ;
+        ConjGoals = [FirstGoal | LaterGoals],
+        FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
+        (
+            FirstGoalExpr = unify(_, _, _, _, _),
+            !:RevUnifies = [FirstGoal | !.RevUnifies],
+            expand_sub_disj_process_conj(LocalInfo, Var, LaterGoals,
+                GoalInfo, !.RevUnifies, !CasesTable)
+        ;
+            FirstGoalExpr = disj(Disjuncts),
+            Disjuncts = [_ | _],
+            ( if
+                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
+                !.RevUnifies = [],
+
+                % If the unifications pick up the values of variables,
+                % we would need to include in the switch arm of each cons_id
+                % not just LaterGoals, but also the disjunct in FirstGoal
+                % that does this picking up. This disjunct would have to be
+                % specific to each cons_id, so it could not be shared with
+                % other cons_ids.
+                NonLocals = goal_info_get_nonlocals(FirstGoalInfo),
+                set_of_var.delete(Var, NonLocals, OtherNonLocals),
+                set_of_var.is_empty(OtherNonLocals),
+
+                all_disjuncts_are_switch_var_unifies(Var, Disjuncts,
+                    DisjConsIds),
+                list.sort(DisjConsIds, SortedDisjConsIds),
+                SortedDisjConsIds = [MainConsId | OtherConsIds]
+            then
+                SharedGoal = hlds_goal(conj(plain_conj, LaterGoals), GoalInfo),
+                add_multi_entry_to_cases_table(MainConsId, OtherConsIds,
+                    SharedGoal, !CasesTable)
+            else if
+                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
+                !.RevUnifies = [],
+
+                CasesTableMap = !.CasesTable ^ cases_map,
+                map.keys_as_set(CasesTableMap, CasesConsIds),
+                % Without this test, we can create a top-level switch
+                % which has one arm that lists all the cons_ids of the
+                % switched-on variable, with that arm containing the
+                % same switch, and so on, in an infinitely large set
+                % of russian nesting dolls. And of course, constructing
+                % an infinite set of switches would take infinite time,
+                % at least if we had infinite memory.
+                set.is_non_empty(CasesConsIds),
+
+                DisjunctionMap = LocalInfo ^ lsdi_disjunction_info_map,
+                FirstGoalId = goal_info_get_goal_id(FirstGoalInfo),
+                map.search(DisjunctionMap, disjunction_id(FirstGoalId),
+                    FirstGoalDisjunctionInfo),
+                FirstGoalSummary = FirstGoalDisjunctionInfo ^ dni_summary_map,
+                map.search(FirstGoalSummary, Var, VarSummary),
+                VarSummary = var_all_arms_summary(SummaryConsIds0, SubDisj),
+                SummaryConsIds = set.map(switchable_cons_id_to_cons_id,
+                    SummaryConsIds0),
+                % If two or more disjuncts have deconstructions that unify
+                % the variable being switched on with the *same* cons_id,
+                % (which we call a "conflict"), then in the switch we create,
+                % the case for that cons_id must be a new disjunction of just
+                % those disjuncts from the original disjunction. However, this
+                % is not easy to do when one or more of those disjuncts
+                % are not direct arms of the original disjunction, but
+                % are arms in a sub-disjunction, sub-sub-disjunction, and
+                % so on. We do not have any code that pull arms out of such
+                % sub^N-disjunctions, so we insist on there being no conflict
+                % either among the sub^N-disjunctions of this top level
+                % disjunct, ....
+                SubDisj = sub_disj_is_not_needed,
+                set.intersect(SummaryConsIds, CasesConsIds,
+                    NewConflictConsIds),
+                % ... or between one sub^N-disjunction of this top-level
+                % disjunct, and its neighboring top-level disjuncts.
+                set.is_empty(NewConflictConsIds),
+                set.to_sorted_list(SummaryConsIds, SortedDisjConsIds),
+                SortedDisjConsIds = [MainConsId | OtherConsIds]
+            then
+                SharedGoal = hlds_goal(conj(plain_conj, ConjGoals), GoalInfo),
+                add_multi_entry_to_cases_table(MainConsId, OtherConsIds,
+                    SharedGoal, !CasesTable)
+            else
+                list.reverse(!.RevUnifies, Unifies),
+                list.map(
+                    create_expanded_conjunction(Unifies, LaterGoals, GoalInfo),
+                    Disjuncts, ExpandedConjunctions),
+                partition_disj_trial(LocalInfo, Var, ExpandedConjunctions,
+                    [], Left, !CasesTable),
+                Left = []
+            )
+        )
+    ).
+
+:- pred all_disjuncts_are_switch_var_unifies(prog_var::in,
+    list(hlds_goal)::in, list(cons_id)::out) is semidet.
+
+all_disjuncts_are_switch_var_unifies(_Var, [], []).
+all_disjuncts_are_switch_var_unifies(Var, [Goal | Goals],
+        [ConsId | ConsIds]) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    GoalExpr = unify(_LHS, _RHS, _, UnifyInfo0, _),
+    UnifyInfo0 = deconstruct(Var, ConsId, _, _, _, _),
+    all_disjuncts_are_switch_var_unifies(Var, Goals, ConsIds).
+
+:- pred create_expanded_conjunction(list(hlds_goal)::in, list(hlds_goal)::in,
+    hlds_goal_info::in, hlds_goal::in, hlds_goal::out) is det.
+
+create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
+    ( if Disjunct = hlds_goal(conj(plain_conj, DisjunctGoals), _) then
+        Conjuncts = Unifies ++ DisjunctGoals ++ LaterGoals
+    else
+        Conjuncts = Unifies ++ [Disjunct] ++ LaterGoals
+    ),
+    Goal = hlds_goal(conj(plain_conj, Conjuncts), GoalInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred cases_to_switch(candidate_switch::in, instmap::in,
+    hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
+    Candidate = candidate_switch(Var, Cases0, UnreachableCaseGoals, _Left,
+        _Rank, CanFail),
+    (
+        UnreachableCaseGoals = []
+    ;
+        UnreachableCaseGoals = [_ | _],
+        UnreachableCalledProcs = goals_proc_refs(UnreachableCaseGoals),
+        DeletedCallCallees0 = !.LocalInfo ^ lsdi_deleted_callees,
+        set.union(UnreachableCalledProcs,
+            DeletedCallCallees0, DeletedCallCallees),
+        !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees
+    ),
+    detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo),
+    % We turn switches with no arms into fail, since this avoids having
+    % the code generator flush the control variable of the switch.
+    % We can't easily eliminate switches with one arm, since the
+    % code of the arm will have the unification between the variable
+    % and the function symbol as det. The gain would be minimal to
+    % nonexistent anyway.
+    (
+        Cases = [],
+        GoalExpr = disj([])
+    ;
+        Cases = [_ | _],
+        GoalExpr = switch(Var, CanFail, Cases)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- type case_arm
     --->    single_cons_id_arm(cons_id, hlds_goal)
     ;       multi_cons_id_arm(cons_id, list(cons_id), hlds_goal).
@@ -441,22 +863,96 @@ detect_switches_in_orelse(InstMap,
                 conflict_cons_ids   :: set_tree234(cons_id)
             ).
 
-:- func convert_cases_table(local_switch_detect_info, prog_var,
+%---------------------------------------------------------------------------%
+
+:- pred add_single_entry_to_cases_table(cons_id::in, hlds_goal::in,
+    cases_table::in, cases_table::out) is det.
+
+add_single_entry_to_cases_table(ConsId, Goal, CasesTable0, CasesTable) :-
+    CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
+    Arm = single_cons_id_arm(ConsId, Goal),
+    ( if map.search(CasesMap0, ConsId, Entry0) then
+        Entry0 = cons_id_entry(State0, Arms0),
+        (
+            State0 = cons_id_has_all_singles,
+            State = cons_id_has_all_singles,
+            ConflictConsIds = ConflictConsIds0
+        ;
+            State0 = cons_id_has_one_multi,
+            State = cons_id_has_conflict,
+            set_tree234.insert(ConsId, ConflictConsIds0, ConflictConsIds)
+        ;
+            State0 = cons_id_has_conflict,
+            State = cons_id_has_conflict,
+            ConflictConsIds = ConflictConsIds0
+        ),
+        Arms = snoc(Arms0, Arm),
+        Entry = cons_id_entry(State, Arms),
+        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
+    else
+        State = cons_id_has_all_singles,
+        Arms = cord.singleton(Arm),
+        Entry = cons_id_entry(State, Arms),
+        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
+        ConflictConsIds = ConflictConsIds0
+    ),
+    CasesTable = cases_table(CasesMap, ConflictConsIds).
+
+:- pred add_multi_entry_to_cases_table(cons_id::in, list(cons_id)::in,
+    hlds_goal::in, cases_table::in, cases_table::out) is det.
+
+add_multi_entry_to_cases_table(MainConsId, OtherConsIds, Goal, !CasesTable) :-
+    Arm = multi_cons_id_arm(MainConsId, OtherConsIds, Goal),
+    list.foldl(add_multi_entry_for_cons_id_to_cases_table(Arm),
+        [MainConsId | OtherConsIds], !CasesTable).
+
+:- pred add_multi_entry_for_cons_id_to_cases_table(case_arm::in, cons_id::in,
+    cases_table::in, cases_table::out) is det.
+
+add_multi_entry_for_cons_id_to_cases_table(Arm, ConsId, !CasesTable) :-
+    !.CasesTable = cases_table(CasesMap0, ConflictConsIds0),
+    ( if map.search(CasesMap0, ConsId, Entry0) then
+        Entry0 = cons_id_entry(State0, Arms0),
+        (
+            ( State0 = cons_id_has_all_singles
+            ; State0 = cons_id_has_one_multi
+            ),
+            set_tree234.insert(ConsId, ConflictConsIds0, ConflictConsIds)
+        ;
+            State0 = cons_id_has_conflict,
+            ConflictConsIds = ConflictConsIds0
+        ),
+        State = cons_id_has_conflict,
+        cord.snoc(Arm, Arms0, Arms),
+        Entry = cons_id_entry(State, Arms),
+        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
+    else
+        State = cons_id_has_one_multi,
+        Arms = cord.singleton(Arm),
+        Entry = cons_id_entry(State, Arms),
+        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
+        ConflictConsIds = ConflictConsIds0
+    ),
+    !:CasesTable = cases_table(CasesMap, ConflictConsIds).
+
+%---------------------------------------------------------------------------%
+
+:- func cases_table_to_cases(local_switch_detect_info, prog_var,
     hlds_goal_info, cases_table) = list(case).
 
-convert_cases_table(LocalInfo, Var, GoalInfo, CasesTable) = SortedCases :-
+cases_table_to_cases(LocalInfo, Var, GoalInfo, CasesTable) = SortedCases :-
     CasesTable = cases_table(CasesMap, ConflictIds),
     map.to_assoc_list(CasesMap, CasesAssocList),
-    list.foldl2(convert_case(LocalInfo, Var, GoalInfo, ConflictIds),
+    list.foldl2(accumulate_case(LocalInfo, Var, GoalInfo, ConflictIds),
         CasesAssocList, [], Cases, set_tree234.init, _AlreadyHandledConsIds),
     list.sort(Cases, SortedCases).
 
-:- pred convert_case(local_switch_detect_info::in, prog_var::in,
+:- pred accumulate_case(local_switch_detect_info::in, prog_var::in,
     hlds_goal_info::in, set_tree234(cons_id)::in,
     pair(cons_id, cons_id_entry)::in, list(case)::in, list(case)::out,
     set_tree234(cons_id)::in, set_tree234(cons_id)::out) is det.
 
-convert_case(LocalInfo, Var, GoalInfo0, ConflictConsIds, ConsId - Entry,
+accumulate_case(LocalInfo, Var, GoalInfo0, ConflictConsIds, ConsId - Entry,
         !Cases, !AlreadyHandledConsIds) :-
     ( if set_tree234.contains(!.AlreadyHandledConsIds, ConsId) then
         Entry = cons_id_entry(State, _ArmCord),
@@ -604,502 +1100,6 @@ gather_smallest_context([Goal | Goals], !SmallestContext) :-
 :- func num_cases_in_table(cases_table) = int.
 
 num_cases_in_table(cases_table(CasesMap, _)) = map.count(CasesMap).
-
-
-:- pred detect_switches_in_disj(instmap::in, maybe_required_switch_var::in,
-    list(hlds_goal)::in, hlds_goal_info::in, hlds_goal_expr::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
-
-detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
-        GoalExpr, !LocalInfo) :-
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    set_of_var.to_sorted_list(NonLocals, VarsToTry),
-    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord, !LocalInfo),
-    Candidates = cord.to_list(CandidatesCord),
-    (
-        Candidates = [],
-        detect_sub_switches_in_disj(InstMap0, Disjuncts0, Disjuncts,
-            !LocalInfo),
-        GoalExpr = disj(Disjuncts)
-    ;
-        Candidates = [FirstCandidate | LaterCandidates],
-        select_best_candidate_switch(FirstCandidate, LaterCandidates,
-            BestCandidate),
-        BestRank = BestCandidate ^ cs_rank,
-        (
-            BestRank = no_leftover_one_case,
-            % Leave the disjunction unchanged for now. Let cse_detection
-            % lift the unification that occurs in all the disjunct out of
-            % those disjuncts, and let the invocation of switch detection
-            % *after* cse look for switches in the transformed disjunction.
-            %
-            % We don't even look for switches *inside* each disjunct,
-            % since that could hide the common unifications inside them
-            % from the code of cse_detection.m (by wrapping them up
-            % inside switches). This is why we don't call
-            % detect_sub_switches_in_disj here.
-            GoalExpr = disj(Disjuncts0)
-        ;
-            ( BestRank = some_leftover_can_fail(_)
-            ; BestRank = some_leftover_cannot_fail(_)
-            ; BestRank = no_leftover_twoplus_cases_finite_can_fail
-            ; BestRank = no_leftover_twoplus_cases_infinite_can_fail
-            ; BestRank = no_leftover_twoplus_cases_finite_cannot_fail
-            ; BestRank = all_disjuncts_are_unreachable
-            ; BestRank = no_leftover_twoplus_cases_explicitly_selected
-            ),
-            cases_to_switch(BestCandidate, InstMap0, SwitchGoalExpr,
-                !LocalInfo),
-            LeftDisjuncts0 = BestCandidate ^ cs_left_over_disjuncts,
-            (
-                LeftDisjuncts0 = [],
-                GoalExpr = SwitchGoalExpr
-            ;
-                LeftDisjuncts0 = [_ | _],
-                detect_switches_in_disj(InstMap0, MaybeRequiredVar,
-                    LeftDisjuncts0, GoalInfo, LeftGoal, !LocalInfo),
-                goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
-                    LeftDisjuncts),
-                SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
-                GoalExpr = disj([SwitchGoal | LeftDisjuncts])
-            )
-        )
-    ).
-
-    % This is the interesting bit - we have found a non-empty disjunction,
-    % and we have got a list of the non-local variables of that disjunction.
-    % Now for each non-local variable, we check whether there is a partition
-    % of the disjuncts such that each group of disjunctions can only succeed
-    % if the variable is bound to a different functor.
-    %
-:- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
-    list(hlds_goal)::in, instmap::in, maybe_required_switch_var::in,
-    list(prog_var)::in,
-    cord(candidate_switch)::in, cord(candidate_switch)::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
-
-detect_switch_candidates_in_disj(_GoalInfo, _Disjuncts0, _InstMap0,
-        _MaybeRequiredVar, [], !Candidates, !LocalInfo).
-detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, [Var | Vars], !Candidates, !LocalInfo) :-
-    % Can we do at least a partial switch on this variable?
-    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
-    instmap_lookup_var(InstMap0, Var, VarInst0),
-    ( if
-        inst_is_bound(ModuleInfo, VarInst0),
-        partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo),
-
-        VarTable = !.LocalInfo ^ lsdi_var_table,
-        lookup_var_type(VarTable, Var, VarType),
-        is_candidate_switch(Cases, Left)
-    then
-        categorize_candidate_switch(ModuleInfo, MaybeRequiredVar,
-            Var, VarType, VarInst0, Cases, Left, Candidate),
-        !:Candidates = cord.snoc(!.Candidates, Candidate)
-    else
-        true
-    ),
-    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
-
-%---------------------------------------------------------------------------%
-
-    % partition_disj(Var, Disjuncts, GoalInfo, Left, Cases, !LocalInfo):
-    %
-    % Attempts to partition the disjunction Disjuncts into a switch on Var.
-    % If at least partially successful, returns the resulting Cases, with
-    % any disjunction goals not fitting into the switch in Left.
-    %
-    % Given the list of goals in a disjunction, and an input variable to switch
-    % on, we attempt to partition the goals into a switch. For each constructor
-    % id, we record the list of disjuncts which unify the variable with that
-    % constructor. We partition the goals by abstractly interpreting the
-    % unifications at the start of each disjunction, to build up a
-    % substitution.
-    %
-:- pred partition_disj(prog_var::in, list(hlds_goal)::in,
-    hlds_goal_info::in, list(hlds_goal)::out, list(case)::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is semidet.
-
-partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
-    CasesTable0 = cases_table(map.init, set_tree234.init),
-    partition_disj_trial(!.LocalInfo, Var, Disjuncts0,
-        [], Left1, CasesTable0, CasesTable1),
-    (
-        Left1 = [],
-        % There must be at least one case in CasesTable1.
-        num_cases_in_table(CasesTable1) >= 1,
-        Left = Left1,
-        Cases = convert_cases_table(!.LocalInfo, Var, GoalInfo, CasesTable1)
-    ;
-        Left1 = [_ | _],
-        % We do not insist on there being at least one case in CasesTable1,
-        % to allow for switches in which *all* cases contain subsidiary
-        % disjunctions.
-        ( if
-            expand_sub_disjs(!.LocalInfo, Var, Left1, CasesTable1, CasesTable)
-        then
-            Left = [],
-            num_cases_in_table(CasesTable) >= 1,
-            Cases =
-                convert_cases_table(!.LocalInfo, Var, GoalInfo, CasesTable),
-            !LocalInfo ^ lsdi_requant := need_to_requantify
-        else
-            trace [
-                compile_time(flag("scout-disjunctions")),
-                runtime(env("SCOUT_DISJUNCTIONS")),
-                io(!IO)
-            ] (
-                ModuleInfo = !.LocalInfo ^ lsdi_module_info,
-                VarTable = !.LocalInfo ^ lsdi_var_table,
-                varset.init(TVarSet),
-                varset.init(InstVarSet),
-                io.stderr_stream(StrErr, !IO),
-
-                VarStr = mercury_var_to_string(VarTable,
-                    print_name_and_num, Var),
-                io.format(StrErr, "\nVar = %s\n", [s(VarStr)], !IO),
-
-                io.write_string(StrErr, "\nLEFT GOALS\n", !IO),
-                list.foldl(
-                    dump_goal_nl(StrErr, ModuleInfo, vns_var_table(VarTable),
-                        TVarSet, InstVarSet),
-                    Left1, !IO),
-                io.write_string(StrErr, "END LEFT GOALS\n", !IO)
-            ),
-
-            Left = Left1,
-            Cases =
-                convert_cases_table(!.LocalInfo, Var, GoalInfo, CasesTable1)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
-    list(hlds_goal)::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    cases_table::in, cases_table::out) is det.
-
-partition_disj_trial(_, _, [], !Left, !CasesTable).
-partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
-        !Left, !CasesTable) :-
-    find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
-        Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
-    trace [compile_time(flag("partition_disj")), io(!IO)] (
-        ModuleInfo = LocalInfo ^ lsdi_module_info,
-        VarTable = LocalInfo ^ lsdi_var_table,
-        io.output_stream(Stream, !IO),
-        DisjunctDesc0 =
-            describe_structured_goal(ModuleInfo, VarTable, 1u, Disjunct0),
-        (
-            MaybeConsId = no,
-            ResultStr = "no"
-        ;
-            MaybeConsId = yes(ConsId0),
-            ResultStr = "yes(" ++ cons_id_and_arity_to_string(ConsId0) ++ ")"
-        ),
-        io.format(Stream, "\nfind_bind_var for %s on\n",
-            [s(describe_var(VarTable, Var))], !IO),
-        io.write_string(Stream, DisjunctDesc0, !IO),
-        io.format(Stream, "MaybeConsId = %s\n\n", [s(ResultStr)], !IO)
-    ),
-    (
-        MaybeConsId = yes(ConsId),
-        add_single_entry(ConsId, Disjunct, !CasesTable)
-    ;
-        MaybeConsId = no,
-        !:Left = [Disjunct0 | !.Left]
-    ),
-    partition_disj_trial(LocalInfo, Var, Disjuncts0, !Left, !CasesTable).
-
-:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
-    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
-    list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
-    unit::in, unit::out) is det.
-
-find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
-        _Result0, Result, _, unit) :-
-    GoalExpr0 = unify(_, _, _, Unification0, _),
-    Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _),
-    Result = yes(Functor),
-    ( if
-        ArgVars = [],
-        SwitchVar = UnifyVar
-    then
-        % The test will get carried out in the switch, there are no
-        % argument values to pick up, and the test was on the switch
-        % variable (not on one of its aliases), so the unification
-        % serve no further purpose. We delete it here, so simplify
-        % doesn't have to.
-        Goals = []
-    else
-        % The deconstruction unification now becomes deterministic, since
-        % the test will get carried out in the switch.
-        Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
-        GoalExpr = GoalExpr0 ^ unify_kind := Unification,
-        Goal = hlds_goal(GoalExpr, GoalInfo0),
-        Goals = [Goal]
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred add_single_entry(cons_id::in, hlds_goal::in,
-    cases_table::in, cases_table::out) is det.
-
-add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
-    CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
-    Arm = single_cons_id_arm(ConsId, Goal),
-    ( if map.search(CasesMap0, ConsId, Entry0) then
-        Entry0 = cons_id_entry(State0, Arms0),
-        (
-            State0 = cons_id_has_all_singles,
-            State = cons_id_has_all_singles,
-            ConflictConsIds = ConflictConsIds0
-        ;
-            State0 = cons_id_has_one_multi,
-            State = cons_id_has_conflict,
-            set_tree234.insert(ConsId, ConflictConsIds0, ConflictConsIds)
-        ;
-            State0 = cons_id_has_conflict,
-            State = cons_id_has_conflict,
-            ConflictConsIds = ConflictConsIds0
-        ),
-        Arms = snoc(Arms0, Arm),
-        Entry = cons_id_entry(State, Arms),
-        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
-    else
-        State = cons_id_has_all_singles,
-        Arms = cord.singleton(Arm),
-        Entry = cons_id_entry(State, Arms),
-        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
-        ConflictConsIds = ConflictConsIds0
-    ),
-    CasesTable = cases_table(CasesMap, ConflictConsIds).
-
-:- pred add_multi_entry(cons_id::in, list(cons_id)::in, hlds_goal::in,
-    cases_table::in, cases_table::out) is det.
-
-add_multi_entry(MainConsId, OtherConsIds, Goal, CasesTable0, CasesTable) :-
-    Arm = multi_cons_id_arm(MainConsId, OtherConsIds, Goal),
-    list.foldl(add_multi_entry_for_cons_id(Arm), [MainConsId | OtherConsIds],
-        CasesTable0, CasesTable).
-
-:- pred add_multi_entry_for_cons_id(case_arm::in, cons_id::in,
-    cases_table::in, cases_table::out) is det.
-
-add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
-    CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
-    ( if map.search(CasesMap0, ConsId, Entry0) then
-        Entry0 = cons_id_entry(State0, Arms0),
-        (
-            ( State0 = cons_id_has_all_singles
-            ; State0 = cons_id_has_one_multi
-            ),
-            set_tree234.insert(ConsId, ConflictConsIds0, ConflictConsIds)
-        ;
-            State0 = cons_id_has_conflict,
-            ConflictConsIds = ConflictConsIds0
-        ),
-        State = cons_id_has_conflict,
-        cord.snoc(Arm, Arms0, Arms),
-        Entry = cons_id_entry(State, Arms),
-        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
-    else
-        State = cons_id_has_one_multi,
-        Arms = cord.singleton(Arm),
-        Entry = cons_id_entry(State, Arms),
-        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
-        ConflictConsIds = ConflictConsIds0
-    ),
-    CasesTable = cases_table(CasesMap, ConflictConsIds).
-
-%---------------------------------------------------------------------------%
-
-:- pred expand_sub_disjs(local_switch_detect_info::in, prog_var::in,
-    list(hlds_goal)::in, cases_table::in, cases_table::out) is semidet.
-
-expand_sub_disjs(_, _, [], !CasesTable).
-expand_sub_disjs(LocalInfo, Var, [LeftGoal | LeftGoals], !CasesTable) :-
-    expand_sub_disj(LocalInfo, Var, LeftGoal, !CasesTable),
-    expand_sub_disjs(LocalInfo, Var, LeftGoals, !CasesTable).
-
-:- pred expand_sub_disj(local_switch_detect_info::in, prog_var::in,
-    hlds_goal::in, cases_table::in, cases_table::out) is semidet.
-
-expand_sub_disj(LocalInfo, Var, Goal, !CasesTable) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
-    ( if GoalExpr = conj(plain_conj, SubGoals) then
-        expand_sub_disj_process_conj(LocalInfo, Var, SubGoals, GoalInfo,
-            [], !CasesTable)
-    else if GoalExpr = disj(_) then
-        expand_sub_disj_process_conj(LocalInfo, Var, [Goal], GoalInfo,
-            [], !CasesTable)
-    else
-        fail
-    ).
-
-:- pred expand_sub_disj_process_conj(local_switch_detect_info::in,
-    prog_var::in, list(hlds_goal)::in, hlds_goal_info::in, list(hlds_goal)::in,
-    cases_table::in, cases_table::out) is semidet.
-
-expand_sub_disj_process_conj(LocalInfo, Var, ConjGoals, GoalInfo,
-        !.RevUnifies, !CasesTable) :-
-    (
-        ConjGoals = [],
-        fail
-    ;
-        ConjGoals = [FirstGoal | LaterGoals],
-        FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
-        (
-            FirstGoalExpr = unify(_, _, _, _, _),
-            !:RevUnifies = [FirstGoal | !.RevUnifies],
-            expand_sub_disj_process_conj(LocalInfo, Var, LaterGoals,
-                GoalInfo, !.RevUnifies, !CasesTable)
-        ;
-            FirstGoalExpr = disj(Disjuncts),
-            Disjuncts = [_ | _],
-            ( if
-                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
-                !.RevUnifies = [],
-
-                % If the unifications pick up the values of variables,
-                % we would need to include in the switch arm of each cons_id
-                % not just LaterGoals, but also the disjunct in FirstGoal
-                % that does this picking up. This disjunct would have to be
-                % specific to each cons_id, so it could not be shared with
-                % other cons_ids.
-                NonLocals = goal_info_get_nonlocals(FirstGoalInfo),
-                set_of_var.delete(Var, NonLocals, OtherNonLocals),
-                set_of_var.is_empty(OtherNonLocals),
-
-                all_disjuncts_are_switch_var_unifies(Var, Disjuncts,
-                    DisjConsIds),
-                list.sort(DisjConsIds, SortedDisjConsIds),
-                SortedDisjConsIds = [MainConsId | OtherConsIds]
-            then
-                SharedGoal = hlds_goal(conj(plain_conj, LaterGoals), GoalInfo),
-                add_multi_entry(MainConsId, OtherConsIds, SharedGoal,
-                    !CasesTable)
-            else if
-                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
-                !.RevUnifies = [],
-
-                CasesTableMap = !.CasesTable ^ cases_map,
-                map.keys_as_set(CasesTableMap, CasesConsIds),
-                % Without this test, we can create a top-level switch
-                % which has one arm that lists all the cons_ids of the
-                % switched-on variable, with that arm containing the
-                % same switch, and so on, in an infinitely large set
-                % of russian nesting dolls. And of course, constructing
-                % an infinite set of switches would take infinite time,
-                % at least if we had infinite memory.
-                set.is_non_empty(CasesConsIds),
-
-                DisjunctionMap = LocalInfo ^ lsdi_disjunction_info_map,
-                FirstGoalId = goal_info_get_goal_id(FirstGoalInfo),
-                map.search(DisjunctionMap, disjunction_id(FirstGoalId),
-                    FirstGoalDisjunctionInfo),
-                FirstGoalSummary = FirstGoalDisjunctionInfo ^ dni_summary_map,
-                map.search(FirstGoalSummary, Var, VarSummary),
-                VarSummary = var_all_arms_summary(SummaryConsIds0, SubDisj),
-                SummaryConsIds = set.map(switchable_cons_id_to_cons_id,
-                    SummaryConsIds0),
-                % If two or more disjuncts have deconstructions that unify
-                % the variable being switched on with the *same* cons_id,
-                % (which we call a "conflict"), then in the switch we create,
-                % the case for that cons_id must be a new disjunction of just
-                % those disjuncts from the original disjunction. However, this
-                % is not easy to do when one or more of those disjuncts
-                % are not direct arms of the original disjunction, but
-                % are arms in a sub-disjunction, sub-sub-disjunction, and
-                % so on. We do not have any code that pull arms out of such
-                % sub^N-disjunctions, so we insist on there being no conflict
-                % either among the sub^N-disjunctions of this top level
-                % disjunct, ....
-                SubDisj = sub_disj_is_not_needed,
-                set.intersect(SummaryConsIds, CasesConsIds,
-                    NewConflictConsIds),
-                % ... or between one sub^N-disjunction of this top-level
-                % disjunct, and its neighboring top-level disjuncts.
-                set.is_empty(NewConflictConsIds),
-                set.to_sorted_list(SummaryConsIds, SortedDisjConsIds),
-                SortedDisjConsIds = [MainConsId | OtherConsIds]
-            then
-                SharedGoal = hlds_goal(conj(plain_conj, ConjGoals), GoalInfo),
-                add_multi_entry(MainConsId, OtherConsIds, SharedGoal,
-                    !CasesTable)
-            else
-                list.reverse(!.RevUnifies, Unifies),
-                list.map(
-                    create_expanded_conjunction(Unifies, LaterGoals, GoalInfo),
-                    Disjuncts, ExpandedConjunctions),
-                partition_disj_trial(LocalInfo, Var, ExpandedConjunctions,
-                    [], Left, !CasesTable),
-                Left = []
-            )
-        )
-    ).
-
-:- pred all_disjuncts_are_switch_var_unifies(prog_var::in,
-    list(hlds_goal)::in, list(cons_id)::out) is semidet.
-
-all_disjuncts_are_switch_var_unifies(_Var, [], []).
-all_disjuncts_are_switch_var_unifies(Var, [Goal | Goals],
-        [ConsId | ConsIds]) :-
-    Goal = hlds_goal(GoalExpr, _GoalInfo),
-    GoalExpr = unify(_LHS, _RHS, _, UnifyInfo0, _),
-    UnifyInfo0 = deconstruct(Var, ConsId, _, _, _, _),
-    all_disjuncts_are_switch_var_unifies(Var, Goals, ConsIds).
-
-:- pred create_expanded_conjunction(list(hlds_goal)::in, list(hlds_goal)::in,
-    hlds_goal_info::in, hlds_goal::in, hlds_goal::out) is det.
-
-create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
-    ( if Disjunct = hlds_goal(conj(plain_conj, DisjunctGoals), _) then
-        Conjuncts = Unifies ++ DisjunctGoals ++ LaterGoals
-    else
-        Conjuncts = Unifies ++ [Disjunct] ++ LaterGoals
-    ),
-    Goal = hlds_goal(conj(plain_conj, Conjuncts), GoalInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred cases_to_switch(candidate_switch::in, instmap::in,
-    hlds_goal_expr::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
-
-cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
-    Candidate = candidate_switch(Var, Cases0, UnreachableCaseGoals, _Left,
-        _Rank, CanFail),
-    (
-        UnreachableCaseGoals = []
-    ;
-        UnreachableCaseGoals = [_ | _],
-        UnreachableCalledProcs = goals_proc_refs(UnreachableCaseGoals),
-
-        DeletedCallCallees0 = !.LocalInfo ^ lsdi_deleted_callees,
-        set.union(UnreachableCalledProcs,
-            DeletedCallCallees0, DeletedCallCallees),
-        !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees
-    ),
-
-    detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo),
-    % We turn switches with no arms into fail, since this avoids having
-    % the code generator flush the control variable of the switch.
-    % We can't easily eliminate switches with one arm, since the
-    % code of the arm will have the unification between the variable
-    % and the function symbol as det. The gain would be minimal to
-    % nonexistent anyway.
-    (
-        Cases = [],
-        GoalExpr = disj([])
-    ;
-        Cases = [_ | _],
-        GoalExpr = switch(Var, CanFail, Cases)
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.switch_detection.
