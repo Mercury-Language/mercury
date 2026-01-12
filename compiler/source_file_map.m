@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2019-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2019-2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -170,7 +170,7 @@ acc_source_file_map_line(FileName, Mn2FnMap0, Mn2FnMap,
     ( if bimap.reverse_search(Mn2FnMap0, _, FileName) then
         % We have already processed FileName.
         % We could report an error here, but there is not much point;
-        % ignoring the issue here gets the same result as the the user
+        % ignoring the issue here gets the same result as the user
         % invoking "mmc -f" again with a file name list from which
         % any duplicates have been deleted.
         Mn2FnMap = Mn2FnMap0

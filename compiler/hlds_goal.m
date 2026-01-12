@@ -420,7 +420,7 @@
     %
     % 6. The unifications are ordered such that a variable on the LHS of
     %    all unifications except the first occurs exactly once outside that
-    %    uniication, as a functor argument on the RHS of an *earlier*
+    %    unification, as a functor argument on the RHS of an *earlier*
     %    unification (top down order).
     %
     % From_ground_term_initial scopes obey invariant 1, and they obey weak
@@ -935,7 +935,7 @@
     ;       assign(
                 % X = Y where the top node of X is output.
                 %
-                % In HLDS dumps, assigments are written as `X := Y'.
+                % In HLDS dumps, assignments are written as `X := Y'.
 
                 assign_to_var           :: prog_var,
                 assign_from_var         :: prog_var
@@ -1188,12 +1188,12 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
-    % A unify mode specifies four instantation states:
+    % A unify mode specifies four instantiation states:
     %
-    % - the initial instantation state of the LHS (li),
-    % - the final instantation state of the LHS (lf),
-    % - the initial instantation state of the RHS (ri) and
-    % - the final instantation state of the RHS (rf).
+    % - the initial instantiation state of the LHS (li),
+    % - the final instantiation state of the LHS (lf),
+    % - the initial instantiation state of the RHS (ri) and
+    % - the final instantiation state of the RHS (rf).
     %
     % The most unifications, the two final instantiation states are the same
     % (ground, either with or without further information), but in some cases

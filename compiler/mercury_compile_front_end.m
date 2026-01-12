@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
 
     ;       simplify_pass_pre_prof_transforms
             % Running simplification before either the term size profiling
-            % or the the profiling transformation, if either is enabled.
+            % or the profiling transformation, if either is enabled.
             % The reason for this pass is mainly to make up for the fact
             % that some simplifications that we can do using standard code
             % before these transforms would require more complex analysis,

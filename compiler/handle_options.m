@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury Team.
+% Copyright (C) 2013-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2361,7 +2361,7 @@ handle_directory_options(OpMode, !Globals) :-
     %   during bootchecks in a workspace, and
     %
     % - the location where a "mmake install" in that workspace
-    %   would put the the standard library
+    %   would put the standard library
     %
     % by specifying a real, existing stdlib location (probably the stdlib
     % of the installed compiler) during bootchecks.
