@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2025 The Mercury team.
+% Copyright (C) 2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1857,7 +1857,28 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     decide_simple_type_non_sub_notag(ModuleInfo, Params,
                         TypeCtor, TypeDefn0, BodyDu0,
                         SingleCtorSymName, SingleArg, SingleCtorContext,
-                        TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
+                        TypeCtorTypeDefn, !NoTagTypeMap, !Specs),
+
+                    % The du type may have a corresponding foreign type
+                    % definition with a word_aligned_pointer assertion.
+                    %
+                    % XXX We will silently ignore a word_aligned_pointer
+                    % assertion on a foreign type if there is a du type
+                    % definition for the same type_ctor, and we don't end up in
+                    % this single-ctor branch.
+                    %
+                    % Note that in the case of multiple ctors, there may be a
+                    % competing packable() value in the ComponentTypeMap for
+                    % the same type_ctor.
+                    (
+                        MaybeForeign = yes(Foreign),
+                        add_foreign_if_word_aligned_ptr(ModuleInfo, Params,
+                            TypeCtor, Foreign,
+                            allow_foreign_type_for_any_backend,
+                            !ComponentTypeMap, !Specs)
+                    ;
+                        MaybeForeign = no
+                    )
                 else
                     add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor,
                         TypeDefn0, MaybeForeign, !ComponentTypeMap),
@@ -1880,7 +1901,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     ;
         Body0 = hlds_foreign_type(ForeignType),
         add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
-            ForeignType, !ComponentTypeMap, !Specs),
+            ForeignType, require_foreign_type_for_cur_backend,
+            !ComponentTypeMap, !Specs),
 
         % There are no questions of representation to figure out.
         cons(TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns)
@@ -2171,13 +2193,18 @@ add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor, TypeDefn,
 
 %---------------------%
 
+:- type maybe_require_foreign_type_for_target
+    --->    require_foreign_type_for_cur_backend
+    ;       allow_foreign_type_for_any_backend.
+
 :- pred add_foreign_if_word_aligned_ptr(module_info::in, decide_du_params::in,
     type_ctor::in, foreign_type_body::in,
+    maybe_require_foreign_type_for_target::in,
     component_type_map::in, component_type_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
-        ForeignType, !ComponentTypeMap, !Specs) :-
+        ForeignType, MaybeRequireForTarget, !ComponentTypeMap, !Specs) :-
     DirectArgMap = Params ^ ddp_direct_arg_map,
     ( if map.search(DirectArgMap, TypeCtor, _DirectArgFunctors) then
         DirectArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
@@ -2199,7 +2226,12 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
             true
         )
     else
-        unexpected($pred, "foreign type is not for this backend")
+        (
+            MaybeRequireForTarget = require_foreign_type_for_cur_backend,
+            unexpected($pred, "foreign type is not for this backend")
+        ;
+            MaybeRequireForTarget = allow_foreign_type_for_any_backend
+        )
     ).
 
 %---------------------%

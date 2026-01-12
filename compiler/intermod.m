@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -219,8 +219,19 @@ some_type_needs_to_be_written([], no).
 some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     ( if
-        ( TypeStatus = type_status(status_abstract_exported)
-        ; TypeStatus = type_status(status_exported_to_submodules)
+        (
+            TypeStatus = type_status(status_exported),
+            % A du type defined in the interface section (exported) will need
+            % to be written to the .opt file if it has any direct-arg
+            % constructors. The type definition in the .opt file will include
+            % `where direct_arg is` clauses to tell anyone opt-importing the
+            % type which constructors use the direct-arg representation.
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            is_du_type_with_direct_arg_ctors(TypeBody)
+        ;
+            TypeStatus = type_status(status_abstract_exported)
+        ;
+            TypeStatus = type_status(status_exported_to_submodules)
         )
     then
         NeedWrite = yes

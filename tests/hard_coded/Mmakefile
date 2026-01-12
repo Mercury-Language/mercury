@@ -111,6 +111,7 @@ ORDINARY_PROGS = \
 	det_in_semidet_cntxt \
 	digraph_tc \
 	dir_fold \
+	direct_arg_opt \
 	direct_arg_partial_inst_1 \
 	direct_arg_partial_inst_2 \
 	direct_arg_tags_1 \

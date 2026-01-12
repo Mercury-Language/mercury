@@ -39,6 +39,8 @@ MCFLAGS-deforest_cc_bug             += --deforestation
 MCFLAGS-delay_partial_test_1        += --delay-partial-instantiations
 MCFLAGS-delay_partial_test_2        += --delay-partial-instantiations
 MCFLAGS-delay_partial_test_2        += --no-warn-simple-code
+MCFLAGS-direct_arg_opt              += --intermodule-optimization
+MCFLAGS-direct_arg_opt_helper_1     += --intermodule-optimization
 MCFLAGS-ground_terms                += --from-ground-term-threshold=2
 MCFLAGS-impl_defn_literals          += --no-warn-simple-code
 MCFLAGS-lp                          += --intermodule-optimization -O3

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,6 +32,8 @@
 
 :- pred should_opt_export_type_defn(module_name::in, type_ctor::in,
     hlds_type_defn::in) is semidet.
+
+:- pred is_du_type_with_direct_arg_ctors(hlds_type_body::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1227,7 +1229,24 @@ should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     TypeCtor = type_ctor(Name, _Arity),
     Name = qualified(ModuleName, _),
-    type_status_to_write(TypeStatus) = yes.
+    (
+        type_status_to_write(TypeStatus) = yes
+    ;
+        TypeStatus = type_status(status_exported),
+        % A du type defined in the interface section (exported) will need
+        % to be written to the .opt file if it has any direct-arg
+        % constructors. The type definition in the .opt file will include
+        % `where direct_arg is` clauses to tell anyone opt-importing the
+        % type which constructors use the direct-arg representation.
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        is_du_type_with_direct_arg_ctors(TypeBody)
+    ).
+
+is_du_type_with_direct_arg_ctors(TypeBody) :-
+    TypeBody = hlds_du_type(TypeBodyDu),
+    TypeBodyDu ^ du_type_repn = yes(DuTypeRepn),
+    DuTypeRepn ^ dur_direct_arg_ctors = yes(DirectArgCtors),
+    DirectArgCtors = [_ | _].
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.intermod_decide.
