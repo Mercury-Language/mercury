@@ -225,15 +225,15 @@ However, if you want to give it a try, the required steps are:
 
 4. Build the dependencies using the following command:
 
-       $ mmake --use-mmc-make depend GRADE=csharp
+       mmake --use-mmc-make depend GRADE=csharp
 
 5. Compile using the following command:
 
-       $ mmake --use-mmc-make GRADE=csharp
+       mmake --use-mmc-make GRADE=csharp
 
 6. To install the C# version of the compiler, do:
 
-       $ mmake --use-mmc-make install GRADE=csharp
+       mmake --use-mmc-make install GRADE=csharp
 
 The C# version of the compiler MUST be built using `mmake`'s `--use-mmc-make`
 option; the build will not work otherwise. Setting the variable `GRADE` in the
