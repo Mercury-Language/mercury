@@ -1,5 +1,11 @@
+Mercury on Linux / PowerPC
+==========================
 
-NOTE: we do not know if the Linux/PPC port has been tested since 1998.
+This file documents the port of Mercury to Linux on PowerPC (PPC).
+
+[!NOTE]
+The Linux/PPC port has not been tested since 1998 and the information in this
+file is almost certainly out of date.
 
 ----------------------------------------------------------------------
 
@@ -8,34 +14,34 @@ Thanks to Robert A. Abernathy for his help with this port.
 
 You will need to use a recent release of gcc which supports global
 register variables for this configuration - gcc 2.8.0 seems to
-work fine, whereas gcc 2.7.2 doesn't.  Global register variables
-allow considerably more efficient code to be generated.  Another option
-is egcs (see <http://www.cygnus.com/egcs/>).
+work fine, whereas gcc 2.7.2 doesn't. Global register variables
+allow considerably more efficient code to be generated.
 
 In addition, there are a few things that could be done to "tune" this
-port.  Currently the Linux-PPC port does not yet support shared
-libraries, or mprotect()-based stack overflow detection.  These
+port. Currently the Linux-PPC port does not yet support shared
+libraries, or mprotect()-based stack overflow detection. These
 features are not necessary, but they would of course be nice to have.
 Appended below is some information about what would need to be done to
-add support for these features.  Intrepid hackers, read on ;-)
+add support for these features. Intrepid hackers, read on ;-)
 
 ----------------------------------------------------------------------
 
+```
 > You'll notice that shared libraries aren't supported on this
-> machine yet.  The LinuxPPC on the machine is an ELF system
+> machine yet. The LinuxPPC on the machine is an ELF system
 > and does support shared libs.
+```
 
-We don't try to auto-configure shared libraries;
-it's not reliable, since often failures only exhibit
-themselves on large programs, not simple test cases.
+We don't try to auto-configure shared libraries; it's not reliable, since often
+failures only exhibit themselves on large programs, not simple test cases.
 
-The code to handle shared libraries might be as simple as just
-patching configure to tell it to assume that they work. 
+The code to handle shared libraries might be as simple as just patching
+configure to tell it to assume that they work. 
 (The way to do this is shown in the patch appended below.)
-But more likely it will also require a little bit
-of ABI-dependent code in runtime/mercury_goto.h, similar to the
-existing stuff there for __sparc.
+But more likely it will also require a little bit of ABI-dependent code in
+`runtime/mercury_goto.h`, similar to the existing stuff there for `__sparc`.
 
+```
 > checking for sys/siginfo.h... no
 > checking for ucontext.h... no
 > checking for sys/ucontext.h... no
@@ -44,17 +50,19 @@ existing stuff there for __sparc.
 > checking for `sigaction' field name... sa_handler
 > checking for working `sigcontext_struct'... no
 > checking for `siginfo_t'... no
+```
 
 The only other thing missing is stack overflow checking.
 That requires a way of determining the fault address in a signal
 handler, and there's no portable way of doing that.
 We try a bunch of different ways, as shown above.
-The method that is used on x86-linux is asm/sigcontext.h +
-sigcontext_struct.  Unfortunately the sigcontext_struct field name
+The method that is used on x86-linux is `asm/sigcontext.h` +
+`sigcontext_struct`. Unfortunately the `sigcontext_struct` field name
 we use in this method is hard-coded as `cr2', so it won't work on
-PPC-Linux.  There may be some way of getting the same information
-on PPC-Linux.  Try having a look at /usr/include/*/sigcontext.h.
+PPC-Linux. There may be some way of getting the same information
+on PPC-Linux. Try having a look at `/usr/include/*/sigcontext.h`.
 
+```
 Index: configure.in
 ===================================================================
 RCS file: /home/staff/zs/imp/mercury/configure.in,v
@@ -73,6 +81,4 @@ diff -u -u -r1.117 configure.in
  	i?86-*-freebsd*)
  		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
  		AC_MSG_RESULT(yes)
-
-
-
+```

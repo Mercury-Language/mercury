@@ -43,7 +43,7 @@ Specific information is contained in individual README files in the
 
       * [Linux](Documentation/README.Linux)
         ([AArch64](Documentation/README.Linux-aarch64.md),
-        [PPC](Documentation/README.Linux-PPC),
+        [PPC](Documentation/README.Linux-PPC.md),
         [m68k](Documentation/README.Linux-m68k))
       * [macOS](Documentation/README.macOS.md)
       * [FreeBSD](Documentation/README.FreeBSD.md)
