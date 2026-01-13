@@ -1,7 +1,10 @@
+Mercury in Docker
+=================
+
 This file documents using Mercury within a Docker container.
 
 Motivation
-==========
+----------
 
 Docker is a popular way to achieve cross-platform containerisation of
 applications. Due to the rather lengthy compile time of the Mercury compiler
@@ -9,9 +12,9 @@ itself, a way to package the compiler and all of its dependencies is a
 desirable goal.
 
 Building Mercury
-================
+----------------
 
-The [Dockerfile](Dockerfile) is a
+The [Dockerfile](../Dockerfile) is a
 [multi-staged](https://docs.docker.com/develop/develop-images/multistage-build/)
 Dockerfile.
 
@@ -61,7 +64,7 @@ Additionally building the ROTD tarball is supported via:
 ```
 
 Using containerised mmc on the host platform
-============================================
+--------------------------------------------
 
 ```bash
   docker run --rm \
@@ -87,7 +90,7 @@ used:
 ```
 
 Limitations
-===========
+----------
 
 Currently only static linkage is supported, as dynamic linkage searches the
 host for the Mercury runtime library, which might not be installed or not
