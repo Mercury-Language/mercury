@@ -3,9 +3,9 @@ Mercury on Linux / PowerPC
 
 This file documents the port of Mercury to Linux on PowerPC (PPC).
 
-[!NOTE]
-The Linux/PPC port has not been tested since 1998 and the information in this
-file is almost certainly out of date.
+> [!NOTE]
+> The Linux/PPC port has not been tested since 1998 and the information in this
+> file is almost certainly out of date.
 
 ----------------------------------------------------------------------
 
