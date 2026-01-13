@@ -23,8 +23,7 @@ To build a 32-bit Mercury compiler on 64-bit Linux, follow these steps:
 2. Ensure that you have a working Mercury compiler in your PATH
    to bootstrap from.
 
-3. Run `aclocal -I m4; autoconf` as normal. Then invoke `configure`
-   as follows:
+3. Run `./prepare.sh` and then invoke `configure` as follows:
 
        ./configure --host=i686-pc-linux-gnu --with-cc="gcc -m32"
 
