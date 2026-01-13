@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2001, 2003-2006, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % Main author: fjh.
 %
 % This module defines various types which enumerate the different builtin
-% operators. The different back-ends -- the LLDS and and MLDS backends,
+% operators. The different back-ends -- the LLDS and MLDS backends,
 % and others when we had them -- all use the same set of builtin operators.
 % These operators are defined here.
 %
