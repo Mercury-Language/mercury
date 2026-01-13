@@ -9,6 +9,9 @@ For the Linux/AArch64 (ARM64) port, see
 For the Linux/PowerPC port, see
 [README.Linux-PPC.md](README.Linux-PPC.md).
 
+For the Linux/Motorola 68000 port, see
+[README.Linux-m68k.md](README.Linux-m68k.md).
+
 (Ports to Linux on other architectures have not yet
 been attempted, but should not be difficult.)
 

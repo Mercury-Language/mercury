@@ -44,7 +44,7 @@ Specific information is contained in individual README files in the
       * [Linux](Documentation/README.Linux.md)
         ([AArch64](Documentation/README.Linux-aarch64.md),
         [PPC](Documentation/README.Linux-PPC.md),
-        [m68k](Documentation/README.Linux-m68k))
+        [m68k](Documentation/README.Linux-m68k.md))
       * [macOS](Documentation/README.macOS.md)
       * [FreeBSD](Documentation/README.FreeBSD.md)
       * [OpenBSD](Documentation/README.OpenBSD.md)
