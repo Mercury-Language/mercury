@@ -848,7 +848,6 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
 
     % Options updated:
     %   allow_double_word_fields
-    %   allow_multi_arm_switches
     %   allow_packing_dummies
     %   allow_packing_ints
     %   arg_pack_bits

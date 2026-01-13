@@ -61,7 +61,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
@@ -93,32 +92,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- type allow_multi_arm
-    --->    allow_multi_arm
-    ;       do_not_allow_multi_arm.
-
 :- type switch_detect_info
     --->    switch_detect_info(
-                sdi_module_info     :: module_info,
-                sdi_allow_multi_arm :: allow_multi_arm
+                sdi_module_info     :: module_info
             ).
 
-:- pred lookup_allow_multi_arm(module_info::in, allow_multi_arm::out) is det.
-
-lookup_allow_multi_arm(ModuleInfo, AllowMulti) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, allow_multi_arm_switches, Allow),
-    (
-        Allow = yes,
-        AllowMulti = allow_multi_arm
-    ;
-        Allow = no,
-        AllowMulti = do_not_allow_multi_arm
-    ).
-
 init_switch_detect_info(ModuleInfo) = Info :-
-    lookup_allow_multi_arm(ModuleInfo, AllowMulti),
-    Info = switch_detect_info(ModuleInfo, AllowMulti).
+    Info = switch_detect_info(ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -201,7 +181,7 @@ detect_switches_in_procs(Info, NonImportedProcIds,
 %---------------------------------------------------------------------------%
 
 detect_switches_in_proc(Info, !ProcInfo) :-
-    Info = switch_detect_info(ModuleInfo, AllowMulti),
+    Info = switch_detect_info(ModuleInfo),
 
     scout_disjunctions_in_proc(ModuleInfo, !ProcInfo, DisjunctionInfoMap),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
@@ -209,14 +189,14 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
-    LocalInfo0 = local_switch_detect_info(VarTable, AllowMulti,
-         DisjunctionInfoMap, ModuleInfo, Requant0, BodyDeletedCallCallees0),
+    LocalInfo0 = local_switch_detect_info(VarTable, DisjunctionInfoMap,
+        ModuleInfo, Requant0, BodyDeletedCallCallees0),
 
     detect_switches_in_goal(InstMap0, nrsv, Goal0, Goal,
         LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    LocalInfo = local_switch_detect_info(_VarTable, _AllowMulti,
-        _DisjunctionInfoMap, _ModuleInfo, Requant, BodyDeletedCallCallees),
+    LocalInfo = local_switch_detect_info(_VarTable, _DisjunctionInfoMap,
+        _ModuleInfo, Requant, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo)
@@ -234,7 +214,6 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     --->    local_switch_detect_info(
                 % These fields are read-only.
                 lsdi_var_table              :: var_table,
-                lsdi_allow_multi_arm        :: allow_multi_arm,
                 lsdi_disjunction_info_map   :: disjunction_info_map,
 
                 % These fields are read-write.
@@ -703,7 +682,6 @@ expand_sub_disj_process_conj(LocalInfo, Var, ConjGoals, GoalInfo,
             FirstGoalExpr = disj(Disjuncts),
             Disjuncts = [_ | _],
             ( if
-                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
                 !.RevUnifies = [],
 
                 % If the unifications pick up the values of variables,
@@ -725,7 +703,6 @@ expand_sub_disj_process_conj(LocalInfo, Var, ConjGoals, GoalInfo,
                 add_multi_entry_to_cases_table(MainConsId, OtherConsIds,
                     SharedGoal, !CasesTable)
             else if
-                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
                 !.RevUnifies = [],
 
                 CasesTableMap = !.CasesTable ^ cases_map,

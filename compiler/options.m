@@ -1209,7 +1209,6 @@
     ;       size_region_semi_disj_protect
     ;       size_region_disj_snapshot
     ;       size_region_commit_entry
-    ;       allow_multi_arm_switches
     ;       reclaim_heap_on_failure
     ;       reclaim_heap_on_semidet_failure
     ;       reclaim_heap_on_nondet_failure
@@ -6201,10 +6200,6 @@ optdb(oc_internal,  size_region_disj_snapshot,         int(3),
     priv_arg_help("size-region-disj-snapshot", "num_words", [])).
 optdb(oc_internal,  size_region_commit_entry,          int(1),
     priv_arg_help("size-region-commit-entry", "num_words", [])).
-optdb(oc_internal,  allow_multi_arm_switches,          bool(yes),
-    priv_help("allow-multi-arm-switches", [
-        w("Do not allow the compiler to generate switches"),
-        w("in which one arm handles more than one cons_id.")])).
 optdb(oc_internal,  reclaim_heap_on_failure,           bool_special,
     priv_help("reclaim-heap-on-failure", [
         w("Combines the effect of the two options below.")])).

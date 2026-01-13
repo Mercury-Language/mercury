@@ -4261,11 +4261,6 @@ Options for developers only
         There is no help text available.
 
     PRIVATE OPTION
-    --no-allow-multi-arm-switches
-        Do not allow the compiler to generate switches in which one arm handles
-        more than one cons_id.
-
-    PRIVATE OPTION
     --reclaim-heap-on-failure
         Combines the effect of the two options below.
 
