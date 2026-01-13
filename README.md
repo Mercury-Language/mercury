@@ -59,7 +59,7 @@ Specific information is contained in individual README files in the
   * Other platform information
       * [Cross compilation](Documentation/README.cross.md)
       * [Docker](Documentation/README.Docker)
-      * [x86](Documentation/README.x86)
+      * [x86](Documentation/README.x86.md)
 
 ## Other information
 

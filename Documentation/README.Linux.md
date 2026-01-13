@@ -12,8 +12,10 @@ For the Linux/PowerPC port, see
 For the Linux/Motorola 68000 port, see
 [README.Linux-m68k.md](README.Linux-m68k.md).
 
-(Ports to Linux on other architectures have not yet
-been attempted, but should not be difficult.)
+(Ports to Linux on other architectures have not yet been attempted, but should
+not be difficult.)
+
+If you are installing on x86, then also see [README.x86.md](README.x86.md).
 
 Building a 32-bit Mercury Compiler on 64-bit Linux
 --------------------------------------------------
