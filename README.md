@@ -41,7 +41,7 @@ Specific information is contained in individual README files in the
 
   * Supported operating systems
 
-      * [Linux](Documentation/README.Linux)
+      * [Linux](Documentation/README.Linux.md)
         ([AArch64](Documentation/README.Linux-aarch64.md),
         [PPC](Documentation/README.Linux-PPC.md),
         [m68k](Documentation/README.Linux-m68k))
