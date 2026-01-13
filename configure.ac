@@ -5089,28 +5089,6 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-AC_ARG_WITH(msvcrt,
-    AS_HELP_STRING([--with-msvcrt],
-                   [use the MS Visual C runtime if using MS C compiler.]),
-    mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
-
-AC_MSG_CHECKING(whether to use the MS Visual C Runtime)
-if test "$mercury_cv_msvcrt" = "yes"; then
-    if test "$ac_microsoft" = "yes"; then
-        AC_MSG_RESULT(yes)
-        USE_MSVCRT=yes
-    else
-        AC_MSG_RESULT(no as not using the MS C compiler)
-        USE_MSVCRT=no
-    fi
-else
-    AC_MSG_RESULT(no)
-    USE_MSVCRT=no
-fi
-AC_SUBST(USE_MSVCRT)
-
-#-----------------------------------------------------------------------------#
-
 AC_ARG_ENABLE(lto,
     AS_HELP_STRING([--enable-lto],
                    [Enable link-time optimization for C grades (experimental)]),

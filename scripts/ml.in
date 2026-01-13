@@ -400,17 +400,6 @@ case "${thread_safe},${all_libs}" in
         ;;
 esac
 
-# Set the correct flags if we're to use the MS Visual C runtime.
-use_msvcrt=@USE_MSVCRT@
-if test "${use_msvcrt}" = "yes"
-then
-    MSVCRT_OPTS="-MD"           # Enable linking with the MS Visual C runtime.
-    NODEFAULTLIB_FLAG="-nodefaultlib:libcmt"
-else
-    MSVCRT_OPTS=""
-    NODEFAULTLIB_FLAG=""
-fi
-
 # Use any applicable LTO options
 LTO_OPTS="${LDFLAGS_FOR_LTO}"
 
@@ -576,8 +565,8 @@ case "${C_COMPILER_TYPE}" in
         ;;
 esac
 
-LINKER_PRE_FLAGS="${NOLOGO_OPTS} ${MSVCRT_OPTS} ${PRINT_MAP_OPT} ${UNDEF_OPT} ${STRIP_OPTS} ${LTO_OPTS} ${MAYBE_STATIC_OPT} ${ARCH_OPTS} ${SANITIZER_OPTS}"
-LINKER_POST_FLAGS="@LINK_OPT_SEP@ ${MSVC_SETARGV} ${NODEFAULTLIB_FLAG} ${DEBUG_FLAG} ${LIBDIR_OPTS} ${RPATH_OPT_LIST} ${LIBS}"
+LINKER_PRE_FLAGS="${NOLOGO_OPTS} ${PRINT_MAP_OPT} ${UNDEF_OPT} ${STRIP_OPTS} ${LTO_OPTS} ${MAYBE_STATIC_OPT} ${ARCH_OPTS} ${SANITIZER_OPTS}"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ ${MSVC_SETARGV} ${DEBUG_FLAG} ${LIBDIR_OPTS} ${RPATH_OPT_LIST} ${LIBS}"
 
 case "${verbose}" in
     true)

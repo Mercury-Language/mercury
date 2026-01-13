@@ -86,13 +86,7 @@ cross-compile the MSVC port.
 In either case, to use MSVC as the C compiler with Mercury, invoke `configure`
 as follows:
 
-
-    ./configure --with-cc=cl [--with-msvcrt] [<any other options>]
-
-
-The `--with-msvcrt` flag causes executables built with this install of Mercury
-to be linked with the MS Visual C runtime, instead of the standard libC
-runtime.
+    ./configure --with-cc=cl [<any other options>]
 
 On Cygwin, `configure` and `mmake` will do translation of Unix style paths, so
 you may specify the installation directory using either a Unix- or
@@ -100,27 +94,19 @@ Windows-style path. On MSYS2, you must use a full Windows-style path with a
 drive letter, except that you must use `/` instead of `\` as a directory
 separator. For example, this is acceptable:
 
-
     ./configure --prefix="c:/where/to/install/mercury"
-
 
 but this is not:
 
-
     ./configure --prefix="c:\where\to\install\mercury"
-
 
 Once `configure` has successfully finished, then do
 
-
     make
-
 
 and then
 
-
     make install
-
 
 as normal.
 
