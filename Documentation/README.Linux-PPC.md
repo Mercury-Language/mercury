@@ -58,7 +58,7 @@ handler, and there's no portable way of doing that.
 We try a bunch of different ways, as shown above.
 The method that is used on x86-linux is `asm/sigcontext.h` +
 `sigcontext_struct`. Unfortunately the `sigcontext_struct` field name
-we use in this method is hard-coded as `cr2', so it won't work on
+we use in this method is hard-coded as `cr2`, so it won't work on
 PPC-Linux. There may be some way of getting the same information
 on PPC-Linux. Try having a look at `/usr/include/*/sigcontext.h`.
 
