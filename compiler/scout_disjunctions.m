@@ -692,9 +692,7 @@ scout_disjunctions_in_disjuncts(HeadDisjunct0, HeadDisjunct,
     scout_disjunctions_in_goal(HeadDisjunct0, HeadDisjunct, InstMap0, _,
         new_disjunct, _, SubstDb0, _, !ScoutInfo),
     DisjunctInfoMap = !.ScoutInfo ^ scdi_disjunct_info_map,
-    HeadDisjunct = hlds_goal(_, HeadDisjunctGoalInfo),
-    HeadDisjunctGoalId = goal_info_get_goal_id(HeadDisjunctGoalInfo),
-    HeadDisjunctId = disjunct_id(HeadDisjunctGoalId),
+    HeadDisjunctId = disjunct_to_disjunct_id(HeadDisjunct),
     map.lookup(DisjunctInfoMap, HeadDisjunctId, HeadDisjunctInfo),
     HeadDisjunctIdInfo = disjunct_id_info(HeadDisjunctId, HeadDisjunctInfo),
     (
@@ -910,6 +908,13 @@ add_arm_to_all_arms_summary(OneArmSummary, !AllArmsSummary) :-
         )
     ),
     !:AllArmsSummary = var_all_arms_summary(ConsIdSet, SubDisjNeeded).
+
+:- func disjunct_to_disjunct_id(hlds_goal) = disjunct_id.
+
+disjunct_to_disjunct_id(Disjunct) = DisjunctId :-
+    Disjunct = hlds_goal(_, DisjunctGoalInfo),
+    DisjunctGoalId = goal_info_get_goal_id(DisjunctGoalInfo),
+    DisjunctId = disjunct_id(DisjunctGoalId).
 
 %---------------------------------------------------------------------------%
 %
