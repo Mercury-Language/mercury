@@ -21,6 +21,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.maybe_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -73,7 +75,8 @@
                 cs_unreachable_case_goals   :: list(hlds_goal),
                 cs_left_over_disjuncts      :: list(hlds_goal),
                 cs_rank                     :: candidate_switch_rank,
-                cs_can_fail                 :: can_fail
+                cs_can_fail                 :: can_fail,
+                cs_requant                  :: need_to_requantify
             ).
 
     % The initial version of switch detection, which we used for a *long* time,
@@ -210,7 +213,8 @@
 
 :- pred categorize_candidate_switch(module_info::in,
     maybe_required_switch_var::in, prog_var::in, mer_type::in, mer_inst::in,
-    list(case)::in, list(hlds_goal)::in, candidate_switch::out) is det.
+    list(case)::in, list(hlds_goal)::in, need_to_requantify::in,
+    candidate_switch::out) is det.
 
 :- pred select_best_candidate_switch(candidate_switch::in,
     list(candidate_switch)::in, candidate_switch::out) is det.
@@ -264,7 +268,7 @@ is_candidate_switch(Cases0, LeftOver) :-
 %---------------------------------------------------------------------------%
 
 categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
-        VarInst0, Cases0, LeftOver, Candidate) :-
+        VarInst0, Cases0, LeftOver, Requant, Candidate) :-
     can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
         CanFail, CasesMissing, Cases, UnreachableCaseGoals),
     (
@@ -313,7 +317,7 @@ categorize_candidate_switch(ModuleInfo, MaybeRequiredVar, Var, VarType,
         )
     ),
     Candidate = candidate_switch(Var, Cases, UnreachableCaseGoals,
-        LeftOver, Rank, CanFail).
+        LeftOver, Rank, CanFail, Requant).
 
 :- type cases_missing
     --->    no_cases_missing

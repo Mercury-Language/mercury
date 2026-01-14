@@ -407,8 +407,8 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
         GoalExpr, !LocalInfo) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(NonLocals, VarsToTry),
-    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord, !LocalInfo),
+    detect_switch_candidates_in_disj(!.LocalInfo, GoalInfo, Disjuncts0,
+        InstMap0, MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord),
     Candidates = cord.to_list(CandidatesCord),
     (
         Candidates = [],
@@ -466,38 +466,39 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
     % of the disjuncts such that each group of disjunctions can only succeed
     % if the variable is bound to a different functor.
     %
-:- pred detect_switch_candidates_in_disj(hlds_goal_info::in,
-    list(hlds_goal)::in, instmap::in, maybe_required_switch_var::in,
-    list(prog_var)::in,
-    cord(candidate_switch)::in, cord(candidate_switch)::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+:- pred detect_switch_candidates_in_disj(local_switch_detect_info::in,
+    hlds_goal_info::in, list(hlds_goal)::in, instmap::in,
+    maybe_required_switch_var::in, list(prog_var)::in,
+    cord(candidate_switch)::in, cord(candidate_switch)::out) is det.
 
-detect_switch_candidates_in_disj(_GoalInfo, _Disjuncts0, _InstMap0,
-        _MaybeRequiredVar, [], !Candidates, !LocalInfo).
-detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, [Var | Vars], !Candidates, !LocalInfo) :-
+detect_switch_candidates_in_disj(_LocalInfo, _GoalInfo, _Disjuncts0, _InstMap0,
+        _MaybeRequiredVar, [], !Candidates).
+detect_switch_candidates_in_disj(LocalInfo, GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, [Var | Vars], !Candidates) :-
     % Can we do at least a partial switch on this variable?
-    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+    ModuleInfo = LocalInfo ^ lsdi_module_info,
     instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
         inst_is_bound(ModuleInfo, VarInst0),
-        partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo),
+        partition_disj(LocalInfo, Var, Disjuncts0, GoalInfo,
+            Left, Cases, Requant),
         is_candidate_switch(Cases, Left)
     then
-        VarTable = !.LocalInfo ^ lsdi_var_table,
+        VarTable = LocalInfo ^ lsdi_var_table,
         lookup_var_type(VarTable, Var, VarType),
         categorize_candidate_switch(ModuleInfo, MaybeRequiredVar,
-            Var, VarType, VarInst0, Cases, Left, Candidate),
+            Var, VarType, VarInst0, Cases, Left, Requant, Candidate),
         !:Candidates = cord.snoc(!.Candidates, Candidate)
     else
         true
     ),
-    detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, Vars, !Candidates, !LocalInfo).
+    detect_switch_candidates_in_disj(LocalInfo, GoalInfo, Disjuncts0, InstMap0,
+        MaybeRequiredVar, Vars, !Candidates).
 
 %---------------------------------------------------------------------------%
 
-    % partition_disj(Var, Disjuncts, GoalInfo, Left, Cases, !LocalInfo):
+    % partition_disj(LocalInfo, Var, Disjuncts, GoalInfo,
+    %   Left, Cases, Requant):
     %
     % Attempts to partition the disjunction Disjuncts into a switch on Var.
     % If at least partially successful, returns the resulting Cases, with
@@ -510,41 +511,41 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
     % unifications at the start of each disjunction, to build up a
     % substitution.
     %
-:- pred partition_disj(prog_var::in, list(hlds_goal)::in,
-    hlds_goal_info::in, list(hlds_goal)::out, list(case)::out,
-    local_switch_detect_info::in, local_switch_detect_info::out) is semidet.
+:- pred partition_disj(local_switch_detect_info::in, prog_var::in,
+    list(hlds_goal)::in, hlds_goal_info::in,
+    list(hlds_goal)::out, list(case)::out, need_to_requantify::out) is semidet.
 
-partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
+partition_disj(LocalInfo, Var, Disjuncts0, GoalInfo, Left, Cases, Requant) :-
     CasesTable0 = cases_table(map.init, set_tree234.init),
-    partition_disj_trial(!.LocalInfo, Var, Disjuncts0,
+    partition_disj_trial(LocalInfo, Var, Disjuncts0,
         [], Left1, CasesTable0, CasesTable1),
     (
         Left1 = [],
         % There must be at least one case in CasesTable1.
         num_cases_in_table(CasesTable1) >= 1,
         Left = Left1,
-        Cases = cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable1)
+        Cases = cases_table_to_cases(LocalInfo, Var, GoalInfo, CasesTable1),
+        Requant = do_not_need_to_requantify
     ;
         Left1 = [_ | _],
         % We do not insist on there being at least one case in CasesTable1,
         % to allow for switches in which *all* cases contain subsidiary
         % disjunctions.
         ( if
-            expand_sub_disjs(!.LocalInfo, Var, Left1, CasesTable1, CasesTable)
+            expand_sub_disjs(LocalInfo, Var, Left1, CasesTable1, CasesTable)
         then
             Left = [],
             num_cases_in_table(CasesTable) >= 1,
-            Cases =
-                cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable),
-            !LocalInfo ^ lsdi_requant := need_to_requantify
+            Cases = cases_table_to_cases(LocalInfo, Var, GoalInfo, CasesTable),
+            Requant = need_to_requantify
         else
             trace [
                 compile_time(flag("scout-disjunctions")),
                 runtime(env("SCOUT_DISJUNCTIONS")),
                 io(!IO)
             ] (
-                ModuleInfo = !.LocalInfo ^ lsdi_module_info,
-                VarTable = !.LocalInfo ^ lsdi_var_table,
+                ModuleInfo = LocalInfo ^ lsdi_module_info,
+                VarTable = LocalInfo ^ lsdi_var_table,
                 varset.init(TVarSet),
                 varset.init(InstVarSet),
                 io.stderr_stream(StrErr, !IO),
@@ -563,7 +564,8 @@ partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
 
             Left = Left1,
             Cases =
-                cases_table_to_cases(!.LocalInfo, Var, GoalInfo, CasesTable1)
+                cases_table_to_cases(LocalInfo, Var, GoalInfo, CasesTable1),
+            Requant = do_not_need_to_requantify
         )
     ).
 
@@ -791,7 +793,7 @@ create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
 
 cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
     Candidate = candidate_switch(Var, Cases0, UnreachableCaseGoals, _Left,
-        _Rank, CanFail),
+        _Rank, CanFail, CandidateRequant),
     (
         UnreachableCaseGoals = []
     ;
@@ -801,6 +803,12 @@ cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
         set.union(UnreachableCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees
+    ),
+    (
+        CandidateRequant = do_not_need_to_requantify
+    ;
+        CandidateRequant = need_to_requantify,
+        !LocalInfo ^ lsdi_requant := need_to_requantify
     ),
     detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo),
     % We turn switches with no arms into fail, since this avoids having
