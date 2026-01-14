@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2019-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -384,7 +384,7 @@ type_ctor_repn_map_to_type_repns(TypeCtorRepnMap) = TypeRepns :-
     cord(item_type_repn_info)::in, cord(item_type_repn_info)::out) is det.
 
 accumulate_type_ctor_repns(TypeRepn, !TypeRepns) :-
-    !:TypeRepns = cord.snoc(!.TypeRepns, TypeRepn).
+    cord.snoc(TypeRepn, !TypeRepns).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.type_inst_mode_map.

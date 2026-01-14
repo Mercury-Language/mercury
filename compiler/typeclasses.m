@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         map.is_empty(Redundant0),
         map.is_empty(Ancestors0)
     then
-        !:TypeAssignCord = cord.snoc(!.TypeAssignCord, !.TypeAssign)
+        cord.snoc(!.TypeAssign, !TypeAssignCord)
     else
         type_assign_get_existq_tvars(!.TypeAssign, ExistQTVars),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
@@ -180,7 +180,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
 
         Unproven = ConstraintDb ^ hcd_unproven,
         ( if all_constraints_are_satisfiable(Unproven, ExistQTVars) then
-            !:TypeAssignCord = cord.snoc(!.TypeAssignCord, !.TypeAssign)
+            cord.snoc(!.TypeAssign, !TypeAssignCord)
         else
             % Remember the unsatisfiable type_assign_set so we can produce more
             % specific error messages.

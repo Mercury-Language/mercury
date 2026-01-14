@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1705,17 +1705,17 @@ predicate_arity(ModuleInfo, PredId) = PredFormArity :-
 
 module_add_foreign_decl_code_user(ForeignDeclCode, !Module) :-
     module_info_get_foreign_decl_codes_user(!.Module, ForeignDeclCodes0),
-    ForeignDeclCodes = cord.snoc(ForeignDeclCodes0, ForeignDeclCode),
+    cord.snoc(ForeignDeclCode, ForeignDeclCodes0, ForeignDeclCodes),
     module_info_set_foreign_decl_codes_user(ForeignDeclCodes, !Module).
 
 module_add_foreign_decl_code_aux(ForeignDeclCode, !Module) :-
     module_info_get_foreign_decl_codes_aux(!.Module, ForeignDeclCodes0),
-    ForeignDeclCodes = cord.snoc(ForeignDeclCodes0, ForeignDeclCode),
+    cord.snoc(ForeignDeclCode, ForeignDeclCodes0, ForeignDeclCodes),
     module_info_set_foreign_decl_codes_aux(ForeignDeclCodes, !Module).
 
 module_add_foreign_body_code(ForeignBodyCode, !Module) :-
     module_info_get_foreign_body_codes(!.Module, ForeignBodyCodes0),
-    ForeignBodyCodes = cord.snoc(ForeignBodyCodes0, ForeignBodyCode),
+    cord.snoc(ForeignBodyCode, ForeignBodyCodes0, ForeignBodyCodes),
     module_info_set_foreign_body_codes(ForeignBodyCodes, !Module).
 
 module_add_item_fim(ItemFIM, !Module) :-

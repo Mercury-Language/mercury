@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -288,7 +288,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
     ),
     ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0u,
         [always(Pieces)]),
-    !:ReasonMsgs = cord.snoc(!.ReasonMsgs, ReasonMsg),
+    cord.snoc(ReasonMsg, !ReasonMsgs),
     (
         Reason = yes(InfArgSizePPId),
         lookup_proc_arg_size_info(ModuleInfo, InfArgSizePPId, ArgSize),

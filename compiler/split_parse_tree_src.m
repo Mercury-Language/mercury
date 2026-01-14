@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015, 2017-2025 The Mercury team.
+% Copyright (C) 2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -510,7 +510,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         OKIncludes = cord.list(OKIncludesCord),
         RawItemBlock = item_block(ComponentModuleName, SectionKind,
             OKIncludes, Avails, FIMs, Items),
-        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
+        cord.snoc(RawItemBlock, !RawItemBlockCord),
         (
             SectionKind = ms_interface
         ;
@@ -616,7 +616,7 @@ discover_included_submodules([Include | Includes], SectionAncestors,
         map.det_insert(InclModuleName, Entry, !SplitModuleMap),
         add_new_submodule_to_map(SectionAncestors, InclModuleName,
             !SubModulesMap),
-        !:OKIncludesCord = cord.snoc(!.OKIncludesCord, Include)
+        cord.snoc(Include, !OKIncludesCord)
     ),
     discover_included_submodules(Includes, SectionAncestors,
         !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
@@ -646,7 +646,7 @@ add_new_module_maybe_submodule_to_map(ModuleAncestors, ModuleName,
 add_new_submodule_to_map(SectionAncestors, ModuleName, !SubModulesMap) :-
     SectionAncestors = sa_parent(ParentModuleName, _),
     ( if map.search(!.SubModulesMap, ParentModuleName, SiblingModules0) then
-        SiblingModules = cord.snoc(SiblingModules0, ModuleName),
+        cord.snoc(ModuleName, SiblingModules0, SiblingModules),
         map.det_update(ParentModuleName, SiblingModules, !SubModulesMap)
     else
         SiblingModules = cord.singleton(ModuleName),
@@ -830,7 +830,7 @@ add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
         IntIncludes = [_ | _],
         IntItemBlock = item_block(ModuleName, ms_interface, IntIncludes,
             [], [], []),
-        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, IntItemBlock)
+        cord.snoc(IntItemBlock, !RawItemBlockCord)
     ),
     (
         ImpIncludes = []
@@ -838,7 +838,7 @@ add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
         ImpIncludes = [_ | _],
         ImpItemBlock = item_block(ModuleName, ms_implementation, ImpIncludes,
             [], [], []),
-        !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, ImpItemBlock)
+        cord.snoc(ImpItemBlock, !RawItemBlockCord)
     ).
 
 :- pred acc_included_module_names(raw_item_block::in,

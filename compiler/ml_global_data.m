@@ -348,7 +348,7 @@ ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData) :-
 
 ml_global_data_add_rtti_defn(Defn, !GlobalData) :-
     ml_global_data_get_rtti_defns(!.GlobalData, RttiDefns0),
-    RttiDefns = cord.snoc(RttiDefns0, Defn),
+    cord.snoc(Defn, RttiDefns0, RttiDefns),
     ml_global_data_set_rtti_defns(RttiDefns, !GlobalData).
 
 ml_global_data_add_closure_wrapper_func_defns(FuncDefns, !GlobalData) :-
@@ -468,7 +468,7 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
             !CellGroup ^ mscg_members := MembersMap,
 
             Rows0 = !.CellGroup ^ mscg_rows,
-            Rows = cord.snoc(Rows0, Initializer),
+            cord.snoc(Initializer, Rows0, Rows),
             !CellGroup ^ mscg_rows := Rows,
 
             map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
@@ -495,7 +495,7 @@ ml_gen_plain_static_defn(ConstVarKind, ConstType,
         Initializer, GCStatement),
 
     ml_global_data_get_cell_defns(!.GlobalData, CellDefns0),
-    CellDefns = cord.snoc(CellDefns0, DataDefn),
+    cord.snoc(DataDefn, CellDefns0, CellDefns),
     ml_global_data_set_cell_defns(CellDefns, !GlobalData).
 
 :- pred ml_maybe_specialize_generic_array_type(mlds_type::in, mlds_type::out,

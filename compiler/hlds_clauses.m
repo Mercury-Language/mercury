@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2019, 2021-2023, 2025 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2019, 2021-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -612,7 +612,7 @@ set_clause_list(Clauses, ClausesRep) :-
 add_clause(Clause, !ClausesRep) :-
     !.ClausesRep = clauses_rep(NumClauses0, ClausesCord0),
     NumClauses = NumClauses0 + 1,
-    ClausesCord = cord.snoc(ClausesCord0, Clause),
+    cord.snoc(Clause, ClausesCord0, ClausesCord),
     !:ClausesRep = clauses_rep(NumClauses, ClausesCord).
 
 %-----------------------------------------------------------------------------%

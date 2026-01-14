@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -296,13 +296,13 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                     ),
                     (
                         MergeResult = merge_unsuccessful,
-                        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+                        cord.snoc(HeadGoal1, !PrevGoals),
                         TailGoals1 = TailGoals0,
                         TailInstMap = InstMap1
                     ;
                         MergeResult = merge_successful_new_code_simplified(
                             HeadGoal2, !:Info),
-                        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal2),
+                        cord.snoc(HeadGoal2, !PrevGoals),
                         % Let the recursive call to simplify_conj below
                         % process TailTailGoals0 instead of TailGoals0,
                         % since the effect of HeadTailGoal0 has now been
@@ -331,7 +331,7 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                         simplify_info_set_rerun_det(!Info)
                     )
                 else
-                    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+                    cord.snoc(HeadGoal1, !PrevGoals),
                     TailGoals1 = TailGoals0,
                     TailInstMap = InstMap1
                 ),
@@ -354,7 +354,7 @@ delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0, HeadGoal1,
     set.union(SubGoalCalledProcs, DeletedCallCallees0, DeletedCallCallees),
     simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info),
 
-    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+    cord.snoc(HeadGoal1, !PrevGoals),
     ( if
         ( HeadGoal1 = hlds_goal(disj([]), _)
         ; TailGoals0 = []
@@ -371,7 +371,7 @@ delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0, HeadGoal1,
         % specification, mode analysis does not use inferred determinism
         % information when deciding what can never succeed.
         FailGoal = fail_goal_with_context(HeadGoalContext0),
-        !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
+        cord.snoc(FailGoal, !PrevGoals)
     ),
     Goals = cord.list(!.PrevGoals).
 

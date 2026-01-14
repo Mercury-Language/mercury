@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1998, 2003-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019, 2021, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2021, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -415,7 +415,7 @@ add_pending_goals([DelayGoalNum | DelayGoalNums], WaitingVarsTable,
 
     % Add the goal to the pending goals table.
     ( if map.search(!.PendingGoals, Depth, PendingSeqNums0) then
-        PendingSeqNums = cord.snoc(PendingSeqNums0, SeqNum),
+        cord.snoc(SeqNum, PendingSeqNums0, PendingSeqNums),
         map.det_update(Depth, PendingSeqNums, !PendingGoals)
     else
         PendingSeqNums = cord.singleton(SeqNum),

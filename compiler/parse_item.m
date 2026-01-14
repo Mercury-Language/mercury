@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014, 2016-2025 The Mercury team.
+% Copyright (C) 2014, 2016-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -506,7 +506,7 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     (
         ArgTerms = [VarsTerm, SubTerm],
         QuantAttr = qca_quant_vars(QuantType, VarsTerm),
-        !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, QuantAttr),
+        cord.snoc(QuantAttr, !QuantConstrAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     ;
@@ -536,7 +536,7 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     (
         ArgTerms = [SubTerm, ConstraintsTerm],
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
-        !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, ConstrAttr),
+        cord.snoc(ConstrAttr, !QuantConstrAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     ;
@@ -565,7 +565,7 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     (
         ArgTerms = [SubTerm],
         PurityAttr = purity_attr(Purity),
-        !:PurityAttrs = cord.snoc(!.PurityAttrs, PurityAttr),
+        cord.snoc(PurityAttr, !PurityAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
             SeqNum, !.PurityAttrs, QuantConstrAttrs, MaybeIOM)
     ;

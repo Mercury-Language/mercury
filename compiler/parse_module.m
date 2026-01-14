@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2016-2025 The Mercury team.
+% Copyright (C) 2016-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1065,7 +1065,7 @@ add_section_component(ModuleName, SectionKind, SectionContext,
     else
         Component = mc_section(ModuleName, SectionKind, SectionContext,
             InclsCord, AvailsCord, FIMsCord, ItemsCord),
-        !:ModuleComponents = cord.snoc(!.ModuleComponents, Component)
+        cord.snoc(Component, !ModuleComponents)
     ).
 
 :- pred generate_missing_start_section_warning_src(module_name::in,
@@ -1135,7 +1135,7 @@ parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
         NestedModuleComponents),
     Component = mc_nested_submodule(ContainingModuleName, SectionKind,
         SectionContext, SubModuleParseTreeSrc),
-    !:ModuleComponents = cord.snoc(!.ModuleComponents, Component).
+    cord.snoc(Component, !ModuleComponents).
 
 :- pred handle_module_end_marker(module_name::in, list(module_name)::in,
     read_iom_result::in, module_name::in, prog_context::in,
@@ -1496,13 +1496,13 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                         cord.from_list([HeadAvail | TailAvails])
                 ;
                     IOM = iom_marker_fim(FIM),
-                    !:FIMsCord = cord.snoc(!.FIMsCord, FIM)
+                    cord.snoc(FIM, !FIMsCord)
                 ;
                     IOM = iom_item(Item),
-                    !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+                    cord.snoc(Item, !ItemsCord)
                 ;
                     IOM = iom_item_and_error_specs(Item, ItemSpecs),
-                    !:ItemsCord = cord.snoc(!.ItemsCord, Item),
+                    cord.snoc(Item, !ItemsCord),
                     add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
                 ;
                     IOM = iom_handled_no_error

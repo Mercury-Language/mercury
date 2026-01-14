@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2020, 2023 The Mercury team.
+% Copyright (C) 2019-2020, 2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -139,10 +139,10 @@ classify_item_pred_decl(ItemPredDeclInfo, !PredRelatedMap) :-
         ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
             PredRelated0 =
                 pred_related_items(Known, AllItems0, ArityPfMap0),
-            AllItems = cord.snoc(AllItems0, pomd_pred(ItemPredDeclInfo)),
+            cord.snoc(pomd_pred(ItemPredDeclInfo), AllItems0, AllItems),
             ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
                 ArityPfItems0 = arity_pf_items(PredItems0, ModeItems),
-                PredItems = cord.snoc(PredItems0, ItemPredDeclInfo),
+                cord.snoc(ItemPredDeclInfo, PredItems0, PredItems),
                 ArityPfItems = arity_pf_items(PredItems, ModeItems),
                 map.det_update(ArityPf, ArityPfItems,
                     ArityPfMap0, ArityPfMap)
@@ -170,7 +170,7 @@ classify_item_pred_decl(ItemPredDeclInfo, !PredRelatedMap) :-
         ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
             PredRelated0 =
                 pred_related_items(_Known0, AllItems0, ArityPfMap),
-            AllItems = cord.snoc(AllItems0, pomd_pred(ItemPredDeclInfo)),
+            cord.snoc(pomd_pred(ItemPredDeclInfo), AllItems0, AllItems),
             PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
             map.det_update(SymName, PredRelated, !PredRelatedMap)
         else
@@ -196,10 +196,10 @@ classify_item_mode_decl(ItemModeDeclInfo, !PredRelatedMap) :-
         ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
             PredRelated0 =
                 pred_related_items(Known, AllItems0, ArityPfMap0),
-            AllItems = cord.snoc(AllItems0, pomd_mode(ItemModeDeclInfo)),
+            cord.snoc(pomd_mode(ItemModeDeclInfo), AllItems0, AllItems),
             ( if map.search(ArityPfMap0, ArityPf, ArityPfItems0) then
                 ArityPfItems0 = arity_pf_items(PredItems, ModeItems0),
-                ModeItems = cord.snoc(ModeItems0, ItemModeDeclInfo),
+                cord.snoc(ItemModeDeclInfo, ModeItems0, ModeItems),
                 ArityPfItems = arity_pf_items(PredItems, ModeItems),
                 map.det_update(ArityPf, ArityPfItems,
                     ArityPfMap0, ArityPfMap)
@@ -227,7 +227,7 @@ classify_item_mode_decl(ItemModeDeclInfo, !PredRelatedMap) :-
         ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
             PredRelated0 =
                 pred_related_items(_Known0, AllItems0, ArityPfMap),
-            AllItems = cord.snoc(AllItems0, pomd_mode(ItemModeDeclInfo)),
+            cord.snoc(pomd_mode(ItemModeDeclInfo), AllItems0, AllItems),
             PredRelated = pred_related_items(Known, AllItems, ArityPfMap),
             map.det_update(SymName, PredRelated, !PredRelatedMap)
         else

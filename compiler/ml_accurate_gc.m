@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -544,7 +544,7 @@ fixup_newobj_in_atomic_statement(Stmt0, Stmt, !Fixup) :-
         % XXX We should keep a more structured representation of the local
         % variables, such as a map from variable names.
         Locals0 = !.Fixup ^ fnoi_locals,
-        Locals = cord.snoc(Locals0, VarDecl),
+        cord.snoc(VarDecl, Locals0, Locals),
         !Fixup ^ fnoi_locals := Locals,
 
         % Generate code to initialize the variable.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1002,12 +1002,12 @@ parse_used_item_set(Term, !UsedItems, !Errors) :-
             Context = get_term_context(Term),
             Msg = "error in used items: unknown item type: " ++ ItemTypeStr,
             Error = uf_syntax_error(Context, Msg),
-            !:Errors = cord.snoc(!.Errors, Error)
+            cord.snoc(Error, !Errors)
         )
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in used items"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_simple_item(term::in, simple_item_set::in, simple_item_set::out,
@@ -1030,7 +1030,7 @@ parse_simple_item(Term, !Set, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in simple items"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_simple_item_match(term::in,
@@ -1060,7 +1060,7 @@ parse_simple_item_match(Term, !ItemMap, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in simple item match"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_pred_or_func_item(term::in,
@@ -1099,7 +1099,7 @@ parse_pred_or_func_item_match(Term, !Items, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in pred or func match"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_functor_item(term::in,
@@ -1130,7 +1130,7 @@ parse_functor_matches(Term, !Map, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in functor match"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_resolved_functor(term::in,
@@ -1161,7 +1161,7 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
                 !:RevCtors = [Ctor | !.RevCtors]
             else
                 Error = uf_syntax_error(Context, "error in functor match"),
-                !:Errors = cord.snoc(!.Errors, Error)
+                cord.snoc(Error, !Errors)
             )
         ;
             Atom = "ctor",
@@ -1175,7 +1175,7 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
                 !:RevCtors = [Ctor | !.RevCtors]
             else
                 Error = uf_syntax_error(Context, "error in functor match"),
-                !:Errors = cord.snoc(!.Errors, Error)
+                cord.snoc(Error, !Errors)
             )
         ;
             Atom = "field",
@@ -1192,13 +1192,13 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
                 !:RevCtors = [Ctor | !.RevCtors]
             else
                 Error = uf_syntax_error(Context, "error in functor match"),
-                !:Errors = cord.snoc(!.Errors, Error)
+                cord.snoc(Error, !Errors)
             )
         )
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in functor match"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 %---------------------%
@@ -1226,7 +1226,7 @@ parse_resolved_item_set(ParseMatches, Term, !Set, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in resolved item matches"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 :- pred parse_resolved_item_arity_matches(
@@ -1257,7 +1257,7 @@ parse_resolved_item_arity_matches(ParseMatches, Term,
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in resolved item matches"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 %---------------------%
@@ -1308,7 +1308,7 @@ parse_name_and_arity_item_add_to_set(Term, !UsedClasses, !Errors) :-
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in used_typeclasses term"),
-        !:Errors = cord.snoc(!.Errors, Error)
+        cord.snoc(Error, !Errors)
     ).
 
 %---------------------%
@@ -1365,8 +1365,7 @@ read_and_parse_used_modules(FileName, FileString, MaxOffset,
                     ParseVersionNumbers = used_file_ok(MaybeVersionNumbers),
                     UsedModule = recomp_used_module(ModuleName,
                         ModuleTimestamp, MaybeVersionNumbers),
-                    !:UsedModulesCord =
-                        cord.snoc(!.UsedModulesCord, UsedModule),
+                    cord.snoc(UsedModule, !UsedModulesCord),
                     read_and_parse_used_modules(FileName, FileString,
                         MaxOffset, !LineContext, !LinePosn, !.UsedModulesCord,
                         ParseUsedModules)

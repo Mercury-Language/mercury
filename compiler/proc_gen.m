@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -317,7 +317,7 @@ generate_code_for_procs(ProgressStream, PrintProcProgress,
     map.lookup(ProcInfos, ProcId, ProcInfo),
     generate_proc_code(ProgressStream, ModuleInfo, ConstStructMap,
         PredId, PredInfo, ProcId, ProcInfo, CProc, !GlobalData),
-    !:CProcsCord = cord.snoc(!.CProcsCord, CProc),
+    cord.snoc(CProc, !CProcsCord),
     generate_code_for_procs(ProgressStream, PrintProcProgress,
         ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
         !CProcsCord, !GlobalData).

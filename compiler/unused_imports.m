@@ -195,10 +195,10 @@ get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
         !AvailAnywhereCord, !AvailInterfaceCord) :-
     ModuleEntry = ModuleName - Entry,
     Entry = avail_module_entry(Section, _ImportOrUse, _Context),
-    !:AvailAnywhereCord = cord.snoc(!.AvailAnywhereCord, ModuleName),
+    cord.snoc(ModuleName, !AvailAnywhereCord),
     (
         Section = ms_interface,
-        !:AvailInterfaceCord = cord.snoc(!.AvailInterfaceCord, ModuleName)
+        cord.snoc(ModuleName, !AvailInterfaceCord)
     ;
         Section = ms_implementation
     ),
