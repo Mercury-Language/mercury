@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017-2025 The Mercury Team.
+% Copyright (C) 2017-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -42,6 +42,8 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.link_target_code.
+:- import_module check_hlds.
+:- import_module check_hlds.switch_detection.
 :- import_module hlds.
 :- import_module hlds.instmap.
 :- import_module libs.check_libgrades.
@@ -130,6 +132,7 @@ real_main(!IO) :-
     record_make_prereqs_cache_stats(!IO),
     record_module_ext_cache_stats(!IO),
     record_instmap_delta_restrict_stats(!IO),
+    record_switch_search_depth_results(!IO),
     close_any_specific_compiler_streams(!IO).
 
 %---------------------------------------------------------------------------%

@@ -37,6 +37,8 @@
 :- pred detect_switches_in_proc(switch_detect_info::in,
     proc_info::in, proc_info::out) is det.
 
+:- pred record_switch_search_depth_results(io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -87,6 +89,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_context.
+:- import_module uint.
 :- import_module unit.
 :- import_module varset.
 
@@ -190,13 +193,13 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
     LocalInfo0 = local_switch_detect_info(VarTable, DisjunctionInfoMap,
-        ModuleInfo, Requant0, BodyDeletedCallCallees0),
+        0u, ModuleInfo, Requant0, BodyDeletedCallCallees0),
 
     detect_switches_in_goal(InstMap0, nrsv, Goal0, Goal,
         LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     LocalInfo = local_switch_detect_info(_VarTable, _DisjunctionInfoMap,
-        _ModuleInfo, Requant, BodyDeletedCallCallees),
+        _, _ModuleInfo, Requant, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo)
@@ -217,7 +220,12 @@ detect_switches_in_proc(Info, !ProcInfo) :-
                 lsdi_disjunction_info_map   :: disjunction_info_map,
 
                 % These fields are read-write.
-                %
+
+                % The depth matters only in detect_switches_in_disj predicate.
+                % It specifies the number of recursive calls to that predicate
+                % above the current invocation.
+                lsdi_depth                  :: uint,
+
                 % We update module_info when we enter a switch arm, and update
                 % the inst of the switched-on variable to record it being bound
                 % to one of the cons_ids that the switch arm is for.
@@ -270,6 +278,7 @@ detect_switches_in_goal(InstMap0, MaybeRequiredVar, Goal0, Goal, !LocalInfo) :-
             GoalExpr = GoalExpr0
         ;
             Disjuncts0 = [_ | _],
+            !LocalInfo ^ lsdi_depth := 0u,
             detect_switches_in_disj(InstMap0, MaybeRequiredVar,
                 Disjuncts0, GoalInfo0, GoalExpr, !LocalInfo)
         )
@@ -410,13 +419,20 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
     detect_switch_candidates_in_disj(!.LocalInfo, GoalInfo, Disjuncts0,
         InstMap0, MaybeRequiredVar, VarsToTry,
         no_candidate_switch, BestCandidateSoFar),
+    CurDepth = !.LocalInfo ^ lsdi_depth,
     (
         BestCandidateSoFar = no_candidate_switch,
+        trace [compile_time(flag("switch-detect-depth-stats")), io(!IO)] (
+            record_miss(CurDepth, !IO)
+        ),
         detect_sub_switches_in_disj(InstMap0, Disjuncts0, Disjuncts,
             !LocalInfo),
         GoalExpr = disj(Disjuncts)
     ;
         BestCandidateSoFar = best_candidate_switch_so_far(BestCandidate),
+        trace [compile_time(flag("switch-detect-depth-stats")), io(!IO)] (
+            record_hit(CurDepth, !IO)
+        ),
         BestRank = BestCandidate ^ cs_rank,
         (
             BestRank = no_leftover_one_case,
@@ -448,6 +464,7 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
                 GoalExpr = SwitchGoalExpr
             ;
                 LeftDisjuncts0 = [_ | _],
+                !LocalInfo ^ lsdi_depth := CurDepth + 1u,
                 detect_switches_in_disj(InstMap0, MaybeRequiredVar,
                     LeftDisjuncts0, GoalInfo, LeftGoal, !LocalInfo),
                 goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
@@ -1083,6 +1100,73 @@ gather_smallest_context([Goal | Goals], !SmallestContext) :-
 :- func num_cases_in_table(cases_table) = int.
 
 num_cases_in_table(cases_table(CasesMap, _)) = map.count(CasesMap).
+
+%---------------------------------------------------------------------------%
+
+:- type hit_and_miss
+    --->    hit_and_miss(
+                ham_hit         :: uint,
+                ham_miss        :: uint
+            ).
+
+:- type hit_and_miss_map == map(uint, hit_and_miss).
+
+:- mutable(ham_map, hit_and_miss_map, map.init, ground,
+    [untrailed, attach_to_io_state]).
+
+:- pred record_hit(uint::in, io::di, io::uo) is det.
+
+record_hit(Depth, !IO) :-
+    get_ham_map(HamMap0, !IO),
+    ( if map.search(HamMap0, Depth, HitAndMiss0) then
+        HitAndMiss0 = hit_and_miss(Hit0, Miss0),
+        HitAndMiss = hit_and_miss(Hit0 + 1u, Miss0),
+        map.det_update(Depth, HitAndMiss, HamMap0, HamMap)
+    else
+        HitAndMiss = hit_and_miss(1u, 0u),
+        map.det_insert(Depth, HitAndMiss, HamMap0, HamMap)
+    ),
+    set_ham_map(HamMap, !IO).
+
+:- pred record_miss(uint::in, io::di, io::uo) is det.
+
+record_miss(Depth, !IO) :-
+    get_ham_map(HamMap0, !IO),
+    ( if map.search(HamMap0, Depth, HitAndMiss0) then
+        HitAndMiss0 = hit_and_miss(Hit0, Miss0),
+        HitAndMiss = hit_and_miss(Hit0, Miss0 + 1u),
+        map.det_update(Depth, HitAndMiss, HamMap0, HamMap)
+    else
+        HitAndMiss = hit_and_miss(0u, 1u),
+        map.det_insert(Depth, HitAndMiss, HamMap0, HamMap)
+    ),
+    set_ham_map(HamMap, !IO).
+
+record_switch_search_depth_results(!IO) :-
+    get_ham_map(HamMap, !IO),
+    map.to_assoc_list(HamMap, HamAL),
+    DescStrs = list.map(hit_and_miss_to_string, HamAL),
+    string.append_list(DescStrs, DescsStr),
+    ( if DescsStr = "" then
+        % We should get here if the trace flag --switch-detect-depth-stats
+        % is not set.
+        true
+    else
+        io.open_append("/tmp/SWITCH_DEPTH_RESULTS", Result, !IO),
+        (
+            Result = error(_)
+        ;
+            Result = ok(OutStream),
+            io.write_string(OutStream, DescsStr, !IO),
+            io.close_output(OutStream, !IO)
+        )
+    ).
+
+:- func hit_and_miss_to_string(pair(uint, hit_and_miss)) = string.
+
+hit_and_miss_to_string(Depth - hit_and_miss(Hit, Miss)) = Str :-
+    string.format("depth %u hit %3u miss %3u\n",
+        [u(Depth), u(Hit), u(Miss)], Str).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.switch_detection.
