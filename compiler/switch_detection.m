@@ -408,17 +408,15 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(NonLocals, VarsToTry),
     detect_switch_candidates_in_disj(!.LocalInfo, GoalInfo, Disjuncts0,
-        InstMap0, MaybeRequiredVar, VarsToTry, cord.init, CandidatesCord),
-    Candidates = cord.to_list(CandidatesCord),
+        InstMap0, MaybeRequiredVar, VarsToTry,
+        no_candidate_switch, BestCandidateSoFar),
     (
-        Candidates = [],
+        BestCandidateSoFar = no_candidate_switch,
         detect_sub_switches_in_disj(InstMap0, Disjuncts0, Disjuncts,
             !LocalInfo),
         GoalExpr = disj(Disjuncts)
     ;
-        Candidates = [FirstCandidate | LaterCandidates],
-        select_best_candidate_switch(FirstCandidate, LaterCandidates,
-            BestCandidate),
+        BestCandidateSoFar = best_candidate_switch_so_far(BestCandidate),
         BestRank = BestCandidate ^ cs_rank,
         (
             BestRank = no_leftover_one_case,
@@ -469,12 +467,12 @@ detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
 :- pred detect_switch_candidates_in_disj(local_switch_detect_info::in,
     hlds_goal_info::in, list(hlds_goal)::in, instmap::in,
     maybe_required_switch_var::in, list(prog_var)::in,
-    cord(candidate_switch)::in, cord(candidate_switch)::out) is det.
+    maybe_candidate_switch::in, maybe_candidate_switch::out) is det.
 
 detect_switch_candidates_in_disj(_LocalInfo, _GoalInfo, _Disjuncts0, _InstMap0,
-        _MaybeRequiredVar, [], !Candidates).
+        _MaybeRequiredVar, [], !BestCandidateSoFar).
 detect_switch_candidates_in_disj(LocalInfo, GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, [Var | Vars], !Candidates) :-
+        MaybeRequiredVar, [Var | Vars], !BestCandidateSoFar) :-
     % Can we do at least a partial switch on this variable?
     ModuleInfo = LocalInfo ^ lsdi_module_info,
     instmap_lookup_var(InstMap0, Var, VarInst0),
@@ -488,12 +486,12 @@ detect_switch_candidates_in_disj(LocalInfo, GoalInfo, Disjuncts0, InstMap0,
         lookup_var_type(VarTable, Var, VarType),
         categorize_candidate_switch(ModuleInfo, MaybeRequiredVar,
             Var, VarType, VarInst0, Cases, Left, Requant, Candidate),
-        !:Candidates = cord.snoc(!.Candidates, Candidate)
+        record_candidate_switch(Candidate, !BestCandidateSoFar)
     else
         true
     ),
     detect_switch_candidates_in_disj(LocalInfo, GoalInfo, Disjuncts0, InstMap0,
-        MaybeRequiredVar, Vars, !Candidates).
+        MaybeRequiredVar, Vars, !BestCandidateSoFar).
 
 %---------------------------------------------------------------------------%
 

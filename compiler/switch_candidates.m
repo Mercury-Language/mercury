@@ -216,8 +216,14 @@
     list(case)::in, list(hlds_goal)::in, need_to_requantify::in,
     candidate_switch::out) is det.
 
-:- pred select_best_candidate_switch(candidate_switch::in,
-    list(candidate_switch)::in, candidate_switch::out) is det.
+%---------------------------------------------------------------------------%
+
+:- type maybe_candidate_switch
+    --->    no_candidate_switch
+    ;       best_candidate_switch_so_far(candidate_switch).
+
+:- pred record_candidate_switch(candidate_switch::in,
+    maybe_candidate_switch::in, maybe_candidate_switch::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -414,32 +420,23 @@ count_covered_cons_ids([Case | Cases], !NumCoveredConsIds) :-
 
 %---------------------------------------------------------------------------%
 
-select_best_candidate_switch(FirstCandidate, LaterCandidates, BestCandidate) :-
+record_candidate_switch(ThisCandidate, MaybeBestSoFar0, MaybeBestSoFar) :-
     (
-        LaterCandidates = [],
-        BestCandidate = FirstCandidate
+        MaybeBestSoFar0 = no_candidate_switch,
+        MaybeBestSoFar = best_candidate_switch_so_far(ThisCandidate)
     ;
-        LaterCandidates = [_ | _],
-        BestCandidate0 = FirstCandidate,
-        select_best_candidate_switch_loop(LaterCandidates,
-            BestCandidate0, BestCandidate)
-    ).
-
-:- pred select_best_candidate_switch_loop(list(candidate_switch)::in,
-    candidate_switch::in, candidate_switch::out) is det.
-
-select_best_candidate_switch_loop([], !BestCandidate).
-select_best_candidate_switch_loop([Candidate | Candidates], !BestCandidate) :-
-    compare(Result, Candidate ^ cs_rank, !.BestCandidate ^ cs_rank),
-    (
-        ( Result = (<)
-        ; Result = (=)
+        MaybeBestSoFar0 = best_candidate_switch_so_far(BestCandidate0),
+        compare(Result, ThisCandidate ^ cs_rank, BestCandidate0 ^ cs_rank),
+        (
+            ( Result = (<)
+            ; Result = (=)
+            ),
+            MaybeBestSoFar = MaybeBestSoFar0
+        ;
+            Result = (>),
+            MaybeBestSoFar = best_candidate_switch_so_far(ThisCandidate)
         )
-    ;
-        Result = (>),
-        !:BestCandidate = Candidate
-    ),
-    select_best_candidate_switch_loop(Candidates, !BestCandidate).
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.switch_candidates.
