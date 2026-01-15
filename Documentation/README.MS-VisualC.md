@@ -156,7 +156,7 @@ The MSVC port currently has a number of limitations:
   and also enable the commented out definition of `CFLAGS_FOR_DEBUG` in
   `configure.ac` (in the `msvc*` case). You will then need to regenerate
   the `configure` script and rebuild the Mercury system.
-  (See [../INSTALL.git](Install.git) for details of how to do this.)
+  (See [INSTALL.git](../INSTALL.git) for details of how to do this.)
 
 Post-installation configuration
 -------------------------------
