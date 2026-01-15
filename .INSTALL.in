@@ -13,7 +13,7 @@
 # available from <ftp://ftp.gnu.org/gnu/>.  The source distribution for
 # NetBSD Editline is available from <https://thrysoee.dk/editline/>.
 # Binaries for the above are included in almost all Linux distributions,
-# Mac OS X and also in the Cygwin and MinGW distributions for Windows (see
+# macOS and also in the Cygwin and MSYS2 distributions for Windows (see
 # README.MS-Windows).
 #
 # Step 0.  Extract the files from the gzipped tar archive.
