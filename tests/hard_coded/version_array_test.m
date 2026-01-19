@@ -23,6 +23,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module string.
+:- import_module uint.
 :- import_module univ.
 :- import_module version_array.
 
@@ -35,10 +36,10 @@ main(!IO) :-
     % the rollback rolls back to the correct version, that is that changes
     % are applied in the correct order.
     version_array.set(3, 333, A1, A10),
-    version_array.set(4, 444, A10, A11),
+    version_array.uset(4u, 444, A10, A11),
     A2 = int.fold_up(func(I, A) = ( A ^ elem(I) := 20 - I ), 0, 20, A11),
     version_array.set(5, 555, A2, A20),
-    version_array.set(6, 666, A20, A22),
+    version_array.uset(6u, 666, A20, A22),
     % A21 forces an implicit rollback:
     A21 = int.fold_up(make_a21, 0, 20, A1),
     io.write_string("ordering(A1, A0) = ", !IO),
@@ -60,7 +61,7 @@ main(!IO) :-
     write_array("A4", A4, !IO),
     S4 = foldl(func(X, A) = X + A, A4, 0),
     io.format(" (sum %d)\n", [i(S4)], !IO),
-    A5 = resize(A4, 4, 4),
+    A5 = uresize(A4, 4u, 4),
     write_array("A5", A5, !IO),
     A6 = resize(A5, 9, 9),
     write_array("A6", A6, !IO),
@@ -88,7 +89,7 @@ main(!IO) :-
         ), !IO),
     test_exception(
         ( (pred) is semidet :-
-            _ = A7 ^ elem(4)
+            _ = A7 ^ uelem(4u)
         ), !IO),
 
     A8 = version_array([2, 4, 6, 8]),
@@ -178,8 +179,17 @@ make_a21(I, A0) = A :-
 :- pred write_array(string::in, version_array(int)::in, io::di, io::uo) is det.
 
 write_array(Name, Array, !IO) :-
-    Size = size(Array),
-    ArrayStr = string(to_list(Array)),
-    io.format("%s: %s (size %d)\n", [s(Name), s(ArrayStr), i(Size)], !IO).
+    SizeI = size(Array),
+    SizeU = usize(Array),
+    ( if
+        uint.from_int(SizeI, SizeIU),
+        SizeIU = SizeU
+    then
+        ArrayStr = string(to_list(Array)),
+        io.format("%s: %s (size %d)\n", [s(Name), s(ArrayStr), i(SizeI)], !IO)
+    else
+        io.format("%s: size mismatch %d vs %u\n",
+            [s(Name), i(SizeI), u(SizeU)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%

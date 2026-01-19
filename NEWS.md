@@ -1502,9 +1502,19 @@ Changes to the Mercury standard library
 
 ### Changes to the `version_array` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
+    - func `uinit/2`
+    - func `unsafe_uinit/2`
     - pred `lookup/3`
+    - func `ulookup/2`
+    - pred `ulookup/3`
+    - pred `uset/4`
+    - func `uelem/2`
+    - func `uelem :=/3`
+    - func `usize/1`
+    - func `uresize/3`
+    - pred `uresize/4`
 
 * The following function has been marked obsolete:
 

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury Team.
+% Copyright (C) 2014-2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -74,11 +74,15 @@
     %
 :- func empty = version_array(T).
 
-    % init(N, X) returns an array of size N with each item initialised to X.
+    % init(Size, DefaultValue):
+    % uinit(Size, DefaultValue):
+    %
+    % Return an array of size Size, with each item initialised to DefaultValue.
     %
 :- func init(int, T) = version_array(T).
+:- func uinit(uint, T) = version_array(T).
 
-    % Same as empty/0 except the resulting version_array is not thread safe.
+    % Same as empty/0, except the resulting version_array is not thread safe.
     %
     % That is your program can crash or behave strangely if you attempt to
     % concurrently access or update the array from different threads, or any
@@ -88,18 +92,24 @@
     %
 :- func unsafe_empty = version_array(T).
 
-    % Same as init(N, X) except the resulting version_array is not thread safe.
+    % Same as init/uint, except the resulting version_array is not thread safe.
     %
-    % That is your program can crash or behave strangely if you attempt to
-    % concurrently access or update the array from different threads, or any
-    % two arrays produced from operations on the same original array.
-    % However this version is much quicker if you guarantee that you never
-    % concurrently access the version array.
+    % The downside of this difference is that that your program can crash,
+    % or behave strangely, if you ever attempt to concurrently access
+    % or update a non-thread-safe version_array from different threads.
+    % This is also true for any two version_arrays that were generated
+    % from operations on the same original non-thread-safe version_array.
+    %
+    % The upside is that in if you can guarantee that your program will do
+    % none of the above, then non-thread-safe version arrays are much quicker
+    % to access and to update in multi-threaded programs.
     %
 :- func unsafe_init(int, T) = version_array(T).
+:- func unsafe_uinit(uint, T) = version_array(T).
 
-    % version_array(Xs) returns an array constructed from the items in the list
-    % Xs.
+    % version_array(Items):
+    %
+    % Returns an array constructed from the items in Items.
     %
 :- func version_array(list(T)) = version_array(T).
 
@@ -107,66 +117,101 @@
     %
 :- func from_list(list(T)) = version_array(T).
 
-    % from_reverse_list(Xs) returns an array constructed from the items in the
-    % list Xs in reverse order.
+    % from_reverse_list(Items):
+    %
+    % Returns an array constructed from the reverse of Items.
     %
 :- func from_reverse_list(list(T)) = version_array(T).
 
-    % lookup(A, I) = X if-and-only-if the I'th member of A is X.
+    % lookup(VersionArray, Index) = Item:
+    % ulookup(VersionArray, Index) = Item:
+    %
+    % Return, as Item, the Index'th member of VersionArray.
     % (The first item has index 0).
     %
 :- func lookup(version_array(T), int) = T.
 :- pred lookup(version_array(T)::in, int::in, T::out) is det.
+:- func ulookup(version_array(T), uint) = T.
+:- pred ulookup(version_array(T)::in, uint::in, T::out) is det.
 
-    % A ^ elem(I) = lookup(A, I)
+    % VersionArray ^ elem(Index) = lookup(VersionArray, Index)
+    % VersionArray ^ uelem(Index) = ulookup(VersionArray, Index)
     %
 :- func elem(int, version_array(T)) = T.
+:- func uelem(uint, version_array(T)) = T.
 
-    % set(I, X, A0, A): A is a copy of array A0 with item I updated to be X.
-    % An exception is thrown if I is out of bounds.
+    % set(Index, Item, VersionArray0, VersionArray):
+    % uset(Index, Item, VersionArray0, VersionArray):
     %
-:- pred set(int::in, T::in, version_array(T)::in, version_array(T)::out)
-    is det.
+    % VersionArray is a copy of array VersionArray0,
+    % with the item at Index replaced with Item.
+    % Throws an exception is thrown if Index is out of bounds.
+    %
+:- pred set(int::in, T::in,
+    version_array(T)::in, version_array(T)::out) is det.
+:- pred uset(uint::in, T::in,
+    version_array(T)::in, version_array(T)::out) is det.
 
-    % (A0 ^ elem(I) := X) = A is equivalent to set(I, X, A0, A).
+    % (VersionArray0 ^ elem(Index) := Item) = VersionArray:
+    % (VersionArray0 ^ uelem(Index) := Item) = VersionArray:
+    %
+    % is equivalent to set(Index, Item, VersionArray0, VersionArray).
     %
 :- func 'elem :='(int, version_array(T), T) = version_array(T).
+:- func 'uelem :='(uint, version_array(T), T) = version_array(T).
 
-    % size(A) = N if A contains N items (i.e. the valid indices for A
-    % range from 0 to N - 1).
+    % size(VersionArray) = Size:
+    % usize(VersionArray) = Size:
+    %
+    % Return in Size the number of items in VersionArray (meaning that
+    % the valid indices for VersionArray range from 0 to Size - 1).
     %
 :- func size(version_array(T)) = int.
+:- func usize(version_array(T)) = uint.
 
-    % max(A) = size(A) - 1.
+    % max(VersionArray) = size(VersionArray) - 1.
+    %
     % Returns -1 for an empty array.
     %
 :- func max(version_array(T)) = int.
 
-    % is_empty(Array) is true if-and-only-if Array is the empty array.
+    % is_empty(VersionArray):
+    %
+    % Succeeds if-and-only-if VersionArray is the empty array.
     %
 :- pred is_empty(version_array(T)::in) is semidet.
 
-    % resize(Array0, NewSize, NewValue) = Array:
-    % resize(NewSize, NewValue, Array0, Array):
+    % resize(VersionArray0, NewSize, DefaultValue) = VersionArray:
+    % resize(NewSize, DefaultValue, VersionArray0, VersionArray):
+    % uresize(VersionArray0, NewSize, DefaultValue) = VersionArray:
+    % uresize(NewSize, DefaultValue, VersionArray0, VersionArray):
     %
-    % Return in Array a new array whose size is NewSize.
+    % Return in VersionArray a new array whose size is NewSize.
     %
-    % Each slot in Array will be filled with the value from the corresponding
-    % slot in Array0, if there is one.
-    %
-    % When NewSize is greater than size(Array0), Array will have more slots
-    % than Array0. All those extra slots will be initialised to NewValue.
+    % Each slot in VersionArray will be filled with the value from
+    % the corresponding slot in VersionArray0 (if there is such a slot),
+    % or with DefaultValue (if there is no such slot, due to NewSize
+    % being greater than size(VersionArray0)).
     %
 :- func resize(version_array(T), int, T) = version_array(T).
-:- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
-    is det.
+:- pred resize(int::in, T::in,
+    version_array(T)::in, version_array(T)::out) is det.
+:- func uresize(version_array(T), uint, T) = version_array(T).
+:- pred uresize(uint::in, T::in,
+    version_array(T)::in, version_array(T)::out) is det.
 
-    % copy(A) is a copy of array A. Access to the copy is O(1).
+    % copy(VersionArray0) = VersionArray:
+    %
+    % Return in VersionArray a copy of VersionArray0.
+    %
+    % Access to the copy is O(1).
     %
 :- func copy(version_array(T)) = version_array(T).
 
-    % list(A) = Xs where Xs is the list of items in A
-    % (i.e. A = version_array(Xs)).
+    % list(VersionArray) = Items:
+    %
+    % Return in Items the list of all items in VersionArray.
+    % (Meaning that VersionArray = version_array(Items)).
     %
 :- func list(version_array(T)) = list(T).
 
@@ -174,11 +219,17 @@
     %
 :- func to_list(version_array(T)) = list(T).
 
-    % foldl(F, A, X) is equivalent to list.foldl(F, list(A), X).
+    % foldl(Func, VersionArray, Acc0) = Acc:
+    %
+    % Equivalent to list.foldl(Func, list(VersionArray), Acc0) = Acc,
+    % but more efficient.
     %
 :- func foldl(func(T, A) = A, version_array(T), A) = A.
 
-    % foldl(P, A, !X) is equivalent to list.foldl(P, list(A), !X).
+    % foldl(Pred, VersionArray, !Acc):
+    %
+    % Equivalent to list.foldl(Pred, list(VersionArray), !Acc),
+    % but more efficient.
     %
 :- pred foldl(pred(T, A, A), version_array(T), A, A).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
@@ -188,16 +239,18 @@
 :- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-    % foldl2(P, A, !AccA, !AccB) is equivalent to
-    % list.foldl2(P, list(A), !AccA, !AccB) but more efficient.
+    % foldl2(Pred, VersionArray, !AccA, !AccB):
+    %
+    % Equivalent to list.foldl2(Pred, list(VersionArray), !AccA, !AccB),
+    % but more efficient.
     %
 :- pred foldl2(pred(T, A, A, B, B), version_array(T), A, A, B, B).
-:- mode foldl2(in(pred(in, in, out, in, out) is det), in, in, out, in, out)
-    is det.
-:- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in, in, out, mdi, muo)
-    is det.
-:- mode foldl2(in(pred(in, in, out, di, uo) is det), in, in, out, di, uo)
-    is det.
+:- mode foldl2(in(pred(in, in, out, in, out) is det), in,
+    in, out, in, out) is det.
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in,
+    in, out, mdi, muo) is det.
+:- mode foldl2(in(pred(in, in, out, di, uo) is det), in,
+    in, out, di, uo) is det.
 :- mode foldl2(in(pred(in, in, out, in, out) is semidet), in,
     in, out, in, out) is semidet.
 :- mode foldl2(in(pred(in, in, out, mdi, muo) is semidet), in,
@@ -205,7 +258,10 @@
 :- mode foldl2(in(pred(in, in, out, di, uo) is semidet), in,
     in, out, di, uo) is semidet.
 
-    % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
+    % foldr(Func, VersionArray, Acc0) = Acc:
+    %
+    % Equivalent to list.foldr(Func, list(VersionArray), Acc0) = Acc,
+    % but more efficient.
     %
 :- func foldr(func(T, A) = A, version_array(T), A) = A.
 
@@ -218,12 +274,12 @@
 :- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 :- pred foldr2(pred(T, A, A, B, B), version_array(T), A, A, B, B).
-:- mode foldr2(in(pred(in, in, out, in, out) is det), in, in, out, in, out)
-    is det.
-:- mode foldr2(in(pred(in, in, out, mdi, muo) is det), in, in, out, mdi, muo)
-    is det.
-:- mode foldr2(in(pred(in, in, out, di, uo) is det), in, in, out, di, uo)
-    is det.
+:- mode foldr2(in(pred(in, in, out, in, out) is det), in,
+    in, out, in, out) is det.
+:- mode foldr2(in(pred(in, in, out, mdi, muo) is det), in,
+    in, out, mdi, muo) is det.
+:- mode foldr2(in(pred(in, in, out, di, uo) is det), in,
+    in, out, di, uo) is det.
 :- mode foldr2(in(pred(in, in, out, in, out) is semidet), in,
     in, out, in, out) is semidet.
 :- mode foldr2(in(pred(in, in, out, mdi, muo) is semidet), in,
@@ -231,25 +287,30 @@
 :- mode foldr2(in(pred(in, in, out, di, uo) is semidet), in,
     in, out, di, uo) is semidet.
 
-    % all_true(Pred, Array):
+    % all_true(Pred, VersionArray):
     %
-    % True if-and-only-if Pred is true for every element of Array.
+    % True if-and-only-if Pred is true for every element of VersionArray.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), version_array(T)::in)
     is semidet.
 
-    % all_false(Pred, Array):
+    % all_false(Pred, VersionArray):
     %
-    % True if-and-only-if Pred is false for every element of Array.
+    % True if-and-only-if Pred is false for every element of VersionArray.
     %
 :- pred all_false(pred(T)::in(pred(in) is semidet), version_array(T)::in)
     is semidet.
 
-    % unsafe_rewind(A) produces a version of A for which all accesses are O(1).
-    % Invoking this predicate renders A and all later versions undefined that
-    % were derived by performing individual updates. Only use this when you are
-    % absolutely certain there are no live references to A or later versions
-    % of A. (A predicate version is also provided.)
+    % unsafe_rewind(VersionArray0) = VersionArray:
+    % unsafe_rewind(VersionArray0, VersionArray):
+
+    % Return as VersionArray a version of VersionArray0 for which
+    % all accesses are O(1).
+    %
+    % Invoking this predicate renders undefined both VersionArray0, and
+    % all later versions derived from it by performing individual updates.
+    % Use this *only* when you are absolutely certain that there are
+    % no live references to either.
     %
 :- func unsafe_rewind(version_array(T)) = version_array(T).
 :- pred unsafe_rewind(version_array(T)::in, version_array(T)::out) is det.
@@ -291,6 +352,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -452,6 +514,12 @@
     VA = jmercury.version_array.ML_uva.init(N, X);
 ").
 
+uinit(Size, DefaultValue) = VersionArray :-
+    init(uint.cast_to_int(Size), DefaultValue) = VersionArray.
+
+unsafe_uinit(Size, DefaultValue) = VersionArray :-
+    unsafe_init(uint.cast_to_int(Size), DefaultValue) = VersionArray.
+
 %---------------------------------------------------------------------------%
 
 version_array([]) = version_array.empty.
@@ -486,34 +554,54 @@ from_reverse_list_init_loop(I, [X | Xs], !VA) :-
 
 %---------------------------------------------------------------------------%
 
-lookup(VA, I) = X :-
-    lookup(VA, I, X).
+lookup(VersionArray, I) = X :-
+    lookup(VersionArray, I, X).
 
 :- pragma inline(pred(lookup/3)).
-lookup(VA, I, X) :-
-    ( if get_if_in_range(VA, I, X0) then
+lookup(VersionArray, I, X) :-
+    ( if get_if_in_range(VersionArray, I, X0) then
         X = X0
     else
-        out_of_bounds_error(I, max(VA), "version_array.lookup")
+        out_of_bounds_error(I, max(VersionArray), "version_array.lookup")
     ).
 
+ulookup(VersionArray, Index) = Item :-
+    lookup(VersionArray, uint.cast_to_int(Index), Item).
+
+ulookup(VersionArray, Index, Item) :-
+    lookup(VersionArray, uint.cast_to_int(Index), Item).
+
 :- pragma inline(func(elem/2)).
-elem(I, VA) = X :-
-    lookup(VA, I, X).
+elem(Index, VersionArray) = Item :-
+    lookup(VersionArray, Index, Item).
+
+uelem(Index, VersionArray) = Item :-
+    ulookup(VersionArray, Index, Item).
 
 %---------------------------------------------------------------------------%
 
 :- pragma inline(pred(set/4)).
-set(I, X, !VA) :-
-    ( if set_if_in_range(I, X, !VA) then
+set(Index, NewItem, !VersionArray) :-
+    ( if set_if_in_range(Index, NewItem, !VersionArray) then
         true
     else
-        out_of_bounds_error(I, max(!.VA), "version_array.set")
+        out_of_bounds_error(Index, max(!.VersionArray), "version_array.set")
+    ).
+
+uset(Index, NewItem, !VersionArray) :-
+    IndexI = uint.cast_to_int(Index),
+    ( if set_if_in_range(IndexI, NewItem, !VersionArray) then
+        true
+    else
+        out_of_bounds_error(IndexI, max(!.VersionArray), "version_array.uset")
     ).
 
 :- pragma inline(func('elem :='/3)).
-'elem :='(I, VA0, X) = VA :-
-    set(I, X, VA0, VA).
+'elem :='(Index, VersionArray0, NewItem) = VersionArray :-
+    set(Index, NewItem, VersionArray0, VersionArray).
+
+'uelem :='(Index, VersionArray0, NewItem) = VersionArray :-
+    uset(Index, NewItem, VersionArray0, VersionArray).
 
 %---------------------------------------------------------------------------%
 
@@ -538,6 +626,10 @@ set(I, X, !VA) :-
 "
     N = VA.size();
 ").
+
+usize(VersionArray) = Size :-
+    SizeI = size(VersionArray),
+    Size = uint.cast_from_int(SizeI).
 
 max(VA) = size(VA) - 1.
 
@@ -566,7 +658,16 @@ is_empty(VA) :-
     VA = VA0.resize(N, X);
 ").
 
-resize(N, X, VA, resize(VA, N, X)).
+resize(NewSize, DefaultValue, VersionArray0, VersionArray) :-
+    resize(VersionArray0, NewSize, DefaultValue) = VersionArray.
+
+uresize(VersionArray0, NewSize, DefaultValue) = VersionArray :-
+    resize(uint.cast_to_int(NewSize), DefaultValue,
+        VersionArray0, VersionArray).
+
+uresize(NewSize, DefaultValue, VersionArray0, VersionArray) :-
+    resize(uint.cast_to_int(NewSize), DefaultValue,
+        VersionArray0, VersionArray).
 
 %---------------------------------------------------------------------------%
 
