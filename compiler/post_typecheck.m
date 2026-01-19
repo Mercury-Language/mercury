@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -934,19 +934,17 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
                 OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _)
             )
         then
-            % XXX We shouldn't ignore the updated ModuleInfo, which may
-            % differ from the old one in including an updated error count.
             Spec = report_indistinguishable_modes_error(ModuleInfo,
                 ProcId1, ProcId, PredId, !.PredInfo),
             !:Specs = [Spec | !.Specs]
         else
             true
         ),
-        % XXX doing this leaves dangling references the deleted proc_id in the
-        % method definitions in the class table if the predicate being
-        % processed is one of those introduced for type class methods.
-        % See also: the comment above expand_class_method_body/5 in
-        % polymorphism.m.
+        % XXX Calling pred_info_remove_procid here can leave
+        % dangling references to ProcId1 in method definitions in the
+        % class table if the predicate being processed is one of those
+        % introduced for type class methods. See the comment in
+        % expand_class_method_body/5 in polymorphism_post_copy.m.
         pred_info_remove_procid(ProcId1, !PredInfo),
         Removed = yes
     else
