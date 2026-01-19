@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -39,6 +39,33 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
+
+% Our representation of mode errors needs to work for *two* use cases.
+%
+% The first use case is the obvious one: reporting mode errors to users.
+% For this, both the structured representation below and a representation
+% consisting of just an error_spec would do.
+%
+% The second use case is the handling of subgoals that require as input
+% the values of some variables that have not been produced yet by subgoals
+% to their left in a conjunction. Such subgoals must be rescheduled
+% to a later program point, one that occurs *after* all those variables
+% have been produced. For this, an error_spec would NOT do, both because
+% it does not specify the set of variables to wait for (which the
+% mode_error_info does contain), and because the creation of a useful
+% error_spec may take far too much time. While most real-life modules
+% tend to average only a small handful of mode errors per compilation,
+% they have *far* more subgoals that get rescheduled. This requires
+% a mode error representation that pays the cost of constructing
+% readable diagnostics only when the user will see those diagnostics.
+%
+% Mode analysis is almost the only semantic analysis pass of the Mercury
+% compiler to which this consideration applies. (Type analysis in the presence
+% of type inference is another, but type inference is rare in practice.)
+% All other semantic analysis passes, when they discover a situation that
+% calls for an error or a warning, immediately construct an error_spec
+% to report it.
+%
 
 :- type mode_error_info
     --->    mode_error_info(
