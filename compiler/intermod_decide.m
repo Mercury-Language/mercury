@@ -1206,7 +1206,7 @@ resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
     intermod_info::in, intermod_info::out) is det.
 
 resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
-        TypeCtor, Pred0, Pred, !IntermodInfo) :-
+        TypeCtor, PredSymName0, PredSymName, !IntermodInfo) :-
     module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
     lookup_special_pred_maps(SpecialPredMaps, SpecialId, TypeCtor,
         SpecialPredId),
@@ -1217,8 +1217,8 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     pred_info_get_context(SpecialPredInfo, Context),
     resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-        ArgTypes, ExternalTypeParams, Context, Pred0, Pred, UserEqPredId,
-        _ResolveSpecs),
+        ArgTypes, ExternalTypeParams, Context, PredSymName0, PredSymName,
+        UserEqPredId, _ResolveSpecs),
     % Any errors in _ResolveSpecs will be reported when a later compiler
     % invocation attempts to generate target language code for this module.
     intermod_add_pred(UserEqPredId, _, !IntermodInfo).
