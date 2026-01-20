@@ -599,9 +599,9 @@ Changes to the Mercury standard library
            (replacement: `stream.input_stream_fold_state/6`)
     - pred `input_stream_foldl2_io_maybe_stop/5`
            (replacement: `stream.input_stream_fold2_state_maybe_stop/6`)
-    - pred `binary_input_stream_foldl/5`)
+    - pred `binary_input_stream_foldl/5`
            (replacement: `stream.input_stream_fold/6`)
-    - pred `binary_input_stream_foldl/6`)
+    - pred `binary_input_stream_foldl/6`
            (replacement: `stream.input_stream_fold/6`)
     - pred `binary_input_stream_foldl_io/4`
            (replacement: `stream.input_stream_fold_state/5`)
@@ -719,7 +719,7 @@ Changes to the Mercury standard library
     - pred `ucount/2`
 
 * We have added `cc_multi` versions of many of the higher-order predicates in
-  this module
+  this module.
 
 ### Changes to the `mercury_term_lexer` module
 
@@ -732,7 +732,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `multi_map` module
 
-* The following predicates and functions has been added:
+* The following predicates and functions have been added:
 
     - func `all_ucount/1`
     - pred `all_ucount/2`
@@ -1054,7 +1054,7 @@ Changes to the Mercury standard library
 * The following predicates and functions have been added:
 
     - func `from_list/1`
-    - func `from_sorted_list/`
+    - func `from_sorted_list/1`
     - pred `nondet_member/2`
     - func `ucount/1`
 
@@ -1166,7 +1166,7 @@ Changes to the Mercury standard library
     - pred `term_to_int16/2`
             (replacement: `term_int.term_to_int16/2`)
     - pred `term_to_int32/2`
-            (replacement: `term_int.term_to_in32t/2`)
+            (replacement: `term_int.term_to_int32/2`)
     - pred `term_to_int64/2`
             (replacement: `term_int.term_to_int64/2`)
     - pred `term_to_uint/2`
@@ -1176,7 +1176,7 @@ Changes to the Mercury standard library
     - pred `term_to_uint16/2`
             (replacement: `term_int.term_to_uint16/2`)
     - pred `term_to_uint32/2`
-            (replacement: `term_int.term_to_uin32t/2`)
+            (replacement: `term_int.term_to_uint32/2`)
     - pred `term_to_uint64/2`
             (replacement: `term_int.term_to_uint64/2`)
     - func `int_to_decimal_term/2`
@@ -1409,7 +1409,7 @@ Changes to the Mercury standard library
                             (replacement: `pretty_printer.tree234_to_doc/1`)
 
 * We have added `cc_multi` versions of many of the higher-order predicates in
-  this module
+  this module.
 
 ### Changes to the `tree_bitset` module
 
@@ -1711,13 +1711,13 @@ Changes to the Mercury compiler
 
 * We have made `--warn-non-contiguous-clauses` the default.
 
-* We have added a new option, `--allow-non-continuity-for`, which modifies
+* We have added a new option, `--allow-non-contiguity-for`, which modifies
   the operation of two existing options, `--warn-non-contiguous-clauses` and
   `--warn-non-contiguous-foreign-procs`. If either of those two options
   is specified, the compiler will normally generate a warning if there is
   a gap in the list of clauses for a given predicate. The new option allows
   programmers to relax this requirement selectively. An option such as
-  `--allow-non-continuity-for p1,f2,p3` tells the compiler to allow
+  `--allow-non-contiguity-for p1,f2,p3` tells the compiler to allow
   the clauses of the named predicates and/or functions to be intermingled
   with each other, but not with the clauses of any other predicates
   or functions. This option may be given more than once.
