@@ -21,7 +21,7 @@ This directory contains some example Mercury programs.
   calculator, which uses the `mercury_term_parser` module in the standard
   library with a user-defined operator precedence table.
 
-* [interpreter.m](interpreter.m) -- An simple interpreter for definite logic
+* [interpreter.m](interpreter.m) -- A simple interpreter for definite logic
   programs. A demonstration of meta-programming in Mercury.
 
 * [expand_terms.m](expand_terms.m) -- Another example meta-program, showing how
@@ -35,7 +35,7 @@ This directory contains some example Mercury programs.
   psychotherapist.
 
 * [beer.m](beer.m) -- A small program that prints the lyrics of the song
-  "99 Bottle of Beer".
+  "99 Bottles of Beer".
 
 * [mcowsay.m](mcowsay.m) -- A Mercury version of the `cowsay` program. It prints
   an ASCII art picture of a cow together with a user-supplied message.
