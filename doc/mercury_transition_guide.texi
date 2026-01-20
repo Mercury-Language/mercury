@@ -96,7 +96,7 @@ the Mercury User's Guide and Reference Manuals.
 
 If the Prolog code is quite declarative
 and does not make use of Prolog's non-logical constructions,
-the job of converting it to Mercury will usually be quite straight forward.  
+the job of converting it to Mercury will usually be quite straightforward.
 However, if the Prolog program makes extensive use of non-logical constructions,
 conversion may be very difficult,
 and a direct transliteration may be impossible.
@@ -258,9 +258,9 @@ The @code{io.} prefix on the predicates called in the body indicates that
 the callees are in the @code{io} module of the Mercury standard library.
 This module contains all of Mercury's primitive I/O operations.
 These @emph{module qualifications} are not strictly necessary
-(unless two or more modules define predicates
-with the same names and argument types,
-the Mercury compiler can figure out which modules called predicates are in),
+(unless two or more modules define predicates with the same names and argument
+types, the Mercury compiler can figure out which modules the called predicates
+are in),
 but Mercury convention is to make the module qualifier explicit
 in order to make the intent of the code crystal clear to readers.
 
@@ -383,7 +383,7 @@ each of which is useful for different classes of problems.
 If the order of the items in the collection is important,
 consider the @code{list} and @code{cord} ADTs.
 @code{list} has lower constant factors,
-but the @code{cord} ADTs supports concatenation in constant time.
+but the @code{cord} ADT supports concatenation in constant time.
 The @code{stack} and @code{queue} ADTs implement
 lists with specific semantics and operations appropriate to those semantics.
 
@@ -400,7 +400,7 @@ but also have good performance in the average case.
 @c or it may become a module that chooses among several implementation methods
 @c dynamically depending on the size and characteristics of the data.
 @code{bimap}, @code{injection}, @code{multi_map} and @code{rtree} are
-specialized version of maps.
+specialized versions of maps.
 
 If the items in the collection are not key-value pairs,
 then consider the @code{set} and @code{bag} ADTs.
@@ -616,7 +616,7 @@ which can be faster than a chain of if-then-elses.
 
 Mercury does not in general allow the kind of aliasing that is used
 in difference lists. Prolog programs using difference lists fall
-in to two categories --- programs whose data flow is ``left-to-right'',
+into two categories --- programs whose data flow is ``left-to-right'',
 or can be made left-to-right by reordering conjunctions (the
 Mercury compiler automatically reorders conjunctions so that all
 consumers of a variable come after the producer), and 
@@ -751,7 +751,7 @@ The @code{unexpected} predicate is defined
 in the @code{require} module of the Mercury standard library.
 Calls to it throw an exception,
 and unless that exception is caught, it aborts the program.
-The terms @code{$pred} is automatically replaced by the compiler
+The term @code{$pred} is automatically replaced by the compiler
 with the (module-qualified) name of the predicate in which it appears.
 
 @node All-solutions
