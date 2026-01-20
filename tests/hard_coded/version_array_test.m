@@ -12,7 +12,7 @@
 
 :- import_module io.
 
-:- pred main(io :: di, io :: uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -31,9 +31,9 @@
 
 main(!IO) :-
     A0 = version_array.empty,
-    A1 = version_array(0`..`20),
-    % These two updates are overwritten, but they are here to help test that
-    % the rollback rolls back to the correct version, that is that changes
+    A1 = version_array(0 `..` 20),
+    % These two updates are overwritten in A2, but they are here to test that
+    % the rollback rolls back to the correct version, meaning that changes
     % are applied in the correct order.
     version_array.set(3, 333, A1, A10),
     version_array.uset(4u, 444, A10, A11),
@@ -55,11 +55,13 @@ main(!IO) :-
     write_array("A2", A2, !IO),
     write_array("A22", A22, !IO),
     write_array("A21", A21, !IO),
+
     A3 = unsafe_rewind(A1),
     write_array("A3", A3, !IO),
+
     A4 = version_array.init(7, 7),
     write_array("A4", A4, !IO),
-    S4 = foldl(func(X, A) = X + A, A4, 0),
+    S4 = version_array.foldl(func(X, A) = X + A, A4, 0),
     io.format(" (sum %d)\n", [i(S4)], !IO),
     A5 = uresize(A4, 4u, 4),
     write_array("A5", A5, !IO),

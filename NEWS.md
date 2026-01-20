@@ -1523,9 +1523,20 @@ Changes to the Mercury standard library
 
 ### Changes to the `version_array2d` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
+    - func `uinit/3`
+    - pred `ubounds/3`
+    - pred `in_ubounds/3`
     - pred `lookup/4`
+    - func `ulookup/3`
+    - pred `ulookup/4`
+    - pred `uset/5`
+    - func `uelem/3`
+    - func `uelem :=/4`
+    - func `usize/1`
+    - func `uresize/4`
+    - pred `uresize/5`
 
 ### Changes to the `version_bitmap` module
 

@@ -1,0 +1,79 @@
+
+A1: rows 3, columns 10
+row  0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+row  1: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+row  2: [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+
+A2: rows 3, columns 10
+row  0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+row  1: [20, 19, 18, 17, 16, 15, 14, 13, 12, 11]
+row  2: [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+
+A22: rows 3, columns 10
+row  0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+row  1: [20, 19, 18, 17, 16, 555, 666, 13, 12, 11]
+row  2: [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+
+A21: rows 3, columns 10
+row  0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+row  1: [300, 101, 306, 103, 312, 105, 318, 107, 324, 109]
+row  2: [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+
+A3: rows 3, columns 10
+row  0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+row  1: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
+row  2: [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+
+A4: rows 7, columns 7
+row  0: [7, 7, 7, 7, 7, 7, 7]
+row  1: [7, 7, 7, 7, 7, 7, 7]
+row  2: [7, 7, 7, 7, 7, 7, 7]
+row  3: [7, 7, 7, 7, 7, 7, 7]
+row  4: [7, 7, 7, 7, 7, 7, 7]
+row  5: [7, 7, 7, 7, 7, 7, 7]
+row  6: [7, 7, 7, 7, 7, 7, 7]
+
+A5: rows 4, columns 4
+row  0: [7, 7, 7, 7]
+row  1: [7, 7, 7, 7]
+row  2: [7, 7, 7, 7]
+row  3: [7, 7, 7, 7]
+
+A6: rows 9, columns 9
+row  0: [7, 7, 7, 7, 9, 9, 9, 9, 9]
+row  1: [7, 7, 7, 7, 9, 9, 9, 9, 9]
+row  2: [7, 7, 7, 7, 9, 9, 9, 9, 9]
+row  3: [7, 7, 7, 7, 9, 9, 9, 9, 9]
+row  4: [9, 9, 9, 9, 9, 9, 9, 9, 9]
+row  5: [9, 9, 9, 9, 9, 9, 9, 9, 9]
+row  6: [9, 9, 9, 9, 9, 9, 9, 9, 9]
+row  7: [9, 9, 9, 9, 9, 9, 9, 9, 9]
+row  8: [9, 9, 9, 9, 9, 9, 9, 9, 9]
+
+A7: rows 4, columns 4
+row  0: [7, 7, 7, 7]
+row  1: [7, 7, 7, 7]
+row  2: [7, 7, 7, 7]
+row  3: [7, 7, 7, 7]
+
+ordering(A1, A2) = '>'
+ordering(A2, A1) = '<'
+
+
+misshapen init: found exception as expected:
+software_error("function `version_array2d.version_array2d\'/1: non-rectangular list of lists")
+
+out-of-bounds test 1: found exception as expected:
+index_out_of_bounds("version_array2d.lookup: column index -1 not in range [0, 4]")
+
+out-of-bounds test 2: found exception as expected:
+index_out_of_bounds("version_array2d.set: column index -1 not in range [0, 4]")
+
+out-of-bounds test 3: found exception as expected:
+index_out_of_bounds("version_array2d.uset: column index 9 not in range [0, 4]")
+
+out-of-bounds test 4: found exception as expected:
+index_out_of_bounds("version_array2d.lookup: row index -1 not in range [0, 4]")
+
+out-of-bounds test 5: found exception as expected:
+index_out_of_bounds("version_array2d.ulookup: row index 4 not in range [0, 4]")

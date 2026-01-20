@@ -827,6 +827,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		uint_arith \
 		user_defined_equality_1 \
 		version_array_test \
+		version_array2d_test \
 		version_hash_table_delete \
 		version_hash_table_test_1 \
 		write_binary
