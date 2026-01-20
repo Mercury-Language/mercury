@@ -335,8 +335,9 @@ Grade options
 
     --asm-labels                        (grades: asm_fast)
     --no-asm-labels                     (grades: none, reg)
-        Specify whether GNU C's asm extensions for inline assembler labels.
-        This option is used only when targeting C with `--no-high-level-code'.
+        Specify whether to use GNU C's asm extensions for inline assembler
+        labels. This option is used only when targeting C with
+        `--no-high-level-code'.
 
     PRIVATE OPTION
     --no-use-float-registers
@@ -358,7 +359,7 @@ Grade options
 
     --target-debug-grade                (grades: hlc, java, csharp)
         Require that all modules in the program be compiled to object code
-        (for C) `.class' files (for Java), or `.dll' files (for C#) in a way
+        (for C), `.class' files (for Java), or `.dll' files (for C#) in a way
         that allows the program executable to be debuggable with debuggers for
         the target language, such as `gdb' for C. This option is intended
         mainly for the developers of Mercury, though it can also help to debug
@@ -1329,7 +1330,7 @@ Warning options
         Disable all warning messages about programming style.
 
     --warn-all-format-string-errors
-        If a format string has more one than mismatch with the supplied values,
+        If a format string has more than one mismatch with the supplied values,
         generate a warning for all mismatches, not just the first. (The default
         is to report only the first, because later mismatches may be avalanche
         errors caused by earlier mismatches.)
@@ -1647,7 +1648,7 @@ Optimization options
         ways that require special treatment by `mmake'. This goes double for
         *transitive* intermodule optimizations, where the compiler exploits
         information about the non-public parts of not just the modules it
-        imports, but also from the modules that *they)* import, directly or
+        imports, but also from the modules that *they* import, directly or
         indirectly. (It gets this info from the `.trans_opt' files of the
         directly or indirectly imported modules.)
 
@@ -2237,7 +2238,7 @@ Optimization options
 
     --optimize-delay-slot
     --optimise-delay-slot
-        Disable branch delay slot optimizations, This option is meaningful only
+        Disable branch delay slot optimizations. This option is meaningful only
         if the target architecture has delay slots.
 
     --optimize-frames
@@ -2280,8 +2281,8 @@ Optimization options
         actually use regions.
 
     --emit-c-loops
-        Use C loop contstructs to implement loops. With `--no-emit-c-loops',
-        use only gotos.
+        Use C loop constructs to implement loops. With `--no-emit-c-loops', use
+        only gotos.
 
     --procs-per-c-function <N>
     --procs-per-C-function <N>
@@ -2357,7 +2358,7 @@ Intermodule optimization
         If `--generate-dependencies' is also specified, then output the
         strongly connected components of the module dependency graph in
         top-down order to `<module>.module_order'. If `--generate-dependencies'
-        is not specified, then this option does nothing.)
+        is not specified, then this option does nothing.
 
     PRIVATE OPTION
     --trans-opt-deps-spec <filename>
@@ -2986,7 +2987,7 @@ Options for linking
     --cstack-reserve-size <size>
         Set the total size of the C stack in virtual memory for executables.
         The stack size is given in bytes. This option is only supported (and
-        indeed only necessary) on systems running Microsoft Windows.)
+        indeed only necessary) on systems running Microsoft Windows.
 
     --link-executable-command <command>
         Specify the command used to invoke the linker when linking an
@@ -3219,8 +3220,8 @@ Options controlling the library installation process
     --no-extra-library-header
     --extra-lib-header <filename>
     --no-extra-lib-header
-        Install the specified C header file with along with a Mercury library.
-        (This option is supported only by `mmc --make'.)
+        Install the specified C header file along with a Mercury library. (This
+        option is supported only by `mmc --make'.)
 
 Options specifying properties of the environment
 

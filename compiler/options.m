@@ -1689,7 +1689,7 @@ optdb(oc_grade_llds, asm_labels,                       bool(yes),
             "(grades: none, reg)",
             "(grades: @samp{asm_fast})",
             "(grades: @samp{none}, @samp{reg})", [
-        w("Specify whether GNU C's asm extensions for"),
+        w("Specify whether to use GNU C's asm extensions for"),
         w("inline assembler labels."),
         w("This option is used only when targeting C with"),
         opt("--no-high-level-code", ".")])).
@@ -1719,7 +1719,7 @@ optdb(oc_grade_mlds, target_debug_grade,               bool(no),
             "(grades: @samp{hlc}, @samp{java}, @samp{csharp})",
         % XXX Why do we not document the grade *modifier*?
         [w("Require that all modules in the program be compiled to"),
-        w("object code"), fixed("(for C)"),
+        w("object code"), fixed("(for C),"),
         file(".class"), w("files"), fixed("(for Java),"),
         w("or"), file(".dll"), w("files"), fixed("(for C#)"),
         w("in a way that allows the program executable to be debuggable"),
@@ -3012,7 +3012,7 @@ optdb(oc_warn_ctrl, inhibit_style_warnings,            bool_special,
         w("Disable all warning messages about programming style.")])).
 optdb(oc_warn_ctrl, warn_all_format_string_errors,     bool(no),
     help("warn-all-format-string-errors", [
-        w("If a format string has more one than mismatch"),
+        w("If a format string has more than one mismatch"),
         w("with the supplied values,"),
         w("generate a warning for all mismatches, not just the first."),
         w("(The default is to report only the first, because"),
@@ -3427,7 +3427,7 @@ optdb(oc_opt_ctrl,  opt_level,                         int_special,
         w("intermodule optimizations, where the compiler"),
         w("exploits information about the non-public parts"),
         w("of not just the modules it imports, but also from"),
-        w("the modules that"), emph("they)"), w("import,"),
+        w("the modules that"), emph("they"), w("import,"),
         w("directly or indirectly."),
         w("(It gets this info from the"), file(".trans_opt"), w("files"),
         w("of the directly or indirectly imported modules.)")])).
@@ -4092,7 +4092,7 @@ optdb(oc_opt_ll,    optopt_pessimize_llds_tailcalls,   bool_special,
 optdb(oc_opt_ll,    optopt_opt_delay_slot,             bool_special,
     alt_help("optimize-delay-slot",
             ["optimise-delay-slot"], [
-        w("Disable branch delay slot optimizations,"),
+        w("Disable branch delay slot optimizations."),
         w("This option is meaningful only if"),
         w("the target architecture has delay slots.")])).
 optdb(oc_opt_ll,    optopt_opt_frames,                 bool_special,
@@ -4140,7 +4140,7 @@ optdb(oc_opt_hl,    optimize_region_ops,               bool(no),
 
 optdb(oc_opt_lc,    optopt_emit_c_loops,               bool_special,
     help("emit-c-loops", [
-        w("Use C loop contstructs to implement loops."),
+        w("Use C loop constructs to implement loops."),
         w("With"), opt("--no-emit-c-loops", ","), w("use only gotos.")])).
 optdb(oc_opt_lc,    optopt_procs_per_c_function,       int_special,
     alt_arg_help("procs-per-c-function",
@@ -4242,7 +4242,7 @@ optdb(oc_trans_opt, also_output_module_order,          bool(no),
         % only *after* we have documented the trans_opt_deps_spec option,
         % which specifies *how* that modification should be done.
         w("If"), opt("--generate-dependencies"), w("is not specified,"),
-        w("then this option does nothing.)")])).
+        w("then this option does nothing.")])).
 optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
     % This option is for developers only for now.
     priv_arg_help("trans-opt-deps-spec", "filename", [
@@ -4979,7 +4979,7 @@ optdb(oc_link_c,    cstack_reserve_size,               int(-1),
         w("Set the total size of the C stack in virtual memory for"),
         w("executables. The stack size is given in bytes."),
         w("This option is only supported (and indeed only necessary)"),
-        w("on systems running Microsoft Windows.)")])).
+        w("on systems running Microsoft Windows.")])).
 optdb(oc_link_c,    link_executable_command,           string("gcc"),
     arg_help("link-executable-command", "command", [
         % XXX s/linking/creating/
@@ -5194,7 +5194,7 @@ optdb(oc_buildsys,  extra_init_command,                maybe_string(no),
 optdb(oc_buildsys,  extra_library_header,              accumulating([]),
     alt_arg_help("extra-library-header",
             ["extra-lib-header"], "filename", [
-        w("Install the specified C header file with along with"),
+        w("Install the specified C header file along with"),
         w("a Mercury library."),
         w("(This option is supported only by"), code("mmc --make", ".)")])).
 
