@@ -1629,7 +1629,7 @@ to have a det goal in a @code{require_semidet} scope.
 @var{Goal} is a goal
 and @var{Warnings} is a comma-separated list of names.
 The Mercury compiler can generate warnings
-about several kinds of constructs that whose legal Mercury semantics
+about several kinds of constructs whose legal Mercury semantics
 is likely to differ from the semantics intended by the programmer.
 While such warnings are useful most of the time,
 they are a distraction in cases where the programmer's intention
@@ -2886,7 +2886,7 @@ to @math{9223372036854775807} (@math{2^{64 - 1} - 1}),
 both inclusive.
 
 Values of the type @code{int} must be in the range
-to @math{-(2^{N - 1})} to @math{2^{N - 1} - 1},
+@math{-(2^{N - 1})} to @math{2^{N - 1} - 1},
 both inclusive;
 @math{N} being the width of @code{int} in bits.
 
@@ -2907,7 +2907,7 @@ Values of the type @code{uint8} must be in the range
 both inclusive.
 
 Values of the type @code{uint16} must be in the range
-@math{0} (@math{2^0- 1}) to @math{65535} (@math{2^16 - 1}),
+@math{0} (@math{2^0 - 1}) to @math{65535} (@math{2^16 - 1}),
 both inclusive.
 
 Values of the type @code{uint32} must be in the range
@@ -5195,7 +5195,7 @@ provided @code{X} is bound beforehand.
 @example
 @group
 (
-    X = f
+    X = f,
     p(Out)
 ;
     Y = X,
@@ -5353,7 +5353,7 @@ with no non-local output variables to be
 If you want to use the values of output variables,
 then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
-If you want all of them, you need to one of the predicates
+If you want all of them, then you need to use one of the predicates
 in the standard library module @samp{solutions},
 such as @samp{solutions/2} itself,
 which collects all of the solutions to a goal into a list ---
@@ -7690,7 +7690,7 @@ Any type declared to be an instance of @code{euclidean}
 must also be declared to be an instance of @code{ring}.
 
 Type class constraints on type class declarations
-gives rise to a superclass relation.
+give rise to a superclass relation.
 This relation must be acyclic.
 That is, it is an error
 if a type class is its own (direct or indirect) superclass.
@@ -7988,7 +7988,7 @@ where @var{Vars} is a list of variables.
 For example:
 
 @example
-% Here the type variables `T' is existentially quantified
+% Here the type variable `T' is existentially quantified.
 :- some [T] pred foo(T).
 
 % Here the type variables `T1' and `T2' are existentially quantified.
@@ -8304,7 +8304,7 @@ The type @samp{t12} violates this restriction:
 @noindent
 The reason for the restriction is simple:
 the reference of @samp{T} in the @samp{f2} data constructor
-being simultaneously inside the scope of more than quantification
+being simultaneously inside the scope of more than one quantification
 can mislead readers who see one of the quantifications,
 and stop looking for the other.
 The simplest way to avoid such confusion
@@ -10468,7 +10468,7 @@ for the module containing the @samp{pragma foreign_import_module} declaration.
 Note that the Melbourne Mercury implementation often behaves
 as if @samp{pragma foreign_import_module} declarations
 were implicitly added to modules.
-However, programmers should @emph{not} should not depend on this behaviour;
+However, programmers should @emph{not} depend on this behaviour;
 they should always write explicit
 @samp{pragma foreign_import_module} declarations wherever they are needed.
 
@@ -10884,8 +10884,8 @@ is subject to change.
 If a Mercury predicate or function exported
 using a @samp{pragma foreign_export} declaration
 is to be used within a @samp{:- pragma foreign_code}
-or @samp{:- pragma foreign_proc} declaration
-the header file for the module containing
+or @samp{:- pragma foreign_proc} declaration,
+then the header file for the module containing
 the @samp{pragma foreign_export} declaration
 should be included using a @samp{pragma foreign_import_module} declaration,
 for example
@@ -12057,7 +12057,7 @@ and an abstract declaration like the following in its interface:
 If a solver type is exported,
 then its representation type,
 and, if specified, its equality and/or comparison predicates
-must also exported from the same module.
+must also be exported from the same module.
 
 If a solver type has no equality predicate specified,
 then the compiler will generate an equality predicate
@@ -12288,7 +12288,7 @@ True if the target language of the compilation is Java.
 
 The @samp{run_time} parameter says under what circumstances the trace goal,
 if included in the executable program, should actually be executed.
-In this case, the environment variable @samp{VERBOSE} has be to set
+In this case, the environment variable @samp{VERBOSE} has to be set
 when the program starts execution.
 (It does not matter what value it is set to.)
 
@@ -12794,7 +12794,7 @@ but not @code{f(Float)}.
 For the full set of the rules, please see the documentation
 of @code{string.format} in the Mercury Library Reference Manual;
 the same rules apply to @code{io.format}
-and @code{stream.string_writer.format)} as well.
+and @code{stream.string_writer.format} as well.
 
 the Mercury compiler checks calls
 to the formatting predicates and function in the Mercury standard library,
@@ -12856,7 +12856,7 @@ should be checked the same way
 as calls to the four formatting predicates and one formatting function
 listed the above,
 with the format string in the second argument,
-and the values in list in the third.
+and the values in the list in the third.
 This way, while @code{maybe_log_message} cannot ensure
 that @code{FormatString} and @code{Values} will match,
 its @emph{callers} can do so.
@@ -12883,7 +12883,7 @@ but a list of two or more such terms.
 (One such term is also allowed,
 but in that case, there is no need for the list.)
 This latter capability is intended for use in situations
-where predicate or function concerned
+where the predicate or function concerned
 contains several (possibly conditionally executed) calls
 to formatting predicates or functions
 whose format strings and values come from the caller,
@@ -13758,7 +13758,7 @@ This feature cannot be specified
 together with the @samp{double_prec_float} feature.
 
 @item @samp{double_prec_float},
-This feature specifies tha
+This feature specifies that
 the compilation model must use double precision floats.
 This feature cannot be specified
 together with the @samp{single_prec_float} feature.
@@ -13903,7 +13903,7 @@ will be restored.
 
 Note that @var{address} must be word aligned
 for both @code{MR_trail_current_value()} and @code{MR_trail_value()}.
-(The address of Mercury data structures
+(The addresses of Mercury data structures
 that have been passed to C via the foreign language interface
 are guaranteed to be appropriately aligned.)
 
@@ -13993,7 +13993,7 @@ Note that the address of the C function passed as the first argument of
 @node Delayed goals and floundering
 @subsection Delayed goals and floundering
 
-Another use for the function trail is check for floundering
+Another use for the function trail is to check for floundering
 in the presence of delayed goals.
 
 Often, when implementing certain kinds of constraint solvers,
