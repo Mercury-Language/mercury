@@ -91,7 +91,7 @@
 %   in the range [N * wordsize, (N * wordsize) + wordsize-1]. The list
 %   contains only bitmaps in which at least one bit is set.
 %
-%   This representation can be thought of a version of set_ordlist with
+%   This representation can be thought of as a version of set_ordlist with
 %   smaller constant factors whenever a bitmap has two or more bits set.
 %
 %   The point of the alignment constraint is to simplify and speed up
@@ -172,13 +172,13 @@
 % - ra_list also uses trees (actually, a list of perfectly balanced
 %   binary trees) to represent ordered sequences, but its objective is
 %   to speed up random access to selected list elements (the "ra" part of
-%   the name stands for "random access"), instead append operations.
+%   the name stands for "random access"), instead of append operations.
 %
 % - assoc_list implements one popular use of lists, which is lists of
 %   key/value pairs.
 %
 % - kv_list is a variant of assoc_list that is intended to have
-%   better memory behavior. Whereas as assoc_list stores each key/value pair
+%   better memory behavior. Whereas assoc_list stores each key/value pair
 %   two two-word cells on the heap (one cell for the list constructor,
 %   and one for the <key,value> pair), this module uses just one three-word
 %   heap cell containing the key, the value, and the pointer to the rest
@@ -264,7 +264,7 @@
 % - rbtree is the implementation of maps using red-black trees, which are
 %   a different kind of balanced tree.
 %
-% - multi_map implements one popular kind of maps: maps that allow each key
+% - multi_map implements one popular kind of map: maps that allow each key
 %   to be mapped to a *list* of values. If a key is mapped to the empty list
 %   of values, then operations in this module will delete the key, but since
 %   the definition of multi_map is visible from outside its module, it is
