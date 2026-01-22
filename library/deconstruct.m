@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -82,7 +82,7 @@
     %     all characters for which char.is_control/1 is true.
     %   - for characters, the character inside single quotation marks using
     %     a backslash escape if necessary and a backslash or octal escape for
-    %     for all characters for which char.is_control/1 is true.
+    %     all characters for which char.is_control/1 is true.
     %   - for predicates, the string <<predicate>>, and for functions,
     %     the string <<function>>, except with include_details_cc,
     %     in which case it will be the predicate or function name.

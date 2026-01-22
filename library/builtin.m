@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -207,7 +207,7 @@
     % NOTE_TO_IMPLEMENTORS The modes must appear in this order:
     % NOTE_TO_IMPLEMENTORS compiler/higher_order.m depends on it, as does
     % NOTE_TO_IMPLEMENTORS compiler/simplify.m (for the inequality
-    % NOTE_TO_IMPLEMENTORS simplification.)
+    % NOTE_TO_IMPLEMENTORS simplification).
 :- mode compare(uo, in, in) is det.
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
@@ -1078,7 +1078,7 @@ __Compare____tuple_0_0(object x, object y)
 % semidet_succeed as true, and semidet_fail as fail, since we added
 % no_determinism_warning pragmas to the language. However, if we *do*
 % define them that way, one of the test cases, general/test_parsing_utils,
-% fails, with the symtom being several differences that replace output
+% fails, with the symptom being several differences that replace output
 % from the parser such as "expecting an operator" and "unterminated comment"
 % with just "syntax error", which seems to implicate the call to semidet_fail
 % in the implementation of the fail_with_message predicate as the cause,
@@ -1187,7 +1187,7 @@ semipure_true :-
 
 %---------------------------------------------------------------------------%
 
-% NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
+% NOTE: dynamic_cast/2 is handled specially in compiler/const_prop.m.
 % Any changes here may need to be reflected here.
 
 dynamic_cast(X, Y) :-

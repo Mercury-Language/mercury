@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2008, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -279,7 +279,7 @@
     %
 :- pred int_to_decimal_digit(int::in, char::out) is semidet.
 
-    % As above, but throw an exception in instead of failing.
+    % As above, but throw an exception instead of failing.
     %
 :- func det_int_to_decimal_digit(int) = char.
 
@@ -288,7 +288,7 @@
     %
 :- pred int_to_hex_digit(int::in, char::out) is semidet.
 
-    % As above, but throw an exception in instead of failing.
+    % As above, but throw an exception instead of failing.
     %
 :- func det_int_to_hex_digit(int) = char.
 

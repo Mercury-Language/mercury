@@ -178,7 +178,7 @@
     % :- pred option_default(option::out, option_data::out) is multi.
     %
     % The option_default predicate may be replaced, in the option_ops values
-    % whose names include "default_map", with data structure that maps
+    % whose names include "default_map", with a data structure that maps
     % each and every option to its default value. (This is normally useful
     % if the caller itself needs the same data in map form.)
     %
@@ -634,13 +634,13 @@
     %   each of those user-defined options has as its argument,
     %
     % - find those arguments and convert them to the expected type,
-    %   and return them OptionValues.
+    %   and return them in OptionValues.
     %
     % The two predicates differ in what they do when they find an error.
     %
     % - When it finds an error, recognize_options stops processing Args,
     %   and returns a description of the error in MaybeError. Any arguments
-    %   after the error will not be includes in any of OptionValues,
+    %   after the error will not be included in any of OptionValues,
     %   OptionsArgs, or NonOptionArgs.
     %
     % - When it finds an error, recognize_all_options keeps processing Args,
@@ -648,9 +648,9 @@
     %   in Errors. Any arguments between and after errors *will* be included
     %   either in OptionValues and OptionArgs, or in NonOptionArgs.
     %   Note though it is possible for recognize_all_options to mistake
-    %   an argument that what was intended to be an argument of a previous
+    %   an argument that was intended to be an argument of a previous
     %   option to be something else (either an option in its own right, or
-    %   a nonoption argument) if the previous argument is not recogizable
+    %   a nonoption argument) if the previous argument is not recognizable
     %   as an option that has an argument because of e.g. a typo in its name.
     %
     % recognize_options indicates the lack of any errors by returning
@@ -660,7 +660,7 @@
     % Note that unlike the process_options_... predicates above,
     % these predicates do *not* update the option table in any way.
     % They also simply return file_special options in OptionValues;
-    % they does not process them. That processing can be done by
+    % they do not process them. That processing can be done by
     % the expand_file_specials predicate below.
     %
 :- pred recognize_options(short_option(OptionType)::in(short_option),

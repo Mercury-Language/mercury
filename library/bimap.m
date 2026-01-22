@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999,2004-2006,2008,2011-2012 The University of Melbourne.
-% Copyright (C) 2013-2019, 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2013-2019, 2022-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -296,7 +296,7 @@
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with two accumulators for each key-value pair. (Although no more
     % expressive than foldl, this is often a more convenient format,
-    % and a little more efficient).
+    % and a little more efficient.)
     %
 :- pred foldl2(pred(K, V, A, A, B, B), bimap(K, V), A, A, B, B).
 :- mode foldl2(in(pred(in, in, in, out, in, out) is det),
@@ -317,7 +317,7 @@
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with three accumulators for each key-value pair. (Although no more
     % expressive than foldl, this is often a more convenient format,
-    % and a little more efficient).
+    % and a little more efficient.)
     %
 :- pred foldl3(pred(K, V, A, A, B, B, C, C), bimap(K, V),
     A, A, B, B, C, C).
@@ -338,7 +338,7 @@
 :- mode foldl3(in(pred(in, in, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, di, uo) is semidet.
 
-    % Extract a the forward map from the bimap, the map from key to value.
+    % Extract the forward map from the bimap, the map from key to value.
     %
 :- func forward_map(bimap(K, V)) = map(K, V).
 

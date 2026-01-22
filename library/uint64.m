@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2023, 2025 The Mercury team.
+% Copyright (C) 2018-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -54,7 +54,7 @@
     %
     % Convert a uint to a uint64.
     % Always succeeds, and will always yield a result that is
-    % mathematically equal U.
+    % mathematically equal to U.
     %
 :- func cast_from_uint(uint) = uint64.
 
@@ -230,7 +230,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint64::in) rem (uint64::in) = (uint64::uo) is det.
 
@@ -343,8 +343,8 @@
 
     % reverse_bits(A) = B:
     %
-    % B is the is value that results from reversing the bits
-    % in the binary representation of A.
+    % B is the value that results from reversing the bits in the binary
+    % representation of A.
     %
 :- func reverse_bits(uint64) = uint64.
 

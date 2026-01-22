@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010 The University of Melbourne.
-% Copyright (C) 2014-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -239,7 +239,7 @@
 %
 
     % A duplex stream is a stream that can act as both a source and
-    % destination of data, i.e. it is a both an input and an output stream.
+    % destination of data, i.e. it is both an input and an output stream.
     %
 :- typeclass duplex(Stream, State)
     <= (input(Stream, State), output(Stream, State)) where

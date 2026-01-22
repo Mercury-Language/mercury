@@ -94,13 +94,13 @@
 
     % Same as init/uint, except the resulting version_array is not thread safe.
     %
-    % The downside of this difference is that that your program can crash,
+    % The downside of this difference is that your program can crash,
     % or behave strangely, if you ever attempt to concurrently access
     % or update a non-thread-safe version_array from different threads.
     % This is also true for any two version_arrays that were generated
     % from operations on the same original non-thread-safe version_array.
     %
-    % The upside is that in if you can guarantee that your program will do
+    % The upside is that if you can guarantee that your program will do
     % none of the above, then non-thread-safe version arrays are much quicker
     % to access and to update in multi-threaded programs.
     %
@@ -145,7 +145,7 @@
     %
     % VersionArray is a copy of array VersionArray0,
     % with the item at Index replaced with Item.
-    % Throws an exception is thrown if Index is out of bounds.
+    % Throws an exception if Index is out of bounds.
     %
 :- pred set(int::in, T::in,
     version_array(T)::in, version_array(T)::out) is det.

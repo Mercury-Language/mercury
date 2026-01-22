@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1523,10 +1523,10 @@
     % format_table_max(Columns, Separator) does the same job as format_table,
     % but allows the caller to associate a maximum width with each column.
     % If some column had strings of e.g. lengths 18, 20, 35 and 45, then
-    % format_table would format that column as being 45 character wide
+    % format_table would format that column as being 45 characters wide
     % in all rows, but if a call to format_table_max specified 30 as the
     % max width of that column, then format_table_max would format that column
-    % as being 30 character wide in the first two rows, and would widen the
+    % as being 30 characters wide in the first two rows, and would widen the
     % column only when the value does not fit in the maximum, and in each case,
     % it would widen the column only as much as necessary. In this example,
     % the column would be 35 and 45 characters wide respectively in the
@@ -5552,8 +5552,8 @@ word_wrap_separator(Str, N, BrokenWordSep0) = Wrapped :-
     % the linewrapped version of the original word stream.
     %
     % Words is the list of words to process. BrokenWordSep is the string to use
-    % as a separator of a word has to split between two lines, because it is
-    % too long to fit on one line. BrokenWordSepLin is the length of
+    % as a separator if a word has to split between two lines, because it is
+    % too long to fit on one line. BrokenWordSepLen is the length of
     % BrokenWordSep.
     %
     % CurCol is the column where the next character should be written

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -61,7 +61,7 @@
     % rethrow(ExceptionResult):
     %
     % Rethrows the specified exception result (which should be
-    % of the form `exception(_)', not `succeeded(_)' or `failed'.).
+    % of the form `exception(_)', not `succeeded(_)' or `failed').
     %
 :- pred rethrow(exception_result(T)).
 :- mode rethrow(in(bound(exception(ground)))) is erroneous.
@@ -249,7 +249,7 @@
 :- mode try_stm(in(pred(out, di, uo) is cc_multi),
     out(cannot_fail), di, uo) is cc_multi.
 
-    % This is the version is called by code introduced by the source-to-source
+    % This is the version called by code introduced by the source-to-source
     % transformation for atomic scopes. This predicate should not be called
     % by user code.
     %
@@ -1555,7 +1555,7 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
 // (1) If MR_debug_enabled is set, then invoke
 //     `MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
 //     to signal to the debugger that the procedure has exited via
-//     an exception. This allows to user to use the `retry' command
+//     an exception. This allows the user to use the `retry' command
 //     to restart a goal which exited via an exception.
 //
 //     Note that if MR_STACK_TRACE is not defined, then we may not be

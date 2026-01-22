@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -115,7 +115,7 @@
     % maybe_incomplete_result is returned when reading multibyte values from a
     % binary stream. `incomplete(Bytes)' is returned when at least one byte of
     % a value has already been read but there are insufficient bytes
-    % remaining the stream to complete the value. In that case, Bytes will
+    % remaining in the stream to complete the value. In that case, Bytes will
     % contain the bytes that have already been read from the stream, in the
     % order in which they were read.
     %
@@ -599,7 +599,7 @@
     %
     % where <TYPE> is the name of one of the Mercury multibyte fixed size
     % integer types. The optional <SUFFIX> specifies the order in which
-    % the bytes that make up the multibyte integer occur in input stream.
+    % the bytes that make up the multibyte integer occur in the input stream.
     % The suffix may be one of:
     %
     % "_le":    the bytes are in little endian byte order.
@@ -785,7 +785,7 @@
     % The following predicates write multibyte integer values, either to the
     % current binary output stream, or to the specified binary output stream.
     %
-    % These names of these predicates have the form:
+    % The names of these predicates have the form:
     %
     %    write_binary_<TYPE><SUFFIX>
     %
@@ -1077,7 +1077,7 @@
     % out exactly as is (unquoted). If the argument is of type integer (i.e.
     % an arbitrary precision integer), then its decimal representation will be
     % printed. If the argument is of type univ, then the value stored in the
-    % the univ will be printed out, but not the type. If the argument is of
+    % univ will be printed out, but not the type. If the argument is of
     % type date_time, it will be printed out in the same form as the string
     % returned by the function date_to_string/1. If the argument is of type
     % duration, it will be printed out in the same form as the string
@@ -1723,7 +1723,7 @@
     % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
     % if FileName is a symbolic link pointing to LinkTarget, and
     % `error(Error)' otherwise. If LinkTarget is a relative path,
-    % it should be interpreted relative the directory containing FileName,
+    % it should be interpreted relative to the directory containing FileName,
     % not the current directory.
     %
 :- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo) is det.

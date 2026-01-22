@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -94,7 +94,7 @@
 
     % in_bounds(Array, R, C):
     %
-    % Succeeds if and only if 0 =< C < NumRows, 0 =< C < NumColumns.
+    % Succeeds if and only if 0 =< R < NumRows, 0 =< C < NumColumns.
     %
 :- pred in_bounds(array2d(T), int, int).
 % :- mode in_bounds(array2d_ui, in, in) is semidet.
@@ -173,9 +173,9 @@
     % with each row containing the values in its columns.
     %
     % This function is the converse of from_lists.
-    % For every Array, from_lists(lists(Array) = Array,
-    % and for every Lists for from_lists(Lists) does not throw
-    % an exception, lists(from_lists(Lists) = Lists.
+    % For every Array, from_lists(lists(Array)) = Array,
+    % and for every Lists for which from_lists(Lists) does not throw
+    % an exception, lists(from_lists(Lists)) = Lists.
     %
 :- func lists(array2d(T)) = list(list(T)).
 % :- mode lists(array2d_ui) = out is det.

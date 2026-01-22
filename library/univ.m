@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2010 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -65,7 +65,7 @@
 
     % det_univ_to_type(Univ, Object).
     %
-    % The same as the forwards mode of univ_to_type, but throws an exception
+    % The same as the forward mode of univ_to_type, but throws an exception
     % if univ_to_type fails.
     %
 :- pred det_univ_to_type(univ::in, T::out) is det.

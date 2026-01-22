@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 2000-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -222,7 +222,7 @@
 
     % unsafe_arg_ref is the same as arg_ref,
     % and unsafe_new_arg_ref is the same as new_arg_ref
-    % except that they doesn't check for errors,
+    % except that they don't check for errors,
     % and they don't work for no_tag types (types with
     % exactly one functor which has exactly one argument),
     % and they don't work for arguments which occupy a word with other

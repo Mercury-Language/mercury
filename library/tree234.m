@@ -107,7 +107,7 @@
     % If the key is already in !.Tree, with corresponding value OldV,
     % then set MaybeOldV to yes(OldV), and leave !Tree unchanged.
     %
-    % If the key is not already in !.tree, then insert it into !Tree
+    % If the key is not already in !.Tree, then insert it into !Tree
     % with value V, and set MaybeOldV to no.
     %
 :- pred search_insert(K::in, V::in, maybe(V)::out,
@@ -1041,7 +1041,7 @@ equal(TreeA, TreeB) :-
     % StackB0 can never contain an empty node because:
     %  + match_tree_against_stack/3's caller will never put an empty node in
     %    StackB0.
-    %  + match_tree_against_stack/3 and it's callees will never put an empty
+    %  + match_tree_against_stack/3 and its callees will never put an empty
     %    node on the stack.  Arbitrary nodes are checked before they're
     %    placed on the stack and other nodes are constructed deliberately.
     % The inst subtyping on these arguments enforces this.
@@ -3273,7 +3273,7 @@ remove_2(Tin, K, V, Tout, RH) :-
 
 %---------------------------------------------------------------------------%
 
-    % The algorithm we use similar to tree234.delete, except that we
+    % The algorithm we use is similar to tree234.delete, except that we
     % always go down the left subtree.
 
 remove_smallest(K, V, Tin, Tout) :-

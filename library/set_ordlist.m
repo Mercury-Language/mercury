@@ -196,7 +196,7 @@
 :- pred union_list(list(set_ordlist(T))::in, set_ordlist(T)::out) is det.
 
     % power_union(A, B) is true if-and-only-if
-    % B is the union of all the sets in A,
+    % B is the union of all the sets in A.
     %
 :- func power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 :- pred power_union(set_ordlist(set_ordlist(T))::in,
@@ -745,7 +745,7 @@ sort_no_dups(List, sol(Set)) :-
     ).
 
     % no_dups(Elem, Set) is true if-and-only-if Set does not contain Elem,
-    % and Set does not contains duplicates.
+    % and Set does not contain duplicates.
     %
 :- pred no_dups(T::in, list(T)::in) is semidet.
 
@@ -920,7 +920,7 @@ intersection_and_differences_loop(As, Bs, !InAandB, !OnlyInA, !OnlyInB) :-
 %---------------------------------------------------------------------------%
 
 divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
-    % The calls to reverse allow us to make divide_2 tail recursive.
+    % The calls to reverse allow us to make divide_loop tail recursive.
     % This costs us a higher constant factor, but allows divide to work
     % in constant stack space.
     divide_loop(Pred, Set, [], RevTruePart, [], RevFalsePart),

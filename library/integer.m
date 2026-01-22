@@ -241,7 +241,7 @@
 :- func det_to_int32(integer) = int32.
 
     % Convert an integer to a uint32.
-    % Fails if the integer is not in range [0, 4294967295].
+    % Fails if the integer is not in the range [0, 4294967295].
     %
 :- pred to_uint32(integer::in, uint32::out) is semidet.
 
@@ -260,7 +260,7 @@
 :- func det_to_int64(integer) = int64.
 
     % Convert an integer to a uint64.
-    % Fails if the integer is not in range [0, 18446744073709551615].
+    % Fails if the integer is not in the range [0, 18446744073709551615].
     %
 :- pred to_uint64(integer::in, uint64::out) is semidet.
 
@@ -1528,7 +1528,7 @@ det_to_int32(Integer) = Int32 :-
         Int32 = Int32Prime
     else
         throw(domain_error(
-            "integer.det_to_int32: domain error (conversion would overflow"))
+            "integer.det_to_int32: domain error (conversion would overflow)"))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1556,7 +1556,7 @@ det_to_uint32(Integer) = UInt32 :-
         UInt32 = UInt32Prime
     else
         throw(domain_error(
-            "integer.det_to_uint32: domain error (conversion would overflow"))
+            "integer.det_to_uint32: domain error (conversion would overflow)"))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1974,8 +1974,8 @@ from_int64(I64) = Integer :-
     then
         Integer = i(-1, [cast_to_int(I64)])
     else if I64 = int64.min_int64 then
-        % If we were to call int64.abs with mint_int64 as an argument it would
-        % overflow.
+        % If we were to call int64.abs with int_int64 as an argument, then it
+        % would overflow.
         Integer = integer.from_int64(I64 + from_int(1)) - integer.one
     else
         Magnitude = pos_int64_to_digits(int64.abs(I64)),

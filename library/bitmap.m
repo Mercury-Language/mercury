@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -17,7 +17,7 @@
 % currently recognise them, hence we are forced to use non-unique modes
 % until the situation is rectified; this places a small burden on programmers
 % to ensure the correctness of their code that would otherwise be assured
-% by the compiler.)
+% by the compiler).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 
     % Type `bitmap' is equivalent to `array(bool)', but is implemented
     % much more efficiently. Accessing bitmaps as if they were an array
-    % of eight bit bytes is especially efficient.
+    % of eight-bit bytes is especially efficient.
     %
     % See runtime/mercury_types.h for the definition of MR_BitmapPtr for
     % use in foreign code.
@@ -215,7 +215,7 @@
     % set_bits(Index, NumBits, Word, Bitmap0, BitMap):
     % Bitmap0 ^ bits(Index) := Word = BitMap:
     %
-    % Set the NumBits bits of Bitmap0 starting at Index the low order
+    % Set the NumBits bits of Bitmap0 starting at Index to the low order
     % NumBits bits of Words, returning the updated bitmap as Bitmap.
     %
     % NumBits must be in the range given by 0 =< NumBits =< int.bits_per_int.
@@ -540,7 +540,7 @@
     bitmap::bitmap_di, bitmap::bitmap_uo,
     int::out, io.res::out, io::di, io::uo) is det.
 
-    % read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
+    % read_bitmap_range(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO):
     %
     % Read NumBytes bytes into a bitmap starting at StartByte from the
     % current binary input stream, or from the specified binary input stream.

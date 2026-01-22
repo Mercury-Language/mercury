@@ -358,7 +358,7 @@
 
     % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
     %
-    % NOTE: fold_down/5 is undefined if Low min_int.
+    % NOTE: fold_down/5 is undefined if Low = min_int.
     %
 :- pred fold_down(pred(int, T, T), int, int, T, T).
 :- mode fold_down(in(pred(in, in, out) is det), in, in, in, out) is det.
@@ -382,7 +382,7 @@
     is cc_multi.
 
     % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
-    %   list.foldr2(F, Low .. High, !Acc1, Acc2).
+    %   list.foldr2(F, Low .. High, !Acc1, !Acc2)
     %
     % NOTE: fold_down2/7 is undefined if Low = min_int.
     %
@@ -406,7 +406,7 @@
 :- mode fold_down2(in(pred(in, in, out, mdi, muo) is nondet), in, in,
     in, out, mdi, muo) is nondet.
 
-    % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
+    % fold_down3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
     % NOTE: fold_down3/9 is undefined if Low = min_int.

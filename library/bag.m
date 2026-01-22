@@ -686,7 +686,7 @@ from_sorted_list(Xs, Bag) :-
 
     % This predicate works on the same principle as
     % acc_rev_items_without_duplicates, but it adds an item to !RevAL
-    % only when it know how many times it occurs in a row.
+    % only when it knows how many times it occurs in a row.
     % (The caller has promised that the input list is sorted,
     % so all occurrences of any given item in the list must be contiguous.)
     %

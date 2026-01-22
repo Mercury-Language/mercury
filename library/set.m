@@ -27,7 +27,7 @@
 % - set_ctree234            234-trees with counts
 % - set_tree234             234-trees without counts
 %
-% Some of modules are not general purpose, because they can store only
+% Some modules are not general purpose, because they can store only
 % integers, or values that can be transformed into integers.
 % These modules are
 %
@@ -277,7 +277,7 @@
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of which are not in DivideBySet.
+    % OutPart consists of those elements of Set which are not in DivideBySet.
     %
 :- pred divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out) is det.
 
@@ -332,7 +332,7 @@
 %
 
     % count(Set, Count) is true if-and-only-if Set has Count elements.
-    % i.e. Count is the cardinality (size) of the
+    % i.e. Count is the cardinality (size) of the set.
     %
 :- func count(set(T)) = int.
 :- pred count(set(T)::in, int::out) is det.

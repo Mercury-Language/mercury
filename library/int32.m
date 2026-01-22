@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2023, 2025 The Mercury team.
+% Copyright (C) 2017-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -398,7 +398,7 @@
 
     % reverse_bits(A) = B:
     %
-    % B is the is value that results from reversing the bits in the binary
+    % B is the value that results from reversing the bits in the binary
     % representation of A.
     %
 :- func reverse_bits(int32) = int32.

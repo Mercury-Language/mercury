@@ -142,7 +142,7 @@
     %
     % The same as append(Prefix, Suffix, List), but sometimes
     % this predicate name more clearly expresses the intent of the code, and
-    % this argument order can be also be useful for higher-order programming.
+    % this argument order can also be useful for higher-order programming.
     %
 :- pred remove_prefix(list(T)::in, list(T)::in, list(T)::out) is semidet.
 
@@ -529,7 +529,7 @@
     % merge_lists(ListOfLists) = MergedList:
     % merge_lists(Compare, ListOfLists) = MergedList:
     %
-    % Given ListOfLists, a list contain zero or more lists that must
+    % Given ListOfLists, a list containing zero or more lists that must
     % all be sorted in non-descending order according to Compare
     % (or the standard comparison operation, for the versions that
     % do not take a Compare argument), return the list MergedList
@@ -552,13 +552,13 @@
     % merge_lists_and_remove_dups(ListOfLists) = MergedList:
     % merge_lists_and_remove_dups(Compare, ListOfLists) = MergedList:
     %
-    % Given ListOfLists, a list contain zero or more lists that must
+    % Given ListOfLists, a list containing zero or more lists that must
     % all be sorted in ascending order according to Compare (or the standard
     % comparison operation, for the versions that do not take a Compare
     % argument), return the list MergedList which contains the elements
     % of both lists, and which is also in ascending order.
     %
-    % No list in ListOfLists may not contain repeated elements, meaning
+    % No list in ListOfLists may contain repeated elements, meaning
     % elements for which comparison returns "equal". Given two or more
     % equal elements that all come from different input lists, MergedList
     % will contain the element from the earliest of these lists.
@@ -586,7 +586,7 @@
     % intersect_lists(ListOfLists) = IntersectList:
     % intersect_lists(ListOfLists, IntersectList):
     %
-    % Given ListOfLists, a list contain zero or more lists that must
+    % Given ListOfLists, a list containing zero or more lists that must
     % all be sorted in ascending order (without duplicates) according
     % to the standard comparison operation, return the list IntersectList
     % which contains only the elements from ListOfLists that occur in
@@ -1513,7 +1513,7 @@
 
     % foldl8(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6, !Acc7,
     %   !Acc8):
-    % Does the same job as foldl, but with seven accumulators.
+    % Does the same job as foldl, but with eight accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
     % The last accumulator may be an I/O state, or some other
@@ -1626,7 +1626,7 @@
 :- mode chunk_foldl(in, in(pred(in, di, uo) is det), in, di, uo) is det.
 :- mode chunk_foldl(in, in(pred(in, in, out) is det), in, in, out) is det.
 
-    % Does the same job of chunk_foldl, but with two accumulators.
+    % Does the same job as chunk_foldl, but with two accumulators.
     %
 :- pred chunk_foldl2(int, pred(L, A, A, B, B), list(L), A, A, B, B).
 :- mode chunk_foldl2(in, in(pred(in, di, uo, di, uo) is det),
@@ -1636,7 +1636,7 @@
 :- mode chunk_foldl2(in, in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 
-    % Does the same job of chunk_foldl, but with three accumulators.
+    % Does the same job as chunk_foldl, but with three accumulators.
     %
 :- pred chunk_foldl3(int, pred(L, A, A, B, B, C, C),
     list(L), A, A, B, B, C, C).
@@ -1647,7 +1647,7 @@
 :- mode chunk_foldl3(in, in(pred(in, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out) is det.
 
-    % Does the same job of chunk_foldl, but with four accumulators.
+    % Does the same job as chunk_foldl, but with four accumulators.
     %
 :- pred chunk_foldl4(int, pred(L, A, A, B, B, C, C, D, D),
     list(L), A, A, B, B, C, C, D, D).
@@ -1717,7 +1717,7 @@
 
     % foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
     %
-    % Does the same job as foldr, but with two accumulators.
+    % Does the same job as foldr, but with three accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
     % The last accumulator may be an I/O state, or some other
@@ -1851,7 +1851,7 @@
 
     % foldl_corresponding3(P, As, Bs, Cs, !Acc):
     %
-    % Does the same jobs as foldl_corresponding, but folds over
+    % Does the same job as foldl_corresponding, but folds over
     % three corresponding lists.
     %
 :- pred foldl_corresponding3(pred(A, B, C, D, D),
@@ -1871,7 +1871,7 @@
 
     % foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
     %
-    % Does the same jobs as foldl_corresponding3, but with two accumulators.
+    % Does the same job as foldl_corresponding3, but with two accumulators.
     %
 :- pred foldl2_corresponding3(pred(A, B, C, D, D, E, E),
     list(A), list(B), list(C), D, D, E, E).

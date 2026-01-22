@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2008, 2010, 2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -270,7 +270,7 @@
 :- interface.
 
     % We export this type synonym to string.m, for string_ops and
-    % string_ops_noncanon). These both treat the argument whose type is
+    % string_ops_noncanon. These both treat the argument whose type is
     % ops.table as being *any* op_table, i.e. as not necessarily being
     % the *Mercury* op table. Indeed, the notion of being able to pass
     % an arbitrary op table to string_ops and its noncanon version *depend*
@@ -285,7 +285,7 @@
     % (compared to the issue above) that the references to ops.table in
     % string.m are dangling references from users' points of view,
     % since we deliberately prevent the definition of this type from appearing
-    % the library manual.
+    % in the library manual.
     %
     % We could fix both issues by making the current users of this type
     % synonym all take arguments of any type that is an instance of the

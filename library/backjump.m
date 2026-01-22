@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007-2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2021 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -12,7 +12,7 @@
 %
 % This module defines the Mercury interface for backjumping.
 %
-% An application can use this module to add backjumping to their search
+% An application can use this module to add backjumping to its search
 % algorithms in the following way:
 %
 %   - At points in the search tree where you wish to backjump *to*, add a
@@ -26,7 +26,7 @@
 % It is important to avoid backjumping to a choicepoint that has already
 % been pruned away, either on failure or due to a commit. In the former case
 % (which can occur if the choice_id is stored in a non-trailed mutable, for
-% example) the implementation throws an exception. In the latter case,
+% example) the implementation throws an exception. In the latter case, the
 % behaviour is undefined but most likely will be a seg fault. This can occur
 % if multi/nondet code that returns a choice_id is called from a
 % cc_multi/cc_nondet context, for example.

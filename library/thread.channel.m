@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2020-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -10,10 +10,10 @@
 % Main author: petdr.
 % Stability: medium.
 %
-% A mvar can only contain a single value, a channel on the other hand provides
-% unbounded buffering.
+% An mvar can only contain a single value, a channel, on the other hand,
+% provides unbounded buffering.
 %
-% For example a program could consist of 2 worker threads and one logging
+% For example, a program could consist of two worker threads and one logging
 % thread. The worker threads can place messages into the channel, and they
 % will be buffered for processing by the logging thread.
 %

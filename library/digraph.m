@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1999,2002-2007,2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2022-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -293,7 +293,7 @@
 
     % compose(G1, G2, G) is true if G is the composition
     % of the digraphs G1 and G2. This means that there is an edge (x,y) in G
-    % if-and-only-if there exists vertex m such that (x,m) is in G1 and
+    % if-and-only-if there exists a vertex m such that (x,m) is in G1 and
     % (m,y) is in G2.
     %
 :- func compose(digraph(T), digraph(T)) = digraph(T).

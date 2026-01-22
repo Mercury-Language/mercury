@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2002-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -259,7 +259,7 @@
 :- pred var_name_list(varset(T)::in, assoc_list(var(T), string)::out)
     is det.
 
-    % Given a list of variable and varset in which some variables have
+    % Given a list of variable and a varset in which some variables have
     % no name but some other variables may have the same name,
     % return another varset in which every variable has a unique name.
     % If necessary, names will have suffixes added on the end;
@@ -589,7 +589,7 @@ set_bindings(Values, !VarSet) :-
 % and building up a renaming which maps the variables in the second varset
 % into the corresponding fresh variable in the first varset.
 %
-% The fast implementation each of the above exported predicates does the
+% The fast implementation of each of the above exported predicates does the
 % same conceptual job, but with differences in detail.
 %
 % 1 Instead of inserting oldvar-newvar pairs into the rename map,

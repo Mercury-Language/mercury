@@ -510,7 +510,7 @@
 % ranges.Ranges_0 universe()
 %   Return the set of integers from (min_int+1)..max_int.
 %
-% ranges.Ranges_0 range(int l, int, h)
+% ranges.Ranges_0 range(int l, int h)
 %   Return the set of integers from `l' to `h' inclusive.
 %
 % boolean is_empty(ranges.Ranges_0 r)

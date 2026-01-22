@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2010 The University of Melbourne.
-% Copyright (C) 2013-2019, 2025 The Mercury team.
+% Copyright (C) 2013-2019, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -15,8 +15,8 @@
 % The Gregorian calendar is the calendar that is currently used by most of
 % the world. In this calendar, a year is a leap year if it is divisible by
 % 4, but not divisible by 100. The only exception is if the year is divisible
-% by 400, in which case it is a leap year. For example 1900 is not leap year,
-% while 2000 is. The proleptic Gregorian calendar is an extension of the
+% by 400, in which case it is a leap year. For example, 1900 is not a leap
+% year, while 2000 is. The proleptic Gregorian calendar is an extension of the
 % Gregorian calendar backward in time to before it was first introduced in
 % 1582.
 %
@@ -245,7 +245,7 @@
     % microsecond.
     %
     % For example the duration 1 year, 18 months, 100 days, 10 hours, 15
-    % minutes 90 seconds and 300 microseconds can be written as:
+    % minutes, 90 seconds and 300 microseconds can be written as:
     %   P1Y18M100DT10H15M90.0003S
     % while the duration 1 month and 2 days can be written as:
     %   P1M2D
@@ -280,7 +280,7 @@
 
     % This predicate implements a partial order relation on durations.
     % DurationA is less than or equal to DurationB if-and-only-if for all
-    % of the dates list below, adding DurationA to the date results in a date
+    % of the dates listed below, adding DurationA to the date results in a date
     % less than or equal to the date obtained by adding DurationB.
     %
     %    1696-09-01 00:00:00
@@ -322,7 +322,7 @@
     % savings phase. To work out the duration between dates in different
     % timezones or daylight savings phases, first convert the dates to UTC.
     %
-    % If the seconds components of DateA and DateB are < 60 then
+    % If the seconds components of DateA and DateB are < 60, then
     % add_duration(DateA, duration(DateA, DateB), DateB) will hold, but
     % add_duration(DateB, negate(duration(DateA, DateB)), DateA) may not hold.
     % For example if:
@@ -332,7 +332,7 @@
     % then the following holds:
     %   add_duration(duration(DateA, DateB), DateA, DateB)
     % but the following does not:
-    %   add_duration(negate(duration(DateA, DateB), DateB, DateA)
+    %   add_duration(negate(duration(DateA, DateB)), DateB, DateA)
     % (Adding -1 month to 2001-02-28 will yield 2001-01-28).
     %
 :- func duration(date, date) = duration.

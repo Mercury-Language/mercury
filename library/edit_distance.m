@@ -34,7 +34,7 @@
 % Technically, this module computes Damerau-Levenshtein distances,
 % while edit_seq.m computes Levenshtein distances. (The difference between
 % the two is that only the former considers transpositions to be single
-% operations.).
+% operations.)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -332,7 +332,7 @@ find_edit_distance_up_to_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
         % The original Mercury version of this code used maps to implement
         % both ItemMap{A,B} and Row{OneAgo,TwoAgo,Next}. In some cases,
         % this caused the construction of "did you mean" addendums to take
-        % several seconds (much more time than than was needed by the *rest*
+        % several seconds (much more time than was needed by the *rest*
         % of the compiler), which was annoying.
         %
         % The two main reasons of this slowdown were almost certainly
@@ -441,7 +441,7 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
         !RowTwoAgo, !RowOneAgo, !RowNext, !MinCostInRow) :-
     ( if J < LenA then
         ColNum = J + 1u,
-        % Note that "here", the position from which are looking,
+        % Note that "here", the position from which we are looking,
         % is RowNext(ColNum). This means that
         %
         % - left        is RowNext(J)

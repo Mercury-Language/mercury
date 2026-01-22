@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -149,7 +149,7 @@
     % generic_term(Term) is true if-and-only-if Term is a term of type
     % `term' i.e. `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
-    % predicate will ground the type avoiding unbound type variable warnings.
+    % predicate will ground the type, avoiding unbound type variable warnings.
     %
     % This predicate is obsolete because its job can now be done with
     % a with_type annotation, such as `Term : term(generic)'.
@@ -283,7 +283,7 @@
     % occurs(Term, Var, Substitution):
     %
     % True if-and-only-if Var occurs in the term resulting after
-    % applying Substitution Term. Var must not be mapped by Substitution.
+    % applying Substitution to Term. Var must not be mapped by Substitution.
     %
 :- pred occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
 :- pragma obsolete(pred(occurs/3),

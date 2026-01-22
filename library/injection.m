@@ -11,7 +11,7 @@
 % Stability: medium.
 %
 % This module provides the `injection' ADT. An injection is like a map
-% (see map.m) but it allows efficient reverse lookups, similarly to bimap.
+% (see map.m) but it allows efficient reverse lookups, similar to bimap.
 % This time efficiency comes at the expense of using twice as much space
 % or more. The difference between an injection and a bimap is that there
 % can be values in the range of the injection that are not returned for any
@@ -169,7 +169,7 @@
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Set key-value pairs from an assoc_list into the given injection.
-    % Fails of any of the individual sets would fail.
+    % Fails if any of the individual sets would fail.
     %
 :- func set_from_assoc_list(assoc_list(K, V), injection(K, V)) =
     injection(K, V) is semidet.
@@ -205,7 +205,7 @@
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Set key-value pairs from corresponding lists into the given
-    % injection. Fails of any of the individual sets would fail.
+    % injection. Fails if any of the individual sets would fail.
     % Throws an exception if the lists are not of equal length.
     %
 :- func set_from_corresponding_lists(list(K), list(V),
