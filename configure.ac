@@ -897,27 +897,6 @@ fi
 AC_SUBST(MKTEMP)
 
 #-----------------------------------------------------------------------------#
-
-# Determine if we should install Windows-specific files such as the batch
-# files. We only do this where there is a chance they can be useful.
-
-INSTALL_WINDOWS_SCRIPTS=no
-case "$host" in
-    *mingw*)
-        INSTALL_WINDOWS_SCRIPTS=yes
-        ;;
-    *)
-        if test "$ac_microsoft" = "yes"
-        then
-            INSTALL_WINDOWS_SCRIPTS=yes
-        else
-            INSTALL_WINDOWS_SCRIPTS=no
-        fi
-        ;;
-esac
-AC_SUBST(INSTALL_WINDOWS_SCRIPTS)
-
-#-----------------------------------------------------------------------------#
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
@@ -1159,6 +1138,8 @@ else
     AC_MSG_RESULT([no])
 fi
 
+#-----------------------------------------------------------------------------#
+
 # Determine if we are on a system which has a restricted command line length.
 # This is true if we are building under mingw or using the MS C compiler.
 RESTRICTED_COMMAND_LINE_OPT=
@@ -1176,6 +1157,29 @@ case "$host" in
         ;;
 esac
 AC_SUBST(RESTRICTED_COMMAND_LINE_OPT)
+
+#-----------------------------------------------------------------------------#
+
+# Determine if we should install Windows-specific files such as the batch
+# files. We only do this where there is a chance they can be useful.
+
+INSTALL_WINDOWS_SCRIPTS=no
+case "$host" in
+    *mingw*)
+        INSTALL_WINDOWS_SCRIPTS=yes
+        ;;
+    *)
+        if test "$ac_microsoft" = "yes"
+        then
+            INSTALL_WINDOWS_SCRIPTS=yes
+        else
+            INSTALL_WINDOWS_SCRIPTS=no
+        fi
+        ;;
+esac
+AC_SUBST(INSTALL_WINDOWS_SCRIPTS)
+
+#-----------------------------------------------------------------------------#
 
 LDFLAGS_FOR_TRACE=
 LD_LIBFLAGS_FOR_TRACE=
