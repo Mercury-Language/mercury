@@ -10,8 +10,8 @@
 % Main author: petdr.
 % Stability: medium.
 %
-% An mvar can only contain a single value, a channel, on the other hand,
-% provides unbounded buffering.
+% An mvar can contain only a single value. On the other hand,
+% a channel provides unbounded buffering.
 %
 % For example, a program could consist of two worker threads and one logging
 % thread. The worker threads can place messages into the channel, and they
@@ -38,13 +38,13 @@
     %
 :- pred put(channel(T)::in, T::in, io::di, io::uo) is det.
 
-    % Take an item from the start of the channel, block if there is
-    % nothing in the channel.
+    % Take an item from the start of the channel.
+    % If there is nothing in the channel, block.
     %
 :- pred take(channel(T)::in, T::out, io::di, io::uo) is det.
 
     % Take an item from the start of the channel.
-    % Returns immediately with no if the channel was empty.
+    % If there is nothing in the channel, return "no" immediately.
     %
 :- pred try_take(channel(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
@@ -81,9 +81,11 @@
 
 :- type item(T)
     --->    item(
-                T,          % The current item.
-                stream(T)   % The rest of the stream.
+                T,                  % The current item.
+                stream(T)           % The rest of the stream.
             ).
+
+%---------------------------------------------------------------------------%
 
 channel.init(channel(Read, Write), !IO) :-
     mvar.init(Read, !IO),

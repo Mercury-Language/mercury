@@ -259,8 +259,8 @@
 :- pred var_name_list(varset(T)::in, assoc_list(var(T), string)::out)
     is det.
 
-    % Given a list of variable and a varset in which some variables have
-    % no name but some other variables may have the same name,
+    % Given a list of variables, and a varset in which some variables
+    % have no name but some other variables may have the same name,
     % return another varset in which every variable has a unique name.
     % If necessary, names will have suffixes added on the end;
     % the second argument gives the suffix to use.

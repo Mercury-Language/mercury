@@ -22,10 +22,15 @@
 
     % The `type_desc', `pseudo_type_desc' and `type_ctor_desc' types
     % provide access to type information.
-    % A type_desc represents a type, e.g. `list(int)'.
-    % A pseudo_type_desc represents a type that possibly contains type
-    % variables, e.g. `list(T)'.
-    % A type_ctor_desc represents a type constructor, e.g. `list/1'.
+    %
+    % A type_desc represents a complete type (also called a "ground" type),
+    % such as `list(int)'.
+    %
+    % A pseudo_type_desc represents a type that may or may not be complete.
+    % An incomplete (also called "nonground") type, such as `list(T)',
+    % contains one or more type variables.
+    %
+    % A type_ctor_desc represents a type constructor, such as `list/1'.
     %
 :- type type_desc.
 :- type pseudo_type_desc.
@@ -48,18 +53,23 @@
 
 :- pred pseudo_type_desc_is_ground(pseudo_type_desc::in) is semidet.
 
-    % This function allows the caller to look into the structure
-    % of the given pseudo_type_desc.
+    % pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep:
+    %
+    % Return in PseudoTypeRep a description of the structure of PseudoTypeDesc.
     %
 :- func pseudo_type_desc_to_rep(pseudo_type_desc) = pseudo_type_rep.
 
-    % Convert a type_desc, which by definition describes a ground type,
+    % type_desc_to_pseudo_type_desc(TypeDesc) = PseudoTypeDesc:
+    %
+    % Convert TypeDesc, which by definition describes a ground type,
     % to a pseudo_type_desc.
     %
 :- func type_desc_to_pseudo_type_desc(type_desc) = pseudo_type_desc.
 
-    % Convert a pseudo_type_desc describing a ground type to a type_desc.
-    % If the pseudo_type_desc describes a non-ground type, fail.
+    % ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc:
+    %
+    % Convert PseudoTypeDesc to a type_desc if it describes a ground type.
+    % If it describes a non-ground type, fail.
     %
 :- func ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc
     is semidet.
@@ -68,15 +78,20 @@
 :- pred ground_pseudo_type_desc_to_type_desc(pseudo_type_desc::in,
     type_desc::out) is semidet.
 
-    % Convert a pseudo_type_desc describing a ground type to a type_desc.
-    % Throw an exception if the pseudo_type_desc describes a non-ground type.
+    % det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc:
+    %
+    % Convert PseudoTypeDesc to a type_desc if it describes a ground type.
+    % If it describes a non-ground type, throw an exception.
     %
 :- func det_ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc.
 
 %---------------------------------------------------------------------------%
 
-    % The function type_of/1 returns a representation of the type
-    % of its argument.
+    % type_of(Value) = TypeDesc:
+    %
+    % Return a representation of the type of Value.
+    %
+    % The actual value of Value does not matter; only its type matters.
     %
     % (Note: it is not possible for the type of a variable to be an unbound
     % type variable; if there are no constraints on a type variable, then the
@@ -88,8 +103,10 @@
     %
 :- func type_of(T::unused) = (type_desc::out) is det.
 
-    % The predicate has_type/2 is basically an existentially typed inverse
-    % to the function type_of/1. It constrains the type of the first argument
+    % has_type(Value, TypeDesc):
+    %
+    % This predicate is basically an existentially typed inverse
+    % of the type_of/1 function. It constrains the type of the first argument
     % to be the type represented by the second argument.
     %
 :- some [T] pred has_type(T::unused, type_desc::in) is det.
@@ -98,8 +115,11 @@
     %
 :- pred same_type(T::unused, T::unused) is det.
 
-    % type_name(Type) returns the name of the specified type
-    % (e.g. type_name(type_of([2,3])) = "list.list(int)").
+    % type_name(TypeDesc):
+    %
+    % Return the name of the specified type. For example,
+    % type_name(type_of([2,3])) returns "list.list(int)".
+    %
     % Any equivalence types will be fully expanded.
     % Builtin types (those defined in builtin.m) will not have
     % a module qualifier.
@@ -164,21 +184,25 @@
 :- pred pseudo_type_args(pseudo_type_desc::in, list(pseudo_type_desc)::out)
     is semidet.
 
-    % type_ctor_name(TypeCtor) returns the name of the specified type
-    % constructor.
-    % (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
+    % type_ctor_name(TypeCtor):
+    %
+    % Return the name of the specified type constructors.
+    % For example, type_ctor_name(type_ctor(type_of([2,3]))) returns "list".
     %
 :- func type_ctor_name(type_ctor_desc) = string.
 
-    % type_ctor_module_name(TypeCtor) returns the module name of the specified
-    % type constructor.
-    % (e.g. type_ctor_module_name(type_ctor(type_of(2))) = "builtin").
+    % type_ctor_module_name(TypeCtor):
+    %
+    % Returns the module name of the specified type constructor.
+    % For example, type_ctor_module_name(type_ctor(type_of(2)))
+    % returns "builtin".
     %
 :- func type_ctor_module_name(type_ctor_desc) = string.
 
-    % type_ctor_arity(TypeCtor) returns the arity of the specified
-    % type constructor.
-    % (e.g. type_ctor_arity(type_ctor(type_of([2,3]))) = 1).
+    % type_ctor_arity(TypeCtor):
+    %
+    % Return the arity of the specified type constructor.
+    % For example, type_ctor_arity(type_ctor(type_of([2,3]))) returns 1.
     %
 :- func type_ctor_arity(type_ctor_desc) = int.
 

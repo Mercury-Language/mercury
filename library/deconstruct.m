@@ -68,55 +68,77 @@
     %     that is given in the type definition. For lists, this means
     %     the functors [|]/2 and []/0 are used, even if the list uses
     %     the [....] shorthand.
+    %
     %   - for user-defined types with user-defined equality, the
     %     functor will be of the form <<module.type/arity>>, except
     %     with include_details_cc, in which case the type will be
     %     handled as if it had standard equality.
+    %
     %   - for integers, the string is a base 10 number;
     %     positive integers have no sign.
+    %
     %   - for finite floats, the string is a base 10 floating point number;
     %     positive floating point numbers have no sign;
     %     for infinite floats, the string "infinity" or "-infinity".
+    %
     %   - for strings, the string, inside double quotation marks using
-    %     backslash escapes if necessary and backslash or octal escapes for
-    %     all characters for which char.is_control/1 is true.
+    %     backslash escapes if necessary and backslash or octal escapes
+    %     for all characters for which char.is_control/1 is true.
+    %
     %   - for characters, the character inside single quotation marks using
-    %     a backslash escape if necessary and a backslash or octal escape for
-    %     all characters for which char.is_control/1 is true.
+    %     a backslash escape if necessary, and a backslash or octal escape
+    %     for all characters for which char.is_control/1 is true.
+    %
     %   - for predicates, the string <<predicate>>, and for functions,
     %     the string <<function>>, except with include_details_cc,
     %     in which case it will be the predicate or function name.
     %     (The predicate or function name will be artificial for
     %     predicate and function values created by lambda expressions.)
+    %
     %   - for tuples, the string {}.
+    %
     %   - for arrays, the string <<array>>.
+    %
     %   - for c_pointers, the string c_pointer(0xXXXX) where XXXX is the
     %     hexadecimal representation of the pointer.
+    %
     %   - for foreign types, a string of the form <<foreign(Name, Rep)>> where
-    %     Name is the type's Mercury name and Rep is a target language specific
+    %     Name is the type's Mercury name and Rep is a target-language-specific
     %     representation of the term's value.
-    %   - for bitmaps, the bitmap converted to a length and a
-    %     hexadecimal string inside angle brackets and quotes of the
-    %     form """<[0-9]:[0-9A-F]*>""".
+    %
+    %   - for bitmaps, the bitmap converted to pair of a decimal length and
+    %     a hexadecimal string, with both inside angle brackets and quotes,
+    %     with the overall form """<[0-9]*:[0-9A-F]*>""".
     %
     % The arity that these predicates return is:
     %
     %   - for user defined types with standard equality, the arity
     %     of the functor.
+    %
     %   - for user defined types with user-defined equality, zero,
     %     except with include_details_cc, in which case the type
     %     will be handled as if it had standard equality.
+    %
     %   - for integers, zero.
+    %
     %   - for floats, zero.
+    %
     %   - for strings, zero.
+    %
     %   - for characters, zero.
+    %
     %   - for predicates and functions, zero, except with
     %     include_details_cc, in which case it will be the number of
     %     arguments hidden in the closure.
+    %
     %   - for tuples, the number of elements in the tuple.
+    %
     %   - for arrays, the number of elements in the array.
+    %
     %   - for c_pointers, zero.
+    %
     %   - for foreign types, zero.
+    %
     %   - for bitmaps, zero.
     %
     % Note that in the current University of Melbourne implementation,
@@ -126,7 +148,7 @@
     % include_details_cc; instead, they return <<predicate>> or
     % <<function>> (in both cases with arity zero) as appropriate.
 
-    % functor(Data, NonCanon, Functor, Arity)
+    % functor(Data, NonCanon, Functor, Arity):
     %
     % Given a data item (Data), binds Functor to a string representation
     % of the functor and Arity to the arity of this data item.
@@ -137,7 +159,7 @@
 :- mode functor(in, in(include_details_cc), out, out) is cc_multi.
 :- mode functor(in, in, out, out) is cc_multi.
 
-    % functor_number(Data, FunctorNumber, Arity)
+    % functor_number(Data, FunctorNumber, Arity):
     %
     % Given a data item, return the number of the functor,
     % suitable for use by construct.construct, and the arity.
@@ -156,13 +178,13 @@
 :- pred functor_number_cc(T::in, functor_number_lex::out,
     int::out) is cc_nondet.
 
-    % arg(Data, NonCanon, Index, Argument)
+    % arg(Data, NonCanon, Index, Argument):
     %
     % Given a data item (Data) and an argument index (Index), starting
     % at 0 for the first argument, binds Argument to that argument of
     % the functor of the data item. If the argument index is out of range
-    % -- that is, greater than or equal to the arity of the functor or
-    % lower than 0 -- then the call fails.
+    % (that is, greater than or equal to the arity of the functor
+    % or lower than 0) then the call fails.
     %
     % Note that this predicate only returns an answer when NonCanon is
     % do_not_allow or canonicalize. If you need the include_details_cc
@@ -177,32 +199,39 @@
     --->    some [T] arg(T)
     ;       no_arg.
 
-    % arg_cc/3 is similar to arg/4, except that it handles arguments with
-    % non-canonical types. The possible non-existence of an argument is
-    % encoded using a maybe type.
+    % arg_cc(Data, Index, Argument):
+    %
+    % Does the same job as arg/4, except
+    %
+    % - it assumes include_details_cc as the noncanon_handling argument,
+    %   meaning it can handle arguments with non-canonical types;
+    % - it returns `no_arg' instead of failing; and
+    % - it wraps `arg()' around the returned argument on success.
     %
 :- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
 
-    % named_arg(Data, NonCanon, Name, Argument)
+    % named_arg(Data, NonCanon, Name, Argument):
     %
-    % Same as arg/4, except the chosen argument is specified by giving
-    % its name rather than its position. If Data has no argument with that
-    % name, named_arg fails.
+    % Does the same job as arg/4, but with the chosen argument
+    % being specified by giving its name rather than its position.
+    % Fails if Data has no argument with the given name.
     %
 :- some [ArgT] pred named_arg(T, noncanon_handling, string, ArgT).
 :- mode named_arg(in, in(do_not_allow), in, out) is semidet.
 :- mode named_arg(in, in(canonicalize), in, out) is semidet.
 :- mode named_arg(in, in(canonicalize_or_do_not_allow), in, out) is semidet.
 
-    % named_arg_cc/3 is similar to named_arg/4, except that it handles
-    % arguments with non-canonical types.
+    % named_arg_cc(Data, Name, Argument):
+    %
+    % Does the same job as named_arg/4, but also differs from it
+    % in exactly same ways that arg_cc/3 differs from arg/4.
     %
 :- pred named_arg_cc(T::in, string::in, maybe_arg::out) is cc_multi.
 
-    % det_arg(Data, NonCanon, Index, Argument)
+    % det_arg(Data, NonCanon, Index, Argument):
     %
-    % Same as arg/4, except that for cases where arg/4 would fail,
-    % det_arg/4 will throw an exception.
+    % Does the same job as arg/4, except that it situations where
+    % arg/4 would fail, det_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_arg(T, noncanon_handling, int, ArgT).
 :- mode det_arg(in, in(do_not_allow), in, out) is det.
@@ -210,10 +239,10 @@
 :- mode det_arg(in, in(include_details_cc), in, out) is cc_multi.
 :- mode det_arg(in, in, in, out) is cc_multi.
 
-    % det_named_arg(Data, NonCanon, Name, Argument)
+    % det_named_arg(Data, NonCanon, Name, Argument):
     %
-    % Same as named_arg/4, except that for cases where named_arg/4 would fail,
-    % det_named_arg/4 will throw an exception.
+    % Does the same job as named_arg/4, except that it situations where
+    % named_arg/4 would fail, det_named_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_named_arg(T, noncanon_handling, string, ArgT).
 :- mode det_named_arg(in, in(do_not_allow), in, out) is det.
@@ -221,12 +250,12 @@
 :- mode det_named_arg(in, in(include_details_cc), in, out) is cc_multi.
 :- mode det_named_arg(in, in, in, out) is cc_multi.
 
-    % deconstruct(Data, NonCanon, Functor, Arity, Arguments)
+    % deconstruct(Data, NonCanon, Functor, Arity, Arguments):
     %
     % Given a data item (Data), binds Functor to a string representation
     % of the functor, Arity to the arity of this data item, and Arguments
-    % to a list of arguments of the functor. The arguments in the list
-    % are each of type univ.
+    % to a list of arguments of the functor. Since the types of the arguments
+    % may differ from each other, each argument is returned as a univ.
     %
     % The cost of calling deconstruct depends greatly on how many arguments
     % Data has. If Data is an array, then each element of the array is
@@ -242,15 +271,15 @@
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
 :- mode deconstruct(in, in, out, out, out) is cc_multi.
 
-    % deconstruct_du(Data, NonCanon, FunctorNumber, Arity, Arguments)
+    % deconstruct_du(Data, NonCanon, FunctorNumber, Arity, Arguments):
     %
     % Given a data item (Data) which has a discriminated union type, binds
     % FunctorNumber to the number of the functor in lexicographic order,
     % Arity to the arity of this data item, and Arguments to a list of
-    % arguments of the functor. The arguments in the list are each of type
-    % univ.
+    % arguments of the functor. Since the types of the arguments
+    % may differ from each other, each argument is returned as a univ.
     %
-    % Fails if Data does not have discriminated union type.
+    % Fails if Data's type is not a discriminated union type.
     %
 :- pred deconstruct_du(T, noncanon_handling, functor_number_lex,
     int, list(univ)).
@@ -259,7 +288,7 @@
 :- mode deconstruct_du(in, in, out, out, out) is cc_nondet.
 
     % limited_deconstruct(Data, NonCanon, MaxArity,
-    %   Functor, Arity, Arguments)
+    %   Functor, Arity, Arguments):
     %
     % limited_deconstruct works like deconstruct, but if the arity of T is
     % greater than MaxArity, limited_deconstruct fails. This is useful in
@@ -267,7 +296,7 @@
     %
     % Note that this predicate only returns an answer when NonCanon is
     % do_not_allow or canonicalize. If you need the include_details_cc
-    % behaviour use deconstruct.limited_deconstruct_cc/3.
+    % behaviour, use deconstruct.limited_deconstruct_cc/3.
     %
 :- pred limited_deconstruct(T, noncanon_handling, int, string, int,
     list(univ)).
@@ -613,11 +642,11 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 :- pred univ_arg_dna(T::in, int::in, univ::out) is semidet.
 :- pred univ_arg_can(T::in, int::in, univ::out) is semidet.
 
-    % univ_arg_idcc(Term, N, DummyUniv, Argument, Success):
+    % univ_arg_idcc(Term, N, DummyUniv, Field, Success):
     %
     % Attempt to extract the N'th field of (the current representation of)
-    % Term. If there is such a field, return Success=1 and return the field in
-    % Argument. If there is not, return Success=0 and Argument=DummyUniv.
+    % Term. If there is such a field, set Success to 1 and return the field
+    % in Field. If there is not, set Success to 0 and Field to DummyUniv.
     %
 :- pred univ_arg_idcc(T::in, int::in, univ::in, univ::out, int::out)
     is cc_multi.
@@ -625,11 +654,12 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 :- pred univ_named_arg_dna(T::in, string::in, univ::out) is semidet.
 :- pred univ_named_arg_can(T::in, string::in, univ::out) is semidet.
 
-    % univ_named_arg_idcc(Term, Name, DummyUniv, Univ, Success):
+    % univ_named_arg_idcc(Term, Name, DummyUniv, Field, Success):
     %
     % Attempt to extract the field of (the current representation of) Term
-    % specified by Name. If there is such a field, return Success=1 and return
-    % the field in Univ. If there is not, return Success=0 and Univ=DummyUniv.
+    % specified by Name. If there is such a field, set Success to 1 and return
+    % the field in Field. If there is not, set Success to 0 and
+    % Field to DummyUniv.
     %
 :- pred univ_named_arg_idcc(T::in, string::in, univ::in, univ::out, int::out)
     is cc_multi.

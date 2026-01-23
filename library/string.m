@@ -1904,7 +1904,7 @@
 % compiler (specifically, to format_call.m and its submodule
 % parse_format_string.m.). However, they should not be part of the
 % publicly documented interface of the Mercury standard library,
-% since we don't want any user code to depend on the implementation
+% since we do not want any user code to depend on the implementation
 % details they contain.
 :- interface.
 :- include_module format.

@@ -162,30 +162,34 @@
 % Filtering elements in assoc_lists.
 %
 
-    % filter(Pred, List, TrueList) takes a closure with one input argument,
-    % and for each key-value pair in List, calls the closure on the key K.
-    % The key-value pair is included in TrueList if-and-only-if
-    % Pred(K) is true.
+    % filter(Pred, List, TrueList):
+    %
+    % Given a closure containing a predicate with one input argument,
+    % and a list of key-value pairs, call the closure on each key K.
+    % Include the key-value pair in TrueList if-and-only-if Pred(K) is true.
     %
 :- func filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
 :- pred filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-    % negated_filter(Pred, List, FalseList) takes a closure with one
-    % input argument, and for each key-value pair in List, calls the closure
-    % on the key K. The key-value pair is included in FalseList if-and-only-if
-    % Pred(K) is false.
+    % negated_filter(Pred, List, FalseList):
+    %
+    % Given a closure containing a predicate with one input argument,
+    % and a list of key-value pairs, call the closure on each key K.
+    % Include the key-value pair in FalseList if-and-only-if Pred(K) is false.
     %
 :- func negated_filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
 :- pred negated_filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-    % filter(Pred, List, TrueList, FalseList) takes a closure with
-    % one input argument, and for each key-value pair in List,
-    % calls the closure on the key K. If Pred(K) is true, the key-value pair
-    % is included in TrueList; otherwise, it is included in FalseList.
+    % filter(Pred, List, TrueList, FalseList):
+    %
+    % Given a closure containing a predicate with one input argument,
+    % and a list of key-value pairs, call the closure on each key K.
+    % Include the key-value pair in TrueList if-and-only-if Pred(K) is true.
+    % Include the key-value pair in FalseList if-and-only-if Pred(K) is false.
     %
 :- pred filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
@@ -221,10 +225,12 @@
 % Folding over assoc_lists.
 %
 
-    % foldl(Pred, List, Start, End) calls Pred
-    % with each key-value pair in List, working left-to-right,
-    % and an accumulator whose initial value is Start,
-    % and returns the final value in End.
+    % foldl(Pred, List, Start, End):
+    %
+    % Call Pred with each key-value pair in List, working left-to-right.
+    % Each call updates the value of an accumulator. The initial value
+    % of this accumulator is passed by the caller as Start; this predicate
+    % returns its final value as End.
     %
 :- pred foldl(pred(K, V, A, A), assoc_list(K, V), A, A).
 :- mode foldl(in(pred(in, in, in, out) is det), in, in, out) is det.
@@ -235,16 +241,15 @@
 :- mode foldl(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 :- mode foldl(in(pred(in, in, in, out) is nondet), in, in, out) is nondet.
 
-    % foldl_keys(Func, List, Start) = End calls Func
-    % with each key in List, working left-to-right, and an accumulator
-    % whose initial value is Start, and returns the final value in End.
+    % foldl_keys(Func, List, Start) = End:
+    % foldl_keys(Pred, List, Start, End):
+    %
+    % Call Func or Pred with the keys in List, working left-to-right.
+    % Each call updates the value of an accumulator. The initial value
+    % of this accumulator is passed by the caller as Start; this predicate
+    % returns its final value as End.
     %
 :- func foldl_keys(func(K, A) = A, assoc_list(K, V), A) = A.
-
-    % foldl_keys(Pred, List, Start, End) calls Pred
-    % with each key in List, working left-to-right, and an accumulator
-    % whose initial value is Start, and returns the final value in End.
-    %
 :- pred foldl_keys(pred(K, A, A), assoc_list(K, V), A, A).
 :- mode foldl_keys(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl_keys(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
@@ -255,16 +260,15 @@
 :- mode foldl_keys(in(pred(in, in, out) is multi), in, in, out) is multi.
 :- mode foldl_keys(in(pred(in, in, out) is nondet), in, in, out) is nondet.
 
-    % foldl_values(Func, List, Start) = End calls Func
-    % with each value in List, working left-to-right, and an accumulator
-    % whose initial value is Start, and returns the final value in End.
+    % foldl_values(Func, List, Start) = End:
+    % foldl_values(Pred, List, Start, End):
+    %
+    % Call Func or Pred with the values in List, working left-to-right.
+    % Each call updates the value of an accumulator. The initial value
+    % of this accumulator is passed by the caller as Start; this predicate
+    % returns its final value as End.
     %
 :- func foldl_values(func(V, A) = A, assoc_list(K, V), A) = A.
-
-    % foldl_values(Pred, List, Start End) calls Pred
-    % with each value in List, working left-to-right, and an accumulator
-    % whose initial value is Start, and returns the final value in End.
-    %
 :- pred foldl_values(pred(V, A, A), assoc_list(K, V), A, A).
 :- mode foldl_values(in(pred(in, in, out) is det), in,
     in, out) is det.
@@ -283,7 +287,7 @@
 :- mode foldl_values(in(pred(in, in, out) is nondet), in,
     in, out) is nondet.
 
-    % As foldl, but with two accumulators.
+    % Does the same job as foldl, but with two accumulators.
     %
 :- pred foldl2(pred(K, V, A, A, B, B), assoc_list(K, V), A, A, B, B).
 :- mode foldl2(in(pred(in, in, in, out, in, out) is det), in, in, out,
@@ -301,7 +305,7 @@
 :- mode foldl2(in(pred(in, in, in, out, in, out) is nondet), in, in, out,
     in, out) is nondet.
 
-    % As foldl_values, but with two accumulators.
+    % Does the same job as foldl_values, but with two accumulators.
     %
 :- pred foldl2_values(pred(V, A, A, B, B), assoc_list(K, V),
     A, A, B, B).
@@ -322,7 +326,7 @@
 :- mode foldl2_values(in(pred(in, in, out, in, out) is nondet), in,
     in, out, in, out) is nondet.
 
-    % As foldl, but with three accumulators.
+    % Does the same job as foldl, but with three accumulators.
     %
 :- pred foldl3(pred(K, V, A, A, B, B, C, C), assoc_list(K, V),
     A, A, B, B, C, C).
@@ -341,7 +345,7 @@
 :- mode foldl3(in(pred(in, in, in, out, in, out, in, out) is nondet), in,
     in, out, in, out, in, out) is nondet.
 
-    % As foldl_values, but with three accumulators.
+    % Does the same job as foldl_values, but with three accumulators.
     %
 :- pred foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),
     A, A, B, B, C, C).

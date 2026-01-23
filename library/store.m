@@ -53,7 +53,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Mutvars
+% Mutvars.
 %
 
     % generic_mutvar(T, S):
@@ -116,7 +116,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% References
+% References.
 %
 
     % generic_ref(T, S):
@@ -212,22 +212,26 @@
 
 %---------------------------------------------------------------------------%
 %
-% Nasty performance hacks
+% Nasty unsafe performance hacks.
 %
-% WARNING: use of these procedures is dangerous!
-% Use them only as a last resort, only if performance is critical, and only if
-% profiling shows that using the safe versions is a bottleneck.
+% WARNING: any use of these procedures is dangerous!
+% Use them only as a last resort, only if performance is critical, and
+% only if profiling shows that using the safe versions is a bottleneck.
 %
 % These procedures may vanish in some future version of Mercury.
+%
 
     % unsafe_arg_ref is the same as arg_ref,
     % and unsafe_new_arg_ref is the same as new_arg_ref
-    % except that they don't check for errors,
-    % and they don't work for no_tag types (types with
-    % exactly one functor which has exactly one argument),
-    % and they don't work for arguments which occupy a word with other
-    % arguments,
-    % and they don't work for types with >4 functors.
+    % except that
+    %
+    % - they do not check for errors,
+    % - they do not work for no_tag types (types with exactly one functor
+    %   which has exactly one argument),
+    % - they do not work for arguments which occupy a word
+    %   with other arguments, and
+    % - they do not work for types with >4 functors.
+    %
     % If the argument number is out of range,
     % or if the argument reference has the wrong type,
     % or if the argument is a no_tag type,

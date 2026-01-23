@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1974,8 +1974,8 @@ from_int64(I64) = Integer :-
     then
         Integer = i(-1, [cast_to_int(I64)])
     else if I64 = int64.min_int64 then
-        % If we were to call int64.abs with int_int64 as an argument, then it
-        % would overflow.
+        % If we were to call int64.abs with min_int64 as an argument,
+        % then it would overflow.
         Integer = integer.from_int64(I64 + from_int(1)) - integer.one
     else
         Magnitude = pos_int64_to_digits(int64.abs(I64)),

@@ -1073,23 +1073,30 @@
     % its first argument. In all cases, the argument to output can be of any
     % type. It is output in a format that is intended to be human readable.
     %
-    % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted). If the argument is of type integer (i.e.
-    % an arbitrary precision integer), then its decimal representation will be
-    % printed. If the argument is of type univ, then the value stored in the
-    % univ will be printed out, but not the type. If the argument is of
-    % type date_time, it will be printed out in the same form as the string
-    % returned by the function date_to_string/1. If the argument is of type
-    % duration, it will be printed out in the same form as the string
-    % returned by the function duration_to_string/1.
+    % - If the argument is just a single string or character,
+    %   then it will be printed out exactly as is (unquoted).
+    %
+    % - If the argument is of type integer (i.e. it is an arbitrary precision
+    %   integer), then its decimal representation will be printed.
+    %
+    % - If the argument is of type univ, then the value stored in the univ
+    %   will be printed out, but not the type.
+    %
+    % - If the argument is of type date_time, then it will be printed out
+    %   in the same form as the string returned by the date_to_string/1
+    %   function.
+    %
+    % - If the argument is of type duration, then it will be printed out
+    %   in the same form as the string returned by the duration_to_string/1
+    %   function.
     %
     % print/5 is the same as print/4 except that it allows the caller to
-    % specify how non-canonical types should be handled. print/3 and
-    % print/4 implicitly specify `canonicalize' as the method for handling
+    % specify how non-canonical types should be handled. print/3 and print/4
+    % implicitly specify `canonicalize' as the method for handling
     % non-canonical types. This means that for higher-order types, or types
     % with user-defined equality axioms, or types defined using the foreign
-    % language interface (i.e. pragma foreign_type), the text output will only
-    % describe the type that is being printed, not the value.
+    % language interface (i.e. pragma foreign_type), the text output
+    % will describe only the type that is being printed, not the value.
     %
     % print_cc/3 is the same as print/3 except that it specifies
     % `include_details_cc' rather than `canonicalize'. This means that it will
