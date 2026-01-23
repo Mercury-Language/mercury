@@ -227,10 +227,12 @@
     %
 :- func intersect_list(list(set_ctree234(T))) = set_ctree234(T).
 
-    % power_intersect(A) = B is true if-and-only-if B is the intersection
+    % power_intersect(A, B) is true if-and-only-if B is the intersection
     % of all the sets in A.
     %
 :- func power_intersect(set_ctree234(set_ctree234(T))) = set_ctree234(T).
+:- pred power_intersect(set_ctree234(set_ctree234(T))::in,
+    set_ctree234(T)::out) is det.
 
     % difference(SetA, SetB, Set) is true if-and-only-if
     % Set is the set containing all the elements of SetA
@@ -2391,6 +2393,9 @@ intersect_list(Sets) = IntersectSet :-
     IntersectSet = sorted_list_to_set(IntersectList).
 
 power_intersect(Sets) = IntersectSet :-
+    power_intersect(Sets, IntersectSet).
+
+power_intersect(Sets, IntersectSet) :-
     IntersectSet = intersect_list(to_sorted_list(Sets)).
 
 %---------------------%

@@ -989,6 +989,7 @@ Changes to the Mercury standard library
 
     - func `from_sorted_list/1`
     - pred `nondet_member/2`
+    - pred `power_intersect/2`
     - func `ucount/1`
 
 * The following predicate has been marked obsolete:
