@@ -72,7 +72,7 @@
 % The Id field, which is present in all these alternatives, is totally
 % ignored when printing error_specs. Its job is something completely different:
 % helping developers track down where in the source code each error_spec
-% was constructed. Without the id fields, if developers wants to know this,
+% was constructed. Without the id fields, if developers want to know this,
 % e.g. because they do not want the message printed, or because there is
 % a problem with its wording, they have to grep for some words in the message.
 % However, grepping for a single word will usually get many false hits,
@@ -331,7 +331,7 @@
     ;       nth_fixed(int)
     ;       unth_fixed(uint)
             % Convert the integer to a string, such as "first", "second",
-            % "third", tenth, 11th and so on, and then treat as fixed.
+            % "third", "tenth", "11th" and so on, and then treat as fixed.
 
     ;       lower_case_next_if_not_first
             % If this is the first component, ignore it. If this is not

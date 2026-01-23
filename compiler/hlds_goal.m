@@ -460,7 +460,7 @@
     % in most parts of the compiler to handle this new kind of goal.
     % Using from_ground_term_construct, on the other hand, allows us to keep
     % using the existing code for scopes in e.g. the type checker and the code
-    % generator. Because of this tradeoff, we current *do* replace
+    % generator. Because of this tradeoff, we currently *do* replace
     % from_ground_term_construct scopes with construct unification using
     % a ground_term_const cons_id, but only during the simplification pass
     % after semantic analysis, and only if option settings allow this
@@ -785,7 +785,8 @@
     % Mode analysis makes the Unification field meaningful, which means
     % most unifications end up being constructs, deconstructs, assigns and
     % simple_tests, with only a few remaining as complicated_unify.
-    % Until that pass, the compiler should pay attention *only* the RHS field.
+    % Until that pass, the compiler should pay attention *only* to the RHS
+    % field.
     %
     % The lambda pass in the middle end replaces all rhs_lambda_goal
     % unifications with construct unifications using a closure_cons cons_id.

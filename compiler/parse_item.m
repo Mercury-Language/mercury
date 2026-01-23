@@ -1731,7 +1731,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
     % ClassConstraints listing both the universal and existential type
     % class constraints, and InstConstraints mapping each inst variable
     % to the (smallest) constraint containing them.
-    % XXX The "smallest" part of that is almost certainly bug.
+    % XXX The "smallest" part of that is almost certainly a bug.
     %
 :- pred get_class_context_and_inst_constraints_from_attrs(module_name::in,
     varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
@@ -2004,7 +2004,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
     % Look for a suffix of the form "is <detism>" in Term. If we find one,
     % bind MaybeMaybeDetism to ok1(yes()) wrapped around the determinism,
     % and bind BeforeDetismTerm to the other part of Term. If we don't
-    % find, one, then bind MaybeMaybeDetism to ok1(no).
+    % find one, then bind MaybeMaybeDetism to ok1(no).
     %
 :- pred parse_determinism_suffix(varset::in, cord(format_piece)::in,
     term::in, term::out, maybe1(maybe(determinism))::out) is det.

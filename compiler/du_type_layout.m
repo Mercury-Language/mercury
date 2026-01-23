@@ -10,7 +10,7 @@
 % File: du_type_layout.m.
 % Main author: zs.
 %
-% The task of this module is decide the representation of each type.
+% The task of this module is to decide the representation of each type.
 % Once that is done, it will also invoke add_special_pred.m to declare
 % and (if necessary) define the unify and compare predicates for each type.
 %
@@ -3009,7 +3009,7 @@ decide_complex_non_sub_du_ctor_local_args(Params, ComponentTypeMap,
     % We have two rules governing how the bit fields of the arguments
     % are allocated.
     %
-    % - The bit fields of arguments are allocated in a contigous region
+    % - The bit fields of arguments are allocated in a contiguous region
     %   next to the primary and secondary tag bits.
     %
     % - Given two arguments i and j, if i < j, then argument i will be
@@ -4393,7 +4393,7 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
     ( if type_to_type_defn_body(ModuleInfo, Type0, TypeBody0) then
         ( if TypeBody0 = hlds_eqv_type(Type1) then
             % XXX Should we require that Type1 have the same visibility
-            % as Type0? If it doesn't, then we this predicate may yield
+            % as Type0? If it doesn't, then this predicate may yield
             % a different final type when compiling different modules,
             % which means we can make different decisions about data
             % representations when compiling different modules.
@@ -5150,9 +5150,9 @@ setup_decide_du_params(Globals, ModuleName, DirectArgMap, Params) :-
     globals.lookup_bool_option(Globals, allow_packing_dummies,
         AllowPackingDummies),
     globals.lookup_bool_option(Globals, allow_packing_local_sectags,
-        AllowPackingLocalSegtags),
+        AllowPackingLocalSectags),
     globals.lookup_bool_option(Globals, allow_packing_remote_sectags,
-        AllowPackingRemoteSegtags),
+        AllowPackingRemoteSectags),
     globals.lookup_bool_option(Globals, allow_packing_mini_types,
         AllowPackingMiniTypes),
 
@@ -5206,8 +5206,8 @@ setup_decide_du_params(Globals, ModuleName, DirectArgMap, Params) :-
         DoubleWordFloats, DoubleWordInt64s,
         UnboxedNoTagTypes, MaybeInformPacking,
         AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
-        AllowPackingDummies, AllowPackingLocalSegtags,
-        AllowPackingRemoteSegtags, AllowPackingMiniTypes,
+        AllowPackingDummies, AllowPackingLocalSectags,
+        AllowPackingRemoteSectags, AllowPackingMiniTypes,
         MaybeDirectArgs, DirectArgMap).
 
 :- pred compute_maybe_primary_tag_bits(globals::in, maybe_primary_tags::out)

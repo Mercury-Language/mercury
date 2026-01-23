@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -103,7 +103,7 @@
             % using a secondary tag stored in the rest of the word,
             % immediately after the primary tag bits. The second field
             % says how big the secondary tag is. The third field says
-            % whether this primary tag values is also shared with
+            % whether this primary tag value is also shared with
             % some non-constants whose cons_id is shared_local_tag_with_args.
             % If it is, the third field will be lsectag_must_be_masked,
             % otherwise, it will be lsectag_always_rest_of_word. (See below.)
@@ -286,7 +286,7 @@
             % transformation, and then the arguments themselves.
             %
             % If the size is rsectag_bits, the remote sectag will occupy
-            % the bottom sectag_num_bits bits of the  tagword, with the
+            % the bottom sectag_num_bits bits of the tagword, with the
             % rest of the word containing an initial subsequence of zero or
             % more subword-sized arguments.
             %
@@ -295,7 +295,7 @@
             % typeclass_infos added by the polymorphism transformation,
             % followed by the arguments themselves, as usual. However,
             % if the number of subword-size arguments packed in the tagword
-            % is *not*, zero, then these must be followed immediately by
+            % is *not* zero, then these must be followed immediately by
             % the rest of the arguments (if any); they may *not* be followed by
             % any such type_infos and/or typeclass_infos added by polymorphism.
             % (The implementation uses this implication in reverse: if we
@@ -329,7 +329,7 @@
             % This kind of tag is used only by the high level data
             % representation.
             %
-            % XXX ARG_PACK Maybe we should include include MaybeCtorName,
+            % XXX ARG_PACK Maybe we should include in MaybeCtorName,
             % the output of the first few lines of the predicate
             % ml_generate_dynamic_construct_compound, in both
             % remote_args_tag_infos that may be used by the high level
@@ -925,7 +925,7 @@ set_type_defn_prev_errors(X, !Defn) :-
     --->    du_type_repn(
                 % This field contains the same constructors as the
                 % du_type_ctors field of the hlds_du_type functor,
-                % but in a form in which has representation information
+                % but in a form that has representation information
                 % for both the constructors and their arguments.
                 dur_ctor_repns              :: list(constructor_repn),
 
@@ -1178,7 +1178,7 @@ asserted_word_aligned_pointer(foreign_type_assertions(Set)) :-
     % of the type constructor, its module qualification, and its arity.
     % I (zs) tried replacing this table with a two-stage map (from raw name
     % to a subtable that itself mapped the full type_ctor to no_tag_type,
-    % in an attempt to make the main part of the looked use cheaper
+    % in an attempt to make the main part of the lookup use cheaper
     % comparisons, on just raw strings. However, this change effectively led
     % to no change in performance.
 :- type no_tag_type_table == map(type_ctor, no_tag_type).

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2000, 2002-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -613,7 +613,7 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     % Determine the variables which are members of the sets Out and Out',
     % and initialize the substitutions between the two sets.
     %
-    % This is done by identifing those variables whose instantiatedness change
+    % This is done by identifying those variables whose instantiatedness change
     % in the goals after the recursive call and are headvars.
     %
     % Note that we are only identifying the output variables which will need
@@ -1350,7 +1350,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         !VarTable, StateOutputVars0, Accs0, BasePairs0),
 
     % XXX This comment seems to have been scrambled :-(
-    % Rather then concatenating to start of the list we concatenate to the end
+    % Rather than concatenating to start of the list we concatenate to the end
     % of the list. This allows the accumulator introduction to be applied
     % as the heuristic will succeed (remember after transforming the two
     % input variables will have their order swapped, so they must be in the
@@ -1526,7 +1526,7 @@ acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
     HeadVars = Accs ++ HeadVars0,
 
     % XXX we don't want to use the inst of the var as it can be more specific
-    % than it should be. ie int_const(1) when it should be any integer.
+    % than it should be. i.e. int_const(1) when it should be any integer.
     % However this will no longer handle partially instantiated data
     % structures.
     Inst = ground(shared, none_or_default_func),

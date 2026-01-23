@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,7 +98,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % aug_{comp,make_int}_unit_get_import_accessibily_info both generate
+    % aug_{comp,make_int}_unit_get_import_accessibility_info both generate
     % a value of type import_accessibility_info by scanning the relevant kinds
     % of items in the input structures they are given.
     %
@@ -908,7 +908,7 @@ report_any_missing_includes_for_imports(ReadModules, SeenIncludes, InclMap,
     %
     % If Module is a submodule of ParentModule but we haven't seen
     % an include_module declaration for Module in ParentModule even though
-    % we should have seen it is exists (because we have read an interface
+    % we should have seen it if it exists (because we have read an interface
     % file for ParentModule, which should contain all its include_module
     % declarations), then add an error message reporting this fact to !Specs.
     %
@@ -944,7 +944,7 @@ report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
                         ParentModule, SubModule),
                     Contexts, !Specs)
             else
-                % We have read not any item blocks from ParentModule.
+                % We have not read any item blocks from ParentModule.
                 % For all we know, ParentModule *may* contain an include
                 % for Module; we just don't know. Reporting an error
                 % would be misleading.

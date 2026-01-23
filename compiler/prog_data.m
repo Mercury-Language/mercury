@@ -597,7 +597,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % Given a run of one or more consecutive dummy arguments, all arguments
     % in the run will have the same representation. If the run's immediate
     % neighbours on both sides are sub-word-sized, then the arguments
-    % in the run will be all be apw_none_shifted; if either neighbouring
+    % in the run will all be apw_none_shifted; if either neighbouring
     % argument is missing, or if either is full word sized or larger,
     % then the arguments in the run will all be apw_none_nowhere.
     %
@@ -1306,7 +1306,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % occurrence, with the most frequently occurring function symbols first.
     % The result of specifying --inst-statistics during the stage 2 of a
     % bootcheck and then summarizing the results with tools/inst_statistics
-    % on 2023 July 18 was as follow:
+    % on 2023 July 18 was as follows:
     %
     % proc  ground                      30976049                72.63%
     % proc  free/0                       7559540                17.73%
@@ -1579,7 +1579,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % And `ground_inst' and `any_inst' are insts that result
     % from unifying an inst with `ground' or `any', respectively.
     % `typed_inst' is an inst with added type information.
-    % `typed_ground(Uniq, Type)' a equivalent to
+    % `typed_ground(Uniq, Type)' is equivalent to
     % `typed_inst(ground(Uniq, no), Type)'.
     % Note that `typed_ground' is a special case of `typed_inst',
     % and `ground_inst' and `any_inst' are special cases of `unify_inst'.
@@ -1795,7 +1795,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % In these circumstances, avoiding the need for a set predicate
     % would require significant changes to the structures of items.
     % It is much simpler to use a predicate and give it a name that
-    % makes it clear people that shouldn't use it.
+    % makes it clear people that they shouldn't use it.
     %
 :- type mutable_pred_kind
     --->    mutable_pred_std_get
@@ -1905,7 +1905,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     %
     % This situation can be fixed in one (or both) of two ways.
     %
-    % - The first way is to simplify change the convention for the names
+    % - The first way is to simply change the convention for the names
     %   of type_info variables in foreign_procs. We could have an interim
     %   period where, if the relevant type signature contains type variables
     %   named e.g. K and V, in that order, then the type type_info for K

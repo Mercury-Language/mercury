@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2025 The Mercury team.
+% Copyright (C) 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % File: decide_type_repn.m.
 % Main author: zs.
 %
-% The task of this module is decide the representation of each type
+% The task of this module is to decide the representation of each type
 % and to generate type_representation items recording those decisions
 % for inclusion in automatically generated interface files.
 %
@@ -90,9 +90,9 @@
 % as well as the one derived from the exported definition of t1.
 %
 % Exactly what subset of .int, .int2 and .int3 files this information
-% should be included is a question for later work. For now, this overestimate
-% is the most extensive possible test of the predicates that print out
-% and read in type representation items.
+% should be included in is a question for later work. For now, this
+% overestimate is the most extensive possible test of the predicates that
+% print out and read in type representation items.
 %
 %---------------------------------------------------------------------------%
 %
@@ -1191,7 +1191,7 @@ compute_local_packable_functors(PlatformParams, SimpleDuMap,
             % Our objective is to assign local sectags to as many
             % PackableFunctors as can. This requires giving preference
             % to PackableFunctors that take up the least number of bits
-            % themselves. For example, on a 64 bit platform where
+            % themselves. For example, on a 64-bit platform where
             % the primary tag is 3 bits, if we have one constant,
             % then we could pack that constant together with either
             %
@@ -1625,7 +1625,7 @@ assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8, !.CurPtagUint8,
     %
     % On the other hand, if no functor stores arguments in the tagword,
     % then we will never set the bits beyond the sectag to any nonzero value.
-    % This makes the mask operation is unnecessary, and we would prefer to
+    % This makes the mask operation unnecessary, and we would prefer to
     % avoid it.
 :- type must_mask_remote_sectag
     --->    need_not_mask_remote_sectag
@@ -2358,7 +2358,7 @@ expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
     % It is possible to construct notag types, equivalence types and subtypes
     % that would cause us to never find the fixpoint, instead of iterating
     % forever. This should never happen with natural inputs, but only with
-    % with inputs that has been specially crafted for this purpose,
+    % with inputs that have been specially crafted for this purpose,
     % but just in case, we stop after a fixed number of iterations even if
     % we haven't arrived at a fixpoint.
     ( if
@@ -2577,20 +2577,20 @@ setup_base_params(Globals, BaseParams) :-
         globals.lookup_bool_option(Globals, allow_packing_dummies,
             AllowPackingDummies),
         globals.lookup_bool_option(Globals, allow_packing_local_sectags,
-            AllowPackingLocalSegtags),
+            AllowPackingLocalSectags),
         globals.lookup_bool_option(Globals, allow_packing_remote_sectags,
-            AllowPackingRemoteSegtags)
+            AllowPackingRemoteSectags)
     ;
         PackEverything = yes,
         AllowPackingInts = yes,
         AllowPackingChars = yes,
         AllowPackingDummies = yes,
-        AllowPackingLocalSegtags = yes,
-        AllowPackingRemoteSegtags = yes
+        AllowPackingLocalSectags = yes,
+        AllowPackingRemoteSectags = yes
     ),
     BaseParams = base_params(AllowDoubleWordInts,
         AllowPackingInts, AllowPackingChars, AllowPackingDummies,
-        AllowPackingLocalSegtags, AllowPackingRemoteSegtags).
+        AllowPackingLocalSectags, AllowPackingRemoteSectags).
 
 %---------------------%
 
@@ -2610,8 +2610,8 @@ setup_base_params(Globals, BaseParams) :-
                 pp_word_size                    :: word_size,
 
                 % We use single word floats
-                % - on 64 bit platforms, and
-                % - on 32 bit platforms in spf grades.
+                % - on 64-bit platforms, and
+                % - on 32-bit platforms in spf grades.
                 pp_double_word_floats           :: maybe_double_word_floats,
 
                 % The term size profiling grades disable the direct arg

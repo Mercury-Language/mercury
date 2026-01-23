@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 %
 % This file provides some utility predicates which operate on types.
 % It is used by various stages of the compilation after type-checking,
-% include the mode checker and the code generator.
+% including the mode checker and the code generator.
 %
 % XXX TYPE_REPN
 % Put the contents of this type into meaningful groups.
@@ -152,7 +152,7 @@
     %   a dummy type.
     %
     % A type cannot be a dummy type if it is the subject of a foreign_enum
-    % pragma, or if it has a reserved tag or user defined equality.
+    % pragma, or if it has a reserved tag or user-defined equality.
     %
     % A subtype is only a dummy type if its base type is a dummy type.
     %
@@ -357,9 +357,9 @@
 
     % du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor):
     %
-    % Returns the number of arguments of specified constructor id, adjusted
-    % to include the extra typeclassinfo and typeinfo arguments inserted
-    % by polymorphism.m for existentially typed constructors.
+    % Returns the number of arguments of the specified constructor id,
+    % adjusted to include the extra typeclassinfo and typeinfo arguments
+    % inserted by polymorphism.m for existentially typed constructors.
     %
 :- func du_ctor_adjusted_arity(module_info, mer_type, du_ctor) = int.
 
