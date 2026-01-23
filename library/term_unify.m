@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -45,7 +45,7 @@
 
     % unify_terms_dont_bind(TermA, TermB, DontBindVars, !Subst):
     %
-    % Do the same job as unify_term(TermA, TermB, !Subst), but fail
+    % Do the same job as unify_terms(TermA, TermB, !Subst), but fail
     % if any of the variables in DontBindVars would become bound
     % by the unification.
     %

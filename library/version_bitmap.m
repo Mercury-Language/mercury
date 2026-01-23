@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2013-2015, 2017-2019, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2019, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -15,7 +15,7 @@
 %
 % Version bitmaps: an implementation of bitmaps using version arrays.
 %
-% The advantage of version bitmaps is that in the common, singly threaded,
+% The advantage of version bitmaps is that in the common, singly threaded
 % case, they are almost as fast as unique bitmaps, but can be treated as
 % ordinary ground values rather than unique values.
 %
@@ -39,8 +39,8 @@
 
     % resize(BM, N, B) resizes version_bitmap BM to have N bits;
     % if N is smaller than the current number of bits in BM, then
-    % the excess are discarded. If N is larger than the current number
-    % of bits in BM then the new bits are set if B = yes and cleared if
+    % the excess is discarded. If N is larger than the current number
+    % of bits in BM, then the new bits are set if B = yes and cleared if
     % B = no.
     %
 :- func resize(version_bitmap, int, bool) = version_bitmap.
@@ -351,7 +351,7 @@ zip(I, Fn, BMa, BMb) =
     %
 :- func num_ints_required(int) = int.
 
-    % We add the 1 on because version_arrays of size N are indexed 0 .. N - 1.
+    % We add 1 because version_arrays of size N are indexed 0 .. N - 1.
     %
 num_ints_required(N) = 1 + ( if N > 0 then int_offset(N) else 0 ).
 

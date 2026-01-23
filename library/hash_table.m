@@ -19,7 +19,7 @@
 %
 % The number of buckets in the hash table is always a power of 2.
 %
-% When the occupancy reaches a level set by the user, we create automatically
+% When the occupancy reaches a level set by the user, we automatically create
 % a new hash table with double the number of buckets, insert the contents
 % of the old table into it, and use it to replace the old one.
 %
@@ -100,7 +100,7 @@
 
     % Copy the hash table.
     %
-    % This is not a deep copy, it copies only enough of the structure to
+    % This is not a deep copy; it copies only enough of the structure to
     % create a new unique table.
     %
 :- func copy(hash_table(K, V)) = hash_table(K, V).
@@ -197,7 +197,7 @@
 :- mode from_assoc_list(in(hash_pred), in, in, in) = hash_table_uo is det.
 
     % A simpler version of from_assoc_list/4, the values for N and
-    % MaxOccupancy are configured with defaults such as in init_default/1
+    % MaxOccupancy are configured with defaults such as in init_default/1.
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
     (hash_table(K, V)::hash_table_uo) is det.
@@ -330,8 +330,8 @@ init(HashPred, N, MaxOccupancy) = HT :-
 
     % The initial numbers 7 and .9 were picked out of thin air.
     %
-    % We now use .875 (7/8) instead .9 because it is exactly representable
-    % in binary. This avoids differences in rounding between 32 and 64 bit
+    % We now use .875 (7/8) instead of .9 because it is exactly representable
+    % in binary. This avoids differences in rounding between 32- and 64-bit
     % platforms, which can show up as differences between the stage 2 and 3
     % versions of the code we generate for this module during a bootcheck
     % in the C# and Java grades.
@@ -421,7 +421,7 @@ find_slot_2(HashPred, K, NumBuckets, HashSlot) :-
 :- mode update_item_in_bucket(in, in, in, out) is semidet.
 
 update_item_in_bucket(Key, Value, HB0, HB) :-
-    % The procedure body here is a NOT switch on HB0 in the first mode.
+    % The procedure body here is a NOT a switch on HB0 in the first mode.
     % This is because mode analysis eliminates the first two disjuncts,
     % since they cannot possibly generate any solutions, and then removes
     % the disj() wrapper around what has become a one-disjunct disjunction.

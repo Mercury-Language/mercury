@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2018, 2025 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -68,7 +68,7 @@
     % where Var is a variable occurring in Term.
     % If Term is not a valid term of the specified type, return
     % `type_error(SubTerm, ExpectedType, Context, ArgContexts)',
-    % where SubTerm is a sub-term of Term and ExpectedType is the type
+    % where SubTerm is a subterm of Term and ExpectedType is the type
     % expected for that part of Term.
     % Context specifies the file and line number where the
     % offending part of the term was read in from, if available.

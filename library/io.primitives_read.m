@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -24,7 +24,7 @@
 
 :- import_module char.
 
-    % Reads a character (code point) from specified stream. This may
+    % Reads a character (code point) from the specified stream. This may
     % involve converting external character encodings into Mercury's internal
     % character representation and (for text streams) converting OS line
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
@@ -36,7 +36,7 @@
 
 %---------------------%
 
-    % Reads a byte from specified stream.
+    % Reads a byte from the specified stream.
     %
 :- pred read_byte_val(io.text_input_stream::in, result_code::out,
     system_error::out, int::out, io::di, io::uo) is det.
@@ -774,8 +774,8 @@ int     mercury_get_byte(MercuryFilePtr mf);
 //     uintN_t value):
 //
 // Build an n-bit unsigned integer using the bytes stored in the array
-// 'buffer'. The order of the bytes in the buffer are given by 'byte_order'.
-// The result is assigned to the lvalue 'value'
+// 'buffer'. The order of the bytes in the buffer is given by 'byte_order'.
+// The result is assigned to the lvalue 'value'.
 //
 // We have two definitions of this macro, one for big-endian machines
 // and one for little-endian machines.
@@ -813,7 +813,7 @@ int     mercury_get_byte(MercuryFilePtr mf);
 //
 // The result is returned as follows:
 //
-// 'result_code' is set the status code (maybe_incomplete_result_code/0)
+// 'result_code' is set to the status code (maybe_incomplete_result_code/0)
 // for the read.
 // 'result_error' is the errno if an I/O error occurs, and zero otherwise.
 // 'result_incomplete' is the list of bytes read so far for an incomplete

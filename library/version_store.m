@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2011 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2016, 2018, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -124,8 +124,8 @@
     % Whenever the version_array is about to run out of slots, we double
     % its size. We never shrink the version_array.
     %
-    % The slots in the version_array beyond the slot of belonging to
-    % the last allocated mutvar are not meaningful.
+    % The slots in the version_array beyond the slot belonging to the last
+    % allocated mutvar are not meaningful.
     %
 :- type version_store(S)
     --->    version_store(version_array(univ)).

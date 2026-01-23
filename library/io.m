@@ -5511,7 +5511,7 @@ compare_file_id(Result, FileId1, FileId2) :-
     int inode_cmp;
 
     // For compilers other than GCC, glibc defines dev_t as struct (dev_t
-    // is 64 bits, and other compilers may not have a 64 bit arithmetic type).
+    // is 64 bits, and other compilers may not have a 64-bit arithmetic type).
     // XXX This code assumes that dev_t and ino_t do not include padding bits.
     // In practice, that should be OK.
     device_cmp = memcmp(&(FileId1.device), &(FileId2.device),

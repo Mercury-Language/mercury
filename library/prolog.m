@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2003, 2005-2006, 2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2020-2022 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020-2022, 2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -77,17 +77,17 @@
 
 %---------------------------------------------------------------------------%
 %
-% Prolog style predicates for opening and switching streams.
+% Prolog-style predicates for opening and switching streams.
 %
 
     % see(FileName, Result, !IO):
-    % Attempts to open the named file for input, and if successful,
+    % Attempts to open the named file for input and, if successful,
     % sets the current input stream to the newly opened stream.
     % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred see(string::in, io.res::out, io::di, io::uo) is det.
 
-    % Attempts to open a file for binary input, and if successful sets
+    % Attempts to open a file for binary input and, if successful, sets
     % the current binary input stream to the newly opened stream.
     % Result is either 'ok' or 'error(ErrorCode)'.
     %
@@ -102,9 +102,9 @@
     %
 :- pred seen(io::di, io::uo) is det.
 
-    % Closes the current input stream. The current input stream reverts
-    % to standard input. This will throw an io.error exception if
-    % an I/O error occurs.
+    % Closes the current binary input stream.
+    % The current binary input stream reverts to standard input.
+    % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred seen_binary(io::di, io::uo) is det.
 
@@ -113,13 +113,13 @@
     % tell(FileName, Result, !IO):
     % Attempts to open the named file for output, and if successful,
     % sets the current output stream to the newly opened stream.
-    % Result is either 'ok' or 'error(ErrCode)'.
+    % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred tell(string::in, io.res::out, io::di, io::uo) is det.
 
     % Attempts to open a file for binary output, and if successful sets
     % the current binary output stream to the newly opened stream.
-    % As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
+    % As per Prolog tell/1. Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred tell_binary(string::in, io.res::out, io::di, io::uo) is det.
 
@@ -176,7 +176,7 @@ det_arg(ArgumentIndex, Type, Argument) :-
 
 %---------------------------------------------------------------------------%
 %
-% Prolog style predicates for opening and switching streams.
+% Prolog-style predicates for opening and switching streams.
 %
 
 see(File, Result, !IO) :-

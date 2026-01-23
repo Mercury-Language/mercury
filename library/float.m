@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2008,2010, 2012 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -24,7 +24,7 @@
 % axiom "all [X] X = X".
 %
 % XXX Unfortunately the current Mercury implementation does not
-% do that on all platforms, since neither ANSI C nor POSIX provide
+% do that on all platforms, since neither ANSI C nor POSIX provides
 % any portable way of ensuring that floating point operations
 % whose result is not representable will raise a signal rather
 % than returning a NaN. (Maybe C9X will help...?)
@@ -119,7 +119,7 @@
 % Conversion from integer types.
 %
 
-    % Convert an int into float.
+    % Convert an int into a float.
     %
     % The behaviour when the int exceeds the range of what can be exactly
     % represented by a float is undefined.
@@ -332,13 +332,13 @@
 % represent a double, so we return strings for now. Endianness and treatment
 % of special values also needs to be considered.
 
-    % Convert a float to an IEEE single-precision floating point value, then
+    % Convert a float to an IEEE single-precision floating-point value, then
     % return the integer representation of the bit layout of that value as a
     % string.
     %
 :- func float32_bits_string(float::in) = (string::uo) is det.
 
-    % Convert a float to an IEEE double-precision floating point value, then
+    % Convert a float to an IEEE double-precision floating-point value, then
     % return the integer representation of the bit layout of that value as a
     % string.
     %

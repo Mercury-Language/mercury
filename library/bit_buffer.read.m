@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2014-2015, 2018-2019, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -27,7 +27,7 @@
 % regarding programming with unique objects (the compiler does not currently
 % recognise them, hence we are forced to use non-unique modes until
 % the situation is rectified; this places a small burden on the programmer
-% to ensure the correctness of his code that would otherwise be assured
+% to ensure the correctness of their code that would otherwise be assured
 % by the compiler.)
 %
 %---------------------------------------------------------------------------%
@@ -55,8 +55,8 @@
 
     % new(NumBytes, Stream, State) creates a buffer which will read from
     % the stream specified by Stream and State in chunks of NumBytes bytes.
-    % `NumBytes' must at least the size of a Mercury int, given by
-    % int.bits_per_int. If it is less, the size of an int will be used
+    % `NumBytes' must be at least the size of a Mercury int, given by
+    % int.bits_per_int. If it is less, then the size of an int will be used
     % instead.
     %
 :- func new(num_bytes, Stream, State) = read_buffer(Stream, State, Error)

@@ -428,7 +428,7 @@
     %
 :- func rotate_right(uint32, uint) = uint32.
 
-    % unchecked_rotate_left(U, D) = N:
+    % unchecked_rotate_right(U, D) = N:
     %
     % N is the value obtained by rotating the binary representation of U
     % right by an amount given by the lowest 5 bits of D.

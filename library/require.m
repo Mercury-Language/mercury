@@ -72,7 +72,7 @@
 :- func sorry(string, string, string) = _ is erroneous.
 :- pred sorry(string::in, string::in, string::in) is erroneous.
 
-    % unexpected(Module, Message):
+    % unexpected(Module, What):
     %
     % Call error/1 with the string
     % "Module: Unexpected: What".
@@ -82,7 +82,7 @@
 :- func unexpected(string, string) = _ is erroneous.
 :- pred unexpected(string::in, string::in) is erroneous.
 
-    % unexpected(Module, Proc, Message):
+    % unexpected(Module, Proc, What):
     %
     % Call error/1 with the string
     % "Module: Proc: Unexpected: What".
@@ -96,7 +96,7 @@
 
     % require(Goal, Message):
     %
-    % Call goal, and call error(Message) if Goal fails.
+    % Call Goal, and call error(Message) if Goal fails.
     % This is not as useful as you might imagine, since it requires
     % that the goal not produce any output variables. In most circumstances,
     % you should use an explicit if-then-else with a call to error/1,

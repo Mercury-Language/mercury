@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2016-2018, 2021-2023 The Mercury Team.
+% Copyright (C) 2016-2018, 2021-2023, 2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -67,7 +67,7 @@
 :- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
 
     % map_maybe(_, no, no).
-    % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).
+    % map_maybe(P, yes(Value0), yes(Value)) :- P(Value0, Value).
     %
 :- pred map_maybe(pred(T, U), maybe(T), maybe(U)).
 :- mode map_maybe(in(pred(in, out) is det), in, out) is det.

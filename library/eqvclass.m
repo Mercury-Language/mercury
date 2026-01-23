@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999, 2003-2006, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2023, 2025 The Mercury team.
+% Copyright (C) 2014-2018, 2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -37,7 +37,7 @@
 
     % If this item is known to the equivalence class, return the id of its
     % partition. The only use that the caller can make of the partition id
-    % is to check whether two items in the same equivalence calls have the
+    % is to check whether two items in the same equivalence class have the
     % same partition id; that test will succeed if and only if the two
     % items are in the same partition. Partition ids are not guaranteed
     % to stay the same as an eqvclass is updated, so such comparisons will
@@ -131,7 +131,7 @@
     eqvclass(T)::out) is det.
 
     % Return the set of elements equivalent to the given element.
-    % This set will of course include the given element.
+    % This set will, of course, include the given element.
     %
 :- func get_equivalent_elements(eqvclass(T), T) = set(T).
 

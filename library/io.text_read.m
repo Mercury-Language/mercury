@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -216,7 +216,7 @@ read_line_2(Stream, Result, Error, Chars, !IO) :-
 ").
 
 read_line_as_string_2(Stream, FirstCall, Res, Error, String, !IO) :-
-    % XXX This is terribly inefficient, a better approach would be
+    % XXX This is terribly inefficient; a better approach would be
     % to use a buffer like what is done for io.read_file_as_string.
     read_char_code(text_input_stream(Stream), ResultCode, Error0, Char, !IO),
     (
@@ -283,7 +283,7 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
         % for each byte in the file, plus the NUL. This means that the buffer
         % we reserve may be bigger than needed. How much bigger depends on
         % the number of code points in the file that take more than one
-        % UTF-16 code units.
+        % UTF-16 code unit.
         BufferSize0 = FileSize + 1
     else
         BufferSize0 = 4000

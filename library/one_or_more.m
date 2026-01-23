@@ -168,7 +168,7 @@
 
     % index*(List, Position, Elem):
     %
-    % These predicates select an element in a list from it's position.
+    % These predicates select an element in a list from its position.
     % The `index0' preds consider the first element to be element
     % number zero, whereas the `index1' preds consider the first element
     % to be element number one. The `det_' preds call error/1 if the index
@@ -381,7 +381,7 @@
 
     % sort_and_remove_dups(List) = SortedList:
     %
-    % SortedList is List sorted with the second and subsequent occurrence of
+    % SortedList is List sorted with the second and subsequent occurrences of
     % any duplicates removed.
     %
 :- func sort_and_remove_dups(one_or_more(T)) = one_or_more(T).
@@ -483,7 +483,7 @@
     %
     % List is the result of alternating the elements of ListA and ListB,
     % starting with the first element of ListA (followed by the first element
-    % of ListB, then the second element of listA, then the second element
+    % of ListB, then the second element of ListA, then the second element
     % of ListB, etc.). When there are no more elements remaining in one of
     % the lists, the remainder of the nonempty list is appended.
     %

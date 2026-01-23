@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -16,7 +16,7 @@
 % than from the current input stream. The parse_tokens predicate is
 % similar, but it takes a list of tokens rather than a string.
 %
-% The parser is a relatively straight-forward top-down recursive descent
+% The parser is a relatively straightforward top-down recursive descent
 % parser, made somewhat complicated by the need to handle operator precedences.
 % It uses mercury_term_lexer.get_token_list to read a list of tokens.
 % It uses the routines from the ops module to look up operator precedences.
@@ -39,7 +39,7 @@
     --->    eof
             % We have reached the end-of-file.
     ;       error(string, int)
-            % We have found an error described the message string
+            % We have found an error described by the message string
             % on the given line number in the input.
     ;       term(varset(T), term(T)).
             % We have read in the given term with the given varset.
@@ -545,7 +545,7 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
         )
     ;
         !.TokensLeft = token_nil,
-        report_unexpected_eof(expected("a token that can start of (sub)term"),
+        report_unexpected_eof(expected("a token that can start a (sub)term"),
             Term, !.PS),
         OpPriority = tightest_op_priority(OpTable)
     ).
@@ -1305,7 +1305,7 @@ at_token_expected(ExpectedInfo, Got) = ErrorMsg :-
 
 describe_all_open_nest_levels(NestStack) = NestsDesc :-
     Nests = stack.to_list(NestStack),
-    % Nests list open nests from the most recent to the earliest.
+    % Nests lists open nests from the most recent to the earliest.
     % We want to print them out earliest to latest.
     list.reverse(Nests, RevNests),
     describe_open_nest_levels(RevNests, NestDescs),

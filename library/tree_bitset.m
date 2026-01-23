@@ -123,7 +123,7 @@
     is det <= uenum(T).
 
     % insert_new(X, Set0, Set) returns the union of Set and the set
-    % containing only X is Set0 does not contain 'X'; if it does, it fails.
+    % containing only X if Set0 does not contain 'X'; if it does, it fails.
     % Takes O(log(card(Set))) time and space.
     %
 :- pred insert_new(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
@@ -238,7 +238,7 @@
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes somewhere between
     % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
-    % and O(min(card(SetA)), card(SetB)) space.
+    % and O(min(card(SetA), card(SetB))) space.
     %
 :- func intersect(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
 :- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
@@ -330,7 +330,7 @@
     %
 :- func from_set(set.set(T)) = tree_bitset(T) <= uenum(T).
 
-    % to_sorted_list(Set) returns a set.set containing all the members
+    % to_set(Set) returns a set.set containing all the members
     % of Set, in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_set(tree_bitset(T)) = set.set(T) <= uenum(T).
@@ -2274,7 +2274,7 @@ intersect_list(Sets @ [_, _ | _], Set) :-
     % set is often only slightly faster than intersecting that large set
     % with another large set, yet it gets significantly less work done.
     % This is because the bitsets in a small set can be expected to be
-    % considerably sparser that bitsets in large sets.
+    % considerably sparser than bitsets in large sets.
     %
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when intersecting a list of N sets.
@@ -3459,7 +3459,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %         List) :-
 %     OffsetA = HeadA ^ init_offset,
 %     OffsetB = HeadB ^ init_offset,
-%     ( if OffsetA = OffsetB tnen
+%     ( if OffsetA = OffsetB then
 %         ComponentsA = HeadA ^ components,
 %         ComponentsB = HeadB ^ components,
 %         (

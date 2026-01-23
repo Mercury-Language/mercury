@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2019, 2021, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2019, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -27,7 +27,7 @@
 % automatic generation of a DTD.
 % Each functor in a term is given a corresponding well-formed element name
 % in the XML document according to a mapping. Some predefined mappings are
-% provided, but user defined mappings may also be used.
+% provided, but user-defined mappings may also be used.
 %
 % Method 1 vs. Method 2
 % ---------------------
@@ -136,7 +136,7 @@
             % (only available for method 2).
 
     ;       external_dtd(doctype)
-            % Included a reference to an external DTD.
+            % Include a reference to an external DTD.
 
     ;       no_dtd.
             % Do not include any DOCTYPE information.
@@ -178,7 +178,7 @@
 
     % write_xml_header(Stream, MaybeEncoding, !State):
     %
-    % Write an XML header (i.e. `<?xml version="1.0"?>) to the
+    % Write an XML header (i.e. `<?xml version="1.0"?>') to the
     % current file output stream.
     % If MaybeEncoding is yes(Encoding), then include `encoding="Encoding"'
     % in the header.
@@ -213,7 +213,7 @@
     %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the elements
     %   `List', `Nil' and `Tuple' respectively. Arrays are assigned the
     %   `Array' element. The builtin types are assigned the elements `Int',
-    %   `Int8', `Int16', `Int32' `Int64', `UInt', `UInt8', `UInt16, `UInt32',
+    %   `Int8', `Int16', `Int32', `Int64', `UInt', `UInt8', `UInt16', `UInt32',
     %   `UInt64', `String', `Float' and `Char'. All other functors are assigned
     %   elements with the same name as the functor provided the functor name is
     %   well formed and does not start with a capital letter. Otherwise, a
@@ -233,7 +233,7 @@
     %   `simple' scheme are provided. The advantage of this scheme is that
     %   it maps each functor to a unique element. This means that it will
     %   always be possible to generate a DTD using this mapping so long as
-    %   there is only one top level functor and no unsupported types
+    %   there is only one top-level functor and no unsupported types
     %   can appear in terms of the type.
     %
     % A custom mapping can be provided using the `custom' functor. See the
@@ -250,7 +250,7 @@
     ;       custom(element_pred).
 
     % Deterministic procedures with the following signature can be used as
-    % custom functor to element mappings. The inputs to the procedure are
+    % custom functor-to-element mappings. The inputs to the procedure are
     % a type and some information about a functor for that type if the type
     % is a discriminated union. The output should be a well formed XML element
     % name and a list of attributes that should be set for that element.
@@ -444,7 +444,7 @@
     State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
-    % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult, !State):
+    % write_dtd_from_type(Stream, Type, ElementMapping, DTDResult, !State):
     %
     % Write a DTD for the given type to the given stream. If a DTD cannot
     % be generated for Type using ElementMapping then a value other than `ok'
@@ -1016,7 +1016,7 @@ maybe_indent(Stream, Format, Indent, !State) :-
     %   MaybeFieldNames, RemainingMaybeFieldNames, !State):
     %
     % Write an element and all its descendents to the current output stream.
-    % If MaybeFields isn't empty, then its head is used for the `field'
+    % If MaybeFieldNames is not empty, then its head is used for the `field'
     % attribute and the Tail is returned in RemainingMaybeFieldNames.
     % This is so it can be called using foldl2.
     %

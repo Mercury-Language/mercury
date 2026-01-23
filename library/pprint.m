@@ -2,7 +2,7 @@
 % vim:ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2014-2018, 2020, 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020, 2022-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -42,7 +42,7 @@
 % line-breaks to be converted into spaces at the pretty printer's discretion)
 % over docs, I have extended the doc type to include a `GROUP' constructor,
 % and made the appropriate algorithmic changes. Because `UNION' only arises
-% as a consequence of processing a 'GROUP' it turns out to be simpler
+% as a consequence of processing a 'GROUP', it turns out to be simpler
 % to do away with `UNION' altogether and convert clauses that process
 % `UNION' terms to processing `GROUP's.
 %
@@ -115,7 +115,7 @@
 %   Hello
 %      world
 %
-% 4. group("Goodbye " ++ nest(3, line ++ "cruel " ++ line ++ "world")
+% 4. group("Goodbye " ++ nest(3, line ++ "cruel " ++ line ++ "world"))
 %
 %   Goodbye cruel world
 %
@@ -820,7 +820,7 @@ dynamic_cast_to_map_pair(X, MP) :-
 :- pred dynamic_cast_to_tuple(T::in, T::out) is semidet.
 
 dynamic_cast_to_tuple(X, X) :-
-    % If X is a tuple then it's functor name is {}.
+    % If X is a tuple, then its functor name is {}.
     functor(X, canonicalize, "{}", _Arity).
 
 %---------------------------------------------------------------------------%
@@ -953,7 +953,7 @@ layout_best(AccPred, Width, Doc, !LayoutStream) :-
     %
     % Width is the number of characters on a line;
     %
-    % AfterNlStr is the indentation string to we should put after newlines.
+    % AfterNlStr is the indentation string we should put after newlines.
     %
     % Doc is the doc to lay out.
     %

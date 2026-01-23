@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -243,7 +243,7 @@ maybe_delete_stream_info(Stream, !IO) :-
     ).
 
     % Return an integer that is nonzero if and only if we should delete
-    % the information we have about stream when that stream is closed.
+    % the information we have about a stream when that stream is closed.
     % The debugger may need this information in order to display the stream id
     % in a user-friendly manner even after the stream is closed (e.g. after
     % performing a retry after the close), so if debugging is enabled, we

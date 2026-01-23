@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022, 2025 The Mercury team.
+% Copyright (C) 2014-2020, 2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -227,7 +227,7 @@
     % followed by any whitespace. The float_literal_as_string version simply
     % returns the matched string. The float_literal version uses
     % string.to_float to convert the output of float_literal_as_string; this
-    % may return an approximate answer since not all floating point numbers
+    % may return an approximate answer since not all floating-point numbers
     % can be perfectly represented as Mercury floats.
     %
 :- pred float_literal_as_string(src::in, string::out,
@@ -257,7 +257,7 @@
 
 %---------------------------------------------------------------------------%
 
-% Each basic parser combinators has a version that has a separate state
+% Each basic parser combinator has a version that has a separate state
 % argument threaded through the computation, for parsers that e.g.
 % incrementally construct a symbol table.
 

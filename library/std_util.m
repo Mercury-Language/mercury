@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2008 The University of Melbourne.
-% Copyright (C) 2016, 2018, 2020, 2022-2023 The Mercury Team.
+% Copyright (C) 2016, 2018, 2020, 2022-2023, 2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,7 +49,7 @@
 
     % isnt(Pred, X) <=> not Pred(X)
     %
-    % This is useful in higher order programming, e.g.
+    % This is useful in higher-order programming, e.g.
     %   Odds  = list.filter(odd, Xs)
     %   Evens = list.filter(isnt(odd), Xs)
     %
@@ -57,7 +57,7 @@
 
     % negate(Pred) <=> not Pred
     %
-    % This is useful in higher order programming, e.g.
+    % This is useful in higher-order programming, e.g.
     %   expect(negate(Pred), ...)
     %
 :- pred negate((pred)::in((pred) is semidet)) is semidet.

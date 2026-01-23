@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -74,8 +74,8 @@
 
 %---------------------------------------------------------------------------%
 %
-% Rename predicates that specify the rename by giving an explicit
-% variable to variable map.
+% Rename predicates that specify the renaming by giving an explicit
+% variable-to-variable map.
 %
 
     % apply_renaming_in_var(Renaming, Var0, Var):
@@ -151,7 +151,7 @@
 %---------------------------------------------------------------------------%
 %
 % Substitution predicates that specify the substitution by giving
-% an explicit variable to term map.
+% an explicit variable-to-term map.
 %
 
     % apply_substitution_in_term(Substitution, Term0, Term):

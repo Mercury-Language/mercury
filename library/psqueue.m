@@ -14,7 +14,7 @@
 % a map and a priority queue.
 %
 % Psqueues map from priorities to keys and back. This module provides functions
-% and predicates to lookup the priority of a key, to insert and to remove
+% and predicates to look up the priority of a key, to insert and to remove
 % priority-key pairs, to adjust the priority of a given key, and to retrieve
 % the priority/key pair with the highest conceptual priority. However,
 % since in many applications of psqueues, a low number represents high
@@ -175,7 +175,7 @@
 
 % The following part of the interface is not for public consumption;
 % it is intended only for use by the test suite, e.g. psqueue_test.m
-% in tests/hardcoded.
+% in tests/hard_coded.
 %
 % If the implementation is working correctly, then is_semi_heap,
 % is_search_tree, has_key_condition and is_finite_map should always succeed.
@@ -185,7 +185,7 @@
     %
     %   1) the top element has the highest priority and
     %   2) for each node of the loser tree, the priority of the loser is higher
-    %      or equal to the priorities in the subtree from which the loser
+    %      than or equal to the priorities in the subtree from which the loser
     %      originates.
     %
 :- pred is_semi_heap(psqueue(P, K)::in) is semidet.
@@ -287,7 +287,7 @@
                 % The w_max_key contains the highest key in the queue.
                 % It must be equal to either w_key here, or to l_key
                 % in one of the nodes of the tree in the w_losers field.
-                % This is first half of the *key condition*.
+                % This is the first half of the *key condition*.
                 % (The second half is documented just before the l_sort_key
                 % field below.)
                 w_max_key   :: K
@@ -301,8 +301,8 @@
                 % The number of priority/key pairs in this loser tree.
                 % The insertion algorithms use this measure of weight
                 % to keep the loser tree weight balanced. In our case,
-                % this means that either both subtrees have at most element,
-                % or if the ratio of the weights of the two subtrees
+                % this means that either both subtrees have at most one
+                % element, or if the ratio of the weights of the two subtrees
                 % (weight of the heavier subtree divided by the weight
                 % of the lighter subtree) is no more than the limit ratio
                 % given the balance_omega function.
@@ -333,8 +333,8 @@
                 % from l_left_tree. It can never appear in l_right_tree.
                 %
                 % The key in l_sort_key must appear as a key (w_key or l_key)
-                % *somewhere* in the entire psqueue. This is second half of
-                % the *key condition*.
+                % *somewhere* in the entire psqueue. This is the second half
+                % of the *key condition*.
                 l_left_tree     :: loser_tree(P, K),
                 l_sort_key      :: K,
                 l_right_tree    :: loser_tree(P, K)
@@ -342,7 +342,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% This type defines an alternate ways of looking at psqueues: as a tournament
+% This type defines an alternate way of looking at psqueues: as a tournament
 % between priority/key pairs.
 %
 % Ralf Hinze's paper also talks about two other views, the min view and

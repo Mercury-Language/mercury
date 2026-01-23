@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -229,8 +229,8 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         &construct_info);
     MR_restore_transient_registers();
 
-    // Get the functor name and arity, construct the list  of type_infos
-    // for arguments.
+    // Get the functor name and arity, then construct the list of type_infos
+    // for the arguments.
     if (success) {
         MR_make_aligned_string(FunctorName, construct_info.functor_name);
         arity = construct_info.arity;
@@ -470,7 +470,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 // in terms of issues such as scopes, and it is easier to debug.
 //
 // XXX ARG_PACK
-// Once this code has been operation for a while without problems,
+// Once this code has been in operation for a while without problems,
 // we should consider turning it into a macro.
 
 extern void         ML_copy_memory_cell_args(MR_Word *arg_list_ptr,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -72,7 +72,7 @@
     % out exactly as is (unquoted). If the argument is of type integer (i.e.
     % an arbitrary precision integer), then its decimal representation will be
     % printed. If the argument is of type univ, then the value stored in the
-    % the univ will be printed out, but not the type. If the argument is of
+    % univ will be printed out, but not the type. If the argument is of
     % type date_time, it will be printed out in the same form as the string
     % returned by the function date_to_string/1. If the argument is of type
     % duration, it will be printed out in the same form as the string
@@ -460,7 +460,7 @@ print(Stream, NonCanon, Term, !State) :-
     % The write predicate is required to output terms in a form that is
     % round-trippable, which means when the string that we write out
     % is read back in, the result should be *exactly* the term we wrote out.
-    % For the all the integral types except int itself, this means write
+    % For all the integral types except int itself, this means write
     % has to append a suffix (u, i8, u8 etc), which print does not append.
     % For strings and characters, write adds quotes, while print does not.
     % And so on.
@@ -483,7 +483,7 @@ print(Stream, NonCanon, Term, !State) :-
     then
         % The code for each type we handle here calls the code for
         % the generic case if the dynamic cast to the expected type fails.
-        % The reason why do that is that we want to do the right thing
+        % The reason why we do that is that we want to do the right thing
         % in two very unlikely but possible cases: that we add new type
         % constructors to these modules with the same names but different
         % arities, and that the user links into their programs their own
@@ -642,7 +642,7 @@ print(Stream, NonCanon, Term, !State) :-
 
 print_quoted(Stream, NonCanon, Term, !State) :-
     write(Stream, NonCanon, Term, !State).
-% When we have runtime type classes membership tests, then instead
+% When we have runtime type class membership tests, then instead
 % of write(Term), we will want to do something like
 %   ( if univ_to_type_class(Univ, Portrayable) then
 %       portray(Stream, Portrayable, !State)

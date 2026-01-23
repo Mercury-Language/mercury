@@ -6,12 +6,12 @@
 %---------------------------------------------------------------------------%
 %
 % File: random.sfc16.m.
-% Main author: Mark Brown
+% Main author: Mark Brown.
 % Stability: high.
 %
 % 16-bit Small Fast Counting generator, by Chris Doty-Humphrey.
 %
-% http://pracrand.sourceforge.net/
+% https://pracrand.sourceforge.net/
 %
 % From the above:
 % "[A] good small chaotic RNG driven by a bad smaller linear RNG.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2022, 2025 The Mercury team.
+% Copyright (C) 2016-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -9,7 +9,7 @@
 % Main author: juliensf
 % Stability: high.
 %
-% Predicates and functions for dealing with unsigned machine sized integer
+% Predicates and functions for dealing with unsigned machine-size integer
 % numbers.
 %
 %---------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
     %
 :- pred from_int(int::in, uint::out) is semidet.
 
-    % As above, but throw an exception instead of failing.
+    % As above, but throws an exception instead of failing.
     %
 :- func det_from_int(int) = uint.
 
@@ -117,7 +117,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint::in) rem (uint::in) = (uint::uo) is det.
 

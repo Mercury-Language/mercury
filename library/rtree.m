@@ -51,7 +51,7 @@
     func size(K) = float,
 
         % Return a region that contains both input regions.
-        % The region returned should be minimal region that contains
+        % The region returned should be the minimal region that contains
         % both input regions.
         %
     func bounding_region(K, K) = K,
@@ -110,7 +110,7 @@
     %
     % Search for all values V with associated keys K that satisfy
     % KTest(K) /\ VTest(V). The search assumes that for all K1, K2
-    % such that K1 contains K2, then if KTest(K2) holds we have that
+    % such that K1 contains K2, if KTest(K2) holds we have that
     % KTest(K1) also holds.
     %
     % We have that:
@@ -133,7 +133,7 @@
     % satisfied. Fail if no such key-value pair exists.
     %
     % The search assumes that for all K1, K2 such that
-    % K1 contains K2, then if KTest(K2, L2) holds we have that
+    % K1 contains K2, if KTest(K2, L2) holds we have that
     % KTest(K1, L1) holds with L2 >= L1.
     %
     % If there exist multiple key-value pairs that satisfy the above
@@ -180,12 +180,12 @@
 :- type interval
     --->    interval(float, float).
 
-    % A 2D axis aligned box represented as box(XMin, XMax, YMin, YMax).
+    % A 2D axis-aligned box represented as box(XMin, XMax, YMin, YMax).
     %
 :- type box
     --->    box(float, float, float, float).
 
-    % A 3D axis aligned box represented as
+    % A 3D axis-aligned box represented as
     % box(XMin, XMax, YMin, YMax, ZMin, ZMax).
     %
 :- type box3d
@@ -336,7 +336,7 @@ insert_2(Node, K, V, T) :-
 % (Four-nodes should be split when they are encountered so we will never need
 % to insert into them.)
 %
-% In either case the algorithm is the same (c.f. the ChooseLeaf algorithm in
+% In either case the algorithm is the same (cf. the ChooseLeaf algorithm in
 % the paper by Guttman).
 %
 % We insert the new Value into the subtree whose associated region needs the
@@ -395,9 +395,9 @@ choose_subtree(Key, KA, KB, KC) = Result :-
             min3_second, min3_third, Result)
     ).
 
-    % D1 and D2 are the enlargement to the two rectangles caused by adding
+    % D1 and D2 are the enlargements to the two rectangles caused by adding
     % the new key. We choose the Key that causes the smallest enlargement.
-    % In the event of a tie with choose the Key with the smallest area.
+    % In the event of a tie we choose the Key with the smallest area.
     %
 :- pred include_min(float::in, float::in, float::in, float::in,
     min_of_three_result::in, min_of_three_result::in,
@@ -748,7 +748,7 @@ reinsert_deleted_subtrees([orphan(K, T) | DLs], Depth, T0, T2) :-
         reinsert_deleted_subtrees(DLs, Depth + 1, T1, T2)
     ).
 
-    % The code here is almost identical to 'insert', however we are
+    % The code here is almost identical to 'insert'; however, we are
     % inserting a tree at depth D0 as opposed to data to a leaf.
     %
 :- func insert_tree(rtree_2(K, V), K, rtree_2(K, V), int, int) =
@@ -1017,7 +1017,7 @@ maybe_limit(K, P, L, E) :-
     compare((<), E, L).
 
     % Algorithm: searches for the first element by traversing the tree in
-    % the order induced by KTest. If we find a solution, we try and find
+    % the order induced by KTest. If we find a solution, the we try to find
     % a better solution by setting a tighter maximum.
     %
     % We avoid searching the entire tree by (1) not searching subtrees that
@@ -1359,7 +1359,7 @@ search_general_fold(KTest, VPred, one(K, V), !Acc) :-
 search_general_fold(KTest, VPred, rtree(T), !Acc) :-
     search_general_fold_2(T, KTest, VPred, !Acc).
 
-    % Similar to search_general, except call accumulator over values.
+    % Similar to search_general, except it calls the accumulator over values.
     %
 :- pred search_general_fold_2(rtree_2(K, V), pred(K),
     pred(K, V, A, A), A, A).

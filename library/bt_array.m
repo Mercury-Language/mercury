@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997,1999-2000,2002-2003,2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -54,7 +54,7 @@
 % Reading array elements.
 %
 
-    % lookup returns the Nth element of a bt_array.
+    % lookup returns the N'th element of a bt_array.
     % It is an error if the index is out of bounds.
     %
 :- func lookup(bt_array(T), int) = T.
@@ -75,7 +75,7 @@
 % Writing array elements.
 %
 
-    % set sets the nth element of a bt_array, and returns the resulting
+    % set sets the N'th element of a bt_array, and returns the resulting
     % bt_array. It is an error if the index is out of bounds.
     %
 :- func set(bt_array(T), int, T) = bt_array(T).
@@ -163,7 +163,7 @@
 %
 
     % from_list(Low, List, BtArray) takes a list (of possibly zero
-    % length), and returns a bt_array containing % those elements in the same
+    % length), and returns a bt_array containing those elements in the same
     % order that they occurred in the list. The lower bound of the new array
     % is Low.
     %

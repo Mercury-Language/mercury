@@ -15,7 +15,7 @@
 % If the integers being stored are closely grouped, a sparse_bitset
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the
-% tree-of-elements representations provided by set_bbbtree.m, set_tree234.
+% tree-of-elements representations provided by set_bbbtree.m, set_tree234.m
 % and set_ctree234.m.
 %
 % A sparse bitset is represented as a sorted list, with each element
@@ -80,7 +80,7 @@
 % The fat_sparse_bitset implementation effectively replaces two two-word cells
 % with a single three-word cell. This reduces initialization cost from writing
 % four words to memory to writing three, but this is usually immaterial,
-% because on todays processors, which are usually superscalar and have write
+% because on today's processors, which are usually superscalar and have write
 % buffers, those writes are effectively free. There is also no real advantage
 % in memory usage, because most memory allocators will allocate a four-word
 % block for a three-word request. This includes the Boehm-Demers-Weiser system
@@ -91,7 +91,7 @@
 % unused word allocated in each cell to represent up to another word's worth
 % of items. In cases where this word contains at least one set bit, this
 % is a worthwhile gain; in cases where this word is usually all zeroes,
-% there will be no gain, but the (thanks to write buffers) the initialization
+% there will be no gain, but (thanks to write buffers) the initialization
 % cost will typically be negligible as well. There is the additional cost
 % that each operation on the bits associated with an offset will either
 % have to select which word of bits it applies to, or has to apply to both
@@ -231,14 +231,14 @@
 
     % remove_list(Items, Set0, Set) returns in Set the difference of Set0
     % and the set containing all the elements of Items, failing if any element
-    % of Item is not in Set0. Same as `subset(list_to_set(Items), Set0),
+    % of Items is not in Set0. Same as `subset(list_to_set(Items), Set0),
     % difference(Set0, list_to_set(Items), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in,
     fatter_sparse_bitset(T)::in, fatter_sparse_bitset(T)::out) is semidet
     <= uenum(T).
 
-    % remove_leq(Set, Item) returns returns the set containing all the
+    % remove_leq(Set, Item) returns the set containing all the
     % elements of Set whose enum forms are strictly greater than
     % the enum form of Item.
     %
@@ -248,7 +248,7 @@
     fatter_sparse_bitset(T)::in, fatter_sparse_bitset(T)::out) is det
     <= uenum(T).
 
-    % remove_gt(Set, Item) returns returns the set containing all the elements
+    % remove_gt(Set, Item) returns the set containing all the elements
     % of Set whose enum forms are less than or equal to the enum form of Item.
     %
 :- func remove_gt(fatter_sparse_bitset(T), T) = fatter_sparse_bitset(T)
@@ -313,7 +313,7 @@
     % intersect(SetA, SetB) returns the intersection of SetA and SetB.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
-    % O(min(rep_size(SetA)), rep_size(SetB)) space.
+    % O(min(rep_size(SetA), rep_size(SetB))) space.
     %
 :- func intersect(fatter_sparse_bitset(T), fatter_sparse_bitset(T))
     = fatter_sparse_bitset(T).
@@ -722,7 +722,7 @@ member(Item::out, fatter_sparse_bitset(Elems)::in) :-
     ( if from_uint(Index, ItemPrime) then
         Item = ItemPrime
     else
-        % We only apply from_uint/1 to integers returned
+        % We only apply from_uint/2 to integers returned
         % by to_uint/1, so it should never fail.
         unexpected($pred, "`enum.from_uint/2' failed")
     ).
@@ -1214,7 +1214,7 @@ intersect_list([Set | Sets], Section) :-
     % a small set is often only slightly faster than intersecting
     % that large set with another large set, yet it gets significantly
     % less work done. This is because the bitsets in a small set
-    % can be expected to be considerably sparser that bitsets in large sets.
+    % can be expected to be considerably sparser than bitsets in large sets.
     %
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when unioning a list of N sets.
@@ -1353,7 +1353,7 @@ divide_nodes(Pred, bitset_cons(Offset, BitsLo, BitsHi, Tail),
         OutNodes = make_bitset_cons(Offset, OutLo, OutHi, OutNodesTail)
     ).
 
-    % Do a binary search for the 1 bits in an int.
+    % Do a binary search for the 1 bits in a uint.
     %
 :- pred divide_bits(pred(T)::in(pred(in) is semidet),
     uint::in, uint::in, uint::in, uint::in,
@@ -1535,8 +1535,8 @@ list_to_set_get_runs([HeadItem | TailItems], !Runs) :-
     % This predicate is agnostic about the direction of the run,
     % because it directly handles only the first bitset_elem.
     % Once it runs out of items that map to this bitset_elem,
-    % the algorithm is forced use the enum value of the next item
-    % to choose a direction. According, we delegate getting the rest
+    % the algorithm is forced to use the enum value of the next item
+    % to choose a direction. Accordingly, we delegate getting the rest
     % of the run to one of list_to_set_get_{ascending,descending}_run.
     %
 :- pred list_to_set_get_run(uint::in, uint::in, uint::in,

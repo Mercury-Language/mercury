@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2021, 2025 The Mercury team.
+% Copyright (C) 2017-2021, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -206,7 +206,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (uint8::in) rem (uint8::in) = (uint8::uo) is det.
 
@@ -317,7 +317,7 @@
 
     % reverse_bits(A) = B:
     %
-    % B is the is value that results from reversing the bits in the binary
+    % B is the value that results from reversing the bits in the binary
     % representation of A.
     %
 :- func reverse_bits(uint8) = uint8.
@@ -343,7 +343,7 @@
     %
 :- func rotate_right(uint8, uint) = uint8.
 
-    % unchecked_rotate_left(U, D) = N:
+    % unchecked_rotate_right(U, D) = N:
     %
     % N is the value obtained by rotating the binary representation of U
     % right by an amount given by the lowest 3 bits of D.
@@ -422,7 +422,7 @@
 % Prettyprinting.
 %
 
-    % Convert an uint8 to a pretty_printer.doc for formatting.
+    % Convert a uint8 to a pretty_printer.doc for formatting.
     %
 :- func uint8_to_doc(uint8) = pretty_printer.doc.
 :- pragma obsolete(func(uint8_to_doc/1), [pretty_printer.uint8_to_doc/1]).

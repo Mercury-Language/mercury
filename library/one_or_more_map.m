@@ -209,7 +209,7 @@
     %
     % - if a key occurs in both MultiMapA and MultiMapB, then the values
     %   corresponding to that key in MultiMap will be the concatenation
-    %   of the values to that key from MultiMapA and MultiMapB; while
+    %   of the values for that key from MultiMapA and MultiMapB; while
     % - if a key occurs in only one of MultiMapA and MultiMapB, then
     %   the values corresponding to it in that map will be carried over
     %   to MultiMap.
@@ -309,7 +309,7 @@
 :- pred sorted_keys(one_or_more_map(K, V)::in, list(K)::out) is det.
 
     % Given a one_or_more_map, return a list of all the keys in it
-    % as a set
+    % as a set.
     %
 :- func keys_as_set(one_or_more_map(K, V)) = set(K).
 :- pred keys_as_set(one_or_more_map(K, V)::in, set(K)::out) is det.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997, 2000, 2003, 2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -137,7 +137,7 @@
 
     % Drop the given number of initial items from the given random access list.
     %
-    % Returns the list unchanged if the number of elements to drop is zero
+    % Return the list unchanged if the number of elements to drop is zero
     % or negative.
     %
     % Fail if the list does not have at least that number of elements.
@@ -207,7 +207,7 @@
     % because the usual use case is that the successive calls to Func or Pred
     % accumulate pieces of information.) The initial value of the accumulator
     % is Start, each call to Func or Pred updates it to the next value, and
-    % foldl returns its final value as End.
+    % foldr returns its final value as End.
     %
 :- func foldr(func(T, A) = A, ra_list(T), A) = A.
 :- pred foldr(pred(T, A, A), ra_list(T), A, A).
@@ -241,7 +241,7 @@
     % in Okasaki's representation. This requires fewer memory allocations
     % when constructing ra_lists, and fewer dependent loads when traversing
     % existing ra_lists. (It may also require less memory, though with Boehm,
-    % each three argument cons cell requires a four word block.)
+    % each three-argument cons cell requires a four word block.)
     %
 :- type ra_list(T)
     --->    nil
@@ -249,7 +249,7 @@
     ;       cons(int, ra_list_bintree(T), ra_list(T)).
             % cons(Size, BinTree, Rest):
             %
-            % The list contains the elements of BinTree, followed
+            % The list contains the elements of BinTree, followed by
             % the elements of Rest. Each BinTree must be a perfect balanced
             % binary tree, which means that all their levels, including their
             % lowest levels, must be completely filled. The Size in each cons

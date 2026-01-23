@@ -109,7 +109,7 @@
 :- func 'elem :='(int, int, version_array2d(T), T) = version_array2d(T).
 :- func 'uelem :='(uint, uint, version_array2d(T), T) = version_array2d(T).
 
-    % lists(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN])) =
+    % lists(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])) =
     %     [[X11, ..., X1N], ..., [XM1, ..., XMN]]
     %
 :- func lists(version_array2d(T)) = list(list(T)).
@@ -121,17 +121,17 @@
     %
 :- func copy(version_array2d(T)) = version_array2d(T).
 
-    % resize(OldVersionArray2d, NumRows, NumRows, DefaultValue)
+    % resize(OldVersionArray2d, NumRows, NumColumns, DefaultValue)
     %   = VersionArray2d:
-    % uresize(OldVersionArray2d, NumRows, NumRows, DefaultValue)
+    % uresize(OldVersionArray2d, NumRows, NumColumns, DefaultValue)
     %   = VersionArray2d:
     %
-    % Returns a copy of OldVersionArray2d that is resized to NumRows * NumRows.
-    % Items with coordinates that exist in OldVersionArray2d
-    % are copied from OldVersionArray2d; all other items are initialised
-    % to DefaultValue.
+    % Returns a copy of OldVersionArray2d that is resized to
+    % NumRows * NumColumns. Items with coordinates that exist in
+    % OldVersionArray2d are copied from OldVersionArray2d; all other items
+    % are initialised to DefaultValue.
     %
-    % Throws an exception if either NumRows < 0 or NumRows < 0.
+    % Throws an exception if either NumRows < 0 or NumColumns < 0.
     %
 :- func resize(version_array2d(T), int, int, T) = version_array2d(T).
 :- func uresize(version_array2d(T), uint, uint, T) = version_array2d(T).

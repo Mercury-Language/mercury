@@ -15,7 +15,7 @@
 % If the integers being stored are closely grouped, a sparse_bitset
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the
-% tree-of-elements representations provided by set_bbbtree.m, set_tree234.
+% tree-of-elements representations provided by set_bbbtree.m, set_tree234.m
 % and set_ctree234.m.
 %
 % A sparse bitset is represented as a sorted list, with each element
@@ -170,14 +170,14 @@
 
     % remove_list(Items, Set0, Set) returns in Set the difference of Set0
     % and the set containing all the elements of Items, failing if any element
-    % of Item is not in Set0. Same as `subset(list_to_set(Items), Set0),
+    % of Items is not in Set0. Same as `subset(list_to_set(Items), Set0),
     % difference(Set0, list_to_set(Items), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
     <= uenum(T).
 
-    % remove_leq(Set, Item) returns returns the set containing all the
+    % remove_leq(Set, Item) returns the set containing all the
     % elements of Set whose enum forms are strictly greater than
     % the enum form of Item.
     %
@@ -185,7 +185,7 @@
 :- pred remove_leq(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= uenum(T).
 
-    % remove_gt(Set, Item) returns returns the set containing all the elements
+    % remove_gt(Set, Item) returns the set containing all the elements
     % of Set whose enum forms are less than or equal to the enum form of Item.
     %
 :- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
@@ -246,7 +246,7 @@
     % intersect(SetA, SetB) returns the intersection of SetA and SetB.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
-    % O(min(rep_size(SetA)), rep_size(SetB)) space.
+    % O(min(rep_size(SetA), rep_size(SetB))) space.
     %
 :- func intersect(fat_sparse_bitset(T), fat_sparse_bitset(T))
     = fat_sparse_bitset(T).
@@ -644,7 +644,7 @@ member(Item::out, fat_sparse_bitset(Elems)::in) :-
     ( if from_uint(Index, ItemPrime) then
         Item = ItemPrime
     else
-        % We only apply from_uint/1 to integers returned
+        % We only apply from_uint/2 to integers returned
         % by to_uint/1, so it should never fail.
         unexpected($pred, "`enum.from_uint/2' failed")
     ).
@@ -1092,7 +1092,7 @@ intersect_list([Set | Sets], Section) :-
     % a small set is often only slightly faster than intersecting
     % that large set with another large set, yet it gets significantly
     % less work done. This is because the bitsets in a small set
-    % can be expected to be considerably sparser that bitsets in large sets.
+    % can be expected to be considerably sparser than bitsets in large sets.
     %
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when unioning a list of N sets.
@@ -1399,14 +1399,14 @@ list_to_set_get_runs([HeadItem | TailItems], !Runs) :-
     % Each bitset_elem consists of items whose enum form maps to
     % the same offset.
     %
-    % Return up the bitset_elems in the run in RunElems.
+    % Return the bitset_elems in the run in RunElems.
     % Return the items beyond the run in LeftOverItems.
     %
     % This predicate is agnostic about the direction of the run,
     % because it directly handles only the first bitset_elem.
     % Once it runs out of items that map to this bitset_elem,
-    % the algorithm is forced use the enum value of the next item
-    % to choose a direction. According, we delegate getting the rest
+    % the algorithm is forced to use the enum value of the next item
+    % to choose a direction. Accordingly, we delegate getting the rest
     % of the run to one of list_to_set_get_{ascending,descending}_run.
     %
 :- pred list_to_set_get_run(uint::in, uint::in, list(T)::in, list(T)::out,

@@ -2,22 +2,23 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009 The University of Melbourne
-% Copyright (C) 2014, 2018, 2024-2025 The Mercury team.
+% Copyright (C) 2014, 2018, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
+%
 % File: bit_buffer.m.
 % Main author: stayl.
 % Stability: medium.
 %
 % A bit buffer provides an interface between bit-oriented I/O requests
-% and byte-oriented streams.  The useful part of the interface is defined
+% and byte-oriented streams. The useful part of the interface is defined
 % in bit_buffer.read and bit_buffer.write.
 %
 % CAVEAT: the user is referred to the documentation in the header
 % of array.m regarding programming with unique objects (the compiler
 % does not currently recognise them, hence we are forced to use
 % non-unique modes until the situation is rectified; this places
-% a small burden on the programmer to ensure the correctness of his
+% a small burden on the programmer to ensure the correctness of their
 % code that would otherwise be assured by the compiler.)
 %
 %---------------------------------------------------------------------------%
@@ -43,7 +44,7 @@
 :- instance stream.stream(error_stream, error_state).
 :- instance stream.input(error_stream, error_state).
 :- instance stream.bulk_reader(error_stream, byte_index, bitmap,
-        error_state, error_stream_error).
+    error_state, error_stream_error).
 
 :- instance stream.output(error_stream, error_state).
 :- instance stream.writer(error_stream, bitmap.slice, error_state).
@@ -91,7 +92,7 @@
     % The bitmap has room for the chunk size given as an argument
     % to `new', plus a word.
     %
-    % This means that a for a write buffer a word can always
+    % This means that for a write buffer a word can alway
     % be written to the buffer, and the buffer will be flushed
     % if the position is greater than the chunk size.
     %

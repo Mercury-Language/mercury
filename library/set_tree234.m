@@ -249,7 +249,7 @@
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in
-    % DivideBySet; OutPart consists of those elements of which are
+    % DivideBySet; OutPart consists of those elements which are
     % not in DivideBySet.
     %
 :- pred divide_by_set(set_tree234(T)::in, set_tree234(T)::in,
@@ -1884,7 +1884,7 @@ det_remove_list(List, !Set) :-
 %---------------------%
 
 remove_least(E, Tin, Tout) :-
-    % The algorithm we use similar to delete, except that we
+    % The algorithm we use is similar to delete, except that we
     % always go down the left subtree.
     do_remove_least(Tin, E, Tout, _).
 
@@ -1952,7 +1952,7 @@ do_remove_least(Tin, E, Tout, RH) :-
 %
 % The input to the following group of predicates are the components
 % of a two-, three- or four-node in which the height of the indicated
-% subtree is one less that it should be. If it is possible to increase
+% subtree is one less than it should be. If it is possible to increase
 % the height of that subtree by moving into it elements from its
 % neighboring subtrees, do so, and return the resulting tree with RH
 % set to no. Otherwise, return a balanced tree whose height is reduced

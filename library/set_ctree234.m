@@ -227,7 +227,7 @@
     %
 :- func intersect_list(list(set_ctree234(T))) = set_ctree234(T).
 
-    % power_intersect(A, B) is true if-and-only-if B is the intersection
+    % power_intersect(A) = B is true if-and-only-if B is the intersection
     % of all the sets in A.
     %
 :- func power_intersect(set_ctree234(set_ctree234(T))) = set_ctree234(T).
@@ -522,7 +522,7 @@
 % set_tree234.set_tree234 is an abstract exported type, since the predicates
 % that output set_ctree234s need access to the internals of the tree.
 % For now, we have chosen code duplication as a lesser evil than
-% to exporting the internals of set_tree234s. The lack of module qualification
+% exporting the internals of set_tree234s. The lack of module qualification
 % on code that works with these trees makes duplicating code between the
 % modules a bit easier.
 
@@ -1911,9 +1911,9 @@ do_remove_least(Tin, E, Tout, RH) :-
 
 %---------------------%
 %
-% The input to the following group of predicates are the components
+% The inputs to the following group of predicates are the components
 % of a two-, three- or four-node in which the height of the indicated
-% subtree is one less that it should be. If it is possible to increase
+% subtree is one less than it should be. If it is possible to increase
 % the height of that subtree by moving into it elements from its
 % neighboring subtrees, do so, and return the resulting tree with RH
 % set to no. Otherwise, return a balanced tree whose height is reduced
@@ -2721,7 +2721,8 @@ rev_sorted_list_to_set(List) = ct(Len, Tree) :-
     list.length(List, Len),
     ( if Len = 0 then
         % We can handle the Len = 0 case here just once, or we can handle it
-        % lots of times in do_from_sorted_list. The former is more efficient.
+        % lots of times in do_from_rev_sorted_list. The former is more
+        % efficient.
         Tree = empty
     else
         find_num_234_levels(Len, Level, AllThrees),
