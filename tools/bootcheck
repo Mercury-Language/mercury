@@ -2187,7 +2187,7 @@ then
     export DIFF_OPTS
 fi
 
-if "$env_is_msys2_native"
+if "${windows}"
 then
     DIFF_OPTS="${DIFF_OPTS:-} -u --strip-trailing-cr"
     export DIFF_OPTS
