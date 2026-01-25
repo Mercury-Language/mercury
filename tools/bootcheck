@@ -656,9 +656,9 @@ SED=${SED:-sed}
 
 #-----------------------------------------------------------------------------#
 
-# Are we in one of the MSYS2 environments on Windows? If so, the work out which
-# one and set up any necessary path translation and diff options. We are
-# concerned with two classes of MSYS2 environment:
+# Are we in one of the MSYS2 environments on Windows? If so, then work out
+# which one and set up any necessary path translation and diff options.
+# We are concerned with two classes of MSYS2 environment:
 #
 # 1. MSYS. This environment is similar to Cygwin. Executables are linked
 # against msys-2.0.dll, which is a POSIX emulation layer. In this environment

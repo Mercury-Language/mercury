@@ -283,7 +283,7 @@ Changes to the Mercury standard library
 * The following type has had its typeclass memberships changed:
 
     - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
-     and is no longer an instance of the `enum` typeclass.
+      and is no longer an instance of the `enum` typeclass.
 
 * The following predicates and functions have been added:
 
