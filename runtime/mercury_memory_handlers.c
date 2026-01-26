@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998, 2000, 2002, 2005-2007, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2020 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020, 2023, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the signal handlers for memory zones.
@@ -750,7 +750,7 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 
     // Pass exception back to upper handler. In most cases, this means
     // activating UnhandledExceptionFilter, which will display a dialog box
-    // asking to user ro activate the Debugger or simply to kill
+    // asking the user to activate the Debugger or simply to kill
     // the application.
 
     return  EXCEPTION_CONTINUE_SEARCH;
