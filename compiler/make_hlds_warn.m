@@ -95,6 +95,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.foreign.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
@@ -108,7 +110,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module require.
 :- import_module set.
@@ -891,59 +892,6 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
             quote_list_to_color_pieces(color_subject, "and", [],
                 UnmentionedVars),
         DoDoes = "do"
-    ).
-
-    % c_code_to_name_list(Code, List) is true iff List is a list of the
-    % identifiers used in the C code in Code.
-    %
-:- pred c_code_to_name_list(string::in, list(string)::out) is det.
-
-c_code_to_name_list(Code, List) :-
-    string.to_char_list(Code, CharList),
-    c_code_to_name_list_2(CharList, List).
-
-:- pred c_code_to_name_list_2(list(char)::in, list(string)::out) is det.
-
-c_code_to_name_list_2(C_Code, List) :-
-    get_first_c_name(C_Code, NameCharList, TheRest),
-    (
-        NameCharList = [],
-        % no names left
-        List = []
-    ;
-        NameCharList = [_ | _],
-        c_code_to_name_list_2(TheRest, Names),
-        string.from_char_list(NameCharList, Name),
-        List = [Name | Names]
-    ).
-
-:- pred get_first_c_name(list(char)::in, list(char)::out, list(char)::out)
-    is det.
-
-get_first_c_name([], [], []).
-get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
-    ( if char.is_alnum_or_underscore(C) then
-        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
-        NameCharList = [C | NameCharList0]
-    else
-        % Strip off any characters in the C code which don't form part
-        % of an identifier.
-        get_first_c_name(CodeChars, NameCharList, TheRest)
-    ).
-
-:- pred get_first_c_name_in_word(list(char)::in, list(char)::out,
-    list(char)::out) is det.
-
-get_first_c_name_in_word([], [], []).
-get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
-    ( if char.is_alnum_or_underscore(C) then
-        % There are more characters in the word.
-        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
-        NameCharList = [C|NameCharList0]
-    else
-        % The word is finished.
-        NameCharList = [],
-        TheRest = CodeChars
     ).
 
 :- pred is_singleton_var(set_of_progvar::in,

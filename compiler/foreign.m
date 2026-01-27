@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,6 +122,13 @@
 
 %-----------------------------------------------------------------------------%
 
+    % c_code_to_name_list(Code, List) is true iff List is a list of the
+    % identifiers used in the C code in Code.
+    %
+:- pred c_code_to_name_list(string::in, list(string)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
     %
@@ -136,6 +143,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 
+:- import_module char.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -500,6 +508,57 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
             WantedLang = Lang
         ),
     list.filter(IsWanted, Exports0, LangExports, NotLangExports).
+
+%-----------------------------------------------------------------------------%
+
+c_code_to_name_list(Code, List) :-
+    string.to_char_list(Code, CharList),
+    c_code_to_name_list_2(CharList, List).
+
+:- pred c_code_to_name_list_2(list(char)::in, list(string)::out) is det.
+
+c_code_to_name_list_2(C_Code, List) :-
+    get_first_c_name(C_Code, NameCharList, TheRest),
+    (
+        NameCharList = [],
+        % no names left
+        List = []
+    ;
+        NameCharList = [_ | _],
+        c_code_to_name_list_2(TheRest, Names),
+        string.from_char_list(NameCharList, Name),
+        List = [Name | Names]
+    ).
+
+:- pred get_first_c_name(list(char)::in, list(char)::out, list(char)::out)
+    is det.
+
+get_first_c_name([], [], []).
+get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
+    ( if char.is_alnum_or_underscore(C) then
+        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
+        NameCharList = [C | NameCharList0]
+    else
+        % Strip off any characters in the C code which don't form part
+        % of an identifier.
+        get_first_c_name(CodeChars, NameCharList, TheRest)
+    ).
+
+:- pred get_first_c_name_in_word(list(char)::in, list(char)::out,
+    list(char)::out) is det.
+
+get_first_c_name_in_word([], [], []).
+get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
+    ( if char.is_alnum_or_underscore(C) then
+        % There are more characters in the word.
+        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
+        NameCharList = [C|NameCharList0]
+    else
+        % The word is finished.
+        NameCharList = [],
+        TheRest = CodeChars
+    ).
+
 
 %-----------------------------------------------------------------------------%
 
