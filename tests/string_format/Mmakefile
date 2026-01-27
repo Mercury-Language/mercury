@@ -4,6 +4,12 @@
 
 TESTS_DIR = ..
 THIS_DIR = string_format
+# We execute the tests in this directory one at a time because all the tests
+# use the same library, string_format_lib.m. We *could* create a separate
+# copy of this library for each test case, updated automatically if a master
+# copy is changed, which would allow us to execute the tests in parallel.
+# However, there is no point, because the tests in this directory are
+# fast enough even with -j1.
 MAYBE_J1 = -j1
 
 #-----------------------------------------------------------------------------#
@@ -31,23 +37,16 @@ STRING_FORMAT_PROGS = \
 	string_format_uint64_x \
 	string_format_x
 
-# The tests don't work in the *.agc grades, because I think they
-# take too long to finish and the CPU time limit is breached.
+# The tests don't work in the *.agc grades, because I (petdr) think
+# they take too long to finish, and the CPU time limit is breached.
+# NOTE The above assertion was added in 2002. CPU speeds have improved
+# since then, but since we have also stopped working on, and caring about,
+# .agc grades, there is no point in testing whether the assertion
+# is still true.
 ifneq "$(findstring .agc,$(GRADE))" ""
-	PROGS0 =
+	PROGS =
 else
-	PROGS0 = $(STRING_FORMAT_PROGS)
-endif
-
-# On solaris 5.{7,8} string_format_o fails because of a buggy
-# sprintf implementation.
-SOLARIS_FAILURES = string_format_o
-
-UNAME := $(shell uname -r -s)
-ifeq "$(filter-out SunOS 5.7 5.8,$(UNAME))" ""
-	PROGS = $(filter-out $(SOLARIS_FAILURES),$(PROGS0))
-else
-	PROGS = $(PROGS0)
+	PROGS = $(STRING_FORMAT_PROGS)
 endif
 
 TESTS = $(sort $(PROGS))
@@ -59,24 +58,24 @@ include Mercury.options
 
 %.runtest: %.res ;
 
-#
-# This is adapted from the rule in ../../Mmake.common.  The
-# difference is that we only display the last 20 lines of the output
-# file if the file fails, due to the size of the output file.
-#
+# This rule is adapted from the rule in ../../Mmake.common. The difference
+# is that if the test fails, then, due to the large size of the output files,
+# we display only their last 20 lines.
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null | tail -n 20; exit 1; }
 
+# This rule is adapted from the rule in ../../Mmake.common. The only
+# differences are that
 #
-# This is adapted from the rule in ../../Mmake.common.  The only
-# differences are that we only cat the first 50 lines to stdout, as
-# generally it is quite big and that we sort both the output and the
-# expected output before the comparison, as the IL and C backends use
-# a different ordering for lexical comparisons.  The reason for sorting
-# the expected output as well is to allow for different behaviour in
-# different versions of sort.
+# - due to the large sizes of the output files, we write only the first
+#   50 lines to stdout, and that
 #
+# - due to the now-deleted IL backends using a different ordering for
+#   lexical comparisons than the C backend, we sort both the output and
+#   the expected output before the comparison. (The reason for sorting
+#   the expected output as well as the actual output is to allow for
+#   different behaviour in different versions of sort.)
 %.res: %.exp %.out
 	@echo "Comparing $*.sorted_out with $*.sorted_exp*,"
 	@echo "	results in $@"
