@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -229,7 +229,7 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
             ),
             % XXX The next two calls seem redundant, and in most cases,
             % they are. However, deleting them results in the failure
-            % of the hard_coded/foreign_type2 test case, with this message:
+            % of the hard_coded/foreign_type_2 test case, with this message:
             % In clause for function `x'/1:
             %   error: undefined symbol `foreign_type2.x'/1.
             %   There are `:- pragma foreign_type' declarations for type
@@ -247,7 +247,7 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
             % foreign_type2 test case. Whether we need them in the
             % right_lang_wrong_backend case is a guess, which would need
             % a dedicated test case to test. However, since backend-specific
-            % eternal pragmas are intended only for implementors,
+            % external pragmas are intended only for implementors,
             % this is not an urgent matter.
             pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
@@ -443,45 +443,13 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
 
     % Check for arguments occurring more than once.
     pragma_get_vars_and_var_infos(PragmaVars, ArgVars, ArgInfos),
-    bag.init(ArgVarBag0),
-    bag.insert_list(ArgVars, ArgVarBag0, ArgVarBag),
-    bag.to_assoc_list(ArgVarBag, ArgVarBagAssocList),
-    list.filter_map(
-        ( pred(ArgPair::in, Var::out) is semidet :-
-            ArgPair = Var - Occurrences,
-            Occurrences > 1
-        ), ArgVarBagAssocList, MultiplyOccurringArgVars),
+    check_foreign_proc_arg_list(PredOrFunc, PredModuleName, PredName,
+        PredFormArity, PVarSet, ArgVars, Context, ArgListSpecs),
     (
-        MultiplyOccurringArgVars = [_ | _],
-        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-        PredSymName = qualified(PredModuleName, PredName),
-        PFSymNameArity =
-            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
-        Pieces1 = [words("In"), pragma_decl("foreign_proc"),
-            words("declaration for"),
-            unqual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl,
-            words("error:")],
-        (
-            MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
-            BadVarPiece = var_to_quote_piece(PVarSet, MultiplyOccurringArgVar),
-            Pieces2 = [words("variable")] ++
-                color_as_subject([BadVarPiece]) ++
-                color_as_incorrect([words("occurs more than once")])
-        ;
-            MultiplyOccurringArgVars = [_, _ | _],
-            BadVarPieces = list.map(var_to_quote_piece(PVarSet),
-                MultiplyOccurringArgVars),
-            BadVarsPieces = piece_list_to_color_pieces(color_subject, "and",
-                [], BadVarPieces),
-            Pieces2 = [words("variables")] ++ BadVarsPieces ++
-                color_as_incorrect([words("each occur more than once")])
-        ),
-        Pieces3 = [words("in the argument list."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            Context, Pieces1 ++ Pieces2 ++ Pieces3),
-        !:Specs = [Spec | !.Specs]
+        ArgListSpecs = [_ | _],
+        !:Specs = ArgListSpecs ++ !.Specs
     ;
-        MultiplyOccurringArgVars = [],
+        ArgListSpecs = [],
         % Build the foreign_proc.
         %
         % Check that the purity of a predicate/function declaration agrees
@@ -556,6 +524,56 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
                 VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep,
                 ItemNumbers, HasForeignClauses, HadSyntaxError)
         )
+    ).
+
+    % Check for arguments occurring more than once.
+    %
+:- pred check_foreign_proc_arg_list(pred_or_func::in,
+    module_name::in, string::in, pred_form_arity::in, prog_varset::in,
+    list(prog_var)::in, prog_context::in, list(error_spec)::out) is det.
+
+check_foreign_proc_arg_list(PredOrFunc, PredModuleName, PredName,
+        PredFormArity, PVarSet, ArgVars, Context, Specs) :-
+    bag.init(ArgVarBag0),
+    bag.insert_list(ArgVars, ArgVarBag0, ArgVarBag),
+    bag.to_assoc_list(ArgVarBag, ArgVarBagAssocList),
+    list.filter_map(
+        ( pred(ArgPair::in, Var::out) is semidet :-
+            ArgPair = Var - Occurrences,
+            Occurrences > 1
+        ), ArgVarBagAssocList, MultiplyOccurringArgVars),
+    (
+        MultiplyOccurringArgVars = [_ | _],
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        PredSymName = qualified(PredModuleName, PredName),
+        PFSymNameArity =
+            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+        Pieces1 = [words("In"), pragma_decl("foreign_proc"),
+            words("declaration for"),
+            unqual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl,
+            words("error:")],
+        (
+            MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
+            BadVarPiece = var_to_quote_piece(PVarSet, MultiplyOccurringArgVar),
+            Pieces2 = [words("variable")] ++
+                color_as_subject([BadVarPiece]) ++
+                color_as_incorrect([words("occurs more than once")])
+        ;
+            MultiplyOccurringArgVars = [_, _ | _],
+            BadVarPieces = list.map(var_to_quote_piece(PVarSet),
+                MultiplyOccurringArgVars),
+            BadVarsPieces = piece_list_to_color_pieces(color_subject, "and",
+                [], BadVarPieces),
+            Pieces2 = [words("variables")] ++ BadVarsPieces ++
+                color_as_incorrect([words("each occur more than once")])
+        ),
+        Pieces3 = [words("in the argument list."), nl],
+        Spec = spec($pred, severity_error, phase_pt2h,
+            Context, Pieces1 ++ Pieces2 ++ Pieces3),
+        Specs = [Spec]
+    ;
+        MultiplyOccurringArgVars = [],
+        Specs = []
     ).
 
     % Rename any user annotated structure sharing information from the

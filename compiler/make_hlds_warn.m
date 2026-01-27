@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -312,146 +312,8 @@ warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
 warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
-        GoalExpr = conj(_ConjType, Goals),
-        warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info)
-    ;
-        GoalExpr = disj(Goals),
-        warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info)
-    ;
-        GoalExpr = switch(_Var, _CanFail, Cases),
-        warn_singletons_in_cases(Params, Cases, QuantVars, !Info)
-    ;
-        GoalExpr = negation(SubGoal),
-        warn_singletons_in_goal(Params, SubGoal, QuantVars, !Info)
-    ;
-        GoalExpr = scope(Reason, SubGoal),
-        (
-            Reason = exist_quant(Vars, Creator),
-            (
-                Vars = [_ | _],
-                !Info ^ wi_seen_quant := have_seen_quant,
-                SubGoalVars = free_goal_vars(SubGoal),
-                set_of_var.init(EmptySet),
-                (
-                    Creator = user_quant,
-                    % Warn if any quantified variables occur only
-                    % in the quantifier.
-                    warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
-                        SubGoalVars, !Info),
-                    set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
-                ;
-                    Creator = compiler_quant,
-                    % If the exist_quant scope was created by the compiler,
-                    % and not by the user, then there two implications.
-                    %
-                    % First, there is no point in generating any warnings
-                    % about variables that occur nowhere else but in Reason,
-                    % since if there some, (a) it is the fault of the compiler,
-                    % and not the user, and (b) the user can do nothing
-                    % to prevent the compiler's screwup. This is why we
-                    % don't call warn_singletons_goal_vars here.
-                    %
-                    % Second, the occurrence of the variable in Reason
-                    % does not occur in the source code. Therefore a variable
-                    % that occurs in Reason and has exactly one occurrence
-                    % elsewhere *should* get a singleton warning generated
-                    % for it. This is why we don't add Vars to QuantVars.
-                    SubQuantVars = QuantVars
-                )
-            ;
-                Vars = [],
-                SubQuantVars = QuantVars
-            ),
-            warn_singletons_in_goal(Params, SubGoal, SubQuantVars, !Info)
-        ;
-            Reason = promise_solutions(Vars, _),
-            (
-                Vars = [_ | _],
-                % Warn if any quantified variables occur only
-                % in the quantifier.
-                SubGoalVars = free_goal_vars(SubGoal),
-                set_of_var.init(EmptySet),
-                warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
-                    SubGoalVars, !Info),
-                set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
-            ;
-                Vars = [],
-                SubQuantVars = QuantVars
-            ),
-            warn_singletons_in_goal(Params, SubGoal, SubQuantVars, !Info)
-        ;
-            Reason = disable_warnings(HeadWarning, TailWarnings),
-            ( if
-                ( HeadWarning = goal_warning_singleton_vars
-                ; list.member(goal_warning_singleton_vars, TailWarnings)
-                )
-            then
-                SubParams0 =
-                    Params ^ wp_warn_singleton := do_not_warn_singleton
-            else
-                SubParams0 = Params
-            ),
-            ( if
-                ( HeadWarning = goal_warning_repeated_singleton_vars
-                ; list.member(goal_warning_repeated_singleton_vars,
-                    TailWarnings)
-                )
-            then
-                SubParams = SubParams0 ^ wp_warn_multi := do_not_warn_multi
-            else
-                SubParams = SubParams0
-            ),
-            % Note that we *have* to process SubGoal even if both kinds of
-            % warnings are now off, because if we do not so, we could miss
-            % the only scope goal in the original BodyGoal that requires us
-            % to set the wi_seen_quant field to have_seen_quant.
-            warn_singletons_in_goal(SubParams, SubGoal, QuantVars, !Info)
-        ;
-            ( Reason = promise_purity(_)
-            ; Reason = require_detism(_)
-            ; Reason = require_complete_switch(_)
-            ; Reason = require_switch_arms_detism(_, _)
-            ; Reason = commit(_)
-            ; Reason = barrier(_)
-            ; Reason = trace_goal(_, _, _, _, _)
-            ),
-            warn_singletons_in_goal(Params, SubGoal, QuantVars, !Info)
-        ;
-            Reason = from_ground_term(TermVar, _Kind),
-            % By construction, there can be no singleton variables
-            % inside these scopes. The only variable involved in the scope that
-            % can possibly be subject to either warning is the one that
-            % represents the entire ground term.
-            NonLocals = goal_info_get_nonlocals(GoalInfo),
-            warn_singletons_goal_vars(Params, [TermVar], GoalInfo, NonLocals,
-                QuantVars, !Info)
-        ;
-            Reason = loop_control(_, _, _),
-            % These scopes are introduced only by compiler passes
-            % that execute after us.
-            sorry($pred, "loop_control")
-        )
-    ;
-        GoalExpr = if_then_else(Vars, Cond, Then, Else),
-        (
-            Vars = [_ | _],
-            % Warn if any variables quantified by the if-then-else itself
-            % do not occur either in the condition, or in the "then" part
-            % of the if-then-else.
-            !Info ^ wi_seen_quant := have_seen_quant,
-            CondVars = free_goal_vars(Cond),
-            ThenVars = free_goal_vars(Then),
-            set_of_var.union(CondVars, ThenVars, CondThenVars),
-            set_of_var.init(EmptySet),
-            warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
-                CondThenVars, !Info)
-        ;
-            Vars = []
-        ),
-        set_of_var.insert_list(Vars, QuantVars, CondThenQuantVars),
-        warn_singletons_in_goal(Params, Cond, CondThenQuantVars, !Info),
-        warn_singletons_in_goal(Params, Then, CondThenQuantVars, !Info),
-        warn_singletons_in_goal(Params, Else, QuantVars, !Info)
+        GoalExpr = unify(Var, RHS, _, _, _),
+        warn_singletons_in_unify(Params, Var, RHS, GoalInfo, QuantVars, !Info)
     ;
         GoalExpr = plain_call(_, _, Args, _, _, _),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
@@ -464,9 +326,6 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Params, Args, GoalInfo, NonLocals,
             QuantVars, !Info)
-    ;
-        GoalExpr = unify(Var, RHS, _, _, _),
-        warn_singletons_in_unify(Params, Var, RHS, GoalInfo, QuantVars, !Info)
     ;
         GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, _, _,
             PragmaImpl),
@@ -499,6 +358,43 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
             PredId, ProcId, [], PragmaSpecs),
         add_warn_specs(PragmaSpecs, !Info)
     ;
+        GoalExpr = conj(_ConjType, Goals),
+        warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info)
+    ;
+        GoalExpr = disj(Goals),
+        warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info)
+    ;
+        GoalExpr = switch(_Var, _CanFail, Cases),
+        warn_singletons_in_cases(Params, Cases, QuantVars, !Info)
+    ;
+        GoalExpr = negation(SubGoal),
+        warn_singletons_in_goal(Params, SubGoal, QuantVars, !Info)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        warn_singletons_in_scope(Params, Reason, SubGoal, GoalInfo,
+            QuantVars, !Info)
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        (
+            Vars = [_ | _],
+            % Warn if any variables quantified by the if-then-else itself
+            % do not occur either in the condition, or in the "then" part
+            % of the if-then-else.
+            !Info ^ wi_seen_quant := have_seen_quant,
+            CondVars = free_goal_vars(Cond),
+            ThenVars = free_goal_vars(Then),
+            set_of_var.union(CondVars, ThenVars, CondThenVars),
+            set_of_var.init(EmptySet),
+            warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
+                CondThenVars, !Info)
+        ;
+            Vars = []
+        ),
+        set_of_var.insert_list(Vars, QuantVars, CondThenQuantVars),
+        warn_singletons_in_goal(Params, Cond, CondThenQuantVars, !Info),
+        warn_singletons_in_goal(Params, Then, CondThenQuantVars, !Info),
+        warn_singletons_in_goal(Params, Else, QuantVars, !Info)
+    ;
         GoalExpr = shorthand(ShortHand),
         (
             % XXX STM We need to look at how we should handle Outer, Inner and
@@ -521,22 +417,7 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
         )
     ).
 
-:- pred warn_singletons_in_goal_list(warn_params::in, list(hlds_goal)::in,
-    set_of_progvar::in, warn_info::in, warn_info::out) is det.
-
-warn_singletons_in_goal_list(_, [], _, !Info).
-warn_singletons_in_goal_list(Params, [Goal | Goals], QuantVars, !Info) :-
-    warn_singletons_in_goal(Params, Goal, QuantVars, !Info),
-    warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info).
-
-:- pred warn_singletons_in_cases(warn_params::in, list(case)::in,
-    set_of_progvar::in, warn_info::in, warn_info::out) is det.
-
-warn_singletons_in_cases(_, [], _, !Info).
-warn_singletons_in_cases(Params, [Case | Cases], QuantVars, !Info) :-
-    Case = case(_MainConsId, _OtherConsIds, Goal),
-    warn_singletons_in_goal(Params, Goal, QuantVars, !Info),
-    warn_singletons_in_cases(Params, Cases, QuantVars, !Info).
+%---------------------------------------------------------------------------%
 
 :- pred warn_singletons_in_unify(warn_params::in, prog_var::in,
     unify_rhs::in, hlds_goal_info::in, set_of_progvar::in,
@@ -643,6 +524,140 @@ warn_singletons_goal_vars(Params, GoalVars, GoalInfo, NonLocals, QuantVars,
         )
     ).
 
+:- pred warn_singletons_in_goal_list(warn_params::in, list(hlds_goal)::in,
+    set_of_progvar::in, warn_info::in, warn_info::out) is det.
+
+warn_singletons_in_goal_list(_, [], _, !Info).
+warn_singletons_in_goal_list(Params, [Goal | Goals], QuantVars, !Info) :-
+    warn_singletons_in_goal(Params, Goal, QuantVars, !Info),
+    warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info).
+
+:- pred warn_singletons_in_cases(warn_params::in, list(case)::in,
+    set_of_progvar::in, warn_info::in, warn_info::out) is det.
+
+warn_singletons_in_cases(_, [], _, !Info).
+warn_singletons_in_cases(Params, [Case | Cases], QuantVars, !Info) :-
+    Case = case(_MainConsId, _OtherConsIds, Goal),
+    warn_singletons_in_goal(Params, Goal, QuantVars, !Info),
+    warn_singletons_in_cases(Params, Cases, QuantVars, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- pred warn_singletons_in_scope(warn_params::in,
+    scope_reason::in, hlds_goal::in, hlds_goal_info::in, set_of_progvar::in,
+    warn_info::in, warn_info::out) is det.
+
+warn_singletons_in_scope(Params, Reason, SubGoal, GoalInfo,
+        QuantVars, !Info) :-
+    (
+        Reason = exist_quant(Vars, Creator),
+        (
+            Vars = [_ | _],
+            !Info ^ wi_seen_quant := have_seen_quant,
+            SubGoalVars = free_goal_vars(SubGoal),
+            set_of_var.init(EmptySet),
+            (
+                Creator = user_quant,
+                % Warn if any quantified variables occur only
+                % in the quantifier.
+                warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
+                    SubGoalVars, !Info),
+                set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
+            ;
+                Creator = compiler_quant,
+                % If the exist_quant scope was created by the compiler,
+                % and not by the user, then there two implications.
+                %
+                % First, there is no point in generating any warnings
+                % about variables that occur nowhere else but in Reason,
+                % since if there some, (a) it is the fault of the compiler,
+                % and not the user, and (b) the user can do nothing
+                % to prevent the compiler's screwup. This is why we
+                % don't call warn_singletons_goal_vars here.
+                %
+                % Second, the occurrence of the variable in Reason
+                % does not occur in the source code. Therefore a variable
+                % that occurs in Reason and has exactly one occurrence
+                % elsewhere *should* get a singleton warning generated
+                % for it. This is why we don't add Vars to QuantVars.
+                SubQuantVars = QuantVars
+            )
+        ;
+            Vars = [],
+            SubQuantVars = QuantVars
+        ),
+        warn_singletons_in_goal(Params, SubGoal, SubQuantVars, !Info)
+    ;
+        Reason = promise_solutions(Vars, _),
+        (
+            Vars = [_ | _],
+            % Warn if any quantified variables occur only
+            % in the quantifier.
+            SubGoalVars = free_goal_vars(SubGoal),
+            set_of_var.init(EmptySet),
+            warn_singletons_goal_vars(Params, Vars, GoalInfo, EmptySet,
+                SubGoalVars, !Info),
+            set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
+        ;
+            Vars = [],
+            SubQuantVars = QuantVars
+        ),
+        warn_singletons_in_goal(Params, SubGoal, SubQuantVars, !Info)
+    ;
+        Reason = disable_warnings(HeadWarning, TailWarnings),
+        ( if
+            ( HeadWarning = goal_warning_singleton_vars
+            ; list.member(goal_warning_singleton_vars, TailWarnings)
+            )
+        then
+            SubParams0 =
+                Params ^ wp_warn_singleton := do_not_warn_singleton
+        else
+            SubParams0 = Params
+        ),
+        ( if
+            ( HeadWarning = goal_warning_repeated_singleton_vars
+            ; list.member(goal_warning_repeated_singleton_vars,
+                TailWarnings)
+            )
+        then
+            SubParams = SubParams0 ^ wp_warn_multi := do_not_warn_multi
+        else
+            SubParams = SubParams0
+        ),
+        % Note that we *have* to process SubGoal even if both kinds of
+        % warnings are now off, because if we do not so, we could miss
+        % the only scope goal in the original BodyGoal that requires us
+        % to set the wi_seen_quant field to have_seen_quant.
+        warn_singletons_in_goal(SubParams, SubGoal, QuantVars, !Info)
+    ;
+        ( Reason = promise_purity(_)
+        ; Reason = require_detism(_)
+        ; Reason = require_complete_switch(_)
+        ; Reason = require_switch_arms_detism(_, _)
+        ; Reason = commit(_)
+        ; Reason = barrier(_)
+        ; Reason = trace_goal(_, _, _, _, _)
+        ),
+        warn_singletons_in_goal(Params, SubGoal, QuantVars, !Info)
+    ;
+        Reason = from_ground_term(TermVar, _Kind),
+        % By construction, there can be no singleton variables
+        % inside these scopes. The only variable involved in the scope that
+        % can possibly be subject to either warning is the one that
+        % represents the entire ground term.
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        warn_singletons_goal_vars(Params, [TermVar], GoalInfo, NonLocals,
+            QuantVars, !Info)
+    ;
+        Reason = loop_control(_, _, _),
+        % Loop control scopes are only ever introduced
+        % by compiler passes that execute after us.
+        unexpected($pred, "loop_control")
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred add_warn_specs(list(error_spec)::in,
     warn_info::in, warn_info::out) is det.
 
@@ -650,8 +665,6 @@ add_warn_specs(NewSpecs, !Info) :-
     Specs0 = !.Info ^ wi_specs,
     Specs = NewSpecs ++ Specs0,
     !Info ^ wi_specs := Specs.
-
-%---------------------------------------------------------------------------%
 
 :- type single_or_multi
     --->    sm_single
