@@ -852,8 +852,9 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         Args, Context, PFSymNameArity, PredId, ProcId, !Specs) :-
     LangStr = foreign_language_string(Lang),
     PragmaImpl = fp_impl_ordinary(Code, _),
-    c_code_to_name_list(Code, C_CodeList),
-    list.filter_map(var_is_unmentioned(C_CodeList), Args, UnmentionedVars),
+    foreign_code_to_identifiers(Lang, Code, ForeignIdentifiers),
+    list.filter_map(var_is_unmentioned(ForeignIdentifiers),
+        Args, UnmentionedVars),
     (
         UnmentionedVars = []
     ;
@@ -870,15 +871,15 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         !:Specs = [Spec | !.Specs]
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
-        PredId, ProcId, C_CodeList, !Specs).
+        PredId, ProcId, ForeignIdentifiers, !Specs).
 
 :- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
 
-var_is_unmentioned(NameList1, MaybeArg, Name) :-
+var_is_unmentioned(Identifiers, MaybeArg, Name) :-
     MaybeArg = yes(foreign_arg_name_mode(Name, _Mode)),
     not string.prefix(Name, "_"),
-    not list.member(Name, NameList1).
+    not list.member(Name, Identifiers).
 
 :- pred variable_warning_start(list(string)::in, list(format_piece)::out,
     string::out) is det.
@@ -1151,8 +1152,8 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
         BodyCode = floi_literal(Code),
         (
             Lang = lang_c,
-            c_code_to_name_list(Code, C_CodeList),
-            ( if list.member("MR_ALLOC_ID", C_CodeList) then
+            foreign_code_to_identifiers(Lang, Code, Identifiers),
+            ( if list.member("MR_ALLOC_ID", Identifiers) then
                 Pieces = [
                     words("Warning: the body of this"),
                     pragma_decl("foreign_code"),

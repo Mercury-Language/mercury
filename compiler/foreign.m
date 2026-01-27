@@ -122,10 +122,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % c_code_to_name_list(Code, List) is true iff List is a list of the
-    % identifiers used in the C code in Code.
+    % foreign_code_to_identifiers(Lang, Code, Indentifiers):
     %
-:- pred c_code_to_name_list(string::in, list(string)::out) is det.
+    % Break up Code into words that meet the rules for identifiers.
+    % Some of these may actually be language keywords.
+    %
+:- pred foreign_code_to_identifiers(foreign_language::in, string::in,
+    list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -144,6 +147,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module char.
+:- import_module cord.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -511,54 +515,57 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
 
 %-----------------------------------------------------------------------------%
 
-c_code_to_name_list(Code, List) :-
-    string.to_char_list(Code, CharList),
-    c_code_to_name_list_2(CharList, List).
+foreign_code_to_identifiers(_Lang, Code, Indentifiers) :-
+    string.to_char_list(Code, Chars),
+    % We use cords to ensure tail recursion in the loop over Code,
+    % because it may be big. We do not do try to ensure tail recursion
+    % for loops over identifiers, since (for cultural reasons)
+    % they will effectively never be long enough for this to be a problem.
+    foreign_code_to_identifiers_loop(Chars, cord.init, IndentifierCord),
+    Indentifiers = cord.list(IndentifierCord).
 
-:- pred c_code_to_name_list_2(list(char)::in, list(string)::out) is det.
+:- pred foreign_code_to_identifiers_loop(list(char)::in,
+    cord(string)::in, cord(string)::out) is det.
 
-c_code_to_name_list_2(C_Code, List) :-
-    get_first_c_name(C_Code, NameCharList, TheRest),
+foreign_code_to_identifiers_loop(Chars0, !IndentifierCord) :-
+    get_next_identifier(Chars0, IndentifierChars, Chars1),
     (
-        NameCharList = [],
-        % no names left
-        List = []
+        IndentifierChars = []
+        % There are no identifiers left.
     ;
-        NameCharList = [_ | _],
-        c_code_to_name_list_2(TheRest, Names),
-        string.from_char_list(NameCharList, Name),
-        List = [Name | Names]
+        IndentifierChars = [_ | _],
+        string.from_char_list(IndentifierChars, Indentifier),
+        cord.snoc(Indentifier, !IndentifierCord),
+        foreign_code_to_identifiers_loop(Chars1, !IndentifierCord)
     ).
 
-:- pred get_first_c_name(list(char)::in, list(char)::out, list(char)::out)
-    is det.
+:- pred get_next_identifier(list(char)::in,
+    list(char)::out, list(char)::out) is det.
 
-get_first_c_name([], [], []).
-get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
-    ( if char.is_alnum_or_underscore(C) then
-        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
-        NameCharList = [C | NameCharList0]
+get_next_identifier([], [], []).
+get_next_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
+    ( if char.is_alnum_or_underscore(Char0) then
+        get_rest_of_identifier(Chars0, TailIdentifierChars, LeftOverChars),
+        IdentifierChars = [Char0 | TailIdentifierChars]
     else
-        % Strip off any characters in the C code which don't form part
-        % of an identifier.
-        get_first_c_name(CodeChars, NameCharList, TheRest)
+        % Ignore Char0, since it cannot be part of an identifier.
+        get_next_identifier(Chars0, IdentifierChars, LeftOverChars)
     ).
 
-:- pred get_first_c_name_in_word(list(char)::in, list(char)::out,
+:- pred get_rest_of_identifier(list(char)::in, list(char)::out,
     list(char)::out) is det.
 
-get_first_c_name_in_word([], [], []).
-get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
-    ( if char.is_alnum_or_underscore(C) then
-        % There are more characters in the word.
-        get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
-        NameCharList = [C|NameCharList0]
+get_rest_of_identifier([], [], []).
+get_rest_of_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
+    ( if char.is_alnum_or_underscore(Char0) then
+        % There may be more characters in the identifier.
+        get_rest_of_identifier(Chars0, TailIdentifierChars, LeftOverChars),
+        IdentifierChars = [Char0 | TailIdentifierChars]
     else
         % The word is finished.
-        NameCharList = [],
-        TheRest = CodeChars
+        IdentifierChars = [],
+        LeftOverChars = Chars0
     ).
-
 
 %-----------------------------------------------------------------------------%
 
