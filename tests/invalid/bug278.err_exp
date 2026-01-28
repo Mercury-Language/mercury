@@ -6,4 +6,5 @@ bug278.m:032:   expected final instantiatedness was [38;5;40m`ground'.[39;49m
 bug278.m:032: In clause for predicate `build_map'/5:
 bug278.m:032:   warning: variable [38;5;87m`STATE_VARIABLE_MemoTable'[39;49m [38;5;203moccurs only once[39;49m
 bug278.m:032:   in this scope.
+bug278.m:032:   [38;5;226m(Did you mean `!.MemoTable1'?)[39;49m
 For more information, recompile with `-E'.

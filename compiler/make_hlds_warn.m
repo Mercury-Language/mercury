@@ -704,14 +704,16 @@ generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
         (
             SingleMulti = sm_single,
             WarnOption = warn_singleton_vars,
-            OnlyMoreThanOnce = "only once",
-
             varset.var_name_list(VarSet, AllVarNamesAL),
             assoc_list.values(AllVarNamesAL, AllVarNames),
-            set.list_to_set(AllVarNames, AllVarNamesSet),
-            generate_variable_warning_dyms(VarSet, Context,
-                PreamblePieces, WarnOption, OnlyMoreThanOnce,
-                AllVarNamesSet, Vars, [], NoDymVarNames, [], Specs0)
+            separate_state_var_names(AllVarNames,
+                [], PlainVarNameList, [], BangVarNameList),
+            set.list_to_set(PlainVarNameList, PlainVarNames),
+            set.list_to_set(BangVarNameList, BangVarNames),
+            generate_singleton_variable_warning_dyms(VarSet, Context,
+                PreamblePieces, WarnOption, PlainVarNames, BangVarNames,
+                Vars, [], NoDymVarNames, [], Specs0),
+            OnlyMoreThanOnce = "only once"
         ;
             SingleMulti = sm_multi,
             WarnOption = warn_repeated_singleton_vars,
@@ -724,6 +726,24 @@ generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
             OnlyMoreThanOnce, NoDymVarNames, Specs0, Specs)
     ).
 
+%---------------------%
+
+:- pred separate_state_var_names(list(string)::in,
+    list(string)::in, list(string)::out,
+    list(string)::in, list(string)::out) is det.
+
+separate_state_var_names([], !PlainVarNames, !BangVarNames).
+separate_state_var_names([Name | Names], !PlainVarNames, !BangVarNames) :-
+    ( if var_name_is_state_var_name(Name, StateVarName) then
+        !:BangVarNames =
+            ["!." ++ StateVarName, "!:" ++ StateVarName | !.BangVarNames]
+    else
+        !:PlainVarNames = [Name | !.PlainVarNames]
+    ),
+    separate_state_var_names(Names, !PlainVarNames, !BangVarNames).
+
+%---------------------%
+
     % For each singleton variable that is close enough to another variable
     % name that a "did you mean" replacement suggestion is worthwhile,
     % generate an error_spec including that suggestions. Return
@@ -735,47 +755,51 @@ generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
     % Our caller will then generate a single error_spec that mentions
     % *all* of the variables without their own "did you mean" suggestions.
     %
-:- pred generate_variable_warning_dyms(prog_varset::in,
-    prog_context::in, list(format_piece)::in, option::in, string::in,
-    set(string)::in, list(prog_var)::in, list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred generate_singleton_variable_warning_dyms(prog_varset::in,
+    prog_context::in, list(format_piece)::in, option::in,
+    set(string)::in, set(string)::in, list(prog_var)::in, list(string)::in,
+    list(string)::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_variable_warning_dyms(_, _, _, _, _, _, [], !NoDymVarNames, !Specs).
-generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
-        WarnOption, OnlyMoreThanOnce, AllVarNamesSet, [Var | Vars],
+generate_singleton_variable_warning_dyms(_, _, _, _, _, _,
+        [], !NoDymVarNames, !Specs).
+generate_singleton_variable_warning_dyms(VarSet, Context, PreamblePieces,
+        WarnOption, PlainVarNames, BangVarNames, [Var | Vars],
         !NoDymVarNames, !Specs) :-
     VarName = mercury_var_to_name_only_vs(VarSet, Var),
+    ( if var_name_is_state_var_name(VarName, StateVarName) then
+        DotVarName = "!." ++ StateVarName,
+        ColonVarName = "!:" ++ StateVarName,
+        DymVarName = DotVarName,
+        string.count_code_points(StateVarName, RelevantNameLen),
+        % People add a !. or !: prefix to a variable name by accident
+        % extremely rarely, so if VarName0 is a reference to a state variable,
+        % then restrict the set of suggestions to contain only *other*
+        % state variable references.
+        %
+        % Unfortunately, we do not know whether state_var.m created VarName0
+        % for a !. or a !: reference. In the absence of that knowledge,
+        % the best we can do is to include both kinds of references in
+        % CompareToNames0.
+        %
+        % Note that very early on, we expand !SS into !.SS, !:SS pairs.
+        % Therefore !.SS has a quite high chance of having started out
+        % as part of a !SS reference. We do not know whether that is the case
+        % (we do not record such information anywhere), which is why
+        % recommending either !:SS as a dym replacement for !.SS, or
+        % vice versa, is not a good idea.
+        set.delete_list([DotVarName, ColonVarName],
+            BangVarNames, CompareToNames)
+    else
+        DymVarName = VarName,
+        string.count_code_points(VarName, RelevantNameLen),
+        % Compare VarName to both the names of other plain variables,
+        % and to references to state variables (both !. and !:).
+        set.delete(VarName, PlainVarNames, OtherPlainVarNames),
+        set.union(OtherPlainVarNames, BangVarNames, CompareToNames)
+    ),
     ( if
-        % Generating "did you mean" suggestions for state variables
-        % is much more likely to be misleading than useful.
-        %
-        % They are likely to be misleading because the "STATE_VARIABLE_" prefix
-        % greatly distorts the similarity tests done by the call to
-        % maybe_construct_did_you_mean_pieces below. For example,
-        % at the user level, !.ABC has nothing in common with !.DEF, but
-        % the internal versions of those names, which may be e.g.
-        % STATE_VARIABLE_ABC_8 and STATE_VARIABLE_DEF_7, are similar enough
-        % that maybe_construct_did_you_mean_pieces *will* consider one of
-        % those to be a suggestable replacement for the other.
-        %
-        % We *could* avoid the above problem if VarName has a STATE_VARIABLE_
-        % prefix by
-        %
-        % - deleting that prefix from VarName,
-        % - restricting AllVarNamesSet to the names that have that prefix,
-        %   but passing them to maybe_construct_did_you_mean_pieces only
-        %   after *also* deleting that prefix from them.
-        %
-        % However, while this should work, it is not all that likely to be
-        % useful. This is because the usefulness of "did you mean" suggestions
-        % is roughly proportional to the number of other variable names that
-        % VarName could possibly be confused with, and in human-written code,
-        % there are very likely to be far fewer state variables than
-        % non-state variables.
-        not string.prefix(VarName, "STATE_VARIABLE_"),
-
         % The maybe_construct_did_you_mean_pieces predicate can, and sometimes
-        % will, suggest one one-character name (such as q) as a replacement
+        % will, suggest one-character names (such as q) as replacements
         % for another one-character name (such as r). For its original
         % use-case, predicate and function names, this is fine, because
         % the average number of one-character predicate and/or function names
@@ -784,30 +808,21 @@ generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
         % code), and in scopes that contain several such names, having them
         % suggested as replacements for each other is more distracting
         % than useful.
-        string.count_code_points(VarName, VarNameLen),
-        VarNameLen > 1,
-
-        % We got VarName from VarSet, so it *will* occur in AllVarNamesSet.
-        % We are not looking for *it*, we are looking for other variable names
-        % that VarName is very similar to, since VarName being a singleton
-        % may be caused by an unsuccessful attempt to write one of those
-        % instead.
-        set.delete(VarName, AllVarNamesSet, AllOtherVarNamesSet),
-        set.to_sorted_list(AllOtherVarNamesSet, AllOtherVarNames),
-        maybe_construct_did_you_mean_pieces(VarName, AllOtherVarNames,
+        RelevantNameLen > 1,
+        set.to_sorted_list(CompareToNames, CompareToNamesList),
+        maybe_construct_did_you_mean_pieces(DymVarName, CompareToNamesList,
             DymPieces),
         % DymPieces will be [] if we cannot suggest any likely replacement.
         DymPieces = [_ | _]
     then
-        generate_variable_warning_dym(Context, PreamblePieces, WarnOption,
-            OnlyMoreThanOnce, VarName, DymPieces, DymSpec),
+        generate_singleton_variable_warning_dym(Context, PreamblePieces,
+            WarnOption, VarName, DymPieces, DymSpec),
         !:Specs = [DymSpec | !.Specs]
     else
         !:NoDymVarNames = [VarName | !.NoDymVarNames]
     ),
-    generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
-        WarnOption, OnlyMoreThanOnce, AllVarNamesSet, Vars,
-        !NoDymVarNames, !Specs).
+    generate_singleton_variable_warning_dyms(VarSet, Context, PreamblePieces,
+        WarnOption, PlainVarNames, BangVarNames, Vars, !NoDymVarNames, !Specs).
 
 :- pred generate_variable_warning_no_dym(prog_context::in,
     list(format_piece)::in, option::in, string::in, list(string)::in,
@@ -836,13 +851,13 @@ generate_variable_warning_no_dym(Context, PreamblePieces, WarnOption,
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred generate_variable_warning_dym(prog_context::in,
-    list(format_piece)::in, option::in, string::in, string::in,
-    list(format_piece)::in, error_spec::out) is det.
+:- pred generate_singleton_variable_warning_dym(prog_context::in,
+    list(format_piece)::in, option::in, string::in, list(format_piece)::in,
+    error_spec::out) is det.
 
-generate_variable_warning_dym(Context, PreamblePieces, WarnOption,
-        OnlyMoreThanOnce, VarName, DymPieces, Spec) :-
-    WarnPieces = single_var_warning_pieces(VarName, OnlyMoreThanOnce),
+generate_singleton_variable_warning_dym(Context, PreamblePieces, WarnOption,
+        VarName, DymPieces, Spec) :-
+    WarnPieces = single_var_warning_pieces(VarName, "only once"),
     Spec = spec($pred, severity_warning(WarnOption), phase_pt2h, Context,
         PreamblePieces ++ WarnPieces ++ DymPieces).
 
@@ -853,6 +868,24 @@ single_var_warning_pieces(VarName, OnlyMoreThanOnce) = WarnPieces :-
         color_as_subject([quote(VarName)]) ++
         color_as_incorrect([words("occurs"), words(OnlyMoreThanOnce)]) ++
         [words("in this scope."), nl].
+
+:- pred var_name_is_state_var_name(string::in, string::out) is semidet.
+
+var_name_is_state_var_name(Name, StateVarName) :-
+    string.remove_prefix("STATE_VARIABLE_", Name, StateVarNameNum),
+    require_det (
+        StateVarNameNumPieces = string.split_at_char('_', StateVarNameNum),
+        ( if
+            list.split_last(StateVarNameNumPieces,
+                NonLastStateVarNameNumPieces, LastStateVarNameNumPieces),
+            string.to_int(LastStateVarNameNumPieces, _SuffixNum)
+        then
+            StateVarName = string.join_list("_", NonLastStateVarNameNumPieces)
+        else
+            % There is no number at the end of StateVarNameNum.
+            StateVarName = StateVarNameNum
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -7,7 +7,11 @@ undef_symbol.m:026:   (The module [38;5;87m`string'[39;49m [38;5;226mhas not 
 undef_symbol.m:032: In clause for predicate `q'/2:
 undef_symbol.m:032:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`term.context'/2.[39;49m
 undef_symbol.m:032:   (The module [38;5;87m`term'[39;49m [38;5;226mhas not been imported.)[39;49m
-undef_symbol.m:046: In clause for predicate `s'/3:
+undef_symbol.m:046: In clause for predicate `s'/6:
 undef_symbol.m:046:   warning: variable [38;5;87m`BcDe'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 undef_symbol.m:046:   [38;5;226m(Did you mean `Bcde'? Note the lower-vs-upper case[39;49m
 undef_symbol.m:046:   [38;5;226mdifference.)[39;49m
+undef_symbol.m:052: In clause for predicate `s'/6:
+undef_symbol.m:052:   warning: variable [38;5;87m`PredInfo'[39;49m [38;5;203moccurs only once[39;49m in this
+undef_symbol.m:052:   scope.
+undef_symbol.m:052:   [38;5;226m(Did you mean `!.PredInfo' or `!:PredInfo'?)[39;49m

@@ -33,6 +33,7 @@ field_syntax_error.m:029:   [38;5;203m(`^').[39;49m
 field_syntax_error.m:034: In clause for function `baz5'/1:
 field_syntax_error.m:034:   warning: variable [38;5;87m`Foo'[39;49m [38;5;203moccurs only once[39;49m in this
 field_syntax_error.m:034:   scope.
+field_syntax_error.m:034:   [38;5;226m(Did you mean `!.Foo' or `!:Foo'?)[39;49m
 field_syntax_error.m:034: In clause for function `baz5'/1:
 field_syntax_error.m:034:   in argument 1 of functor `f2/1':
 field_syntax_error.m:034:   error: [38;5;203minvalid use of the `!' state variable[39;49m
