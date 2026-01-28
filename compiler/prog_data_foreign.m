@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2017, 2019-2023, 2025 The Mercury team.
+% Copyright (C) 2016-2017, 2019-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -354,7 +354,7 @@ default_export_enum_attributes =
     % If thread_safe execution is enabled, then we need to put a mutex
     % around the foreign code for each foreign_proc, unless it is declared
     % to be thread_safe. If a piece of foreign code is declared to be
-    % maybe_thread_safe whether we put the mutex around the foreign code
+    % maybe_thread_safe, then whether we put a mutex around the foreign code
     % depends upon the `--maybe-thread-safe' compiler flag.
     %
 :- type proc_thread_safe
