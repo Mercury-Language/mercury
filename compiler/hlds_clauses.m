@@ -659,8 +659,7 @@ add_clause_item_number(SeqNum, Context, Type, !ClauseItemNumbers) :-
             % predicate initializes !.ClauseItemNumbers to user_clauses,
             % and the first clue we have that the predicate actually has
             % no user clauses is the pragma import, whose processing
-            % will yield a call to add_clause_item_number that ends up
-            % here.
+            % will yield a call to add_clause_item_number that ends up here.
             %
             % We could insist on _MercuryRegions and _BothRegions being [],
             % but that would cause a compiler abort if a predicate had
