@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2018, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -113,21 +113,25 @@
     %
 :- func unqualify_name(sym_name) = string.
 
-    % sym_name_get_module_name(SymName) = ModName:
+    % sym_name_get_module_name(SymName, ModuleName):
     %
     % Given a symbol name, return the module qualifiers(s).
     % Fails if the symbol is unqualified.
     %
 :- pred sym_name_get_module_name(sym_name::in, module_name::out) is semidet.
 
-    % det_sym_name_get_module_name(SymName) = ModName:
+    % det_sym_name_get_module_name(SymName, ModuleName):
+    % det_sym_name_get_module_name_and_name(SymName, ModuleName, Name):
     %
     % Given a symbol name, return the module qualifiers(s).
     % Aborts if the symbol is unqualified.
+    % The second version also returns the base name.
     %
 :- pred det_sym_name_get_module_name(sym_name::in, module_name::out) is det.
+:- pred det_sym_name_get_module_name_and_name(sym_name::in,
+    module_name::out, string::out) is det.
 
-    % sym_name_get_module_name_default(SymName, DefaultModName, ModName):
+    % sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName):
     %
     % Given a symbol name, return the module qualifier(s).
     % If the symbol is unqualified, then return the specified default
@@ -137,8 +141,8 @@
     module_name::out) is det.
 
     % sym_name_get_module_name_default_name(SymName,
-    %   DefaultModName, ModName, Name):
-    % Return the ModName sym_name_get_module_name_default would,
+    %   DefaultModuleName, ModuleName, Name):
+    % Return the ModuleName sym_name_get_module_name_default would,
     % and the Name unqualify_name would.
     %
 :- pred sym_name_get_module_name_default_name(sym_name::in, module_name::in,
@@ -350,6 +354,11 @@ sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
 det_sym_name_get_module_name(unqualified(_), _) :-
     unexpected($pred, "unqualified sym_name").
 det_sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
+
+det_sym_name_get_module_name_and_name(unqualified(_), _, _) :-
+    unexpected($pred, "unqualified sym_name").
+det_sym_name_get_module_name_and_name(qualified(ModuleName, Name),
+    ModuleName, Name).
 
 sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName) :-
     (

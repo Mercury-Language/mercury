@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_foreign_proc.
 :- interface.
@@ -28,7 +28,7 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -69,7 +69,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_foreign_procs(_, [], !ModuleInfo, !Specs).
 add_foreign_procs(ProgressStream, [ImsSubList | ImsSubLists],
@@ -81,23 +81,14 @@ add_foreign_procs(ProgressStream, [ImsSubList | ImsSubLists],
         PragmaFPInfos, !ModuleInfo, !Specs),
     add_foreign_procs(ProgressStream, ImsSubLists, !ModuleInfo, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
+add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
         !ModuleInfo, !Specs) :-
     FPInfo = item_foreign_proc_info(Attributes0, PredSymName, PredOrFunc,
         PragmaVars, ProgVarSet, _InstVarset, PragmaImpl, Context, SeqNum),
-    (
-        PredSymName = qualified(PredModuleName, PredName)
-    ;
-        PredSymName = unqualified(_),
-        unexpected($pred, "unexpected PredSymName")
-    ),
     PredFormArity = arg_list_arity(PragmaVars),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
-    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    UserArity = user_arity(UserArityInt),
-    SNA = sym_name_arity(PredSymName, UserArityInt),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -113,28 +104,11 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         VeryVerbose = no
     ),
 
-    % Lookup the pred declaration in the predicate table.
-    % If it is not there, print an error message and insert
-    % a dummy declaration for the predicate.
-    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
-        PredModuleName, PredName, PredFormArity, MaybePredId),
-    (
-        MaybePredId = yes(PredId)
-    ;
-        MaybePredId = no,
-        Origin = origin_user(user_made_pred(PredOrFunc,
-            PredSymName, UserArity)),
-        add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
-            PredName, PredFormArity, PredStatus, is_not_a_class_method,
-            Context, Origin,
-            [pragma_decl("foreign_proc"), words("declaration")],
-            PredId, !ModuleInfo, !Specs)
-    ),
-
     % Lookup the pred_info for this pred, add the pragma to the proc_info
     % in the proc_table in the pred_info, and save the pred_info.
     some [!PredInfo] (
+        add_implicit_pred_decl_if_needed(PFSymNameArity, PredStatus, Context,
+            PredId, !ModuleInfo, !Specs),
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
 
         % status_opt_imported preds are initially tagged as status_imported
@@ -146,174 +120,288 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
             true
         ),
 
-        % Record the existence of this "clause".
-        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-        ItemNumbers0 = ClausesInfo0 ^ cli_item_numbers,
-        add_clause_item_number(SeqNum, Context, item_is_foreign_proc,
-            ItemNumbers0, ItemNumbers),
-        ClausesInfo1 = ClausesInfo0 ^ cli_item_numbers := ItemNumbers,
-        pred_info_set_clauses_info(ClausesInfo1, !PredInfo),
-        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
+        record_foreign_proc_seq_num(SeqNum, Context, PredId,
+            !PredInfo, !ModuleInfo),
+        decide_actual_thread_safety(Globals, Attributes0, Attributes),
+        report_if_fproc_is_for_imported_pred(!.PredInfo, Context,
+            ImportedFprocSpecs),
 
-        % Replace any maybe_thread_safe foreign_proc attributes with
-        % the actual thread safety attributes which we get from the
-        % `--maybe-thread-safe' option.
-        globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
-        ThreadSafe = get_thread_safe(Attributes0),
         (
-            ThreadSafe = proc_maybe_thread_safe,
-            (
-                MaybeThreadSafe = yes,
-                set_thread_safe(proc_thread_safe, Attributes0, Attributes)
-            ;
-                MaybeThreadSafe = no,
-                set_thread_safe(proc_not_thread_safe, Attributes0, Attributes)
-            )
+            ImportedFprocSpecs = [_ | _],
+            !:Specs = ImportedFprocSpecs ++ !.Specs
         ;
-            ( ThreadSafe = proc_thread_safe
-            ; ThreadSafe = proc_not_thread_safe
-            ),
-            Attributes = Attributes0
-        ),
-
-        CurrentBackend = lookup_current_backend(Globals),
-        globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
-        PragmaForeignLanguage = get_foreign_language(Attributes),
-        MaybeForSpecificBackend = get_for_specific_backend(Attributes),
-        ( if
-            % Don't allow definitions, whether clauses or foreign_procs,
-            % for imported predicates/functions. Nota that this applies to
-            % *plain imported predicates/functions, not the *opt-imported*
-            % ones.
-            pred_info_is_imported(!.PredInfo)
-        then
-            Pieces = [words("Error:"), pragma_decl("foreign_proc"),
-                words("declarations are allowed only for predicates and"),
-                words("functions defined in the current module, but"),
-                p_or_f(PredOrFunc)] ++
-                color_as_incorrect([qual_sym_name_arity(SNA)]) ++
-                [words("is")] ++
-                color_as_incorrect([words("imported.")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        else if
-            ( if
-                not list.member(PragmaForeignLanguage, BackendForeignLangs)
-            then
-                RejectCause =
-                    wrong_lang(PragmaForeignLanguage, BackendForeignLangs)
-            else if
-                MaybeForSpecificBackend = yes(SpecificBackend),
-                SpecificBackend \= CurrentBackend
-            then
-                RejectCause = right_lang_wrong_backend
-            else
-                fail
-            )
-        then
-            % This foreign_proc is for the wrong language or the wrong backend.
-            % This is ok when coming from a source file, which is allowed
-            % to define a predicate by different foreign_procs for different
-            % target languages and/or backends. This is not ok when coming
-            % from a .opt file, which (if everything is set up properly)
-            % we should be reading only if it has been generated for the
-            % current grade.
-            ( if ItemMercurystatus =
-                item_defined_in_other_module(item_import_opt_int)
-            then
-                report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context,
-                    !Specs)
-            else
-                true
-            ),
-            % XXX The next two calls seem redundant, and in most cases,
-            % they are. However, deleting them results in the failure
-            % of the hard_coded/foreign_type_2 test case, with this message:
-            % In clause for function `x'/1:
-            %   error: undefined symbol `foreign_type2.x'/1.
-            %   There are `:- pragma foreign_type' declarations for type
-            %   `foreign_type2.coord'/1, so it is treated as an abstract
-            %   type in all predicates and functions which are not
-            %   implemented for those foreign types.
-            % The reason for this is the fact that convert_cons_defn
-            % in typecheck.m checks whether the goal type is
-            % goal_not_for_promise(np_goal_type_clause_and_foreign),
-            % and it is these two calls that set up the "_and_foreign"
-            % part of that.
-            %
-            % XXX Originally, we executed these two calls only in
-            % the wrong_lang case, and this was enough for fixing the
-            % foreign_type2 test case. Whether we need them in the
-            % right_lang_wrong_backend case is a guess, which would need
-            % a dedicated test case to test. However, since backend-specific
-            % external pragmas are intended only for implementors,
-            % this is not an urgent matter.
-            pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
-        else
-            % Add the pragma declaration to the proc_info for this procedure.
-            pred_info_get_proc_table(!.PredInfo, Procs),
-            map.to_assoc_list(Procs, ExistingProcs),
-            pragma_get_modes(PragmaVars, Modes),
-            ( if
-                % The inst variables for the foreign_proc declaration
-                % and predmode declarations are from different varsets.
-                % We cannot just unify the argument modes directly because
-                % the representation of the inst variables may be different.
-                % Instead we need to allow for a renaming between the
-                % inst variables in the argument modes of the foreign_proc
-                % and those of the predmode declaration.
-                %
-                % XXX We should probably also check that each pair in
-                % the renaming has the same name.
-                get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
-                    ExistingProcs, Modes, ProcId)
-            then
-                pred_info_get_arg_types(!.PredInfo, ArgTypes),
-                pred_info_get_purity(!.PredInfo, Purity),
-                pred_info_get_markers(!.PredInfo, Markers),
-                clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
-                    PredModuleName, PredName, PredId, ProcId,
-                    ProgVarSet, PragmaVars, ArgTypes,
-                    Purity, Attributes, Markers, Context, PragmaImpl,
-                    ClausesInfo1, ClausesInfo, !Specs),
-                pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-                pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-
-                module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
-                pragma_get_var_infos(PragmaVars, ArgInfos),
-                ArgNameModes = list.map(
-                    foreign_arg_name_mode_box_project_maybe_name_mode,
-                    ArgInfos),
-                warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
-                    PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
-                    PFSymNameArity, PredId, ProcId, !Specs)
-            else
-                Pieces = [words("Error:"),
-                    pragma_decl("foreign_proc"), words("declaration for")] ++
-                    color_as_incorrect([words("undeclared mode")]) ++
-                    [words("of"), p_or_f(PredOrFunc)] ++
-                    color_as_subject([qual_sym_name_arity(SNA),
-                        suffix(".")]) ++
-                    [nl],
-                Spec = spec($pred, severity_error, phase_pt2h,
-                    Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+            ImportedFprocSpecs = [],
+            is_foreign_proc_for_this_backend(Globals, Attributes,
+                ForThisBackend),
+            (
+                ForThisBackend = not_for_this_backend(RejectCause),
+                handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId,
+                    !.PredInfo, RejectCause, Context, !ModuleInfo, !Specs)
+            ;
+                ForThisBackend = for_this_backend,
+                add_nonimported_foreign_proc(PredId, !.PredInfo,
+                    PFSymNameArity, Attributes, ProgVarSet, PragmaVars,
+                    PragmaImpl, Context, !ModuleInfo, !Specs)
             )
         )
     ).
 
-:- type reject_cause
+%---------------------%
+
+    % Lookup the pred declaration in the predicate table.
+    % If it is not there, generate an error message, and insert
+    % a dummy declaration for the predicate.
+    %
+:- pred add_implicit_pred_decl_if_needed(pf_sym_name_arity::in,
+    pred_status::in, prog_context::in, pred_id::out,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_implicit_pred_decl_if_needed(PFSymNameArity, PredStatus, Context, PredId,
+        !ModuleInfo, !Specs) :-
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    det_sym_name_get_module_name_and_name(PredSymName,
+        PredModuleName, PredName),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
+        PredModuleName, PredName, PredFormArity, MaybePredId),
+    (
+        MaybePredId = yes(PredId)
+    ;
+        MaybePredId = no,
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        Origin = origin_user(user_made_pred(PredOrFunc,
+            PredSymName, UserArity)),
+        add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
+            PredName, PredFormArity, PredStatus, is_not_a_class_method,
+            Context, Origin,
+            [pragma_decl("foreign_proc"), words("declaration")],
+            PredId, !ModuleInfo, !Specs)
+    ).
+
+    % Record the existence of this "clause".
+    %
+:- pred record_foreign_proc_seq_num(item_seq_num::in, prog_context::in,
+    pred_id::in, pred_info::in, pred_info::out,
+    module_info::in, module_info::out) is det.
+
+record_foreign_proc_seq_num(SeqNum, Context, PredId, !PredInfo, !ModuleInfo) :-
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    ItemNumbers0 = ClausesInfo0 ^ cli_item_numbers,
+    add_clause_item_number(SeqNum, Context, item_is_foreign_proc,
+        ItemNumbers0, ItemNumbers),
+    ClausesInfo = ClausesInfo0 ^ cli_item_numbers := ItemNumbers,
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
+
+    % Replace any maybe_thread_safe foreign_proc attributes with
+    % the actual thread safety attributes that we get from the
+    % `--maybe-thread-safe' option.
+    %
+:- pred decide_actual_thread_safety(globals::in,
+    foreign_proc_attributes::in, foreign_proc_attributes::out) is det.
+
+decide_actual_thread_safety(Globals, Attributes0, Attributes) :-
+    globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
+    ThreadSafe = get_thread_safe(Attributes0),
+    (
+        ThreadSafe = proc_maybe_thread_safe,
+        (
+            MaybeThreadSafe = yes,
+            set_thread_safe(proc_thread_safe, Attributes0, Attributes)
+        ;
+            MaybeThreadSafe = no,
+            set_thread_safe(proc_not_thread_safe, Attributes0, Attributes)
+        )
+    ;
+        ( ThreadSafe = proc_thread_safe
+        ; ThreadSafe = proc_not_thread_safe
+        ),
+        Attributes = Attributes0
+    ).
+
+    % Don't allow definitions, whether clauses or foreign_procs,
+    % for imported predicates/functions. Note that this applies to
+    % *plain* imported predicates/functions, not the *opt-imported* ones.
+    %
+:- pred report_if_fproc_is_for_imported_pred(pred_info::in, prog_context::in,
+    list(error_spec)::out) is det.
+
+report_if_fproc_is_for_imported_pred(PredInfo, Context, Specs) :-
+    ( if pred_info_is_imported(PredInfo) then
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        pred_info_get_sym_name(PredInfo, PredSymName),
+        user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+        SNA = sym_name_arity(PredSymName, UserArityInt),
+        Pieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declarations are allowed only for predicates and"),
+            words("functions defined in the current module, but"),
+            p_or_f(PredOrFunc)] ++
+            color_as_incorrect([qual_sym_name_arity(SNA)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("imported.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
+
+%---------------------%
+
+:- type maybe_for_this_backend
+    --->    for_this_backend
+    ;       not_for_this_backend(wrong_backend_cause).
+
+:- type wrong_backend_cause
     --->    wrong_lang(foreign_language, list(foreign_language))
     ;       right_lang_wrong_backend.
 
-:- pred report_bad_foreign_proc_in_dot_opt_file(reject_cause::in,
+:- pred is_foreign_proc_for_this_backend(globals::in,
+    foreign_proc_attributes::in, maybe_for_this_backend::out) is det.
+
+is_foreign_proc_for_this_backend(Globals, Attributes, ForThisBackend) :-
+    globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
+    CurrentBackend = lookup_current_backend(Globals),
+    PragmaForeignLanguage = get_foreign_language(Attributes),
+    MaybeForSpecificBackend = get_for_specific_backend(Attributes),
+    ( if
+        not list.member(PragmaForeignLanguage, BackendForeignLangs)
+    then
+        RejectCause =
+            wrong_lang(PragmaForeignLanguage, BackendForeignLangs),
+        ForThisBackend = not_for_this_backend(RejectCause)
+    else if
+        MaybeForSpecificBackend = yes(SpecificBackend),
+        SpecificBackend \= CurrentBackend
+    then
+        RejectCause = right_lang_wrong_backend,
+        ForThisBackend = not_for_this_backend(RejectCause)
+    else
+        ForThisBackend = for_this_backend
+    ).
+
+%---------------------%
+
+    % Add the foreign_proc to the list of "clauses" for this predicate,
+    % if the procedure it is for actually exists.
+    %
+:- pred add_nonimported_foreign_proc(pred_id::in, pred_info::in,
+    pf_sym_name_arity::in, foreign_proc_attributes::in, prog_varset::in,
+    list(pragma_var)::in, pragma_foreign_proc_impl::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_nonimported_foreign_proc(PredId, !.PredInfo, PFSymNameArity, Attributes,
+        ProgVarSet, PragmaVars, PragmaImpl, Context, !ModuleInfo, !Specs) :-
+    PragmaForeignLanguage = get_foreign_language(Attributes),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    pred_info_get_proc_table(!.PredInfo, Procs),
+    map.to_assoc_list(Procs, ExistingProcs),
+    pragma_get_modes(PragmaVars, Modes),
+    ( if
+        % The inst variables for the foreign_proc declaration and
+        % predmode declarations are from different varsets. We cannot just
+        % unify the argument modes directly, because the representation
+        % of the inst variables may be different. Instead, we need to allow
+        % for a renaming between the inst variables in the argument modes
+        % of the foreign_proc and those of the predmode declaration.
+        %
+        % XXX We should probably also check that each pair in the renaming
+        % has the same name.
+        get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+            ExistingProcs, Modes, ProcId)
+    then
+        det_sym_name_get_module_name_and_name(PredSymName,
+            PredModuleName, PredName),
+        pred_info_get_arg_types(!.PredInfo, ArgTypes),
+        pred_info_get_purity(!.PredInfo, Purity),
+        pred_info_get_markers(!.PredInfo, Markers),
+        pred_info_get_clauses_info(!.PredInfo, ClausesInfo1),
+        clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
+            PredModuleName, PredName, PredId, ProcId, ProgVarSet, PragmaVars,
+            ArgTypes, Purity, Attributes, Markers, Context, PragmaImpl,
+            ClausesInfo1, ClausesInfo, !Specs),
+        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+        pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
+
+        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
+        pragma_get_var_infos(PragmaVars, ArgInfos),
+        ArgNameModes = list.map(
+            foreign_arg_name_mode_box_project_maybe_name_mode,
+            ArgInfos),
+        warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
+            PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
+            PFSymNameArity, PredId, ProcId, !Specs)
+    else
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(PredSymName, UserArityInt),
+        Pieces = [words("Error:"),
+            pragma_decl("foreign_proc"), words("declaration for")] ++
+            color_as_incorrect([words("undeclared mode")]) ++
+            [words("of"), p_or_f(PredOrFunc)] ++
+            color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+%---------------------%
+
+:- pred handle_wrong_backend_foreign_proc(item_mercury_status::in,
+    pred_id::in, pred_info::in, wrong_backend_cause::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId, !.PredInfo,
+        WrongBackendCause, Context, !ModuleInfo, !Specs) :-
+    % This foreign_proc is for the wrong language or the wrong backend.
+    % This is ok when coming from a source file, which is allowed
+    % to define a predicate by different foreign_procs for different
+    % target languages and/or backends. This is not ok when coming
+    % from a .opt file, which (if everything is set up properly)
+    % we should be reading only if it has been generated for the
+    % current grade.
+    ( if ItemMercuryStatus =
+        item_defined_in_other_module(item_import_opt_int)
+    then
+        report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context,
+            !Specs)
+    else
+        true
+    ),
+    % XXX The next two calls seem redundant, and in most cases,
+    % they are. However, deleting them results in the failure
+    % of the hard_coded/foreign_type_2 test case, with this message:
+    % In clause for function `x'/1:
+    %   error: undefined symbol `foreign_type2.x'/1.
+    %   There are `:- pragma foreign_type' declarations for type
+    %   `foreign_type2.coord'/1, so it is treated as an abstract
+    %   type in all predicates and functions which are not
+    %   implemented for those foreign types.
+    % The reason for this is the fact that convert_cons_defn
+    % in typecheck.m checks whether the goal type is
+    % goal_not_for_promise(np_goal_type_clause_and_foreign),
+    % and it is these two calls that set up the "_and_foreign"
+    % part of that.
+    %
+    % XXX Originally, we executed these two calls only in
+    % the wrong_lang case, and this was enough for fixing the
+    % foreign_type2 test case. Whether we need them in the
+    % right_lang_wrong_backend case is a guess, which would need
+    % a dedicated test case to test. However, since backend-specific
+    % external pragmas are intended only for implementors,
+    % this is not an urgent matter.
+    pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
+
+:- pred report_bad_foreign_proc_in_dot_opt_file(wrong_backend_cause::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
+report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
     (
-        RejectCause = wrong_lang(PragmaLang, BackendForeignLangs),
+        WrongBackendCause = wrong_lang(PragmaLang, BackendForeignLangs),
         PragmaLangStr = foreign_language_string(PragmaLang),
         FrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
             words("declaration in a .opt file for a foreign language,"),
@@ -337,7 +425,7 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
                 words("which are")] ++ BackendLangsStr ++ [suffix("."), nl]
         )
     ;
-        RejectCause = right_lang_wrong_backend,
+        WrongBackendCause = right_lang_wrong_backend,
         MainPieces = [words("Error:"), pragma_decl("foreign_proc"),
             words("declaration in a .opt file"),
             words("whose backend attribute states that"),
@@ -349,6 +437,8 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
         words("for the current grade."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
+
+%---------------------%
 
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
     % To do so, we must also insert unifications between the variables in the
@@ -752,6 +842,6 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
         )
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_foreign_proc.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
