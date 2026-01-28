@@ -1,2 +1,2 @@
-warn_return.m:016: Warning: the C code for predicate `foo'/2 may contain a
-warn_return.m:016:   `return' statement.
+warn_return.m:017: Warning: the C code for predicate `foo'/2 may contain a
+warn_return.m:017:   `return' statement.

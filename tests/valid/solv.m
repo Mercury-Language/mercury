@@ -110,7 +110,7 @@ label(V) :-
 :- mode promise_ground(any >> ground) is det.
 
 :- pragma foreign_proc("C",
-    promise_ground(X :: any >> ground),
+    promise_ground(_X :: any >> ground),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     /* assert(X->min == X->max); */

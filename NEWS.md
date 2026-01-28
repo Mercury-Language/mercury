@@ -70,6 +70,13 @@ Changes that may break compatibility
   operators. (Mercury switched to using `.` as the module name separator
   around 2003.)
 
+* The compiler now ignores comments when warning about unused arguments
+  in `foreign_proc` pragmas. Warnings can no longer be suppressed by
+  mentioning a variable in a comment; use a leading underscore to mark
+  intentionally unused variables. This change also prevents spurious
+  warnings about `return` statements caused by the word `return`
+  appearing only in comments.
+
 * We have dropped support for the x86 (32-bit) version of Cygwin.
 
 * We have dropped support for versions of MSVC before version 19 (Visual Studio
@@ -1612,6 +1619,13 @@ Changes to the Mercury compiler
 * We have fixed a bug where the compiler generated incorrect code in
   C# and Java grades when a subtype type definition did not repeat the field
   names of its base type.
+
+* The compiler now ignores comments when warning about unused arguments
+  in `foreign_proc` pragmas. Warnings can no longer be suppressed by
+  mentioning a variable in a comment; use a leading underscore to mark
+  intentionally unused variables. This change also prevents spurious
+  warnings about `return` statements caused by the word `return`
+  appearing only in comments.
 
 * We have improved the typechecking and modechecking of type conversion
   expressions.

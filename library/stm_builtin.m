@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2021-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -350,11 +350,10 @@
 ").
 
 :- pragma foreign_proc("C",
-    stm_from_outer_to_inner(IO::di, STM::uo),
+    stm_from_outer_to_inner(_IO::di, STM::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     STM = NULL;
-    // ignore IO
 ").
 
 :- pragma foreign_proc("C",

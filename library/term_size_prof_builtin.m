@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2008 The University of Melbourne.
-% Copyright (C) 2015, 2018, 2022 The Mercury team.
+% Copyright (C) 2015, 2018, 2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -174,10 +174,9 @@ increment_size(_Value, _Incr) :-
 % they are designed only to hang foreign_procs onto.
 
 :- pragma foreign_proc("C",
-    complexity_is_active(IsActive::out),
+    complexity_is_active(_IsActive::out),
     [thread_safe, will_not_call_mercury],
 "
-    // Mention IsActive to avoid warning.
     MR_fatal_error(""complexity_mark_active"");
 ").
 
@@ -191,10 +190,9 @@ complexity_is_active(IsActive) :-
     ).
 
 :- pragma foreign_proc("C",
-    complexity_call_proc(Slot::out),
+    complexity_call_proc(_Slot::out),
     [thread_safe, will_not_call_mercury],
 "
-    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_call_proc"");
 ").
 
@@ -204,10 +202,9 @@ complexity_call_proc(Slot) :-
     private_builtin.unsafe_type_cast(0, Slot).
 
 :- pragma foreign_proc("C",
-    complexity_exit_proc(Slot::in),
+    complexity_exit_proc(_Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_exit_proc"");
 ").
 
@@ -215,10 +212,9 @@ complexity_exit_proc(_Slot) :-
     impure private_builtin.imp.
 
 :- pragma foreign_proc("C",
-    complexity_fail_proc(Slot::in),
+    complexity_fail_proc(_Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_fail_proc"");
 ").
 
@@ -227,10 +223,9 @@ complexity_fail_proc(_Slot) :-
     fail.
 
 :- pragma foreign_proc("C",
-    complexity_redo_proc(Slot::in),
+    complexity_redo_proc(_Slot::in),
     [thread_safe, will_not_call_mercury],
 "
-    // Mention Slot to avoid warning.
     MR_fatal_error(""complexity_redo_proc"");
 ").
 

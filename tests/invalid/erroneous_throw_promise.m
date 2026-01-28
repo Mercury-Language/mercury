@@ -13,42 +13,42 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-    foo(X::in),
+    foo(_X::in),
     [will_not_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */
 ").
 
 :- pragma foreign_proc("C",
-    bar(X::in),
+    bar(_X::in),
     [may_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */
 ").
 
 :- pragma foreign_proc("Java",
-    foo(X::in),
+    foo(_X::in),
     [will_not_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */
 ").
 
 :- pragma foreign_proc("Java",
-    bar(X::in),
+    bar(_X::in),
     [may_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */
 ").
 
 :- pragma foreign_proc("C#",
-    foo(X::in),
+    foo(_X::in),
     [will_not_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */
 ").
 
 :- pragma foreign_proc("C#",
-    bar(X::in),
+    bar(_X::in),
     [may_call_mercury, promise_pure, will_not_throw_exception],
 "
     /* Do something with X */

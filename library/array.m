@@ -2253,7 +2253,7 @@ min(A) = Min :-
     array.min(A, Min).
 
 :- pragma foreign_proc("C",
-    min(Array::in, Min::out),
+    min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "

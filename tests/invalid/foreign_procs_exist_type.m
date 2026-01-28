@@ -60,89 +60,89 @@ make_t(42).
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    foreign_pred_test(Bool::in(bool_no), T1::out),
+    foreign_pred_test(_Bool::in(bool_no), _T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C",
-    foreign_pred_test(Bool::in(bool_yes), T2::out),
+    foreign_pred_test(_Bool::in(bool_yes), _T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("Java",
-    foreign_pred_test(Bool::in(bool_no), T1::out),
+    foreign_pred_test(_Bool::in(bool_no), _T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("Java",
-    foreign_pred_test(Bool::in(bool_yes), T2::out),
+    foreign_pred_test(_Bool::in(bool_yes), _T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C#",
-    foreign_pred_test(Bool::in(bool_no), T1::out),
+    foreign_pred_test(_Bool::in(bool_no), _T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C#",
-    foreign_pred_test(Bool::in(bool_yes), T2::out),
+    foreign_pred_test(_Bool::in(bool_yes), _T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    foreign_func_test(Bool::in(bool_no)) = (T1::out),
+    foreign_func_test(_Bool::in(bool_no)) = (_T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C",
-    foreign_func_test(Bool::in(bool_yes)) = (T2::out),
+    foreign_func_test(_Bool::in(bool_yes)) = (_T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("Java",
-    foreign_func_test(Bool::in(bool_no)) = (T1::out),
+    foreign_func_test(_Bool::in(bool_no)) = (_T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("Java",
-    foreign_func_test(Bool::in(bool_yes)) = (T2::out),
+    foreign_func_test(_Bool::in(bool_yes)) = (_T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C#",
-    foreign_func_test(Bool::in(bool_no)) = (T1::out),
+    foreign_func_test(_Bool::in(bool_no)) = (_T1::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T1 */
+    // TypeInfo_for_T
 ").
 
 :- pragma foreign_proc("C#",
-    foreign_func_test(Bool::in(bool_yes)) = (T2::out),
+    foreign_func_test(_Bool::in(bool_yes)) = (_T2::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* TypeInfo_for_T, Bool, T2 */
+    // TypeInfo_for_T
 ").
 
 %---------------------------------------------------------------------------%

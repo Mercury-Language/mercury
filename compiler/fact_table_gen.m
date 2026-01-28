@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -133,6 +133,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_util.
@@ -632,6 +633,10 @@ fact_table_compile_facts(ProgressStream, ModuleInfo, FactTableFileName,
         io.close_input(FactTableFileStream, !IO)
     ;
         FactTableFileResult = error(Error),
+        pred_info_get_markers(!.PredInfo, PredMarkers0),
+        add_marker(marker_fact_table_semantic_errors,
+            PredMarkers0, PredMarkers),
+        pred_info_set_markers(PredMarkers, !PredInfo),
         add_file_open_error(yes(Context), FactTableFileName, "input",
             Error, !Specs, !IO),
         HeaderCode = "",
@@ -773,6 +778,10 @@ compile_fact_table_in_file(MaybeProgressStream, FileStream, FileName,
     ;
         OpenCompileSpecs = [_ | _],
         !:Specs = OpenCompileSpecs ++ !.Specs,
+        pred_info_get_markers(!.PredInfo, PredMarkers0),
+        add_marker(marker_fact_table_semantic_errors,
+            PredMarkers0, PredMarkers),
+        pred_info_set_markers(PredMarkers, !PredInfo),
         HeaderCode = HeaderCode0,
         PrimaryProcId = invalid_proc_id,
         MaybeDataFileName = no

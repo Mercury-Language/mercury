@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -215,14 +215,15 @@
 
     ;       marker_fact_table_semantic_errors.
             % This predicate has a fact_table pragma for it, so it is
-            % *expected* not to have any clauses in the program itself,
-            % but the compiler found some problems with its declaration,
-            % and so the compiler did not generate clauses (actually,
-            % foreign_procs) for it either. Therefore its procedures
-            % have no implementations, but there should be no separate
-            % error message about this: since they would probably generate
-            % more confusion than enlightenment. The error messages generated
-            % by fact_table.m should be entirely sufficient.
+            % *expected* not to have any clauses in the program itself, but
+            % the compiler did not generate clauses (actually, foreign_procs)
+            % for it either. This may be because it found some problems
+            % with its declaration, or because it simply couldn't read
+            % the file that the fact tabel was supposed to be in.
+            %
+            % Since the problem that caused the absence of an implementation
+            % would have been reported, there should be no separate diagnostics
+            % caused by this absence itself.
 
 %---------------------------------------------------------------------------%
 

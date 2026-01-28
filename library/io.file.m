@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1346,7 +1346,7 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
     string::out, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_make_temp_directory(ParentDirName::in, Prefix::in, Suffix::in, Sep::in,
+    do_make_temp_directory(ParentDirName::in, Prefix::in, _Suffix::in, Sep::in,
         DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],

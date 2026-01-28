@@ -102,24 +102,21 @@ test_fprocs(!IO) :-
 :- mode test_fproc_1(t4 >> ground, di, uo) is det.
 
 :- pragma foreign_proc("C",
-    test_fproc_1(A::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_1(_A::(t4 >> ground), IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // A
     IO = IO0;
 ").
 :- pragma foreign_proc("Java",
-    test_fproc_1(A::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_1(_A::(t4 >> ground), IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // A
     IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    test_fproc_1(A::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_1(_A::(t4 >> ground), IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // A
     IO = IO0;
 ").
 
@@ -127,40 +124,40 @@ test_fprocs(!IO) :-
 :- mode test_fproc_2(in, t4 >> ground, t4 >> ground, di, uo) is det.
 
 :- pragma foreign_proc("C",
-    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_2(_N::in, _A::(t4 >> ground), _B::(t4 >> ground),
+        IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // N, A, B
     IO = IO0;
 ").
 :- pragma foreign_proc("Java",
-    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_2(_N::in, _A::(t4 >> ground), _B::(t4 >> ground),
+        IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // N, A, B
     IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_2(_N::in, _A::(t4 >> ground), _B::(t4 >> ground),
+        IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // N, A, B
     IO = IO0;
 ").
 
 % These foreign_procs are the deliberate duplicates referred to at the top.
 :- pragma foreign_proc("Java",
-    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_2(_N::in, _A::(t4 >> ground), _B::(t4 >> ground),
+        IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // N, A, B
     IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    test_fproc_2(_N::in, _A::(t4 >> ground), _B::(t4 >> ground),
+        IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "
-    // N, A, B
     IO = IO0;
 ").
 

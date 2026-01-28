@@ -10,6 +10,7 @@
 :- interface.
 
 :- pred foo(int::in, int::out) is det.
+:- pred bar(int::in, int::out) is det.
 
 :- implementation.
 
@@ -20,7 +21,6 @@
     X = Y;
     return;
 ").
-
 :- pragma foreign_proc("C#",
     foo(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
@@ -28,13 +28,37 @@
     X = Y;
     return;
 ").
-
 :- pragma foreign_proc("Java",
     foo(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
 "
     X = Y;
     return;
+").
+
+:- pragma foreign_proc("C",
+    bar(X::in, Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = Y;
+    // return;
+    /* return */
+").
+:- pragma foreign_proc("C#",
+    bar(X::in, Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = Y;
+    // return;
+    /* return */
+").
+:- pragma foreign_proc("Java",
+    bar(X::in, Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = Y;
+    // return;
+    /* return */
 ").
 
 :- end_module warn_return.

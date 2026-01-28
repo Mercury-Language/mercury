@@ -63,24 +63,21 @@ in(a).
 :- semipure pred semi(foo::in) is semidet.
 
 :- pragma foreign_proc("C",
-    semi(X::in),
+    semi(_X::in),
     [will_not_call_mercury, promise_semipure],
 "
-    /* X */
     SUCCESS_INDICATOR = 0;
 ").
 :- pragma foreign_proc("Java",
-    semi(X::in),
+    semi(_X::in),
     [will_not_call_mercury, promise_semipure],
 "
-    /* X */
     SUCCESS_INDICATOR = false;
 ").
 :- pragma foreign_proc("C#",
-    semi(X::in),
+    semi(_X::in),
     [will_not_call_mercury, promise_semipure],
 "
-    /* X */
     SUCCESS_INDICATOR = false;
 ").
 

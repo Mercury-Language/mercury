@@ -1,44 +1,44 @@
-purity.m:115: Warning: predicate [38;5;87m`w1'/0[39;49m is declared [38;5;171mimpure,[39;49m but is actually
-purity.m:115:   [38;5;171mpure.[39;49m
-purity.m:119: Warning: predicate [38;5;87m`w2'/0[39;49m is declared [38;5;171msemipure,[39;49m but is actually
-purity.m:119:   [38;5;171mpure.[39;49m
-purity.m:123: Warning: predicate [38;5;87m`w3'/0[39;49m is declared [38;5;171mimpure,[39;49m but is actually
-purity.m:123:   [38;5;171msemipure.[39;49m
-purity.m:128: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate [38;5;87m`w4'/0.[39;49m
-purity.m:133: Error: predicate [38;5;87m`w5'/0[39;49m is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
-purity.m:139: Error: predicate [38;5;87m`w6'/0[39;49m is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
-purity.m:148: Error: predicate [38;5;87m`e1'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
-purity.m:148:   [38;5;40mimpure,[39;49m or [38;5;40mpromised pure.[39;49m
-purity.m:153: Error: predicate [38;5;87m`e2'/0[39;49m is [38;5;203msemipure.[39;49m It must either be [38;5;40mdeclared[39;49m
-purity.m:153:   [38;5;40msemipure,[39;49m or [38;5;40mpromised pure.[39;49m
-purity.m:158: Error: predicate [38;5;87m`e3'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
-purity.m:158:   [38;5;40mimpure,[39;49m or [38;5;40mpromised semipure.[39;49m
-purity.m:166: In call to impure predicate [38;5;87m`purity.imp'/0:[39;49m
-purity.m:166:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
-purity.m:171: In call to semipure predicate [38;5;87m`purity.semi'/0:[39;49m
-purity.m:171:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
-purity.m:176: In clause for `e6':
-purity.m:176:   in argument 1 of call to predicate `purity.in'/1:
-purity.m:176:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
-purity.m:176:   expected instantiatedness was [38;5;40m`ground'.[39;49m
-purity.m:176:   The goal could not be reordered, because it was followed by an
-purity.m:176:   impure goal.
-purity.m:177:   This is the location of the impure goal.
-purity.m:183: In clause for `e7':
-purity.m:183:   in argument 1 of call to predicate `purity.imp1'/1:
-purity.m:183:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
-purity.m:183:   expected instantiatedness was [38;5;40m`ground'.[39;49m
-purity.m:183:   The goal could not be reordered, because it was impure.
-purity.m:186: Error: [38;5;87munification predicate for type `e8'[39;49m is [38;5;203mimpure,[39;49m but it must
-purity.m:186:   be [38;5;40mpure.[39;49m
-purity.m:201: Error: [38;5;87munification predicate for type `e9'[39;49m is [38;5;203msemipure,[39;49m but it
-purity.m:201:   must be [38;5;40mpure.[39;49m
-purity.m:219: In call to impure predicate [38;5;87m`purity.imp1'/1:[39;49m
-purity.m:219:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
-purity.m:219: Purity error: the body of the lambda expression is [38;5;40mimpure,[39;49m but
-purity.m:219:   the lambda expression itself was declared [38;5;203mpure.[39;49m
-purity.m:225: In call to semipure predicate [38;5;87m`purity.semi'/1:[39;49m
-purity.m:225:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
-purity.m:225: Purity error: the body of the lambda expression is [38;5;40msemipure,[39;49m but
-purity.m:225:   the lambda expression itself was declared [38;5;203mpure.[39;49m
+purity.m:112: Warning: predicate [38;5;87m`w1'/0[39;49m is declared [38;5;171mimpure,[39;49m but is actually
+purity.m:112:   [38;5;171mpure.[39;49m
+purity.m:116: Warning: predicate [38;5;87m`w2'/0[39;49m is declared [38;5;171msemipure,[39;49m but is actually
+purity.m:116:   [38;5;171mpure.[39;49m
+purity.m:120: Warning: predicate [38;5;87m`w3'/0[39;49m is declared [38;5;171mimpure,[39;49m but is actually
+purity.m:120:   [38;5;171msemipure.[39;49m
+purity.m:125: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate [38;5;87m`w4'/0.[39;49m
+purity.m:130: Error: predicate [38;5;87m`w5'/0[39;49m is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:136: Error: predicate [38;5;87m`w6'/0[39;49m is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:145: Error: predicate [38;5;87m`e1'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:145:   [38;5;40mimpure,[39;49m or [38;5;40mpromised pure.[39;49m
+purity.m:150: Error: predicate [38;5;87m`e2'/0[39;49m is [38;5;203msemipure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:150:   [38;5;40msemipure,[39;49m or [38;5;40mpromised pure.[39;49m
+purity.m:155: Error: predicate [38;5;87m`e3'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:155:   [38;5;40mimpure,[39;49m or [38;5;40mpromised semipure.[39;49m
+purity.m:163: In call to impure predicate [38;5;87m`purity.imp'/0:[39;49m
+purity.m:163:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
+purity.m:168: In call to semipure predicate [38;5;87m`purity.semi'/0:[39;49m
+purity.m:168:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
+purity.m:173: In clause for `e6':
+purity.m:173:   in argument 1 of call to predicate `purity.in'/1:
+purity.m:173:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
+purity.m:173:   expected instantiatedness was [38;5;40m`ground'.[39;49m
+purity.m:173:   The goal could not be reordered, because it was followed by an
+purity.m:173:   impure goal.
+purity.m:174:   This is the location of the impure goal.
+purity.m:180: In clause for `e7':
+purity.m:180:   in argument 1 of call to predicate `purity.imp1'/1:
+purity.m:180:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
+purity.m:180:   expected instantiatedness was [38;5;40m`ground'.[39;49m
+purity.m:180:   The goal could not be reordered, because it was impure.
+purity.m:183: Error: [38;5;87munification predicate for type `e8'[39;49m is [38;5;203mimpure,[39;49m but it must
+purity.m:183:   be [38;5;40mpure.[39;49m
+purity.m:198: Error: [38;5;87munification predicate for type `e9'[39;49m is [38;5;203msemipure,[39;49m but it
+purity.m:198:   must be [38;5;40mpure.[39;49m
+purity.m:216: In call to impure predicate [38;5;87m`purity.imp1'/1:[39;49m
+purity.m:216:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
+purity.m:216: Purity error: the body of the lambda expression is [38;5;40mimpure,[39;49m but
+purity.m:216:   the lambda expression itself was declared [38;5;203mpure.[39;49m
+purity.m:222: In call to semipure predicate [38;5;87m`purity.semi'/1:[39;49m
+purity.m:222:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
+purity.m:222: Purity error: the body of the lambda expression is [38;5;40msemipure,[39;49m but
+purity.m:222:   the lambda expression itself was declared [38;5;203mpure.[39;49m
 For more information, recompile with `-E'.

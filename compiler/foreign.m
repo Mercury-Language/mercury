@@ -122,7 +122,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % foreign_code_to_identifiers(Lang, Code, Indentifiers):
+    % foreign_code_to_identifiers(Lang, Code, Identifiers):
     %
     % Break up Code into words that meet the rules for identifiers.
     % Some of these may actually be language keywords.
@@ -515,41 +515,100 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_code_to_identifiers(_Lang, Code, Indentifiers) :-
+foreign_code_to_identifiers(Lang, Code, Identifiers) :-
     string.to_char_list(Code, Chars),
-    % We use cords to ensure tail recursion in the loop over Code,
-    % because it may be big. We do not do try to ensure tail recursion
-    % for loops over identifiers, since (for cultural reasons)
-    % they will effectively never be long enough for this to be a problem.
-    foreign_code_to_identifiers_loop(Chars, cord.init, IndentifierCord),
-    Indentifiers = cord.list(IndentifierCord).
-
-:- pred foreign_code_to_identifiers_loop(list(char)::in,
-    cord(string)::in, cord(string)::out) is det.
-
-foreign_code_to_identifiers_loop(Chars0, !IndentifierCord) :-
-    get_next_identifier(Chars0, IndentifierChars, Chars1),
+    % This one arm switch ensures that we will get a warning
+    % if and when we add another target language (which may have
+    % different rules for what is a comment).
     (
-        IndentifierChars = []
-        % There are no identifiers left.
-    ;
-        IndentifierChars = [_ | _],
-        string.from_char_list(IndentifierChars, Indentifier),
-        cord.snoc(Indentifier, !IndentifierCord),
-        foreign_code_to_identifiers_loop(Chars1, !IndentifierCord)
+        ( Lang = lang_c
+        ; Lang = lang_java
+        ; Lang = lang_csharp
+        ),
+        % We use cords to ensure tail recursion in the loop over Code,
+        % because it may be big. We do not do try to ensure tail recursion
+        % for loops over identifiers, since (for cultural reasons)
+        % they will effectively never be long enough for this to be a problem.
+        foreign_code_to_c_j_cs_identifiers_loop(Chars,
+            cord.init, IdentifierCord),
+        Identifiers = cord.list(IdentifierCord)
     ).
 
-:- pred get_next_identifier(list(char)::in,
+:- pred foreign_code_to_c_j_cs_identifiers_loop(list(char)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+foreign_code_to_c_j_cs_identifiers_loop(Chars0, !IdentifierCord) :-
+    get_next_c_j_cs_identifier(Chars0, IdentifierChars, Chars1),
+    (
+        IdentifierChars = []
+        % There are no identifiers left.
+    ;
+        IdentifierChars = [_ | _],
+        string.from_char_list(IdentifierChars, Identifier),
+        cord.snoc(Identifier, !IdentifierCord),
+        foreign_code_to_c_j_cs_identifiers_loop(Chars1, !IdentifierCord)
+    ).
+
+:- pred get_next_c_j_cs_identifier(list(char)::in,
     list(char)::out, list(char)::out) is det.
 
-get_next_identifier([], [], []).
-get_next_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
+get_next_c_j_cs_identifier([], [], []).
+get_next_c_j_cs_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
     ( if char.is_alnum_or_underscore(Char0) then
         get_rest_of_identifier(Chars0, TailIdentifierChars, LeftOverChars),
         IdentifierChars = [Char0 | TailIdentifierChars]
+    else if Char0 = ('/') then
+        (
+            Chars0 = [],
+            IdentifierChars = [],
+            LeftOverChars = []
+        ;
+            Chars0 = [Char1 | Chars1],
+            ( if Char1 = ('/') then
+                ignore_rest_of_line(Chars1, Chars2),
+                get_next_c_j_cs_identifier(Chars2,
+                    IdentifierChars, LeftOverChars)
+            else if Char1 = ('*') then
+                ignore_rest_of_slash_star_comment(Chars1, Chars2),
+                get_next_c_j_cs_identifier(Chars2,
+                    IdentifierChars, LeftOverChars)
+            else
+                % Ignore Char0, since it does not start a comment, and
+                % cannot be part of an identifier.
+                get_next_c_j_cs_identifier(Chars0,
+                    IdentifierChars, LeftOverChars)
+            )
+        )
     else
-        % Ignore Char0, since it cannot be part of an identifier.
-        get_next_identifier(Chars0, IdentifierChars, LeftOverChars)
+        % Ignore Char0, since it does not start a comment, and
+        % cannot be part of an identifier.
+        get_next_c_j_cs_identifier(Chars0, IdentifierChars, LeftOverChars)
+    ).
+
+:- pred ignore_rest_of_slash_star_comment(list(char)::in,
+    list(char)::out) is det.
+
+ignore_rest_of_slash_star_comment([], []).
+ignore_rest_of_slash_star_comment([Char0 | Chars0], LeftOverChars) :-
+    ( if
+        Char0 = ('*'),
+        Chars0 = [Char1 | Chars1],
+        Char1 = ('/')
+    then
+        LeftOverChars = Chars1
+    else
+        ignore_rest_of_slash_star_comment(Chars0, LeftOverChars)
+    ).
+
+:- pred ignore_rest_of_line(list(char)::in,
+    list(char)::out) is det.
+
+ignore_rest_of_line([], []).
+ignore_rest_of_line([Char0 | Chars0], LeftOverChars) :-
+    ( if Char0 = ('\n') then
+        LeftOverChars = Chars0
+    else
+        ignore_rest_of_line(Chars0, LeftOverChars)
     ).
 
 :- pred get_rest_of_identifier(list(char)::in, list(char)::out,

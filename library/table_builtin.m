@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2010 The University of Melbourne.
-% Copyright (C) 2014-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -869,14 +869,12 @@ table_mm_answer_is_not_duplicate(_) :-
     private_builtin.sorry("table_mm_answer_is_not_duplicate").
 
 :- pragma foreign_proc("C",
-    table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
+    table_mm_answer_is_not_duplicate_shortcut(_Subgoal::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // mention Subgoal to shut up the warning.
     MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
@@ -1032,14 +1030,12 @@ table_mmos_save_inputs :-
     impure private_builtin.imp.
 
 :- pragma foreign_proc("C",
-    table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
+    table_mmos_setup_consumer(_T::in, _GeneratorPred::in, _Consumer::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // Mention T, GeneratorPred, Consumer to shut up the warning.
     MR_fatal_error(""table_mmos_setup_consumer: direct call"");
 ").
 
@@ -1054,26 +1050,22 @@ table_mmos_setup_consumer(_, _, Consumer) :-
 :- pragma consider_used(pred(pretend_to_generate_value/1)).
 
 :- pragma foreign_proc("C",
-    table_mmos_answer_is_not_duplicate(T::in),
+    table_mmos_answer_is_not_duplicate(_T::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // Mention T to shut up the warning.
     MR_fatal_error(""table_mmos_answer_is_not_duplicate: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-    table_mmos_answer_is_not_duplicate_shortcut(G::in),
+    table_mmos_answer_is_not_duplicate_shortcut(_G::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // Mention G to shut up the warning.
     MR_fatal_error(
         ""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
@@ -1082,32 +1074,28 @@ table_mmos_setup_consumer(_, _, Consumer) :-
 :- pragma external_pred(table_mmos_consume_next_answer_multi/2).
 
 :- pragma foreign_proc("C",
-    table_mmos_restore_answers(AnswerBlock::in),
+    table_mmos_restore_answers(_AnswerBlock::in),
     [will_not_call_mercury, promise_semipure, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // Mention AnswerBlock to shut up the warning.
     MR_fatal_error(""table_mmos_restore_answers: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-    table_mmos_pickup_inputs(Generator::out),
+    table_mmos_pickup_inputs(_Generator::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // The body of this predicate doesn't matter, because it will never be
     // referred to. When the compiler creates references to this predicate,
     // it always overrides the predicate body.
-
-    // mention Generator to shut up the warning.
     MR_fatal_error(""table_mmos_pickup_inputs: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-    table_mmos_create_answer_block(Generator::in, BlockSize::in,
-        AnswerBlock::out),
+    table_mmos_create_answer_block(_Generator::in, _BlockSize::in,
+        _AnswerBlock::out),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
@@ -1119,7 +1107,7 @@ table_mmos_create_answer_block(_, _, AnswerBlock) :-
     pretend_to_generate_value(AnswerBlock).
 
 :- pragma foreign_proc("C",
-    table_mmos_return_answer(Generator::in, AnswerBlock::in),
+    table_mmos_return_answer(_Generator::in, _AnswerBlock::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // MR_tbl_mmos_return_answer(Generator, AnswerBlock);
@@ -1129,7 +1117,7 @@ table_mmos_return_answer(_, _) :-
     impure private_builtin.imp.
 
 :- pragma foreign_proc("C",
-    table_mmos_completion(Generator::in),
+    table_mmos_completion(_Generator::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
     // MR_tbl_mmos_completion(Generator);

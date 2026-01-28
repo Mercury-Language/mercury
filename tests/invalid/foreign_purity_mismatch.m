@@ -24,127 +24,109 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    pure_with_impure(S::in),
+    pure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    pure_with_impure(S::in),
+    pure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    pure_with_impure(S::in),
+    pure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    pure_with_semipure(S::in),
+    pure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    pure_with_semipure(S::in),
+    pure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    pure_with_semipure(S::in),
+    pure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    semipure_with_impure(S::in),
+    semipure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    semipure_with_impure(S::in),
+    semipure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    semipure_with_impure(S::in),
+    semipure_with_impure(_S::in),
     [will_not_call_mercury],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    semipure_with_pure(S::in),
+    semipure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    semipure_with_pure(S::in),
+    semipure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    semipure_with_pure(S::in),
+    semipure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    impure_with_pure(S::in),
+    impure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    impure_with_pure(S::in),
+    impure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    impure_with_pure(S::in),
+    impure_with_pure(_S::in),
     [will_not_call_mercury, promise_pure],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    impure_with_semipure(S::in),
+    impure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 :- pragma foreign_proc("Java",
-    impure_with_semipure(S::in),
+    impure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 :- pragma foreign_proc("C#",
-    impure_with_semipure(S::in),
+    impure_with_semipure(_S::in),
     [will_not_call_mercury, promise_semipure],
 "
-    // S
 ").
 
 %---------------------------------------------------------------------------%

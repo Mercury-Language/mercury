@@ -39,6 +39,8 @@
     prog_varset::in, list(quant_warning)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Have we seen a quantifier with a nonempty list of variables,
     % either in the form of a "some [Vars]" scope, or an if-then-else
     % with a similarly nonempty list of variables being quantified
@@ -56,6 +58,8 @@
     prog_varset::in, hlds_goal::in, maybe_seen_quant::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
     % is mentioned at least once in the foreign code fragments that ought to
     % mention it. If not, it gives a warning.
@@ -70,6 +74,8 @@
     pf_sym_name_arity::in, pred_id::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % This predicate performs the following checks on promise ex declarations
     % (see notes/promise_ex.html).
     %
@@ -81,6 +87,8 @@
     %
 :- pred check_promise_ex_decl(list(prog_var)::in, promise_type::in, goal::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Warn about suspicious things in the bodies of foreign_code pragmas.
     % Currently, this just checks for the presence of the MR_ALLOC_ID macro
@@ -855,10 +863,12 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
     foreign_code_to_identifiers(Lang, Code, ForeignIdentifiers),
     list.filter_map(var_is_unmentioned(ForeignIdentifiers),
         Args, UnmentionedVars),
-    (
-        UnmentionedVars = []
-    ;
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, PredMarkers),
+    ( if
         UnmentionedVars = [_ | _],
+        not marker_is_present(PredMarkers, marker_fact_table_semantic_errors)
+    then
         variable_warning_start(UnmentionedVars, VarPieces, DoDoes),
         Pieces = [words("In the"), words(LangStr), words("code for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
@@ -869,6 +879,8 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         Spec = error_spec($pred, severity_warning(warn_singleton_vars),
             phase_pt2h, [msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
+    else
+        true
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
         PredId, ProcId, ForeignIdentifiers, !Specs).
