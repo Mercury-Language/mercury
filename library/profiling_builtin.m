@@ -962,16 +962,18 @@ increment_dynamic_coverage_point_count(_) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_1(_CSD::in, CSN::in,
+    save_recursion_depth_1(CSD::in, CSN::in,
         OuterCount1::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_1""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1, CSN);                 \\
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -980,11 +982,12 @@ save_recursion_depth_1(_, _, _) :-
     private_builtin.sorry("save_recursion_depth_1").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_2(_CSD::in, CSNsVector::in,
+    save_recursion_depth_2(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_2""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -993,6 +996,7 @@ save_recursion_depth_1(_, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1001,11 +1005,12 @@ save_recursion_depth_2(_, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_2").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_3(_CSD::in, CSNsVector::in,
+    save_recursion_depth_3(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_3""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1016,6 +1021,7 @@ save_recursion_depth_2(_, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1024,12 +1030,13 @@ save_recursion_depth_3(_, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_3").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_4(_CSD::in, CSNsVector::in,
+    save_recursion_depth_4(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_4""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1042,6 +1049,7 @@ save_recursion_depth_3(_, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1050,12 +1058,13 @@ save_recursion_depth_4(_, _, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_4").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_5(_CSD::in, CSNsVector::in,
+    save_recursion_depth_5(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out, OuterCount5::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_5""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1070,6 +1079,7 @@ save_recursion_depth_4(_, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1078,12 +1088,13 @@ save_recursion_depth_5(_, _, _, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_5").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_6(_CSD::in, CSNsVector::in,
+    save_recursion_depth_6(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out, OuterCount5::out, OuterCount6::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_6""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1100,6 +1111,7 @@ save_recursion_depth_5(_, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1108,13 +1120,14 @@ save_recursion_depth_6(_, _, _, _, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_6").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_7(_CSD::in, CSNsVector::in,
+    save_recursion_depth_7(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out, OuterCount5::out, OuterCount6::out,
         OuterCount7::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_7""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1133,6 +1146,7 @@ save_recursion_depth_6(_, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1141,13 +1155,14 @@ save_recursion_depth_7(_, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_7").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_8(_CSD::in, CSNsVector::in,
+    save_recursion_depth_8(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out, OuterCount5::out, OuterCount6::out,
         OuterCount7::out, OuterCount8::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_8""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                       \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1168,6 +1183,7 @@ save_recursion_depth_7(_, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1176,13 +1192,14 @@ save_recursion_depth_8(_, _, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("save_recursion_depth_8").
 
 :- pragma foreign_proc("C",
-    save_recursion_depth_9(_CSD::in, CSNsVector::in,
+    save_recursion_depth_9(CSD::in, CSNsVector::in,
         OuterCount1::out, OuterCount2::out, OuterCount3::out,
         OuterCount4::out, OuterCount5::out, OuterCount6::out,
         OuterCount7::out, OuterCount8::out, OuterCount9::out),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""save_recursion_depth_9""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_SAVE_DEPTH_ACTION(OuterCount1,                       \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1205,6 +1222,7 @@ save_recursion_depth_8(_, _, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1217,16 +1235,18 @@ save_recursion_depth_9(_, _, _, _, _, _, _, _, _, _, _) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_1(_CSD::in, CSN::in,
+    restore_recursion_depth_exit_1(CSD::in, CSN::in,
         OuterCount1::in),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_1""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1, CSN);                \\
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1235,11 +1255,12 @@ restore_recursion_depth_exit_1(_, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_1").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_2(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_2(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_2""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1248,6 +1269,7 @@ restore_recursion_depth_exit_1(_, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1256,11 +1278,12 @@ restore_recursion_depth_exit_2(_, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_2").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_3(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_3(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_3""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1271,6 +1294,7 @@ restore_recursion_depth_exit_2(_, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1279,12 +1303,13 @@ restore_recursion_depth_exit_3(_, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_3").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_4(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_4(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_4""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1297,6 +1322,7 @@ restore_recursion_depth_exit_3(_, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1305,12 +1331,13 @@ restore_recursion_depth_exit_4(_, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_4").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_5(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_5(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_5""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1325,6 +1352,7 @@ restore_recursion_depth_exit_4(_, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1333,12 +1361,13 @@ restore_recursion_depth_exit_5(_, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_5").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_6(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_6(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_6""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1355,6 +1384,7 @@ restore_recursion_depth_exit_5(_, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1363,13 +1393,14 @@ restore_recursion_depth_exit_6(_, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_6").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_7(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_7(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_7""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1388,6 +1419,7 @@ restore_recursion_depth_exit_6(_, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1396,13 +1428,14 @@ restore_recursion_depth_exit_7(_, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_7").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_8(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_8(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in, OuterCount8::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_8""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1423,6 +1456,7 @@ restore_recursion_depth_exit_7(_, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1431,13 +1465,14 @@ restore_recursion_depth_exit_8(_, _, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_exith_fail_8").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_exit_9(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_exit_9(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in, OuterCount8::in, OuterCount9::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_exit_9""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_EXIT(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1460,6 +1495,7 @@ restore_recursion_depth_exit_8(_, _, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1472,16 +1508,18 @@ restore_recursion_depth_exit_9(_, _, _, _, _, _, _, _, _, _, _) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_1(_CSD::in, CSN::in,
+    restore_recursion_depth_fail_1(CSD::in, CSN::in,
         OuterCount1::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_1""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1, CSN);                \\
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1490,11 +1528,12 @@ restore_recursion_depth_fail_1(_, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_1").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_2(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_2(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_2""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1503,6 +1542,7 @@ restore_recursion_depth_fail_1(_, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1511,11 +1551,12 @@ restore_recursion_depth_fail_2(_, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_2").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_3(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_3(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_3""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1526,6 +1567,7 @@ restore_recursion_depth_fail_2(_, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1534,12 +1576,13 @@ restore_recursion_depth_fail_3(_, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_3").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_4(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_4(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_4""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1552,6 +1595,7 @@ restore_recursion_depth_fail_3(_, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1560,12 +1604,13 @@ restore_recursion_depth_fail_4(_, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_4").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_5(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_5(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_5""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1580,6 +1625,7 @@ restore_recursion_depth_fail_4(_, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1588,12 +1634,13 @@ restore_recursion_depth_fail_5(_, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_5").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_6(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_6(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_6""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1610,6 +1657,7 @@ restore_recursion_depth_fail_5(_, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1618,13 +1666,14 @@ restore_recursion_depth_fail_6(_, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_6").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_7(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_7(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_7""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1643,6 +1692,7 @@ restore_recursion_depth_fail_6(_, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1651,13 +1701,14 @@ restore_recursion_depth_fail_7(_, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_7").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_8(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_8(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in, OuterCount8::in),
         [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_8""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1678,6 +1729,7 @@ restore_recursion_depth_fail_7(_, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
@@ -1686,13 +1738,14 @@ restore_recursion_depth_fail_8(_, _, _, _, _, _, _, _, _, _) :-
     private_builtin.sorry("restore_recursion_depth_fail_8").
 
 :- pragma foreign_proc("C",
-    restore_recursion_depth_fail_9(_CSD::in, CSNsVector::in,
+    restore_recursion_depth_fail_9(CSD::in, CSNsVector::in,
         OuterCount1::in, OuterCount2::in, OuterCount3::in,
         OuterCount4::in, OuterCount5::in, OuterCount6::in,
         OuterCount7::in, OuterCount8::in, OuterCount9::in),
     [thread_safe, will_not_call_mercury],
 "{
 #define MR_PROCNAME     ""restore_recursion_depth_fail_9""
+#define MR_CSD          CSD
 #define MR_REC_DEPTH_BODY   {                                           \\
                 MR_RESTORE_DEPTH_FAIL(OuterCount1,                      \\
                     MR_csn_vector_field(CSNsVector, 0));                \\
@@ -1715,6 +1768,7 @@ restore_recursion_depth_fail_8(_, _, _, _, _, _, _, _, _, _) :-
                 }
 #include ""mercury_deep_rec_depth_body.h""
 #undef MR_PROCNAME
+#undef MR_CSD
 #undef MR_REC_DEPTH_BODY
 }").
 
