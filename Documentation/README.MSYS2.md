@@ -383,8 +383,8 @@ For example, if Mercury is installed in "C:\mercury", then you would add
 a drive letter to the MSYS2 `PATH` since `:` is used as the path separator in
 MSYS2.
 
-After the Mercury `bin` has been added to the MSYS2 `PATH`, then you should be
-able to use the compiler.
+After the Mercury `bin` directory has been added to the MSYS2 `PATH`, then you
+should be able to use the compiler.
 
 Note that while `mmake` does work in the MSYS2 shell, it is quite slow.
 This is largely due to the MSYS2 port of GNU `cp` being relatively slow on
