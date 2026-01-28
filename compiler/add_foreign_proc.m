@@ -139,9 +139,17 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
                     !.PredInfo, RejectCause, Context, !ModuleInfo, !Specs)
             ;
                 ForThisBackend = for_this_backend,
-                add_nonimported_foreign_proc(PredId, !.PredInfo,
-                    PFSymNameArity, Attributes, ProgVarSet, PragmaVars,
-                    PragmaImpl, Context, !ModuleInfo, !Specs)
+                compute_intended_proc_id(!.ModuleInfo, !.PredInfo,
+                    PFSymNameArity, PragmaVars, Context, MaybeProcId),
+                (
+                    MaybeProcId = error(BadProcSpec),
+                    !:Specs = [BadProcSpec | !.Specs]
+                ;
+                    MaybeProcId = ok(ProcId),
+                    add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId,
+                        PFSymNameArity, Attributes, ProgVarSet, PragmaVars,
+                        PragmaImpl, Context, !ModuleInfo, !Specs)
+                )
             )
         )
     ).
@@ -286,17 +294,13 @@ is_foreign_proc_for_this_backend(Globals, Attributes, ForThisBackend) :-
     % Add the foreign_proc to the list of "clauses" for this predicate,
     % if the procedure it is for actually exists.
     %
-:- pred add_nonimported_foreign_proc(pred_id::in, pred_info::in,
-    pf_sym_name_arity::in, foreign_proc_attributes::in, prog_varset::in,
-    list(pragma_var)::in, pragma_foreign_proc_impl::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred compute_intended_proc_id(module_info::in, pred_info::in,
+    pf_sym_name_arity::in, list(pragma_var)::in, prog_context::in,
+    maybe_error(proc_id, error_spec)::out) is det.
 
-add_nonimported_foreign_proc(PredId, !.PredInfo, PFSymNameArity, Attributes,
-        ProgVarSet, PragmaVars, PragmaImpl, Context, !ModuleInfo, !Specs) :-
-    PragmaForeignLanguage = get_foreign_language(Attributes),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
-    pred_info_get_proc_table(!.PredInfo, Procs),
+compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
+        PragmaVars, Context, MaybeProcId) :-
+    pred_info_get_proc_table(PredInfo, Procs),
     map.to_assoc_list(Procs, ExistingProcs),
     pragma_get_modes(PragmaVars, Modes),
     ( if
@@ -309,31 +313,13 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, PFSymNameArity, Attributes,
         %
         % XXX We should probably also check that each pair in the renaming
         % has the same name.
-        get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+        get_procedure_matching_declmodes_with_renaming(ModuleInfo,
             ExistingProcs, Modes, ProcId)
     then
-        det_sym_name_get_module_name_and_name(PredSymName,
-            PredModuleName, PredName),
-        pred_info_get_arg_types(!.PredInfo, ArgTypes),
-        pred_info_get_purity(!.PredInfo, Purity),
-        pred_info_get_markers(!.PredInfo, Markers),
-        pred_info_get_clauses_info(!.PredInfo, ClausesInfo1),
-        clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
-            PredModuleName, PredName, PredId, ProcId, ProgVarSet, PragmaVars,
-            ArgTypes, Purity, Attributes, Markers, Context, PragmaImpl,
-            ClausesInfo1, ClausesInfo, !Specs),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-        pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-
-        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
-        pragma_get_var_infos(PragmaVars, ArgInfos),
-        ArgNameModes = list.map(
-            foreign_arg_name_mode_box_project_maybe_name_mode,
-            ArgInfos),
-        warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
-            PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
-            PFSymNameArity, PredId, ProcId, !Specs)
+        MaybeProcId = ok(ProcId)
     else
+        PFSymNameArity =
+            pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
         user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(PredSymName, UserArityInt),
@@ -344,8 +330,45 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, PFSymNameArity, Attributes,
             color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        MaybeProcId = error(Spec)
     ).
+
+    % Add the foreign_proc to the list of "clauses" for this predicate,
+    % if the procedure it is for actually exists.
+    %
+:- pred add_nonimported_foreign_proc(pred_id::in, pred_info::in, proc_id::in,
+    pf_sym_name_arity::in, foreign_proc_attributes::in, prog_varset::in,
+    list(pragma_var)::in, pragma_foreign_proc_impl::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
+        Attributes, ProgVarSet, PragmaVars, PragmaImpl, Context,
+        !ModuleInfo, !Specs) :-
+    PFSymNameArity =
+        pf_sym_name_arity(PredOrFunc, PredSymName, _PredFormArity),
+    det_sym_name_get_module_name_and_name(PredSymName,
+        PredModuleName, PredName),
+    pred_info_get_arg_types(!.PredInfo, ArgTypes),
+    pred_info_get_purity(!.PredInfo, Purity),
+    pred_info_get_markers(!.PredInfo, Markers),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo1),
+    clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
+        PredModuleName, PredName, PredId, ProcId, ProgVarSet, PragmaVars,
+        ArgTypes, Purity, Attributes, Markers, Context, PragmaImpl,
+        ClausesInfo1, ClausesInfo, !Specs),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+    pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
+
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
+    pragma_get_var_infos(PragmaVars, ArgInfos),
+    ArgNameModes = list.map(
+        foreign_arg_name_mode_box_project_maybe_name_mode,
+        ArgInfos),
+    PragmaForeignLanguage = get_foreign_language(Attributes),
+    warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
+        PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
+        PFSymNameArity, PredId, ProcId, !Specs).
 
 %---------------------%
 
