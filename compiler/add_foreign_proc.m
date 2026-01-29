@@ -359,14 +359,25 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
         ClausesInfo1, ClausesInfo, !Specs),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
+
+    check_for_warnings_in_foreign_proc(!.ModuleInfo, PredId, ProcId,
+        PFSymNameArity, Attributes, PragmaVars, PragmaImpl, Context, !Specs).
+
+:- pred check_for_warnings_in_foreign_proc(module_info::in,
+    pred_id::in, proc_id::in, pf_sym_name_arity::in,
+    foreign_proc_attributes::in, list(pragma_var)::in,
+    pragma_foreign_proc_impl::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_warnings_in_foreign_proc(ModuleInfo, PredId, ProcId, PFSymNameArity,
+        Attributes, PragmaVars, PragmaImpl, Context, !Specs) :-
     pragma_get_var_infos(PragmaVars, ArgInfos),
     ArgNameModes = list.map(
         foreign_arg_name_mode_box_project_maybe_name_mode,
         ArgInfos),
     PragmaForeignLanguage = get_foreign_language(Attributes),
-    warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
+    warn_singletons_in_pragma_foreign_proc(ModuleInfo,
         PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
         PFSymNameArity, PredId, ProcId, !Specs).
 
