@@ -1,5 +1,0 @@
-foreign_proc_dup_var.m:025: Error: function [38;5;87m`bread_impl'/7[39;49m [38;5;203mhas no clauses.[39;49m
-foreign_proc_dup_var.m:041: In `:- pragma foreign_proc' declaration for
-foreign_proc_dup_var.m:041:   function `bread_impl'/7:
-foreign_proc_dup_var.m:041:   error: variable [38;5;87m`Buf'[39;49m [38;5;203moccurs more than once[39;49m in
-foreign_proc_dup_var.m:041:   the argument list.
