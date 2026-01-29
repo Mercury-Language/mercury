@@ -1,8 +1,25 @@
-warn_succ_ind.m:030: Warning: the C code for predicate `foo'/2 [38;5;171mmay set[39;49m
-warn_succ_ind.m:030:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
-warn_succ_ind.m:054: Warning: the C code for predicate `foo2'/2 [38;5;171mmay set[39;49m
-warn_succ_ind.m:054:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
-warn_succ_ind.m:078: Warning: the C code for predicate `bar'/2 [38;5;171mdoes not appear[39;49m
-warn_succ_ind.m:078:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
-warn_succ_ind.m:099: Warning: the C code for predicate `bar2'/2 [38;5;171mdoes not appear[39;49m
-warn_succ_ind.m:099:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:022: Warning: the C code for predicate `test_det'/2 [38;5;171mmay set[39;49m
+warn_succ_ind.m:022:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:029: Warning: the Java code for predicate `test_det'/2 [38;5;171mmay set[39;49m
+warn_succ_ind.m:029:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:036: Warning: the C# code for predicate `test_det'/2 [38;5;171mmay set[39;49m
+warn_succ_ind.m:036:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:046: Warning: the C code for predicate `test_cc_multi'/2 [38;5;171mmay[39;49m
+warn_succ_ind.m:046:   [38;5;171mset `SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:053: Warning: the Java code for predicate `test_cc_multi'/2 [38;5;171mmay[39;49m
+warn_succ_ind.m:053:   [38;5;171mset `SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:060: Warning: the C# code for predicate `test_cc_multi'/2 [38;5;171mmay[39;49m
+warn_succ_ind.m:060:   [38;5;171mset `SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:070: Warning: the C code for predicate `test_semidet'/2 [38;5;171mdoes[39;49m
+warn_succ_ind.m:070:   [38;5;171mnot appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:076: Warning: the Java code for predicate `test_semidet'/2 [38;5;171mdoes[39;49m
+warn_succ_ind.m:076:   [38;5;171mnot appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:082: Warning: the C# code for predicate `test_semidet'/2 [38;5;171mdoes[39;49m
+warn_succ_ind.m:082:   [38;5;171mnot appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:091: Warning: the C code for predicate `test_cc_nondet'/2 [38;5;171mdoes[39;49m
+warn_succ_ind.m:091:   [38;5;171mnot appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:097: Warning: the Java code for predicate `test_cc_nondet'/2
+warn_succ_ind.m:097:   [38;5;171mdoes not appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can[39;49m
+warn_succ_ind.m:097:   [38;5;171mfail.[39;49m
+warn_succ_ind.m:103: Warning: the C# code for predicate `test_cc_nondet'/2 [38;5;171mdoes[39;49m
+warn_succ_ind.m:103:   [38;5;171mnot appear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m

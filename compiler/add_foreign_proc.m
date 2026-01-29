@@ -125,27 +125,30 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
         decide_actual_thread_safety(Globals, Attributes0, Attributes),
         report_if_fproc_is_for_imported_pred(!.PredInfo, Context,
             ImportedFprocSpecs),
-
         (
             ImportedFprocSpecs = [_ | _],
             !:Specs = ImportedFprocSpecs ++ !.Specs
         ;
             ImportedFprocSpecs = [],
-            is_foreign_proc_for_this_backend(Globals, Attributes,
-                ForThisBackend),
+            compute_intended_proc_id(!.ModuleInfo, !.PredInfo,
+                PFSymNameArity, PragmaVars, Context, MaybeProcId),
             (
-                ForThisBackend = not_for_this_backend(RejectCause),
-                handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId,
-                    !.PredInfo, RejectCause, Context, !ModuleInfo, !Specs)
+                MaybeProcId = error(BadProcSpec),
+                !:Specs = [BadProcSpec | !.Specs]
             ;
-                ForThisBackend = for_this_backend,
-                compute_intended_proc_id(!.ModuleInfo, !.PredInfo,
-                    PFSymNameArity, PragmaVars, Context, MaybeProcId),
+                MaybeProcId = ok(ProcId),
+                check_for_warnings_in_foreign_proc(!.ModuleInfo,
+                    PredId, ProcId, PFSymNameArity, Attributes, PragmaVars,
+                    PragmaImpl, Context, !Specs),
+                is_foreign_proc_for_this_backend(Globals, Attributes,
+                    ForThisBackend),
                 (
-                    MaybeProcId = error(BadProcSpec),
-                    !:Specs = [BadProcSpec | !.Specs]
+                    ForThisBackend = not_for_this_backend(RejectCause),
+                    handle_wrong_backend_foreign_proc(ItemMercuryStatus,
+                        PredId, !.PredInfo, RejectCause, Context,
+                        !ModuleInfo, !Specs)
                 ;
-                    MaybeProcId = ok(ProcId),
+                    ForThisBackend = for_this_backend,
                     add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId,
                         PFSymNameArity, Attributes, ProgVarSet, PragmaVars,
                         PragmaImpl, Context, !ModuleInfo, !Specs)
@@ -359,10 +362,7 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
         ClausesInfo1, ClausesInfo, !Specs),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
-
-    check_for_warnings_in_foreign_proc(!.ModuleInfo, PredId, ProcId,
-        PFSymNameArity, Attributes, PragmaVars, PragmaImpl, Context, !Specs).
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
 :- pred check_for_warnings_in_foreign_proc(module_info::in,
     pred_id::in, proc_id::in, pf_sym_name_arity::in,

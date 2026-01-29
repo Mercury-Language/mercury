@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1012,7 +1012,7 @@ __Compare____base_typeclass_info_1_0(
 #endif
 ").
 :- pragma foreign_proc("C#",
-    reset_ticket_undo(Ticket::in),
+    reset_ticket_undo(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
@@ -1038,7 +1038,7 @@ __Compare____base_typeclass_info_1_0(
 #endif
 ").
 :- pragma foreign_proc("C#",
-    reset_ticket_commit(Ticket::in),
+    reset_ticket_commit(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
@@ -1064,7 +1064,7 @@ __Compare____base_typeclass_info_1_0(
 #endif
 ").
 :- pragma foreign_proc("C#",
-    reset_ticket_solve(Ticket::in),
+    reset_ticket_solve(_Ticket::in),
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
@@ -1173,7 +1173,7 @@ __Compare____base_typeclass_info_1_0(
 #endif
 ").
 :- pragma foreign_proc("C#",
-    prune_tickets_to(TicketCounter::in),
+    prune_tickets_to(_TicketCounter::in),
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL

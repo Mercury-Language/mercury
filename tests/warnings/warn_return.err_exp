@@ -1,2 +1,6 @@
-warn_return.m:017: Warning: the C code for predicate `foo'/2 may contain a
-warn_return.m:017:   `return' statement.
+warn_return.m:019: Warning: the C code for predicate `foo'/2 may contain a
+warn_return.m:019:   `return' statement.
+warn_return.m:026: Warning: the Java code for predicate `foo'/2 may contain a
+warn_return.m:026:   `return' statement.
+warn_return.m:033: Warning: the C# code for predicate `foo'/2 may contain a
+warn_return.m:033:   `return' statement.

@@ -12,16 +12,11 @@
 :- pred foo(int::in, int::out) is det.
 :- pred bar(int::in, int::out) is det.
 
+%---------------------------------------------------------------------------%
 :- implementation.
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    foo(X::in, Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = Y;
-    return;
-").
-:- pragma foreign_proc("C#",
     foo(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -35,16 +30,17 @@
     X = Y;
     return;
 ").
-
-:- pragma foreign_proc("C",
-    bar(X::in, Y::out),
+:- pragma foreign_proc("C#",
+    foo(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
 "
     X = Y;
-    // return;
-    /* return */
+    return;
 ").
-:- pragma foreign_proc("C#",
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
     bar(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -60,5 +56,15 @@
     // return;
     /* return */
 ").
+:- pragma foreign_proc("C#",
+    bar(X::in, Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = Y;
+    // return;
+    /* return */
+").
 
+%---------------------------------------------------------------------------%
 :- end_module warn_return.
+%---------------------------------------------------------------------------%

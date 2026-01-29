@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -343,13 +343,18 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 ").
 
 :- pragma foreign_proc("Java",
-    setenv(Var::in, Value::in),
+    setenv(_Var::in, _Value::in),
     [will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
-    // Java does not provide a method to set environment variables, only a way
-    // to modify the environment when creating a new process.
-
-    // Avoid warning: Var, Value
+    // Java does not provide a method to set environment variables
+    // in the CURRENT process; it provides a way to modify the environment
+    // only when creating a NEW process.
+    //
+    // XXX The original version of the above comment was added by wangp
+    // in 2009. Based on why I (zs) have read about this online in 2026,
+    // this seems to be a design decision by the creators of Java. Even
+    // though it may have made sense in 1995, it seems to me to be stupid
+    // to idea to maintain it long past the time when it buys you anything.
     SUCCESS_INDICATOR = false;
 ").
 

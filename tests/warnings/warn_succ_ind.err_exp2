@@ -1,8 +1,0 @@
-warn_succ_ind.m:038: Warning: the C# code for predicate `foo'/2 [38;5;171mmay set[39;49m
-warn_succ_ind.m:038:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
-warn_succ_ind.m:062: Warning: the C# code for predicate `foo2'/2 [38;5;171mmay set[39;49m
-warn_succ_ind.m:062:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
-warn_succ_ind.m:085: Warning: the C# code for predicate `bar'/2 [38;5;171mdoes not appear[39;49m
-warn_succ_ind.m:085:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
-warn_succ_ind.m:106: Warning: the C# code for predicate `bar2'/2 [38;5;171mdoes not[39;49m
-warn_succ_ind.m:106:   [38;5;171mappear to set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m

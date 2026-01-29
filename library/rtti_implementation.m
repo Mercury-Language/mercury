@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -4111,18 +4111,17 @@ get_target_lang_rep(_) = "some_foreign_value".
 :- func get_primary_tag(T) = uint8.
 
 :- pragma foreign_proc("C#",
-    get_primary_tag(X::in) = (Tag::out),
+    get_primary_tag(_X::in) = (Tag::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // We don't look at X to find the tag, for .NET low-level data
-    // there is no primary tag, so we always return zero.
+    // For the C# backend, there is never a primary tag.
     Tag = 0;
 ").
 :- pragma foreign_proc("Java",
     get_primary_tag(_X::in) = (Tag::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // For the Java back-end, there is no primary tag, so always return 0.
+    // For the Java backend, there is never a primary tag.
     Tag = 0;
 ").
 

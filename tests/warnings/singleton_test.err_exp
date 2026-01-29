@@ -1,34 +1,44 @@
-singleton_test.m:008: Warning: this [38;5;87m`:- import_module' declaration for module[39;49m
-singleton_test.m:008:   [38;5;87m`list'[39;49m [38;5;203mis on the same line[39;49m as the preceding
-singleton_test.m:008:   `:- import_module' declaration for module `io'.
-singleton_test.m:013: Warning: [38;5;203munresolved polymorphism[39;49m in function
-singleton_test.m:013:   [38;5;87m`my_append_func'/2.[39;49m
-singleton_test.m:013:   The variables with unbound types were:
-singleton_test.m:013:     [38;5;203m`L1',[39;49m
-singleton_test.m:013:     [38;5;203m`L2'.[39;49m
-singleton_test.m:013:   Their types will be implicitly set to the builtin type
-singleton_test.m:013:   `void'.
-singleton_test.m:031: In clause for predicate `my_append'/3:
-singleton_test.m:031:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-singleton_test.m:031:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
-singleton_test.m:035: In clause for function `my_append_func'/2:
-singleton_test.m:035:   warning: variable [38;5;87m`L1'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-singleton_test.m:035:   [38;5;226m(Did you mean `L' or `L2'?)[39;49m
-singleton_test.m:035: In clause for function `my_append_func'/2:
-singleton_test.m:035:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-singleton_test.m:035:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
-singleton_test.m:036: In clause for function `my_append_func'/2:
-singleton_test.m:036:   warning: variable [38;5;87m`T'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-singleton_test.m:038: In the C code for predicate `my_c_pred'/3:
-singleton_test.m:038:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:051: In the C code for function `my_c_func'/2:
-singleton_test.m:051:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:066: In the C code for predicate `c_hello_world'/3:
-singleton_test.m:066:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:082: In clause for predicate `test_head'/6:
-singleton_test.m:082:   warning: variable [38;5;87m`_D'[39;49m [38;5;203moccurs more than once[39;49m in this
-singleton_test.m:082:   scope.
-singleton_test.m:082: In clause for predicate `test_head'/6:
-singleton_test.m:082:   warning: variables [38;5;87m`A'[39;49m and [38;5;87m`B'[39;49m [38;5;203moccur only once[39;49m in this
-singleton_test.m:082:   scope.
+singleton_test.m:014: Warning: [38;5;203munresolved polymorphism[39;49m in function
+singleton_test.m:014:   [38;5;87m`my_append_func'/2.[39;49m
+singleton_test.m:014:   The variables with unbound types were:
+singleton_test.m:014:     [38;5;203m`L1',[39;49m
+singleton_test.m:014:     [38;5;203m`L2'.[39;49m
+singleton_test.m:014:   Their types will be implicitly set to the builtin type
+singleton_test.m:014:   `void'.
+singleton_test.m:038: In clause for predicate `my_append'/3:
+singleton_test.m:038:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:038:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
+singleton_test.m:042: In clause for function `my_append_func'/2:
+singleton_test.m:042:   warning: variable [38;5;87m`L1'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:042:   [38;5;226m(Did you mean `L' or `L2'?)[39;49m
+singleton_test.m:042: In clause for function `my_append_func'/2:
+singleton_test.m:042:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:042:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
+singleton_test.m:043: In clause for function `my_append_func'/2:
+singleton_test.m:043:   warning: variable [38;5;87m`T'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:045: In clause for predicate `test_head'/6:
+singleton_test.m:045:   warning: variable [38;5;87m`_D'[39;49m [38;5;203moccurs more than once[39;49m in this
+singleton_test.m:045:   scope.
+singleton_test.m:045: In clause for predicate `test_head'/6:
+singleton_test.m:045:   warning: variables [38;5;87m`A'[39;49m and [38;5;87m`B'[39;49m [38;5;203moccur only once[39;49m in this
+singleton_test.m:045:   scope.
+singleton_test.m:049: In the C code for predicate `my_c_pred'/3:
+singleton_test.m:049:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:055: In the C# code for predicate `my_c_pred'/3:
+singleton_test.m:055:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
+singleton_test.m:061: In the Java code for predicate `my_c_pred'/3:
+singleton_test.m:061:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the Java code.
+singleton_test.m:070: In the C code for function `my_c_func'/2:
+singleton_test.m:070:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:076: In the C# code for function `my_c_func'/2:
+singleton_test.m:076:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
+singleton_test.m:082: In the Java code for function `my_c_func'/2:
+singleton_test.m:082:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the Java code.
+singleton_test.m:091: In the C code for predicate `c_hello_world'/3:
+singleton_test.m:091:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:098: In the C# code for predicate `c_hello_world'/3:
+singleton_test.m:098:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
+singleton_test.m:105: In the Java code for predicate `c_hello_world'/3:
+singleton_test.m:105:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the Java
+singleton_test.m:105:   code.
 For more information, recompile with `-E'.

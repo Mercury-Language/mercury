@@ -1,2 +1,0 @@
-warn_return.m:032: Warning: the Java code for predicate `foo'/2 may contain a
-warn_return.m:032:   `return' statement.
