@@ -66,7 +66,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -354,11 +353,10 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
         PredModuleName, PredName),
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_purity(!.PredInfo, Purity),
-    pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo1),
     clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
         PredModuleName, PredName, PredId, ProcId, ProgVarSet, PragmaVars,
-        ArgTypes, Purity, Attributes, Markers, Context, PragmaImpl,
+        ArgTypes, Purity, Attributes, Context, PragmaImpl,
         ClausesInfo1, ClausesInfo, !Specs),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
@@ -482,17 +480,40 @@ report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
 :- pred clauses_info_add_foreign_proc(module_info::in, pred_or_func::in,
     module_name::in, string::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
-    purity::in, foreign_proc_attributes::in, pred_markers::in,
+    purity::in, foreign_proc_attributes::in,
     prog_context::in, pragma_foreign_proc_impl::in,
     clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
         PredId, ProcId, VarSet, PragmaVars, OrigArgTypes,
-        Purity, Attributes0, Markers, Context, PragmaImpl0,
+        Purity, Attributes0, Context, PragmaImpl0,
         !ClausesInfo, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    is_foreign_proc_for_builtin(ModuleInfo, PredInfo, Context,
+        AllowedToAdd, !Specs),
+    (
+        AllowedToAdd = not_allowed_to_add_foreign_proc
+    ;
+        AllowedToAdd = allowed_to_add_foreign_proc,
+        clauses_info_do_add_foreign_proc(ModuleInfo, PredOrFunc,
+            PredModuleName, PredName, PredId, PredInfo, ProcId,
+            VarSet, PragmaVars, OrigArgTypes, Purity, Attributes0,
+            Context, PragmaImpl0, !ClausesInfo, !Specs)
+    ).
+
+:- type maybe_allowed_to_add_foreign_proc
+    --->    allowed_to_add_foreign_proc
+    ;       not_allowed_to_add_foreign_proc.
+
+:- pred is_foreign_proc_for_builtin(module_info::in, pred_info::in,
+    prog_context::in, maybe_allowed_to_add_foreign_proc::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+is_foreign_proc_for_builtin(ModuleInfo, PredInfo, Context,
+        AllowedToAdd, !Specs) :-
     ( if pred_info_is_builtin(PredInfo) then
+        AllowedToAdd = not_allowed_to_add_foreign_proc,
         % When bootstrapping a change that defines a builtin using
         % normal Mercury code, we need to disable the generation
         % of the error message, and just ignore the definition.
@@ -502,6 +523,7 @@ clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
         (
             AllowDefnOfBuiltin = no,
             pred_info_get_sym_name(PredInfo, SymName),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
             SNA = sym_name_arity(SymName, UserArityInt),
             Pieces = [words("Error:")] ++
@@ -515,24 +537,20 @@ clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
             AllowDefnOfBuiltin = yes
         )
     else
-        AllProcIds = pred_info_all_procids(PredInfo),
-        clauses_info_do_add_foreign_proc(ModuleInfo, PredOrFunc,
-            PredModuleName, PredName, PredId, ProcId, AllProcIds,
-            VarSet, PragmaVars, OrigArgTypes, Purity, Attributes0, Markers,
-            Context, PragmaImpl0, !ClausesInfo, !Specs)
+        AllowedToAdd = allowed_to_add_foreign_proc
     ).
 
 :- pred clauses_info_do_add_foreign_proc(module_info::in, pred_or_func::in,
-    module_name::in, string::in, pred_id::in, proc_id::in, list(proc_id)::in,
+    module_name::in, string::in, pred_id::in, pred_info::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
-    purity::in, foreign_proc_attributes::in, pred_markers::in,
+    purity::in, foreign_proc_attributes::in,
     prog_context::in, pragma_foreign_proc_impl::in,
     clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 clauses_info_do_add_foreign_proc(ModuleInfo,
-        PredOrFunc, PredModuleName, PredName, PredId, ProcId, AllProcIds,
-        PVarSet, PragmaVars, OrigArgTypes, Purity, Attributes0, Markers,
+        PredOrFunc, PredModuleName, PredName, PredId, PredInfo, ProcId,
+        PVarSet, PragmaVars, OrigArgTypes, Purity, Attributes0,
         Context, PragmaImpl, !ClausesInfo, !Specs) :-
     % Our caller should have already added this foreign_proc to ItemNumbers.
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes,
@@ -552,6 +570,7 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
     globals.get_target(Globals, Target),
     NewLang = get_foreign_language(Attributes0),
     PredFormArity = arg_list_arity(OrigArgTypes),
+    AllProcIds = pred_info_all_procids(PredInfo),
     add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
         PredModuleName, PredName, PredFormArity, Context, Target, NewLang,
         AllProcIds, ProcId, Overridden, Clauses0, Clauses1, !Specs),
@@ -574,43 +593,8 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
         !:Specs = ArgListSpecs ++ !.Specs
     ;
         ArgListSpecs = [],
+        check_foreign_proc_purity(PredInfo, Attributes0, Context, !Specs),
         % Build the foreign_proc.
-        %
-        % Check that the purity of a predicate/function declaration agrees
-        % with the (promised) purity of the foreign proc. We do not perform
-        % this check if there is a promise_{pure,semipure} pragma for the
-        % predicate/function, since in that case they will differ anyway.
-        ( if
-            ( marker_is_present(Markers, marker_promised_pure)
-            ; marker_is_present(Markers, marker_promised_semipure)
-            )
-        then
-            true
-        else
-            ForeignAttributePurity = get_purity(Attributes0),
-            ( if ForeignAttributePurity = Purity then
-                true
-            else
-                PredSymName = qualified(PredModuleName, PredName),
-                user_arity_pred_form_arity(PredOrFunc, UserArity,
-                    PredFormArity),
-                PFSymNameArity =
-                    pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
-                purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
-                purity_name(Purity, PurityStr),
-                Pieces = [words("Error: foreign clause for"),
-                    unqual_pf_sym_name_user_arity(PFSymNameArity),
-                    words("has purity")] ++
-                    color_as_incorrect([words(ForeignAttributePurityStr),
-                        suffix(",")]) ++
-                    [words("but that"), p_or_f(PredOrFunc),
-                    words("has been declared")] ++
-                    color_as_correct([words(PurityStr), suffix(".")]) ++ [nl],
-                Spec = spec($pred, severity_error, phase_pt2h,
-                    Context, Pieces),
-                !:Specs = [Spec | !.Specs]
-            )
-        ),
         (
             Overridden = overridden_by_old_foreign_proc
         ;
@@ -647,6 +631,46 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
             !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
                 VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep,
                 ItemNumbers, HasForeignClauses, HadSyntaxError)
+        )
+    ).
+
+    % Check that the purity of a predicate/function declaration agrees
+    % with the (promised) purity of the foreign proc. We do not perform
+    % this check if there is a promise_{pure,semipure} pragma for the
+    % predicate/function, since in that case they will differ anyway.
+    %
+:- pred check_foreign_proc_purity(pred_info::in, foreign_proc_attributes::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_foreign_proc_purity(PredInfo, Attributes, Context, !Specs) :-
+    pred_info_get_markers(PredInfo, PredMarkers),
+    ( if
+        ( marker_is_present(PredMarkers, marker_promised_pure)
+        ; marker_is_present(PredMarkers, marker_promised_semipure)
+        )
+    then
+        true
+    else
+        pred_info_get_purity(PredInfo, PredPurity),
+        ForeignAttributePurity = get_purity(Attributes),
+        ( if ForeignAttributePurity = PredPurity then
+            true
+        else
+            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+            PFSymNameArity =
+                pf_sym_name_arity(PredOrFunc, _PredSymName, _PredFormArity),
+            purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
+            purity_name(PredPurity, PredPurityStr),
+            Pieces = [words("Error: foreign clause for"),
+                unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                words("has purity")] ++
+                color_as_incorrect([words(ForeignAttributePurityStr),
+                    suffix(",")]) ++
+                [words("but that"), p_or_f(PredOrFunc),
+                words("has been declared")] ++
+                color_as_correct([words(PredPurityStr), suffix(".")]) ++ [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
