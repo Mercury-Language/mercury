@@ -122,53 +122,31 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
         record_foreign_proc_seq_num(SeqNum, Context, PredId,
             !PredInfo, !ModuleInfo),
         decide_actual_thread_safety(Globals, Attributes0, Attributes),
-
-        Lang = get_foreign_language(Attributes),
-        report_if_fproc_is_for_imported_pred(!.PredInfo, Lang, Context,
-            ImportedFprocSpecs),
-        report_if_fproc_is_for_builtin(!.ModuleInfo, !.PredInfo, Lang, Context,
-            AllowedToAdd, !Specs),
-        pragma_get_vars_and_var_infos(PragmaVars, ArgVars, _ArgInfos),
-        check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars,
-            Lang, Context, ArgListSpecs),
-        StoppingSpecs = ImportedFprocSpecs ++ ArgListSpecs,
-        !:Specs = StoppingSpecs ++ !.Specs,
-        check_foreign_proc_purity(!.PredInfo, Attributes, Lang, Context,
-            !Specs),
+        compute_intended_proc_id(!.ModuleInfo, !.PredInfo,
+            PFSymNameArity, PragmaVars, Attributes, Context, MaybeProcId),
+        check_foreign_proc(!.ModuleInfo, !.PredInfo, PFSymNameArity,
+            MaybeProcId, ProgVarSet, PragmaVars, Attributes, PragmaImpl,
+            Context, AllowedToAdd, !Specs),
 
         ( if
-            ( AllowedToAdd = not_allowed_to_add_foreign_proc
-            ; StoppingSpecs = [_ | _]
-            )
+            AllowedToAdd = allowed_to_add_foreign_proc,
+            MaybeProcId = ok(ProcId)
         then
-            true
-        else
-            compute_intended_proc_id(!.ModuleInfo, !.PredInfo,
-                PFSymNameArity, PragmaVars, Attributes, Context, MaybeProcId),
+            is_foreign_proc_for_this_backend(Globals, Attributes,
+                ForThisBackend),
             (
-                MaybeProcId = error(BadProcSpec),
-                !:Specs = [BadProcSpec | !.Specs]
+                ForThisBackend = not_for_this_backend(RejectCause),
+                handle_wrong_backend_foreign_proc(ItemMercuryStatus,
+                    PredId, !.PredInfo, RejectCause, Context,
+                    !ModuleInfo, !Specs)
             ;
-                MaybeProcId = ok(ProcId),
-                % XXX Move the parts of this predicate that do not need ProcId
-                % to before the if-then-else.
-                check_for_warnings_in_foreign_proc(!.ModuleInfo,
-                    PredId, ProcId, PFSymNameArity, Attributes, PragmaVars,
-                    PragmaImpl, Context, !Specs),
-                is_foreign_proc_for_this_backend(Globals, Attributes,
-                    ForThisBackend),
-                (
-                    ForThisBackend = not_for_this_backend(RejectCause),
-                    handle_wrong_backend_foreign_proc(ItemMercuryStatus,
-                        PredId, !.PredInfo, RejectCause, Context,
-                        !ModuleInfo, !Specs)
-                ;
-                    ForThisBackend = for_this_backend,
-                    add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId,
-                        PFSymNameArity, Attributes, PragmaVars,
-                        PragmaImpl, Context, !ModuleInfo, !Specs)
-                )
+                ForThisBackend = for_this_backend,
+                add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId,
+                    PFSymNameArity, Attributes, PragmaVars,
+                    PragmaImpl, Context, !ModuleInfo, !Specs)
             )
+        else
+            true
         )
     ).
 
@@ -447,8 +425,7 @@ clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc,
         % XXX ARGVEC - the foreign_args field in the hlds_goal_expr type
         % should also be a an proc_arg_vector rather than a list.
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        make_foreign_args(HeadVarList, ArgInfos,
-            OrigArgTypes, ForeignArgs),
+        make_foreign_args(HeadVarList, ArgInfos, OrigArgTypes, ForeignArgs),
         % Perform some renaming in any user annotated sharing information.
         maybe_rename_user_annotated_sharing_information(Globals,
             ArgVars, HeadVarList, OrigArgTypes, Attributes0, Attributes),
@@ -639,6 +616,77 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_allowed_to_add_foreign_proc
+    --->    allowed_to_add_foreign_proc
+    ;       not_allowed_to_add_foreign_proc.
+
+    % Perform all the checks on a foreign_proc that we can.
+    %
+:- pred check_foreign_proc(module_info::in, pred_info::in,
+    pf_sym_name_arity::in, maybe_error(proc_id, error_spec)::in,
+    prog_varset::in, list(pragma_var)::in, foreign_proc_attributes::in,
+    pragma_foreign_proc_impl::in, prog_context::in,
+    maybe_allowed_to_add_foreign_proc::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
+        ProgVarSet, PragmaVars, Attributes, PragmaImpl, Context,
+        !:AllowedToAdd, !Specs) :-
+    Lang = get_foreign_language(Attributes),
+    report_if_fproc_is_for_imported_pred(PredInfo, Lang, Context,
+        ImportedPredSpecs),
+    report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Lang, Context,
+        !:AllowedToAdd, !Specs),
+    pragma_get_vars_and_var_infos(PragmaVars, ArgVars, _ArgInfos),
+    check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars,
+        Lang, Context, ArgListSpecs),
+    (
+        ArgListSpecs = []
+    ;
+        ArgListSpecs = [_ | _],
+        !:AllowedToAdd = not_allowed_to_add_foreign_proc,
+        !:Specs = ArgListSpecs ++ !.Specs
+    ),
+    PragmaImpl = fp_impl_ordinary(Code, _),
+    foreign_code_to_identifiers(Lang, Code, Identifiers),
+    warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity, Lang,
+        PragmaVars, Identifiers, Context, !Specs),
+    check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context,
+        !Specs),
+    (
+        MaybeProcId = ok(ProcId),
+        % Without the ProcId, we cannot look up the procedure's determinism,
+        % and the determinism specifies whether the code *should* contain
+        % a reference to SUCCESS_INDICATOR.
+        check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId,
+            Lang, Identifiers, Context, !Specs)
+    ;
+        MaybeProcId = error(ProcIdSpec),
+        % Our caller checks for MaybeProcId = ok(_), but just to be sure ...
+        !:AllowedToAdd = not_allowed_to_add_foreign_proc,
+        !:Specs = [ProcIdSpec | !.Specs]
+    ),
+    check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !Specs),
+    (
+        ImportedPredSpecs = []
+    ;
+        ImportedPredSpecs = [_ | _],
+        !:AllowedToAdd = not_allowed_to_add_foreign_proc,
+        % Ignoring all the other diagnostics has one good and one bad effect.
+        %
+        % The good effect is the reduction of clutter.
+        %
+        % The bad effect is that it prevents programmers from fixing
+        % the problems we *would* have reported *at the same* as moving
+        % the foreign_proc to the module containing the predicate it is for.
+        %
+        % However, this kind of bug is so rare, it does not really matter
+        % which choice we make here.
+        !:Specs = ImportedPredSpecs
+    ).
+
+%---------------------------------------------------------------------------%
+
     % Don't allow definitions, whether clauses or foreign_procs,
     % for imported predicates/functions. Note that this applies to
     % *plain* imported predicates/functions, not the *opt-imported* ones.
@@ -669,10 +717,6 @@ report_if_fproc_is_for_imported_pred(PredInfo, Lang, Context, Specs) :-
     ).
 
 %---------------------%
-
-:- type maybe_allowed_to_add_foreign_proc
-    --->    allowed_to_add_foreign_proc
-    ;       not_allowed_to_add_foreign_proc.
 
 :- pred report_if_fproc_is_for_builtin(module_info::in, pred_info::in,
     foreign_language::in, prog_context::in,
@@ -894,23 +938,6 @@ check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
 
 %---------------------%
 
-:- pred check_for_warnings_in_foreign_proc(module_info::in,
-    pred_id::in, proc_id::in, pf_sym_name_arity::in,
-    foreign_proc_attributes::in, list(pragma_var)::in,
-    pragma_foreign_proc_impl::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_for_warnings_in_foreign_proc(ModuleInfo, PredId, ProcId, PFSymNameArity,
-        Attributes, PragmaVars, PragmaImpl, Context, !Specs) :-
-    pragma_get_var_infos(PragmaVars, ArgInfos),
-    ArgNameModes = list.map(
-        foreign_arg_name_mode_box_project_maybe_name_mode,
-        ArgInfos),
-    PragmaForeignLanguage = get_foreign_language(Attributes),
-    warn_singletons_in_pragma_foreign_proc(ModuleInfo,
-        PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
-        PFSymNameArity, PredId, ProcId, !Specs).
-
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
     % is mentioned at least once in the foreign code fragments that ought to
     % mention it. If not, it gives a warning.
@@ -919,25 +946,24 @@ check_for_warnings_in_foreign_proc(ModuleInfo, PredId, ProcId, PFSymNameArity,
     % to do this check, or you may need to add a transformation to map
     % Mercury variable names into identifiers for that foreign language).
     %
-:- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
-    pragma_foreign_proc_impl::in, foreign_language::in,
-    list(maybe(foreign_arg_name_mode))::in, prog_context::in,
-    pf_sym_name_arity::in, pred_id::in, proc_id::in,
+:- pred warn_singletons_in_pragma_foreign_proc(pred_info::in,
+    pf_sym_name_arity::in, foreign_language::in, list(pragma_var)::in,
+    list(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
-        Args, Context, PFSymNameArity, PredId, ProcId, !Specs) :-
-    LangStr = foreign_language_string(Lang),
-    PragmaImpl = fp_impl_ordinary(Code, _),
-    foreign_code_to_identifiers(Lang, Code, ForeignIdentifiers),
-    list.filter_map(var_is_unmentioned(ForeignIdentifiers),
-        Args, UnmentionedVars),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity,
+        Lang, PragmaVars, Identifiers, Context, !Specs) :-
+    pragma_get_var_infos(PragmaVars, ArgInfos),
+    ArgNameModes =
+        list.map(foreign_arg_name_mode_box_project_maybe_name_mode, ArgInfos),
+    list.filter_map(var_is_unmentioned(Identifiers),
+        ArgNameModes, UnmentionedVars),
     pred_info_get_markers(PredInfo, PredMarkers),
     ( if
         UnmentionedVars = [_ | _],
         not marker_is_present(PredMarkers, marker_fact_table_semantic_errors)
     then
+        LangStr = foreign_language_string(Lang),
         variable_warning_start(UnmentionedVars, VarPieces, DoDoes),
         Pieces = [words("In the"), words(LangStr), words("foreign_proc for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
@@ -950,9 +976,7 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         !:Specs = [Spec | !.Specs]
     else
         true
-    ),
-    pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
-        PredId, ProcId, ForeignIdentifiers, !Specs).
+    ).
 
 :- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
@@ -978,35 +1002,15 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
 
 %---------------------%
 
-:- pred pragma_foreign_proc_body_checks(module_info::in, foreign_language::in,
-    prog_context::in, pf_sym_name_arity::in, pred_id::in, proc_id::in,
-    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
-        PredId, ProcId, BodyPieces, !Specs) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_status(PredInfo, PredStatus),
-    IsImported = pred_status_is_imported(PredStatus),
-    (
-        IsImported = yes
-    ;
-        IsImported = no,
-        check_fp_body_for_success_indicator(ModuleInfo, Lang, Context,
-            PFSymNameArity, PredId, ProcId, BodyPieces, !Specs),
-        check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces,
-            !Specs)
-    ).
-
-%---------------------%
-
-:- pred check_fp_body_for_success_indicator(module_info::in,
-    foreign_language::in, prog_context::in, pf_sym_name_arity::in,
-    pred_id::in, proc_id::in, list(string)::in,
+:- pred check_fp_body_for_success_indicator(pred_info::in,
+    pf_sym_name_arity::in, proc_id::in, foreign_language::in,
+    list(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
-        PredId, ProcId, BodyPieces, !Specs) :-
-    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
+        Identifiers, Context, !Specs) :-
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
     (
         MaybeDeclDetism = yes(Detism),
@@ -1016,7 +1020,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
             ; Detism = detism_cc_multi
             ; Detism = detism_erroneous
             ),
-            ( if list.member(SuccIndStr, BodyPieces) then
+            ( if list.member(SuccIndStr, Identifiers) then
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code in the foreign_proc for"),
@@ -1035,7 +1039,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
             ( Detism = detism_semi
             ; Detism = detism_cc_non
             ),
-            ( if list.member(SuccIndStr, BodyPieces) then
+            ( if list.member(SuccIndStr, Identifiers) then
                 true
             else
                 LangStr = foreign_language_string(Lang),
@@ -1065,12 +1069,12 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
     % Check to see if a foreign_proc body contains a return statement
     % (or whatever the foreign language equivalent is).
     %
-:- pred check_fp_body_for_return(foreign_language::in, prog_context::in,
-    pf_sym_name_arity::in, list(string)::in,
+:- pred check_fp_body_for_return(pf_sym_name_arity::in, foreign_language::in,
+    list(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
-    ( if list.member("return", BodyPieces) then
+check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context, !Specs) :-
+    ( if list.member("return", Identifiers) then
         LangStr = foreign_language_string(Lang),
         PFSPiece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
         Pieces = [words("Warning: the"), fixed(LangStr),
