@@ -62,7 +62,6 @@
 
 :- import_module bag.
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -124,7 +123,7 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
             !PredInfo, !ModuleInfo),
         decide_actual_thread_safety(Globals, Attributes0, Attributes),
 
-        is_foreign_proc_for_builtin(!.ModuleInfo, !.PredInfo, Context,
+        report_if_fproc_is_for_builtin(!.ModuleInfo, !.PredInfo, Context,
             AllowedToAdd, !Specs),
         report_if_fproc_is_for_imported_pred(!.PredInfo, Context,
             ImportedFprocSpecs),
@@ -245,33 +244,6 @@ decide_actual_thread_safety(Globals, Attributes0, Attributes) :-
         Attributes = Attributes0
     ).
 
-    % Don't allow definitions, whether clauses or foreign_procs,
-    % for imported predicates/functions. Note that this applies to
-    % *plain* imported predicates/functions, not the *opt-imported* ones.
-    %
-:- pred report_if_fproc_is_for_imported_pred(pred_info::in, prog_context::in,
-    list(error_spec)::out) is det.
-
-report_if_fproc_is_for_imported_pred(PredInfo, Context, Specs) :-
-    ( if pred_info_is_imported(PredInfo) then
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        pred_info_get_sym_name(PredInfo, PredSymName),
-        user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
-        SNA = sym_name_arity(PredSymName, UserArityInt),
-        Pieces = [words("Error:"), pragma_decl("foreign_proc"),
-            words("declarations are allowed only for predicates and"),
-            words("functions defined in the current module, but"),
-            p_or_f(PredOrFunc)] ++
-            color_as_incorrect([qual_sym_name_arity(SNA)]) ++
-            [words("is")] ++
-            color_as_incorrect([words("imported.")]) ++
-            [nl],
-        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        Specs = [Spec]
-    else
-        Specs = []
-    ).
-
 %---------------------%
 
 :- type maybe_for_this_backend
@@ -335,18 +307,7 @@ compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
     then
         MaybeProcId = ok(ProcId)
     else
-        PFSymNameArity =
-            pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
-        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-        UserArity = user_arity(UserArityInt),
-        SNA = sym_name_arity(PredSymName, UserArityInt),
-        Pieces = [words("Error:"),
-            pragma_decl("foreign_proc"), words("declaration for")] ++
-            color_as_incorrect([words("undeclared mode")]) ++
-            [words("of"), p_or_f(PredOrFunc)] ++
-            color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
-            [nl],
-        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Spec = report_fproc_for_undeclared_mode(PFSymNameArity, Context),
         MaybeProcId = error(Spec)
     ).
 
@@ -375,23 +336,6 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
-
-:- pred check_for_warnings_in_foreign_proc(module_info::in,
-    pred_id::in, proc_id::in, pf_sym_name_arity::in,
-    foreign_proc_attributes::in, list(pragma_var)::in,
-    pragma_foreign_proc_impl::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_for_warnings_in_foreign_proc(ModuleInfo, PredId, ProcId, PFSymNameArity,
-        Attributes, PragmaVars, PragmaImpl, Context, !Specs) :-
-    pragma_get_var_infos(PragmaVars, ArgInfos),
-    ArgNameModes = list.map(
-        foreign_arg_name_mode_box_project_maybe_name_mode,
-        ArgInfos),
-    PragmaForeignLanguage = get_foreign_language(Attributes),
-    warn_singletons_in_pragma_foreign_proc(ModuleInfo,
-        PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
-        PFSymNameArity, PredId, ProcId, !Specs).
 
 %---------------------%
 
@@ -440,48 +384,6 @@ handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId, !.PredInfo,
     pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
-:- pred report_bad_foreign_proc_in_dot_opt_file(wrong_backend_cause::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
-    (
-        WrongBackendCause = wrong_lang(PragmaLang, BackendForeignLangs),
-        PragmaLangStr = foreign_language_string(PragmaLang),
-        FrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
-            words("declaration in a .opt file for a foreign language,"),
-            words(PragmaLangStr), suffix(",")],
-        (
-            BackendForeignLangs = [],
-            unexpected($pred, "BackendForeignLangs = []")
-        ;
-            BackendForeignLangs = [BackendForeignLang],
-            BackendLangStr = foreign_language_string(BackendForeignLang),
-            MainPieces = FrontPieces ++ [words("which differs from"),
-                words("the only language supported by the current backend,"),
-                words("which is"), words(BackendLangStr), suffix("."), nl]
-        ;
-            BackendForeignLangs = [_, _ | _],
-            BackendLangStrs =
-                list.map(foreign_language_string, BackendForeignLangs),
-            BackendLangsStr = fixed_list_to_pieces("and", BackendLangStrs),
-            MainPieces = FrontPieces ++ [words("which is not one of the"),
-                words("languages supported by the current backend,"),
-                words("which are")] ++ BackendLangsStr ++ [suffix("."), nl]
-        )
-    ;
-        WrongBackendCause = right_lang_wrong_backend,
-        MainPieces = [words("Error:"), pragma_decl("foreign_proc"),
-            words("declaration in a .opt file"),
-            words("whose backend attribute states that"),
-            words("it is not for the current grade."), nl]
-    ),
-    Pieces = MainPieces ++ [words("This indicates that the .opt file"),
-        words("was generated for a different grade."),
-        words("You will need to rebuild this file"),
-        words("for the current grade."), nl],
-    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
 %---------------------%
 
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
@@ -502,7 +404,7 @@ clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
         Purity, Attributes0, Context, PragmaImpl0,
         !ClausesInfo, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    is_foreign_proc_for_builtin(ModuleInfo, PredInfo, Context,
+    report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Context,
         AllowedToAdd, !Specs),
     (
         AllowedToAdd = not_allowed_to_add_foreign_proc
@@ -512,44 +414,6 @@ clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
             PredModuleName, PredName, PredId, PredInfo, ProcId,
             PragmaVars, OrigArgTypes, Purity, Attributes0,
             Context, PragmaImpl0, !ClausesInfo, !Specs)
-    ).
-
-:- type maybe_allowed_to_add_foreign_proc
-    --->    allowed_to_add_foreign_proc
-    ;       not_allowed_to_add_foreign_proc.
-
-:- pred is_foreign_proc_for_builtin(module_info::in, pred_info::in,
-    prog_context::in, maybe_allowed_to_add_foreign_proc::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-is_foreign_proc_for_builtin(ModuleInfo, PredInfo, Context,
-        AllowedToAdd, !Specs) :-
-    ( if pred_info_is_builtin(PredInfo) then
-        AllowedToAdd = not_allowed_to_add_foreign_proc,
-        % When bootstrapping a change that defines a builtin using
-        % normal Mercury code, we need to disable the generation
-        % of the error message, and just ignore the definition.
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, allow_defn_of_builtins,
-            AllowDefnOfBuiltin),
-        (
-            AllowDefnOfBuiltin = no,
-            pred_info_get_sym_name(PredInfo, SymName),
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
-            SNA = sym_name_arity(SymName, UserArityInt),
-            Pieces = [words("Error:")] ++
-                color_as_incorrect([words("you cannot redefine")]) ++
-                [words("a builtin"), p_or_f(PredOrFunc), words("such as")] ++
-                color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        ;
-            AllowDefnOfBuiltin = yes
-        )
-    else
-        AllowedToAdd = allowed_to_add_foreign_proc
     ).
 
 :- pred clauses_info_do_add_foreign_proc(module_info::in, pred_or_func::in,
@@ -633,93 +497,6 @@ clauses_info_do_add_foreign_proc(ModuleInfo,
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
             VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep,
             ItemNumbers, HasForeignClauses, HadSyntaxError)
-    ).
-
-    % Check that the purity of a predicate/function declaration agrees
-    % with the (promised) purity of the foreign proc. We do not perform
-    % this check if there is a promise_{pure,semipure} pragma for the
-    % predicate/function, since in that case they will differ anyway.
-    %
-:- pred check_foreign_proc_purity(pred_info::in, foreign_proc_attributes::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-check_foreign_proc_purity(PredInfo, Attributes, Context, !Specs) :-
-    pred_info_get_markers(PredInfo, PredMarkers),
-    ( if
-        ( marker_is_present(PredMarkers, marker_promised_pure)
-        ; marker_is_present(PredMarkers, marker_promised_semipure)
-        )
-    then
-        true
-    else
-        pred_info_get_purity(PredInfo, PredPurity),
-        ForeignAttributePurity = get_purity(Attributes),
-        ( if ForeignAttributePurity = PredPurity then
-            true
-        else
-            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
-            PFSymNameArity =
-                pf_sym_name_arity(PredOrFunc, _PredSymName, _PredFormArity),
-            purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
-            purity_name(PredPurity, PredPurityStr),
-            Pieces = [words("Error: foreign clause for"),
-                unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                words("has purity")] ++
-                color_as_incorrect([words(ForeignAttributePurityStr),
-                    suffix(",")]) ++
-                [words("but that"), p_or_f(PredOrFunc),
-                words("has been declared")] ++
-                color_as_correct([words(PredPurityStr), suffix(".")]) ++ [nl],
-            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        )
-    ).
-
-    % Check for arguments occurring more than once.
-    %
-:- pred check_foreign_proc_arg_list(pf_sym_name_arity::in, prog_varset::in,
-    list(prog_var)::in, prog_context::in, list(error_spec)::out) is det.
-
-check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Context,
-        Specs) :-
-    bag.init(ArgVarBag0),
-    bag.insert_list(ArgVars, ArgVarBag0, ArgVarBag),
-    bag.to_assoc_list(ArgVarBag, ArgVarBagAssocList),
-    list.filter_map(
-        ( pred(ArgPair::in, Var::out) is semidet :-
-            ArgPair = Var - Occurrences,
-            Occurrences > 1
-        ), ArgVarBagAssocList, MultiplyOccurringArgVars),
-    (
-        MultiplyOccurringArgVars = [_ | _],
-        Pieces1 = [words("In"), pragma_decl("foreign_proc"),
-            words("declaration for"),
-            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-            suffix(":"), nl,
-            words("error:")],
-        (
-            MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
-            BadVarPiece =
-                var_to_quote_piece(ProgVarSet, MultiplyOccurringArgVar),
-            Pieces2 = [words("variable")] ++
-                color_as_subject([BadVarPiece]) ++
-                color_as_incorrect([words("occurs more than once")])
-        ;
-            MultiplyOccurringArgVars = [_, _ | _],
-            BadVarPieces = list.map(var_to_quote_piece(ProgVarSet),
-                MultiplyOccurringArgVars),
-            BadVarsPieces = piece_list_to_color_pieces(color_subject, "and",
-                [], BadVarPieces),
-            Pieces2 = [words("variables")] ++ BadVarsPieces ++
-                color_as_incorrect([words("each occur more than once")])
-        ),
-        Pieces3 = [words("in the argument list."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            Context, Pieces1 ++ Pieces2 ++ Pieces3),
-        Specs = [Spec]
-    ;
-        MultiplyOccurringArgVars = [],
-        Specs = []
     ).
 
     % Rename any user annotated structure sharing information from the
@@ -868,23 +645,9 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                     % out foreign_procs in such languages way before we get
                     % here.
                     ( if OldLang = NewLang then
-                        PredSymName = qualified(PredModuleName, PredName),
-                        PFSymNameArity = pf_sym_name_arity(PredOrFunc,
-                            PredSymName, PredFormArity),
-                        OldLangStr = foreign_language_string(OldLang),
-                        PiecesA = [words("Error:")] ++
-                            color_as_incorrect([words("duplicate"),
-                                pragma_decl("foreign_proc"),
-                                words("declaration")]) ++
-                            [words("for this mode of"),
-                            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                            words("in"), words(OldLangStr), suffix("."), nl],
-                        PiecesB = [words("The first one was here."), nl],
-                        MsgA = msg(NewContext, PiecesA),
-                        MsgB = msg(FirstClauseContext, PiecesB),
-                        Spec = error_spec($pred, severity_error, phase_pt2h,
-                            [MsgA, MsgB]),
-                        !:Specs = [Spec | !.Specs]
+                        report_duplicate_foreign_proc(PredOrFunc,
+                            PredModuleName, PredName, PredFormArity, OldLang,
+                            FirstClauseContext, NewContext, !Specs)
                     else
                         true
                     )
@@ -899,6 +662,264 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
     ).
 
 %---------------------------------------------------------------------------%
+
+    % Don't allow definitions, whether clauses or foreign_procs,
+    % for imported predicates/functions. Note that this applies to
+    % *plain* imported predicates/functions, not the *opt-imported* ones.
+    %
+:- pred report_if_fproc_is_for_imported_pred(pred_info::in, prog_context::in,
+    list(error_spec)::out) is det.
+
+report_if_fproc_is_for_imported_pred(PredInfo, Context, Specs) :-
+    ( if pred_info_is_imported(PredInfo) then
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        pred_info_get_sym_name(PredInfo, PredSymName),
+        user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+        SNA = sym_name_arity(PredSymName, UserArityInt),
+        Pieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declarations are allowed only for predicates and"),
+            words("functions defined in the current module, but"),
+            p_or_f(PredOrFunc)] ++
+            color_as_incorrect([qual_sym_name_arity(SNA)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("imported.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
+
+%---------------------%
+
+:- type maybe_allowed_to_add_foreign_proc
+    --->    allowed_to_add_foreign_proc
+    ;       not_allowed_to_add_foreign_proc.
+
+:- pred report_if_fproc_is_for_builtin(module_info::in, pred_info::in,
+    prog_context::in, maybe_allowed_to_add_foreign_proc::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Context,
+        AllowedToAdd, !Specs) :-
+    ( if pred_info_is_builtin(PredInfo) then
+        AllowedToAdd = not_allowed_to_add_foreign_proc,
+        % When bootstrapping a change that defines a builtin using
+        % normal Mercury code, we need to disable the generation
+        % of the error message, and just ignore the definition.
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, allow_defn_of_builtins,
+            AllowDefnOfBuiltin),
+        (
+            AllowDefnOfBuiltin = no,
+            pred_info_get_sym_name(PredInfo, SymName),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+            SNA = sym_name_arity(SymName, UserArityInt),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("you cannot redefine")]) ++
+                [words("a builtin"), p_or_f(PredOrFunc), words("such as")] ++
+                color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        ;
+            AllowDefnOfBuiltin = yes
+        )
+    else
+        AllowedToAdd = allowed_to_add_foreign_proc
+    ).
+
+%---------------------%
+
+:- func report_fproc_for_undeclared_mode(pf_sym_name_arity, prog_context)
+    = error_spec.
+
+report_fproc_for_undeclared_mode(PFSymNameArity, Context) = Spec :-
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(PredSymName, UserArityInt),
+    Pieces = [words("Error:"),
+        pragma_decl("foreign_proc"), words("declaration for")] ++
+        color_as_incorrect([words("undeclared mode")]) ++
+        [words("of"), p_or_f(PredOrFunc)] ++
+        color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
+
+%---------------------%
+
+:- pred report_duplicate_foreign_proc(pred_or_func::in,
+    module_name::in, string::in, pred_form_arity::in, foreign_language::in,
+    prog_context::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_duplicate_foreign_proc(PredOrFunc, PredModuleName, PredName,
+        PredFormArity, Lang, FirstClauseContext, NewContext, !Specs) :-
+    PredSymName = qualified(PredModuleName, PredName),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    LangStr = foreign_language_string(Lang),
+    PiecesA = [words("Error:")] ++
+        color_as_incorrect([words("duplicate"),
+            pragma_decl("foreign_proc"), words("declaration")]) ++
+        [words("for this mode of"),
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+        words("in"), words(LangStr), suffix("."), nl],
+    PiecesB = [words("The first one was here."), nl],
+    MsgA = msg(NewContext, PiecesA),
+    MsgB = msg(FirstClauseContext, PiecesB),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [MsgA, MsgB]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------%
+
+:- pred report_bad_foreign_proc_in_dot_opt_file(wrong_backend_cause::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
+    (
+        WrongBackendCause = wrong_lang(PragmaLang, BackendForeignLangs),
+        PragmaLangStr = foreign_language_string(PragmaLang),
+        FrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declaration in a .opt file for a foreign language,"),
+            words(PragmaLangStr), suffix(",")],
+        (
+            BackendForeignLangs = [],
+            unexpected($pred, "BackendForeignLangs = []")
+        ;
+            BackendForeignLangs = [BackendForeignLang],
+            BackendLangStr = foreign_language_string(BackendForeignLang),
+            MainPieces = FrontPieces ++ [words("which differs from"),
+                words("the only language supported by the current backend,"),
+                words("which is"), words(BackendLangStr), suffix("."), nl]
+        ;
+            BackendForeignLangs = [_, _ | _],
+            BackendLangStrs =
+                list.map(foreign_language_string, BackendForeignLangs),
+            BackendLangsStr = fixed_list_to_pieces("and", BackendLangStrs),
+            MainPieces = FrontPieces ++ [words("which is not one of the"),
+                words("languages supported by the current backend,"),
+                words("which are")] ++ BackendLangsStr ++ [suffix("."), nl]
+        )
+    ;
+        WrongBackendCause = right_lang_wrong_backend,
+        MainPieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declaration in a .opt file"),
+            words("whose backend attribute states that"),
+            words("it is not for the current grade."), nl]
+    ),
+    Pieces = MainPieces ++ [words("This indicates that the .opt file"),
+        words("was generated for a different grade."),
+        words("You will need to rebuild this file"),
+        words("for the current grade."), nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------%
+
+    % Check that the purity of a predicate/function declaration agrees
+    % with the (promised) purity of the foreign proc. We do not perform
+    % this check if there is a promise_{pure,semipure} pragma for the
+    % predicate/function, since in that case they will differ anyway.
+    %
+:- pred check_foreign_proc_purity(pred_info::in, foreign_proc_attributes::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_foreign_proc_purity(PredInfo, Attributes, Context, !Specs) :-
+    pred_info_get_markers(PredInfo, PredMarkers),
+    ( if
+        ( marker_is_present(PredMarkers, marker_promised_pure)
+        ; marker_is_present(PredMarkers, marker_promised_semipure)
+        )
+    then
+        true
+    else
+        pred_info_get_purity(PredInfo, PredPurity),
+        ForeignAttributePurity = get_purity(Attributes),
+        ( if ForeignAttributePurity = PredPurity then
+            true
+        else
+            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+            PFSymNameArity =
+                pf_sym_name_arity(PredOrFunc, _PredSymName, _PredFormArity),
+            purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
+            purity_name(PredPurity, PredPurityStr),
+            Pieces = [words("Error: foreign clause for"),
+                unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                words("has purity")] ++
+                color_as_incorrect([words(ForeignAttributePurityStr),
+                    suffix(",")]) ++
+                [words("but that"), p_or_f(PredOrFunc),
+                words("has been declared")] ++
+                color_as_correct([words(PredPurityStr), suffix(".")]) ++ [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    ).
+
+%---------------------%
+
+    % Check for arguments occurring more than once.
+    %
+:- pred check_foreign_proc_arg_list(pf_sym_name_arity::in, prog_varset::in,
+    list(prog_var)::in, prog_context::in, list(error_spec)::out) is det.
+
+check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Context,
+        Specs) :-
+    bag.init(ArgVarBag0),
+    bag.insert_list(ArgVars, ArgVarBag0, ArgVarBag),
+    bag.to_list_only_duplicates(ArgVarBag, MultiplyOccurringArgVars),
+    (
+        MultiplyOccurringArgVars = [_ | _],
+        Pieces1 = [words("In"), pragma_decl("foreign_proc"),
+            words("declaration for"),
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+            suffix(":"), nl,
+            words("error:")],
+        (
+            MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
+            BadVarPiece =
+                var_to_quote_piece(ProgVarSet, MultiplyOccurringArgVar),
+            Pieces2 = [words("variable")] ++
+                color_as_subject([BadVarPiece]) ++
+                color_as_incorrect([words("occurs more than once")])
+        ;
+            MultiplyOccurringArgVars = [_, _ | _],
+            BadVarPieces = list.map(var_to_quote_piece(ProgVarSet),
+                MultiplyOccurringArgVars),
+            BadVarsPieces = piece_list_to_color_pieces(color_subject, "and",
+                [], BadVarPieces),
+            Pieces2 = [words("variables")] ++ BadVarsPieces ++
+                color_as_incorrect([words("each occur more than once")])
+        ),
+        Pieces3 = [words("in the argument list."), nl],
+        Spec = spec($pred, severity_error, phase_pt2h,
+            Context, Pieces1 ++ Pieces2 ++ Pieces3),
+        Specs = [Spec]
+    ;
+        MultiplyOccurringArgVars = [],
+        Specs = []
+    ).
+
+%---------------------%
+
+:- pred check_for_warnings_in_foreign_proc(module_info::in,
+    pred_id::in, proc_id::in, pf_sym_name_arity::in,
+    foreign_proc_attributes::in, list(pragma_var)::in,
+    pragma_foreign_proc_impl::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_warnings_in_foreign_proc(ModuleInfo, PredId, ProcId, PFSymNameArity,
+        Attributes, PragmaVars, PragmaImpl, Context, !Specs) :-
+    pragma_get_var_infos(PragmaVars, ArgInfos),
+    ArgNameModes = list.map(
+        foreign_arg_name_mode_box_project_maybe_name_mode,
+        ArgInfos),
+    PragmaForeignLanguage = get_foreign_language(Attributes),
+    warn_singletons_in_pragma_foreign_proc(ModuleInfo,
+        PragmaImpl, PragmaForeignLanguage, ArgNameModes, Context,
+        PFSymNameArity, PredId, ProcId, !Specs).
 
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
     % is mentioned at least once in the foreign code fragments that ought to
@@ -965,6 +986,8 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
         DoDoes = "do"
     ).
 
+%---------------------%
+
 :- pred pragma_foreign_proc_body_checks(module_info::in, foreign_language::in,
     prog_context::in, pf_sym_name_arity::in, pred_id::in, proc_id::in,
     list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -983,6 +1006,8 @@ pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
         check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces,
             !Specs)
     ).
+
+%---------------------%
 
 :- pred check_fp_body_for_success_indicator(module_info::in,
     foreign_language::in, prog_context::in, pf_sym_name_arity::in,
@@ -1044,6 +1069,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
     ;
         MaybeDeclDetism = no
     ).
+
+%---------------------%
 
     % Check to see if a foreign_proc body contains a return statement
     % (or whatever the foreign language equivalent is).
