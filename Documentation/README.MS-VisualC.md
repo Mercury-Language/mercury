@@ -45,9 +45,8 @@ following:
 
        Start Menu
        └── Visual Studio 2022
-           └── Visual Studio Tools
-               ├── x64 Native Tools Command Prompt for VS 2022
-               └── x86 Native Tools Command Prompt for VS 2022
+           ├── x64 Native Tools Command Prompt for VS 2022
+           └── x86 Native Tools Command Prompt for VS 2022
 
    Select x64 to target 64-bit Windows or x86 to target 32-bit Windows.
 
