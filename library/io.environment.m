@@ -353,8 +353,8 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
     // XXX The original version of the above comment was added by wangp
     // in 2009. Based on why I (zs) have read about this online in 2026,
     // this seems to be a design decision by the creators of Java. Even
-    // though it may have made sense in 1995, it seems to me to be stupid
-    // to idea to maintain it long past the time when it buys you anything.
+    // though it may have made sense in 1995, it seems to me to be a stupid
+    // idea to maintain it long past the time when it buys you anything.
     SUCCESS_INDICATOR = false;
 ").
 
