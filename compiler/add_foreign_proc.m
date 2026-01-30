@@ -32,6 +32,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.foreign.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
@@ -40,7 +42,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.add_pred.
-:- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -895,6 +896,173 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                 Overridden = LaterOverridden
             )
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % warn_singletons_in_pragma_foreign_proc checks to see if each variable
+    % is mentioned at least once in the foreign code fragments that ought to
+    % mention it. If not, it gives a warning.
+    %
+    % (Note that for some foreign languages it might not be appropriate
+    % to do this check, or you may need to add a transformation to map
+    % Mercury variable names into identifiers for that foreign language).
+    %
+:- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
+    pragma_foreign_proc_impl::in, foreign_language::in,
+    list(maybe(foreign_arg_name_mode))::in, prog_context::in,
+    pf_sym_name_arity::in, pred_id::in, proc_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
+        Args, Context, PFSymNameArity, PredId, ProcId, !Specs) :-
+    LangStr = foreign_language_string(Lang),
+    PragmaImpl = fp_impl_ordinary(Code, _),
+    foreign_code_to_identifiers(Lang, Code, ForeignIdentifiers),
+    list.filter_map(var_is_unmentioned(ForeignIdentifiers),
+        Args, UnmentionedVars),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, PredMarkers),
+    ( if
+        UnmentionedVars = [_ | _],
+        not marker_is_present(PredMarkers, marker_fact_table_semantic_errors)
+    then
+        variable_warning_start(UnmentionedVars, VarPieces, DoDoes),
+        Pieces = [words("In the"), words(LangStr), words("code for"),
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+            suffix(":"), nl,
+            words("warning:")] ++ VarPieces ++
+            color_as_incorrect([words(DoDoes), words("not occur")]) ++
+            [words("in the"), words(LangStr), words("code."), nl],
+        Severity = severity_warning(warn_singleton_vars),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ),
+    pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
+        PredId, ProcId, ForeignIdentifiers, !Specs).
+
+:- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
+    string::out) is semidet.
+
+var_is_unmentioned(Identifiers, MaybeArg, Name) :-
+    MaybeArg = yes(foreign_arg_name_mode(Name, _Mode)),
+    not string.prefix(Name, "_"),
+    not list.member(Name, Identifiers).
+
+:- pred variable_warning_start(list(string)::in, list(format_piece)::out,
+    string::out) is det.
+
+variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
+    ( if UnmentionedVars = [Var] then
+        Pieces = [words("variable")] ++ color_as_subject([quote(Var)]),
+        DoDoes = "does"
+    else
+        Pieces = [words("variables")] ++
+            quote_list_to_color_pieces(color_subject, "and", [],
+                UnmentionedVars),
+        DoDoes = "do"
+    ).
+
+:- pred pragma_foreign_proc_body_checks(module_info::in, foreign_language::in,
+    prog_context::in, pf_sym_name_arity::in, pred_id::in, proc_id::in,
+    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
+        PredId, ProcId, BodyPieces, !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
+    IsImported = pred_status_is_imported(PredStatus),
+    (
+        IsImported = yes
+    ;
+        IsImported = no,
+        check_fp_body_for_success_indicator(ModuleInfo, Lang, Context,
+            PFSymNameArity, PredId, ProcId, BodyPieces, !Specs),
+        check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces,
+            !Specs)
+    ).
+
+:- pred check_fp_body_for_success_indicator(module_info::in,
+    foreign_language::in, prog_context::in, pf_sym_name_arity::in,
+    pred_id::in, proc_id::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
+        PredId, ProcId, BodyPieces, !Specs) :-
+    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
+    (
+        MaybeDeclDetism = yes(Detism),
+        SuccIndStr = "SUCCESS_INDICATOR",
+        (
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            ; Detism = detism_erroneous
+            ),
+            ( if list.member(SuccIndStr, BodyPieces) then
+                LangStr = foreign_language_string(Lang),
+                Pieces = [words("Warning: the"), fixed(LangStr),
+                    words("code for"),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
+                    color_as_inconsistent([words("may set"),
+                        quote(SuccIndStr), suffix(",")]) ++
+                    [words("but")] ++
+                    color_as_inconsistent([words("it cannot fail.")]) ++ [nl],
+                Severity = severity_warning(warn_suspicious_foreign_procs),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            else
+                true
+            )
+        ;
+            ( Detism = detism_semi
+            ; Detism = detism_cc_non
+            ),
+            ( if list.member(SuccIndStr, BodyPieces) then
+                true
+            else
+                LangStr = foreign_language_string(Lang),
+                Pieces = [words("Warning: the"), fixed(LangStr),
+                    words("code for"),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
+                    color_as_inconsistent([words("does not appear to set"),
+                        quote(SuccIndStr), suffix(",")]) ++
+                    [words("but")] ++
+                    color_as_inconsistent([words("it can fail.")]) ++ [nl],
+                Severity = severity_warning(warn_suspicious_foreign_procs),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            ( Detism = detism_multi
+            ; Detism = detism_non
+            ; Detism = detism_failure
+            )
+        )
+    ;
+        MaybeDeclDetism = no
+    ).
+
+    % Check to see if a foreign_proc body contains a return statement
+    % (or whatever the foreign language equivalent is).
+    %
+:- pred check_fp_body_for_return(foreign_language::in, prog_context::in,
+    pf_sym_name_arity::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
+    ( if list.member("return", BodyPieces) then
+        LangStr = foreign_language_string(Lang),
+        Pieces = [words("Warning: the"), fixed(LangStr), words("code for"),
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+            words("may contain a"), quote("return"), words("statement."), nl],
+        Severity = severity_warning(warn_suspicious_foreign_procs),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
