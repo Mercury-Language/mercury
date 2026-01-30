@@ -1,206 +1,221 @@
 Mercury with Microsoft Visual C++
 =================================
 
-This file documents the port of Mercury to Windows using Microsoft Visual
-C++ (MSVC) as a C compiler. Version 19.0 or later of MSVC is required.
-Version 19 shipped with Visual Studio 2022. Mercury is *not* supported
-with older versions of MSVC.
+This file documents the port of Mercury to Windows that uses Microsoft Visual
+C++ (MSVC) as a C compiler.
 
 With MSVC, you can install a Mercury compiler that generates either x86
 (32-bit) or x64 (64-bit) Windows native code in C grades, but not both.
 (You can, of course, have multiple Mercury installations that use MSVC,
 and have one that targets x86 and another that targets x64.)
 
+Contents
+--------
+
+* Supported MSVC versions
+* Setting up the build environment
+* Configuration and installation
+* Using Mercury in the MSYS2 or Cygwin shells
+* Limitations
+
+Supported MSVC versions
+-----------------------
+
+You need version 19.3 or later of MSVC. Version 19.3 was included with
+Visual Studio 2022. Mercury is *not* supported with older versions of MSVC.
+Your Visual Studio installation needs the "Desktop development with C++"
+component to be installed.
+
 Setting up the build environment
 --------------------------------
 
-A Unix-like environment is required for building and installing Mercury.
-[Cygwin](https://www.cygwin.com) or [MSYS2](https://www.msys2.org) will
-suffice.
+You need a Unix-like environment to build and install Mercury.
+You can use either [Cygwin](https://www.cygwin.com) or
+[MSYS2](https://www.msys2.org).
 
-A Unix-like environment is *not* required in order to use Mercury once it
-has been installed.
+You only need a Unix-like environment for the installation. You do not need
+one to run Mercury later.
 
-To make MSVC and its supporting tools available under the Cygwin or MSYS2
-shells do the following:
+To make MSVC the toolchain available in the Cygwin or MSYS2 shells, do the
+following:
 
 1. Open the Visual Studio Command Prompt.
 
-   This can typically be found in
+   Go to the correct tool in your Start Menu:
 
-         Start -> Visual Studio YYYY -> Visual Studio Tools
+       Start Menu
+       └── Visual Studio 2022
+           └── Visual Studio Tools
+               ├── x64 Native Tools Command Prompt for VS 2022
+               └── x86 Native Tools Command Prompt for VS 2022
 
-   although the name and location vary between different versions and editions
-   of Visual Studio. (*YYYY* is the year.) Note that this will give you the
-   x86 version of MSVC.
+   Select x64 to target 64-bit Windows or x86 to target 32-bit Windows.
 
-   The Visual Studio entry in the `Start` menu may also have items named
-   similarly to:
+   If you prefer not to use the Start Menu shortcuts, then you can manually set
+   up the environment variables by running one of the batch files supplied with
+   Visual Studio (e.g. `vcvars32.bat` for x86, `vcvars64.bat` for x64).
 
-        * x64 Native Tools Command Prompt for VS 2022
-        * x86 Native Tools Command Prompt for VS 2022
+2. Start the MSYS2 shell using this command:
 
-   These let you choose between the x64 and x86 versions of MSVC toolchain.
+       C:\> C:\msys64\msys2_shell.cmd -use-full-path
 
-   Alternatively, you can start a `cmd.exe` session and use the batch files supplied
-   with Visual Studio (e.g. `vcvarsall.bat`, `vcvars32.bat` or `vcvars64.bat`) to
-   set up the environment for MSVC.
+   Or start the Cygwin shell using this command:
 
-2. Enter the following command to start MSYS2 shell with 32-bit MSVC:
+       C:\> C:\cygwin64\Cygwin.bat
 
-        C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
+   We assume the default installation locations for MSYS2 and Cygwin above.
 
-   or this one to start the MSYS2 shell with 64-bit MSVC:
-        
-        C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw64
+   To install the `csharp` grade, you must add a C# compiler to your Windows
+   `PATH`. See [README.CSharp.md](README.CSharp.md) for further details.
 
-   or this one to start the Cygwin shell:
+   To install the `java` grade, you must add a Java compiler to your Windows
+   `PATH`. See [README.Java.md](README.Java.md) for further details.
 
-        C:\> C:\cygwin64\Cygwin.bat
-
-(We assume the default installation locations for MSYS2 and Cygwin above.)
-
-Users of MSYS2 should note that it is required that the configuration type
-returned by autoconf match `*mingw*`; in particular it must *not* match
-`*-pc-msys`. You can use the `config.guess` script to see what configuration
-type autoconf detects.
-
-To install the C# or Java grades, you will need a C# or Java compiler
-respectively to be included in the Windows `PATH`.
-(See the relevant README files for further details, e.g.
-[README.Java.md](README.Java.md) etc)
-
-Configuration and Installation
+Configuration and installation
 ------------------------------
 
-The MSVC port of Mercury is compatible with the prebuilt C files contained in
-the Mercury source distribution. The `asm_fast*` and `reg*` grades will not work
-with MSVC (see below). When using the prebuilt C files the compiler will be
-built in the `hlc.gc.pregen` grade.
+You can install the MSVC port of Mercury directly from the Mercury source
+distribution.
 
-Alternatively, if you have an existing Mercury installation that uses the
-MinGW-w64 or Cygwin GCC ports, or clang, then you can checkout the Mercury
-source from the git repository and use your existing installation to
-cross-compile the MSVC port.
+If you already have an existing Mercury installation that uses the
+[MinGW-w64](https://www.mingw-w64.org) ports of GCC or Clang, or one that uses
+the Cygwin port of GCC, then you can clone the Mercury source from the Git
+repository and use your existing installation to cross-compile the MSVC port.
 
-In either case, to use MSVC as the C compiler with Mercury, invoke `configure`
-as follows:
+When using MSVC, you *must* set the Mercury installation directory using the
+`--prefix` option to `configure`. 
 
-    ./configure --with-cc=cl [<any other options>]
+* Use a full Windows path with a drive letter (e.g., `C:/mercury`).
 
-On Cygwin, `configure` and `mmake` will do translation of Unix style paths, so
-you may specify the installation directory using either a Unix- or
-Windows-style path. On MSYS2, you must use a full Windows-style path with a
-drive letter, except that you must use `/` instead of `\` as a directory
-separator. For example, this is acceptable:
+* **Important**: Use forward slashes (`/`), not backslashes (`\`) as path
+  separators (even though the latter is more usual on Windows).
+
+For example, this is acceptable:
 
     ./configure --prefix="c:/where/to/install/mercury"
 
 but this is not:
-
+    
     ./configure --prefix="c:\where\to\install\mercury"
 
-Once `configure` has successfully finished, then do
+You *must* set the installation directory correctly, or the installation will
+fail.
+
+Run `configure` as follows:
+
+    ./configure --with-cc=cl --prefix=<install-dir> [<any other options>]
+
+Once `configure` has successfully finished, then do:
 
     make
 
-and then
+and then:
 
     make install
 
 as normal.
 
+Using Mercury in the MSYS2 or Cygwin shells
+-------------------------------------------
+
+This section describes how to use a Mercury compiler that was built using MSVC
+in the MSYS2 or Cygwin shells.
+
+Check that the MSVC toolchain is in the Windows `PATH` and that the required
+tools (`cl`, `link` and `lib`) are accessible from the Cygwin or MSYS2 shell.
+
+Add the Mercury `bin` directory to the MSYS2 or Cygwin `PATH` using a
+Unix-style path. For example, if Mercury is installed in "C:\mercury", then you
+would add `/c/mercury/bin` to the MSYS2 `PATH` or `/cygdrive/c/mercury/bin` to
+the Cygwin `PATH`.
+
+After the Mercury `bin` directory has been added to the MSYS2 or Cygwin `PATH`,
+then you should be able to use the Mercury compiler.
+
+Using Mercury in the Windows Command Prompt
+-------------------------------------------
+
+This section explains how to use Mercury that was built using MSVC in the
+Windows Command Prompt (i.e. `cmd.exe`).
+
+Make sure that the following are present in the Windows `PATH`:
+
+1. The MSVC toolchain (`cl`, `link` and `lib`).
+
+2. The Java toolchain (`javac`, `jar` and `java`), if the `java` grade was
+   installed.
+
+3. The C# toolchain (`csc`), if the `csharp` grade was installed.
+
+4. The Mercury `bin` directory. For example, if Mercury is installed in
+   `C:\mercury`, then you would add `C:\mercury\bin` to the Windows `PATH`.
+
+You can then run the Mercury compiler using the command `mercury`.
+This is a batch file that is the same as `mmc` in other environments.
+We use the name `mercury` instead of `mmc` in the Windows Command Prompt.
+This is because the name `mmc` is also used by the Microsoft Management
+Console.
+
+For example, to build the "Hello, World" example in the `samples` directory
+of the Mercury distribution, do:
+
+    mercury hello.m
+
+or, using the `--make` option:
+
+    mercury --make hello
+
+Note that `mmake` is not supported in the Windows Command Prompt.
+
 Limitations
 -----------
 
-The MSVC port currently has a number of limitations:
+The MSVC port currently has the following limitations:
 
-* The `asm_fast` and `reg` grades do not work with MSVC.
+* The `asm_fast` and `reg` grades do not work.
   Both use GNU extensions to C that MSVC does not provide.
 
 * Time profiling does not (currently) work with MSVC.
-  Time profiling grades (those whose name contains the `prof` grade component)
+  Time profiling grades (those whose name contains the `.prof` grade component)
   will not be installed.
 
-  Note that memory profiling _does_ work with MSVC. (Memory profiling grades
-  are those whose name contains the `memprof` grade component.)
+  Memory profiling _does_ work with MSVC. (Memory profiling grades
+  are those whose name contains the `.memprof` grade component.)
 
-* Parallel grades (those whose name contains the `par` component) do not
-  currently work with MSVC.
+* Parallel grades do not work because the Mercury runtime uses POSIX threads.
+  It does not yet support Windows threads.
+  
+  (It might be possible to use the
+  [pthreads-win32](https://sourceforge.net/projects/pthreads4w/)
+  library with MSVC to provide POSIX threads, but we have not yet tested that.) 
 
-  In parallel grades the Mercury runtime currently requires the use of POSIX
-  threads; it has not currently been ported to use Windows threads.
-  (It might be possible to use the [pthreads-win32](https://sourceforge.net/projects/pthreads4w/)
-  library with MSVC to provide POSIX threads but we have not tested that yet.) 
-
-* Deep profiling (e.g. the `*.profdeep` grades) does not (currently) work
+* Deep profiling (e.g. the `.profdeep` grades) does not (currently) work
   with MSVC. (In principle, it should work if the clock tick metric is
   disabled.)
 
 * The deep profiling tool (`mdprof_cgi`) does not currently work with MSVC.
-  This is due to it containing a number of Unix dependencies. (Other
-  tools that work with deep profiles should be fine.)
+  This is due to it containing Unix dependencies. (Other tools that work with
+  deep profiles should be fine.)
 
-* When used directly from the Windows command prompt, mmake will not work.
-  You should use `mmc --make` instead. (`mmake` requires a POSIX-like shell
-  and GNU `make`; it will however work with the Cygwin or MSYS2 shells.)
-  We do not intend to support `mmake` directly on Windows.
+* You cannot create libraries (DLLs) yet.
 
-* Creation of shared libraries (DLLs) is not currently supported.
-
-* The `--c-debug` option currently has no effect with MSVC since enabling
-  it breaks parallel builds and disables some C compiler optimizations.
+* The `--c-debug` option is disabled with MSVC since enabling it breaks
+  parallel builds and disables some C compiler optimizations.
 
   If you *really* want to enable support for C level debugging, then enable the
-  commented out definition of `DEBUG_OPTS` in `scripts/mgnuc.in` (in the `cl` case)
-  and also enable the commented out definition of `CFLAGS_FOR_DEBUG` in
-  `configure.ac` (in the `msvc*` case). You will then need to regenerate
-  the `configure` script and rebuild the Mercury system.
+  commented out definition of `DEBUG_OPTS` in `scripts/mgnuc.in`
+  (for the `cl` case) and also enable the commented out definition of
+  `CFLAGS_FOR_DEBUG` in `configure.ac` (for the `msvc` case). You will then need
+  to regenerate the `configure` script and rebuild the Mercury system.
   (See [INSTALL.git](../INSTALL.git) for details of how to do this.)
 
-Post-installation configuration
--------------------------------
+* `mdb`'s `open` and `grep` commands do not work. The scripts that implement
+  these commands only work on Unix-like systems.
 
-The above instructions create a Mercury installation using MSVC that works
-from within the Cygwin or MSYS2 shells. If you want to be able to run the
-Mercury compiler directly from the Windows Command Prompt (e.g. `cmd.exe`)
-or PowerShell, then you need to manually edit some configuration files in the
-installation. (In future releases, this will all hopefully be automated.)
+* The following shell scripts included with the Mercury distribution do not
+  work on Windows.
 
-All references to files in the following are within the Mercury installation
-directory
-
-* In the file `lib/mercury/conf/Mercury.config`:
-  
-  + Replace any Unix-style paths with their Windows-style equivalent. 
-
-* In the file `lib/mercury/mdb/mdbrc`
-
-  + The backslash character, `\`, is used as an escape character in mdbrc
-    files. It must be escaped it if it occurs in any paths used in the
-    argument of `source` commands, for example
-
-        source c:\mercury-11.07\lib\mercury\mdb\mdb_doc
-
-    needs to be replaced with:
-
-        source c:\\mercury-11.07\\lib\\mercury\\mdb\\mdb_doc
-
-  + Delete the aliases for the `open` and `grep` commands.
-    The scripts that implement these commands assume a Unix-style environment.
-
-* The `bin` directory contains batch files equivalent to the `mmc`, `mdb` and
-  `mprof` scripts. Note that the batch file equivalent to the `mmc` script is
-   named `mercury.bat` in order to avoid clashing with the executable for the
-   Microsoft Management Console.
-
-* The following scripts do not currently have a Windows equivalent.
-
-    + `mprof_merge_runs`
-    + `mtc`
-
-* The other shell scripts in the `bin` directory do not have (or need) Windows
-  equivalents. (Most of them are part of the implementation of `mmake` which
-  in the Windows Command Prompt or PowerShell.)
+  - `mprof_merge_runs`
+  - `mtc`
 
 -----------------------------------------------------------------------------
