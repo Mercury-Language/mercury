@@ -22,23 +22,23 @@ singleton_test.m:045:   scope.
 singleton_test.m:045: In clause for predicate `test_head'/6:
 singleton_test.m:045:   warning: variables [38;5;87m`A'[39;49m and [38;5;87m`B'[39;49m [38;5;203moccur only once[39;49m in this
 singleton_test.m:045:   scope.
-singleton_test.m:049: In the C code for predicate `my_c_pred'/3:
+singleton_test.m:049: In the C foreign_proc for predicate `my_c_pred'/3:
 singleton_test.m:049:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:055: In the C# code for predicate `my_c_pred'/3:
+singleton_test.m:055: In the C# foreign_proc for predicate `my_c_pred'/3:
 singleton_test.m:055:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
-singleton_test.m:061: In the Java code for predicate `my_c_pred'/3:
+singleton_test.m:061: In the Java foreign_proc for predicate `my_c_pred'/3:
 singleton_test.m:061:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the Java code.
-singleton_test.m:070: In the C code for function `my_c_func'/2:
+singleton_test.m:070: In the C foreign_proc for function `my_c_func'/2:
 singleton_test.m:070:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:076: In the C# code for function `my_c_func'/2:
+singleton_test.m:076: In the C# foreign_proc for function `my_c_func'/2:
 singleton_test.m:076:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
-singleton_test.m:082: In the Java code for function `my_c_func'/2:
+singleton_test.m:082: In the Java foreign_proc for function `my_c_func'/2:
 singleton_test.m:082:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the Java code.
-singleton_test.m:091: In the C code for predicate `c_hello_world'/3:
+singleton_test.m:091: In the C foreign_proc for predicate `c_hello_world'/3:
 singleton_test.m:091:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
-singleton_test.m:098: In the C# code for predicate `c_hello_world'/3:
+singleton_test.m:098: In the C# foreign_proc for predicate `c_hello_world'/3:
 singleton_test.m:098:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C# code.
-singleton_test.m:105: In the Java code for predicate `c_hello_world'/3:
+singleton_test.m:105: In the Java foreign_proc for predicate `c_hello_world'/3:
 singleton_test.m:105:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the Java
 singleton_test.m:105:   code.
 For more information, recompile with `-E'.

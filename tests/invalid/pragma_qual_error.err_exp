@@ -2,8 +2,7 @@ pragma_qual_error.m:025: In `:- pragma foreign_export_enum' declaration:
 pragma_qual_error.m:025:   error: the type [38;5;87m`bar'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:032: Error: `:- pragma foreign_enum' declaration for the
 pragma_qual_error.m:032:   [38;5;203mundeclared type[39;49m [38;5;87m`bar'/0.[39;49m
-pragma_qual_error.m:046: Error: `:- pragma foreign_proc' declaration for
-pragma_qual_error.m:046:   [38;5;203mundeclared mode[39;49m of predicate
+pragma_qual_error.m:046: Error: C foreign_proc for [38;5;203mundeclared mode[39;49m of predicate
 pragma_qual_error.m:046:   [38;5;87m`pragma_qual_error.foo'/2.[39;49m
 pragma_qual_error.m:046: In `:- pragma foreign_proc' declaration:
 pragma_qual_error.m:046:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m

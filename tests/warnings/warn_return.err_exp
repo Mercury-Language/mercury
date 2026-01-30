@@ -1,6 +1,6 @@
-warn_return.m:019: Warning: the C code for predicate `foo'/2 may contain a
-warn_return.m:019:   `return' statement.
-warn_return.m:026: Warning: the Java code for predicate `foo'/2 may contain a
-warn_return.m:026:   `return' statement.
-warn_return.m:033: Warning: the C# code for predicate `foo'/2 may contain a
-warn_return.m:033:   `return' statement.
+warn_return.m:019: Warning: the C code in the foreign_proc for [38;5;87mpredicate[39;49m
+warn_return.m:019:   [38;5;87m`foo'/2[39;49m may contain a [38;5;203m`return' statement.[39;49m
+warn_return.m:026: Warning: the Java code in the foreign_proc for [38;5;87mpredicate[39;49m
+warn_return.m:026:   [38;5;87m`foo'/2[39;49m may contain a [38;5;203m`return' statement.[39;49m
+warn_return.m:033: Warning: the C# code in the foreign_proc for [38;5;87mpredicate[39;49m
+warn_return.m:033:   [38;5;87m`foo'/2[39;49m may contain a [38;5;203m`return' statement.[39;49m

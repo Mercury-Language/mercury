@@ -7,57 +7,57 @@ foreign_purity_mismatch.m:011:   or [38;5;40mpromised pure.[39;49m
 foreign_purity_mismatch.m:013: Error: predicate [38;5;87m`semipure_with_impure'/1[39;49m is
 foreign_purity_mismatch.m:013:   [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared impure,[39;49m or
 foreign_purity_mismatch.m:013:   [38;5;40mpromised semipure.[39;49m
-foreign_purity_mismatch.m:026: Error: foreign clause for predicate
+foreign_purity_mismatch.m:026: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:026:   `pure_with_impure'/1 has purity [38;5;203mimpure,[39;49m but
 foreign_purity_mismatch.m:026:   that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:031: Error: foreign clause for predicate
+foreign_purity_mismatch.m:031: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:031:   `pure_with_impure'/1 has purity [38;5;203mimpure,[39;49m but
 foreign_purity_mismatch.m:031:   that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:036: Error: foreign clause for predicate
+foreign_purity_mismatch.m:036: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:036:   `pure_with_impure'/1 has purity [38;5;203mimpure,[39;49m but
 foreign_purity_mismatch.m:036:   that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:044: Error: foreign clause for predicate
+foreign_purity_mismatch.m:044: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:044:   `pure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:044:   but that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:049: Error: foreign clause for predicate
+foreign_purity_mismatch.m:049: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:049:   `pure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:049:   but that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:054: Error: foreign clause for predicate
+foreign_purity_mismatch.m:054: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:054:   `pure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:054:   but that predicate has been declared [38;5;40mpure.[39;49m
-foreign_purity_mismatch.m:062: Error: foreign clause for predicate
+foreign_purity_mismatch.m:062: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:062:   `semipure_with_impure'/1 has purity [38;5;203mimpure,[39;49m
 foreign_purity_mismatch.m:062:   but that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:067: Error: foreign clause for predicate
+foreign_purity_mismatch.m:067: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:067:   `semipure_with_impure'/1 has purity [38;5;203mimpure,[39;49m
 foreign_purity_mismatch.m:067:   but that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:072: Error: foreign clause for predicate
+foreign_purity_mismatch.m:072: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:072:   `semipure_with_impure'/1 has purity [38;5;203mimpure,[39;49m
 foreign_purity_mismatch.m:072:   but that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:080: Error: foreign clause for predicate
+foreign_purity_mismatch.m:080: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:080:   `semipure_with_pure'/1 has purity [38;5;203mpure,[39;49m but
 foreign_purity_mismatch.m:080:   that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:085: Error: foreign clause for predicate
+foreign_purity_mismatch.m:085: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:085:   `semipure_with_pure'/1 has purity [38;5;203mpure,[39;49m but
 foreign_purity_mismatch.m:085:   that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:090: Error: foreign clause for predicate
+foreign_purity_mismatch.m:090: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:090:   `semipure_with_pure'/1 has purity [38;5;203mpure,[39;49m but
 foreign_purity_mismatch.m:090:   that predicate has been declared [38;5;40msemipure.[39;49m
-foreign_purity_mismatch.m:098: Error: foreign clause for predicate
+foreign_purity_mismatch.m:098: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:098:   `impure_with_pure'/1 has purity [38;5;203mpure,[39;49m but that
 foreign_purity_mismatch.m:098:   predicate has been declared [38;5;40mimpure.[39;49m
-foreign_purity_mismatch.m:103: Error: foreign clause for predicate
+foreign_purity_mismatch.m:103: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:103:   `impure_with_pure'/1 has purity [38;5;203mpure,[39;49m but that
 foreign_purity_mismatch.m:103:   predicate has been declared [38;5;40mimpure.[39;49m
-foreign_purity_mismatch.m:108: Error: foreign clause for predicate
+foreign_purity_mismatch.m:108: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:108:   `impure_with_pure'/1 has purity [38;5;203mpure,[39;49m but that
 foreign_purity_mismatch.m:108:   predicate has been declared [38;5;40mimpure.[39;49m
-foreign_purity_mismatch.m:116: Error: foreign clause for predicate
+foreign_purity_mismatch.m:116: Error: this C foreign_proc for predicate
 foreign_purity_mismatch.m:116:   `impure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:116:   but that predicate has been declared [38;5;40mimpure.[39;49m
-foreign_purity_mismatch.m:121: Error: foreign clause for predicate
+foreign_purity_mismatch.m:121: Error: this Java foreign_proc for predicate
 foreign_purity_mismatch.m:121:   `impure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:121:   but that predicate has been declared [38;5;40mimpure.[39;49m
-foreign_purity_mismatch.m:126: Error: foreign clause for predicate
+foreign_purity_mismatch.m:126: Error: this C# foreign_proc for predicate
 foreign_purity_mismatch.m:126:   `impure_with_semipure'/1 has purity [38;5;203msemipure,[39;49m
 foreign_purity_mismatch.m:126:   but that predicate has been declared [38;5;40mimpure.[39;49m

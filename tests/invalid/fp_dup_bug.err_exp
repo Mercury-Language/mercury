@@ -1,6 +1,6 @@
-fp_dup_bug.m:027: Error: [38;5;203mduplicate `:- pragma foreign_proc' declaration[39;49m for
-fp_dup_bug.m:027:   this mode of predicate `foo'/2 in C.
+fp_dup_bug.m:027: Error: [38;5;203mduplicate C foreign_proc[39;49m for this mode of predicate
+fp_dup_bug.m:027:   `foo'/2.
 fp_dup_bug.m:021:   The first one was here.
-fp_dup_bug.m:033: Error: [38;5;203mduplicate `:- pragma foreign_proc' declaration[39;49m for
-fp_dup_bug.m:033:   this mode of predicate `foo'/2 in C.
+fp_dup_bug.m:033: Error: [38;5;203mduplicate C foreign_proc[39;49m for this mode of predicate
+fp_dup_bug.m:033:   `foo'/2.
 fp_dup_bug.m:021:   The first one was here.
