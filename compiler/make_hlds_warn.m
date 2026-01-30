@@ -167,15 +167,15 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
                 [words("each have overlapping scopes."), nl]
         )
     ),
-    Spec = spec($pred, severity_warning(warn_overlapping_scopes), phase_pt2h,
-        Context, Pieces1 ++ Pieces2).
+    Severity = severity_warning(warn_overlapping_scopes),
+    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces1 ++ Pieces2).
 
 %---------------------------------------------------------------------------%
 
 warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
         SeenQuant, !Specs) :-
     % We handle warnings about variables in the clause head specially.
-    % This is because the compiler transforms clause heads such as
+    % This is because superhomogeneous.m transforms clause heads such as
     %
     %   p(X, Y, Z) :- ...
     %
@@ -336,36 +336,14 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
         warn_singletons_goal_vars(Params, Args, GoalInfo, NonLocals,
             QuantVars, !Info)
     ;
-        GoalExpr = call_foreign_proc(Attrs, PredId, ProcId, Args, _, _,
-            PragmaImpl),
-        Context = goal_info_get_context(GoalInfo),
-        Lang = get_foreign_language(Attrs),
-        NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
-        % Normally, when generate_variable_warning tests whether any warning
-        % we are about to generate is enabled, it consults the relevant
-        % field of Params. The predicate we are calling here cannot do that,
-        % because it does not get passed either Params, or that field.
-        % This is nevertheless OK, because while we are in the process of
-        % constructing the initial HLDS (which is the only time that
-        % warn_singletons_in_clause_body, this predicate's only exported
-        % ancestor, is invoked), clause bodies can contain
-        %
-        % - either one foreign proc, possibly with unifications added
-        %   by the transformation to superhomogeneous form,
-        %
-        % - or the body goal of a Mercury clause.
-        %
-        % But since Mercury clauses cannot contain foreign_procs, and
-        % foreign_proc pragmas cannot contain any scope goals, the original
-        % BodyGoal cannot contain both a foreign_proc and a disable_warning
-        % scope. This means that if we get here, then the flags fields
-        % in Params will still call for the generation of exactly the same
-        % kinds of warnings as the options in the globals structure inside
-        % the module_info.
-        warn_singletons_in_pragma_foreign_proc(Params ^ wp_module_info,
-            PragmaImpl, Lang, NamesModes, Context, Params ^ wp_pf_sna,
-            PredId, ProcId, [], PragmaSpecs),
-        add_warn_specs(PragmaSpecs, !Info)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        % The only exported predicate among our ancestors,
+        % warn_singletons_in_clause_body, is only ever invoked
+        % on Mercury clauses being added to the HLDS. Such clauses
+        % cannot contain call_foreign_proc goals; that is possible
+        % only after the compiler has inlined a call to a predicate
+        % that is defined by foreign code.
+        unexpected($pred, "call_foreign_proc")
     ;
         GoalExpr = conj(_ConjType, Goals),
         warn_singletons_in_goal_list(Params, Goals, QuantVars, !Info)
@@ -909,8 +887,8 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
             words("warning:")] ++ VarPieces ++
             color_as_incorrect([words(DoDoes), words("not occur")]) ++
             [words("in the"), words(LangStr), words("code."), nl],
-        Spec = error_spec($pred, severity_warning(warn_singleton_vars),
-            phase_pt2h, [msg(Context, Pieces)]),
+        Severity = severity_warning(warn_singleton_vars),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
