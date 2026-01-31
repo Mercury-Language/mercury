@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -821,7 +821,7 @@ rand_s_failure_handler:
 static ML_SystemRandomHandle
 ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
 {
-    succeeded = MR_FALSE;
+    *succeeded = MR_FALSE;
     *err_msg = MR_make_string_const(\"No system RNG available\");
     return 0; // Dummy value.
 }
