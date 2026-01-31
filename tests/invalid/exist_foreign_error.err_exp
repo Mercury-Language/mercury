@@ -1,3 +1,9 @@
-exist_foreign_error.m:017: Error: the foreign language code for function
-exist_foreign_error.m:017:   [38;5;87m`exist_foreign_error.get_pti_from_arg_types'/2[39;49m
-exist_foreign_error.m:017:   should define the variable [38;5;203m`TypeInfo_for_T'.[39;49m
+exist_foreign_error.m:017: Error: the code of the C foreign_proc for function
+exist_foreign_error.m:017:   [38;5;87m`get_pti_from_arg_types'/2[39;49m should define the
+exist_foreign_error.m:017:   variable [38;5;203m`TypeInfo_for_T'.[39;49m
+exist_foreign_error.m:024: Error: the code of the Java foreign_proc for
+exist_foreign_error.m:024:   function [38;5;87m`get_pti_from_arg_types'/2[39;49m should define
+exist_foreign_error.m:024:   the variable [38;5;203m`TypeInfo_for_T'.[39;49m
+exist_foreign_error.m:031: Error: the code of the C# foreign_proc for function
+exist_foreign_error.m:031:   [38;5;87m`get_pti_from_arg_types'/2[39;49m should define the
+exist_foreign_error.m:031:   variable [38;5;203m`TypeInfo_for_T'.[39;49m

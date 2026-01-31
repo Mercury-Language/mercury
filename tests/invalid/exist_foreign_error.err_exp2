@@ -1,3 +1,0 @@
-exist_foreign_error.m:024: Error: the foreign language code for function
-exist_foreign_error.m:024:   [38;5;87m`exist_foreign_error.get_pti_from_arg_types'/2[39;49m
-exist_foreign_error.m:024:   should define the variable [38;5;203m`TypeInfo_for_T'.[39;49m

@@ -1007,7 +1007,8 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
         BodyCode = floi_literal(Code),
         (
             Lang = lang_c,
-            foreign_code_to_identifiers(Lang, Code, Identifiers),
+            foreign_code_to_identifiers(Lang, Code,
+                Identifiers, _CommentIdentifiers),
             ( if list.member("MR_ALLOC_ID", Identifiers) then
                 Pieces = [
                     words("Warning: the body of this"),

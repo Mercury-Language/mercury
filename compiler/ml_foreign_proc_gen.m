@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -614,7 +614,7 @@ ml_gen_foreign_proc_c_decl(Info, Lang, Code, !TIIn, !TIOut,
                 % the compiler mentioned above may not have arrived yet.
                 % (For now, updated code will still have to mention ArgName,
                 % probably in a comment, to avoid a singleton variable warning
-                % from report_missing_tvar_in_foreign_code.)
+                % from check_typeinfo_for_existq_tvar.)
                 ( if string.sub_string_search(Code, SeqArgName, _Index) then
                     % SeqArgName occurs in Code, so assign it to ArgName.
                     string.format("\t%s = %s;\n", [s(ArgName), s(SeqArgName)],

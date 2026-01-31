@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,9 +28,6 @@
 :- func report_unsatisfiable_constraints(type_error_clause_context,
     prog_context, type_assign_set) = error_spec.
 
-:- func report_missing_tvar_in_foreign_code(type_error_clause_context,
-    prog_context, string) = error_spec.
-
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
     prog_var, tvarset, mer_type, mer_type) = error_spec.
 
@@ -48,7 +45,6 @@
 :- import_module check_hlds.typecheck_error_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
@@ -62,7 +58,6 @@
 :- import_module parse_tree.prog_type_test.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -175,18 +170,6 @@ unproven_constraints_to_string_set(TypeAssign, UnprovenConstraintStrSet) :-
 :- func wrap_quote(string) = list(format_piece).
 
 wrap_quote(Str) = [quote(Str)].
-
-%---------------------------------------------------------------------------%
-
-report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
-    ModuleInfo = ClauseContext ^ tecc_module_info,
-    PredId = ClauseContext ^ tecc_pred_id,
-    Pieces = [words("Error: the foreign language code for")] ++
-        describe_one_pred_name(ModuleInfo, yes(color_subject),
-            should_module_qualify, [], PredId) ++
-        [words("should define the variable")] ++
-        color_as_incorrect([quote(VarName), suffix(".")]) ++ [nl],
-    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

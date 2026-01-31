@@ -1,6 +1,6 @@
 gh72_errors.m:028: Warning: this [38;5;87m`:- import_module' declaration for module[39;49m
 gh72_errors.m:028:   [38;5;87m`solutions'[39;49m [38;5;203mis out of order[39;49m with respect to the preceding
 gh72_errors.m:028:   `:- import_module' declaration for module `string'.
-gh72_errors.m:149: Error: [38;5;203mduplicate `:- pragma foreign_proc' declaration[39;49m for
-gh72_errors.m:149:   this mode of predicate `test_fproc_2'/5 in Java.
+gh72_errors.m:149: Error: [38;5;203mduplicate Java foreign_proc[39;49m for this mode of
+gh72_errors.m:149:   predicate `test_fproc_2'/5.
 gh72_errors.m:133:   The first one was here.

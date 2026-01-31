@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
 % Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: foreign.m.
 % Main authors: trd, dgj.
@@ -17,7 +17,7 @@
 % Parts of this code were originally written by dgj, and have since been moved
 % here.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module backend_libs.foreign.
 :- interface.
@@ -37,7 +37,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type foreign_type_and_assertions
     --->    foreign_type_and_assertions(sym_name, foreign_type_assertions).
@@ -72,7 +72,7 @@
 :- func exported_builtin_type_to_csharp_string(builtin_type) = string.
 :- func exported_builtin_type_to_java_string(builtin_type) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Find the current target backend from the module_info, and given
     % a foreign_type_body, return the name of the foreign language type
@@ -95,7 +95,7 @@
 :- pred foreign_type_body_has_user_defined_eq_comp_pred(module_info::in,
     foreign_type_body::in, noncanonical::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Filter the decls for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -120,25 +120,32 @@
     list(pragma_exported_proc)::out, list(pragma_exported_proc)::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % foreign_code_to_identifiers(Lang, Code, Identifiers):
+    % foreign_code_to_identifiers(Lang, Code, Identifiers, Comments):
     %
     % Break up Code into words that meet the rules for identifiers.
     % Some of these may actually be language keywords.
     %
 :- pred foreign_code_to_identifiers(foreign_language::in, string::in,
-    list(string)::out) is det.
+    list(string)::out, list(string)::out) is det.
 
-%-----------------------------------------------------------------------------%
+    % comments_to_identifiers(Comments, Identifiers):
+    %
+    % Given a list of comment strings, break them up into words
+    % that meet the rules for identifiers.
+    %
+:- pred comments_to_identifiers(list(string)::in, list(string)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
     %
 :- func decl_guard(sym_name) = string.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -152,7 +159,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_this_a_foreign_type(ModuleInfo, Type) = MaybeForeignTypeAssertions :-
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -426,7 +433,7 @@ exported_builtin_type_to_java_string(BuiltinType) = JavaTypeName :-
         JavaTypeName = "char"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         MaybeUserEqComp, Assertions) :-
@@ -490,7 +497,7 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
         MaybeCanonical, _),
     MaybeCanonical = noncanon(NonCanonical).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
     IsWanted =
@@ -513,9 +520,9 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
         ),
     list.filter(IsWanted, Exports0, LangExports, NotLangExports).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-foreign_code_to_identifiers(Lang, Code, Identifiers) :-
+foreign_code_to_identifiers(Lang, Code, Identifiers, CommentStrs) :-
     string.to_char_list(Code, Chars),
     % This one arm switch ensures that we will get a warning
     % if and when we add another target language (which may have
@@ -530,15 +537,19 @@ foreign_code_to_identifiers(Lang, Code, Identifiers) :-
         % for loops over identifiers, since (for cultural reasons)
         % they will effectively never be long enough for this to be a problem.
         foreign_code_to_c_j_cs_identifiers_loop(Chars,
-            cord.init, IdentifierCord),
-        Identifiers = cord.list(IdentifierCord)
+            cord.init, IdentifierCord, cord.init, CommentStrCord),
+        Identifiers = cord.list(IdentifierCord),
+        CommentStrs = cord.list(CommentStrCord)
     ).
 
 :- pred foreign_code_to_c_j_cs_identifiers_loop(list(char)::in,
+    cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out) is det.
 
-foreign_code_to_c_j_cs_identifiers_loop(Chars0, !IdentifierCord) :-
-    get_next_c_j_cs_identifier(Chars0, IdentifierChars, Chars1),
+foreign_code_to_c_j_cs_identifiers_loop(Chars0,
+        !IdentifierCord, !CommentStrCord) :-
+    get_next_c_j_cs_identifier(Chars0, IdentifierChars, Chars1,
+        !CommentStrCord),
     (
         IdentifierChars = []
         % There are no identifiers left.
@@ -546,14 +557,17 @@ foreign_code_to_c_j_cs_identifiers_loop(Chars0, !IdentifierCord) :-
         IdentifierChars = [_ | _],
         string.from_char_list(IdentifierChars, Identifier),
         cord.snoc(Identifier, !IdentifierCord),
-        foreign_code_to_c_j_cs_identifiers_loop(Chars1, !IdentifierCord)
+        foreign_code_to_c_j_cs_identifiers_loop(Chars1,
+            !IdentifierCord, !CommentStrCord)
     ).
 
 :- pred get_next_c_j_cs_identifier(list(char)::in,
-    list(char)::out, list(char)::out) is det.
+    list(char)::out, list(char)::out,
+    cord(string)::in, cord(string)::out) is det.
 
-get_next_c_j_cs_identifier([], [], []).
-get_next_c_j_cs_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
+get_next_c_j_cs_identifier([], [], [], !CommentStrCord).
+get_next_c_j_cs_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars,
+        !CommentStrCord) :-
     ( if char.is_alnum_or_underscore(Char0) then
         get_rest_of_identifier(Chars0, TailIdentifierChars, LeftOverChars),
         IdentifierChars = [Char0 | TailIdentifierChars]
@@ -564,32 +578,42 @@ get_next_c_j_cs_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
             LeftOverChars = []
         ;
             Chars0 = [Char1 | Chars1],
-            ( if Char1 = ('/') then
-                ignore_rest_of_line(Chars1, Chars2),
+            ( if
+                (
+                    Char1 = ('/'),
+                    ignore_rest_of_line(Chars1, Chars2,
+                        cord.init, CommentCharCord)
+                ;
+                    Char1 = ('*'),
+                    ignore_rest_of_slash_star_comment(Chars1, Chars2,
+                        cord.init, CommentCharCord)
+                )
+            then
+                CommentChars = cord.list(CommentCharCord),
+                CommentStr = string.from_char_list(CommentChars),
+                cord.snoc(CommentStr, !CommentStrCord),
                 get_next_c_j_cs_identifier(Chars2,
-                    IdentifierChars, LeftOverChars)
-            else if Char1 = ('*') then
-                ignore_rest_of_slash_star_comment(Chars1, Chars2),
-                get_next_c_j_cs_identifier(Chars2,
-                    IdentifierChars, LeftOverChars)
+                    IdentifierChars, LeftOverChars, !CommentStrCord)
             else
                 % Ignore Char0, since it does not start a comment, and
                 % cannot be part of an identifier.
                 get_next_c_j_cs_identifier(Chars0,
-                    IdentifierChars, LeftOverChars)
+                    IdentifierChars, LeftOverChars, !CommentStrCord)
             )
         )
     else
         % Ignore Char0, since it does not start a comment, and
         % cannot be part of an identifier.
-        get_next_c_j_cs_identifier(Chars0, IdentifierChars, LeftOverChars)
+        get_next_c_j_cs_identifier(Chars0, IdentifierChars, LeftOverChars,
+            !CommentStrCord)
     ).
 
 :- pred ignore_rest_of_slash_star_comment(list(char)::in,
-    list(char)::out) is det.
+    list(char)::out, cord(char)::in, cord(char)::out) is det.
 
-ignore_rest_of_slash_star_comment([], []).
-ignore_rest_of_slash_star_comment([Char0 | Chars0], LeftOverChars) :-
+ignore_rest_of_slash_star_comment([], [], !CommentCharCord).
+ignore_rest_of_slash_star_comment([Char0 | Chars0], LeftOverChars,
+        !CommentCharCord) :-
     ( if
         Char0 = ('*'),
         Chars0 = [Char1 | Chars1],
@@ -597,19 +621,70 @@ ignore_rest_of_slash_star_comment([Char0 | Chars0], LeftOverChars) :-
     then
         LeftOverChars = Chars1
     else
-        ignore_rest_of_slash_star_comment(Chars0, LeftOverChars)
+        cord.snoc(Char0, !CommentCharCord),
+        ignore_rest_of_slash_star_comment(Chars0, LeftOverChars,
+            !CommentCharCord)
     ).
 
 :- pred ignore_rest_of_line(list(char)::in,
-    list(char)::out) is det.
+    list(char)::out, cord(char)::in, cord(char)::out) is det.
 
-ignore_rest_of_line([], []).
-ignore_rest_of_line([Char0 | Chars0], LeftOverChars) :-
+ignore_rest_of_line([], [], !CommentCharCord).
+ignore_rest_of_line([Char0 | Chars0], LeftOverChars, !CommentCharCord) :-
     ( if Char0 = ('\n') then
         LeftOverChars = Chars0
     else
-        ignore_rest_of_line(Chars0, LeftOverChars)
+        cord.snoc(Char0, !CommentCharCord),
+        ignore_rest_of_line(Chars0, LeftOverChars, !CommentCharCord)
     ).
+
+%---------------------%
+
+comments_to_identifiers(Comments, Identifiers) :-
+    list.foldl(acc_identifiers_in_comment, Comments,
+        cord.init, IdentifierCord),
+    Identifiers = cord.list(IdentifierCord).
+
+:- pred acc_identifiers_in_comment(string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+acc_identifiers_in_comment(Comment, !IdentifierCord) :-
+    string.to_char_list(Comment, Chars),
+    % We use cords to ensure tail recursion in the loop over Code,
+    % because it may be big. We do not do try to ensure tail recursion
+    % for loops over identifiers, since (for cultural reasons)
+    % they will effectively never be long enough for this to be a problem.
+    comment_to_identifiers_loop(Chars, !IdentifierCord).
+
+:- pred comment_to_identifiers_loop(list(char)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+comment_to_identifiers_loop(Chars0, !IdentifierCord) :-
+    get_next_identifier(Chars0, IdentifierChars, Chars1),
+    (
+        IdentifierChars = []
+        % There are no identifiers left.
+    ;
+        IdentifierChars = [_ | _],
+        string.from_char_list(IdentifierChars, Identifier),
+        cord.snoc(Identifier, !IdentifierCord),
+        comment_to_identifiers_loop(Chars1, !IdentifierCord)
+    ).
+
+:- pred get_next_identifier(list(char)::in,
+    list(char)::out, list(char)::out) is det.
+
+get_next_identifier([], [], []).
+get_next_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
+    ( if char.is_alnum_or_underscore(Char0) then
+        get_rest_of_identifier(Chars0, TailIdentifierChars, LeftOverChars),
+        IdentifierChars = [Char0 | TailIdentifierChars]
+    else
+        % Ignore Char0, since it cannot be part of an identifier.
+        get_next_identifier(Chars0, IdentifierChars, LeftOverChars)
+    ).
+
+%---------------------%
 
 :- pred get_rest_of_identifier(list(char)::in, list(char)::out,
     list(char)::out) is det.
@@ -626,12 +701,12 @@ get_rest_of_identifier([Char0 | Chars0], IdentifierChars, LeftOverChars) :-
         LeftOverChars = Chars0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
     MangledModuleName = sym_name_mangle(ModuleName),
     string.to_upper(MangledModuleName, UppercaseModuleName).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module backend_libs.foreign.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

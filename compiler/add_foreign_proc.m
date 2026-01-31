@@ -37,6 +37,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
@@ -66,7 +67,10 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
+:- import_module uint.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -648,7 +652,11 @@ check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
         !:Specs = ArgListSpecs ++ !.Specs
     ),
     PragmaImpl = fp_impl_ordinary(Code, _),
-    foreign_code_to_identifiers(Lang, Code, Identifiers),
+    foreign_code_to_identifiers(Lang, Code,
+        IdentifierList, CommentList),
+    comments_to_identifiers(CommentList, CommentIdentifierList),
+    set.list_to_set(IdentifierList, Identifiers),
+    set.list_to_set(CommentIdentifierList, CommentIdentifiers),
     warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity, Lang,
         PragmaVars, Identifiers, Context, !Specs),
     check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context,
@@ -667,6 +675,18 @@ check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
         !:Specs = [ProcIdSpec | !.Specs]
     ),
     check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !Specs),
+    % We include CommentIdentifiers in the set of identifiers we pass to
+    % check_typeinfos_for_existq_tvars, because without doing that,
+    % we cannot pass the invalid/foreign_procs_exist_type test case.
+    % The reason is simple. With user-provided arguments, programmers
+    % can indicate that the argument is a singleton by adding an underscore
+    % prefix. This is not possible with compiler-generated arguments.
+    % For them, the only way to avoid the singleton warning is to mention
+    % the variable name in actual code (which is cumbersome to arrange)
+    % or in comments (which is much easier).
+    set.union(Identifiers, CommentIdentifiers, AllIdentifiers),
+    check_typeinfos_for_existq_tvars(PredInfo, Lang, AllIdentifiers, Context,
+        !Specs),
     (
         ImportedPredSpecs = []
     ;
@@ -893,6 +913,54 @@ check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !Specs) :-
 
 %---------------------%
 
+:- pred check_typeinfos_for_existq_tvars(pred_info::in,
+    foreign_language::in, set(string)::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_typeinfos_for_existq_tvars(PredInfo, Lang, Identifiers, Context,
+        !Specs) :-
+    pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, _ArgTypes),
+    % NOTE This code will generate a separate error_spec for each
+    % type_info variable that that does should occur, but does not occur,
+    % in the foreign_proc. We *could* gather up their names and issue
+    % just a single error_spec listing all their names, but this situation
+    % is so rare that whether we generate separate or combined error_specs
+    % does not matter.
+    list.foldl2(
+        check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang,
+            Identifiers, Context),
+        ExistQVars, 1u, _N, !Specs).
+
+:- pred check_typeinfo_for_existq_tvar(pred_info::in, tvarset::in,
+    foreign_language::in, set(string)::in, prog_context::in, tvar::in,
+    uint::in, uint::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang, Identifiers,
+        Context, ExistQVar, !ExistQVarNum, !Specs) :-
+    varset.lookup_name(TypeVarSet, ExistQVar, Name),
+    OldVarName = "TypeInfo_for_" ++ Name,
+    NewVarName = "TypeInfo_Out_" ++ string.uint_to_string(!.ExistQVarNum),
+    !:ExistQVarNum = !.ExistQVarNum + 1u,
+    ( if
+        ( set.contains(Identifiers, OldVarName)
+        ; set.contains(Identifiers, NewVarName)
+        )
+    then
+        true
+    else
+        LangStr = foreign_language_string(Lang),
+        Pieces = [words("Error: the code of the"), words(LangStr),
+            words("foreign_proc for")] ++
+            describe_one_pred_info_name(yes(color_subject),
+                should_not_module_qualify, [], PredInfo) ++
+            [words("should define the variable")] ++
+            color_as_incorrect([quote(OldVarName), suffix(".")]) ++ [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+%---------------------%
+
     % Check for arguments occurring more than once.
     %
 :- pred check_foreign_proc_arg_list(pf_sym_name_arity::in, prog_varset::in,
@@ -948,7 +1016,7 @@ check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
     %
 :- pred warn_singletons_in_pragma_foreign_proc(pred_info::in,
     pf_sym_name_arity::in, foreign_language::in, list(pragma_var)::in,
-    list(string)::in, prog_context::in,
+    set(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity,
@@ -978,13 +1046,13 @@ warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity,
         true
     ).
 
-:- pred var_is_unmentioned(list(string)::in, maybe(foreign_arg_name_mode)::in,
+:- pred var_is_unmentioned(set(string)::in, maybe(foreign_arg_name_mode)::in,
     string::out) is semidet.
 
 var_is_unmentioned(Identifiers, MaybeArg, Name) :-
     MaybeArg = yes(foreign_arg_name_mode(Name, _Mode)),
     not string.prefix(Name, "_"),
-    not list.member(Name, Identifiers).
+    not set.member(Name, Identifiers).
 
 :- pred variable_warning_start(list(string)::in, list(format_piece)::out,
     string::out) is det.
@@ -1004,7 +1072,7 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
 
 :- pred check_fp_body_for_success_indicator(pred_info::in,
     pf_sym_name_arity::in, proc_id::in, foreign_language::in,
-    list(string)::in, prog_context::in,
+    set(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
@@ -1020,7 +1088,7 @@ check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
             ; Detism = detism_cc_multi
             ; Detism = detism_erroneous
             ),
-            ( if list.member(SuccIndStr, Identifiers) then
+            ( if set.member(SuccIndStr, Identifiers) then
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code in the foreign_proc for"),
@@ -1039,7 +1107,7 @@ check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
             ( Detism = detism_semi
             ; Detism = detism_cc_non
             ),
-            ( if list.member(SuccIndStr, Identifiers) then
+            ( if set.member(SuccIndStr, Identifiers) then
                 true
             else
                 LangStr = foreign_language_string(Lang),
@@ -1070,11 +1138,11 @@ check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
     % (or whatever the foreign language equivalent is).
     %
 :- pred check_fp_body_for_return(pf_sym_name_arity::in, foreign_language::in,
-    list(string)::in, prog_context::in,
+    set(string)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context, !Specs) :-
-    ( if list.member("return", Identifiers) then
+    ( if set.member("return", Identifiers) then
         LangStr = foreign_language_string(Lang),
         PFSPiece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
         Pieces = [words("Warning: the"), fixed(LangStr),

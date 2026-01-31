@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -143,7 +143,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.         % undesirable dependency
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
@@ -161,7 +160,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module string.
 :- import_module term_context.
 :- import_module term_subst.
 :- import_module varset.
@@ -692,10 +690,6 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
                 Origin1 = Origin0
             ;
                 ExistQVars0 = [_ | _],
-                list.foldl(
-                    check_existq_clause(TypeVarSet0, ExistQVars0),
-                    Clauses, !Info),
-
                 term_subst.apply_renaming_in_vars(ExistTypeRenaming,
                     ExistQVars0, ExistQVars1),
                 apply_renaming_to_types(ExistTypeRenaming,
@@ -724,42 +718,6 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
             NextIteration = next_iteration_is_not_needed
         ),
         typecheck_info_get_all_errors(!.Info, !:Specs)
-    ).
-
-:- pred check_existq_clause(tvarset::in, existq_tvars::in, clause::in,
-    typecheck_info::in, typecheck_info::out) is det.
-
-check_existq_clause(TypeVarSet, ExistQVars, Clause, !Info) :-
-    Goal = Clause ^ clause_body,
-    ( if Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, Impl), _) then
-        Context = Clause ^ clause_context,
-        list.foldl2(check_mention_existq_var(Context, TypeVarSet, Impl),
-            ExistQVars, 1, _N, !Info)
-    else
-        true
-    ).
-
-:- pred check_mention_existq_var(prog_context::in, tvarset::in,
-    pragma_foreign_proc_impl::in, tvar::in, int::in, int::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-check_mention_existq_var(Context, TypeVarSet, Impl, TVar, !ExistQVarNum,
-        !Info) :-
-    varset.lookup_name(TypeVarSet, TVar, Name),
-    OldVarName = "TypeInfo_for_" ++ Name,
-    NewVarName = "TypeInfo_Out_" ++ string.int_to_string(!.ExistQVarNum),
-    !:ExistQVarNum = !.ExistQVarNum + 1,
-    ( if
-        ( foreign_proc_uses_variable(Impl, OldVarName)
-        ; foreign_proc_uses_variable(Impl, NewVarName)
-        )
-    then
-        true
-    else
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_missing_tvar_in_foreign_code(ClauseContext, Context,
-            OldVarName),
-        typecheck_info_add_error(Spec, !Info)
     ).
 
     % Mark the predicate as a stub, and generate a clause of the form
