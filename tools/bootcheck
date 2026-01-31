@@ -139,7 +139,7 @@ Options:
         option should give the absolute pathname of the file in which
         the runtime has been configured to accumulate statistics. The
         statistics derived from the creation of the stage 3 compiler
-        will be put TYPE_STATS_FILE_NAME.stage3.$$, while the
+        will be put into TYPE_STATS_FILE_NAME.stage3.$$, while the
         statistics derived from the execution of the test suite will
         be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
         be reported in the output of bootcheck, to allow the statistics
