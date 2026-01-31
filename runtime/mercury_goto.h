@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2001, 2003-2007, 2009, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018-2021 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2022, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_goto.h - definitions for the "portable assembler" non-local gotos
@@ -501,10 +501,8 @@
   // to get confused, and we end up jumping into the data section.
   // Hence the `.type' directive below.
 
-  #ifndef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
-    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)                        \
-    "   .type _entry_" MR_STRINGIFY(label) ",#function\n"
-  #endif
+  #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)                        \
+  "   .type _entry_" MR_STRINGIFY(label) ",#function\n"
 
 #elif defined(__arm__)
 

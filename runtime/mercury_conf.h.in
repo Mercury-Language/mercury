@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab
 
 // Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
-// Copyright (C) 2013-2021, 2023-2025 The Mercury team.
+// Copyright (C) 2013-2021, 2023-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_conf.h.in defines various configuration parameters.
@@ -481,11 +481,6 @@
 // Should we build the Mercury libraries as Windows DLLs?
 
 #undef MR_USE_DLLS
-
-// For SPARC systems, does `as' not allow `.type' in inline asm?
-// (True for SunOS 4.x.)
-
-#undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
 // On some platforms, structure assignments can cause gcc to abort
 // with the message "fixed or forbidden register was spilled." in some grades.

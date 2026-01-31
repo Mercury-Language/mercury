@@ -4053,26 +4053,6 @@ AC_SUBST(HAVE_DELAY_SLOT)
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(whether the assembler handles .type)
-AC_CACHE_VAL(mercury_cv_cannot_grok_asm_type_directive, [
-    case "$host" in
-        *-sunos4.*)
-            mercury_cv_cannot_grok_asm_type_directive=yes
-            can_grok_type_directive=no
-            ;;
-        *)
-            mercury_cv_cannot_grok_asm_type_directive=no
-            can_grok_type_directive=yes
-            ;;
-    esac
-])
-AC_MSG_RESULT($can_grok_type_directive)
-if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
-    AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
-fi
-
-#-----------------------------------------------------------------------------#
-
 AC_PATH_PROG(AS,as)
 AC_MSG_CHECKING(whether the assembler does full preprocessing)
 
