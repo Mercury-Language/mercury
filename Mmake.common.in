@@ -479,6 +479,15 @@ else
 MSVC_OBJ_PREFIX_EXPRS =
 endif
 
+# Ignore reference pointer symbols created by GCC on Windows.
+# (See definition of HAVE_REFPTR_SYMS in configure.ac for details.)
+ifeq ("@HAVE_REFPTR_SYMS@","yes")
+GCC_WIN_OBJ_PREFIX_EXPRS = \
+	-e '^\.refptr\.'
+else
+GCC_WIN_OBJ_PREFIX_EXPRS =
+endif
+
 MACRO_PREFIX_EXPRS = \
 	$(GEN_MACRO_PREFIX_EXPRS) \
 	$(LIB_MACRO_PREFIX_EXPRS) \
@@ -491,7 +500,8 @@ OBJ_PREFIX_EXPRS   = \
 	$(BROWSER_OBJ_PREFIX_EXPRS) \
 	$(MDBCOMP_OBJ_PREFIX_EXPRS) \
 	$(SSDB_OBJ_PREFIX_EXPRS) \
-	$(MSVC_OBJ_PREFIX_EXPRS)
+	$(MSVC_OBJ_PREFIX_EXPRS) \
+	$(GCC_WIN_OBJ_PREFIX_EXPRS)
 
 HEADER_CLEAN_FILTER = \
 	grep -v $(MACRO_PREFIX_EXPRS) | \

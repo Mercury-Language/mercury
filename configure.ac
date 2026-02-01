@@ -3236,6 +3236,27 @@ AC_SUBST([SYMPREFIX])
 
 #-----------------------------------------------------------------------------#
 
+# On Windows, GCC generates reference pointers in the object code that it
+# creates. These are intended to workaround limitations in the PE/COFF format.
+# Reference pointer symbol names begin with the prefix ".refptr.".
+# We ignore such symbols when doing namespace cleanliness checks since they
+# are an implementation detail and if there is a cleanliness issue we will
+# report it for the original symbol anyway.
+
+HAVE_REFPTR_SYMS=
+
+case "$host" in
+    *mingw*|*cygwin*)
+        case "$C_COMPILER_TYPE)" in
+            gcc*) HAVE_REFPTR_SYMS=yes ;;
+        esac
+    ;;
+esac
+
+AC_SUBST([HAVE_REFPTR_SYMS])
+
+#-----------------------------------------------------------------------------#
+
 #
 # Figure out which is the best grade to use for various different purposes.
 # In particular, choose the default grade for compiling applications.
