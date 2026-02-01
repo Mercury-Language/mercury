@@ -194,7 +194,7 @@
 % :- module determinism_analysis.
     :- include_module det_check_proc.
     :- include_module det_check_goal.
-:- include_module det_check_switch.
+    :- include_module det_check_switch.
 % :- end_module determinism_analysis.
 
 %-----------------------------------------------------------------------------%
