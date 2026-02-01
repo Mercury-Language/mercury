@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1060,7 +1060,7 @@ add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName, PredName,
         %
         % We could alter check_preds_if_field_access_function to process
         % all the locally-declared functions in the pred_id_table, but
-        % this is solution is just as good.
+        % this solution is just as good.
         maybe_check_field_access_function(!.ModuleInfo, PredSymName, UserArity,
             Status, Context, !Specs)
     ;
