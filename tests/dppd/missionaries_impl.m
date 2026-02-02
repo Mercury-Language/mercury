@@ -8,12 +8,12 @@
 
 :- import_module list.
 
+:- type state
+    --->    state(nat, nat, side).
+
 :- type nat
     --->    zero
     ;       s(nat).
-
-:- type state
-    --->    state(nat, nat, side).
 
 :- type side
     --->    west
@@ -39,22 +39,23 @@ search(zero, zero, _Boat, Result, Result).
 search(WM, WC, east, History, Result) :-
     move_boat_west(WM, WC, NWM, NWC),
     safe(NWM, NWC),
-    \+(loop(NWM, NWC, west, History)),
+    \+ (loop(NWM, NWC, west, History)),
     search(NWM, NWC, west, [state(NWM, NWC, west) | History], Result).
 search(WM, WC, west, History, Result) :-
     move_boat_east(WM, WC, NWM, NWC),
     safe(NWM, NWC),
-    \+(loop(NWM, NWC, east, History)),
+    \+ (loop(NWM, NWC, east, History)),
     search(NWM, NWC, east, [state(NWM, NWC, east) | History], Result).
 
 :- pred safe(nat::in, nat::in) is semidet.
 
 safe(s(s(s(zero))), WestCann) :-
-    \+(gt(WestCann, s(s(s(zero))) )).
+    \+ (gt(WestCann, s(s(s(zero))) )).
 safe(zero, WestCann) :-
-    \+(gt(WestCann, s(s(s(zero))) )).
+    \+ (gt(WestCann, s(s(s(zero))) )).
 safe(W, W) :-
-    \+(ge(zero, W)), \+(ge(W, s(s(s(zero))) )).
+    \+ (ge(zero, W)),
+    \+ (ge(W, s(s(s(zero))) )).
 
 :- pred loop(nat::in, nat::in, side::in, list(state)::in) is semidet.
 
