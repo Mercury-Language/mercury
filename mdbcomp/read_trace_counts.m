@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2021-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -304,7 +304,7 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
                     TCModuleNameSym0, TCFileName1, MaybeError,
                     !TraceCounts, !IO)
             else if
-                % At the moment runtime/mercury_trace_base.c doesn't write out
+                % At the moment runtime/mercury_trace_base.c does not write out
                 % data for unify, compare, index or init procedures.
                 (
                     TokenName = "pproc",
@@ -368,8 +368,8 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
                 else
                     ProcCounts1 = map.init
                 ),
-                read_proc_path_trace_counts(LineNumber1, Lines1,
-                    LineNumber2, Lines2, ProcLabelInContext,
+                read_proc_path_trace_counts(ProcLabelInContext,
+                    LineNumber1, LineNumber2, Lines1, Lines2,
                     ProcCounts1, ProcCounts, !IO),
                 map.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts),
 
@@ -388,12 +388,12 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
         )
     ).
 
-:- pred read_proc_path_trace_counts(int::in, list(string)::in,
-    int::out, list(string)::out, proc_label_in_context::in,
+:- pred read_proc_path_trace_counts(proc_label_in_context::in,
+    int::in, int::out, list(string)::in, list(string)::out,
     proc_trace_counts::in, proc_trace_counts::out, io::di, io::uo) is det.
 
-read_proc_path_trace_counts(LineNumber0, Lines0, LineNumber, Lines,
-        ProcLabelInContext, ProcCounts0, ProcCounts, !IO) :-
+read_proc_path_trace_counts(ProcLabelInContext, LineNumber0, LineNumber,
+        Lines0, Lines, ProcCounts0, ProcCounts, !IO) :-
     (
         Lines0 = [],
         LineNumber = LineNumber0,
@@ -409,8 +409,8 @@ read_proc_path_trace_counts(LineNumber0, Lines0, LineNumber, Lines,
             LineNoAndCount =
                 line_no_and_count(TCLineNumber, ExecCount, NumTests),
             map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts1),
-            read_proc_path_trace_counts(LineNumber1, Lines1,
-                LineNumber, Lines, ProcLabelInContext,
+            read_proc_path_trace_counts(ProcLabelInContext,
+                LineNumber1, LineNumber, Lines1, Lines,
                 ProcCounts1, ProcCounts, !IO)
         else
             LineNumber = LineNumber0,
