@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -557,14 +557,25 @@ output_double_stackvar_ptr(Info, Stream, StackType, SlotNum, !IO) :-
     %
 :- pred llds_types_match(llds_type::in, llds_type::in) is semidet.
 
-llds_types_match(Type, Type).
-llds_types_match(lt_word, lt_int(int_type_int)).
-llds_types_match(lt_word, lt_int(int_type_uint)).
-llds_types_match(lt_word, lt_bool).
-llds_types_match(lt_bool, lt_int(int_type_int)).
-llds_types_match(lt_bool, lt_int(int_type_uint)).
-llds_types_match(lt_bool, lt_word).
-llds_types_match(lt_int(int_type_int), lt_bool).
+llds_types_match(DesiredType, ActualType) :-
+    ( if DesiredType = ActualType then
+        true
+    else
+        % I (zs) think it possible that some desired/actual type pairs
+        % are missing from here.
+        (
+            ( DesiredType = lt_word
+            ; DesiredType = lt_bool
+            ),
+            ( ActualType = lt_int(int_type_int)
+            ; ActualType = lt_int(int_type_uint)
+            ; ActualType = lt_word
+            )
+        ;
+            DesiredType = lt_int(int_type_int),
+            ActualType = lt_bool
+        )
+    ).
 
     % Output the given llds_type with parentheses around it.
     %
