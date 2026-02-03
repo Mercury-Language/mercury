@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2019, 2022-2025 The Mercury team.
+% Copyright (C) 2018-2019, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -661,7 +661,8 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
         % variables that appear in the head of the declaration.)
 
         tvarset_merge_renaming(TVarSet, ClassTVarSet, _, Renaming),
-        apply_renaming_to_constraints(Renaming, ClassAncestors, RenamedAncestors),
+        apply_renaming_to_constraints(Renaming,
+            ClassAncestors, RenamedAncestors),
         apply_renaming_to_tvars(Renaming, ClassParams, RenamedParams),
         map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
         apply_subst_to_constraints(Subst, RenamedAncestors, Ancestors),
@@ -686,7 +687,7 @@ add_redundant_constraint(Constraint, !Redundant) :-
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
     ( if
-        search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId,
+        search_hlds_constraint_list_loop(ConstraintMap, ConstraintType, GoalId,
             Count, [], ConstraintsPrime)
     then
         Constraints = ConstraintsPrime
@@ -696,14 +697,14 @@ lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
 
 search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
-    search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId,
+    search_hlds_constraint_list_loop(ConstraintMap, ConstraintType, GoalId,
         Count, [], Constraints).
 
-:- pred search_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
-    goal_id::in, int::in,
+:- pred search_hlds_constraint_list_loop(constraint_map::in,
+    constraint_type::in, goal_id::in, int::in,
     list(prog_constraint)::in, list(prog_constraint)::out) is semidet.
 
-search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
+search_hlds_constraint_list_loop(ConstraintMap, ConstraintType, GoalId, Count,
         !Constraints) :-
     ( if Count = 0 then
         true
@@ -711,7 +712,7 @@ search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
         ConstraintId = constraint_id(ConstraintType, GoalId, Count),
         map.search(ConstraintMap, ConstraintId, Constraint),
         !:Constraints = [Constraint | !.Constraints],
-        search_hlds_constraint_list_2(ConstraintMap, ConstraintType,
+        search_hlds_constraint_list_loop(ConstraintMap, ConstraintType,
             GoalId, Count - 1, !Constraints)
     ).
 

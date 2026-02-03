@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1062,7 +1062,8 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 ; ModuleTargetType = module_target_xml_doc
                 ),
                 build_int_opt_files(ProgressStream, Globals,
-                    build_all_ints_opts, AllModuleNames, Succeeded1, !Info, !IO)
+                    build_all_ints_opts, AllModuleNames, Succeeded1,
+                    !Info, !IO)
             ),
             ( if
                 Succeeded1 = did_not_succeed,

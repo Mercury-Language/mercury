@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -607,8 +607,10 @@ inst_matches_final_gmb(ModuleInfo, GroundMatchesBound, Type, InstA, InstB) :-
 
 :- pred inst_matches_final_mt(calculate_sub, mer_type, mer_inst, mer_inst,
     inst_match_info, inst_match_info).
-:- mode inst_matches_final_mt(in, in, in, in, in(imi_ns), out(imi_ns)) is semidet.
-:- mode inst_matches_final_mt(in, in, in, in, in(imi_ivs), out(imi_ivs)) is semidet.
+:- mode inst_matches_final_mt(in, in, in, in,
+    in(imi_ns), out(imi_ns)) is semidet.
+:- mode inst_matches_final_mt(in, in, in, in,
+    in(imi_ivs), out(imi_ivs)) is semidet.
 
 inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ( if InstA = InstB then
@@ -1289,8 +1291,10 @@ pred_inst_matches_ground(ModuleInfo, Type, PredInst) :-
 
 :- pred pred_inst_matches_ground_1(calculate_sub, mer_type, pred_inst_info,
     inst_match_info, inst_match_info).
-:- mode pred_inst_matches_ground_1(in, in, in, in(imi_ns), out(imi_ns)) is semidet.
-:- mode pred_inst_matches_ground_1(in, in, in, in(imi_ivs), out(imi_ivs)) is semidet.
+:- mode pred_inst_matches_ground_1(in, in, in,
+    in(imi_ns), out(imi_ns)) is semidet.
+:- mode pred_inst_matches_ground_1(in, in, in,
+    in(imi_ivs), out(imi_ivs)) is semidet.
 
 pred_inst_matches_ground_1(CalcSub, Type, PredInst, !Info) :-
     % NOTE CalcSub is set to cs_none by pred_inst_matches_ground above,
@@ -1321,8 +1325,10 @@ pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB) :-
     %
 :- pred pred_inst_matches_1(calculate_sub, mer_type,
     pred_inst_info, pred_inst_info, inst_match_info, inst_match_info).
-:- mode pred_inst_matches_1(in, in, in, in, in(imi_ns), out(imi_ns)) is semidet.
-:- mode pred_inst_matches_1(in, in, in, in, in(imi_ivs), out(imi_ivs)) is semidet.
+:- mode pred_inst_matches_1(in, in, in, in,
+    in(imi_ns), out(imi_ns)) is semidet.
+:- mode pred_inst_matches_1(in, in, in, in,
+    in(imi_ivs), out(imi_ivs)) is semidet.
 
 pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info) :-
     % In the float_regs.m pass a variable may take on pred insts which differ
@@ -1592,6 +1598,14 @@ do_handle_inst_var_subs(CalcSubDir, Type, InstA, InstB, Result, !Info) :-
             %
             % NOTE: our *caller* *may* end up unifying SubInstA with InstB,
             % but it has no access to _InstVarsA, since we throw it away here.
+            %
+            % In a post to m-rev on 2024 Jul 5, wangp replied to the above
+            % comment with:
+            %
+            % All I can tell you is that code follows the get_subst_inst
+            % function in David Overton's thesis (page 78, figure 4.2).
+            % The InstA = constrained_inst_vars(_, _) branch is the
+            % second case of get_subst_inst, which ignores Ω.
             swap_insts_back(CalcSubDir, SubInstA, InstB, Inst1, Inst2),
             Result = ivsr_recurse(Inst1, Inst2)
         ;
@@ -1654,7 +1668,8 @@ update_inst_var_sub(InstVars, InstA, Type, !Info) :-
 
 :- pred update_inst_var_sub_vars(mer_inst, mer_type, list(inst_var),
     inst_match_info, inst_match_info).
-:- mode update_inst_var_sub_vars(in, in, in, in(imi_ivs), out(imi_ivs)) is semidet.
+:- mode update_inst_var_sub_vars(in, in, in,
+    in(imi_ivs), out(imi_ivs)) is semidet.
 
 update_inst_var_sub_vars(_, _, [], !Info).
 update_inst_var_sub_vars(InstA, Type, [InstVar | InstVars], !Info) :-
@@ -1663,7 +1678,8 @@ update_inst_var_sub_vars(InstA, Type, [InstVar | InstVars], !Info) :-
 
 :- pred update_inst_var_sub_2(mer_inst, mer_type, inst_var,
     inst_match_info, inst_match_info).
-:- mode update_inst_var_sub_2(in, in, in, in(imi_ivs), out(imi_ivs)) is semidet.
+:- mode update_inst_var_sub_2(in, in, in,
+    in(imi_ivs), out(imi_ivs)) is semidet.
 
 update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
     !.Info ^ imi_maybe_state = inst_var_sub_state(InstVarSub0),
