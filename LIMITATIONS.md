@@ -46,7 +46,7 @@ following fixed limits:
 
 * Predicates and functions can have at most about 1000 arguments.
 
-* Higher-order terms are limited to arity of about 500.
+* Higher-order terms are limited to an arity of about 500.
 
 These limits can be lifted (with some effort), but would possibly incur
 performance penalties. Contact the Mercury team (<mercury@mercurylang.org>)
