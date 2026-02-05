@@ -110,7 +110,7 @@ how to build and debug Mercury programs.
 
 This guide is currently undergoing extensive modifications,
 which means that some parts, particularly the ones that contain ZZZ markers,
-are not in state that is ready to be consumed.
+are not in a state that is ready to be consumed.
 These modifications started on 2025 July 27,
 and will probably continue for around two weeks.
 During that time, we advise you to look at
@@ -253,7 +253,7 @@ a single argument can specify just one long option name.
 All options that have a short name have a long name as well,
 and it does not matter which one is used.
 For example, @samp{-v} is interchangeable with @samp{--verbose},
-and @samp{-w} is interchangeable with @samp{--inhibit-warnings"}.
+and @samp{-w} is interchangeable with @samp{--inhibit-warnings}.
 
 In addition, many options have two or more long names.
 There are two common reasons for these synonyms.
@@ -285,7 +285,7 @@ can be specified as either as @samp{-O3} or as @samp{-O 3},
 using the short name of that option,
 or as @samp{--optimization-level=3} or as @samp{--optimization-level 3}
 using the long name of that option.
-The name of the color scheme to be used for diagnostics, which a string,
+The name of the color scheme to be used for diagnostics, which is a string,
 can be specified
 either as @samp{--color-scheme=light16}
 or as @samp{--color-scheme light16}.
@@ -303,7 +303,7 @@ For example, the options @samp{--search-directory=foo --search-directory=bar}
 tell the compiler to add the named directories
 to the list of directories to be searched
 when looking for e.g.@: interface files @ref{Interface files}.
-(The default value of that lists consists of just the current directory.)
+(The default value of that list consists of just the current directory.)
 Negating the option name, e.g.@: with @samp{--no-search-directory},
 clears the list, i.e.@: sets it to the empty list.
 
@@ -494,7 +494,7 @@ This includes entities (such as predicates and functions)
 that are declared in the implementation section of the parent module.
 Only parent modules, i.e.@: modules that include submodules,
 have @file{.int0} files;
-non-parent modules no dot.
+non-parent modules do not.
 @end itemize
 
 As you may guess from that description,
@@ -723,7 +723,7 @@ that are part of the @var{main_module} program.
 Note that @command{mmc --make} has a subtle advantage over @command{mmake}.
 While @command{mmake} uses (because it has to)
 module-to-module dependency information that was current
-when the relevant modules' were last (re)compiled
+when the relevant modules were last (re)compiled
 (because that is when their @file{.d} files were last updated),
 @command{mmc --make} always uses @emph{current} dependency information,
 because it gets that information
@@ -1006,7 +1006,7 @@ This speeds up transfers of control
 within a single C function.
 @item @option{--asm--labels}
 specifies the use of a GNU extension
-that the address of a label to be made global,
+that allows the address of a label to be made global,
 i.e. accessible from even outside the C function in which it occurs.
 With the appropriate precautions,
 which the Mercury system of course takes,
@@ -1634,7 +1634,7 @@ but at least they have a fighting chance.
 @subsection Grade modifiers for pregenerated source distributions
 
 There is one grade modifier that users will probably encounter
-that they will propably never need to use themselves.
+that they will probably never need to use themselves.
 This the grade modifier that the Mercury team itself
 uses only for a single purpose: making source distributions.
 Such distributions include not just the code of the Mercury system,
@@ -1927,7 +1927,7 @@ Thus you may wish to skip this chapter.
 
 The first step in building a multi-module Mercury program
 is creating files for each module
-that describe the interface of that this module presents
+that describe the interface that this module presents
 to all the other modules of the program.
 (A reminder: the roles and contents of these interface files
 were described in @ref{Managing connections between modules}.)
@@ -2129,7 +2129,7 @@ with
 However, this is safe only in certain circumstances.
 
 One situation in which it is unsafe
-occurs when @code{q} is semidet, meaning it can fail. and
+occurs when @code{q} is semidet, meaning it can fail, and
 @code{r} can throw an exception.
 This is because in this case, the reordering above
 can replace code that simply fails with code that throws an exception.
@@ -2635,7 +2635,7 @@ Mercury source files must have a name that ends with the @file{.m} extension.
 Each other kind of files (documented below) is identified by its own extension.
 
 For source files,
-the part of the filename before the @file{.m} extension can be anything,
+the part of the filename before the @file{.m} extension can be anything.
 It is simplest if it is the full name of the module contained in the file,
 because if it isn't, for any module in a program,
 then you will need to tell the compiler
@@ -2703,7 +2703,7 @@ Modules that do not have any submodules won't have @file{.int0} files.
 @findex --make-int
 @file{.int} and @file{.int2} are both created,
 at the same time, by invoking @samp{mmc} with the
-@samp{--make-interface} (or @samp{--make--int}) option.
+@samp{--make-interface} (or @samp{--make-int}) option.
 The difference between them is that e.g.@:
 @file{module_a.int} is intended to contain
 everything that is needed by another module, such as @samp{module_b},
@@ -3762,7 +3762,7 @@ To create or install a library in the C# grade,
 specify that you want to use the C# grade and use @samp{mmc --make}.
 Mmake does @emph{not} support C# targets.
 
-Libraries are complied to a dynamic link library assembly
+Libraries are compiled to a dynamic link library assembly
 whose name has the form @file{@var{library-name}.dll}.
 
 @c ----------------------------------------------------------------------------
@@ -9705,7 +9705,7 @@ when it knows that two parts of the code are inconsistent with each other,
 but neither part is a priori more likely to be wrong than the other.
 For example, when unifying two values of different types,
 the compiler uses this color when printing the type of both values;
-the compiler knows that in all likelyhood,
+the compiler knows that in all likelihood,
 one type is correct and one is incorrect,
 but it does not know which is which.
 @item @samp{hint}
