@@ -216,7 +216,7 @@ In the absence of the @code{--make} option,
 whose description we will defer until @ref{Introduction to mmc --make},
 all non-option arguments should be either
 the name of a file, or the name of a module.
-@c XXX Should we talk about about e.g. "mmc --make prog.clean" here?
+@c XXX Should we talk about e.g. "mmc --make prog.clean" here?
 The compiler assumes that
 non-option arguments ending in @samp{.m} are file names,
 while all other non-option arguments are module names.
@@ -315,7 +315,7 @@ For example, the meanings of @samp{-e} and @samp{-E} are totally unrelated.
 
 Any command line argument that has the form @samp{@@filename}
 will be replaced with the contents of the named file.
-That contents should be a list of arguments,
+The contents should be a list of arguments,
 with one argument per line.
 This argument processing is done recursively,
 so that some of these arguments may also have the form @file{@@file}.
@@ -843,7 +843,7 @@ into @emph{idiomatic} C code,
 with a view towards making the approach general enough
 to be able to produce idiomatic code
 in other imperative programming languages as well.
-We call the compiler's internal representation of this kind of the code
+We call the compiler's internal representation of this kind of code
 the medium-level data structure (MLDS),
 since it is clearly lower level than Mercury code,
 but higher level than assembly code.
@@ -927,7 +927,7 @@ followed by zero or more other @emph{grade modifiers}
 @c However, there is no point in telling people this,
 @c especially because it would give the lie to the next sentence,
 @c which *does* help us with explanations.
-The names of the grade modifiers all start with period;
+The names of the grade modifiers all start with a period;
 the names of the base grades do not.
 The name of a grade is a concatenation of the selected base grade
 and the selected grade modifiers
@@ -969,7 +969,7 @@ The available LLDS base grades, and the option values they correspond to, are
 @option{--target c}, @option{--no-high-level-code},
 @option{--no-gcc-global-registers}, and @option{--no-gcc-non-local-gotos}
 @item reg
-@option{--target c}, @option{--no-no-high-level-code},
+@option{--target c}, @option{--no-high-level-code},
 @option{--gcc-global-registers}, and @option{--no-gcc-non-local-gotos}
 @item asm_fast
 @option{--target c}, @option{--no-high-level-code},
@@ -1635,7 +1635,7 @@ but at least they have a fighting chance.
 
 There is one grade modifier that users will probably encounter
 that they will probably never need to use themselves.
-This the grade modifier that the Mercury team itself
+This is the grade modifier that the Mercury team itself
 uses only for a single purpose: making source distributions.
 Such distributions include not just the code of the Mercury system,
 which is mostly written in Mercury itself.
@@ -2511,7 +2511,7 @@ mmc @file{@var{main_module}.m} @file{@var{module_1}.m} @file{@var{module_2}.m} @
 where @file{@var{main_module}.m} should be the module that
 defines the predicate that serves as the program entry point, @code{main/2}.
 This command will put the resulting executable
-in the file named @file{@var{main_module}} by default ,
+in the file named @file{@var{main_module}} by default,
 though you can use the @samp{-o @var{filename}} option
 to specify a different name for it, if you wish.
 @findex -o
@@ -2643,7 +2643,7 @@ to construct a module-name-to-filename map.
 You can do this using a command such as @code{mmc -f *.m}
 (if all the source files in the program are in the current directory).
 
-For all the other kinds files mentioned in this chapter,
+For all the other kinds of files mentioned in this chapter,
 which are always constructed automatically by the Mercury compiler,
 the part of the filename before the suffix
 will be the fully qualified name of the module that the file belongs to.
@@ -3132,7 +3132,7 @@ what command is used, usually the C compiler).
 @item LD_LIBFLAGS and EXTRA_LD_LIBFLAGS
 @vindex LD_LIBFLAGS
 @vindex EXTRA_LD_LIBFLAGS
-Options to pass to the command used to by the ml script to link
+Options to pass to the command used by the ml script to link
 shared libraries (use @code{ml --print-shared-lib-link-command}
 to find out what command is used, usually the C compiler
 or the system linker, depending on the platform).
@@ -5717,7 +5717,7 @@ the maximum number of seconds to wait for the server to start.
 @item hold @var{name}[@var{termpath}] [@var{heldname}]
 @kindex hold (mdb command)
 Holds on to the variable @var{name} of the current event,
-or the part of the specified by @var{termpath},
+or the part of the term specified by @var{termpath},
 even after execution leaves the current event.
 The held value will stay accessible via the name @var{$heldname}.
 If @var{heldname} is not specified, it defaults to @var{name}.
@@ -10006,7 +10006,7 @@ code with @samp{--no-static-ground-terms}.
 @node Foreign language interface
 @chapter Foreign language interface
 
-The Mercury allows the code of a procedure
+Mercury allows the code of a procedure
 to be specified in a target language
 using a @code{pragma foreign_proc} declaration.
 A procedure may have more than one @code{pragma foreign_proc} declarations,
