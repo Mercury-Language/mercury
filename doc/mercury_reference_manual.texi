@@ -2381,7 +2381,7 @@ which have the form @samp{all @var{Vars} @var{SubGoal}}
 as if they were written as
 @samp{not (some @var{Vars} (not @var{SubGoal}))}.
 Note that in universal quantifications,
-@var{Vars} must a list of ordinary variables.
+@var{Vars} must be a list of ordinary variables.
 @c XXX the state var transformation does not enforce this.
 
 @item Existential quantifications
@@ -3356,7 +3356,7 @@ The ability to do this is the main motivation for the use of subtypes.
 
 Since the subtype cannot @emph{add} definitions of constructors,
 the set of constructor definitions in the subtype
-must be a subset of the constructors definitions in the supertype.
+must be a subset of the constructor definitions in the supertype.
 We recommend that they should appear in the same relative order
 as in the supertype definition.
 @item
@@ -3762,7 +3762,7 @@ If there is more than one valid type assignment,
 the compiler must choose the most general one.
 If there are two valid type assignments which are not identical up to renaming
 and neither of which is more general than the other,
-then there is a type ambiguity, and compiler must report an error.
+then there is a type ambiguity, and the compiler must report an error.
 A clause is @dfn{type-correct}
 if there is a unique (up to renaming) most general valid type assignment.
 Every clause in a Mercury program must be type-correct.
@@ -6081,7 +6081,7 @@ with all but one of the arguments supplied (a closure).
 The declarative semantics of @samp{solutions/2} can be defined as follows:
 
 @example
-solutions(Pred, List) is true iff
+solutions(Pred, List) is true if and only if
     all [X] (call(Pred, X) <=> list.member(X, List))
     and List is sorted without any duplicates.
 @end example
@@ -6104,7 +6104,7 @@ Here is an example: the standard library defines a predicate
 @end example
 
 @noindent
-which succeeds iff List is a permutation of List0.
+which succeeds if and only if List is a permutation of List0.
 Hence the following call to solutions
 
 @example
@@ -6826,7 +6826,7 @@ If a submodule item sequence includes an interface section,
 then it is a declaration of that submodule;
 if it includes an implementation section,
 then it is a definition of that submodule;
-and if includes both, then it is both declaration and definition.
+and if it includes both, then it is both declaration and definition.
 
 It is an error to declare a submodule twice, or to define it twice.
 It is an error to define a submodule without declaring it.
@@ -8491,7 +8491,7 @@ using a type conversion expression of the form:
 coerce(@var{Term})
 @end example
 
-The expression is type-correct iff
+The expression is type-correct if and only if
 @var{FromType} and @var{ToType} are both discriminated union types,
 and after replacing the principal type constructors with base types
 (@pxref{Subtypes})
@@ -11507,7 +11507,7 @@ Note that equality axioms are important
 when considering the value of data structures.
 The declarative semantics of pure predicates
 is never affected by the invocation of other predicates.
-It not is possible for the invocation of pure predicates
+It is not possible for the invocation of pure predicates
 to affect the operational behaviour of non-pure predicates and vice versa.
 
 By default, Mercury predicates and functions are pure.
@@ -12140,7 +12140,7 @@ provided that no non-local variable becomes further bound
 during the execution of a goal which may be negated.
 This includes negated goals themselves,
 as well as the conditions of if-then-elses,
-which are negated iff they fail without producing any solution,
+which are negated if and only if they fail without producing any solution,
 and the bodies of pred or func expressions,
 which may be called or applied in one of the other contexts,
 or indeed in another pred or func expression.
@@ -12823,7 +12823,7 @@ also constructs the format string and the value list.
 Most calls to formatting predicates satisfy this condition, but not all.
 
 The main exceptions are predicates intended for logging,
-whose general logic follows this general pattern:
+whose logic follows this general pattern:
 
 @example
 maybe_log_message(LogInfo, FormatString, Values, !IO) :-
@@ -13503,7 +13503,7 @@ high level code and the use of trailing.
 
 The compiler includes a termination analyser
 which can be used to prove termination of predicates and functions.
-Details of the analysis is available
+Details of the analysis are available
 in ``Termination Analysis for Mercury''
 by Chris Speirs, Zoltan Somogyi and Harald Sondergaard.
 @xref{[1]}.
@@ -13945,8 +13945,8 @@ void MR_trail_function(
 A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
 adds an entry to the function trail.
 The Mercury implementation ensures that
-if future execution ever backtracks to the current choicepoint,
-or backtracks past the current choicepoint to some earlier choicepoint,
+if future execution ever backtracks to the current choice point,
+or backtracks past the current choice point to some earlier choice point,
 then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
 where @var{reason} will be @samp{MR_undo}
 if the backtracking was due to a goal failing,
@@ -14064,10 +14064,10 @@ MR_ChoicepointId MR_current_choicepoint_id(void);
 indicating the identity of the most recent choice point;
 that is, the point to which execution would backtrack
 if the current computation failed.
-The value remains meaningful if the choicepoint is pruned away by a commit,
+The value remains meaningful if the choice point is pruned away by a commit,
 but is not meaningful
-after backtracking past the point where the choicepoint was created
-(since choicepoint ids may be reused after backtracking).
+after backtracking past the point where the choice point was created
+(since choice point ids may be reused after backtracking).
 @sp 1
 @item @bullet{} @code{MR_null_choicepoint_id()}
 Prototype:
@@ -14089,9 +14089,9 @@ bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
 @end example
 
 @code{MR_choicepoint_newer(@var{x}, @var{y})} true
-iff the choicepoint indicated by @var{x}
+iff the choice point indicated by @var{x}
 is newer than (i.e.@: was created more recently than)
-the choicepoint indicated by @var{y}.
+the choice point indicated by @var{y}.
 The null ChoicepointId is considered older than any non-null ChoicepointId.
 If either of the choice points have been backtracked over,
 the behaviour is undefined.
@@ -14108,7 +14108,7 @@ you can then call @code{MR_current_choicepoint_id()} again
 and compare the result from that call
 with the value saved in the @samp{prev_choicepoint} field in the data structure
 using @code{MR_choicepoint_newer()}.
-If the current choicepoint is newer, then you must trail the update,
+If the current choice point is newer, then you must trail the update,
 and update the @samp{prev_choicepoint} field with the new value;
 furthermore, you must also take care that on backtracking the
 previous value of the @samp{prev_choicepoint} field in your data
@@ -14232,11 +14232,11 @@ typedef struct @{
 @chapter Bibliography
 
 @menu
-* [1]::         Spiers, Somogyi, and Sondergaard,
+* [1]::         Speirs, Somogyi, and Sondergaard,
                 @cite{Termination Analysis for Mercury}.
 * [2]::         Groger and Plumer, @cite{Handling of mutual recursion in
                 automatic termination proofs for logic programs}.
-* [3]::         Spiers, @cite{Termination Analysis for logic programs}.
+* [3]::         Speirs, @cite{Termination Analysis for logic programs}.
 * [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
                 for Well-Founded Evaluation of Normal Logic Programs}.
 * [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
