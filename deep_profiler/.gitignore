@@ -42,6 +42,7 @@ config.log
 builtin_modules.m
 feedback.automatic_parallelism.m
 feedback.m
+feedback.feedback_info.m
 mdbcomp.m
 mdbcomp.goal_path.m
 prim_data.m
