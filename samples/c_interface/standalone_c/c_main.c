@@ -36,7 +36,7 @@ main(int argc, char **argv)
     ** that your program does.
     **
     ** The third argument to mercury_init() is the address of the base of the
-    ** stack. In grades that support conservative GC is used tell the
+    ** stack. In grades that support conservative GC is used to tell the
     ** collector where to begin tracing.
     */
     mercury_init(argc, argv, &stack_bottom);
@@ -48,11 +48,11 @@ main(int argc, char **argv)
 
     /*
     ** Lookup the current value of the Mercury mutable 'global' and print it
-    ** out. In C code we can refer to `global' by it's "foreign" name, the
+    ** out. In C code we can refer to `global' by its "foreign" name, the
     ** name given by mutable's foreign_name attribute.
     **
     ** WARNING: in grades that support multithreading access to Mercury
-    ** mutables from C is *not* (currently) thread safe.
+    ** mutables from C is *not* thread-safe.
     */
     printf("The current value of global is %" MR_INTEGER_LENGTH_MODIFIER "d.\n",
         GLOBAL);

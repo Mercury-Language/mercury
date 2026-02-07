@@ -65,9 +65,9 @@ MERCURY_LIB_LDFLAGS = libmercury_lib.a
 #MERCURY_LINKAGE = --mercury-linkage shared
 #MERCURY_LIB_LDFLAGS = -L. -Wl,-rpath . -lmercury_lib
 
-# Ask the Mercury compiler what C compiler we should use?
+# Ask the Mercury compiler what C compiler we should use.
 #
-CC = $(shell $(MMC) --output-cc)
+CC := $(shell $(MMC) --output-cc)
 
 # We need to tell the C compiler to define the macros used to specify the
 # compilation grade in which any Mercury libraries we are using were compiled.
@@ -76,7 +76,7 @@ CC = $(shell $(MMC) --output-cc)
 # is to ask the Mercury compiler what flags it passes to the C compiler.
 # This can be done as follows:
 #
-# CFLAGS = $(shell $(MMC) $(GRADEOPT) --output-cflags)
+# CFLAGS := $(shell $(MMC) $(GRADEOPT) --output-cflags)
 #
 # Note that the output of the `--output-cflags' option also includes any other
 # flags that the Mercury compiler passes to the C compiler, for example options
@@ -92,13 +92,13 @@ CC = $(shell $(MMC) --output-cc)
 # Ask the Mercury compiler what flags to pass to the C compiler in order to
 # define the macros used to specify the compilation grade we are using.
 #
-CFLAGS_FOR_GRADE = $(shell $(MMC) $(GRADEOPT) --output-grade-defines)
+CFLAGS_FOR_GRADE := $(shell $(MMC) $(GRADEOPT) --output-grade-defines)
 
 # Ask the Mercury compiler what flags to pass to the C compiler in order to
 # tell it where to search for C header files that are part of any Mercury
 # libraries we are using (including the standard library).
 #
-CFLAGS_FOR_INCLUDES = $(shell $(MMC) $(GRADEOPT) --use-subdirs \
+CFLAGS_FOR_INCLUDES := $(shell $(MMC) $(GRADEOPT) --use-subdirs \
 	--output-c-include-dir-flags)
 
 # Gather together all the flags to pass to the C compiler.
@@ -106,14 +106,14 @@ CFLAGS_FOR_INCLUDES = $(shell $(MMC) $(GRADEOPT) --use-subdirs \
 CFLAGS = $(CFLAGS_FOR_GRADE) $(CFLAGS_FOR_INCLUDES)
 
 # Ask the Mercury compiler what command it uses to invoke the linker when
-# creating an executable?
+# creating an executable.
 #
-LD = $(shell $(MMC) --output-link-command)
+LD := $(shell $(MMC) --output-link-command)
 
 # Ask the Mercury compiler what flags it passes to the linker in order to
-# link against the selected set of Mercury libraries?
+# link against the selected set of Mercury libraries.
 #
-LIB_LDFLAGS = $(shell $(MMC) $(GRADEOPT) $(MERCURY_LINKAGE) --output-library-link-flags)
+LIB_LDFLAGS := $(shell $(MMC) $(GRADEOPT) $(MERCURY_LINKAGE) --output-library-link-flags)
 
 # Build the example Mercury library, mercury_lib.
 # The dependency on the .init file is merely a convenience. It is a good
@@ -129,7 +129,7 @@ mercury_lib.init: mercury_lib.m
 
 # The following rule creates the stand-alone interface to the mercury_lib
 # library, Mercury standard library and Mercury runtime. Since we have not
-# installed mercury_lib all the relevant files will have been built in
+# installed mercury_lib, all the relevant files will have been built in
 # this directory; with an installed library we would need to use the
 # `--mld' option to specify its location.
 #
