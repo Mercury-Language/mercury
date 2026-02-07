@@ -114,18 +114,6 @@ const char  *module_suffix[] =
     "",
 };
 
-const char  *init_suffix[] =
-{
-    "",
-    "_type_tables",
-    "_debugger",
-    "_complexity",
-    "write_out_proc_statics",
-    "",
-    "",
-    ""
-};
-
 const char  *bunch_function_guard[] =
 {
     if_need_to_init,
