@@ -118,8 +118,8 @@ as normal.
 @emph{The ``make install'' phase takes ages!  What's going on?}
 @sp 1
 
-Mercury supports many grades.  A grade is a combination the target language and
-feature options.  These features include garbage collection, debugging and
+Mercury supports many grades.  A grade is a combination of the target language
+and feature options.  These features include garbage collection, debugging and
 profiling support.  See ``Grades and grade components'' in the User's Guide.
 
 During the ``make install'' phase the newly built compiler is used to compile
@@ -183,7 +183,7 @@ which is why you don't get an error message on the type declaration itself.
 I checked and both branches bind the same variables. What is the error?}
 @sp 1
 
-This error generally happens if you attempt bind non-local variables
+This error generally happens if you attempt to bind non-local variables
 in the @emph{condition} of the if-then-else.  For example, the following
 code attempts to bind @samp{Value} in the call to @samp{map.search},
 but @samp{Value} occurs outside of the if-then-else --- in particular,
