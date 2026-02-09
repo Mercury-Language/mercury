@@ -14088,7 +14088,7 @@ Prototype:
 bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
 @end example
 
-@code{MR_choicepoint_newer(@var{x}, @var{y})} true
+@code{MR_choicepoint_newer(@var{x}, @var{y})} returns true
 iff the choice point indicated by @var{x}
 is newer than (i.e.@: was created more recently than)
 the choice point indicated by @var{y}.
@@ -14113,7 +14113,7 @@ and update the @samp{prev_choicepoint} field with the new value;
 furthermore, you must also take care that on backtracking the
 previous value of the @samp{prev_choicepoint} field in your data
 structure is restored to its previous value, by trailing that update too.
-But if @code{MR_current_choice_id()}
+But if @code{MR_current_choicepoint_id()}
 is not newer than the @code{prev_choicepoint} field,
 then you can safely perform the update to your data structure
 without trailing it.
@@ -14178,7 +14178,7 @@ typedef struct @{
     new_int_ref(Ref::uo, Value::in),
     [will_not_call_mercury, promise_pure],
 "
-    C_Intref *x = malloc(sizeof(C_IntRef));
+    C_IntRef *x = malloc(sizeof(C_IntRef));
     x->prev_choicepoint = MR_current_choicepoint_id();
     x->data = Value;
     Ref = x;
@@ -14278,5 +14278,5 @@ B. Demoen and K. Sagonas, @cite{CAT: the Copying Approach to Tabling},
 In C. Palamidessi, H. Glaser and K. Meinke, editors, @cite{Principles of
 Declarative Programming, 10th International Symposium, PLILP'98},
 Lecture Notes in Computer Science, Springer, 1998.
-Available form @uref{https://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
+Available from @uref{https://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
 @bye
