@@ -240,7 +240,7 @@
     % always starts with 'P' and the 'T' separates the date and time components
     % of the duration. A component may be omitted if it is zero, and the 'T'
     % separator is not required if all the time components are zero.
-    % The second component may include a fraction component using a period.
+    % The seconds component may include a fraction component using a period.
     % This fraction component should not have a resolution higher than a
     % microsecond.
     %
@@ -323,8 +323,8 @@
     % timezones or daylight savings phases, first convert the dates to UTC.
     %
     % If the seconds components of DateA and DateB are < 60, then
-    % add_duration(DateA, duration(DateA, DateB), DateB) will hold, but
-    % add_duration(DateB, negate(duration(DateA, DateB)), DateA) may not hold.
+    % add_duration(duration(DateA, DateB), DateA, DateB) will hold, but
+    % add_duration(negate(duration(DateA, DateB)), DateB, DateA) may not hold.
     % For example if:
     %   DateA = 2001-01-31
     %   DateB = 2001-02-28
