@@ -95,7 +95,7 @@
     %
 :- func det_int_to_month(int) = month.
 
-    % int_to_month(Int, Month):
+    % int0_to_month(Int, Month):
     % Int is the number of Month where months are numbered from 0-11.
     %
 :- pred int0_to_month(int, month).
