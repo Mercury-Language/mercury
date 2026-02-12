@@ -114,7 +114,7 @@
     % unboxed_get/5 or bulk_get/9 for that stream return `eof'.
     %
     % If a call to get/4 returns `error(...)', all further calls
-    % to get/4, unboxed_get/5 or bulk_get/4 for that stream return an error,
+    % to get/4, unboxed_get/5 or bulk_get/9 for that stream return an error,
     % although not necessarily the same one.
     %
     % XXX We should provide an interface to allow the user to reset the
@@ -141,7 +141,7 @@
     % unboxed_get/5 or bulk_get/9 for that stream return `eof'.
     %
     % If a call to unboxed_get/5 returns `error(...)', all further calls
-    % to get/4, unboxed_get/5 or bulk_get/4 for that stream return an error,
+    % to get/4, unboxed_get/5 or bulk_get/9 for that stream return an error,
     % although not necessarily the same one.
     %
     % XXX We should provide an interface to allow the user to reset the
@@ -182,8 +182,8 @@
     % Throws an exception if Index given is out of range, or if NumItems units
     % starting at Index will not fit in !Store.
     %
-    % If a call to bulk_get/4 returns fewer than NumItems items, all further
-    % calls to get/4, unboxed_get/5 or bulk_get/4 for that stream return no
+    % If a call to bulk_get/9 returns fewer than NumItems items, all further
+    % calls to get/4, unboxed_get/5 or bulk_get/9 for that stream return no
     % items.
     %
     % If a call to bulk_get/9 returns `error(...)', all further calls to
