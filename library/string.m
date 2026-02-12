@@ -1553,13 +1553,13 @@
     % Convert a string to an int. The string must contain only digits [0-9],
     % optionally preceded by a plus or minus sign. If the string does
     % not match this syntax or the number is not in the range
-    % [min_int + 1, max_int], to_int fails.
+    % [min_int, max_int], to_int fails.
     %
 :- pred to_int(string::in, int::out) is semidet.
 
     % Convert a signed base 10 string to an int. Throws an exception if the
     % string argument does not match the regexp [+-]?[0-9]+ or the number is
-    % not in the range [min_int + 1, max_int].
+    % not in the range [min_int, max_int].
     %
 :- func det_to_int(string) = int.
 
