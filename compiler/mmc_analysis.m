@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2020, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,10 +33,10 @@
 
 :- instance compiler(mmc).
 
-:- pred module_name_func_id(module_info::in, pred_proc_id::in,
+:- pred ppid_to_module_name_func_id(module_info::in, pred_proc_id::in,
     module_name::out, func_id::out) is det.
 
-:- pred module_name_func_id_from_pred_info(pred_info::in, proc_id::in,
+:- pred pred_info_proc_id_to_module_name_func_id(pred_info::in, proc_id::in,
     module_name::out, func_id::out) is det.
 
 :- pred func_id_to_ppid(module_info::in, module_name::in,
@@ -141,11 +141,14 @@ mmc_module_name_to_write_file_name(Globals, Ext,
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, FileName, _FileNameProposed, !IO).
 
-module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
+ppid_to_module_name_func_id(ModuleInfo, proc(PredId, ProcId),
+        PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    module_name_func_id_from_pred_info(PredInfo, ProcId, PredModule, FuncId).
+    pred_info_proc_id_to_module_name_func_id(PredInfo, ProcId,
+        PredModule, FuncId).
 
-module_name_func_id_from_pred_info(PredInfo, ProcId, PredModule, FuncId) :-
+pred_info_proc_id_to_module_name_func_id(PredInfo, ProcId,
+        PredModule, FuncId) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),

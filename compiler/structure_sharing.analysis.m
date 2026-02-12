@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017, 2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -269,7 +269,7 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
     PPId = proc(PredId, ProcId),
     some [!ProcInfo] (
         map.lookup(!.ProcTable, ProcId, !:ProcInfo),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         FuncInfo = structure_sharing_func_info(ModuleInfo, !.ProcInfo),
         lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,
             structure_sharing_call, MaybeBestResult),
@@ -1164,7 +1164,7 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
                 SharingPairs),
             Status = Status0
         ),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, structure_sharing_call, Answer,
             Status, !AnalysisInfo)
     ;
@@ -1190,7 +1190,8 @@ reason_implies_optimal(ModuleInfo, AnalysisInfo, Reason) :-
 
 handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     % Record that we depend on the result for the called procedure.
-    module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
+    ppid_to_module_name_func_id(ModuleInfo, DepPPId,
+        DepModuleName, DepFuncId),
     Call = structure_sharing_call,
     Answer = _ : structure_sharing_answer,
     get_func_info(ModuleInfo, DepModuleName, DepFuncId, Call, Answer,

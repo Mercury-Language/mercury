@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury Team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -893,7 +893,7 @@ search_mm_tabling_analysis_status(PPId, Result, AnalysisStatus, !ModuleInfo) :-
 
 search_mm_tabling_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
         !AnalysisInfo) :-
-    mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
     lookup_best_result(!.AnalysisInfo, ModuleName, FuncId, no_func_info, Call,
         MaybeBestStatus),
@@ -935,7 +935,7 @@ maybe_record_mm_tabling_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
         lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, any_call,
             mm_tabling_analysis_answer(Status), ResultStatus, !AnalysisInfo)
     ;

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2025 The Mercury Team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1155,7 +1155,7 @@ search_excp_analysis_status(PPId, Result, AnalysisStatus, !ModuleInfo) :-
 
 search_excp_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
         !AnalysisInfo) :-
-    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
     lookup_best_result(!.AnalysisInfo, ModuleName, FuncId, no_func_info, Call,
         MaybeBestResult),
@@ -1196,7 +1196,7 @@ maybe_record_exception_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
         lookup_proc_exception_info(ModuleInfo, PPId, Status, ResultStatus),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, any_call,
             exception_analysis_answer(Status), ResultStatus, !AnalysisInfo)
     ;
@@ -1268,7 +1268,8 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
         UseAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            module_name_func_id(!.ModuleInfo, PPId, ModuleName, FuncId),
+            ppid_to_module_name_func_id(!.ModuleInfo, PPId,
+                ModuleName, FuncId),
             lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
                 no_func_info, any_call, MaybeBestResult),
             (

@@ -609,7 +609,7 @@ process_intermod_analysis_reuse_proc(PredId, PredInfo, ProcId,
         !ModuleInfo, !ReuseTable) :-
     PPId = proc(PredId, ProcId),
     module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
-    module_name_func_id(!.ModuleInfo, PPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(!.ModuleInfo, PPId, ModuleName, FuncId),
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     lookup_results(AnalysisInfo, ModuleName, FuncId, ImportedResults),
     list.foldl2(
@@ -682,7 +682,7 @@ process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
         !ExternalRequests, !MustHaveReuseVersions) :-
     PPId = proc(PredId, ProcId),
     module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
-    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
 
     % Only add requests for procedures that *really* belong to this module.
     module_info_get_name(ModuleInfo, ThisModule),
@@ -974,7 +974,7 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
     (
         ShouldWrite = should_write,
         reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, structure_reuse_call(NoClobbers),
             Answer, Status, !AnalysisInfo)
     ;
@@ -1008,7 +1008,7 @@ reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer) :-
 handle_structure_reuse_dependency(ModuleInfo,
         ppid_no_clobbers(DepPPId, NoClobbers), !AnalysisInfo) :-
     % Record that we depend on the result for the called procedure.
-    module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
+    ppid_to_module_name_func_id(ModuleInfo, DepPPId, DepModuleName, DepFuncId),
     Call = structure_reuse_call(NoClobbers),
     Answer = _ : structure_reuse_answer,
     get_func_info(ModuleInfo, DepModuleName, DepFuncId, Call, Answer,
@@ -1021,7 +1021,7 @@ handle_structure_reuse_dependency(ModuleInfo,
 
 record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
         !AnalysisInfo) :-
-    module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     record_request(analysis_name, ModuleName, FuncId,
         structure_reuse_call(NoClobbers), !AnalysisInfo).
 
@@ -1040,7 +1040,7 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ProgressStream,
         OrigPPId, NoClobbers),
 
     % Look up the old result.
-    module_name_func_id(ModuleInfo, OrigPPId, ModuleName, FuncId),
+    ppid_to_module_name_func_id(ModuleInfo, OrigPPId, ModuleName, FuncId),
     module_info_proc_info(ModuleInfo, OrigPPId, ProcInfo),
     FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
     Call = structure_reuse_call(NoClobbers),

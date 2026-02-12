@@ -496,8 +496,8 @@ setup_proc_args(PredId, ProcId, !GlobalVarUsageMap,
             pred_info_get_orig_arity(PredInfo, PredFormArity),
             FuncInfo = unused_args_func_info(PredFormArity),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-            module_name_func_id_from_pred_info(PredInfo, ProcId, ModuleId,
-                FuncId),
+            pred_info_proc_id_to_module_name_func_id(PredInfo, ProcId,
+                ModuleId, FuncId),
             lookup_best_result(AnalysisInfo0, ModuleId, FuncId,
                 FuncInfo, unused_args_call, MaybeBestResult),
             (
@@ -1164,8 +1164,8 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
         Intermod = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
 
-        module_name_func_id_from_pred_info(OrigPredInfo, ProcId, ModuleId,
-            FuncId),
+        pred_info_proc_id_to_module_name_func_id(OrigPredInfo, ProcId,
+            ModuleId, FuncId),
         analysis.operations.lookup_results(AnalysisInfo0, ModuleId, FuncId,
             IntermodResultsTriples : list(analysis_result(unused_args_call,
                 unused_args_answer))),
@@ -2085,7 +2085,7 @@ maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
         else
             Answer = unused_args_answer([])
         ),
-        module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
+        ppid_to_module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, unused_args_call, Answer, optimal,
             !AnalysisInfo)
     else
@@ -2127,8 +2127,8 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
         pred_info_is_imported_not_external(CalleePredInfo),
         not is_unify_index_or_compare_pred(CalleePredInfo)
     then
-        module_name_func_id(ModuleInfo, CalleePredProcId, CalleeModule,
-            CalleeFuncId),
+        ppid_to_module_name_func_id(ModuleInfo, CalleePredProcId,
+            CalleeModule, CalleeFuncId),
         Call = unused_args_call,
         Answer = _ : unused_args_answer,
         get_func_info(ModuleInfo, CalleeModule, CalleeFuncId, Call, Answer,
