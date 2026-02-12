@@ -350,7 +350,7 @@
     % In both cases, index_next_repl will return the unpaired surrogate
     % unchanged as Char. There is no replacement required, because
     %
-    % - surrogate code units are all the range 0xD800 to 0xDFFF, and
+    % - surrogate code units are all in the range 0xD800 to 0xDFFF, and
     % - the Unicode standard deliberately does not assign any characters
     %   to the code points in this range.
     %
