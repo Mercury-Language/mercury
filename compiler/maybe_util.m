@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021, 2023, 2025 The Mercury team.
+% Copyright (C) 2021, 2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,6 +35,10 @@
     --->    unchanged
     ;       changed.
 
+:- func maybe_changed `or` maybe_changed = maybe_changed.
+
+:- func or_list(list(maybe_changed)) = maybe_changed.
+
 %---------------------%
 
 :- type need_to_requantify
@@ -42,8 +46,8 @@
     ;       do_not_need_to_requantify.
 
 %---------------------------------------------------------------------------%
-
 :- implementation.
+%---------------------------------------------------------------------------%
 
 SucceededA `and` SucceededB =
     ( if SucceededA = succeeded, SucceededB = succeeded then
@@ -54,6 +58,18 @@ SucceededA `and` SucceededB =
 
 and_list(Succeededs) = AllSucceeded :-
     AllSucceeded = list.foldl(and, Succeededs, succeeded).
+
+%---------------------------------------------------------------------------%
+
+ChangedA `or` ChangedB =
+    ( if (ChangedA = changed ; ChangedB = changed) then
+        changed
+    else
+        unchanged
+    ).
+
+or_list(Changeds) = AnyChanged :-
+    AnyChanged = list.foldl(or, Changeds, unchanged).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.maybe_util.
