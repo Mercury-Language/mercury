@@ -729,7 +729,7 @@ det_from_int(I) = U64 :-
         (ulong) Byte0);
 ").
 
-from_bytes_be(Byte7, Byte6, Byte5,Byte4, Byte3, Byte2, Byte1, Byte0) =
+from_bytes_be(Byte7, Byte6, Byte5, Byte4, Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7).
 
 %---------------------------------------------------------------------------%

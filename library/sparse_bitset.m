@@ -15,7 +15,7 @@
 % If the integers being stored are closely grouped, a sparse_bitset
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the
-% tree-of-elements representations provided by set_bbbtree.m, set_tree234.
+% tree-of-elements representations provided by set_bbbtree.m, set_tree234.m
 % and set_ctree234.m.
 %
 % A sparse bitset is represented as a sorted list, with each element
@@ -258,7 +258,7 @@
     % intersect(SetA, SetB) returns the intersection of SetA and SetB.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
-    % O(min(rep_size(SetA)), rep_size(SetB)) space.
+    % O(min(rep_size(SetA), rep_size(SetB))) space.
     %
 :- func intersect(sparse_bitset(T), sparse_bitset(T)) = sparse_bitset(T).
 :- pred intersect(sparse_bitset(T)::in, sparse_bitset(T)::in,
@@ -1423,8 +1423,8 @@ list_to_set_get_runs([HeadItem | TailItems], !Runs) :-
     % This predicate is agnostic about the direction of the run,
     % because it directly handles only the first bitset_elem.
     % Once it runs out of items that map to this bitset_elem,
-    % the algorithm is forced use the enum value of the next item
-    % to choose a direction. According, we delegate getting the rest
+    % the algorithm is forced to use the enum value of the next item
+    % to choose a direction. Accordingly, we delegate getting the rest
     % of the run to one of list_to_set_get_{ascending,descending}_run.
     %
 :- pred list_to_set_get_run(uint::in, uint::in, list(T)::in, list(T)::out,

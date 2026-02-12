@@ -2049,7 +2049,7 @@ escape_char('`', '`').
 
 :- type unicode_decode_error
     --->    unicode_non_hex_digit(char)
-            % The char sequence contained char that is not a hex digit.
+            % The char sequence contained a char that is not a hex digit.
     ;       unicode_hex_seq_incomplete(int, int)
             % The number of characters we expected, and how many we got.
     ;       unicode_char_null
@@ -4635,7 +4635,7 @@ get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             !:LastDigit = last_digit_is_not_underscore,
             get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if Char = '_' then
-            !:LastDigit=  last_digit_is_underscore,
+            !:LastDigit = last_digit_is_underscore,
             get_float_decimals(Stream, !.LastDigit, !.RevChars, Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
             !:RevChars = [Char | !.RevChars],
