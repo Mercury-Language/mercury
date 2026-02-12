@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,6 +112,7 @@
 :- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
@@ -144,30 +145,60 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Arguments are stored as their variable id, not their index
-    % in the argument vector.
+    % We identify a specific argument of a procedure by storing ...
 :- type arg_var_in_proc
     --->    arg_var_in_proc(
+                % ... the identity of the procedure, and ...
                 pred_proc_id,
+
+                % ... the identity of the variable that represents that
+                % argument in the list of head variables of that procedure
+                % (as returned by proc_info_get_headvars). This means that
+                % this prog_var is NOT in the varset of the procedure
+                % whose whole BODY GOAL we are analyzing, but in the varset
+                % of the procedure that is the CALLEE of the call we are
+                % processing.
+                %
+                % Simon chose this representation over an argument number.
+                % Both require a translation from the caller to the callee's
+                % context: the prog_var representation requires it when an
+                % arg_var_in_proc structure is created, while the argument
+                % number representation requires it when they are used.
+                % The prog_var representation looks simpler, but it is also
+                % more error-prone, because the compiler cannot help detect
+                % confusing a local variable for a variable in another
+                % procedure, or vice versa.
                 prog_var
             ).
 
-    % Information about the dependencies of a variable that is not known to be
-    % used.
-    %
+    % For each variable that is not yet known to be used, we record
+    % the set of local variables, and the set of procedure arguments,
+    % to which it has been aliased. We do this because if any of those
+    % aliases turn out to be used, we cannot eliminate the argument
+    % represented by the variable.
 :- type usage_info
-    --->    unused(set(prog_var), set(arg_var_in_proc)).
+    --->    unused(
+                % The set of aliased local variables.
+                set(prog_var),
 
-    % Contains dependency information for the variables in a procedure
-    % that are not yet known to be used.
-:- type var_dep == map(prog_var, usage_info).
+                % The set of aliased procedure argument variables.
+                set(arg_var_in_proc)
+            ).
 
-    % A collection of variable usages for each procedure.
-:- type var_usage == map(pred_proc_id, var_dep).
+    % Values of this type map variables that are not yet known to be used
+    % to their aliases. When we find out that either the variable, or
+    % one of its aliases, is used, we delete the variable from the map.
+    % The absence of the variable from the map implies that the variable
+    % is used.
+    %
+    % XXX Document exactly what set of variables ever get put into this map.
+    % Is it just the variables representing the input args of the procedure
+    % we are analyzing, or do other variables, such as those aliases,
+    % get put in here as well?
+:- type local_var_usage_map == map(prog_var, usage_info).
 
-:- type warning_info
-    --->    warning_info(prog_context, string, int, list(int)).
-            % context, pred name, arity, list of args to warn
+    % The collection of those structures for each procedure.
+:- type global_var_usage_map == map(pred_proc_id, local_var_usage_map).
 
 %-----------------------------------------------------------------------------%
 %
@@ -175,8 +206,7 @@
 %
 
 :- type unused_args_func_info
-    --->    unused_args_func_info(arity).
-            % XXX ARITY Say whether this is a pred_form_arity or a user_arity.
+    --->    unused_args_func_info(pred_form_arity).
 
 :- type unused_args_call
     --->    unused_args_call.
@@ -197,13 +227,14 @@ get_unused_args(UnusedArgs) = UnusedArgs ^ args.
     analysis_name(_, _) = analysis_name,
     analysis_version_number(_, _) = 3,
     preferred_fixpoint_type(_, _) = least_fixpoint,
-    bottom(unused_args_func_info(Arity), _) = unused_args_answer(1 .. Arity),
+    bottom(unused_args_func_info(pred_form_arity(Arity)), _) =
+        unused_args_answer(1 .. Arity),
     top(_, _) = unused_args_answer([]),
     (get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
         func_id_to_ppid(ModuleInfo, ModuleName, FuncId, proc(PredId, _)),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
-        FuncInfo = unused_args_func_info(PredFormArityInt)
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
+        FuncInfo = unused_args_func_info(PredFormArity)
     )
 ].
 
@@ -252,14 +283,16 @@ analysis_name = "unused_args".
 unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    init_var_usage(VarUsage0, PredProcIds, ProcCallInfo0, !ModuleInfo),
+    init_global_var_usage_map(GlobalVarUsageMap0, PredProcIds, ProcCallInfo0,
+        !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
-    unused_args_pass(0, !.ModuleInfo, PredProcIds, VarUsage0, VarUsage),
+    unused_args_pass(0, !.ModuleInfo, PredProcIds,
+        GlobalVarUsageMap0, GlobalVarUsageMap),
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
     map.init(UnusedArgInfo0),
-    get_unused_arg_info(!.ModuleInfo, PredProcIds, VarUsage,
+    get_unused_arg_info(!.ModuleInfo, PredProcIds, GlobalVarUsageMap,
         UnusedArgInfo0, UnusedArgInfo),
 
     map.keys(UnusedArgInfo, PredProcIdsToFix),
@@ -311,7 +344,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         list.foldl2(unused_args_create_new_pred(UnusedArgInfo),
             PredProcIdsToFix, ProcCallInfo0, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Finished new preds.\n", !IO),
-        unused_args_fixup_module(VeryVerbose, VarUsage,
+        unused_args_fixup_module(VeryVerbose, GlobalVarUsageMap,
             PredProcIds, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Fixed up goals.\n", !IO),
         ( if map.is_empty(ProcCallInfo) then
@@ -334,40 +367,47 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     % module_info. PredProcList is the list of procedures to do the fixpoint
     % iteration over.
     %
-:- pred init_var_usage(var_usage::out, list(pred_proc_id)::out,
-    proc_call_info::out, module_info::in, module_info::out) is det.
+    % The reason why we take the module_info as a read/write argument
+    % instead of as a read-only argument is that we may need to update it
+    % to record analysis results.
+    %
+:- pred init_global_var_usage_map(global_var_usage_map::out,
+    list(pred_proc_id)::out, proc_call_info::out,
+    module_info::in, module_info::out) is det.
 
-init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo) :-
+init_global_var_usage_map(GlobalVarUsageMap, PredProcList, ProcCallInfo,
+        !ModuleInfo) :-
     map.init(ProcCallInfo0),
-    map.init(VarUsage0),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    setup_local_var_usage(PredIds, VarUsage0, VarUsage, [], PredProcList,
-        ProcCallInfo0, ProcCallInfo, !ModuleInfo).
+    setup_local_var_usage(PredIds, map.init, GlobalVarUsageMap,
+        [], PredProcList, ProcCallInfo0, ProcCallInfo, !ModuleInfo).
 
     % Setup args for the whole module.
     %
 :- pred setup_local_var_usage(list(pred_id)::in,
-    var_usage::in, var_usage::out,
+    global_var_usage_map::in, global_var_usage_map::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-setup_local_var_usage([], !VarUsage, !PredProcIds, !OptProcs, !ModuleInfo).
-setup_local_var_usage([PredId | PredIds], !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo) :-
-    maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo),
-    setup_local_var_usage(PredIds, !VarUsage, !PredProcList, !OptProcs,
-        !ModuleInfo).
+setup_local_var_usage([], !GlobalVarUsageMap,
+        !PredProcIds, !OptProcs, !ModuleInfo).
+setup_local_var_usage([PredId | PredIds], !GlobalVarUsageMap,
+        !PredProcList, !OptProcs, !ModuleInfo) :-
+    maybe_setup_pred_args(PredId, !GlobalVarUsageMap,
+        !PredProcList, !OptProcs, !ModuleInfo),
+    setup_local_var_usage(PredIds, !GlobalVarUsageMap,
+        !PredProcList, !OptProcs, !ModuleInfo).
 
     % Setup args for the given predicate if required.
     %
-:- pred maybe_setup_pred_args(pred_id::in, var_usage::in, var_usage::out,
+:- pred maybe_setup_pred_args(pred_id::in,
+    global_var_usage_map::in, global_var_usage_map::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
+maybe_setup_pred_args(PredId, !GlobalVarUsageMap, !PredProcList, !OptProcs,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( if
@@ -405,41 +445,44 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
         true
     else
         ProcIds = pred_info_all_procids(PredInfo),
-        setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcList, !OptProcs,
-            !ModuleInfo)
+        setup_pred_args(PredId, ProcIds,
+            !GlobalVarUsageMap, !PredProcList, !OptProcs, !ModuleInfo)
     ).
 
     % Setup args for each mode of a predicate.
     %
 :- pred setup_pred_args(pred_id::in, list(proc_id)::in,
-    var_usage::in, var_usage::out,
+    global_var_usage_map::in, global_var_usage_map::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-setup_pred_args(_, [], !VarUsage, !PredProcIds, !OptProcs, !ModuleInfo).
-setup_pred_args(PredId, [ProcId | ProcIds], !VarUsage,
+setup_pred_args(_, [], !GlobalVarUsageMap,
+        !PredProcIds, !OptProcs, !ModuleInfo).
+setup_pred_args(PredId, [ProcId | ProcIds], !GlobalVarUsageMap,
         !PredProcIds, !OptProcs, !ModuleInfo) :-
-    setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds,
+    setup_proc_args(PredId, ProcId, !GlobalVarUsageMap, !PredProcIds,
         !OptProcs, !ModuleInfo),
-    setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcIds,
+    setup_pred_args(PredId, ProcIds, !GlobalVarUsageMap, !PredProcIds,
         !OptProcs, !ModuleInfo).
 
     % Setup args for the procedure.
     %
+    % XXX Document the meaning of the arguments.
+    %
 :- pred setup_proc_args(pred_id::in, proc_id::in,
-    var_usage::in, var_usage::out,
+    global_var_usage_map::in, global_var_usage_map::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
-        !ModuleInfo) :-
+setup_proc_args(PredId, ProcId, !GlobalVarUsageMap,
+        !PredProcIds, !OptProcs, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
-    some [!VarDep] (
-        map.init(!:VarDep),
+    some [!LocalVarUsageMap] (
+        map.init(!:LocalVarUsageMap),
         globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
         ( if
             % Don't use the intermodule analysis info when we have the clauses
@@ -450,9 +493,8 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
             not is_unify_index_or_compare_pred(PredInfo)
         then
             PredModuleName = pred_info_module(PredInfo),
-            pred_info_get_orig_arity(PredInfo,
-                pred_form_arity(PredFormArityInt)),
-            FuncInfo = unused_args_func_info(PredFormArityInt),
+            pred_info_get_orig_arity(PredInfo, PredFormArity),
+            FuncInfo = unused_args_func_info(PredFormArity),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             module_name_func_id_from_pred_info(PredInfo, ProcId, ModuleId,
                 FuncId),
@@ -464,11 +506,13 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
                 (
                     UnusedArgs = [_ | _],
                     proc_info_get_headvars(ProcInfo, HeadVars),
-                    list.map(list.det_index1(HeadVars), UnusedArgs,
-                        UnusedVars),
-                    initialise_vardep(UnusedVars, !.VarDep, VarDep),
+                    list.map(list.det_index1(HeadVars),
+                        UnusedArgs, UnusedVars),
+                    set_vars_to_unaliased_unused(UnusedVars,
+                        !LocalVarUsageMap),
                     PredProcId = proc(PredId, ProcId),
-                    map.set(PredProcId, VarDep, !VarUsage),
+                    map.det_insert(PredProcId, !.LocalVarUsageMap,
+                        !GlobalVarUsageMap),
                     globals.get_opt_tuple(Globals, OptTuple),
                     OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
                     (
@@ -567,8 +611,8 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
         else
             proc_info_get_var_table(ProcInfo, VarTable),
             var_table_vars(VarTable, Vars),
-            initialise_vardep(Vars, !VarDep),
-            setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
+            set_vars_to_unaliased_unused(Vars, !LocalVarUsageMap),
+            setup_output_args(!.ModuleInfo, ProcInfo, !LocalVarUsageMap),
 
             proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
                 Globals, TypeInfoLiveness),
@@ -576,33 +620,35 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
                 TypeInfoLiveness = yes,
                 proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
                 setup_typeinfo_deps(Vars, VarTable, proc(PredId, ProcId),
-                    RttiVarMaps, !VarDep)
+                    RttiVarMaps, !LocalVarUsageMap)
             ;
                 TypeInfoLiveness = no
             ),
 
             proc_info_get_goal(ProcInfo, Goal),
             Info = unused_args_info(!.ModuleInfo, VarTable),
-            unused_args_traverse_goal(Info, Goal, !VarDep),
-            map.set(proc(PredId, ProcId), !.VarDep, !VarUsage),
+            unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap),
+            map.det_insert(proc(PredId, ProcId), !.LocalVarUsageMap,
+                !GlobalVarUsageMap),
 
             !:PredProcIds = [proc(PredId, ProcId) | !.PredProcIds]
         )
     ).
 
-:- pred initialise_vardep(list(prog_var)::in, var_dep::in, var_dep::out)
-    is det.
+:- pred set_vars_to_unaliased_unused(list(prog_var)::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-initialise_vardep([], !VarDep).
-initialise_vardep([Var | Vars], !VarDep) :-
+set_vars_to_unaliased_unused([], !LocalVarUsageMap).
+set_vars_to_unaliased_unused([Var | Vars], !LocalVarUsageMap) :-
     set.init(VDep),
     set.init(Args),
-    map.set(Var, unused(VDep, Args), !VarDep),
-    initialise_vardep(Vars, !VarDep).
+    map.det_insert(Var, unused(VDep, Args), !LocalVarUsageMap),
+    set_vars_to_unaliased_unused(Vars, !LocalVarUsageMap).
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for manipulating the var_usage and var_dep structures.
+% Predicates for manipulating the global_var_usage_map
+% and local_var_usage_map structures.
 %
 
     % For each variable, ensure the typeinfos describing the type parameters
@@ -611,22 +657,28 @@ initialise_vardep([Var | Vars], !VarDep) :-
     % if HeadVar1 is used.
     %
 :- pred setup_typeinfo_deps(list(prog_var)::in, var_table::in,
-    pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
+    pred_proc_id::in, rtti_varmaps::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-setup_typeinfo_deps([], _, _, _, !VarDep).
+setup_typeinfo_deps([], _, _, _, !LocalVarUsageMap).
 setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
-        !VarDep) :-
-    setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep),
-    setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, RttiVarMaps, !VarDep).
+        !LocalVarUsageMap) :-
+    setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps,
+        !LocalVarUsageMap),
+    setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, RttiVarMaps,
+        !LocalVarUsageMap).
 
 :- pred setup_typeinfo_dep(prog_var::in, var_table::in,
-    pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
+    pred_proc_id::in, rtti_varmaps::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
+setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps,
+        !LocalVarUsageMap) :-
     lookup_var_type(VarTypeMap, Var, Type),
     type_vars_in_type(Type, TVars),
     list.map(tvar_to_type_info_var(RttiVarMaps), TVars, TypeInfoVars),
-    list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars, !VarDep).
+    list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars,
+        !LocalVarUsageMap).
 
 :- pred tvar_to_type_info_var(rtti_varmaps::in, tvar::in, prog_var::out)
     is det.
@@ -639,60 +691,62 @@ tvar_to_type_info_var(RttiVarMaps, TVar, TypeInfoVar) :-
     % argument modes, and set them as used.
     %
 :- pred setup_output_args(module_info::in, proc_info::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-setup_output_args(ModuleInfo, ProcInfo, !VarDep) :-
+setup_output_args(ModuleInfo, ProcInfo, !LocalVarUsageMap) :-
     proc_info_instantiated_head_vars(ModuleInfo, ProcInfo,
         ChangedInstHeadVars),
-    list.foldl(set_var_used, ChangedInstHeadVars, !VarDep).
+    list.foldl(set_var_used, ChangedInstHeadVars, !LocalVarUsageMap).
 
     % Searches for the dependencies of a variable, succeeds if the variable
     % is definitely used.
     %
-:- pred var_is_used(pred_proc_id::in, prog_var::in, var_usage::in) is semidet.
+:- pred var_is_used(global_var_usage_map::in, pred_proc_id::in, prog_var::in)
+    is semidet.
 
-var_is_used(PredProcId, Var, VarUsage) :-
+var_is_used(GlobalVarUsageMap, PredProcId, Var) :-
     not (
-        map.search(VarUsage, PredProcId, UsageInfos),
-        map.contains(UsageInfos, Var)
+        map.search(GlobalVarUsageMap, PredProcId, LocalVarUsageMap),
+        map.contains(LocalVarUsageMap, Var)
     ).
 
-:- pred local_var_is_used(var_dep::in, prog_var::in) is semidet.
+:- pred local_var_is_used(local_var_usage_map::in, prog_var::in) is semidet.
 
-local_var_is_used(VarDep, Var) :-
-    not map.contains(VarDep, Var).
+local_var_is_used(LocalVarUsageMap, Var) :-
+    not map.contains(LocalVarUsageMap, Var).
 
     % Add a list of aliases for a variable.
     %
 :- pred add_aliases(prog_var::in, list(prog_var)::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_aliases(Var, Aliases, !VarDep) :-
-    ( if map.search(!.VarDep, Var, VarInf0) then
-        VarInf0 = unused(VarDep0, ArgDep),
-        set.insert_list(Aliases, VarDep0, VarDep),
-        VarInf = unused(VarDep, ArgDep),
-        map.det_update(Var, VarInf, !VarDep)
+add_aliases(Var, Aliases, !LocalVarUsageMap) :-
+    ( if map.search(!.LocalVarUsageMap, Var, VarInf0) then
+        VarInf0 = unused(AliasVars0, AliasArgs),
+        set.insert_list(Aliases, AliasVars0, AliasVars),
+        VarInf = unused(AliasVars, AliasArgs),
+        map.det_update(Var, VarInf, !LocalVarUsageMap)
     else
         true
     ).
 
-:- pred set_list_vars_used(list(prog_var)::in, var_dep::in, var_dep::out)
-    is det.
+:- pred set_list_vars_used(list(prog_var)::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-set_list_vars_used(Vars, !VarDep) :-
-    map.delete_list(Vars, !VarDep).
+set_list_vars_used(Vars, !LocalVarUsageMap) :-
+    map.delete_list(Vars, !LocalVarUsageMap).
 
-:- pred set_var_used(prog_var::in, var_dep::in, var_dep::out) is det.
+:- pred set_var_used(prog_var::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-set_var_used(Var, !VarDep) :-
-    map.delete(Var, !VarDep).
+set_var_used(Var, !LocalVarUsageMap) :-
+    map.delete(Var, !LocalVarUsageMap).
 
-:- pred search_local_var(var_dep::in, prog_var::in, usage_info::out)
-    is semidet.
+:- pred search_local_var(local_var_usage_map::in, prog_var::in,
+    usage_info::out) is semidet.
 
-search_local_var(VarDep, Var, UsageInfo) :-
-    map.search(VarDep, Var, UsageInfo).
+search_local_var(LocalVarUsageMap, Var, UsageInfo) :-
+    map.search(LocalVarUsageMap, Var, UsageInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -706,35 +760,36 @@ search_local_var(VarDep, Var, UsageInfo) :-
             ).
 
 :- pred unused_args_traverse_goal(unused_args_info::in, hlds_goal::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-unused_args_traverse_goal(Info, Goal, !VarDep) :-
+unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = conj(_ConjType, Goals),
-        unused_args_traverse_goals(Info, Goals, !VarDep)
+        unused_args_traverse_goals(Info, Goals, !LocalVarUsageMap)
     ;
         GoalExpr = disj(Goals),
-        unused_args_traverse_goals(Info, Goals, !VarDep)
+        unused_args_traverse_goals(Info, Goals, !LocalVarUsageMap)
     ;
         GoalExpr = switch(Var, _, Cases),
-        set_var_used(Var, !VarDep),
+        set_var_used(Var, !LocalVarUsageMap),
         list_case_to_list_goal(Cases, Goals),
-        unused_args_traverse_goals(Info, Goals, !VarDep)
+        unused_args_traverse_goals(Info, Goals, !LocalVarUsageMap)
     ;
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
-        module_info_pred_proc_info(Info ^ unarg_module_info, PredId, ProcId,
-            _PredInfo, ProcInfo),
+        ModuleInfo = Info ^ unarg_module_info,
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars, !VarDep)
+        add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars,
+            !LocalVarUsageMap)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        unused_args_traverse_goal(Info, Cond, !VarDep),
-        unused_args_traverse_goal(Info, Then, !VarDep),
-        unused_args_traverse_goal(Info, Else, !VarDep)
+        unused_args_traverse_goal(Info, Cond, !LocalVarUsageMap),
+        unused_args_traverse_goal(Info, Then, !LocalVarUsageMap),
+        unused_args_traverse_goal(Info, Else, !LocalVarUsageMap)
     ;
         GoalExpr = negation(SubGoal),
-        unused_args_traverse_goal(Info, SubGoal, !VarDep)
+        unused_args_traverse_goal(Info, SubGoal, !LocalVarUsageMap)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -746,13 +801,13 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
-            unused_args_traverse_goal(Info, SubGoal, !VarDep)
+            unused_args_traverse_goal(Info, SubGoal, !LocalVarUsageMap)
         )
     ;
         GoalExpr = generic_call(GenericCall, Args, _, _, _),
         vars_in_generic_call(GenericCall, CallArgs),
-        set_list_vars_used(CallArgs, !VarDep),
-        set_list_vars_used(Args, !VarDep)
+        set_list_vars_used(CallArgs, !LocalVarUsageMap),
+        set_list_vars_used(Args, !LocalVarUsageMap)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         % Only arguments with names can be used in the foreign code.  The code
@@ -765,21 +820,21 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 MaybeNameAndMode = yes(_)
             ),
         list.filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
-        set_list_vars_used(UsedVars, !VarDep)
+        set_list_vars_used(UsedVars, !LocalVarUsageMap)
     ;
         GoalExpr = unify(LHS, RHS, _, Unify, _),
         (
             Unify = simple_test(Var1, Var2),
-            set_var_used(Var1, !VarDep),
-            set_var_used(Var2, !VarDep)
+            set_var_used(Var1, !LocalVarUsageMap),
+            set_var_used(Var2, !LocalVarUsageMap)
         ;
             Unify = assign(Target, Source),
-            ( if local_var_is_used(!.VarDep, Target) then
+            ( if local_var_is_used(!.LocalVarUsageMap, Target) then
                 % If Target is used to instantiate an output argument,
                 % Source is used.
-                set_var_used(Source, !VarDep)
+                set_var_used(Source, !LocalVarUsageMap)
             else
-                add_aliases(Source, [Target], !VarDep)
+                add_aliases(Source, [Target], !LocalVarUsageMap)
             )
         ;
             Unify = deconstruct(CellVar, _, ArgVars, ArgModes, CanFail, _),
@@ -788,24 +843,24 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 InputVars, OutputVars),
             % The deconstructed variable is used if any of the variables that
             % the deconstruction binds are used.
-            add_aliases(CellVar, OutputVars, !VarDep),
+            add_aliases(CellVar, OutputVars, !LocalVarUsageMap),
             % Treat a deconstruction that further instantiates its left arg
             % as a partial construction.
-            add_construction_aliases(CellVar, InputVars, !VarDep),
+            add_construction_aliases(CellVar, InputVars, !LocalVarUsageMap),
             (
                 CanFail = can_fail,
                 % A deconstruction that can_fail uses its left arg.
-                set_var_used(CellVar, !VarDep)
+                set_var_used(CellVar, !LocalVarUsageMap)
             ;
                 CanFail = cannot_fail
             )
         ;
             Unify = construct(CellVar, _, ArgVars, _, _, _, _),
             expect(unify(CellVar, LHS), $pred, "LHS != CellVar"),
-            ( if local_var_is_used(!.VarDep, CellVar) then
-                set_list_vars_used(ArgVars, !VarDep)
+            ( if local_var_is_used(!.LocalVarUsageMap, CellVar) then
+                set_list_vars_used(ArgVars, !LocalVarUsageMap)
             else
-                add_construction_aliases(CellVar, ArgVars, !VarDep)
+                add_construction_aliases(CellVar, ArgVars, !LocalVarUsageMap)
             )
         ;
             Unify = complicated_unify(_, _, _),
@@ -814,8 +869,8 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             % with --error-check-only and polymorphism has not been run.
             (
                 RHS = rhs_var(RHSVar),
-                set_var_used(RHSVar, !VarDep),
-                set_var_used(LHS, !VarDep)
+                set_var_used(RHSVar, !LocalVarUsageMap),
+                set_var_used(LHS, !LocalVarUsageMap)
             ;
                 ( RHS = rhs_functor(_, _, _)
                 ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _)
@@ -833,9 +888,11 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
     % Add PredProcId - HeadVar as an alias for the same element of Args.
     %
 :- pred add_pred_call_arg_dep(pred_proc_id::in, list(prog_var)::in,
-    list(prog_var)::in, var_dep::in, var_dep::out) is det.
+    list(prog_var)::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_pred_call_arg_dep(PredProcId, LocalArguments, HeadVarIds, !VarDep) :-
+add_pred_call_arg_dep(PredProcId, LocalArguments, HeadVarIds,
+        !LocalVarUsageMap) :-
     (
         LocalArguments = [],
         HeadVarIds = []
@@ -850,28 +907,28 @@ add_pred_call_arg_dep(PredProcId, LocalArguments, HeadVarIds, !VarDep) :-
     ;
         LocalArguments = [Arg | Args],
         HeadVarIds = [HeadVar | HeadVars],
-        add_arg_dep(Arg, PredProcId, HeadVar, !VarDep),
-        add_pred_call_arg_dep(PredProcId, Args, HeadVars, !VarDep)
+        add_arg_dep(Arg, PredProcId, HeadVar, !LocalVarUsageMap),
+        add_pred_call_arg_dep(PredProcId, Args, HeadVars, !LocalVarUsageMap)
     ).
 
 :- pred add_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_arg_dep(Var, PredProcId, Arg, !VarDep) :-
-    ( if search_local_var(!.VarDep, Var, VarUsage0) then
-        VarUsage0 = unused(VarDep, ArgDep0),
-        set.insert(arg_var_in_proc(PredProcId, Arg), ArgDep0, ArgDep),
-        VarUsage = unused(VarDep, ArgDep),
-        map.det_update(Var, VarUsage, !VarDep)
+add_arg_dep(Var, PredProcId, Arg, !LocalVarUsageMap) :-
+    ( if search_local_var(!.LocalVarUsageMap, Var, VarUsage0) then
+        VarUsage0 = unused(AliasVars, AliasArgs0),
+        set.insert(arg_var_in_proc(PredProcId, Arg), AliasArgs0, AliasArgs),
+        VarUsage = unused(AliasVars, AliasArgs),
+        map.det_update(Var, VarUsage, !LocalVarUsageMap)
     else
         true
     ).
 
 :- pred add_rev_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_rev_arg_dep(Var, PredProcId, Arg, !VarDep) :-
-    add_arg_dep(Arg, PredProcId, Var, !VarDep).
+add_rev_arg_dep(Var, PredProcId, Arg, !LocalVarUsageMap) :-
+    add_arg_dep(Arg, PredProcId, Var, !LocalVarUsageMap).
 
     % Partition the arguments to a deconstruction into inputs
     % and outputs.
@@ -923,19 +980,19 @@ partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
     % Add Alias as an alias for all of Vars.
     %
 :- pred add_construction_aliases(prog_var::in, list(prog_var)::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_construction_aliases(_, [], !VarDep).
-add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
-    ( if search_local_var(!.VarDep, Var, VarInfo0) then
-        VarInfo0 = unused(VarDep0, ArgDep),
-        set.insert(Alias, VarDep0, VarDep),
-        VarInfo = unused(VarDep, ArgDep),
-        map.set(Var, VarInfo, !VarDep)
+add_construction_aliases(_, [], !LocalVarUsageMap).
+add_construction_aliases(AliasVar, [Var | Vars], !LocalVarUsageMap) :-
+    ( if search_local_var(!.LocalVarUsageMap, Var, VarInfo0) then
+        VarInfo0 = unused(AliasVars0, AliasArgs),
+        set.insert(AliasVar, AliasVars0, AliasVars),
+        VarInfo = unused(AliasVars, AliasArgs),
+        map.det_update(Var, VarInfo, !LocalVarUsageMap)
     else
         true
     ),
-    add_construction_aliases(Alias, Vars, !VarDep).
+    add_construction_aliases(AliasVar, Vars, !LocalVarUsageMap).
 
 :- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
 
@@ -944,12 +1001,12 @@ list_case_to_list_goal([case(_, _, Goal) | Cases], [Goal | Goals]) :-
     list_case_to_list_goal(Cases, Goals).
 
 :- pred unused_args_traverse_goals(unused_args_info::in, list(hlds_goal)::in,
-    var_dep::in, var_dep::out) is det.
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-unused_args_traverse_goals(_, [], !VarDep).
-unused_args_traverse_goals(Info, [Goal | Goals], !VarDep) :-
-    unused_args_traverse_goal(Info, Goal, !VarDep),
-    unused_args_traverse_goals(Info, Goals, !VarDep).
+unused_args_traverse_goals(_, [], !LocalVarUsageMap).
+unused_args_traverse_goals(Info, [Goal | Goals], !LocalVarUsageMap) :-
+    unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap),
+    unused_args_traverse_goals(Info, Goals, !LocalVarUsageMap).
 
 %-----------------------------------------------------------------------------%
 %
@@ -959,19 +1016,21 @@ unused_args_traverse_goals(Info, [Goal | Goals], !VarDep) :-
     % Do a full iteration, check if anything changed, if so, repeat.
     %
 :- pred unused_args_pass(int::in, module_info::in, list(pred_proc_id)::in,
-    var_usage::in, var_usage::out) is det.
+    global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_pass(PassNum, ModuleInfo, LocalPredProcIds, !VarUsage) :-
-    unused_args_single_pass(LocalPredProcIds, no, Changed, !VarUsage),
+unused_args_pass(PassNum, ModuleInfo, LocalPredProcIds, !GlobalVarUsageMap) :-
+    unused_args_single_pass(LocalPredProcIds, no, Changed, !GlobalVarUsageMap),
     (
         Changed = yes,
         trace [compile_time(flag("unused_args_var_usage")), io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             io.format(DebugStream,
                 "\nVARIABLE USAGE MAP AFTER PASS %d\n", [i(PassNum)], !IO),
-            write_var_usage_map(DebugStream, ModuleInfo, !.VarUsage, !IO)
+            write_global_var_usage_map(DebugStream, ModuleInfo,
+                !.GlobalVarUsageMap, !IO)
         ),
-        unused_args_pass(PassNum + 1, ModuleInfo, LocalPredProcIds, !VarUsage)
+        unused_args_pass(PassNum + 1, ModuleInfo, LocalPredProcIds,
+        !GlobalVarUsageMap)
     ;
         Changed = no
     ).
@@ -979,54 +1038,57 @@ unused_args_pass(PassNum, ModuleInfo, LocalPredProcIds, !VarUsage) :-
     % Check over all the procedures in a module.
     %
 :- pred unused_args_single_pass(list(pred_proc_id)::in, bool::in, bool::out,
-    var_usage::in, var_usage::out) is det.
+    global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_single_pass([], !Changed, !VarUsage).
-unused_args_single_pass([PredProcId | PredProcIds], !Changed, !VarUsage) :-
-    unused_args_check_proc(PredProcId, !Changed, !VarUsage),
-    unused_args_single_pass(PredProcIds, !Changed, !VarUsage).
+unused_args_single_pass([], !Changed, !GlobalVarUsageMap).
+unused_args_single_pass([PredProcId | PredProcIds],
+        !Changed, !GlobalVarUsageMap) :-
+    unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap),
+    unused_args_single_pass(PredProcIds, !Changed, !GlobalVarUsageMap).
 
     % Check a single procedure.
     %
 :- pred unused_args_check_proc(pred_proc_id::in, bool::in, bool::out,
-    var_usage::in, var_usage::out) is det.
+    global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_check_proc(PredProcId, !Changed, !VarUsage) :-
-    map.lookup(!.VarUsage, PredProcId, LocalUsages0),
+unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
+    map.lookup(!.GlobalVarUsageMap, PredProcId, LocalUsages0),
     map.keys(LocalUsages0, Vars),
-    unused_args_check_all_vars(!.VarUsage, Vars, no, LocalChanged,
-        LocalUsages0, LocalUsages),
+    unused_args_check_all_vars(!.GlobalVarUsageMap, Vars,
+        unchanged, LocalChanged, LocalUsages0, LocalUsages),
     (
-        LocalChanged = yes,
-        map.det_update(PredProcId, LocalUsages, !VarUsage),
+        LocalChanged = changed,
+        map.det_update(PredProcId, LocalUsages, !GlobalVarUsageMap),
         !:Changed = yes
     ;
-        LocalChanged = no
+        LocalChanged = unchanged
     ).
 
     % Check each var of a procedure in turn.
     %
-:- pred unused_args_check_all_vars(var_usage::in, list(prog_var)::in,
-    bool::in, bool::out, var_dep::in, var_dep::out) is det.
+:- pred unused_args_check_all_vars(global_var_usage_map::in,
+    list(prog_var)::in, maybe_changed::in, maybe_changed::out,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
 unused_args_check_all_vars(_, [], !Changed, !LocalVars).
-unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
+unused_args_check_all_vars(GlobalVarUsageMap, [Var | Vars],
+        !Changed, !LocalVars) :-
     ( if search_local_var(!.LocalVars, Var, Usage) then
-        Usage = unused(VarDep0, ArgDep0),
+        Usage = unused(AliasVars0, AliasArgs0),
         ( if
             (
                 % Check whether any arguments that the current variable
                 % depends on are used.
                 some [Argument] (
-                    set.member(Argument, ArgDep0),
+                    set.member(Argument, AliasArgs0),
                     Argument = arg_var_in_proc(PredProcId, ArgVar),
-                    var_is_used(PredProcId, ArgVar, VarUsage)
+                    var_is_used(GlobalVarUsageMap, PredProcId, ArgVar)
                 )
             ;
                 % Check whether any variables that the current variable
                 % depends on are used.
                 some [X] (
-                    set.member(X, VarDep0),
+                    set.member(X, AliasVars0),
                     local_var_is_used(!.LocalVars, X)
                 )
             )
@@ -1037,28 +1099,30 @@ unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
             % satisfying the above condition to !LocalVars until we can't add
             % any more.
             set_var_used(Var, !LocalVars),
-            !:Changed = yes
+            !:Changed = changed
         else
             true
         )
     else
         true
     ),
-    unused_args_check_all_vars(VarUsage, Vars, !Changed, !LocalVars).
+    unused_args_check_all_vars(GlobalVarUsageMap, Vars, !Changed, !LocalVars).
 
 :- pred get_unused_arg_info(module_info::in, list(pred_proc_id)::in,
-    var_usage::in, unused_arg_info::in, unused_arg_info::out) is det.
+    global_var_usage_map::in,
+    unused_arg_info::in, unused_arg_info::out) is det.
 
 get_unused_arg_info(_, [], _, !UnusedArgInfo).
-get_unused_arg_info(ModuleInfo, [PredProcId | PredProcIds], VarUsage,
+get_unused_arg_info(ModuleInfo, [PredProcId | PredProcIds], GlobalVarUsageMap,
         !UnusedArgInfo) :-
     PredProcId = proc(PredId, ProcId),
-    map.lookup(VarUsage, PredProcId, LocalVarUsage),
+    map.lookup(GlobalVarUsageMap, PredProcId, LocalVarUsageMap),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    get_unused_arg_nos(LocalVarUsage, HeadVars, 1, UnusedArgs),
+    get_unused_arg_nos(LocalVarUsageMap, HeadVars, 1, UnusedArgs),
     map.det_insert(PredProcId, UnusedArgs, !UnusedArgInfo),
-    get_unused_arg_info(ModuleInfo, PredProcIds, VarUsage, !UnusedArgInfo).
+    get_unused_arg_info(ModuleInfo, PredProcIds, GlobalVarUsageMap,
+        !UnusedArgInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1108,9 +1172,8 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
         IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),
             IntermodResultsTriples),
 
-        pred_info_get_orig_arity(OrigPredInfo,
-            pred_form_arity(PredFormArityInt)),
-        FuncInfo = unused_args_func_info(PredFormArityInt),
+        pred_info_get_orig_arity(OrigPredInfo, PredFormArity),
+        FuncInfo = unused_args_func_info(PredFormArity),
         Answer = unused_args_answer(UnusedArgs),
 
         FilterUnused =
@@ -1380,8 +1443,8 @@ remove_listof_elements(ArgNo, ElemsToRemove, !List) :-
         )
     ).
 
-:- pred get_unused_arg_nos(var_dep::in, list(prog_var)::in, int::in,
-    list(int)::out) is det.
+:- pred get_unused_arg_nos(local_var_usage_map::in, list(prog_var)::in,
+    int::in, list(int)::out) is det.
 
 get_unused_arg_nos(_, [], _, []).
 get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
@@ -1395,20 +1458,23 @@ get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred unused_args_fixup_module(bool::in, var_usage::in,
+:- pred unused_args_fixup_module(bool::in, global_var_usage_map::in,
     list(pred_proc_id)::in, proc_call_info::in,
     module_info::in, module_info::out) is det.
 
-unused_args_fixup_module(VeryVerbose, VarUsage, PredProcIds, ProcCallInfo,
-        !ModuleInfo) :-
-    list.foldl(unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo),
+unused_args_fixup_module(VeryVerbose, GlobalVarUsageMap, PredProcIds,
+        ProcCallInfo, !ModuleInfo) :-
+    list.foldl(
+        unused_args_fixup_proc_msg(VeryVerbose, GlobalVarUsageMap,
+            ProcCallInfo),
         PredProcIds, !ModuleInfo).
 
-:- pred unused_args_fixup_proc(bool::in, var_usage::in, proc_call_info::in,
-    pred_proc_id::in, module_info::in, module_info::out) is det.
+:- pred unused_args_fixup_proc_msg(bool::in, global_var_usage_map::in,
+    proc_call_info::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
-unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProcId,
-        !ModuleInfo) :-
+unused_args_fixup_proc_msg(VeryVerbose, GlobalVarUsageMap, ProcCallInfo,
+        PredProcId, !ModuleInfo) :-
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
@@ -1428,12 +1494,13 @@ unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProcId,
     ;
         VeryVerbose = no
     ),
-    do_unused_args_fixup_proc(VarUsage, PredProcId, ProcCallInfo, !ModuleInfo).
+    unused_args_fixup_proc(GlobalVarUsageMap, PredProcId, ProcCallInfo,
+        !ModuleInfo).
 
-:- pred do_unused_args_fixup_proc(var_usage::in, pred_proc_id::in,
+:- pred unused_args_fixup_proc(global_var_usage_map::in, pred_proc_id::in,
     proc_call_info::in, module_info::in, module_info::out) is det.
 
-do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
+unused_args_fixup_proc(GlobalVarUsageMap, OldPredProcId, ProcCallInfo,
         !ModuleInfo) :-
     % Work out which proc we should be fixing up.
     ( if map.search(ProcCallInfo, OldPredProcId, OldProcCallInfo) then
@@ -1442,7 +1509,7 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
         OldPredProcId = proc(PredId, ProcId),
         UnusedArgs = []
     ),
-    map.lookup(VarUsage, OldPredProcId, UsageInfos),
+    map.lookup(GlobalVarUsageMap, OldPredProcId, UsageInfos),
     map.keys(UsageInfos, UnusedVars),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
@@ -2074,23 +2141,25 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_var_usage_map(io.text_output_stream::in, module_info::in,
-    var_usage::in, io::di, io::uo) is det.
+:- pred write_global_var_usage_map(io.text_output_stream::in, module_info::in,
+    global_var_usage_map::in, io::di, io::uo) is det.
 
-write_var_usage_map(Stream, ModuleInfo, VarUsageMap, !IO) :-
-    map.to_assoc_list(VarUsageMap, VarUsageList),
-    list.foldl(write_var_usage(Stream, ModuleInfo), VarUsageList, !IO).
+write_global_var_usage_map(Stream, ModuleInfo, GlobalVarUsageMap, !IO) :-
+    map.foldl(write_local_var_usage_map(Stream, ModuleInfo),
+        GlobalVarUsageMap, !IO).
 
-:- pred write_var_usage(io.text_output_stream::in, module_info::in,
-    pair(pred_proc_id, var_dep)::in, io::di, io::uo) is det.
+:- pred write_local_var_usage_map(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, local_var_usage_map::in, io::di, io::uo) is det.
 
-write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
+write_local_var_usage_map(Stream, ModuleInfo, PredProcId,
+        LocalVarUsageMap, !IO) :-
     PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     io.format(Stream, "\n%s:\n", [s(PredProcIdStr)], !IO),
-    map.to_assoc_list(VarDepMap, VarDepList),
+    map.to_assoc_list(LocalVarUsageMap, LocalVarUsages),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
-    list.foldl2(write_usage_info(Stream, ModuleInfo, VarTable), VarDepList,
+    list.foldl2(
+        write_var_usage_info(Stream, ModuleInfo, VarTable), LocalVarUsages,
         [], RevNoDependVars, !IO),
     list.reverse(RevNoDependVars, NoDependVars),
     (
@@ -2102,11 +2171,11 @@ write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
         io.format(Stream, "nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
     ).
 
-:- pred write_usage_info(io.text_output_stream::in, module_info::in,
+:- pred write_var_usage_info(io.text_output_stream::in, module_info::in,
     var_table::in, pair(prog_var, usage_info)::in,
     list(prog_var)::in, list(prog_var)::out, io::di, io::uo) is det.
 
-write_usage_info(Stream, ModuleInfo, VarTable, Var - UsageInfo,
+write_var_usage_info(Stream, ModuleInfo, VarTable, Var - UsageInfo,
         !RevNoDependVars, !IO) :-
     UsageInfo = unused(Vars, Args),
     set.to_sorted_list(Vars, VarList),
