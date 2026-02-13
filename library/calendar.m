@@ -186,6 +186,38 @@
     % seconds and microseconds. Internally a duration is represented
     % using only months, days, seconds and microseconds components.
     %
+    % The year and month components are context-dependent units.
+    % Their actual length in absolute time varies depending on the specific
+    % dates to which they are applied:
+    %   - A year is treated as 12 months
+    %   - A month's length varies (28-31 days depending on the month)
+    %   - A year's length varies (365 or 366 days depending on leap years)
+    %
+    % This context-dependent behavior is intentional and lets durations
+    % represent calendar-based time periods accurately. For example:
+    %   - Adding "1 month" to January 15 gives February 15 (31 days later)
+    %   - Adding "1 month" to February 15 gives March 15 (28 or 29 days later)
+    %   - Adding "1 year" to February 29, 2020 gives February 28, 2021
+    %
+    % In contrast, days, hours, minutes, seconds and microseconds are
+    % fixed-length units:
+    %   - 1 day = 24 hours
+    %   - 1 hour = 60 minutes
+    %   - 1 minute = 60 seconds
+    %   - 1 second = 1,000,000 microseconds
+    %
+    % Note on leap seconds: Although individual dates can represent times
+    % with leap seconds (seconds in the range 60-61), this module ignores
+    % leap seconds when computing durations. When calculating the duration
+    % between two dates, any leap seconds that occurred in that interval
+    % are not accounted for. This means a "day" in a duration is always
+    % treated as exactly 86,400 seconds, even though actual UTC days
+    % containing leap seconds may be 86,401 seconds.
+    %
+    % If you need a fixed absolute time period that is independent of
+    % calendar context, then use only the day, hour, minute, second and
+    % microsecond components.
+    %
 :- type duration.
 
     % Duration components.
@@ -209,7 +241,7 @@
 :- func microseconds(duration) = microseconds.
 
     % init_duration(Years, Months, Days, Hours, Minutes,
-    %   Seconds, MicroSeconds) = Duration.
+    %   Seconds, MicroSeconds) = Duration:
     % Create a new duration. All of the components should either be
     % non-negative or non-positive (they can all be zero).
     %
@@ -433,12 +465,6 @@
 
 :- type duration
     --->    duration(
-                % XXX I (zs) think that a duration should be expressed
-                % purely in terms of units that have fixed length.
-                % Seconds and microseconds qualify. Months do not,
-                % since obviously different months have different lengths.
-                % Even days do not have a fixed length in the presence of
-                % leap seconds, though this module ignores those.
                 dur_months          :: int,
                 dur_days            :: int,
                 dur_seconds         :: int,
