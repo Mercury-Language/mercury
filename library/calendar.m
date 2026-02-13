@@ -214,10 +214,6 @@
     % treated as exactly 86,400 seconds, even though actual UTC days
     % containing leap seconds may be 86,401 seconds.
     %
-    % If you need a fixed absolute time period that is independent of
-    % calendar context, then use only the day, hour, minute, second and
-    % microsecond components.
-    %
 :- type duration.
 
     % Duration components.
@@ -240,10 +236,15 @@
 :- func seconds(duration) = seconds.
 :- func microseconds(duration) = microseconds.
 
-    % init_duration(Years, Months, Days, Hours, Minutes,
-    %   Seconds, MicroSeconds) = Duration:
+    % init_duration(Years, Months, Days, Hours, Minutes, Seconds,
+    %   MicroSeconds) = Duration:
+    %
     % Create a new duration. All of the components should either be
     % non-negative or non-positive (they can all be zero).
+    %
+    % If you need a fixed absolute time period that is independent of calendar
+    % context, then use only the days, hours, minutes, seconds and microseconds
+    % components.
     %
 :- func init_duration(years, months, days, hours, minutes, seconds,
     microseconds) = duration.
