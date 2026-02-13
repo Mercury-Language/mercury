@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -225,9 +225,9 @@
 :- pred make_instance_method_pred_name(class_id::in,
     sym_name::in, user_arity::in, list(mer_type)::in, string::out) is det.
 
-    % Given a list of types, mangle the names so into a string which
+    % Given a list of types, mangle the names into a string which
     % identifies them. The types must all have their top level functor
-    % bound, with any arguments free variables.
+    % bound, with any arguments being free variables.
     %
 :- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
