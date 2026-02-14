@@ -61,8 +61,18 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred unused_args_process_module(module_info::in, module_info::out,
-    list(error_spec)::out, set(gen_pragma_unused_args_info)::out) is det.
+:- type maybe_gather_pragma_unused_args
+    --->    do_not_gather_pragma_unused_args
+    ;       do_gather_pragma_unused_args.
+
+:- type maybe_record_analysis_unused_args
+    --->    do_not_record_analysis_unused_args
+    ;       do_record_analysis_unused_args.
+
+:- pred unused_args_process_module(maybe_gather_pragma_unused_args::in,
+    maybe_record_analysis_unused_args::in,
+    list(error_spec)::out, set(gen_pragma_unused_args_info)::out,
+    module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -113,7 +123,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -145,7 +154,8 @@
 
 %---------------------------------------------------------------------------%
 
-unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
+unused_args_process_module(GatherPragmas, RecordAnalysis,
+        Specs, PragmaUnusedArgInfos, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     init_global_var_usage_map(GlobalVarUsageMap0, FixpointPredProcIds,
@@ -161,39 +171,25 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         UnusedArgInfo0, UnusedArgInfo),
 
     map.keys(UnusedArgInfo, PredProcIdsToFix),
-    globals.get_op_mode(Globals, OpMode),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
-    ( if
-        OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _),
-        % Only write unused argument analysis pragmas to `.opt' files for
-        % `--intermodule-optimization', not `--intermodule-analysis'.
-        IntermodAnalysis = no
-    then
-        DoGather = do_gather_pragma_unused_args
-    else
-        DoGather = do_not_gather_pragma_unused_args
-    ),
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarnBool),
+    ( DoWarnBool = no,  DoWarn = do_not_warn_unused_args
+    ; DoWarnBool = yes, DoWarn = do_warn_unused_args
+    ),
     ( if
-        ( DoWarnBool = yes
-        ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _)
+        ( DoWarn = do_warn_unused_args
+        ; GatherPragmas = do_gather_pragma_unused_args
         )
     then
         set.init(WarnedPredIds0),
-        ( DoWarnBool = no,  DoWarn = do_not_warn_unused_args
-        ; DoWarnBool = yes, DoWarn = do_warn_unused_args
-        ),
         gather_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
-            DoWarn, DoGather, PredProcIdsToFix, WarnedPredIds0,
-            [], Specs, set.init, UnusedArgInfos)
+            DoWarn, GatherPragmas, PredProcIdsToFix, WarnedPredIds0,
+            [], Specs, set.init, PragmaUnusedArgInfos)
     else
         Specs = [],
-        set.init(UnusedArgInfos)
+        set.init(PragmaUnusedArgInfos)
     ),
-    ( if
-        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry), _)
-    then
+    (
+        RecordAnalysis = do_record_analysis_unused_args,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         list.foldl(
@@ -202,8 +198,8 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         list.foldl(record_intermod_dependencies(!.ModuleInfo),
             FixpointPredProcIds, AnalysisInfo1, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
-    else
-        true
+    ;
+        RecordAnalysis = do_not_record_analysis_unused_args
     ),
     globals.get_opt_tuple(Globals, OptTuple),
     OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
@@ -1648,10 +1644,6 @@ unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
     --->    do_not_warn_unused_args
     ;       do_warn_unused_args.
 
-:- type maybe_gather_pragma_unused_args
-    --->    do_not_gather_pragma_unused_args
-    ;       do_gather_pragma_unused_args.
-
     % Except for type_infos, all args that are unused in one mode of a
     % predicate should be unused in all of the modes of a predicate, so we
     % only need to put out one warning for each predicate.
@@ -1664,10 +1656,10 @@ unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
     set(gen_pragma_unused_args_info)::out) is det.
 
 gather_warnings_and_pragmas(_, _, _, _, [], _,
-        !Specs, !UnusedArgInfos).
+        !Specs, !PragmaUnusedArgInfos).
 gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
         [PredProcId | PredProcIds], !.WarnedPredIds,
-        !Specs, !UnusedArgInfos) :-
+        !Specs, !PragmaUnusedArgInfos) :-
     ( if map.search(UnusedArgInfo, PredProcId, UnusedArgs) then
         PredProcId = proc(PredId, ProcId) ,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1686,7 +1678,7 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
             ;
                 DoPragma = do_gather_pragma_unused_args,
                 maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
-                    !UnusedArgInfos)
+                    !PragmaUnusedArgInfos)
             )
         else
             true
@@ -1695,7 +1687,7 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
         true
     ),
     gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
-        PredProcIds, !.WarnedPredIds, !Specs, !UnusedArgInfos).
+        PredProcIds, !.WarnedPredIds, !Specs, !PragmaUnusedArgInfos).
 
 :- pred may_gather_warning_pragma_for_pred(module_info::in,
     pred_id::in, pred_info::in) is semidet.

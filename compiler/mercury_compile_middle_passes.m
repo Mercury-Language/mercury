@@ -244,8 +244,9 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     maybe_dump_hlds(ProgressStream, !.HLDS, 163, "structure_reuse",
         !DumpInfo, !IO),
 
-    maybe_unused_args(ProgressStream, Verbose, Stats, _UnusedArgsInfos,
-        !HLDS, !Specs, !IO),
+    maybe_unused_args(ProgressStream, Verbose, Stats,
+        do_not_gather_pragma_unused_args, do_not_record_analysis_unused_args,
+        _PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 165, "unused_args",
         !DumpInfo, !IO),
 
@@ -372,7 +373,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
 
 %---------------------------------------------------------------------------%
 
-middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
+middle_pass_for_opt_file(ProgressStream, !HLDS, PragmaUnusedArgsInfos,
         !Specs, !IO) :-
     % NOTE If you add any passes here, you will probably need to change the
     % code in mercury_compile_front_end.m that decides whether to call
@@ -400,8 +401,9 @@ middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
     ),
     maybe_closure_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_unused_args(ProgressStream, Verbose, Stats, UnusedArgsInfos,
-        !HLDS, !Specs, !IO),
+    maybe_unused_args(ProgressStream, Verbose, Stats,
+        do_gather_pragma_unused_args, do_not_record_analysis_unused_args,
+        PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
     maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
@@ -621,8 +623,9 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 163, "structure_reuse",
         !DumpInfo, !IO),
-    maybe_unused_args(ProgressStream, Verbose, Stats, _UnusedArgsInfos, !HLDS,
-        !Specs, !IO),
+    maybe_unused_args(ProgressStream, Verbose, Stats,
+        do_not_gather_pragma_unused_args, do_record_analysis_unused_args,
+        _PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 165, "unused_args",
         !DumpInfo, !IO),
     maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
@@ -1225,10 +1228,12 @@ maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
+    maybe_gather_pragma_unused_args::in, maybe_record_analysis_unused_args::in,
     set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_unused_args(ProgressStream, Verbose, Stats, UnusedArgsInfos,
+maybe_unused_args(ProgressStream, Verbose, Stats,
+        GatherPragmas, RecordAnalysis, PragmaUnusedArgsInfos,
         !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -1244,12 +1249,13 @@ maybe_unused_args(ProgressStream, Verbose, Stats, UnusedArgsInfos,
         maybe_write_string(ProgressStream, Verbose,
             "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        unused_args_process_module(!HLDS, UnusedSpecs, UnusedArgsInfos),
+        unused_args_process_module(GatherPragmas, RecordAnalysis,
+            UnusedSpecs, PragmaUnusedArgsInfos, !HLDS),
         !:Specs = UnusedSpecs ++ !.Specs,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
-        set.init(UnusedArgsInfos)
+        set.init(PragmaUnusedArgsInfos)
     ).
 
 %---------------------------------------------------------------------------%
