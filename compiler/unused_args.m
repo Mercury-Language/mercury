@@ -170,17 +170,20 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         % `--intermodule-optimization', not `--intermodule-analysis'.
         IntermodAnalysis = no
     then
-        DoGather = yes
+        DoGather = do_gather_pragma_unused_args
     else
-        DoGather = no
+        DoGather = do_not_gather_pragma_unused_args
     ),
-    globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),
+    globals.lookup_bool_option(Globals, warn_unused_args, DoWarnBool),
     ( if
-        ( DoWarn = yes
+        ( DoWarnBool = yes
         ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _)
         )
     then
         set.init(WarnedPredIds0),
+        ( DoWarnBool = no,  DoWarn = do_not_warn_unused_args
+        ; DoWarnBool = yes, DoWarn = do_warn_unused_args
+        ),
         gather_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
             DoWarn, DoGather, PredProcIdsToFix, WarnedPredIds0,
             [], Specs, set.init, UnusedArgInfos)
@@ -512,7 +515,7 @@ set_vars_to_unaliased_unused([Var | Vars], !LocalVarUsageMap) :-
 record_output_args_as_used(ModuleInfo, ProcInfo, !LocalVarUsageMap) :-
     proc_info_instantiated_head_vars(ModuleInfo, ProcInfo,
         ChangedInstHeadVars),
-    list.foldl(record_var_as_used, ChangedInstHeadVars, !LocalVarUsageMap).
+    record_vars_as_used(ChangedInstHeadVars, !LocalVarUsageMap).
 
     % For each variable, ensure the typeinfos describing the type parameters
     % of the type of the variable depend on the head variable. For example,
@@ -635,7 +638,7 @@ unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap) :-
     prog_var::in, unify_rhs::in, unification::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-unused_args_traverse_unify(Info, LHS, RHS, Unify, !LocalVarUsageMap) :-
+unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
     (
         Unify = simple_test(Var1, Var2),
         record_var_as_used(Var1, !LocalVarUsageMap),
@@ -650,8 +653,16 @@ unused_args_traverse_unify(Info, LHS, RHS, Unify, !LocalVarUsageMap) :-
             add_aliases(Source, [Target], !LocalVarUsageMap)
         )
     ;
+        Unify = construct(CellVar, _, ArgVars, _, _, _, _),
+        expect(unify(CellVar, LHSVar), $pred, "LHSVar != CellVar"),
+        ( if local_var_is_used(!.LocalVarUsageMap, CellVar) then
+            record_vars_as_used(ArgVars, !LocalVarUsageMap)
+        else
+            add_construction_aliases(CellVar, ArgVars, !LocalVarUsageMap)
+        )
+    ;
         Unify = deconstruct(CellVar, _, ArgVars, ArgModes, CanFail, _),
-        expect(unify(CellVar, LHS), $pred, "LHS != CellVar"),
+        expect(unify(CellVar, LHSVar), $pred, "LHSVar != CellVar"),
         partition_deconstruct_args(Info, ArgVars, ArgModes,
             InputVars, OutputVars),
         % The deconstructed variable is used if any of the variables that
@@ -668,14 +679,6 @@ unused_args_traverse_unify(Info, LHS, RHS, Unify, !LocalVarUsageMap) :-
             CanFail = cannot_fail
         )
     ;
-        Unify = construct(CellVar, _, ArgVars, _, _, _, _),
-        expect(unify(CellVar, LHS), $pred, "LHS != CellVar"),
-        ( if local_var_is_used(!.LocalVarUsageMap, CellVar) then
-            record_vars_as_used(ArgVars, !LocalVarUsageMap)
-        else
-            add_construction_aliases(CellVar, ArgVars, !LocalVarUsageMap)
-        )
-    ;
         Unify = complicated_unify(_, _, _),
         % These should be transformed into calls by polymorphism.m.
         % This is here to cover the case where unused arguments is called
@@ -683,7 +686,7 @@ unused_args_traverse_unify(Info, LHS, RHS, Unify, !LocalVarUsageMap) :-
         (
             RHS = rhs_var(RHSVar),
             record_var_as_used(RHSVar, !LocalVarUsageMap),
-            record_var_as_used(LHS, !LocalVarUsageMap)
+            record_var_as_used(LHSVar, !LocalVarUsageMap)
         ;
             ( RHS = rhs_functor(_, _, _)
             ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _)
@@ -1641,12 +1644,21 @@ unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_warn_unused_args
+    --->    do_not_warn_unused_args
+    ;       do_warn_unused_args.
+
+:- type maybe_gather_pragma_unused_args
+    --->    do_not_gather_pragma_unused_args
+    ;       do_gather_pragma_unused_args.
+
     % Except for type_infos, all args that are unused in one mode of a
     % predicate should be unused in all of the modes of a predicate, so we
     % only need to put out one warning for each predicate.
     %
 :- pred gather_warnings_and_pragmas(module_info::in, unused_arg_info::in,
-    bool::in, bool::in, list(pred_proc_id)::in, set(pred_id)::in,
+    maybe_warn_unused_args::in, maybe_gather_pragma_unused_args::in,
+    list(pred_proc_id)::in, set(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out,
     set(gen_pragma_unused_args_info)::in,
     set(gen_pragma_unused_args_info)::out) is det.
@@ -1660,63 +1672,21 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
         PredProcId = proc(PredId, ProcId) ,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ( if
-            Name = pred_info_name(PredInfo),
-            not pred_info_is_imported(PredInfo),
-            pred_info_get_status(PredInfo, PredStatus),
-            PredStatus \= pred_status(status_opt_imported),
-
-            % Don't warn about builtins that have unused arguments.
-            not pred_info_is_builtin(PredInfo),
-            not is_unify_index_or_compare_pred(PredInfo),
-
-            % Don't warn about stubs for procedures with no clauses --
-            % in that case, we *expect* none of the arguments to be used.
-            pred_info_get_markers(PredInfo, Markers),
-            not marker_is_present(Markers, marker_stub),
-
-            % Don't warn about lambda expressions not using arguments.
-            % (The warning message for these doesn't contain context,
-            % so it's useless).
-            not string.sub_string_search(Name, "__LambdaGoal__", _),
-
-            % Don't warn for a specialized version.
-            not (
-                string.sub_string_search(Name, "__ho", Position),
-                string.length(Name, Length),
-                IdLen = Length - Position - 4,
-                string.right(Name, IdLen, Id),
-                string.to_int(Id, _)
-            ),
-            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
-            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds),
-
-            % Don't warn for a loop-invariant hoisting-generated procedure.
-            pred_info_get_origin(PredInfo, Origin),
-            not (
-                Origin = origin_proc_transform(proc_transform_loop_inv(_, _),
-                    _, _, _)
-            ),
-
-            % XXX We don't currently generate pragmas for the automatically
-            % generated class instance methods because the compiler aborts
-            % when trying to read them back in from the `.opt' files.
-            not marker_is_present(Markers, marker_class_instance_method),
-            not marker_is_present(Markers, marker_named_class_instance_method)
+            may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo)
         then
             (
-                DoPragma = no
+                DoWarn = do_not_warn_unused_args
             ;
-                DoPragma = yes,
-                maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
-                    !UnusedArgInfos)
-            ),
-            (
-                DoWarn = no
-            ;
-                DoWarn = yes,
+                DoWarn = do_warn_unused_args,
                 maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId,
                     UnusedArgs, !WarnedPredIds, !Specs)
+            ),
+            (
+                DoPragma = do_not_gather_pragma_unused_args
+            ;
+                DoPragma = do_gather_pragma_unused_args,
+                maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
+                    !UnusedArgInfos)
             )
         else
             true
@@ -1726,6 +1696,53 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
     ),
     gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
         PredProcIds, !.WarnedPredIds, !Specs, !UnusedArgInfos).
+
+:- pred may_gather_warning_pragma_for_pred(module_info::in,
+    pred_id::in, pred_info::in) is semidet.
+
+may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo) :-
+    not pred_info_is_imported(PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus \= pred_status(status_opt_imported),
+
+    % Don't warn about builtins that have unused arguments.
+    not pred_info_is_builtin(PredInfo),
+    not is_unify_index_or_compare_pred(PredInfo),
+
+    % Don't warn about stubs for procedures with no clauses --
+    % in that case, we *expect* none of the arguments to be used.
+    pred_info_get_markers(PredInfo, Markers),
+    not marker_is_present(Markers, marker_stub),
+
+    % Don't warn about lambda expressions not using arguments.
+    % (The warning message for these doesn't contain context,
+    % so it's useless).
+    Name = pred_info_name(PredInfo),
+    not string.sub_string_search(Name, "__LambdaGoal__", _),
+
+    % Don't warn for a specialized version.
+    not (
+        string.sub_string_search(Name, "__ho", Position),
+        string.length(Name, Length),
+        IdLen = Length - Position - 4,
+        string.right(Name, IdLen, Id),
+        string.to_int(Id, _)
+    ),
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
+    not set.member(PredId, TypeSpecForcePreds),
+
+    % Don't warn for a loop-invariant hoisting-generated procedure.
+    pred_info_get_origin(PredInfo, Origin),
+    not (
+        Origin = origin_proc_transform(proc_transform_loop_inv(_, _), _, _, _)
+    ),
+
+    % XXX We don't currently generate pragmas for the automatically
+    % generated class instance methods because the compiler aborts
+    % when trying to read them back in from the `.opt' files.
+    not marker_is_present(Markers, marker_class_instance_method),
+    not marker_is_present(Markers, marker_named_class_instance_method).
 
 :- pred maybe_gather_warning(module_info::in, pred_info::in,
     pred_id::in, proc_id::in, list(int)::in,
