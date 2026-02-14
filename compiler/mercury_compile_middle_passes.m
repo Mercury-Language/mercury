@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,6 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module set.
@@ -46,10 +45,6 @@
 :- pred output_analysis_file(io.text_output_stream::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
-
-:- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
-    set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -121,6 +116,7 @@
 :- import_module transform_hlds.untupling.
 :- import_module transform_hlds.unused_args.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -1227,6 +1223,10 @@ maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
+    set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_unused_args(ProgressStream, Verbose, Stats, UnusedArgsInfos,
         !HLDS, !Specs, !IO) :-
