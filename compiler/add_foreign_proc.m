@@ -130,7 +130,14 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
             PFSymNameArity, PragmaVars, Attributes, Context, MaybeProcId),
         check_foreign_proc(!.ModuleInfo, !.PredInfo, PFSymNameArity,
             MaybeProcId, ProgVarSet, PragmaVars, Attributes, PragmaImpl,
-            Context, AllowedToAdd, !Specs),
+            Context, AllowedToAdd, !.Specs, SpecsAfterCheck),
+        ThisModule = pred_status_defined_in_this_module(PredStatus),
+        (
+            ThisModule = yes,
+            !:Specs = SpecsAfterCheck
+        ;
+            ThisModule = no
+        ),
 
         ( if
             AllowedToAdd = allowed_to_add_foreign_proc,
@@ -652,8 +659,7 @@ check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
         !:Specs = ArgListSpecs ++ !.Specs
     ),
     PragmaImpl = fp_impl_ordinary(Code, _),
-    foreign_code_to_identifiers(Lang, Code,
-        IdentifierList, CommentList),
+    foreign_code_to_identifiers(Lang, Code, IdentifierList, CommentList),
     comments_to_identifiers(CommentList, CommentIdentifierList),
     set.list_to_set(IdentifierList, Identifiers),
     set.list_to_set(CommentIdentifierList, CommentIdentifiers),
