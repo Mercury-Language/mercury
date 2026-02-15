@@ -1691,8 +1691,9 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
     Info0 = item_mutable_info(MutName, OrigType, Type0, OrigInst, Inst0,
         InitValue, Attrs, Varset, Context, SeqNum),
     TVarSet0 = varset.init,
-    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap, Type0, Type,
-        _TypeChanged, TVarSet0, _TVarSet, !ExpandedItems, !UsedModules),
+    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+        Type0, Type, _TypeChanged, TVarSet0, _TVarSet,
+        !ExpandedItems, !UsedModules),
     replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst, !ExpandedItems,
         !UsedModules),
     Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
@@ -1742,8 +1743,8 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules) :-
     Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode,
         MaybeSynthCall),
     TVarSet0 = varset.init,
-    replace_in_type_maybe_record_use_ignore_circ(do_not_record_sym_name_use, TypeEqvMap,
-        AttrType0, AttrType, _Changed, TVarSet0, _TVarSet,
+    replace_in_type_maybe_record_use_ignore_circ(do_not_record_sym_name_use,
+        TypeEqvMap, AttrType0, AttrType, _Changed, TVarSet0, _TVarSet,
         no_eqv_expand_info, _EquivTypeInfo, !UsedModules),
     Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
         MaybeSynthCall).
@@ -1947,7 +1948,8 @@ replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !EquivTypeInfo) :-
         TypeEqvMap, [], Type0, Type, Changed, _Circ, !TVarSet,
         !EquivTypeInfo, used_modules_init, _).
 
-:- pred replace_in_type_maybe_record_use_ignore_circ(maybe_record_sym_name_use::in,
+:- pred replace_in_type_maybe_record_use_ignore_circ(
+    maybe_record_sym_name_use::in,
     type_eqv_map::in, mer_type::in, mer_type::out, maybe_changed::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
@@ -2814,7 +2816,8 @@ replace_in_types_and_maybe_modes(MaybeRecord, TypeEqvMap,
     ;
         !.TypeAndMaybeModes = types_only(Types0),
         list.map2_foldl3(
-            replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap),
+            replace_in_type_maybe_record_use_ignore_circ(MaybeRecord,
+                TypeEqvMap),
             Types0, Types, _, !TVarSet, !EquivTypeInfo, !UsedModules),
         !:TypeAndMaybeModes = types_only(Types)
     ;
