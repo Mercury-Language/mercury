@@ -1,7 +1,8 @@
-missing_initial_section.m:007: Error: module `missing_initial_section' [38;5;203mshould[39;49m
-missing_initial_section.m:007:   [38;5;203mstart with[39;49m either an [38;5;40m`:- interface'[39;49m
-missing_initial_section.m:007:   [38;5;40mdeclaration[39;49m or an [38;5;40m`:- implementation'[39;49m
-missing_initial_section.m:007:   [38;5;40mdeclaration.[39;49m
+missing_initial_section.m:007: Error: the contents of module
+missing_initial_section.m:007:   `missing_initial_section' after the
+missing_initial_section.m:007:   `:- module' declaration [38;5;203mshould start with[39;49m
+missing_initial_section.m:007:   either an [38;5;40m`:- interface' declaration[39;49m or an
+missing_initial_section.m:007:   [38;5;40m`:- implementation' declaration.[39;49m
 missing_initial_section.m:007:   The following assumes that the missing
 missing_initial_section.m:007:   declaration is an `:- implementation'
 missing_initial_section.m:007:   declaration.

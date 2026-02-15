@@ -1,4 +1,5 @@
-types.m:007: Error: module `types' [38;5;203mshould start with[39;49m either an [38;5;40m`:- interface'[39;49m
+types.m:007: Error: the contents of module `types' after the `:- module'
+types.m:007:   declaration [38;5;203mshould start with[39;49m either an [38;5;40m`:- interface'[39;49m
 types.m:007:   [38;5;40mdeclaration[39;49m or an [38;5;40m`:- implementation' declaration.[39;49m
 types.m:007:   The following assumes that the missing declaration is an
 types.m:007:   `:- implementation' declaration.

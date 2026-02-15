@@ -7,8 +7,10 @@ vars_in_wrong_places.m:005:   section(s). This would normally be a `:- pred' or
 vars_in_wrong_places.m:005:   `:- func' declaration, or a `:- type', `:- inst',
 vars_in_wrong_places.m:005:   `:- mode', `:- typeclass' or `:- instance'
 vars_in_wrong_places.m:005:   definition.
-vars_in_wrong_places.m:006: Error: module `vars_in_wrong_places' [38;5;203mshould start[39;49m
-vars_in_wrong_places.m:006:   [38;5;203mwith[39;49m either an [38;5;40m`:- interface' declaration[39;49m or an
+vars_in_wrong_places.m:006: Error: the contents of module
+vars_in_wrong_places.m:006:   `vars_in_wrong_places' after the `:- module'
+vars_in_wrong_places.m:006:   declaration [38;5;203mshould start with[39;49m either an
+vars_in_wrong_places.m:006:   [38;5;40m`:- interface' declaration[39;49m or an
 vars_in_wrong_places.m:006:   [38;5;40m`:- implementation' declaration.[39;49m
 vars_in_wrong_places.m:006:   The following assumes that the missing
 vars_in_wrong_places.m:006:   declaration is an `:- implementation'

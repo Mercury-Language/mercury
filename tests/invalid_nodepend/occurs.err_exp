@@ -1,6 +1,7 @@
 occurs.m:005: Warning: the interface of module [38;5;87m`occurs'[39;49m [38;5;203mdoes not export[39;49m
 occurs.m:005:   [38;5;203manything.[39;49m
-occurs.m:007: Error: module `occurs' [38;5;203mshould start with[39;49m either an [38;5;40m`:- interface'[39;49m
+occurs.m:007: Error: the contents of module `occurs' after the `:- module'
+occurs.m:007:   declaration [38;5;203mshould start with[39;49m either an [38;5;40m`:- interface'[39;49m
 occurs.m:007:   [38;5;40mdeclaration[39;49m or an [38;5;40m`:- implementation' declaration.[39;49m
 occurs.m:007:   The following assumes that the missing declaration is an
 occurs.m:007:   `:- implementation' declaration.

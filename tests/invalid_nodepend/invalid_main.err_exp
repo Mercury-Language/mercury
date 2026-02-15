@@ -1,4 +1,5 @@
-invalid_main.m:006: Error: module `invalid_main' [38;5;203mshould start with[39;49m either an
+invalid_main.m:006: Error: the contents of module `invalid_main' after the
+invalid_main.m:006:   `:- module' declaration [38;5;203mshould start with[39;49m either an
 invalid_main.m:006:   [38;5;40m`:- interface' declaration[39;49m or an [38;5;40m`:- implementation'[39;49m
 invalid_main.m:006:   [38;5;40mdeclaration.[39;49m
 invalid_main.m:006:   The following assumes that the missing declaration is an

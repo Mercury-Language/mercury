@@ -6,7 +6,8 @@ no_exports.m:008:   `:- import_module' in its interface section(s). This would
 no_exports.m:008:   normally be a `:- pred' or `:- func' declaration, or a
 no_exports.m:008:   `:- type', `:- inst', `:- mode', `:- typeclass' or
 no_exports.m:008:   `:- instance' definition.
-no_exports.m:012: Error: module `no_exports' [38;5;203mshould start with[39;49m either an
+no_exports.m:012: Error: the contents of module `no_exports' after the
+no_exports.m:012:   `:- module' declaration [38;5;203mshould start with[39;49m either an
 no_exports.m:012:   [38;5;40m`:- interface' declaration[39;49m or an [38;5;40m`:- implementation'[39;49m
 no_exports.m:012:   [38;5;40mdeclaration.[39;49m
 no_exports.m:012:   The following assumes that the missing declaration is an

@@ -1074,13 +1074,13 @@ add_section_component(ModuleName, SectionKind, SectionContext,
 
 generate_missing_start_section_warning_src(CurModuleName, Context, !Errors) :-
     Pieces = [invis_order_default_start(1, ""),
-        words("Error: module"), qual_sym_name(CurModuleName)] ++
+        words("Error: the contents of module"), qual_sym_name(CurModuleName),
+            words("after the"), decl("module"), words("declaration")] ++
         color_as_incorrect([words("should start with")]) ++
         [words("either an")] ++
         color_as_correct([decl("interface"), words("declaration")]) ++
         [words("or an")] ++
-        color_as_correct([decl("implementation"),
-            words("declaration.")]) ++
+        color_as_correct([decl("implementation"), words("declaration.")]) ++
         [nl,
         words("The following assumes that"),
         words("the missing declaration is an"),

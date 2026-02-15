@@ -1,8 +1,8 @@
 errors_1.m:008: Warning: the interface of module [38;5;87m`errors_1'[39;49m [38;5;203mdoes not export[39;49m
 errors_1.m:008:   [38;5;203manything.[39;49m
-errors_1.m:012: Error: module `errors_1' [38;5;203mshould start with[39;49m either an
-errors_1.m:012:   [38;5;40m`:- interface' declaration[39;49m or an [38;5;40m`:- implementation'[39;49m
-errors_1.m:012:   [38;5;40mdeclaration.[39;49m
+errors_1.m:012: Error: the contents of module `errors_1' after the `:- module'
+errors_1.m:012:   declaration [38;5;203mshould start with[39;49m either an [38;5;40m`:- interface'[39;49m
+errors_1.m:012:   [38;5;40mdeclaration[39;49m or an [38;5;40m`:- implementation' declaration.[39;49m
 errors_1.m:012:   The following assumes that the missing declaration is an
 errors_1.m:012:   `:- implementation' declaration.
 errors_1.m:030: Error: `:- mode' declaration for predicate
