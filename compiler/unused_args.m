@@ -1693,6 +1693,26 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
     pred_id::in, pred_info::in) is semidet.
 
 may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo) :-
+    ( if
+        may_gather_warning_pragma_for_pred_old(ModuleInfo, PredId, PredInfo)
+    then
+        ( if may_gather_warning_pragma_for_pred_new(PredInfo) then
+            true
+        else
+            unexpected($pred, "old succeeds, new fails")
+        )
+    else
+        ( if may_gather_warning_pragma_for_pred_new(PredInfo) then
+            unexpected($pred, "old fails, new succeeds")
+        else
+            fail
+        )
+    ).
+
+:- pred may_gather_warning_pragma_for_pred_old(module_info::in,
+    pred_id::in, pred_info::in) is semidet.
+
+may_gather_warning_pragma_for_pred_old(ModuleInfo, PredId, PredInfo) :-
     not pred_info_is_imported(PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     PredStatus \= pred_status(status_opt_imported),
@@ -1735,6 +1755,141 @@ may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo) :-
     % when trying to read them back in from the `.opt' files.
     not marker_is_present(Markers, marker_class_instance_method),
     not marker_is_present(Markers, marker_named_class_instance_method).
+
+:- pred may_gather_warning_pragma_for_pred_new(pred_info::in) is semidet.
+
+may_gather_warning_pragma_for_pred_new(PredInfo) :-
+    pred_info_get_status(PredInfo, PredStatus),
+    % Previously, this test was effectively:
+    % PredStatus \= pred_status(status_imported(_)),
+    % PredStatus \= pred_status(status_opt_imported),
+    % PredStatus \= pred_status(status_external(_)),
+    % However, PredStatus cannot be status_abstract_imported,
+    % and the status_pseudo_imported case is caught by
+    % the test for made_for_uci below.
+    pred_status_defined_in_this_module(PredStatus) = yes,
+
+    pred_info_get_origin(PredInfo, Origin),
+    require_complete_switch [Origin]
+    (
+        Origin = origin_user(UserMade),
+        require_complete_switch [UserMade]
+        (
+            UserMade = user_made_pred(_, _, _),
+            % Don't warn about builtins that have unused arguments.
+            not pred_info_is_builtin(PredInfo)
+        ;
+            UserMade = user_made_lambda(_, _, _),
+            % Don't warn about lambda expressions not using arguments.
+            % (The warning message for these doesn't contain context,
+            % so it is useless).
+            % NOTE We *could* add any required context. However,
+            % in some cases, people use lambdas as a shim between
+            % their own code, and library predicates over whose argument
+            % lists they have no control. In such cases, ignoring
+            % an argument that the user code does not need but the
+            % library predicate insists on supplying may be
+            % the *whole point* of the lambda expression.
+            fail
+        ;
+            UserMade = user_made_class_method(_, _)
+        ;
+            UserMade = user_made_instance_method(_, _),
+            % XXX We don't currently generate pragmas for the automatically
+            % generated class instance methods because the compiler aborts
+            % when trying to read them back in from the `.opt' files.
+            %
+            % I am also not sure whether we would *want* to generated warnings
+            % about unused arguments in instance methods. If a class method
+            % has an input that is needed by some instances but not others,
+            % warning about the instances in the second category would not be
+            % helpful, since the class methods needs the argument, and
+            % the instance must conform to it.
+            ( if
+                ( marker_is_present(Markers, marker_class_instance_method)
+                ; marker_is_present(Markers, marker_named_class_instance_method)
+                )
+            then
+                fail
+            else
+                unexpected($pred, "user_made_instance_method with marker")
+            )
+        ;
+            UserMade = user_made_assertion(_, _, _)
+            % XXX By construction, assertions should never have any
+            % unused arguments, so trying to find them is a waste of time.
+        ),
+
+        % Don't warn about stubs for procedures with no clauses --
+        % in that case, we *expect* none of the arguments to be used.
+        %
+        % XXX I (zs) am not sure whether typecheck.m can ever mark as stub
+        % a predicate whose origin is not user_made_pred.
+        % (There is a test filtering out predicates with marker_class_method,
+        % but nothing similar for the other values of UserMade.)
+        pred_info_get_markers(PredInfo, Markers),
+        not marker_is_present(Markers, marker_stub)
+    ;
+        Origin = origin_compiler(CompilerMade),
+        require_complete_switch [CompilerMade]
+        (
+            CompilerMade = made_for_uci(_, _),
+            fail
+        ;
+            ( CompilerMade = made_for_deforestation(_, _)
+            ; CompilerMade = made_for_solver_repn(_, _)
+            ; CompilerMade = made_for_tabling(_, _)
+            ; CompilerMade = made_for_mutable(_, _, _)
+            ; CompilerMade = made_for_initialise(_, _)
+            ; CompilerMade = made_for_finalise(_, _)
+            )
+            % XXX It is likely that some of these kinds of predicates
+            % can never contain unused args, which means that
+            % processing them is pointless.
+        )
+    ;
+        Origin = origin_pred_transform(PredTransform, _, _),
+        require_complete_switch [PredTransform]
+        (
+            PredTransform = pred_transform_pragma_type_spec(_),
+            fail
+        ;
+            ( PredTransform = pred_transform_distance_granularity(_)
+            ; PredTransform = pred_transform_table_generator
+            ; PredTransform = pred_transform_ssdebug(_)
+            ; PredTransform = pred_transform_structure_reuse
+            )
+        )
+    ;
+        Origin = origin_proc_transform(ProcTransform, _, _, _),
+        require_complete_switch [ProcTransform]
+        (
+            ( ProcTransform = proc_transform_user_type_spec(_, _)
+            ; ProcTransform = proc_transform_loop_inv(_, _)
+            ; ProcTransform = proc_transform_higher_order_spec(_)
+            ),
+            fail
+        ;
+            ( ProcTransform = proc_transform_accumulator(_, _)
+            ; ProcTransform = proc_transform_tuple(_, _)
+            ; ProcTransform = proc_transform_untuple(_, _)
+            ; ProcTransform = proc_transform_dep_par_conj(_)
+            ; ProcTransform = proc_transform_par_loop_ctrl
+            ; ProcTransform = proc_transform_lcmc(_, _)
+            ; ProcTransform = proc_transform_stm_expansion
+            ; ProcTransform = proc_transform_io_tabling
+            ; ProcTransform = proc_transform_direct_arg_in_out
+            )
+            % XXX It is likely that some of these kinds of predicates
+            % can never contain unused args, which means that
+            % processing them is pointless.
+        ;
+            ProcTransform = proc_transform_unused_args(_),
+            % These shouldn't have been created yet,
+            % since we do not ever repeat the unused_args pass.
+            unexpected($pred, "proc_transform_unused_args")
+        )
+    ).
 
 :- pred maybe_gather_warning(module_info::in, pred_info::in,
     pred_id::in, proc_id::in, list(int)::in,
