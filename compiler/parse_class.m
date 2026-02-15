@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2011 The University of Melbourne.
-% Copyright (C) 2016-2025 The Mercury team.
+% Copyright (C) 2016-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -873,8 +873,9 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm,
             list.map(get_simple_constraint,
                 TailArbConstraints, TailConstraints)
         then
-            % XXX ITEM_LIST Loosens representation; switching from one_or_more
-            % to list allows an empty list.
+            % We return a list, and not one_or_more, because our callers
+            % all have paths both with and without constraints, so they
+            % have to be able to represent the empty list of constraints.
             Result = ok1([HeadConstraint | TailConstraints])
         else
             Context = get_term_context(ConstraintsTerm),
@@ -1121,8 +1122,6 @@ parse_fundep(VarSet, Term, Result) :-
         Result = error1(Specs)
     ).
 
-    % XXX ITEM_LIST Should return maybe1(one_or_more(tvar)).
-    %
 :- pred parse_fundep_side(varset::in, string::in, string::in, term::in,
     maybe1(one_or_more(tvar))::out) is det.
 
