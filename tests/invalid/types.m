@@ -76,3 +76,5 @@ repeated_arity(A, B, C) :-
 
 append(A, B, C) :-
     C = A + B.
+
+:- type nonsense == 5.

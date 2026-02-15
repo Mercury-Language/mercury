@@ -32,3 +32,6 @@ baz4(Foo) = Foo^44:=45.
 baz5(!.Foo) = !:Foo :-
     !Foo ^ f1 := 42,
     !Foo ^ f2 = 43.
+
+:- type bar
+    --->    bar(f(N) :: int).

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2016-2025 The Mercury team.
+% Copyright (C) 2016-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -525,9 +525,12 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
             MaybeSymNameAndArgs = ok2(SymName, SymNameArgs),
             (
                 SymNameArgs = [_ | _],
-                % XXX Should we add "... at function symbol ..."?
-                Pieces = [words("Error: syntax error in constructor name."),
-                    nl],
+                NameTermStr = describe_error_term(VarSet, NameTerm),
+                Pieces = [words("Error: expected a")] ++
+                    color_as_correct([words("simple identifier")]) ++
+                    [words("as the field name, got")] ++
+                    color_as_incorrect([words(NameTermStr), suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
                 MaybeConstructorArgs = error1([Spec])
@@ -906,8 +909,8 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         cord.from_list([words("On the left hand side of type definition:")]),
     parse_type_defn_head(HeadContextPieces, ModuleName, VarSet, HeadTerm,
         MaybeNameAndParams),
-    % XXX Should pass more correct BodyContextPieces.
-    BodyContextPieces = cord.init,
+    BodyContextPieces = cord.from_list(
+        [words("On the right hand side of equivalence type definition:")]),
     parse_type(allow_ho_inst_info, VarSet, BodyContextPieces, BodyTerm,
         MaybeType),
     ( if

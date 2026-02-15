@@ -45,4 +45,6 @@ field_syntax_error.m:034:   [38;5;226mprobably typed `=' where you meant to typ
 field_syntax_error.m:034: Warning: if the expression [38;5;87m`!Foo ^ f2'[39;49m is intended to
 field_syntax_error.m:034:   be part of a field update, then it should be
 field_syntax_error.m:034:   followed by [38;5;40m`:=',[39;49m not [38;5;203m`='.[39;49m
+field_syntax_error.m:037: Error: expected a [38;5;40msimple identifier[39;49m as the field
+field_syntax_error.m:037:   name, got [38;5;203mf(N).[39;49m
 For more information, recompile with `-E'.
