@@ -552,16 +552,6 @@ is_recursive_case(Goals, proc(PredId, ProcId)) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % The store info is folded over the list of goals which
-    % represent the base and recursive case conjunctions.
-:- type store_info
-    --->    store_info(
-                store_loc       :: int,
-                                % The location of the goal in the conjunction.
-                store_instmap   :: instmap,
-                store_goals     :: accu_goal_store
-            ).
-
     % Initialise the goal_store, which will hold the C_{a,b} goals.
     %
 :- func initialize_goal_store(list(hlds_goal), instmap,

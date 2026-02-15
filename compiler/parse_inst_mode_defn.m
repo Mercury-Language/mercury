@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2009, 2011 The University of Melbourne.
-% Copyright (C) 2016-2017, 2019-2022, 2024 The Mercury team.
+% Copyright (C) 2016-2017, 2019-2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -230,13 +230,6 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- type processed_mode_body
-    --->    processed_mode_body(
-                sym_name,
-                list(inst_var),
-                mode_defn
-            ).
 
 parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-

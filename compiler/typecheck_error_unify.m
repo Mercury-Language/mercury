@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -452,12 +452,6 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
     ;       several_expected(
                 several_head        :: type_mismatch,
                 several_tail        :: list(type_mismatch)
-            ).
-
-:- type actual_and_maybe_special
-    --->    actual_and_maybe_special(
-                list(format_piece),
-                maybe(type_mismatch_special)
             ).
 
 :- type does_actual_subsume_expected

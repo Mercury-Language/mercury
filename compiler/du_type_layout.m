@@ -5043,10 +5043,6 @@ output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, Prefix,
     --->    not_for_developers
     ;       for_developers.
 
-:- type maybe_show_type_repns
-    --->    do_not_show_type_repns
-    ;       show_type_repns(show_which_types, maybe_for_developers).
-
 :- type decide_du_params
     --->    decide_du_params(
                 % For constructing debug (and possibly other) output streams.

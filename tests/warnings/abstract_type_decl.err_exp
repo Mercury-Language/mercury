@@ -7,3 +7,4 @@ abstract_type_decl.m:014:   implementation section.
 abstract_type_decl.m:015: Warning: [38;5;203mduplicate abstract type declaration[39;49m for
 abstract_type_decl.m:015:   [38;5;87m`bar'/0.[39;49m
 abstract_type_decl.m:014:   The original declaration is here.
+abstract_type_decl.m:020: Warning: type constructor `bar'/0 is [38;5;203munused.[39;49m

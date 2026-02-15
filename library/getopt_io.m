@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2001-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -815,20 +815,6 @@
     ;       notrack(pred(in, in, in, out) is semidet)
     ;       track(pred(in, in, in, out, out) is semidet)
     ;       userdata(pred(in, in, in, out, in, out) is semidet).
-
-:- type option_ops_internal(OptionType, UserDataType)
-    --->    option_ops_internal(
-                short_option    :: pred(char, OptionType),
-                long_option     :: pred(string, OptionType),
-                special_handler :: option_ops_special(OptionType, UserDataType)
-            ).
-
-:- inst option_ops_internal for option_ops_internal/2
-    --->    option_ops_internal(
-                pred(in, out) is semidet,           % short_option
-                pred(in, out) is semidet,           % long_option
-                option_ops_special                  % special handler, if any
-            ).
 
 %---------------------------------------------------------------------------%
 

@@ -435,6 +435,7 @@
     ;       warn_unused_imports
     ;       warn_unused_interface_imports
     ;       warn_interface_imports_in_parents
+    ;       warn_unused_types
     ;       warn_stdlib_shadowing
     ;       warn_duplicate_abstract_instances
     ;       warn_too_private_instances
@@ -2510,6 +2511,10 @@ optdb(oc_warn_dodgy_mod, warn_interface_imports_in_parents, bool(no),
     help("warn-interface-imports-in-parents", [
         w("Warn about modules that are imported in the interface of"),
         w("a parent module, but not used in the interface of that module.")])).
+optdb(oc_warn_dodgy_mod, warn_unused_types,            bool(no),
+    help("warn-unused-types", [
+        w("Warn about types that are neither used in their defining module"),
+        w("nor exported to other modules.")])).
 optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
     help("warn-stdlib-shadowing", [
         w("Do not generate warnings for module names that either duplicate"),

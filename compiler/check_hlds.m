@@ -134,6 +134,9 @@
 % Warnings about unused imports.
 :- include_module unused_imports.
 
+% Warnings about unused types.
+:- include_module unused_types.
+
 % Warnings about bad programming style.
 :- include_module style_checks.
 

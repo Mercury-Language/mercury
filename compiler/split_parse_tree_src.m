@@ -162,11 +162,6 @@ split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
 
 %---------------------%
 
-:- type parent_module_context
-    --->    no_parent_top_level
-    ;       in_parent_interface
-    ;       in_parent_implementation.
-
 :- type split_nested_info
     --->    split_nested_top_module(prog_context)
             % This module is the top level module, and this is the context

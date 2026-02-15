@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -255,15 +255,6 @@
     % intermediate data structure on the way to a data structure,
     % a list of ptag_case_groups, which *does* recognize such sharing.
 :- type ptag_case_map(CaseRep) == map(ptag, ptag_case(CaseRep)).
-
-:- type ptag_case_entry(CaseRep)
-    --->    ptag_case_entry(
-                % The ptag value that has this code.
-                ptag,
-
-                % A representation of the code for this primary tag.
-                ptag_case(CaseRep)
-            ).
 
 :- type ptag_case(CaseRep)
     --->    ptag_case_unshared(

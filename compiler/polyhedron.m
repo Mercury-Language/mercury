@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015, 2018-2019, 2021, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2018-2019, 2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -301,10 +301,6 @@ convex_union_max_size(VarSet, MaybeMaxSize, eqns(ConstraintsA),
 % Computing Convex Hulls with a Linear Solver
 % Theory and Practice of Logic Programming 5(1&2):259-271, 2005.
 
-:- type convex_hull_result
-    --->    ok(polyhedron)
-    ;       aborted.
-
 :- type var_map == map(lp_var, lp_var).
 
     % We introduce sigma variables into the constraints as
@@ -328,15 +324,6 @@ convex_union_max_size(VarSet, MaybeMaxSize, eqns(ConstraintsA),
                 % and sigma variables need to be allocated from this as well
                 % in order to prevent clashes when using the solver.
                 poly_varset     :: lp_varset
-            ).
-
-:- type constr_info
-    --->    constr_info(
-                % Map from original variables to new (temporary) ones.
-                % There is one of these for each constraint.
-                var_map         :: var_map,
-
-                constr_varset   :: lp_varset
             ).
 
 :- pred convex_hull(list(lp_constraint_conj)::in, polyhedron::out,

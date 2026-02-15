@@ -1,3 +1,4 @@
+warn_dead_procs.m:011: Warning: type constructor `expr2'/0 is [38;5;203munused.[39;49m
 warn_dead_procs.m:014: Warning: predicate [38;5;87m`foo'/0[39;49m mode 0 [38;5;203mis never called.[39;49m
 warn_dead_procs.m:018: Warning: predicate [38;5;87m`bar'/1[39;49m mode 0 [38;5;203mis never called.[39;49m
 warn_dead_procs.m:019: Warning: predicate [38;5;87m`bar'/1[39;49m mode 1 [38;5;203mis never called.[39;49m

@@ -904,6 +904,10 @@ Warning options
         Warn about modules that are imported in the interface of a parent
         module, but not used in the interface of that module.
 
+    --warn-unused-types
+        Warn about types that are neither used in their defining module nor
+        exported to other modules.
+
     --no-warn-stdlib-shadowing
         Do not generate warnings for module names that either duplicate the
         name of a module in the Mercury standard library, or contain a

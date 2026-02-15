@@ -57,3 +57,10 @@ MCFLAGS-uu_type                     += --no-halt-at-invalid-interface
 MCFLAGS-var_as_pred_name            += --no-halt-at-invalid-interface
 MCFLAGS-vars_in_wrong_places        += --no-halt-at-invalid-interface -E
 MCFLAGS-where_abstract_enum         += --no-halt-at-invalid-interface
+
+# These two modules contain type definitions that are unused
+# *only* because of problems with code that *could* use those types.
+# We enable --warn-unused-types to test that we *do not* get
+# warnings about unused types in such circumstances.
+MCFLAGS-bigtest                     += --warn-unused-types
+MCFLAGS-where_direct_arg_2          += --warn-unused-types

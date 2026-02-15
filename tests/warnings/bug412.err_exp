@@ -1,6 +1,7 @@
 bug412.m:008: In module `bug412':
 bug412.m:008:   warning: module [38;5;87mbool[39;49m has an `:- import_module' declaration in
 bug412.m:008:   the interface, but [38;5;203mis not used in the interface.[39;49m
+bug412.m:018: Warning: type constructor `blah2'/0 is [38;5;203munused.[39;49m
 bug412.m:021: In module `bug412':
 bug412.m:021:   warning: the following modules have `:- import_module'
 bug412.m:021:   declarations, but [38;5;203mare not used anywhere in the module.[39;49m

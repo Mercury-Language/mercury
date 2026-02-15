@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,8 +43,10 @@
             ).
 
 % The two main differences between the next two functions are that
+%
 % - the first takes a type_assign_set, and explicitly specifies
 %   the expected type, while
+%
 % - the second takes an args_type_assign_set, and gets a separate
 %   expected type from each args_type_assign in the set.
 
@@ -108,10 +110,9 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, ExpectedType,
     VarSet = ClauseContext ^ tecc_varset,
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
-    Msg = simple_msg(Context,
-        [always(InClauseForPieces), always(GoalContextPieces),
-        always(ActualExpectedPieces), always(DiffPieces),
-        always(NoSuffixIntegerPieces), VerboseComponent]),
+    AlwaysPieces = InClauseForPieces ++ GoalContextPieces ++
+        ActualExpectedPieces ++ DiffPieces ++ NoSuffixIntegerPieces,
+    Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).

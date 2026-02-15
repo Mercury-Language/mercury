@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2021-2022, 2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1714,14 +1714,6 @@ plain_call_is_special_case(Module, Name, Args, NewVar) :-
     Name = "cc_multi_equal",
     list.length(Args, 3),
     list.det_index1(Args, 2) = NewVar.
-
-:- type plain_call_info
-    --->    plain_call_info(
-                file_name           :: string,
-                line_number         :: int,
-                flat_module_name    :: string,
-                pred_name           :: string
-            ).
 
 :- pred traverse_call(list(var_rep)::in, string::in, int::in,
     list(var_rep)::in, maybe(R)::in, list(annotated_primitive(R))::in,

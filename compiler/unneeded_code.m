@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,21 +147,6 @@
             % such as "int".) If the switch cannot_fail, then this will be
             % equal to the number of cases; if the switch can_fail, there
             % will be strictly fewer cases than this.
-
-    % The location type identifies one arm of a branched control structure.
-    % The branched control structure id is a branch_point instead of a
-    % simple goal_path because without the branch_alts info, the
-    % transformation cannot tell if a given set of branches of a branched
-    % control structure covers all possible execution paths or not.
-    %
-:- type location
-    --->    location(
-                % To which branched control structure does the location belong.
-                branch_point,
-
-                % The branch within that control structure.
-                int
-            ).
 
     % The where_needed_map type maps each variable to the set of
     % computation branches where it is needed. If a variable is needed

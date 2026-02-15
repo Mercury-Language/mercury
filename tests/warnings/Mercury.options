@@ -105,3 +105,7 @@ MCFLAGS-allow_non_contiguity_for        += --warn-non-contiguous-clauses
 MCFLAGS-allow_non_contiguity_for        += --allow-non-contiguity-for p1,p2,p3
 MCFLAGS-allow_non_contiguity_for        += --allow-non-contiguity-for q1,q2,q3
 MCFLAGS-allow_non_contiguity_for        += --allow-non-contiguity-for r1,r2,r3
+
+MCFLAGS-abstract_type_decl              += --warn-unused-types
+MCFLAGS-bug412                          += --warn-unused-types
+MCFLAGS-warn_dead_procs                 += --warn-unused-types

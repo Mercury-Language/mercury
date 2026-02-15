@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013, 2015, 2017, 2020-2022, 2024 The Mercury team.
+% Copyright (C) 2013, 2015, 2017, 2020-2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -387,7 +387,6 @@ write_test_html(Options, BaseName, Num, HTML, !IO) :-
     ;       dynamic_procrep_coverage
     ;       recursion_types_histogram.
 
-:- type options ---> options.
 :- type option_table == (option_table(option)).
 
 :- pred short(char::in, option::out) is semidet.

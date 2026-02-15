@@ -4170,11 +4170,12 @@ get_remote_secondary_tag(_) = 0 :-
     ;       stag_remote
     ;       stag_variable.
 
-:- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
-:- pragma foreign_type("C#", du_sectag_alternatives,
-    "runtime.DuFunctorDesc[]").
-:- pragma foreign_type("Java", du_sectag_alternatives,
-    "jmercury.runtime.DuFunctorDesc[]").
+% This type is not used (yet?).
+% :- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
+% :- pragma foreign_type("C#", du_sectag_alternatives,
+%     "runtime.DuFunctorDesc[]").
+% :- pragma foreign_type("Java", du_sectag_alternatives,
+%     "jmercury.runtime.DuFunctorDesc[]").
 
     % XXX just use the same names as the C runtime
 :- type ptag_entry ---> ptag_entry(c_pointer).

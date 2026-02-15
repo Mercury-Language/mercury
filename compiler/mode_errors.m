@@ -1227,10 +1227,6 @@ construct_argnum_var_type_inst_tuples(VarTable, InstMap, ArgNum,
 
 %---------------------%
 
-:- type ok_or_not
-    --->    oon_ok
-    ;       oon_not_ok.
-
     % For a given argument, collect together
     % - all the proc_ids for which the arguments inst satisfies its mode, and
     % - all the proc_ids for which the arguments inst does not satisfy it

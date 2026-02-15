@@ -374,10 +374,6 @@ format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State) :-
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers, TypeSpecs, [], [], [], [], [], [], [], []).
 
-:- type maybe_first
-    --->    is_not_first
-    ;       is_first.
-
 %---------------------------------------------------------------------------%
 
 :- pred intermod_gather_types(assoc_list(type_ctor, hlds_type_defn)::in,
