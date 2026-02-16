@@ -1877,13 +1877,13 @@ may_gather_warning_pragma_for_pred_new(PredInfo) :-
         Origin = origin_proc_transform(ProcTransform, _, _, _),
         require_complete_switch [ProcTransform]
         (
-            ( ProcTransform = proc_transform_user_type_spec(_, _)
-            ; ProcTransform = proc_transform_loop_inv(_, _)
+            ( ProcTransform = proc_transform_loop_inv(_, _)
             ; ProcTransform = proc_transform_higher_order_spec(_)
             ),
             fail
         ;
-            ( ProcTransform = proc_transform_accumulator(_, _)
+            ( ProcTransform = proc_transform_user_type_spec(_, _)
+            ; ProcTransform = proc_transform_accumulator(_, _)
             ; ProcTransform = proc_transform_tuple(_, _)
             ; ProcTransform = proc_transform_untuple(_, _)
             ; ProcTransform = proc_transform_dep_par_conj(_)
