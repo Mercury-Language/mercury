@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005, 2014 Mission Critical IT.
-% Copyright (C) 2014-2015, 2018, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -31,13 +31,13 @@
 
 :- type barrier.
 
-    % init(N, Barrier, !IO)
+    % init(N, Barrier, !IO):
     %
     % Create a barrier for N threads.
     %
 :- pred init(int::in, barrier::out, io::di, io::uo) is det.
 
-    % wait(Barrier, !IO)
+    % wait(Barrier, !IO):
     %
     % Indicate that the current thread has reached the barrier. Throws a
     % software_error/1 exception if this barrier has been used by more than
@@ -45,7 +45,7 @@
     %
 :- pred wait(barrier::in, io::di, io::uo) is det.
 
-    % release_barrier(Barrier, !IO)
+    % release(Barrier, !IO):
     %
     % Release all the threads waiting at the barrier regardless of whether
     % or not N threads have arrived at the barrier. This can be called by
@@ -74,7 +74,7 @@
 
 :- type barrier
     --->    barrier(
-                % How many threads we are still waiting on?
+                % How many threads are we still waiting on?
                 b_waiting_for   :: mvar(int),
 
                 % Can we go yet?
@@ -128,7 +128,7 @@ wait(barrier(WaitingOn, Go), !IO) :-
         (
             WhyGo = can_go_normal,
             unexpected($file, $pred,
-                "Too many threads called barrier/3 on this barrier.")
+                "Too many threads called wait/3 on this barrier.")
         ;
             WhyGo = can_go_release_called
         )
