@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,11 +26,11 @@
 %
 % into
 %
-%   :- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
-%   '__LambdaGoal__1'(X, Y) :- q(Y, X).
+%   :- pred 'IntroducedFrom__...'(int::in, int::out) is nondet.
+%   'IntroducedFrom__...'(X, Y) :- q(Y, X).
 %
 %   p(X) :-
-%       V__1 = closure_cons('__LambdaGoal__1')(X)
+%       V__1 = closure_cons('IntroducedFrom__...')(X)
 %       solutions(V__1, List),
 %       ...
 %
