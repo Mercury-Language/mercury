@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,6 +107,7 @@
 
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
+:- include_module build_eqv_maps.
 :- include_module canonicalize_interface.
 :- include_module check_import_accessibility.
 :- include_module check_module_interface.

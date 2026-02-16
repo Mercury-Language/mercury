@@ -702,6 +702,8 @@ The parse tree module also contains equiv_type.m,
 which does expansion of equivalence types,
 and of `with_type` and `with_inst` annotations
 on predicate and function type and mode declarations.
+The part of its job gathering the definitions to be expanded
+is done by build_eqv_maps.m.
 <p>
 Expansion of equivalence types is really part of type-checking,
 but is done on the parse tree rather than on the HLDS

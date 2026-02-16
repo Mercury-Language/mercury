@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.equiv_type.
+:- import_module parse_tree.build_eqv_maps.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.module_qual.mq_info.
@@ -106,6 +106,7 @@
 :- implementation.
 
 :- import_module hlds.make_goal.
+:- import_module parse_tree.equiv_type.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.qualify_items.
 :- import_module parse_tree.prog_type_scan.
