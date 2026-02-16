@@ -165,7 +165,7 @@ consult_until_eof(InStream, !Database, !IO) :-
 
 solve(Database, Goal, !VarSet) :-
     (
-        Goal = term.functor(term.atom(", "), [SubGoalA, SubGoalB], _),
+        Goal = term.functor(term.atom(","), [SubGoalA, SubGoalB], _),
         solve(Database, SubGoalA, !VarSet),
         solve(Database, SubGoalB, !VarSet)
     ;
