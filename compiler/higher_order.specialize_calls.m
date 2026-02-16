@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -272,10 +272,8 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         % Check whether this call can be specialized.
-        % XXX Due to the absence of alias tracking, passing Goal0 instead
-        % of Goal1 to maybe_specialize_call would result in a mode error.
-        Goal1 = hlds_goal(GoalExpr0, GoalInfo0),
-        maybe_specialize_call(Goal1, Goal, !Info)
+        maybe_specialize_call(GoalExpr0, GoalInfo0, GoalExpr, !Info),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         % If-then-elses are handled as disjunctions.
@@ -315,7 +313,8 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = unify(_, _, _, Unification0, _),
         ( if
-            Unification0 = construct(_, closure_cons(_), _, _, _, _, _)
+            Unification0 = construct(_, ConsId, _, _, _, _, _),
+            ConsId = closure_cons(_)
         then
             maybe_specialize_pred_const(Goal0, Goal, !Info)
         else
@@ -470,6 +469,34 @@ get_post_branch_info_for_goal(Info, Goal, PostBranchInfo) :-
 set_post_branch_info(post_branch_info(KnownVarMap, _), !Info) :-
     hoi_set_known_var_map(KnownVarMap, !Info).
 
+%---------------------%
+
+    % Merge two post_branch_infos into one.
+    %
+:- pred merge_post_branch_infos(post_branch_info::in,
+    post_branch_info::in, post_branch_info::out) is det.
+
+merge_post_branch_infos(PostA, PostB, Post) :-
+    (
+        PostA = post_branch_info(VarConstMapA, reachable),
+        PostB = post_branch_info(VarConstMapB, reachable),
+        merge_post_branch_known_var_maps(VarConstMapA, VarConstMapB,
+            VarConstMapAB),
+        Post = post_branch_info(VarConstMapAB, reachable)
+    ;
+        PostA = post_branch_info(_, unreachable),
+        PostB = post_branch_info(_, reachable),
+        Post = PostB
+    ;
+        PostA = post_branch_info(_, reachable),
+        PostB = post_branch_info(_, unreachable),
+        Post = PostA
+    ;
+        PostA = post_branch_info(_, unreachable),
+        PostB = post_branch_info(_, unreachable),
+        Post = post_branch_info(map.init, unreachable)
+    ).
+
     % Merge a bunch of post_branch_infos into one.
     %
 :- pred merge_post_branch_infos_into_one(list(post_branch_info)::in,
@@ -490,6 +517,8 @@ merge_post_branch_infos_into_one(PostInfos, MergedPostInfo) :-
             MergedVarMap),
         MergedPostInfo = post_branch_info(MergedVarMap, reachable)
     ).
+
+%---------------------%
 
 :- pred merge_post_branch_var_maps_passes(known_var_map::in,
     list(known_var_map)::in, known_var_map::out) is det.
@@ -530,14 +559,14 @@ merge_post_branch_var_maps_pass(VarMap1, VarMaps2Plus,
         )
     ).
 
-    % Merge two the known_var_maps of post_branch_infos.
+    % Merge the known_var_maps of two post_branch_infos.
     %
     % If a variable appears in one post_branch_info, but not the other,
-    % it is dropped. Such a variable is either local to the branch arm,
+    % we drop it. Such a variable is either local to the branch arm,
     % in which case no subsequent specialization opportunities exist,
     % or it does not have a unique constant value in one of the branch arms,
     % so we can't specialize it outside the branch anyway. A third possibility
-    % is that the branch without the variable is unreachable. In that case
+    % is that the branch without the variable is unreachable. In that case,
     % we include the variable in the result.
     %
 :- pred merge_post_branch_known_var_maps(known_var_map::in,
@@ -554,30 +583,6 @@ merge_post_branch_known_var_maps(VarConstMapA, VarConstMapB, VarConstMapAB) :-
     merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
         [], VarConstCommonList),
     map.from_assoc_list(VarConstCommonList, VarConstMapAB).
-
-:- pred merge_post_branch_infos(post_branch_info::in,
-    post_branch_info::in, post_branch_info::out) is det.
-
-merge_post_branch_infos(PostA, PostB, Post) :-
-    (
-        PostA = post_branch_info(VarConstMapA, reachable),
-        PostB = post_branch_info(VarConstMapB, reachable),
-        merge_post_branch_known_var_maps(VarConstMapA, VarConstMapB,
-            VarConstMapAB),
-        Post = post_branch_info(VarConstMapAB, reachable)
-    ;
-        PostA = post_branch_info(_, unreachable),
-        PostB = post_branch_info(_, reachable),
-        Post = PostB
-    ;
-        PostA = post_branch_info(_, reachable),
-        PostB = post_branch_info(_, unreachable),
-        Post = PostA
-    ;
-        PostA = post_branch_info(_, unreachable),
-        PostB = post_branch_info(_, unreachable),
-        Post = post_branch_info(map.init, unreachable)
-    ).
 
 :- pred merge_common_var_const_list(assoc_list(prog_var, known_const)::in,
     assoc_list(prog_var, known_const)::in,
@@ -998,16 +1003,15 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     GoalExpr1 =
         plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext, SymName),
     hoi_set_changed(hoc_changed, !Info),
-    maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
-        hlds_goal(GoalExpr, _), !Info).
+    maybe_specialize_call(GoalExpr1, GoalInfo, GoalExpr, !Info).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_specialize_call(hlds_goal::in(goal_plain_call), hlds_goal::out,
+:- pred maybe_specialize_call(hlds_goal_expr::in(goal_expr_plain_call),
+    hlds_goal_info::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
-        hlds_goal(GoalExpr, GoalInfo), !Info) :-
+maybe_specialize_call(GoalExpr0, GoalInfo, GoalExpr, !Info) :-
     ModuleInfo0 = hogi_get_module_info(hoi_get_global_info(!.Info)),
     GoalExpr0 = plain_call(CalleePredId, CalleeProcId, Args0, IsBuiltin,
         MaybeContext, _SymName0),
