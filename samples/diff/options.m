@@ -352,7 +352,7 @@ special_handler(old_line_format, _, _, error(Msg)) :-
 special_handler(new_line_format, _, _, error(Msg)) :-
     Msg = "Option not handled: --new-line-format".
 special_handler(unchanged_line_format, _, _, error(Msg)) :-
-    Msg = "Option not handled: --unchangedline-format".
+    Msg = "Option not handled: --unchanged-line-format".
 special_handler(line_format, _, _, error(Msg)) :-
     Msg = "Option not handled: --line-format".
 special_handler(old_group_format, _, _, error(Msg)) :-

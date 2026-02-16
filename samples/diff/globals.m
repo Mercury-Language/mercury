@@ -103,7 +103,7 @@
 :- type globals
     --->    globals(
                 option_table,  % Current options.
-                output_style   % Current module name.
+                output_style   % Current output style.
             ).
 
 init(Options, globals(Options, OutputType)) :-

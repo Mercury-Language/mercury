@@ -113,8 +113,8 @@ robust(cvs_merge_conflict).
 
     % show_file shows the segment of the file from Low to High, with
     % each line preceded by the Prefix character and a space. The diff(1)
-    % format specifies that the lines effected in the first file should be
-    % flagged by '<' and the lines effected in the second file should be
+    % format specifies that the lines affected in the first file should be
+    % flagged by '<' and the lines affected in the second file should be
     % flagged by '>'.
     %
 :- pred show_file(file::in, string::in, pos::in, pos::in,
