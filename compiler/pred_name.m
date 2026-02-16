@@ -571,14 +571,13 @@
 
     % Write out a predicate's origin in a format suitable to describe
     % a predicate's origin in that predicate's entry in HLDS dumps,
-    % after the prefix given by the third argument,
-    % Moved here from hlds_pred.m.
+    % after the prefix given by the third argument.
     %
 :- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
 
     % Generated an identification of the predicate with the given origin
     % and name to put into layout structures for the debugger and the deep
-    % profiler. Moved here from layout_out.m.
+    % profiler.
     %
 :- func layout_origin_name(pred_origin, string) = string.
 
