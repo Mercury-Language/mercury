@@ -1606,7 +1606,7 @@ det_to_int64(Integer) = Int64 :-
         Int64 = Int64Prime
     else
         throw(domain_error(
-            "integer.det_to_int64: domain error (conversion would overflow"))
+            "integer.det_to_int64: domain error (conversion would overflow)"))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1621,7 +1621,7 @@ to_uint64(Integer, UInt64) :-
     %
 :- func integer_max_uint64 = integer.
 
-    % 255 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2(14*0)
+    % 255 * 2^(14*4) + 16383 * 2^(14*3) + ... + 16383 * 2^(14*0)
     % = (2^8 - 1) * 2^56 + (2^14 - 1) * 2^42 + ... + (2^14 - 1) * 2^0
     % = 2^64 - 2^56 + 2^56 - 2^42 + ... + 2^14 - 1
     % = 2^64 - 1.
