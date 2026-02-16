@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2022, 2025 The Mercury Team.
+% Copyright (C) 2014-2015, 2018, 2020-2022, 2025-2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -12,15 +12,15 @@
 % This module defines the data types future_io/1 and future/1 which are
 % useful for parallel and concurrent programming.
 %
-% A future represents a value that might not exist yet.  A value for a
-% future may be provided exactly once, but can be read any number of times.
-% In these situations futures can be faster than mvars as their
-% implementation is simpler: they need only one semaphore and they can avoid
-% using it in some cases.
+% A future represents a value that might not exist yet. A value for a future
+% may be provided exactly once, but can be read any number of times.
+% In these situations futures can be faster than mvars as their implementation
+% is simpler: they need only one semaphore and they can avoid using it in some
+% cases.
 %
 % There are two kinds of futures:
 %
-%   + future(T) is a value that will be evaluated by another thread.  The
+%   + future(T) is a value that will be evaluated by another thread. The
 %     function future/1 will spawn a new thread to evaluate its argument
 %     whose result can be retrieved later by calling the function wait/1.
 %     For example:
@@ -30,11 +30,11 @@
 %       Value = wait(Future).
 %
 %   + future_io(T) provides more flexibility, allowing the caller to control
-%     the creation of the thread that provides its value.  It can be used
+%     the creation of the thread that provides its value. It can be used
 %     as follows:
 %
 %       First:
-%           future(Future, !IO),
+%           init(Future, !IO),
 %
 %       Then in a separate thread:
 %           signal(Future, Value0, !IO),
@@ -58,11 +58,11 @@
 :- type future(T).
 
     % Create a future which has the value that the argument, when evaluated,
-    % will produce.  This function will create a thread to evaluate the
+    % will produce. This function will create a thread to evaluate the
     % argument using spawn/3.
     %
-    % If the argument throws an exception, that exception will be rethrown by
-    % wait/1.
+    % If the argument throws an exception, then that exception will be rethrown
+    % by wait/1.
     %
 :- func future((func) = T) = future(T).
 
@@ -76,8 +76,8 @@
     % Future values are intended to be computed by separate threads (using
     % spawn/3).
     %
-    % Generally in computer science and in some other languages this is
-    % known as a promise.  We called it future_io because promise is a
+    % Generally in computer science and in some other languages, this is
+    % known as a promise. We called it future_io because promise is a
     % reserved word in Mercury.
     %
 :- type future_io(T).
@@ -86,8 +86,8 @@
     %
 :- pred init(future_io(T)::uo, io::di, io::uo) is det.
 
-    % Provide a value for the future_io and signal any waiting threads.  Any
-    % further calls to wait will return immediately.
+    % Provide a value for the future_io and signal any waiting threads.
+    % Any further calls to wait will return immediately.
     %
     % Calling signal multiple times will result in undefined behaviour.
     %
@@ -100,6 +100,7 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module exception.
@@ -166,7 +167,7 @@ spawn_impure_2(Task, !IO) :-
 :- type future_io(T)
     --->    future_io(
                 f_ready         :: mutvar(ready),
-                % f_ready is used to optimistically avoid locking.  It is
+                % f_ready is used to optimistically avoid locking. It is
                 % also used to try to detect multiple calls to signal/2.
 
                 f_wait          :: semaphore,
@@ -207,14 +208,14 @@ signal(future_io(MReady, Wait, MValue), Value) :-
         impure semaphore.impure_signal(Wait),
         % We must write MReady _after_ signaling the semaphore.  The signal
         % provides a memory barrier that ensures that the write to MReady
-        % occurs after MValue.  This ensures that the optimisation in wait/4
+        % occurs after MValue. This ensures that the optimisation in wait/4
         % will read the future consistently.
         impure set_mutvar(MReady, ready)
     ;
         Ready = ready,
         % It is possible that another thread has called signal/2 but we read
         % Ready before it wrote it, resulting in multiple calls to signal/2.
-        % Therefore we do not guarantee that we will always detect multiple
+        % Therefore, we do not guarantee that we will always detect multiple
         % calls and will not always throw this exception.
         error("Multiple calls to thread.future.signal/2")
     ).
