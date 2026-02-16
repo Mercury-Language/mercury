@@ -208,7 +208,8 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 134, "tupling", !DumpInfo, !IO),
 
-    maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+        !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
         !DumpInfo, !IO),
 
@@ -450,7 +451,8 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
         SharingAnalysis = yes,
         % These affect the results we write out for structure sharing/reuse
         % analysis.
-        maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
             !DumpInfo, !IO),
         maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO),
@@ -601,7 +603,8 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
         SharingAnalysis = yes,
         % These affect the results we write out for structure sharing/reuse
         % analysis.
-        maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
             !DumpInfo, !IO),
         maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO),
@@ -940,10 +943,11 @@ maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_higher_order(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_higher_order_or_type_spec(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     HigherOrder = OptTuple ^ ot_opt_higher_order,
