@@ -35,7 +35,7 @@
     % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]):
     %
     % Given a list of NumRows (M) elements, each of which is a list of
-    % NumColumns (N) elements, returns the two-dimensional arrays
+    % NumColumns (N) elements, returns the two-dimensional array
     % with NumRows rows and NumColumns columns.
     %
     % Throws an exception if the sublists are not all the same length.
@@ -370,7 +370,7 @@ resize(OldVersionArray2d, NewNumRows, NewNumColumns, DefaultValue)
     !:VersionArray2d = init(NewNumRows, NewNumColumns, DefaultValue),
     bounds(OldVersionArray2d, OldNumRows, OldNumColumns),
     % We cannot copy more rows or columns from OldVersionArray2d
-    % than it actually has. Any slots in !:NewNumColumns whose
+    % than it actually has. Any slots in !:VersionArray2d whose
     % row and/or column numbers do not exist in OldVersionArray2d
     % will have been set to DefaultValue by the call to init above.
     CopyNumRows =    min(OldNumRows, NewNumRows),
@@ -395,7 +395,7 @@ resize_copy_loop(RowNum, ColumnNum, CopyNumRows, CopyNumColumns,
         true
     else if ColumnNum >= CopyNumColumns then
         % We have copied all the columns in this row that exist in
-        % OldVersionArray2d. Any later columns in in !VersionArray2d
+        % OldVersionArray2d. Any later columns in !VersionArray2d
         % that are not in OldVersionArray2d will have been set
         % to DefaultValue by our caller.
         resize_copy_loop(RowNum + 1, 0, CopyNumRows, CopyNumColumns,
