@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1508,8 +1508,8 @@ dead_pred_elim(!ModuleInfo) :-
     % NeededPreds for each element of TypeSpecForcePreds0 is a better approach
     % than an intersection operation that would have to traverse all of
     % NeededPreds.
-    TypeSpecForcePreds =
-        set.filter(set_tree234.contains(NeededPreds), TypeSpecForcePreds0),
+    set.filter(set_tree234.contains(NeededPreds),
+        TypeSpecForcePreds0, TypeSpecForcePreds),
 
     TypeSpecTables = type_spec_tables(TypeSpecProcs0, TypeSpecForcePreds,
         SpecMap0, PragmaMap0),
