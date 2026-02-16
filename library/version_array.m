@@ -27,7 +27,7 @@
 % Most version data structures come with impure, unsafe means to "rewind"
 % to an earlier version, restoring that version's O(1) access times, but
 % leaving later versions undefined (i.e. only do this if you are discarding
-% all later versions of the structure.)
+% all later versions of the structure).
 %
 % The motivation for using version types is that they are ordinary ground
 % structures and do not depend upon uniqueness, while in many circumstances
@@ -38,7 +38,7 @@
 % versions of the array incur an O(k) penalty on accesses where k is
 % the number of updates that have been made since.
 %
-% The advantage of version arrays is that in the common, singly threaded,
+% The advantage of version arrays is that in the common, singly-threaded,
 % case, they are almost as fast as unique arrays, but can be treated as
 % ordinary ground values rather than unique values.
 %
@@ -84,7 +84,7 @@
 
     % Same as empty/0, except the resulting version_array is not thread safe.
     %
-    % That is your program can crash or behave strangely if you attempt to
+    % That is, your program can crash or behave strangely if you attempt to
     % concurrently access or update the array from different threads, or any
     % two arrays produced from operations on the same original array.
     % However this version is much quicker if you guarantee that you never
@@ -307,7 +307,7 @@
     % Return as VersionArray a version of VersionArray0 for which
     % all accesses are O(1).
     %
-    % Invoking this predicate renders undefined both VersionArray0, and
+    % Invoking this predicate renders undefined both VersionArray0 and
     % all later versions derived from it by performing individual updates.
     % Use this *only* when you are absolutely certain that there are
     % no live references to either.
@@ -1356,7 +1356,7 @@ ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src,
     }
 
     // Rewind elements from the oldest to the newest, undoing their changes.
-    // So that we undo elements in the correct order we use a bitmap to
+    // So that we undo elements in the correct order, we use a bitmap to
     // ensure that we never update an array slot twice.
     cur = VA_src;
     MR_allocate_bitmap_msg(bitmap, VA_dest->rest.array->size, alloc_id);
@@ -1421,7 +1421,7 @@ ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id)
     }
     VA->rest.array = array;
 
-    // This element is no-longer an update element.
+    // This element is no longer an update element.
     VA->index = -1;
     VA->value = 0;
     return VA;
