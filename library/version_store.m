@@ -58,13 +58,13 @@
 :- pred copy_mutvar(mutvar(T, S)::in, mutvar(T, S)::out,
     version_store(S)::in, version_store(S)::out) is det.
 
-    % lookup(VS, MutVar) = Element:
+    % lookup(VS, Mutvar) = Element:
     % VS ^ elem(Mutvar) = Element:
     %
     % Return the Element referenced by Mutvar in the version store VS.
     %
 :- func lookup(version_store(S), mutvar(T, S)) = T.
-% NOTE_TO_IMPLEMENTORS: XXX There should be pred version of lookup.
+% NOTE_TO_IMPLEMENTORS: XXX There should be a pred version of lookup.
 :- func elem(mutvar(T, S), version_store(S)) = T.
 
     % get_mutvar(Mutvar, Element, VS, VS):
@@ -91,7 +91,7 @@
 
     % unsafe_rewind(VS) produces a version of VS for which all accesses
     % are O(1). Invoking this predicate renders undefined VS and all later
-    % versions undefined that were derived by performing individual updates.
+    % versions that were derived by performing individual updates.
     % Only use this when you are absolutely certain there are no live
     % references to VS or later versions of VS.
     %
