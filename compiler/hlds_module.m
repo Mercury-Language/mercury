@@ -129,16 +129,56 @@
                 % specializations.
                 user_req_procs      :: set(pred_proc_id),
 
-                % Set of predicates which need to be processed by
-                % higher_order.m to produce those specialized versions.
-                must_process_preds  :: set(pred_id),
+                % The set of forcing predicates.
+                %
+                % For each user-specified type specialization pragma
+                % for a pred PredId, we create a new predicate ForcingPredId
+                % that contains nothing but a call to PredId (in each of
+                % the procedures that the pragma applies to).
+                % When the code of higher_order.specialize_calls.m
+                % traverses such calls, it creates the type specialized version
+                % of PredId that the call asks for, which (by construction
+                % of the call) will be exactly the same type specifialization
+                % that the type_spec pragma asks for.
+                %
+                % In effect, the bodies of these predicates force the code
+                % that does compiler-directed type specialization to also do
+                % user-directed type specialization.
+                %
+                % The usefulness of these forcing predicates ends when
+                % the higher order pass (which also does type specialization)
+                % has finished. The predicates named by this field will be
+                % deleted from the HLDS at that time.
+                %
+                % XXX Given that higher_order.specialize_in_module.m
+                % treats predicates differently based on whether they are
+                % in this set or not, I (zs) am not sure that this whole
+                % reduce-user-guided-type-spec-to-compiler-guided approach
+                % helps us more than it hurts. Recording the user-guided
+                % type specializations in this table, and using that info
+                % to create specialization requests *directly*, meaning
+                % not going through the analysis of a compiler-generated call,
+                % would probably be simpler and more understandable.
+                % (It would probably also be faster, though user-guided
+                % type specialization is rare enough that this is not
+                % a significant concern.)
+                %
+                % On the other hand, this roundabout way is already
+                % implemented, and works. Reimplementing it would not be
+                % worthwhile, unless some new functionality was easier
+                % to approach that way.
+                forcing_preds       :: set(pred_id),
 
                 % Map from predicates for which the user requested a type
-                % specialization to the list of predicates which must be
-                % processed by higher_order.m to force the production of those
-                % versions. This is used by dead_proc_elim.m to avoid creating
-                % versions unnecessarily for versions in imported modules.
-                user_to_process_map :: multi_map(pred_id, pred_id),
+                % specialization to the forcing predicates we have created
+                % for them. The list associated with a given base pred_id
+                % key will have as many elements as the base pred_id has
+                % type_spec pragmas for it.
+                %
+                % dead_proc_elim.m needs this field, because if a base pred_id
+                % is used, this fact should protect the corresponding forcing
+                % predicates from being deleted.
+                base_to_forcing_map :: multi_map(pred_id, pred_id),
 
                 % Type spec pragmas to be placed in the `.opt' file if a
                 % predicate becomes exported.

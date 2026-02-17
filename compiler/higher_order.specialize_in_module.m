@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -84,7 +84,7 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
     some [!GlobalInfo] (
         module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
         module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables),
-        TypeSpecTables = type_spec_tables(_, UserSpecPredIdSet, _, _),
+        TypeSpecTables = type_spec_tables(_, ForcingPredIdSet, _, _),
 
         globals.lookup_bool_option(Globals, debug_higher_order_specialization,
             DebugSpec),
@@ -104,28 +104,28 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
         % pragmas in the module interface) are called from other modules,
         % whose options *do* call for specialization being done.
 
-        set.to_sorted_list(UserSpecPredIdSet, UserSpecPredIds),
+        set.to_sorted_list(ForcingPredIdSet, ForcingPredIds),
         (
-            UserSpecPredIds = [],
+            ForcingPredIds = [],
             !:GlobalInfo =
                 init_higher_order_global_info(Params0, !.ModuleInfo),
-            NonUserSpecPredIds = ValidPredIds,
+            NonForcingPredIds = ValidPredIds,
             set.init(GeneralRequests)
         ;
-            UserSpecPredIds = [_ | _],
+            ForcingPredIds = [_ | _],
             Params = Params0 ^ param_do_user_type_spec
                 := spec_types_user_guided,
             !:GlobalInfo = init_higher_order_global_info(Params, !.ModuleInfo),
 
-            list.foldl2(acc_specialization_requests, UserSpecPredIds,
+            list.foldl2(acc_specialization_requests, ForcingPredIds,
                 set.init, RequestsFromUserSpec, !GlobalInfo),
             process_ho_spec_requests(MaybeProgressStream,
                 RequestsFromUserSpec, GeneralRequests, !GlobalInfo, !IO),
 
             set.list_to_set(ValidPredIds, ValidPredIdSet),
-            set.difference(ValidPredIdSet, UserSpecPredIdSet,
-                NonUserSpecPredIdSet),
-            set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds)
+            set.difference(ValidPredIdSet, ForcingPredIdSet,
+                NonForcingPredIdSet),
+            set.to_sorted_list(NonForcingPredIdSet, NonForcingPredIds)
         ),
 
         ( if
@@ -135,9 +135,9 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
             )
         then
             % Get specialization requests from all the pred_ids that are
-            % not in UserSpecPredIds, completing the pass through all the
+            % not in ForcingPredIds, completing the pass through all the
             % pred_ids in the module that was started above.
-            list.foldl2(acc_specialization_requests, NonUserSpecPredIds,
+            list.foldl2(acc_specialization_requests, NonForcingPredIds,
                 GeneralRequests, Requests, !GlobalInfo),
             % Process all the specialization requests we have gathered so far
             % until no more actionable requests are generated.
@@ -151,7 +151,7 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
         !:ModuleInfo = hogi_get_module_info(!.GlobalInfo),
-        list.foldl(module_info_remove_predicate, UserSpecPredIds, !ModuleInfo)
+        list.foldl(module_info_remove_predicate, ForcingPredIds, !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%

@@ -149,8 +149,8 @@ add_pragma_type_spec_for_pred(TypeSpec, PredId,
         globals.lookup_bool_option(Globals, smart_recompilation, Smart),
         % XXX Should check whether smart recompilation has been disabled?
         ( if
-            MaybeSpecProcs = ok6(SpecProcTable0, ApplicableModes, SpecProcIds,
-                UserArity, PredFormArity, PFUMM),
+            MaybeSpecProcs = ok6(ForcingProcTable0, ApplicableModes,
+                ForcingProcIds, UserArity, PredFormArity, PFUMM),
             % Even if we aren't doing type specialization, we need to create
             % the interface procedures for local predicates to check the
             % type-class correctness of the requested specializations.
@@ -165,16 +165,16 @@ add_pragma_type_spec_for_pred(TypeSpec, PredId,
             ; Smart = yes
             )
         then
-            add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity,
+            add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity,
                 TypeSpec, TVarSet, Types, ExistQVars, ClassContext,
-                SpecProcTable0, ApplicableModes,
-                SpecPredId, SpecPredStatus, !ModuleInfo),
-            record_type_specialization(TypeSpec, PredId, SpecPredId,
-                SpecPredStatus, SpecProcIds, RenamedSubst, TVarSet, PFUMM,
-                !ModuleInfo),
+                ForcingProcTable0, ApplicableModes,
+                ForcingPredId, ForcingPredStatus, !ModuleInfo),
+            record_type_specialization(TypeSpec, PredId, ForcingPredId,
+                ForcingPredStatus, ForcingProcIds, RenamedSubst, TVarSet,
+                PFUMM, !ModuleInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity,
-                SpecPredStatus, TypeSpec, !QualInfo)
+                ForcingPredStatus, TypeSpec, !QualInfo)
         else
             !:Specs = get_any_errors6(MaybeSpecProcs) ++ !.Specs
         )
@@ -371,15 +371,33 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
 
 %---------------------%
 
-:- pred add_type_spec_version_of_pred(pred_id::in, pred_info::in,
+    % add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
+    %     TVarSet, Types, ExistQVars, Constraints, SpecProcTable0,
+    %     ApplicableModes, SpecPredId, SpecPredStatus, !ModuleInfo):
+    %
+    % The input parameters of add_forcing_caller_of_pred, including PredId
+    % and PredInfo0, describe the predicate that has a type_spec pragma
+    % for it, and the processed particulars of that pragma. Its job is
+    % to add a new predicate to the HLDS that consists of nothing more than
+    % a call to PredId with arguments whose types match the ones in the pragma.
+    %
+    % The point of this is that we already have code that traverses
+    % the code of a module looking for natural (i.e. NOT programmer-requested)
+    % opportunities for type specialization. By creativing the new predicate,
+    % (whose id we return as ForcePredId) that contains a call that is
+    % type-specializable in exactly the way that the pragma asks for,
+    % we effectively reduce the problem of user-directed type specialization
+    % to the problem of compiler-directed type specialization.
+    %
+:- pred add_forcing_caller_of_pred(pred_id::in, pred_info::in,
     pred_form_arity::in, decl_pragma_type_spec_info::in,
     tvarset::in, list(mer_type)::in, existq_tvars::in,
     univ_exist_constraints::in, proc_table::in, clause_applicable_modes::in,
     pred_id::out, pred_status::out, module_info::in, module_info::out) is det.
 
-add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
-        TVarSet, Types, ExistQVars, Constraints, SpecProcTable0,
-        ApplicableModes, SpecPredId, SpecPredStatus, !ModuleInfo) :-
+add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
+        TVarSet, Types, ExistQVars, Constraints, ForcingProcTable0,
+        ApplicableModes, ForcingPredId, ForcingPredStatus, !ModuleInfo) :-
     TSInfo0 = decl_pragma_type_spec_info(PFUMM0, SymName, SpecModuleName,
         Subst, TVarSet0, _ExpandedItems, _PragmaContext, _SeqNum),
 
@@ -387,7 +405,7 @@ add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
     % for the original procedure as they won't be (directly)
     % applicable to the specialized versions.
     map.map_values_only(reset_imported_structure_sharing_reuse,
-        SpecProcTable0, SpecProcTable),
+        ForcingProcTable0, ForcingProcTable),
 
     % Build a clause to call the old predicate with the specified types
     % to force the specialization. For imported predicates this forces
@@ -435,9 +453,9 @@ add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
     map.init(ConstraintMap),
 
     ( if pred_info_is_imported(PredInfo0) then
-        SpecPredStatus = pred_status(status_opt_imported)
+        ForcingPredStatus = pred_status(status_opt_imported)
     else
-        pred_info_get_status(PredInfo0, SpecPredStatus)
+        pred_info_get_status(PredInfo0, ForcingPredStatus)
     ),
 
     pfumm_to_maybe_pf_arity_maybe_modes(PFUMM0, MaybePredOrFunc0,
@@ -453,12 +471,14 @@ add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
     GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
     pred_info_init(PredOrFunc, SpecModuleName, SpecName, PredFormArity,
-        PredContext, Origin, SpecPredStatus, MaybeCurUserDecl, GoalType,
+        PredContext, Origin, ForcingPredStatus, MaybeCurUserDecl, GoalType,
         Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
-        ConstraintMap, Clauses, VarNameRemap, SpecPredInfo0),
-    pred_info_set_proc_table(SpecProcTable, SpecPredInfo0, SpecPredInfo),
+        ConstraintMap, Clauses, VarNameRemap, ForcingPredInfo0),
+    pred_info_set_proc_table(ForcingProcTable,
+        ForcingPredInfo0, ForcingPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_insert(SpecPredInfo, SpecPredId, PredTable0, PredTable),
+    predicate_table_insert(ForcingPredInfo, ForcingPredId,
+        PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred reset_imported_structure_sharing_reuse(
@@ -479,34 +499,36 @@ tvar_subst_desc(tvar_subst(TVar, Type)) = var_to_int(TVar) - Type.
     type_subst::in, tvarset::in, pred_func_or_unknown_maybe_modes::in,
     module_info::in, module_info::out) is det.
 
-record_type_specialization(TypeSpecInfo0, PredId, SpecPredId, SpecPredStatus,
-        SpecProcIds, RenamedSubst, TVarSet, PFUMM, !ModuleInfo) :-
+record_type_specialization(TypeSpecInfo0, PredId, ForcingPredId,
+        SpecPredStatus, SpecProcIds, RenamedSubst, TVarSet, PFUMM,
+        !ModuleInfo) :-
     % Record the type specialisation in the module_info.
     module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables0),
-    TypeSpecTables0 = type_spec_tables(ProcsToSpec0, ForceVersions0, SpecMap0,
-        PragmaMap0),
+    TypeSpecTables0 = type_spec_tables(ProcsToSpec0, ForcingPredIds0,
+        BaseToForcingMap0, PragmaMap0),
     list.map(
         ( pred(ProcId::in, PredProcId::out) is det :-
             PredProcId = proc(PredId, ProcId)
         ), SpecProcIds, SpecPredProcIds),
     set.insert_list(SpecPredProcIds, ProcsToSpec0, ProcsToSpec),
-    set.insert(SpecPredId, ForceVersions0, ForceVersions),
+    set.insert(ForcingPredId, ForcingPredIds0, ForcingPredIds),
 
     ( if SpecPredStatus = pred_status(status_opt_imported) then
-        % For imported predicates dead_proc_elim.m needs to know that
+        % For imported predicates, dead_proc_elim.m needs to know that
         % if the original predicate is used, the predicate to force
         % the production of the specialised interface is also used.
-        multi_map.set(PredId, SpecPredId, SpecMap0, SpecMap)
+        multi_map.set(PredId, ForcingPredId,
+            BaseToForcingMap0, BaseToForcingMap)
     else
-        SpecMap = SpecMap0
+        BaseToForcingMap = BaseToForcingMap0
     ),
     TypeSpecInfo0 = decl_pragma_type_spec_info(_PFUMM0, SymName,
         SpecModuleName, _Subst, _TVarSet0, ExpandedItems, Context, SeqNum),
     TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, SymName, SpecModuleName,
         RenamedSubst, TVarSet, ExpandedItems, Context, SeqNum),
     one_or_more_map.add(PredId, TypeSpecInfo, PragmaMap0, PragmaMap),
-    TypeSpecTables = type_spec_tables(ProcsToSpec, ForceVersions, SpecMap,
-        PragmaMap),
+    TypeSpecTables = type_spec_tables(ProcsToSpec, ForcingPredIds,
+        BaseToForcingMap, PragmaMap),
     module_info_set_type_spec_tables(TypeSpecTables, !ModuleInfo).
 
 :- pred maybe_record_type_spec_in_qual_info(pred_or_func::in, sym_name::in,
