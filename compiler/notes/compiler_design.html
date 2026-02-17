@@ -803,8 +803,15 @@ everything needed to implement tabling pragmas to the HLDS.
 add_pragma_type_spec.m and add_pragma_type_spec_constr.m together add
 everything needed to implement type specialization pragmas to the HLDS.
 <li>
-add_pragma.m adds the easiest-to-implement kinds of pragmas to the HLDS,
-i.e. those that don't need their own module.
+add_pragma_decl.m adds those declarative pragmas to the HLDS
+that don't need their own module.
+<li>
+add_pragma_impl.m adds those implementation pragmas to the HLDS
+that don't need their own module.
+<li>
+add_pragma_gen.m adds compiler-generated pragmas to the HLDS.
+<li>
+add_pragma_util.m provides utility operations to the three modules above.
 </ul>
 
 Fact table pragmas are handled by fact_table_gen.m

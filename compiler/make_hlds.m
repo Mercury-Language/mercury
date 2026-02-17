@@ -49,10 +49,13 @@
 :- include_module add_foreign_proc.
 :- include_module add_mode.
 :- include_module add_mutable_aux_preds.
-:- include_module add_pragma.
+:- include_module add_pragma_decl.
+:- include_module add_pragma_gen.
+:- include_module add_pragma_impl.
 :- include_module add_pragma_tabling.
 :- include_module add_pragma_type_spec.
 :- include_module add_pragma_type_spec_constr.
+:- include_module add_pragma_util.
 :- include_module add_pred.
 :- include_module add_solver.
 :- include_module add_type.
