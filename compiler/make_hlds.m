@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -52,6 +52,7 @@
 :- include_module add_pragma.
 :- include_module add_pragma_tabling.
 :- include_module add_pragma_type_spec.
+:- include_module add_pragma_type_spec_constr.
 :- include_module add_pred.
 :- include_module add_solver.
 :- include_module add_type.
