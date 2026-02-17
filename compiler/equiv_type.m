@@ -111,6 +111,8 @@
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     list(error_spec)::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Replace equivalence types in the representation of an equivalence type.
     % Generate an error message if the expansion reveals that the definition
     % is circular.
@@ -119,22 +121,8 @@
     item_type_repn_info_eqv::in, item_type_repn_info_eqv::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Replace all equivalence types in a given type, reporting
-    % any circularities, and whether the type has changed.
-    %
-:- pred replace_in_type_report_circular_eqvs(type_eqv_map::in, tvarset::in,
-    prog_context::in, mer_type::in, mer_type::out, maybe_changed::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-    % Replace equivalence types in a given type.
-    % The bool output is `yes' if anything changed.
-    %
-:- pred replace_in_type(type_eqv_map::in, mer_type::in, mer_type::out,
-    maybe_changed::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out) is det.
-
-:- pred replace_in_type_list(type_eqv_map::in,
-    list(mer_type)::in, list(mer_type)::out, maybe_changed::out,
+:- pred replace_in_ctors(type_eqv_map::in,
+    one_or_more(constructor)::in, one_or_more(constructor)::out,
     tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
@@ -148,9 +136,23 @@
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out)
     is det.
 
-:- pred replace_in_ctors(type_eqv_map::in,
-    one_or_more(constructor)::in, one_or_more(constructor)::out,
+:- pred replace_in_type_list(type_eqv_map::in,
+    list(mer_type)::in, list(mer_type)::out, maybe_changed::out,
     tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out) is det.
+
+    % Replace all equivalence types in a given type, reporting
+    % any circularities, and whether the type has changed.
+    %
+:- pred replace_in_type_report_circular_eqvs(type_eqv_map::in, tvarset::in,
+    prog_context::in, mer_type::in, mer_type::out, maybe_changed::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+    % Replace equivalence types in a given type.
+    % The bool output is `yes' if anything changed.
+    %
+:- pred replace_in_type(type_eqv_map::in, mer_type::in, mer_type::out,
+    maybe_changed::out, tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -636,93 +638,6 @@ replace_in_parse_tree_trans_opt(_ModuleName, _TypeEqvMap, _InstEqvMap,
     % needs any expansions.
 
 %---------------------------------------------------------------------------%
-
-:- type maybe_record_sym_name_use
-    --->    do_not_record_sym_name_use
-    ;       record_sym_name_use(item_visibility).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_maybe(module_name::in, maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
-        T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_modules, used_modules, list(error_spec))
-    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
-    maybe(T)::in, maybe(T)::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_maybe(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        ReplaceInItem, MaybeItem0, MaybeItem,
-        !RecompInfo, !UsedModules, !Specs) :-
-    (
-        MaybeItem0 = no,
-        MaybeItem = no
-    ;
-        MaybeItem0 = yes(Item0),
-        ReplaceInItem(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-            Item0, Item, !RecompInfo, !UsedModules, ItemSpecs),
-        (
-            ItemSpecs = [],
-            MaybeItem = yes(Item)
-        ;
-            ItemSpecs = [_ | _],
-            !:Specs = ItemSpecs ++ !.Specs,
-            MaybeItem = no
-        )
-    ).
-
-%---------------------%
-
-:- pred replace_in_list(module_name::in, maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
-        T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_modules, used_modules, list(error_spec))
-    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
-    list(T)::in, list(T)::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        ReplaceInItem, Items0, Items, !RecompInfo, !UsedModules, !Specs) :-
-    replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        ReplaceInItem, Items0, [], RevItems,
-        !RecompInfo, !UsedModules, !Specs),
-    list.reverse(RevItems, Items).
-
-:- pred replace_in_list_loop(module_name::in, maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
-        T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_modules, used_modules, list(error_spec))
-    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
-    list(T)::in, list(T)::in, list(T)::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_list_loop(_ModuleName, _MaybeRecord, _TypeEqvMap, _InstEqvMap,
-        _ReplaceInItem, [], !RevItems, !RecompInfo, !UsedModules, !Specs).
-replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        ReplaceInItem, [Item0 | Items0], !RevItems,
-        !RecompInfo, !UsedModules, !Specs) :-
-    ReplaceInItem(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        Item0, Item, !RecompInfo, !UsedModules, ItemSpecs),
-    % Discard the item if there were any errors.
-    (
-        ItemSpecs = [],
-        !:RevItems = [Item | !.RevItems]
-    ;
-        ItemSpecs = [_ | _],
-        !:Specs = ItemSpecs ++ !.Specs
-    ),
-    replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        ReplaceInItem, Items0, !RevItems, !RecompInfo, !UsedModules, !Specs).
-
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_type_ctor_checked_defn(module_name::in,
@@ -933,6 +848,247 @@ replace_in_type_repn_eqv(TypeEqvMap, Info0, Info, !Specs) :-
     Info = item_type_repn_info(SymName, ArgTypeVars, Type, TVarSet,
         Context, SeqNum).
 
+%---------------------------------------------------------------------------%
+
+:- pred replace_in_type_defn(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_defn::in, type_defn::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
+        TypeDefn0, TypeDefn, !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    (
+        TypeDefn0 = parse_tree_eqv_type(DetailsEqv0),
+        replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, InstEqvMap,
+            TypeCtor, Context, DetailsEqv0, DetailsEqv,
+            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
+        TypeDefn = parse_tree_eqv_type(DetailsEqv)
+    ;
+        TypeDefn0 = parse_tree_du_type(DetailsDu0),
+        replace_in_type_defn_du(MaybeRecord, TypeEqvMap, InstEqvMap,
+            TypeCtor, Context, DetailsDu0, DetailsDu,
+            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
+        TypeDefn = parse_tree_du_type(DetailsDu)
+    ;
+        TypeDefn0 = parse_tree_sub_type(DetailsSub0),
+        replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, InstEqvMap,
+            TypeCtor, Context, DetailsSub0, DetailsSub,
+            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
+        TypeDefn = parse_tree_sub_type(DetailsSub)
+    ;
+        TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
+        replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap,
+            TypeCtor, Context, DetailsSolver0, DetailsSolver,
+            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
+        TypeDefn = parse_tree_solver_type(DetailsSolver)
+    ;
+        ( TypeDefn0 = parse_tree_abstract_type(_)
+        ; TypeDefn0 = parse_tree_foreign_type(_)
+        ),
+        TypeDefn = TypeDefn0,
+        Specs = []
+    ).
+
+:- pred replace_in_type_defn_eqv(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_details_eqv::in, type_details_eqv::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
+        Context, DetailsEqv0, DetailsEqv,
+        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    DetailsEqv0 = type_details_eqv(TypeBody0),
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [TypeCtor],
+        TypeBody0, TypeBody, _, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
+    set.to_sorted_list(Circ, CircTypes),
+    (
+        CircTypes = [_ | _],
+        Specs = [report_circular_eqv_type(TypeCtor, Context)]
+    ;
+        CircTypes = [],
+        Specs = []
+    ),
+    DetailsEqv = type_details_eqv(TypeBody).
+
+%---------------------%
+
+:- pred replace_in_type_defn_du(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_details_du::in, type_details_du::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
+        _TypeCtor, _Context, DetailsDu0, DetailsDu,
+        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    DetailsDu0 = type_details_du(Ctors0, MaybeCanon, DirectArgFunctors),
+    replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    DetailsDu = type_details_du(Ctors, MaybeCanon, DirectArgFunctors),
+    Specs = [].
+
+:- pred replace_in_type_defn_sub(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_details_sub::in, type_details_sub::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, _InstEqvMap,
+        _TypeCtor, _Context, DetailsSub0, DetailsSub,
+        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    DetailsSub0 = type_details_sub(SuperType0, Ctors0),
+    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+        SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+    replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    DetailsSub = type_details_sub(SuperType, Ctors),
+    Specs = [].
+
+%---------------------%
+
+replace_in_ctors(TypeEqvMap, !Ctors, !TVarSet, !EquivTypeInfo) :-
+    replace_in_ctors_location(do_not_record_sym_name_use, TypeEqvMap,
+        !Ctors, !TVarSet, !EquivTypeInfo, used_modules_init, _).
+
+:- pred replace_in_ctors_location(maybe_record_sym_name_use::in,
+    type_eqv_map::in,
+    one_or_more(constructor)::in, one_or_more(constructor)::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors, !TVarSet,
+        !EquivTypeInfo, !UsedModules) :-
+    Ctors0 = one_or_more(HeadCtor0, TailCtors0),
+    replace_in_ctor(MaybeRecord, TypeEqvMap, HeadCtor0, HeadCtor,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    list.map_foldl3(replace_in_ctor(MaybeRecord, TypeEqvMap),
+        TailCtors0, TailCtors,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    Ctors = one_or_more(HeadCtor, TailCtors).
+
+:- pred replace_in_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
+    constructor::in, constructor::out, tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
+        !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, CtorName, CtorArgs0, Arity,
+        Ctxt),
+    replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap,
+        CtorArgs0, CtorArgs, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+    (
+        MaybeExistConstraints0 = no_exist_constraints,
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
+        ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
+            UnconstrainedExistQTVars, ConstrainedExistQTVars),
+        replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
+            Constraints0, Constraints, !TVarSet, !EquivTypeInfo, !UsedModules),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+            UnconstrainedExistQTVars, ConstrainedExistQTVars),
+        MaybeExistConstraints = exist_constraints(ExistConstraints)
+    ),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorName, CtorArgs, Arity,
+        Ctxt).
+
+%---------------------%
+
+:- pred replace_in_ctor_arg_list(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(constructor_arg)::in, list(constructor_arg)::out,
+    circ_types::out, tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap, !CtorArgs,
+        ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, [], !CtorArgs,
+        set.init, ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules).
+
+:- pred replace_in_ctor_arg_list_loop(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(type_ctor)::in,
+    list(constructor_arg)::in, list(constructor_arg)::out,
+    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_ctor_arg_list_loop(_MaybeRecord, _TypeEqvMap, _Seen, [], [],
+        !Circ, !TVarSet, !EquivTypeInfo, !UsedModules).
+replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
+        [CtorArg0 | CtorArgs0], [CtorArg | CtorArgs],
+        !Circ, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    CtorArg0 = ctor_arg(Name, Type0, Context),
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Seen,
+        Type0, Type, _, TypeCirc, !TVarSet, !EquivTypeInfo, !UsedModules),
+    CtorArg = ctor_arg(Name, Type, Context),
+    set.union(TypeCirc, !Circ),
+    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
+        CtorArgs0, CtorArgs, !Circ, !TVarSet, !EquivTypeInfo, !UsedModules).
+
+%---------------------%
+
+:- pred replace_in_type_defn_solver(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_details_solver::in, type_details_solver::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
+        Context, DetailsSolver0, DetailsSolver,
+        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    DetailsSolver0 = type_details_solver(SolverDetails0, MaybeUserEqComp),
+    SolverDetails0 = solver_type_details(RepresentationType0,
+        GroundInst, AnyInst, MutableInfos0),
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [TypeCtor],
+        RepresentationType0, RepresentationType,
+        _Changed, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
+    set.to_sorted_list(Circ, CircTypes),
+    (
+        CircTypes = [_ | _],
+        % We used to abort the compiler if we found circular equivalence types
+        % in any non-equivalence type definition. I (zs) don't remember
+        % hearing about it ever being triggered in the wild, but it
+        % *does* get triggered by code such as
+        % ":- solver type foo where representation is foo, ...".
+        %
+        % XXX I (zs) don't know in what other scenarios we may find
+        % circular equivalence types, so the wording of this message
+        % is targeted towards the above scenario.
+        Pieces = [words("Error: circular type expansion"),
+            words("in the representation of solver type"),
+            qual_type_ctor(TypeCtor), suffix("."), nl],
+        Specs = [spec($pred, severity_error, phase_expand_types,
+            Context, Pieces)]
+    ;
+        CircTypes = [],
+        Specs = []
+    ),
+    replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
+        MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules),
+    SolverDetails = solver_type_details(RepresentationType,
+        GroundInst, AnyInst, MutableInfos),
+    DetailsSolver = type_details_solver(SolverDetails, MaybeUserEqComp).
+
+:- pred replace_in_constraint_store(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
+    list(item_mutable_info)::in, list(item_mutable_info)::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
+replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
+        [MutableInfo0 | MutableInfos0], [MutableInfo | MutableInfos],
+        !EquivTypeInfo, !UsedModules) :-
+    replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap,
+        MutableInfo0, MutableInfo, !EquivTypeInfo, !UsedModules),
+    replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
+        MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules).
+
+%---------------------------------------------------------------------------%
+
 :- pred replace_in_pred_decl_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_pred_decl_info::in, item_pred_decl_info::out,
@@ -1004,7 +1160,7 @@ replace_in_mode_decl_info(ModuleName, MaybeRecord, _TypeEqvMap, InstEqvMap,
     Info = item_mode_decl_info(PredName, MaybePredOrFunc, Modes,
         WithInst, MaybeDetism, InstVarSet, Context, SeqNum).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 %
 % The next two predicates have identical definitions except for the treatment
 % of the class interfaces, but one is for item_typeclass_infos, while the other
@@ -1069,7 +1225,70 @@ replace_in_abstract_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap,
     Info = item_typeclass_info(ClassName, Vars, Constraints, FunDeps,
         ClassInterface, TVarSet, Context, SeqNum).
 
-%---------------------%
+%---------------------------------------------------------------------------%
+
+:- pred replace_in_class_interface(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
+    list(class_decl)::in, list(class_decl)::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+replace_in_class_interface(MaybeRecord, TypeEqvMap, InstEqvMap,
+        ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules,
+        !Specs) :-
+    list.map_foldl3(
+        replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap),
+        ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules, !Specs).
+
+:- pred replace_in_class_decl(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, class_decl::in, class_decl::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
+        !EquivTypeInfo, !UsedModules, !Specs) :-
+    (
+        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
+        PredOrFuncInfo0 = class_pred_or_func_info(PredName, PredOrFunc,
+            TypesAndModes0, WithType0, WithInst0, MaybeDetism0,
+            TVarSet0, InstVarSet, ExistQVars, Purity,
+            ClassContext0, Context),
+        replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName,
+            PredOrFunc, Context, TypeEqvMap, InstEqvMap,
+            ClassContext0, ClassContext, TypesAndModes0, TypesAndModes,
+            TVarSet0, TVarSet, WithType0, WithType, WithInst0, WithInst,
+            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
+        !:Specs = NewSpecs ++ !.Specs,
+        PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
+            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TVarSet, InstVarSet, ExistQVars, Purity,
+            ClassContext, Context),
+        Decl = class_decl_pred_or_func(PredOrFuncInfo)
+    ;
+        Decl0 = class_decl_mode(ModeInfo0),
+        ModeInfo0 = class_mode_info(PredName, MaybePredOrFunc0, Modes0,
+            WithInst0, MaybeDetism0, InstVarSet, Context),
+        PredFormArity = arg_list_arity(Modes0),
+        replace_in_with_inst(MaybeRecord, InstEqvMap,
+            PredName, PredFormArity, Context, mode_decl,
+            MaybePredOrFunc0, MaybePredOrFunc, WithInst0, WithInst, ExtraModes,
+            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
+        (
+            ExtraModes = [],
+            Modes = Modes0
+        ;
+            ExtraModes = [_ | _],
+            Modes = Modes0 ++ ExtraModes
+        ),
+        !:Specs = NewSpecs ++ !.Specs,
+        ModeInfo = class_mode_info(PredName, MaybePredOrFunc, Modes,
+            WithInst, MaybeDetism, InstVarSet, Context),
+        Decl = class_decl_mode(ModeInfo)
+    ).
+
+%---------------------------------------------------------------------------%
 %
 % The next two predicates have identical definitions except for the treatment
 % of the instance bodies, but one is for item_instance_infos, while the other
@@ -1159,7 +1378,7 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
         Constraints, InstanceBody, TVarSet, ContainingModuleName,
         Context, SeqNum).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 % We don't yet have code to expand out type equivalences in explicit
 % type qualifications in clauses.
@@ -1183,7 +1402,7 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
 %       InstanceMethod = instance_method(MethorNameArity, ProcDef, Context)
 %   ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 :- pred replace_in_decl_pragma_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1302,6 +1521,86 @@ replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
 
 %---------------------%
 
+:- pred replace_in_subst(maybe_record_sym_name_use::in, type_eqv_map::in,
+    type_subst::in, type_subst::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
+        !TVarSet, !ExpandedItems, !UsedModules) :-
+    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
+    replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts,
+        !TVarSet, !ExpandedItems, !UsedModules),
+    Subst = one_or_more(HeadSubst, TailSubsts).
+
+:- pred replace_in_tvar_substs(maybe_record_sym_name_use::in, type_eqv_map::in,
+    tvar_subst::in, tvar_subst::out,
+    list(tvar_subst)::in, list(tvar_subst)::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
+        tvar_subst(HeadVar, HeadType0), tvar_subst(HeadVar, HeadType),
+        TailVarsTypes0, TailVarsTypes,
+        !TVarSet, !ExpandedItems, !UsedModules) :-
+    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+        HeadType0, HeadType, _, !TVarSet, !ExpandedItems, !UsedModules),
+    (
+        TailVarsTypes0 = [],
+        TailVarsTypes = []
+    ;
+        TailVarsTypes0 = [HeadTailVarType0 | TailTailVarsTypes0],
+        replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
+            HeadTailVarType0, HeadTailVarType,
+            TailTailVarsTypes0, TailTailVarsTypes,
+            !TVarSet, !ExpandedItems, !UsedModules),
+        TailVarsTypes = [HeadTailVarType | TailTailVarsTypes]
+    ).
+
+%---------------------%
+
+:- pred replace_in_var_or_ground_constraint_location(
+    maybe_record_sym_name_use::in, type_eqv_map::in,
+    var_or_ground_constraint::in, var_or_ground_constraint::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_var_or_ground_constraint_location(MaybeRecord, TypeEqvMap,
+        Constraint0, Constraint, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    Constraint0 =
+        var_or_ground_constraint(ClassName, ConstraintArgs0, Context),
+    list.map_foldl3(
+        replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap),
+        ConstraintArgs0, ConstraintArgs,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    Constraint = var_or_ground_constraint(ClassName, ConstraintArgs, Context).
+
+:- pred replace_in_var_or_ground_type_location(maybe_record_sym_name_use::in,
+    type_eqv_map::in, var_or_ground_type::in, var_or_ground_type::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap,
+        ConstraintArg0, ConstraintArg,
+        !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    (
+        ConstraintArg0 = type_var_name(_, _),
+        ConstraintArg = ConstraintArg0
+    ;
+        ConstraintArg0 = ground_type(GroundType0),
+        Type0 = coerce(GroundType0),
+        replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+            Type0, Type, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+        ( if type_is_ground(Type, GroundType) then
+            ConstraintArg = ground_type(GroundType)
+        else
+            unexpected($pred, "expanded ground type is not ground")
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred replace_in_foreign_proc(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_foreign_proc_info::in, item_foreign_proc_info::out,
@@ -1340,6 +1639,72 @@ replace_in_foreign_proc(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
 
 %---------------------%
 
+:- pred replace_in_structure_sharing_domain(maybe_record_sym_name_use::in,
+    type_eqv_map::in, tvarset::in,
+    structure_sharing_domain::in, structure_sharing_domain::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_structure_sharing_domain(MaybeRecord, TypeEqvMap, TVarSet,
+        SharingDomain0, SharingDomain, !EquivTypeInfo, !UsedModules) :-
+    (
+        ( SharingDomain0 = structure_sharing_bottom
+        ; SharingDomain0 = structure_sharing_top(_)
+        ),
+        SharingDomain = SharingDomain0
+    ;
+        SharingDomain0 = structure_sharing_real(SharingPairs0),
+        list.map_foldl2(
+            replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap,
+                TVarSet),
+            SharingPairs0, SharingPairs, !EquivTypeInfo, !UsedModules),
+        SharingDomain = structure_sharing_real(SharingPairs)
+    ).
+
+:- pred replace_in_structure_sharing_pair(maybe_record_sym_name_use::in,
+    type_eqv_map::in, tvarset::in,
+    structure_sharing_pair::in, structure_sharing_pair::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap, TVarSet,
+        SSA0 - SSB0, SSA - SSB, !EquivTypeInfo, !UsedModules) :-
+    replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, SSA0, SSA,
+        !EquivTypeInfo, !UsedModules),
+    replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, SSB0, SSB,
+        !EquivTypeInfo, !UsedModules).
+
+:- pred replace_in_datastruct(maybe_record_sym_name_use::in,
+    type_eqv_map::in, tvarset::in, datastruct::in,
+    datastruct::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, DS0, DS,
+        !EquivTypeInfo, !UsedModules) :-
+    DS0 = selected_cel(Var, Sel0),
+    list.map_foldl2(replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet),
+        Sel0, Sel, !EquivTypeInfo, !UsedModules),
+    DS = selected_cel(Var, Sel).
+
+:- pred replace_in_unit_selector(maybe_record_sym_name_use::in,
+    type_eqv_map::in, tvarset::in, unit_selector::in,
+    unit_selector::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet, Sel0, Sel,
+        !EquivTypeInfo, !UsedModules) :-
+    (
+        Sel0 = termsel(_, _),
+        Sel = Sel0
+    ;
+        Sel0 = typesel(Type0),
+        replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+            Type0, Type, _, TVarSet, _, !EquivTypeInfo, !UsedModules),
+        Sel = typesel(Type)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred replace_in_mutable_info(module_name::in, maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     item_mutable_info::in, item_mutable_info::out,
@@ -1376,7 +1741,7 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
     Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
         InitValue, Attrs, Varset, Context, SeqNum).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 :- pred replace_in_event_specs(type_eqv_map::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
@@ -1427,468 +1792,6 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules) :-
         MaybeSynthCall).
 
 %---------------------------------------------------------------------------%
-
-:- pred replace_in_type_defn(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
-    type_defn::in, type_defn::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
-        TypeDefn0, TypeDefn, !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    (
-        TypeDefn0 = parse_tree_eqv_type(DetailsEqv0),
-        replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, InstEqvMap,
-            TypeCtor, Context, DetailsEqv0, DetailsEqv,
-            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
-        TypeDefn = parse_tree_eqv_type(DetailsEqv)
-    ;
-        TypeDefn0 = parse_tree_du_type(DetailsDu0),
-        replace_in_type_defn_du(MaybeRecord, TypeEqvMap, InstEqvMap,
-            TypeCtor, Context, DetailsDu0, DetailsDu,
-            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
-        TypeDefn = parse_tree_du_type(DetailsDu)
-    ;
-        TypeDefn0 = parse_tree_sub_type(DetailsSub0),
-        replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, InstEqvMap,
-            TypeCtor, Context, DetailsSub0, DetailsSub,
-            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
-        TypeDefn = parse_tree_sub_type(DetailsSub)
-    ;
-        TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
-        replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap,
-            TypeCtor, Context, DetailsSolver0, DetailsSolver,
-            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
-        TypeDefn = parse_tree_solver_type(DetailsSolver)
-    ;
-        ( TypeDefn0 = parse_tree_abstract_type(_)
-        ; TypeDefn0 = parse_tree_foreign_type(_)
-        ),
-        TypeDefn = TypeDefn0,
-        Specs = []
-    ).
-
-:- pred replace_in_type_defn_eqv(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
-    type_details_eqv::in, type_details_eqv::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
-        Context, DetailsEqv0, DetailsEqv,
-        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsEqv0 = type_details_eqv(TypeBody0),
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [TypeCtor],
-        TypeBody0, TypeBody, _, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
-    set.to_sorted_list(Circ, CircTypes),
-    (
-        CircTypes = [_ | _],
-        Specs = [report_circular_eqv_type(TypeCtor, Context)]
-    ;
-        CircTypes = [],
-        Specs = []
-    ),
-    DetailsEqv = type_details_eqv(TypeBody).
-
-:- func report_circular_eqv_type(type_ctor, prog_context) = error_spec.
-
-report_circular_eqv_type(TypeCtor, Context) = Spec :-
-    Pieces = [words("Error: equivalence type")] ++
-        color_as_subject([qual_type_ctor(TypeCtor)]) ++
-        [words("is")] ++
-        color_as_incorrect([words("circular.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
-
-:- func report_contains_circular_eqv_type(tvarset, mer_type, prog_context,
-    type_ctor, list(type_ctor)) = error_spec.
-
-report_contains_circular_eqv_type(TVarSet, Type, Context,
-        HeadTypeCtor, TailTypeCtors) = Spec :-
-    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-    MainPieces = [words("Error: the type")] ++
-        color_as_subject([quote(TypeStr)]) ++
-        [words("cannot have its equivalences fully expanded,"),
-        words("because its expansion contains the")],
-    (
-        TailTypeCtors = [],
-        CircSpecs =
-            color_as_incorrect([words("circular equivalence type")]) ++
-            color_as_subject([qual_type_ctor(HeadTypeCtor), suffix(".")]) ++
-            [nl]
-    ;
-        TailTypeCtors = [_ | _],
-        TypeCtorPieces = list.map((func(TC) = qual_type_ctor(TC)),
-            [HeadTypeCtor | TailTypeCtors]),
-        CircSpecs =
-            color_as_incorrect([words("circular equivalence types")]) ++
-            piece_list_to_color_pieces(color_subject, "and", [suffix(".")],
-                TypeCtorPieces) ++
-            [nl]
-    ),
-    Pieces = MainPieces ++ CircSpecs,
-    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
-
-:- pred replace_in_type_defn_du(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
-    type_details_du::in, type_details_du::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
-        _TypeCtor, _Context, DetailsDu0, DetailsDu,
-        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsDu0 = type_details_du(Ctors0, MaybeCanon, DirectArgFunctors),
-    replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
-        !TVarSet, !EquivTypeInfo, !UsedModules),
-    DetailsDu = type_details_du(Ctors, MaybeCanon, DirectArgFunctors),
-    Specs = [].
-
-:- pred replace_in_type_defn_sub(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
-    type_details_sub::in, type_details_sub::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, _InstEqvMap,
-        _TypeCtor, _Context, DetailsSub0, DetailsSub,
-        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsSub0 = type_details_sub(SuperType0, Ctors0),
-    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
-        SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-    replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
-        !TVarSet, !EquivTypeInfo, !UsedModules),
-    DetailsSub = type_details_sub(SuperType, Ctors),
-    Specs = [].
-
-:- pred replace_in_type_defn_solver(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
-    type_details_solver::in, type_details_solver::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
-        Context, DetailsSolver0, DetailsSolver,
-        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsSolver0 = type_details_solver(SolverDetails0, MaybeUserEqComp),
-    SolverDetails0 = solver_type_details(RepresentationType0,
-        GroundInst, AnyInst, MutableInfos0),
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [TypeCtor],
-        RepresentationType0, RepresentationType,
-        _Changed, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
-    set.to_sorted_list(Circ, CircTypes),
-    (
-        CircTypes = [_ | _],
-        % We used to abort the compiler if we found circular equivalence types
-        % in any non-equivalence type definition. I (zs) don't remember
-        % hearing about it ever being triggered in the wild, but it
-        % *does* get triggered by code such as
-        % ":- solver type foo where representation is foo, ...".
-        %
-        % XXX I (zs) don't know in what other scenarios we may find
-        % circular equivalence types, so the wording of this message
-        % is targeted towards the above scenario.
-        Pieces = [words("Error: circular type expansion"),
-            words("in the representation of solver type"),
-            qual_type_ctor(TypeCtor), suffix("."), nl],
-        Specs = [spec($pred, severity_error, phase_expand_types,
-            Context, Pieces)]
-    ;
-        CircTypes = [],
-        Specs = []
-    ),
-    replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
-        MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules),
-    SolverDetails = solver_type_details(RepresentationType,
-        GroundInst, AnyInst, MutableInfos),
-    DetailsSolver = type_details_solver(SolverDetails, MaybeUserEqComp).
-
-%---------------------------------------------------------------------------%
-
-replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
-        Type0, Type, Changed, !Specs) :-
-    replace_in_type_maybe_record_use(do_not_record_sym_name_use,
-        TypeEqvMap, [], Type0, Type, Changed, Circ,
-        TVarSet0, _TVarSet, no_eqv_expand_info, _, used_modules_init, _),
-    set.to_sorted_list(Circ, CircTypes),
-    (
-        CircTypes = [HeadCircTypeCtor | TailCircTypeCtors],
-        Spec = report_contains_circular_eqv_type(TVarSet0, Type0, Context,
-            HeadCircTypeCtor, TailCircTypeCtors),
-        !:Specs = [Spec | !.Specs]
-    ;
-        CircTypes = []
-    ).
-
-replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !EquivTypeInfo) :-
-    replace_in_type_maybe_record_use(do_not_record_sym_name_use,
-        TypeEqvMap, [], Type0, Type, Changed, _Circ, !TVarSet,
-        !EquivTypeInfo, used_modules_init, _).
-
-:- pred replace_in_type_maybe_record_use_ignore_circ(
-    maybe_record_sym_name_use::in,
-    type_eqv_map::in, mer_type::in, mer_type::out, maybe_changed::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
-        Type0, Type, Changed, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [],
-        Type0, Type, Changed, _, !TVarSet, !EquivTypeInfo, !UsedModules).
-
-    % Replace all equivalence types in a given type, detecting
-    % any circularities.
-    %
-:- pred replace_in_type_maybe_record_use(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(type_ctor)::in, mer_type::in, mer_type::out,
-    maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-        TypeCtorsAlreadyExpanded, Type0, Type, Changed, Circ,
-        !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    (
-        Type0 = type_variable(Var, Kind),
-        Type = type_variable(Var, Kind),
-        Changed = unchanged,
-        Circ = set.init
-    ;
-        Type0 = defined_type(SymName, ArgTypes0, Kind),
-        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, ArgTypes0, ArgTypes, ArgTypesChanged,
-            set.init, Circ0, !TVarSet, !EquivTypeInfo, !UsedModules),
-        Arity = list.length(ArgTypes),
-        TypeCtor = type_ctor(SymName, Arity),
-        replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded,
-            Type0, TypeCtor, ArgTypes, Kind, Type, ArgTypesChanged, Changed,
-            Circ0, Circ, !TVarSet, !EquivTypeInfo, !UsedModules)
-    ;
-        Type0 = builtin_type(_),
-        Type = Type0,
-        Changed = unchanged,
-        Circ = set.init
-    ;
-        Type0 = higher_order_type(PorF, HOArgTypes0, HOInstInfo, Purity),
-        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, HOArgTypes0, HOArgTypes, Changed,
-            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
-        (
-            Changed = changed,
-            Type = higher_order_type(PorF, HOArgTypes, HOInstInfo, Purity)
-        ;
-            Changed = unchanged,
-            Type = Type0
-        )
-    ;
-        Type0 = tuple_type(TupleArgTypes0, Kind),
-        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, TupleArgTypes0, TupleArgTypes, Changed,
-            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
-        (
-            Changed = changed,
-            Type = tuple_type(TupleArgTypes, Kind)
-        ;
-            Changed = unchanged,
-            Type = Type0
-        )
-    ;
-        Type0 = apply_n_type(Var, ApplyArgTypes0, Kind),
-        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, ApplyArgTypes0, ApplyArgTypes, Changed,
-            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
-        (
-            Changed = changed,
-            Type = apply_n_type(Var, ApplyArgTypes, Kind)
-        ;
-            Changed = unchanged,
-            Type = Type0
-        )
-    ;
-        Type0 = kinded_type(RawType0, Kind),
-        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, RawType0, RawType, Changed, Circ,
-            !TVarSet, !EquivTypeInfo, !UsedModules),
-        (
-            Changed = changed,
-            Type = kinded_type(RawType, Kind)
-        ;
-            Changed = unchanged,
-            Type = Type0
-        )
-    ).
-
-:- pred replace_type_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
-    list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
-    kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
-    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
-        TypeCtor, ArgTypes, Kind, Type, !Changed, !Circ, !TVarSet,
-        !EquivTypeInfo, !UsedModules) :-
-    ( if list.member(TypeCtor, TypeCtorsAlreadyExpanded) then
-        AlreadyExpanded = yes,
-        NewCirc = set.make_singleton_set(TypeCtor)
-    else
-        AlreadyExpanded = no,
-        NewCirc = set.init
-    ),
-    ( if
-        map.search(TypeEqvMap, TypeCtor, EqvTypeBody),
-        EqvTypeBody = eqv_type_body(EqvTVarSet, EqvTypeParams0, Body0),
-
-        % Don't merge in the variable names from the type declaration to avoid
-        % creating multiple variables with the same name so that
-        % `varset.create_name_var_map' can be used on the resulting tvarset.
-        % make_hlds uses `varset.create_name_var_map' to match up type
-        % variables in `:- pragma type_spec' declarations and explicit type
-        % qualifications with the type variables in the predicate's
-        % declaration.
-
-        tvarset_merge_renaming_without_names(!.TVarSet, EqvTVarSet, !:TVarSet,
-            Renaming),
-        set.is_empty(!.Circ),
-        AlreadyExpanded = no
-    then
-        maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor,
-            !UsedModules),
-
-        !:Changed = changed,
-        map.apply_to_list(EqvTypeParams0, Renaming, EqvTypeParams),
-        apply_renaming_to_type(Renaming, Body0, Body1),
-        TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
-        record_expanded_item(recomp_item_id(recomp_type_name, TypeCtorItem),
-            !EquivTypeInfo),
-        map.from_corresponding_lists(EqvTypeParams, ArgTypes, Subst),
-        apply_subst_to_type(Subst, Body1, Body),
-        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-            [TypeCtor | TypeCtorsAlreadyExpanded], Body,
-            Type, _, !:Circ, !TVarSet, !EquivTypeInfo, !UsedModules)
-    else
-        (
-            !.Changed = changed,
-            TypeCtor = type_ctor(SymName, _Arity),
-            Type = defined_type(SymName, ArgTypes, Kind)
-        ;
-            !.Changed = unchanged,
-            Type = Type0
-        ),
-        set.union(NewCirc, !Circ)
-    ).
-
-%---------------------------------------------------------------------------%
-
-replace_in_type_list(TypeEqvMap, !Types, Changed, !TVarSet, !EquivTypeInfo) :-
-    replace_in_type_list_location(do_not_record_sym_name_use, TypeEqvMap,
-        !Types, Changed, !TVarSet, !EquivTypeInfo, used_modules_init, _).
-
-:- pred replace_in_type_list_location(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
-    maybe_changed::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_type_list_location(MaybeRecord, TypeEqvMap, !Types,
-        Changed, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
-        Changed, _, !TVarSet, !EquivTypeInfo, !UsedModules).
-
-:- pred replace_in_type_list_location_circ(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
-    maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
-        Changed, ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, [], !Types,
-        Changed, set.init, ContainsCirc, !TVarSet,
-        !EquivTypeInfo, !UsedModules).
-
-:- pred replace_in_type_list_location_acc_circ(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(type_ctor)::in,
-    list(mer_type)::in, list(mer_type)::out,
-    maybe_changed::out, circ_types::in, circ_types::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_type_list_location_acc_circ(_MaybeRecord, _TypeEqvMap, _Seen,
-        [], [], unchanged, !ContainsCirc, !TVarSet,
-        !EquivTypeInfo, !UsedModules).
-replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, Seen,
-        Types0 @ [HeadType0 | TailTypes0], Types, Changed, !Circ, !TVarSet,
-        !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Seen,
-        HeadType0, HeadType, HeadChanged, HeadCirc, !TVarSet,
-        !EquivTypeInfo, !UsedModules),
-    set.union(HeadCirc, !Circ),
-    replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, Seen,
-        TailTypes0, TailTypes, TailChanged, !Circ, !TVarSet,
-        !EquivTypeInfo, !UsedModules),
-    ( if
-        ( HeadChanged = changed
-        ; TailChanged = changed
-        )
-    then
-        Changed = changed,
-        Types = [HeadType | TailTypes]
-    else
-        Changed = unchanged,
-        Types = Types0
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_ctor_arg_list(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(constructor_arg)::in, list(constructor_arg)::out,
-    circ_types::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap, !CtorArgs,
-        ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, [], !CtorArgs,
-        set.init, ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules).
-
-:- pred replace_in_ctor_arg_list_loop(maybe_record_sym_name_use::in,
-    type_eqv_map::in, list(type_ctor)::in,
-    list(constructor_arg)::in, list(constructor_arg)::out,
-    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_ctor_arg_list_loop(_MaybeRecord, _TypeEqvMap, _Seen, [], [],
-        !Circ, !TVarSet, !EquivTypeInfo, !UsedModules).
-replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
-        [CtorArg0 | CtorArgs0], [CtorArg | CtorArgs],
-        !Circ, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    CtorArg0 = ctor_arg(Name, Type0, Context),
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Seen,
-        Type0, Type, _, TypeCirc, !TVarSet, !EquivTypeInfo, !UsedModules),
-    CtorArg = ctor_arg(Name, Type, Context),
-    set.union(TypeCirc, !Circ),
-    replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
-        CtorArgs0, CtorArgs, !Circ, !TVarSet, !EquivTypeInfo, !UsedModules).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_constraint_store(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    list(item_mutable_info)::in, list(item_mutable_info)::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
-replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
-        [MutableInfo0 | MutableInfos0], [MutableInfo | MutableInfos],
-        !EquivTypeInfo, !UsedModules) :-
-    replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap,
-        MutableInfo0, MutableInfo, !EquivTypeInfo, !UsedModules),
-    replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
-        MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules).
-
 %---------------------------------------------------------------------------%
 
 replace_in_univ_exist_constraints(TypeEqvMap, Cs0, Cs,
@@ -1939,241 +1842,6 @@ replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap,
     replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap,
         ArgTypes0, ArgTypes, _, _, !TVarSet, !EquivTypeInfo, !UsedModules),
     Constraint = constraint(ClassName, ArgTypes).
-
-%---------------------%
-
-:- pred replace_in_var_or_ground_constraint_location(
-    maybe_record_sym_name_use::in, type_eqv_map::in,
-    var_or_ground_constraint::in, var_or_ground_constraint::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_var_or_ground_constraint_location(MaybeRecord, TypeEqvMap,
-        Constraint0, Constraint, !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    Constraint0 =
-        var_or_ground_constraint(ClassName, ConstraintArgs0, Context),
-    list.map_foldl3(
-        replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap),
-        ConstraintArgs0, ConstraintArgs,
-        !TVarSet, !EquivTypeInfo, !UsedModules),
-    Constraint = var_or_ground_constraint(ClassName, ConstraintArgs, Context).
-
-:- pred replace_in_var_or_ground_type_location(maybe_record_sym_name_use::in,
-    type_eqv_map::in, var_or_ground_type::in, var_or_ground_type::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap,
-        ConstraintArg0, ConstraintArg,
-        !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    (
-        ConstraintArg0 = type_var_name(_, _),
-        ConstraintArg = ConstraintArg0
-    ;
-        ConstraintArg0 = ground_type(GroundType0),
-        Type0 = coerce(GroundType0),
-        replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
-            Type0, Type, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-        ( if type_is_ground(Type, GroundType) then
-            ConstraintArg = ground_type(GroundType)
-        else
-            unexpected($pred, "expanded ground type is not ground")
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_class_interface(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    list(class_decl)::in, list(class_decl)::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_class_interface(MaybeRecord, TypeEqvMap, InstEqvMap,
-        ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules,
-        !Specs) :-
-    list.map_foldl3(
-        replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap),
-        ClassInterface0, ClassInterface, !EquivTypeInfo, !UsedModules, !Specs).
-
-:- pred replace_in_class_decl(maybe_record_sym_name_use::in,
-    type_eqv_map::in, inst_eqv_map::in, class_decl::in, class_decl::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
-        !EquivTypeInfo, !UsedModules, !Specs) :-
-    (
-        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
-        PredOrFuncInfo0 = class_pred_or_func_info(PredName, PredOrFunc,
-            TypesAndModes0, WithType0, WithInst0, MaybeDetism0,
-            TVarSet0, InstVarSet, ExistQVars, Purity,
-            ClassContext0, Context),
-        replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName,
-            PredOrFunc, Context, TypeEqvMap, InstEqvMap,
-            ClassContext0, ClassContext, TypesAndModes0, TypesAndModes,
-            TVarSet0, TVarSet, WithType0, WithType, WithInst0, WithInst,
-            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
-        !:Specs = NewSpecs ++ !.Specs,
-        PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
-            TypesAndModes, WithType, WithInst, MaybeDetism,
-            TVarSet, InstVarSet, ExistQVars, Purity,
-            ClassContext, Context),
-        Decl = class_decl_pred_or_func(PredOrFuncInfo)
-    ;
-        Decl0 = class_decl_mode(ModeInfo0),
-        ModeInfo0 = class_mode_info(PredName, MaybePredOrFunc0, Modes0,
-            WithInst0, MaybeDetism0, InstVarSet, Context),
-        PredFormArity = arg_list_arity(Modes0),
-        replace_in_with_inst(MaybeRecord, InstEqvMap,
-            PredName, PredFormArity, Context, mode_decl,
-            MaybePredOrFunc0, MaybePredOrFunc, WithInst0, WithInst, ExtraModes,
-            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
-        (
-            ExtraModes = [],
-            Modes = Modes0
-        ;
-            ExtraModes = [_ | _],
-            Modes = Modes0 ++ ExtraModes
-        ),
-        !:Specs = NewSpecs ++ !.Specs,
-        ModeInfo = class_mode_info(PredName, MaybePredOrFunc, Modes,
-            WithInst, MaybeDetism, InstVarSet, Context),
-        Decl = class_decl_mode(ModeInfo)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_subst(maybe_record_sym_name_use::in, type_eqv_map::in,
-    type_subst::in, type_subst::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
-        !TVarSet, !ExpandedItems, !UsedModules) :-
-    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
-    replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
-        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts,
-        !TVarSet, !ExpandedItems, !UsedModules),
-    Subst = one_or_more(HeadSubst, TailSubsts).
-
-:- pred replace_in_tvar_substs(maybe_record_sym_name_use::in, type_eqv_map::in,
-    tvar_subst::in, tvar_subst::out,
-    list(tvar_subst)::in, list(tvar_subst)::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
-        tvar_subst(HeadVar, HeadType0), tvar_subst(HeadVar, HeadType),
-        TailVarsTypes0, TailVarsTypes,
-        !TVarSet, !ExpandedItems, !UsedModules) :-
-    replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
-        HeadType0, HeadType, _, !TVarSet, !ExpandedItems, !UsedModules),
-    (
-        TailVarsTypes0 = [],
-        TailVarsTypes = []
-    ;
-        TailVarsTypes0 = [HeadTailVarType0 | TailTailVarsTypes0],
-        replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
-            HeadTailVarType0, HeadTailVarType,
-            TailTailVarsTypes0, TailTailVarsTypes,
-            !TVarSet, !ExpandedItems, !UsedModules),
-        TailVarsTypes = [HeadTailVarType | TailTailVarsTypes]
-    ).
-
-%---------------------------------------------------------------------------%
-
-replace_in_ctors(TypeEqvMap, !Ctors, !TVarSet, !EquivTypeInfo) :-
-    replace_in_ctors_location(do_not_record_sym_name_use, TypeEqvMap,
-        !Ctors, !TVarSet, !EquivTypeInfo, used_modules_init, _).
-
-:- pred replace_in_ctors_location(maybe_record_sym_name_use::in,
-    type_eqv_map::in,
-    one_or_more(constructor)::in, one_or_more(constructor)::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors, !TVarSet,
-        !EquivTypeInfo, !UsedModules) :-
-    Ctors0 = one_or_more(HeadCtor0, TailCtors0),
-    replace_in_ctor(MaybeRecord, TypeEqvMap, HeadCtor0, HeadCtor,
-        !TVarSet, !EquivTypeInfo, !UsedModules),
-    list.map_foldl3(replace_in_ctor(MaybeRecord, TypeEqvMap),
-        TailCtors0, TailCtors,
-        !TVarSet, !EquivTypeInfo, !UsedModules),
-    Ctors = one_or_more(HeadCtor, TailCtors).
-
-:- pred replace_in_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
-    constructor::in, constructor::out, tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
-        !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, CtorName, CtorArgs0, Arity,
-        Ctxt),
-    replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap,
-        CtorArgs0, CtorArgs, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-    (
-        MaybeExistConstraints0 = no_exist_constraints,
-        MaybeExistConstraints = no_exist_constraints
-    ;
-        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
-        ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
-            UnconstrainedExistQTVars, ConstrainedExistQTVars),
-        replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
-            Constraints0, Constraints, !TVarSet, !EquivTypeInfo, !UsedModules),
-        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
-            UnconstrainedExistQTVars, ConstrainedExistQTVars),
-        MaybeExistConstraints = exist_constraints(ExistConstraints)
-    ),
-    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorName, CtorArgs, Arity,
-        Ctxt).
-
-%---------------------------------------------------------------------------%
-
-:- pred replace_in_inst(maybe_record_sym_name_use::in, inst_eqv_map::in,
-    mer_inst::in, mer_inst::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
-        !EquivTypeInfo, !UsedModules) :-
-    replace_in_inst_location(MaybeRecord, InstEqvMap, set.init, Inst0, Inst,
-        !EquivTypeInfo, !UsedModules).
-
-:- pred replace_in_inst_location(maybe_record_sym_name_use::in,
-    inst_eqv_map::in, set(inst_ctor)::in, mer_inst::in, mer_inst::out,
-    eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
-        Inst0, Inst, !EquivTypeInfo, !UsedModules) :-
-    % XXX Need to record the used modules
-    ( if Inst0 = defined_inst(user_inst(SymName, ArgInsts)) then
-        InstCtor = inst_ctor(SymName, length(ArgInsts)),
-        ( if
-            set.member(InstCtor, ExpandedInstCtors)
-        then
-            Inst = Inst0
-        else if
-            map.search(InstEqvMap, InstCtor, EqvInstBody),
-            EqvInstBody = eqv_inst_body(EqvInstParams, EqvInst)
-        then
-            inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
-            InstCtorItem = inst_ctor_to_recomp_item_name(InstCtor),
-            record_expanded_item(recomp_item_id(recomp_inst, InstCtorItem),
-                !EquivTypeInfo),
-            replace_in_inst_location(MaybeRecord, InstEqvMap,
-                set.insert(ExpandedInstCtors, InstCtor), Inst1, Inst,
-                !EquivTypeInfo, !UsedModules)
-        else
-            Inst = Inst0
-        )
-    else
-        Inst = Inst0
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -2524,70 +2192,284 @@ replace_in_type_and_mode(MaybeRecord, TypeEqvMap, TypeAndMode0, TypeAndMode,
 
 %---------------------------------------------------------------------------%
 
-:- pred replace_in_structure_sharing_domain(maybe_record_sym_name_use::in,
-    type_eqv_map::in, tvarset::in,
-    structure_sharing_domain::in, structure_sharing_domain::out,
+replace_in_type_list(TypeEqvMap, !Types, Changed, !TVarSet, !EquivTypeInfo) :-
+    replace_in_type_list_location(do_not_record_sym_name_use, TypeEqvMap,
+        !Types, Changed, !TVarSet, !EquivTypeInfo, used_modules_init, _).
+
+:- pred replace_in_type_list_location(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
+    maybe_changed::out, tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_structure_sharing_domain(MaybeRecord, TypeEqvMap, TVarSet,
-        SharingDomain0, SharingDomain, !EquivTypeInfo, !UsedModules) :-
-    (
-        ( SharingDomain0 = structure_sharing_bottom
-        ; SharingDomain0 = structure_sharing_top(_)
-        ),
-        SharingDomain = SharingDomain0
-    ;
-        SharingDomain0 = structure_sharing_real(SharingPairs0),
-        list.map_foldl2(
-            replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap,
-                TVarSet),
-            SharingPairs0, SharingPairs, !EquivTypeInfo, !UsedModules),
-        SharingDomain = structure_sharing_real(SharingPairs)
-    ).
+replace_in_type_list_location(MaybeRecord, TypeEqvMap, !Types,
+        Changed, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
+        Changed, _, !TVarSet, !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_structure_sharing_pair(maybe_record_sym_name_use::in,
-    type_eqv_map::in, tvarset::in,
-    structure_sharing_pair::in, structure_sharing_pair::out,
+:- pred replace_in_type_list_location_circ(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
+    maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap, TVarSet,
-        SSA0 - SSB0, SSA - SSB, !EquivTypeInfo, !UsedModules) :-
-    replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, SSA0, SSA,
-        !EquivTypeInfo, !UsedModules),
-    replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, SSB0, SSB,
+replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
+        Changed, ContainsCirc, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, [], !Types,
+        Changed, set.init, ContainsCirc, !TVarSet,
         !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_datastruct(maybe_record_sym_name_use::in,
-    type_eqv_map::in, tvarset::in, datastruct::in,
-    datastruct::out, eqv_expand_info::in, eqv_expand_info::out,
+:- pred replace_in_type_list_location_acc_circ(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(type_ctor)::in,
+    list(mer_type)::in, list(mer_type)::out,
+    maybe_changed::out, circ_types::in, circ_types::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, DS0, DS,
+replace_in_type_list_location_acc_circ(_MaybeRecord, _TypeEqvMap, _Seen,
+        [], [], unchanged, !ContainsCirc, !TVarSet,
+        !EquivTypeInfo, !UsedModules).
+replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, Seen,
+        Types0 @ [HeadType0 | TailTypes0], Types, Changed, !Circ, !TVarSet,
         !EquivTypeInfo, !UsedModules) :-
-    DS0 = selected_cel(Var, Sel0),
-    list.map_foldl2(replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet),
-        Sel0, Sel, !EquivTypeInfo, !UsedModules),
-    DS = selected_cel(Var, Sel).
-
-:- pred replace_in_unit_selector(maybe_record_sym_name_use::in,
-    type_eqv_map::in, tvarset::in, unit_selector::in,
-    unit_selector::out, eqv_expand_info::in, eqv_expand_info::out,
-    used_modules::in, used_modules::out) is det.
-
-replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet, Sel0, Sel,
-        !EquivTypeInfo, !UsedModules) :-
-    (
-        Sel0 = termsel(_, _),
-        Sel = Sel0
-    ;
-        Sel0 = typesel(Type0),
-        replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
-            Type0, Type, _, TVarSet, _, !EquivTypeInfo, !UsedModules),
-        Sel = typesel(Type)
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Seen,
+        HeadType0, HeadType, HeadChanged, HeadCirc, !TVarSet,
+        !EquivTypeInfo, !UsedModules),
+    set.union(HeadCirc, !Circ),
+    replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap, Seen,
+        TailTypes0, TailTypes, TailChanged, !Circ, !TVarSet,
+        !EquivTypeInfo, !UsedModules),
+    ( if
+        ( HeadChanged = changed
+        ; TailChanged = changed
+        )
+    then
+        Changed = changed,
+        Types = [HeadType | TailTypes]
+    else
+        Changed = unchanged,
+        Types = Types0
     ).
 
+%---------------------------------------------------------------------------%
+
+replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
+        Type0, Type, Changed, !Specs) :-
+    replace_in_type_maybe_record_use(do_not_record_sym_name_use,
+        TypeEqvMap, [], Type0, Type, Changed, Circ,
+        TVarSet0, _TVarSet, no_eqv_expand_info, _, used_modules_init, _),
+    set.to_sorted_list(Circ, CircTypes),
+    (
+        CircTypes = [HeadCircTypeCtor | TailCircTypeCtors],
+        Spec = report_contains_circular_eqv_type(TVarSet0, Type0, Context,
+            HeadCircTypeCtor, TailCircTypeCtors),
+        !:Specs = [Spec | !.Specs]
+    ;
+        CircTypes = []
+    ).
+
+replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !EquivTypeInfo) :-
+    replace_in_type_maybe_record_use(do_not_record_sym_name_use,
+        TypeEqvMap, [], Type0, Type, Changed, _Circ, !TVarSet,
+        !EquivTypeInfo, used_modules_init, _).
+
+:- pred replace_in_type_maybe_record_use_ignore_circ(
+    maybe_record_sym_name_use::in,
+    type_eqv_map::in, mer_type::in, mer_type::out, maybe_changed::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_type_maybe_record_use_ignore_circ(MaybeRecord, TypeEqvMap,
+        Type0, Type, Changed, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, [],
+        Type0, Type, Changed, _, !TVarSet, !EquivTypeInfo, !UsedModules).
+
+    % Replace all equivalence types in a given type, detecting
+    % any circularities.
+    %
+:- pred replace_in_type_maybe_record_use(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(type_ctor)::in, mer_type::in, mer_type::out,
+    maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+        TypeCtorsAlreadyExpanded, Type0, Type, Changed, Circ,
+        !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    (
+        Type0 = type_variable(Var, Kind),
+        Type = type_variable(Var, Kind),
+        Changed = unchanged,
+        Circ = set.init
+    ;
+        Type0 = defined_type(SymName, ArgTypes0, Kind),
+        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
+            TypeCtorsAlreadyExpanded, ArgTypes0, ArgTypes, ArgTypesChanged,
+            set.init, Circ0, !TVarSet, !EquivTypeInfo, !UsedModules),
+        Arity = list.length(ArgTypes),
+        TypeCtor = type_ctor(SymName, Arity),
+        replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded,
+            Type0, TypeCtor, ArgTypes, Kind, Type, ArgTypesChanged, Changed,
+            Circ0, Circ, !TVarSet, !EquivTypeInfo, !UsedModules)
+    ;
+        Type0 = builtin_type(_),
+        Type = Type0,
+        Changed = unchanged,
+        Circ = set.init
+    ;
+        Type0 = higher_order_type(PorF, HOArgTypes0, HOInstInfo, Purity),
+        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
+            TypeCtorsAlreadyExpanded, HOArgTypes0, HOArgTypes, Changed,
+            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
+        (
+            Changed = changed,
+            Type = higher_order_type(PorF, HOArgTypes, HOInstInfo, Purity)
+        ;
+            Changed = unchanged,
+            Type = Type0
+        )
+    ;
+        Type0 = tuple_type(TupleArgTypes0, Kind),
+        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
+            TypeCtorsAlreadyExpanded, TupleArgTypes0, TupleArgTypes, Changed,
+            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
+        (
+            Changed = changed,
+            Type = tuple_type(TupleArgTypes, Kind)
+        ;
+            Changed = unchanged,
+            Type = Type0
+        )
+    ;
+        Type0 = apply_n_type(Var, ApplyArgTypes0, Kind),
+        replace_in_type_list_location_acc_circ(MaybeRecord, TypeEqvMap,
+            TypeCtorsAlreadyExpanded, ApplyArgTypes0, ApplyArgTypes, Changed,
+            set.init, Circ, !TVarSet, !EquivTypeInfo, !UsedModules),
+        (
+            Changed = changed,
+            Type = apply_n_type(Var, ApplyArgTypes, Kind)
+        ;
+            Changed = unchanged,
+            Type = Type0
+        )
+    ;
+        Type0 = kinded_type(RawType0, Kind),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            TypeCtorsAlreadyExpanded, RawType0, RawType, Changed, Circ,
+            !TVarSet, !EquivTypeInfo, !UsedModules),
+        (
+            Changed = changed,
+            Type = kinded_type(RawType, Kind)
+        ;
+            Changed = unchanged,
+            Type = Type0
+        )
+    ).
+
+:- pred replace_type_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
+    list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
+    kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
+    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
+        TypeCtor, ArgTypes, Kind, Type, !Changed, !Circ, !TVarSet,
+        !EquivTypeInfo, !UsedModules) :-
+    ( if list.member(TypeCtor, TypeCtorsAlreadyExpanded) then
+        AlreadyExpanded = yes,
+        NewCirc = set.make_singleton_set(TypeCtor)
+    else
+        AlreadyExpanded = no,
+        NewCirc = set.init
+    ),
+    ( if
+        map.search(TypeEqvMap, TypeCtor, EqvTypeBody),
+        EqvTypeBody = eqv_type_body(EqvTVarSet, EqvTypeParams0, Body0),
+
+        % Don't merge in the variable names from the type declaration to avoid
+        % creating multiple variables with the same name so that
+        % `varset.create_name_var_map' can be used on the resulting tvarset.
+        % make_hlds uses `varset.create_name_var_map' to match up type
+        % variables in `:- pragma type_spec' declarations and explicit type
+        % qualifications with the type variables in the predicate's
+        % declaration.
+
+        tvarset_merge_renaming_without_names(!.TVarSet, EqvTVarSet, !:TVarSet,
+            Renaming),
+        set.is_empty(!.Circ),
+        AlreadyExpanded = no
+    then
+        maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor,
+            !UsedModules),
+
+        !:Changed = changed,
+        map.apply_to_list(EqvTypeParams0, Renaming, EqvTypeParams),
+        apply_renaming_to_type(Renaming, Body0, Body1),
+        TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
+        record_expanded_item(recomp_item_id(recomp_type_name, TypeCtorItem),
+            !EquivTypeInfo),
+        map.from_corresponding_lists(EqvTypeParams, ArgTypes, Subst),
+        apply_subst_to_type(Subst, Body1, Body),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            [TypeCtor | TypeCtorsAlreadyExpanded], Body,
+            Type, _, !:Circ, !TVarSet, !EquivTypeInfo, !UsedModules)
+    else
+        (
+            !.Changed = changed,
+            TypeCtor = type_ctor(SymName, _Arity),
+            Type = defined_type(SymName, ArgTypes, Kind)
+        ;
+            !.Changed = unchanged,
+            Type = Type0
+        ),
+        set.union(NewCirc, !Circ)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred replace_in_inst(maybe_record_sym_name_use::in, inst_eqv_map::in,
+    mer_inst::in, mer_inst::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
+        !EquivTypeInfo, !UsedModules) :-
+    replace_in_inst_location(MaybeRecord, InstEqvMap, set.init, Inst0, Inst,
+        !EquivTypeInfo, !UsedModules).
+
+:- pred replace_in_inst_location(maybe_record_sym_name_use::in,
+    inst_eqv_map::in, set(inst_ctor)::in, mer_inst::in, mer_inst::out,
+    eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
+        Inst0, Inst, !EquivTypeInfo, !UsedModules) :-
+    % XXX Need to record the used modules
+    ( if Inst0 = defined_inst(user_inst(SymName, ArgInsts)) then
+        InstCtor = inst_ctor(SymName, length(ArgInsts)),
+        ( if
+            set.member(InstCtor, ExpandedInstCtors)
+        then
+            Inst = Inst0
+        else if
+            map.search(InstEqvMap, InstCtor, EqvInstBody),
+            EqvInstBody = eqv_inst_body(EqvInstParams, EqvInst)
+        then
+            inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
+            InstCtorItem = inst_ctor_to_recomp_item_name(InstCtor),
+            record_expanded_item(recomp_item_id(recomp_inst, InstCtorItem),
+                !EquivTypeInfo),
+            replace_in_inst_location(MaybeRecord, InstEqvMap,
+                set.insert(ExpandedInstCtors, InstCtor), Inst1, Inst,
+                !EquivTypeInfo, !UsedModules)
+        else
+            Inst = Inst0
+        )
+    else
+        Inst = Inst0
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred maybe_record_type_ctor_sym_name_use(maybe_record_sym_name_use::in,
@@ -2602,6 +2484,134 @@ maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor, !UsedModules) :-
         record_sym_name_module_as_used(Visibility, TypeCtorSymName,
             !UsedModules)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_record_sym_name_use
+    --->    do_not_record_sym_name_use
+    ;       record_sym_name_use(item_visibility).
+
+:- pred replace_in_maybe(module_name::in, maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
+    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
+        T, T, maybe(recompilation_info), maybe(recompilation_info),
+        used_modules, used_modules, list(error_spec))
+    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
+    maybe(T)::in, maybe(T)::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+replace_in_maybe(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        ReplaceInItem, MaybeItem0, MaybeItem,
+        !RecompInfo, !UsedModules, !Specs) :-
+    (
+        MaybeItem0 = no,
+        MaybeItem = no
+    ;
+        MaybeItem0 = yes(Item0),
+        ReplaceInItem(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+            Item0, Item, !RecompInfo, !UsedModules, ItemSpecs),
+        (
+            ItemSpecs = [],
+            MaybeItem = yes(Item)
+        ;
+            ItemSpecs = [_ | _],
+            !:Specs = ItemSpecs ++ !.Specs,
+            MaybeItem = no
+        )
+    ).
+
+%---------------------%
+
+:- pred replace_in_list(module_name::in, maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
+    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
+        T, T, maybe(recompilation_info), maybe(recompilation_info),
+        used_modules, used_modules, list(error_spec))
+    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
+    list(T)::in, list(T)::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        ReplaceInItem, Items0, Items, !RecompInfo, !UsedModules, !Specs) :-
+    replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        ReplaceInItem, Items0, [], RevItems,
+        !RecompInfo, !UsedModules, !Specs),
+    list.reverse(RevItems, Items).
+
+:- pred replace_in_list_loop(module_name::in, maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
+    pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
+        T, T, maybe(recompilation_info), maybe(recompilation_info),
+        used_modules, used_modules, list(error_spec))
+    :: in(pred(in, in,in, in, in, out, in, out, in, out, out) is det),
+    list(T)::in, list(T)::in, list(T)::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+replace_in_list_loop(_ModuleName, _MaybeRecord, _TypeEqvMap, _InstEqvMap,
+        _ReplaceInItem, [], !RevItems, !RecompInfo, !UsedModules, !Specs).
+replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        ReplaceInItem, [Item0 | Items0], !RevItems,
+        !RecompInfo, !UsedModules, !Specs) :-
+    ReplaceInItem(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        Item0, Item, !RecompInfo, !UsedModules, ItemSpecs),
+    % Discard the item if there were any errors.
+    (
+        ItemSpecs = [],
+        !:RevItems = [Item | !.RevItems]
+    ;
+        ItemSpecs = [_ | _],
+        !:Specs = ItemSpecs ++ !.Specs
+    ),
+    replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        ReplaceInItem, Items0, !RevItems, !RecompInfo, !UsedModules, !Specs).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- func report_circular_eqv_type(type_ctor, prog_context) = error_spec.
+
+report_circular_eqv_type(TypeCtor, Context) = Spec :-
+    Pieces = [words("Error: equivalence type")] ++
+        color_as_subject([qual_type_ctor(TypeCtor)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("circular.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
+
+:- func report_contains_circular_eqv_type(tvarset, mer_type, prog_context,
+    type_ctor, list(type_ctor)) = error_spec.
+
+report_contains_circular_eqv_type(TVarSet, Type, Context,
+        HeadTypeCtor, TailTypeCtors) = Spec :-
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
+    MainPieces = [words("Error: the type")] ++
+        color_as_subject([quote(TypeStr)]) ++
+        [words("cannot have its equivalences fully expanded,"),
+        words("because its expansion contains the")],
+    (
+        TailTypeCtors = [],
+        CircSpecs =
+            color_as_incorrect([words("circular equivalence type")]) ++
+            color_as_subject([qual_type_ctor(HeadTypeCtor), suffix(".")]) ++
+            [nl]
+    ;
+        TailTypeCtors = [_ | _],
+        TypeCtorPieces = list.map((func(TC) = qual_type_ctor(TC)),
+            [HeadTypeCtor | TailTypeCtors]),
+        CircSpecs =
+            color_as_incorrect([words("circular equivalence types")]) ++
+            piece_list_to_color_pieces(color_subject, "and", [suffix(".")],
+                TypeCtorPieces) ++
+            [nl]
+    ),
+    Pieces = MainPieces ++ CircSpecs,
+    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.equiv_type.
