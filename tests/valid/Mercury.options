@@ -141,6 +141,7 @@ MCFLAGS-sharing_exist               += --ctgc --structure-sharing-widening 1
 MCFLAGS-sharing_loop_1              += --ctgc --structure-sharing-widening 8
 MCFLAGS-sharing_loop_2              += --ctgc --structure-sharing-widening 10
 MCFLAGS-sharing_loop_3              += --ctgc --structure-sharing-widening 10
+MCFLAGS-show_movability             += --show-pred-movability pred_a
 MCFLAGS-simplify_bug_1              += -O-1
 MCFLAGS-simplify_bug_2              += -O3
 MCFLAGS-solver_type_bug_1           += --halt-at-warn

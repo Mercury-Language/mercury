@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,8 +142,11 @@
 :- implementation.
 
 :- import_module getopt.
+:- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
@@ -268,13 +271,42 @@ severity_to_maybe_actual_severity(OptionTable, Severity,
         )
     ;
         Severity = severity_informational(Option),
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        map.lookup(OptionTable, Option, OptionData),
         (
-            OptionValue = yes,
-            MaybeActualSeverity = yes(actual_severity_informational)
+            OptionData = bool(OptionValue),
+            (
+                OptionValue = yes,
+                MaybeActualSeverity = yes(actual_severity_informational)
+            ;
+                OptionValue = no,
+                MaybeActualSeverity = no
+            )
         ;
-            OptionValue = no,
-            MaybeActualSeverity = no
+            OptionData = accumulating(OptionValue),
+            % Some informational options, such as show_pred_movability,
+            % are accumulating options, not bool options.
+            (
+                OptionValue = [_ | _],
+                MaybeActualSeverity = yes(actual_severity_informational)
+            ;
+                OptionValue = [],
+                MaybeActualSeverity = no
+            )
+        ;
+            ( OptionData = int(_)
+            ; OptionData = string(_)
+            ; OptionData = maybe_int(_)
+            ; OptionData = maybe_string(_)
+            ; OptionData = special
+            ; OptionData = bool_special
+            ; OptionData = int_special
+            ; OptionData = string_special
+            ; OptionData = maybe_string_special
+            ; OptionData = file_special
+            ),
+            string.format("%s is not a bool or accumulating option",
+                [s(string(Option))], Msg),
+            unexpected($pred, Msg)
         )
     ).
 

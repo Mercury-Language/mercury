@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1249,9 +1249,13 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
         set_tree234.intersect(MovingPredTypeCtorSet, StayingPredTypeCtorSet,
             MovingStayingPredTypeCtorSet),
         ( if set_tree234.is_empty(MovingStayingPredTypeCtorSet) then
-            MovingTypePieces =
-                [words("All of the moved types can be private"),
-                words("in the new module."), nl, blank_line]
+            ( if set_tree234.is_empty(MovingPredTypeCtorSet) then
+                MovingTypePieces = []
+            else
+                MovingTypePieces =
+                    [words("All of the moved types can be private"),
+                    words("in the new module."), nl, blank_line]
+            )
         else
             ExportedTypeCtorPieces =
                 type_name_set_to_line_pieces(MovingStayingPredTypeCtorSet),
