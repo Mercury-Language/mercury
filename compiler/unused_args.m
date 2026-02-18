@@ -799,9 +799,10 @@ unused_args_traverse_cases(Info, [Case | Cases], !LocalVarUsageMap) :-
 
 unused_args_fixpoint(PassNum, ModuleInfo, LocalPredProcIds,
         !GlobalVarUsageMap) :-
-    unused_args_single_pass(LocalPredProcIds, no, Changed, !GlobalVarUsageMap),
+    unused_args_single_pass(LocalPredProcIds, unchanged, Changed,
+        !GlobalVarUsageMap),
     (
-        Changed = yes,
+        Changed = changed,
         trace [compile_time(flag("unused_args_var_usage")), io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             io.format(DebugStream,
@@ -812,12 +813,13 @@ unused_args_fixpoint(PassNum, ModuleInfo, LocalPredProcIds,
         unused_args_fixpoint(PassNum + 1, ModuleInfo, LocalPredProcIds,
             !GlobalVarUsageMap)
     ;
-        Changed = no
+        Changed = unchanged
     ).
 
     % Check over all the procedures in a module.
     %
-:- pred unused_args_single_pass(list(pred_proc_id)::in, bool::in, bool::out,
+:- pred unused_args_single_pass(list(pred_proc_id)::in,
+    maybe_changed::in, maybe_changed::out,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
 unused_args_single_pass([], !Changed, !GlobalVarUsageMap).
@@ -828,7 +830,8 @@ unused_args_single_pass([PredProcId | PredProcIds],
 
     % Check a single procedure.
     %
-:- pred unused_args_check_proc(pred_proc_id::in, bool::in, bool::out,
+:- pred unused_args_check_proc(pred_proc_id::in,
+    maybe_changed::in, maybe_changed::out,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
 unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
@@ -839,7 +842,7 @@ unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
     (
         LocalChanged = changed,
         map.det_update(PredProcId, LocalVarUsageMap, !GlobalVarUsageMap),
-        !:Changed = yes
+        !:Changed = changed
     ;
         LocalChanged = unchanged
     ).
