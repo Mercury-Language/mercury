@@ -54,7 +54,7 @@
     % state subtyping.
     %
     % They could also be used for partial instantiation but partial
-    % instantiation does not work completely, for information see the
+    % instantiation does not work completely, for information, see the
     % LIMITATIONS.md file distributed with Mercury.
     %
 :- inst list_skel(I) for list/1
@@ -771,7 +771,7 @@
 
 %---------------------%
 
-    % take_while(Pred, List, Start, End)
+    % take_while(Pred, List, Start, End):
     %
     % List = Start ++ End. Start is the longest prefix of List where Pred
     % succeeds for every element in Start. End is the remainder of the list.
@@ -779,7 +779,7 @@
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
-    % take_while_not(Pred, List, Start, End)
+    % take_while_not(Pred, List, Start, End):
     %
     % List = Start ++ End. Start is the longest prefix of List where Pred
     % fails for every element in Start. End is the remainder of the list.
@@ -798,8 +798,8 @@
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out) is det.
 
-    % take_while(Pred, List) = Start :-
-    %     take_while(Pred, List, Start, _End)
+    % take_while_not(Pred, List) = Start :-
+    %     take_while_not(Pred, List, Start, _End)
     %
     % Start is the longest prefix of List where Pred fails for every element
     % in Start.
@@ -864,7 +864,7 @@
     %
     % List is the result of alternating the elements of ListA and ListB,
     % starting with the first element of ListA (followed by the first element
-    % of ListB, then the second element of listA, then the second element
+    % of ListB, then the second element of ListA, then the second element
     % of ListB, etc.). When there are no more elements remaining in one of
     % the lists, the remainder of the other list is appended.
     %
@@ -1002,7 +1002,7 @@
     % filter_map(Transformer, List, TrueList):
     %
     % Takes a predicate Transformer with one input and one output argument,
-    % and calls it on each element of X of List. If Transformer(X, Y) succeeds,
+    % and calls it on each element X of List. If Transformer(X, Y) succeeds,
     % then it includes Y in TrueList.
     %
 :- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
@@ -1011,7 +1011,7 @@
     % filter_map(Transformer, List, TrueList, FalseList):
     %
     % Takes a predicate Transformer with one input and one output argument,
-    % and calls it on each element of X of List. If Transformer(X, Y) succeeds,
+    % and calls it on each element X of List. If Transformer(X, Y) succeeds,
     % then it includes Y in TrueList; if it fails, then it includes X
     % in FalseList.
     %
@@ -1039,7 +1039,7 @@
 :- pred find_first_map2(pred(T, A, B)::in(pred(in, out, out) is semidet),
     list(T)::in, A::out, B::out) is semidet.
 
-    % find_first_map3(Transformer, List, FirstTrueA, FirstTrueB, FirstTrueB):
+    % find_first_map3(Transformer, List, FirstTrueA, FirstTrueB, FirstTrueC):
     %
     % Same as find_first_map, except with three outputs.
     %
@@ -1176,7 +1176,7 @@
 :- mode map7(in(pred(in, in, in, in, in, in, in, in) is semidet),
     in, in, in, in, in, in, in, in) is semidet.
 
-    % map8(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
+    % map8(T, L, M1, M2, M3, M4, M5, M6, M7, M8) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6, M7 and M8.
     %
@@ -1673,7 +1673,7 @@
     % because the usual use case is that the successive calls to Func or Pred
     % accumulate pieces of information.) The initial value of the accumulator
     % is Start, each call to Func or Pred updates it to the next value, and
-    % foldl returns its final value as End.
+    % foldr returns its final value as End.
     %
 :- func foldr(func(L, A) = A, list(L), A) = A.
 :- pred foldr(pred(L, A, A), list(L), A, A).
@@ -2264,7 +2264,7 @@
     % because the usual use case is that the successive calls to Pred
     % accumulate pieces of information.) The initial value of the accumulator
     % is Start, each call to Pred updates it to the next value, and
-    % foldl returns its final value as End.
+    % map_foldl returns its final value as End.
     %
 :- pred map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode map_foldr(in(pred(in, out, in, out) is det), in, out, in, out)
