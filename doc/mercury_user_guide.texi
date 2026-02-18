@@ -1027,7 +1027,7 @@ While it is in theory possible to combine
 @option{--gcc-non-local-gotos} with @option{--no-asm-labels},
 in practice there is no advantage in doing so.
 And while it is also possible to combine
-@option{--gcc-non-local-gotos} @option{--asm--labels} with
+@option{--gcc-non-local-gotos} @option{--asm-labels} with
 @option{--no-gcc-global-registers},
 we do not know of any platforms
 on which @option{--gcc-non-local-gotos} and @option{--asm-labels} work
@@ -1311,8 +1311,8 @@ at the moment LLDS parallelism does not work.
 @subsection Grade modifiers for minimal model tabling
 
 Mercury supports several forms of tabling,
-most of which must be explicit enabled
-for each procedure that are intended to apply to
+most of which must be explicitly enabled
+for each procedure that they are intended to apply to
 @c XXX CHECKME
 (@pxref{Tabled evaluation, , ,
 mercury_reference_manual,The Mercury language Reference Manual}).
@@ -1357,7 +1357,7 @@ Minimal model tabling consists of
 
 @itemize
 @item
-recording that state of the computation at the point of the recursive call;
+recording the state of the computation at the point of the recursive call;
 @item
 continuing execution as if the call failed;
 @item
@@ -1370,7 +1370,7 @@ as if the recursive call just returned the new solution.
 @item
 This restarted execution may obviously return even more solutions,
 which have to be fed back to the recursive call
-(or in the general, the recursive calls, plural).
+(or in general, the recursive calls, plural).
 The process ends when all restarted calls lead
 either to no solution, or to solutions that have all previously been
 not just recorded, but also fed back to all recursive call sites.
@@ -2112,7 +2112,7 @@ The Mercury compiler contains an optimization
 that can fuse two traversals into one.
 The optimization is called @emph{deforestation},
 because it can eliminate the intermediate data structure
-created by @code{p} and consumed by @file{r},
+created by @code{p} and consumed by @code{r},
 and in logic programming languages,
 data structures are terms, which can be viewed as trees.
 
@@ -2133,7 +2133,7 @@ occurs when @code{q} is semidet, meaning it can fail, and
 @code{r} can throw an exception.
 This is because in this case, the reordering above
 can replace code that simply fails with code that throws an exception.
-This is an @emph{no observable effect} on the execution of the program,
+This would have an @emph{observable effect} on the execution of the program,
 which optimizations are not allowed to make.
 
 To perform the above reordering,
@@ -2531,7 +2531,7 @@ containing calls to automatically generated initialization functions
 contained in the C code of the modules of the program:
 
 @example
-c2init @var{module1}.c @var{module2}.c @dots{} > @var{main_module}_init.c,
+c2init @var{module1}.c @var{module2}.c @dots{} > @var{main_module}_init.c
 mgnuc -c @var{main_module}_init.c
 @end example
 @pindex c2init
@@ -2690,7 +2690,7 @@ for the generation of the other kinds of interface files below.
 
 @item
 @findex --make-private-interface
-@findex --make-priv-interface
+@findex --make-priv-int
 @file{.int0} files are created by invoking @samp{mmc} with the
 @samp{--make-private-interface} (or @samp{--make-priv-int}) option.
 They contain a list of the entities
@@ -3585,7 +3585,7 @@ libmypackage: libmypackage.a libmypackage.so \
 libmypackage.a: $(mypackage.os)
         rm -f libmypackage.a
         $(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
-        $(RANLIB) $(RANLIBFLAGS) mypackage.a
+        $(RANLIB) $(RANLIBFLAGS) libmypackage.a
 
 libmypackage.so: $(mypackage.pic_os)
         $(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
