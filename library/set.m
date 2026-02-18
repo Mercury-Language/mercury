@@ -399,7 +399,7 @@
 :- mode map_fold(in(pred(in, out, di, uo) is semidet), in, out,
     di, uo) is semidet.
 
-    % map2_fold(P, S, UT, !A) :-
+    % map2_fold(P, S, T, U, !A) :-
     %   SL = to_sorted_list(S),
     %   list.map2_foldl(P, SL, TL, UL, !A),
     %   T = list_to_set(TL),
