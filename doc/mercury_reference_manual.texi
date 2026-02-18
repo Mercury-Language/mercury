@@ -106,9 +106,9 @@ into another language, under the above conditions for modified versions.
 * Formal semantics::  Declarative and operational semantics of Mercury
                       programs.
 * Foreign language interface:: Calling code written in other programming
-                      languages from Mercury code
+                      languages from Mercury code.
 * Impurity::          Users can write impure Mercury code.
-* Solver types::      Support for constraint logic programming
+* Solver types::      Support for constraint logic programming.
 * Trace goals::       Trace goals allow programmers to add debugging and
                       logging code to their programs.
 * Pragmas::           Various compiler directives, used for example to
@@ -303,7 +303,7 @@ A graphic name is a sequence of one or more of the following characters
 @noindent
 where the first character is not @samp{#}.
 
-As a special case, the character sequences @samp{<<u} and @samp{>>u},
+As a special case, the character sequences @samp{<<u} and @samp{>>u}
 are also graphic names.
 (They are intended to denote left and right shifts
 by unsigned amounts respectively.)
@@ -798,7 +798,7 @@ separated by commas.
 @item arg
 An argument is any term, except operator terms where
 the operator does not bind more tightly than comma
-(i.e., where the priority is greater than or equal to 1000).
+(i.e.@: where the priority is greater than or equal to 1000).
 In such a situation parentheses can be used,
 e.g.@: @samp{f((A,B))} is a compound term
 with one argument that is a parenthesized operator term,
@@ -930,7 +930,7 @@ Otherwise it is a clause item
 and the term is the @dfn{clause}.
 Note that we often use ``declaration'' and ``clause'' informally
 to refer to the items themselves
-(i.e., including the @var{end} token).
+(i.e.@: including the @var{end} token).
 
 Declarations are used in relation to a number of features.
 Details of their syntax are covered in the relevant chapters.
@@ -2028,7 +2028,7 @@ For example, the following clauses
     main(IO0, IO) :-
         write_string("The answer is ", IO0, IO1),
         write_int(42, IO1, IO2),
-        nl(IO3, IO).
+        nl(IO2, IO).
 @end example
 @noindent
 could be written equivalently using state variable syntax as
@@ -2156,7 +2156,7 @@ with two arguments: !.@var{X}, !:@var{X},
 where !.@var{X} represents the current version of the state of !@var{X},
 and !:@var{X} represents its next state.
 It then replaces all occurrences of !.@var{X} and !:@var{X}
-with ordinary variables in way that (in the general case)
+with ordinary variables in a way that (in the general case)
 represents a sequence of updates to the state of @var{X}
 from an initial state to a final state.
 
@@ -2287,7 +2287,7 @@ updates the state of @var{X} from @var{CurX} to @var{MidX},
 and then @var{Goal2}
 updates the state of @var{X} from @var{MidX} to @var{NextX}.
 
-Given the empty conjunction, i.e. the goal @samp{true},
+Given the empty conjunction, i.e.@: the goal @samp{true},
 @samp{transform_goal} will replace it with
 @example
 @var{NextX} = @var{CurX}
@@ -2311,7 +2311,7 @@ and both end with @var{NextX}.
 If a disjunct has no update of !@var{X},
 then the value of @var{NextX} in that disjunct will be set to @var{CurX}.
 
-The empty disjunction, i.e. the goal @samp{fail}, cannot succeed,
+The empty disjunction, i.e.@: the goal @samp{fail}, cannot succeed,
 so what the value of !:@var{X} would be if it @emph{did} succeed is moot.
 Therefore @samp{transform_goal} returns empty disjunctions unchanged.
 
@@ -2332,7 +2332,7 @@ which means that any output they @emph{do} generate
 must be local to the negated goal.
 
 Negations that use @samp{\+ @var{NegatedGoal}} notation
-are handled exactly the same way,
+are handled exactly the same way.
 
 @item If-then-elses
 Given an if-then-else, whether it uses
@@ -2364,8 +2364,8 @@ since the else case is executed only if the condition has no solution.)
 
 @item Bidirectional implications
 @samp{transform_goal} treats a bidirectional implication goal,
-which has the form @var{GoalA} <=> @var{GoalB},
-as it were the conjunction of its two constituent unidirectional implications:
+which has the form @var{GoalA} <=> @var{GoalB}, as if it were the
+conjunction of its two constituent unidirectional implications:
 @var{GoalA} => @var{GoalB}, @var{GoalA} <= @var{GoalB}.
 
 @item Unidirectional implications
@@ -2388,7 +2388,7 @@ Note that in universal quantifications,
 In existential quantifications,
 which have the form @samp{some @var{Vars} @var{SubGoal}},
 @var{Vars} must be a list, in which every element
-must be either ordinary variable (such as @var{A}),
+must be either an ordinary variable (such as @var{A}),
 or a state variable (such as !@var{B}).
 (Note that @var{Vars} may not contain
 any element whose form is !.@var{B} or !:@var{B}.)
@@ -2999,7 +2999,7 @@ along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
 With those predicates,
 values of any type can be converted to the universal type, and back again.
 The conversion from @code{univ} to the original type
-will check that the value inside the @code{univ}  has the expected type.
+will check that the value inside the @code{univ} has the expected type.
 The universal type is useful for situations
 where you need heterogeneous collections.
 
@@ -3235,7 +3235,7 @@ This means that each type has only one value,
 which in turn means that values of these types contain no information at all.
 But containing information is not the purpose of these types.
 Their purpose is to ensure that
-if ever a computation that expects program variables
+if a computation that expects program variables
 is ever accidentally given type variables, or vice versa,
 this mismatch is detected and reported by the compiler.
 Two variables can be unified only if they have the same type.
@@ -3492,7 +3492,7 @@ if and only if all of the following conditions hold:
     if either of @var{P} and @var{Q} has higher-order inst information,
     then @var{P} and @var{Q} must have
     the @emph{same} higher-order inst information,
-    i.e.@ their higher-order inst information must specify
+    i.e.@: their higher-order inst information must specify
     the same argument modes, determinism, and purity.
     @end itemize
 @end itemize
@@ -3500,7 +3500,7 @@ if and only if all of the following conditions hold:
 @noindent
 4. For all other types,
 @samp{S =< T} if and only if @samp{S = T},
-i.e.@ they are syntactically identical.
+i.e.@: they are syntactically identical.
 
 A subtype may be exported as an abstract type
 by declaring only the name of the subtype in the
@@ -3564,7 +3564,7 @@ In the case of a set of mutually recursive types,
 omitting some constructor definitions from a type may not be enough;
 it may be necessary to replace some argument types with their subtypes as well.
 Consider this pair of mutually recursive types representing a bipartite graph,
-i.e.@ a graph in which there are two kinds of nodes,
+i.e.@: a graph in which there are two kinds of nodes,
 and edges always connect two nodes of different kinds.
 In this bipartite graph,
 the two kinds of nodes are @var{or} nodes and @var{and} nodes,
@@ -4259,7 +4259,7 @@ The standard library provides the parametric modes
 
 @noindent
 so that for example the mode @samp{create_request} defined above
-could have be defined as
+could have been defined as
 
 @example
 :- mode create_request == out(request).
@@ -4401,7 +4401,7 @@ Likewise, if a predicate or function type declaration
 occurs in the implementation section of a module,
 then all mode declarations for that predicate or function
 must occur in the implementation section of the @emph{same} module.
-Therefore, is an error
+Therefore, it is an error
 for a predicate or function to have mode declarations
 in both the interface and implementation sections of a module.
 
@@ -9297,8 +9297,8 @@ are as follows:
 @table @asis
 
 @item @samp{may_call_mercury}/@samp{will_not_call_mercury}
-This attribute declares whether or not
-execution inside this foreign language code may call back into Mercury or not.
+This attribute declares whether execution inside this foreign language code may
+call back into Mercury or not.
 The default, in case neither is specified, is @samp{may_call_mercury}.
 Specifying @samp{will_not_call_mercury}
 may allow the compiler to generate more efficient code.
@@ -10370,7 +10370,7 @@ of types defined using @samp{pragma foreign_type}
 and/or predicates defined using @samp{pragma foreign_proc}
 in the containing module,
 and these may be visible in other modules,
-especially in the presence of intermodule optimization,
+especially in the presence of intermodule optimization.
 
 If you do not want the contents of a @samp{pragma foreign_decl} declaration
 to be visible in foreign language code in other modules,
@@ -12637,7 +12637,7 @@ One such situation is when a set of procedures are all possible values
 of the same higher-order variable,
 which requires them to have the same argument types, modes, and determinisms.
 If (say) most of the procedures are @code{det}
-but some are @code{erroneous} (that is, they always throws an exception),
+but some are @code{erroneous} (that is, they always throw an exception),
 the procedures that are declared @code{det}
 but whose bodies have determinism @code{erroneous}
 will get a warning saying their determinism declaration could be tighter,
@@ -12708,7 +12708,7 @@ These four predicates and one function
 all take a format string argument, and a values_to_format argument.
 The format string argument in all the examples above is
 @example
-        "Count = %d, Total = %5.2f, Average = 5.2%f\n"
+        "Count = %d, Total = %5.2f, Average = %5.2f\n"
 @end example
 @noindent
 while the values_to_format argument is
@@ -12796,7 +12796,7 @@ of @code{string.format} in the Mercury Library Reference Manual;
 the same rules apply to @code{io.format}
 and @code{stream.string_writer.format} as well.
 
-the Mercury compiler checks calls
+The Mercury compiler checks calls
 to the formatting predicates and function in the Mercury standard library,
 specifically
 
@@ -12818,7 +12818,7 @@ and programmer productivity
 just to force the execution of all calls to these predicates).
 However, the compiler can perform this check
 only if the predicate or function
-containing the call to the formatting predicate or function 
+containing the call to the formatting predicate or function
 also constructs the format string and the value list.
 Most calls to formatting predicates satisfy this condition, but not all.
 
@@ -12909,7 +12909,7 @@ describing the argument numbers that act as the sources
 for each such call, like this:
 
 @example
-:- pragma format_call(pred(maybe_quad_log_message/5),
+:- pragma format_call(pred(maybe_quad_log_message/9),
     [format_string_values(2, 3), format_string_values(2, 4),
     format_string_values(5, 6), format_string_values(5, 7)]).
 @end example
