@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014, 2016-2023 The Mercury team.
+% Copyright (C) 2014, 2016-2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -90,7 +90,7 @@
     ;       two_roots(float, float).
 
     % solve_quadratic(A, B, C) = Roots is true if Roots are
-    % the solutions to the equation Ax^2 + Bx + C.
+    % the solutions to the equation Ax^2 + Bx + C = 0.
     %
     % Domain restriction: A \= 0
     %
