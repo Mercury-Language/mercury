@@ -568,30 +568,32 @@ unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap) :-
         GoalExpr = unify(LHS, RHS, _, Unify, _),
         unused_args_traverse_unify(Info, LHS, RHS, Unify, !LocalVarUsageMap)
     ;
-        GoalExpr = plain_call(PredId, ProcId, ArgVars, _, _, _),
+        GoalExpr = plain_call(PredId, ProcId, CallArgVars, _, _, _),
         ModuleInfo = Info ^ unarg_module_info,
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        add_pred_call_arg_dep(proc(PredId, ProcId), ArgVars, HeadVars,
+        proc_info_get_headvars(ProcInfo, CalleeHeadVars),
+        CalleePredProcId = proc(PredId, ProcId),
+        add_pred_call_arg_dep(CalleePredProcId, CallArgVars, CalleeHeadVars,
             !LocalVarUsageMap)
     ;
-        GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
-        vars_in_generic_call(GenericCall, CallArgVars),
-        record_vars_as_used(CallArgVars, !LocalVarUsageMap),
-        record_vars_as_used(ArgVars, !LocalVarUsageMap)
+        GoalExpr = generic_call(GenericCall, CallArgVars, _, _, _),
+        vars_in_generic_call(GenericCall, GenericCallArgVars),
+        record_vars_as_used(GenericCallArgVars, !LocalVarUsageMap),
+        record_vars_as_used(CallArgVars, !LocalVarUsageMap)
     ;
-        GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
+        GoalExpr = call_foreign_proc(_, _, _,
+            ForeignArgs, ForeignExtraArgs, _, _),
         % Only arguments with names can be used in the foreign code.
         % The code in here should be kept in sync with the treatment
         % of foreign_procs in unused_args_fixup_goal_expr: any variable
         % considered unused here should be renamed apart in
         % unused_args_fixup_goal_expr.
         ArgIsUsed =
-            ( pred(Arg::in, Var::out) is semidet :-
-                Arg = foreign_arg(Var, MaybeNameAndMode, _, _),
+            ( pred(ForeignArg::in, Var::out) is semidet :-
+                ForeignArg = foreign_arg(Var, MaybeNameAndMode, _, _),
                 MaybeNameAndMode = yes(_)
             ),
-        list.filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
+        list.filter_map(ArgIsUsed, ForeignArgs ++ ForeignExtraArgs, UsedVars),
         record_vars_as_used(UsedVars, !LocalVarUsageMap)
     ;
         GoalExpr = conj(_ConjType, Goals),
@@ -692,30 +694,33 @@ unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
         )
     ).
 
-    % Add PredProcId - HeadVar as an alias for the same element of Args.
+    % Add PredProcId - CalleeArgVar as an alias for the corresponding
+    % CallArgVar.
     %
-:- pred add_pred_call_arg_dep(pred_proc_id::in, list(prog_var)::in,
-    list(prog_var)::in,
+:- pred add_pred_call_arg_dep(pred_proc_id::in,
+    list(prog_var)::in, list(prog_var)::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_pred_call_arg_dep(PredProcId, LocalArguments, HeadVarIds,
+add_pred_call_arg_dep(PredProcId, CallArgVars, CalleeArgVars,
         !LocalVarUsageMap) :-
     (
-        LocalArguments = [],
-        HeadVarIds = []
+        CallArgVars = [],
+        CalleeArgVars = []
     ;
-        LocalArguments = [],
-        HeadVarIds = [_ | _],
+        CallArgVars = [],
+        CalleeArgVars = [_ | _],
         unexpected($pred, "invalid call")
     ;
-        LocalArguments = [_ | _],
-        HeadVarIds = [],
+        CallArgVars = [_ | _],
+        CalleeArgVars = [],
         unexpected($pred, "invalid call")
     ;
-        LocalArguments = [Arg | Args],
-        HeadVarIds = [HeadVar | HeadVars],
-        add_arg_dep(Arg, PredProcId, HeadVar, !LocalVarUsageMap),
-        add_pred_call_arg_dep(PredProcId, Args, HeadVars, !LocalVarUsageMap)
+        CallArgVars = [HeadCallArgVar | TailCallArgVars],
+        CalleeArgVars = [HeadCalleeArgVar | TailCalleeArgVars],
+        add_arg_dep(HeadCallArgVar, PredProcId, HeadCalleeArgVar,
+            !LocalVarUsageMap),
+        add_pred_call_arg_dep(PredProcId, TailCallArgVars, TailCalleeArgVars,
+            !LocalVarUsageMap)
     ).
 
     % Partition the arguments to a deconstruction into inputs
