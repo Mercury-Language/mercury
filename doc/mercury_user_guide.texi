@@ -1004,7 +1004,7 @@ and to later retrieve that address and jump to it.
 This speeds up transfers of control
 (conditional branches and unconditional jumps)
 within a single C function.
-@item @option{--asm--labels}
+@item @option{--asm-labels}
 specifies the use of a GNU extension
 that allows the address of a label to be made global,
 i.e. accessible from even outside the C function in which it occurs.
@@ -1024,13 +1024,13 @@ but some platforms, compilers or compiler versions
 do not support specific extensions.
 
 While it is in theory possible to combine
-@option{--gcc-non-local-gotos} with @option{--no-asm--labels},
+@option{--gcc-non-local-gotos} with @option{--no-asm-labels},
 in practice there is no advantage in doing so.
 And while it is also possible to combine
 @option{--gcc-non-local-gotos} @option{--asm--labels} with
 @option{--no-gcc-global-registers},
 we do not know of any platforms
-on which @option{--gcc-non-local-gotos} and @option{--asm--labels} work
+on which @option{--gcc-non-local-gotos} and @option{--asm-labels} work
 but @option{--gcc-global-registers} does not.
 This is why we use only three out of the eight possible combinations
 of the values of these three options.
