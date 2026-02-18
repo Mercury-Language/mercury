@@ -383,7 +383,7 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
     %
     % The point of this is that we already have code that traverses
     % the code of a module looking for natural (i.e. NOT programmer-requested)
-    % opportunities for type specialization. By creativing the new predicate,
+    % opportunities for type specialization. By creating the new predicate,
     % (whose id we return as ForcePredId) that contains a call that is
     % type-specializable in exactly the way that the pragma asks for,
     % we effectively reduce the problem of user-directed type specialization

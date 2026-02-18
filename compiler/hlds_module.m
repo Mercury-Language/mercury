@@ -138,7 +138,7 @@
                 % When the code of higher_order.specialize_calls.m
                 % traverses such calls, it creates the type specialized version
                 % of PredId that the call asks for, which (by construction
-                % of the call) will be exactly the same type specifialization
+                % of the call) will be exactly the same type specialization
                 % that the type_spec pragma asks for.
                 %
                 % In effect, the bodies of these predicates force the code
