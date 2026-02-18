@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2006, 2011 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2023, 2025 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -310,10 +310,10 @@
 :- pred uniform_float_in_01(P::in, float::out, S::di, S::uo) is det
     <= urandom(P, S).
 
-    % normal_floats(P, M, S, U, V, !S)
+    % normal_floats(P, M, SD, U, V, !S)
     %
     % Generate two pseudo-random floats from a normal (i.e., Gaussian)
-    % distribution with mean M and standard deviation S, using the
+    % distribution with mean M and standard deviation SD, using the
     % Box-Muller method.
     %
     % We generate two at a time for efficiency; they are independent of
