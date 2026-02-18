@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018, 2020, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020, 2022-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1784,7 +1784,7 @@ fmt_fatter_sparse_bitset(Univ, ArgDescs) =
     then
         pretty_printer.fatter_sparse_bitset_to_doc(X)
     else
-        str("?sparse_bitset?")
+        str("?fatter_sparse_bitset?")
     ).
 
 :- func fmt_tree_bitset(univ, list(type_desc)) = doc.

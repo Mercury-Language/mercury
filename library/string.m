@@ -703,7 +703,7 @@
 
     % unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length):
     %
-    % Same as compare_between/4 but without range checks.
+    % Same as compare_substrings/6 but without range checks.
     % WARNING: if any of StartX, StartY, StartX + Length or
     % StartY + Length are out of range, or if Length is negative,
     % then the behaviour is UNDEFINED. Use with care!
@@ -956,8 +956,8 @@
     %
 :- func left_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred left_by_codepoint(string::in, int::in, string::out) is det.
-:- pragma obsolete(func(left_by_codepoint/2), [left_by_codepoint/2]).
-:- pragma obsolete(pred(left_by_codepoint/3), [left_by_codepoint/3]).
+:- pragma obsolete(func(left_by_codepoint/2), [left_by_code_point/2]).
+:- pragma obsolete(pred(left_by_codepoint/3), [left_by_code_point/3]).
 
     % right(String, Count, RightSubstring):
     %
@@ -983,8 +983,8 @@
     %
 :- func right_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred right_by_codepoint(string::in, int::in, string::out) is det.
-:- pragma obsolete(func(right_by_codepoint/2), [right_by_codepoint/2]).
-:- pragma obsolete(pred(right_by_codepoint/3), [right_by_codepoint/3]).
+:- pragma obsolete(func(right_by_codepoint/2), [right_by_code_point/2]).
+:- pragma obsolete(pred(right_by_codepoint/3), [right_by_code_point/3]).
 
     % between(String, Start, End, Substring):
     %
@@ -1587,7 +1587,7 @@
     %
 :- pred to_uint(string::in, uint::out) is semidet.
 
-    % Convert a signed base 10 string to a uint. Throws an exception if the
+    % Convert an unsigned base 10 string to a uint. Throws an exception if the
     % string argument does not match the regexp [0-9]+ or the number is
     % not in the range [0, max_uint].
     %
@@ -1601,7 +1601,7 @@
     %
 :- pred base_string_to_uint(int::in, string::in, uint::out) is semidet.
 
-    % Convert a signed base N string to a uint. Throws an exception
+    % Convert an unsigned base N string to a uint. Throws an exception
     % if the string argument is not precisely a non-empty string of base N
     % digits, or if the number is not in the range [0, max_uint].
     %
