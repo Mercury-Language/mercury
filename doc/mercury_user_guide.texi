@@ -205,7 +205,7 @@ Any command line argument that starts with @samp{@@}
 is a shorthand for a list of other arguments.
 @item
 Any command line argument
-that does not start with either @samp{=} or @samp{@@}
+that does not start with either @samp{-} or @samp{@@}
 will be treated either as the argument of an option
 (if it immediately follows an option that takes an argument),
 or as a @dfn{non-option argument}
@@ -813,7 +813,7 @@ The Mercury compiler has two backends.
 The first backend implemented by the Mercury team
 translates Mercury programs to
 what is effectively assembly-level code in C syntax.
-Most compilers generate either assembly level code
+Most compilers generate assembly level code
 (either assembly code itself or binary machine code),
 so the first part is quite conventional.
 The second part, generating this assembly level code in C syntax,
@@ -955,7 +955,7 @@ The available MLDS base grades, and the option values they correspond to, are
 @item java
 @option{--target java} and @option{--high-level-code}
 @item csharp
-@option{--target c} and @option{--high-level-code}
+@option{--target csharp} and @option{--high-level-code}
 @end table
 
 These base grades each call for the generation of
@@ -974,7 +974,7 @@ The available LLDS base grades, and the option values they correspond to, are
 @item asm_fast
 @option{--target c}, @option{--no-high-level-code},
 @option{--gcc-global-registers}, @option{--gcc-non-local-gotos} and
-@option{--asm--labels}
+@option{--asm-labels}
 @end table
 
 These base grades each call for the generation of
@@ -5438,7 +5438,7 @@ and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @item print [-fpv] io @var{min}-@var{max}
 @itemx print [-fpv] action @var{min}-@var{max}
 Prints a representation of the I/O actions executed by the program
-from the @var{min}'th to the @var{min}'th,
+from the @var{min}'th to the @var{max}'th,
 if there were such actions and if they were recorded.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
