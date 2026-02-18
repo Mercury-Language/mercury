@@ -1364,6 +1364,52 @@ unused_args_fixup_goal(Goal0, Goal, !Info, Changed) :-
 unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
+        GoalExpr0 = unify(_Var, _RHS, _Mode, Unify, _Context),
+        ModuleInfo = !.Info ^ fixup_module_info,
+        UnusedVars = !.Info ^ fixup_unused_vars,
+        ( if need_unify(ModuleInfo, UnusedVars, Unify, ChangedPrime) then
+            Goal = Goal0,
+            Changed = ChangedPrime
+        else
+            Goal = hlds_goal(true_goal_expr, GoalInfo0),
+            Changed = changed
+        )
+    ;
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
+            UnifyContext, _SymName),
+        NewProcMap = !.Info ^ fixup_new_proc_map,
+        ( if map.search(NewProcMap, proc(PredId, ProcId), NewProcInfo) then
+            NewProcInfo = new_proc_info(NewPredId, NewProcId, NewSymName,
+                UnusedArgs),
+            Changed = changed,
+            remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
+            GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
+                UnifyContext, NewSymName),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        else
+            Changed = unchanged,
+            Goal = Goal0
+        )
+    ;
+        GoalExpr0 = generic_call(_, _, _, _, _),
+        Goal = Goal0,
+        Changed = unchanged
+    ;
+        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
+            Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
+        % The code in here should be kept in sync with the treatment of
+        % foreign_procs in traverse_goal.
+        Changed0 = unchanged,
+        map.init(Subst0),
+        list.map_foldl3(rename_apart_unused_foreign_arg,
+            Args0, Args, Subst0, Subst1, !Info, Changed0, ArgsChanged),
+        list.map_foldl3(rename_apart_unused_foreign_arg,
+            ExtraArgs0, ExtraArgs, Subst1, Subst, !Info, ArgsChanged, Changed),
+        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
+            Args, ExtraArgs, MaybeTraceRuntimeCond, Impl),
+        rename_vars_in_goal_info(need_not_rename, Subst, GoalInfo0, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
         GoalExpr0 = conj(ConjType, Goals0),
         unused_args_fixup_conjuncts(Goals0, Goals, !Info, unchanged, Changed),
         GoalExpr = conj(ConjType, Goals),
@@ -1374,14 +1420,14 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = negation(NegGoal0),
-        unused_args_fixup_goal(NegGoal0, NegGoal, !Info, Changed),
-        GoalExpr = negation(NegGoal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         unused_args_fixup_cases(Cases0, Cases, !Info, unchanged, Changed),
         GoalExpr = switch(Var, CanFail, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(NegGoal0),
+        unused_args_fixup_goal(NegGoal0, NegGoal, !Info, Changed),
+        GoalExpr = negation(NegGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -1410,53 +1456,6 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
-    ;
-        GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
-            UnifyC, _Name),
-        NewProcMap = !.Info ^ fixup_new_proc_map,
-        ( if map.search(NewProcMap, proc(PredId, ProcId), NewProcInfo) then
-            NewProcInfo = new_proc_info(NewPredId, NewProcId, NewSymName,
-                UnusedArgs),
-            Changed = changed,
-            remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
-            GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
-                UnifyC, NewSymName),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        else
-            Changed = unchanged,
-            Goal = hlds_goal(GoalExpr0, GoalInfo0)
-        )
-    ;
-        GoalExpr0 = unify(_Var, _RHS, _Mode, Unify, _Context),
-        ModuleInfo = !.Info ^ fixup_module_info,
-        UnusedVars = !.Info ^ fixup_unused_vars,
-        ( if need_unify(ModuleInfo, UnusedVars, Unify, ChangedPrime) then
-            GoalExpr = GoalExpr0,
-            Changed = ChangedPrime
-        else
-            GoalExpr = true_goal_expr,
-            Changed = changed
-        ),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = generic_call(_, _, _, _, _),
-        Goal = hlds_goal(GoalExpr0, GoalInfo0),
-        Changed = unchanged
-    ;
-        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
-            Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
-        % The code in here should be kept in sync with the treatment of
-        % foreign_procs in traverse_goal.
-        Changed0 = unchanged,
-        map.init(Subst0),
-        list.map_foldl3(rename_apart_unused_foreign_arg,
-            Args0, Args, Subst0, Subst1, !Info, Changed0, ArgsChanged),
-        list.map_foldl3(rename_apart_unused_foreign_arg,
-            ExtraArgs0, ExtraArgs, Subst1, Subst, !Info, ArgsChanged, Changed),
-        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
-            Args, ExtraArgs, MaybeTraceRuntimeCond, Impl),
-        rename_vars_in_goal_info(need_not_rename, Subst, GoalInfo0, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -1487,7 +1486,7 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         !:Changed = changed
     ).
 
-    % Remove useless unifications from a list of conjuncts.
+    % Fix up each conjunct, and delete the ones whose fixup yields no code.
     %
 :- pred unused_args_fixup_conjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
     fixup_info::in, fixup_info::out,
@@ -1571,8 +1570,8 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
         Unify = deconstruct(LVar, _, ArgVars, ArgModes, CanFail, _CanCGC),
         not list.member(LVar, UnusedVars),
         (
-            % Are any of the args unused? If so, we need to fix up the
-            % goal_info.
+            % Are any of the args unused?
+            % If so, we need to fix up the goal_info.
             CanFail = cannot_fail,
             check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,
                 no, Changed)
@@ -1614,7 +1613,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Vars, ArgModes, !.SomeUsed,
         Vars = [HeadVar | TailVars],
         ArgModes = [HeadArgMode | TailArgModes],
         ( if
-            % XXX This test is seems wrong to me. Why does it look at a mode
+            % XXX This test seems wrong to me. Why does it look at a mode
             % that is made up of *two initial* insts?
             HeadArgMode = unify_modes_li_lf_ri_rf(InitX, _, InitY, _),
             mode_is_output(ModuleInfo, from_to_mode(InitX, InitY)),
@@ -1915,8 +1914,8 @@ maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId, UnusedArgs0,
         true
     else
         set.insert(PredId, !WarnedPredIds),
-        pred_info_get_proc_table(PredInfo, Procs),
-        map.lookup(Procs, ProcId, Proc),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        map.lookup(ProcTable, ProcId, Proc),
         pred_info_get_orig_arity(PredInfo, PredFormArity),
         proc_info_get_headvars(Proc, HeadVars),
         NumExtraArgs = num_extra_args(PredFormArity, HeadVars),
@@ -1932,11 +1931,11 @@ maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId, UnusedArgs0,
         )
     ).
 
-    % Adjust the argument numbers from how they look *with* the presence
-    % of the extra arguments inserted by polymorphism, to how they would look
-    % without them. This means dropping the inserted argument if they appear,
-    % and subtracting the number of inserted arguments from the argument
-    % numbers of all the other arguments.
+    % Adjust the argument numbers from how they look in an argument list
+    % *with* the extra arguments inserted by polymorphism, to how they would
+    % look without them. This means dropping the inserted argument
+    % if they appear, and subtracting the number of inserted arguments
+    % from the argument numbers of all the other arguments.
     %
 :- pred drop_poly_inserted_args(int::in, list(int)::in, list(int)::out) is det.
 
@@ -1951,9 +1950,15 @@ drop_poly_inserted_args(NumInserted, [HeadArgWith | TailArgsWith],
         ArgsWithout = [HeadArgWithout | TailArgsWithout]
     ).
 
-    % Warn about unused arguments in a predicate. Only arguments unused
-    % in every mode of a predicate are warned about. The warning is
-    % suppressed for type_infos.
+    % Warn about unused arguments in a predicate. We consider an argument
+    % unused *only* if it is unused in *every* mode of the predicate.
+    % We also never warn about arguments inserted by the polymorphism pass.
+    %
+    % The latter test is done by maybe_gather_warning with help from
+    % drop_poly_inserted_args.
+    %
+    % XXX I (zs) would like to know where the first test is done,
+    % since it is *not* done here.
     %
 :- func report_unused_args(module_info, pred_info, list(int)) = error_spec.
 
