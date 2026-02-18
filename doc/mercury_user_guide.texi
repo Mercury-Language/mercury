@@ -584,7 +584,7 @@ One important aspect of @file{.d} files is that
 every compilation of a Mercury module
 will implicitly update that module's @file{.d} file
 if its old contents are not up-to-date.
-This is not true for @file{.dep} and @file{.dep} files;
+This is not true for @file{.dep} and @file{.dv} files;
 those are updated only if you explicitly ask for it,
 e.g.@: via the second step command above.
 
@@ -5181,7 +5181,7 @@ the strictness of the command.
 By default, this command is strict, and it uses the default print level.
 @sp 1
 @item user [-NSans]
-@kindex return (mdb command)
+@kindex user (mdb command)
 Continues the program until the next user defined event.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
