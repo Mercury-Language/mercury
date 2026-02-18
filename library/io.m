@@ -208,12 +208,12 @@
 %---------------------%
 
     % Closes an open text input stream.
-    % Throw an io.error exception if an I/O error occurs.
+    % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred close_input(io.text_input_stream::in, io::di, io::uo) is det.
 
-    % Closes an open binary input stream. This will throw an io.error
-    % exception if an I/O error occurs.
+    % Closes an open binary input stream.
+    % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred close_binary_input(io.binary_input_stream::in,
     io::di, io::uo) is det.
@@ -410,7 +410,7 @@
 %
 
     % Retrieves the human-readable name associated with the current input
-    % stream or the specified output stream. For file streams, this is
+    % stream or the specified input stream. For file streams, this is
     % the filename. For stdin, this is the string "<standard input>".
     %
 :- pred input_stream_name(string::out, io::di, io::uo) is det.
@@ -428,8 +428,8 @@
     % Retrieves the human-readable name associated with the current
     % output stream or the specified output stream.
     % For file streams, this is the filename.
-    % For stdout this is the string "<standard output>".
-    % For stderr this is the string "<standard error>".
+    % For stdout, this is the string "<standard output>".
+    % For stderr, this is the string "<standard error>".
     %
 :- pred output_stream_name(string::out, io::di, io::uo) is det.
 :- pred output_stream_name(io.text_output_stream::in, string::out,
@@ -998,9 +998,9 @@
     %   - If the tokens form a syntactically correct ground term of the
     %     expected type, then it returns `ok(Term)'.
     %
-    %   - If tokens do not form a syntactically correct term, or if the term
-    %     they form is not ground, or if the term is not a valid term of the
-    %     expected type, then it returns `error(Message, LineNumber)'.
+    %   - If the tokens do not form a syntactically correct term, or if the
+    %     term they form is not ground, or if the term is not a valid term
+    %     of the expected type, then it returns `error(Message, LineNumber)'.
     %
     %  - If it encounters an I/O error, then it also returns
     %    `error(Message, LineNumber)'.
@@ -1293,7 +1293,7 @@
 %
 
     % Flush the output buffer of the current output stream
-    % or to the specified output stream.
+    % or of the specified output stream.
     %
 :- pred flush_output(io::di, io::uo) is det.
 :- pred flush_output(io.text_output_stream::in, io::di, io::uo) is det.
@@ -1314,8 +1314,8 @@
     % as a string. If either the opening or the reading fails, return
     % an error message describing the failure.
     %
-    % With the first version, the returned string is NOT guaranteed
-    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % With the first version, the returned string is NOT guaranteed to be valid
+    % UTF-8 (when targeting C) or UTF-16 (when targeting Java or C#).
     % The version that has the _wf suffix DOES guarantee that the
     % returned string is valid UTF-8 or UTF-16; if the contents of the file
     % is not a well formed string, it will report an error.
@@ -1361,8 +1361,8 @@
     % Returns an error if the file contains a null character, because
     % null characters are not allowed in Mercury strings.
     %
-    % With the first two versions, the returned string is NOT guaranteed
-    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % With the first two versions, the returned string is NOT guaranteed to be
+    % valid UTF-8 (when targeting C) or UTF-16 (when targeting Java or C#).
     % The two versions that have the _wf suffix DO guarantee that the
     % returned string is valid UTF-8 or UTF-16; if the contents of the file
     % is not a well formed string, they will report an error.
@@ -1651,7 +1651,7 @@
 % NOTE_TO_IMPLEMENTORS these types to io.file.m, new code would still work,
 % NOTE_TO_IMPLEMENTORS but old code would break immediately, in a way that
 % NOTE_TO_IMPLEMENTORS shutting up warnings about obsolete predicates
-% NOTE_TO_IMPLEMENTORS would not overcode.
+% NOTE_TO_IMPLEMENTORS would not override.
 :- type access_type
     --->    read
     ;       write
@@ -1702,7 +1702,7 @@
     % binding Result to ok/0 if it succeeds, or error/1 if it fails.
     % If OldFileName names a file that is currently open, the behaviour is
     % implementation-dependent. If NewFileName names a file that already
-    % exists the behaviour is also implementation-dependent; on some systems,
+    % exists, the behaviour is also implementation-dependent; on some systems,
     % the file previously named NewFileName will be deleted and replaced
     % with the file previously named OldFileName.
     %
