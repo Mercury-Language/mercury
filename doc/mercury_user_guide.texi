@@ -2216,7 +2216,7 @@ We record the result of exception analysis for @code{g}
 in @file{module_g.trans_opt}.
 Creating @file{module_g.trans_opt}
 requires reading @file{module_h.trans_opt},
-which makes @file{module_g.trans_opt} depends on
+which makes @file{module_g.trans_opt} depend on
 @file{module_h.trans_opt} directly, and on
 @file{module_i.trans_opt} indirectly.
 @item
@@ -4783,7 +4783,7 @@ like this:
     )
 
     event safe_test(
-        test_list:      listint
+        test_list:      list(int)
     )
 
     event noargs
