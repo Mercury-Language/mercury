@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011-2012 The University of Melbourne.
-% Copyright (C) 2015, 2019, 2021, 2023 The Mercury team.
+% Copyright (C) 2015, 2019, 2021, 2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -189,7 +189,7 @@ options_help(Stream, !IO) :-
         "\tSelect what to profile: time, amount of memory allocated, or",
         "\tnumber of memory allocations (regardless of size).",
         "-m",
-        "\tSame as `--profile memory-words'",
+        "\tSame as `--profile memory-words'.",
         "-M",
         "\tSame as `--profile memory-cells'.",
         "-t",

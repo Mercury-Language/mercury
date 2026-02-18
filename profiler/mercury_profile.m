@@ -78,7 +78,7 @@ postprocess_options(Args, !IO) :-
         VeryVerbose = no
     ),
 
-    % Any empty list of arguments implies that we must build the call
+    % An empty list of arguments implies that we must build the call
     % graph from the dynamic information.
     (
         Args = [],
@@ -116,7 +116,7 @@ usage_error(ErrorMessage, !IO) :-
 
     % Display short_usage message.
     % XXX the only place we call short_usage is in usage_error above.
-    % Also: why does the default name of the executable differ betweeen
+    % Also: why does the default name of the executable differ between
     % the two?
 :- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
