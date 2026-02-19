@@ -280,7 +280,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error/' exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int32::in) rem (int32::in) = (int32::uo) is det.
 
