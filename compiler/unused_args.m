@@ -162,8 +162,8 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         NewProcMap0, !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
-    unused_args_iterate_to_fixpoint(0, !.ModuleInfo, FixpointPredProcIds,
-        GlobalVarUsageMap0, GlobalVarUsageMap),
+    record_required_vars_as_used_to_fixpoint(0, !.ModuleInfo,
+        FixpointPredProcIds, GlobalVarUsageMap0, GlobalVarUsageMap),
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
     map.init(UnusedArgInfo0),
@@ -348,7 +348,9 @@ init_global_var_usage_map_entry_for_proc(PredId, PredInfo, ProcId, ProcInfo,
         var_table_vars(VarTable, Vars),
         some [!LocalVarUsageMap] (
             map.init(!:LocalVarUsageMap),
-            set_vars_to_unaliased_unused(Vars, !LocalVarUsageMap),
+            InitRequiredBy = required_by(set.init, set.init),
+            init_requiring_vars_for_var(InitRequiredBy, Vars,
+                !LocalVarUsageMap),
             record_output_args_as_used(!.ModuleInfo, ProcInfo,
                 !LocalVarUsageMap),
 
@@ -358,8 +360,8 @@ init_global_var_usage_map_entry_for_proc(PredId, PredInfo, ProcId, ProcInfo,
             (
                 TypeInfoLiveness = yes,
                 proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-                setup_typeinfo_deps(PredProcId, VarTable, RttiVarMaps, Vars,
-                    !LocalVarUsageMap)
+                require_typeinfo_liveness_for_vars(PredProcId, VarTable,
+                    RttiVarMaps, Vars, !LocalVarUsageMap)
             ;
                 TypeInfoLiveness = no
             ),
@@ -394,9 +396,10 @@ try_to_look_up_global_var_usage_map_entry_for_proc(PredId, PredInfo,
         BestAnswer = unused_args_answer(UnusedArgs),
         (
             UnusedArgs = [_ | _],
+            InitRequiredBy = required_by(set.init, set.init),
             proc_info_get_headvars(ProcInfo, HeadVars),
             list.map(list.det_index1(HeadVars), UnusedArgs, UnusedVars),
-            set_vars_to_unaliased_unused(UnusedVars,
+            init_requiring_vars_for_var(InitRequiredBy, UnusedVars,
                 map.init, LocalVarUsageMap),
             PredProcId = proc(PredId, ProcId),
             map.det_insert(PredProcId, LocalVarUsageMap, !GlobalVarUsageMap),
@@ -493,15 +496,13 @@ should_ignore_proc_unused_args(PredInfo, ProcId, ProcInfo) :-
 
 %---------------------%
 
-:- pred set_vars_to_unaliased_unused(list(prog_var)::in,
+:- pred init_requiring_vars_for_var(required_by::in, list(prog_var)::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-set_vars_to_unaliased_unused([], !LocalVarUsageMap).
-set_vars_to_unaliased_unused([Var | Vars], !LocalVarUsageMap) :-
-    set.init(AliasVars),
-    set.init(AliasArgs),
-    map.det_insert(Var, unused(AliasVars, AliasArgs), !LocalVarUsageMap),
-    set_vars_to_unaliased_unused(Vars, !LocalVarUsageMap).
+init_requiring_vars_for_var(_, [], !LocalVarUsageMap).
+init_requiring_vars_for_var(RequiredBy, [Var | Vars], !LocalVarUsageMap) :-
+    map.det_insert(Var, RequiredBy, !LocalVarUsageMap),
+    init_requiring_vars_for_var(RequiredBy, Vars, !LocalVarUsageMap).
 
     % Record that all output arguments for a procedure as used.
     %
@@ -518,27 +519,29 @@ record_output_args_as_used(ModuleInfo, ProcInfo, !LocalVarUsageMap) :-
     % if HeadVar1 has type list(T), then the type_info for T is used
     % if HeadVar1 is used.
     %
-:- pred setup_typeinfo_deps(pred_proc_id::in, var_table::in, rtti_varmaps::in,
-    list(prog_var)::in,
+:- pred require_typeinfo_liveness_for_vars(pred_proc_id::in, var_table::in,
+    rtti_varmaps::in, list(prog_var)::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-setup_typeinfo_deps(_, _, _, [], !LocalVarUsageMap).
-setup_typeinfo_deps(PredProcId, VarTable, RttiVarMaps, [Var | Vars],
-        !LocalVarUsageMap) :-
-    setup_typeinfo_dep(PredProcId, VarTable, RttiVarMaps, Var,
-        !LocalVarUsageMap),
-    setup_typeinfo_deps(PredProcId, VarTable, RttiVarMaps, Vars,
-        !LocalVarUsageMap).
+require_typeinfo_liveness_for_vars(_, _, _, [], !LocalVarUsageMap).
+require_typeinfo_liveness_for_vars(PredProcId, VarTable, RttiVarMaps,
+        [Var | Vars], !LocalVarUsageMap) :-
+    require_typeinfo_liveness_for_var(PredProcId, VarTable, RttiVarMaps,
+        Var, !LocalVarUsageMap),
+    require_typeinfo_liveness_for_vars(PredProcId, VarTable, RttiVarMaps,
+        Vars, !LocalVarUsageMap).
 
-:- pred setup_typeinfo_dep(pred_proc_id::in, var_table::in, rtti_varmaps::in,
-    prog_var::in, local_var_usage_map::in, local_var_usage_map::out) is det.
+:- pred require_typeinfo_liveness_for_var(pred_proc_id::in, var_table::in,
+    rtti_varmaps::in, prog_var::in,
+    local_var_usage_map::in, local_var_usage_map::out) is det.
 
-setup_typeinfo_dep(PredProcId, VarTable, RttiVarMaps, Var,
+require_typeinfo_liveness_for_var(PredProcId, VarTable, RttiVarMaps, Var,
         !LocalVarUsageMap) :-
     lookup_var_type(VarTable, Var, Type),
     type_vars_in_type(Type, TVars),
     list.map(tvar_to_type_info_var(RttiVarMaps), TVars, TypeInfoVars),
-    list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars,
+    ArgVarInProc = arg_var_in_proc(PredProcId, Var),
+    local_vars_are_required_by_proc_arg(TypeInfoVars, ArgVarInProc,
         !LocalVarUsageMap).
 
 :- pred tvar_to_type_info_var(rtti_varmaps::in, tvar::in, prog_var::out)
@@ -573,7 +576,7 @@ unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap) :-
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         proc_info_get_headvars(ProcInfo, CalleeHeadVars),
         CalleePredProcId = proc(PredId, ProcId),
-        add_pred_call_arg_dep(CalleePredProcId, CallArgVars, CalleeHeadVars,
+        add_plain_call_arg_deps(CalleePredProcId, CallArgVars, CalleeHeadVars,
             !LocalVarUsageMap)
     ;
         GoalExpr = generic_call(GenericCall, CallArgVars, _, _, _),
@@ -647,7 +650,8 @@ unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
             % Source is used.
             record_var_as_used(Source, !LocalVarUsageMap)
         else
-            add_aliases(Source, [Target], !LocalVarUsageMap)
+            local_var_is_required_by_local_vars(Source, [Target],
+                !LocalVarUsageMap)
         )
     ;
         Unify = construct(CellVar, _, ArgVars, _, _, _, _),
@@ -655,7 +659,8 @@ unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
         ( if local_var_is_used(!.LocalVarUsageMap, CellVar) then
             record_vars_as_used(ArgVars, !LocalVarUsageMap)
         else
-            add_construction_aliases(CellVar, ArgVars, !LocalVarUsageMap)
+            local_vars_are_required_by_local_var(ArgVars, CellVar,
+                !LocalVarUsageMap)
         )
     ;
         Unify = deconstruct(CellVar, _, ArgVars, ArgModes, CanFail, _),
@@ -664,10 +669,12 @@ unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
             InputVars, OutputVars),
         % The deconstructed variable is used if any of the variables that
         % the deconstruction binds are used.
-        add_aliases(CellVar, OutputVars, !LocalVarUsageMap),
+        local_var_is_required_by_local_vars(CellVar, OutputVars,
+            !LocalVarUsageMap),
         % Treat a deconstruction that further instantiates its left arg
         % as a partial construction.
-        add_construction_aliases(CellVar, InputVars, !LocalVarUsageMap),
+        local_vars_are_required_by_local_var(InputVars, CellVar,
+            !LocalVarUsageMap),
         (
             CanFail = can_fail,
             % A deconstruction that can_fail uses its left arg.
@@ -696,11 +703,11 @@ unused_args_traverse_unify(Info, LHSVar, RHS, Unify, !LocalVarUsageMap) :-
     % Add PredProcId - CalleeArgVar as an alias for the corresponding
     % CallArgVar.
     %
-:- pred add_pred_call_arg_dep(pred_proc_id::in,
+:- pred add_plain_call_arg_deps(pred_proc_id::in,
     list(prog_var)::in, list(prog_var)::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_pred_call_arg_dep(PredProcId, CallArgVars, CalleeArgVars,
+add_plain_call_arg_deps(PredProcId, CallArgVars, CalleeArgVars,
         !LocalVarUsageMap) :-
     (
         CallArgVars = [],
@@ -716,9 +723,10 @@ add_pred_call_arg_dep(PredProcId, CallArgVars, CalleeArgVars,
     ;
         CallArgVars = [HeadCallArgVar | TailCallArgVars],
         CalleeArgVars = [HeadCalleeArgVar | TailCalleeArgVars],
-        add_arg_dep(HeadCallArgVar, PredProcId, HeadCalleeArgVar,
+        ArgVarInProc = arg_var_in_proc(PredProcId, HeadCalleeArgVar),
+        local_var_is_required_by_proc_arg(HeadCallArgVar, ArgVarInProc,
             !LocalVarUsageMap),
-        add_pred_call_arg_dep(PredProcId, TailCallArgVars, TailCalleeArgVars,
+        add_plain_call_arg_deps(PredProcId, TailCallArgVars, TailCalleeArgVars,
             !LocalVarUsageMap)
     ).
 
@@ -788,21 +796,75 @@ unused_args_traverse_cases(Info, [Case | Cases], !LocalVarUsageMap) :-
 
 %---------------------------------------------------------------------------%
 %
-% Analysis section - do the fixpoint iteration.
+% Interprocedural analysis section.
 %
 
-    % Do a full iteration, check if anything changed, if so, repeat.
+    % Start by assuming that the only input arguments a procedure needs
+    % are the ones used in its own procedure body. This denotes the
+    % ideal situation, in the sense it has the most "unused" arguments
+    % that can be optimized. However, This assumption is false in most cases,
+    % because it does not account for discrepancies such as local variables
+    % in procedure P1 that are needed in the body of procedure P2, to which
+    % they is passed.
     %
-:- pred unused_args_iterate_to_fixpoint(int::in, module_info::in,
+    % This predicate does a top-down iteration to find the greatest fixpoint
+    % of the operation that fixes such discrepancies. Each iteration
+    % fixes the discrepancies implicit in its initial value of
+    % !.GlobalVarUsageMap by marking more local variables is definitely used.
+    % When we get to a fixpoint, by definition there will be no discrepancies
+    % left, and the final GlobalVarUsageMap will record a variable as unused
+    % if it can be truly deleted from the program without any ill effects.
+    %
+    % The reason why we compute the greatest fixpoint is because it allows us
+    % to warn about and to optimize not just unused variables that are
+    % local to their defining procedure, but also input arguments that
+    % are seemingly used by being passed to recursive calls, possibly even
+    % mutually recursive calls, but which are not used for anything else.
+    %
+    % One thing that we do NOT do, but we could consider doing,
+    % is finding input arguments that are "used" not just by passing them
+    % around as input to (possibly mutually) recursive calls, but also
+    % to return them unchanged as output arguments. Such input arguments
+    % should not be deleted on their own. They should always be deleted
+    % together with the output argument they are returned as, and calls
+    % from outside the clique of recursive procedures to inside must be
+    % extended with code that copies the input argument to the unchanged
+    % output argument. (This cannot be done if this caller is in another
+    % module, so the compiler would need to create and export a shim
+    % procedure to do this copying.)
+    %
+:- pred record_required_vars_as_used_to_fixpoint(int::in, module_info::in,
     list(pred_proc_id)::in,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_iterate_to_fixpoint(PassNum, ModuleInfo,
+record_required_vars_as_used_to_fixpoint(PassNum, ModuleInfo,
         LocalPredProcIds, !GlobalVarUsageMap) :-
-    unused_args_single_pass(LocalPredProcIds, unchanged, Changed,
-        !GlobalVarUsageMap),
+    % If we find any local variables in any procedures that
+    %
+    % - were not known to be definitely used, but
+    % - were known to be required for the computation of some variable
+    %   of procedure argument that is NOW known to be definitely used,
+    %
+    % then mark them as definitely used, and set !:Changed accordingly.
+    record_required_vars_as_used_in_procs(LocalPredProcIds,
+        unchanged, Changed, !GlobalVarUsageMap),
     (
         Changed = changed,
+        % There are some new variables that were not known to be definitely
+        % used BEFORE the call to record_required_vars_as_used_in_procs,
+        % which are known to be definitely used NOW. This means that
+        % any variable in any procedure that the computation of the values
+        % of these require must *also* be marked as definitely used.
+        %
+        % Technically, we don't always need to reprocess *all* procedures
+        % in LocalPredProcIds; the only ones we need to process are the
+        % callers of procedures for which record_required_vars_as_used_in_proc
+        % set !:Changed to "yes".
+        %
+        % However, keeping track of this set of procedures is likely to take
+        % a nontrivial amount of time. Revisiting every procedure, even
+        % the ones that we do not NEED to revisit, will likely be
+        % just as fast, other than in cases of pathologically-slow convergence.
         trace [compile_time(flag("unused_args_var_usage")), io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             io.format(DebugStream,
@@ -810,31 +872,38 @@ unused_args_iterate_to_fixpoint(PassNum, ModuleInfo,
             write_global_var_usage_map(DebugStream, ModuleInfo,
                 !.GlobalVarUsageMap, !IO)
         ),
-        unused_args_iterate_to_fixpoint(PassNum + 1, ModuleInfo,
+        record_required_vars_as_used_to_fixpoint(PassNum + 1, ModuleInfo,
             LocalPredProcIds, !GlobalVarUsageMap)
     ;
         Changed = unchanged
     ).
 
-    % Check over all the procedures in a module.
-    %
-:- pred unused_args_single_pass(list(pred_proc_id)::in,
+:- pred record_required_vars_as_used_in_procs(list(pred_proc_id)::in,
     maybe_changed::in, maybe_changed::out,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_single_pass([], !Changed, !GlobalVarUsageMap).
-unused_args_single_pass([PredProcId | PredProcIds],
+record_required_vars_as_used_in_procs([], !Changed, !GlobalVarUsageMap).
+record_required_vars_as_used_in_procs([PredProcId | PredProcIds],
         !Changed, !GlobalVarUsageMap) :-
-    unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap),
-    unused_args_single_pass(PredProcIds, !Changed, !GlobalVarUsageMap).
+    record_required_vars_as_used_in_proc(PredProcId,
+        !Changed, !GlobalVarUsageMap),
+    record_required_vars_as_used_in_procs(PredProcIds,
+        !Changed, !GlobalVarUsageMap).
 
-    % Check a single procedure.
+    % If we find any local variables that
     %
-:- pred unused_args_check_proc(pred_proc_id::in,
+    % - were not known to be definitely used, but
+    % - were known to be required for the computation of some variable
+    %   of procedure argument that is NOW known to be definitely used,
+    %
+    % then mark them as definitely used, and set !:Changed accordingly.
+    %
+:- pred record_required_vars_as_used_in_proc(pred_proc_id::in,
     maybe_changed::in, maybe_changed::out,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
+record_required_vars_as_used_in_proc(PredProcId,
+        !Changed, !GlobalVarUsageMap) :-
     map.lookup(!.GlobalVarUsageMap, PredProcId, LocalVarUsageMap0),
     % NOTE: It would be nice to use map.map_foldl here, but that works
     % when the processing of each key-value pair involves *updating*
@@ -846,7 +915,7 @@ unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
     % but this would be harder to maintain, due to the abstraction barrier
     % involved in calls to record_var_as_used.
     map.keys(LocalVarUsageMap0, Vars),
-    unused_args_check_all_vars(!.GlobalVarUsageMap, Vars,
+    record_required_vars_as_used(!.GlobalVarUsageMap, Vars,
         unchanged, LocalChanged, LocalVarUsageMap0, LocalVarUsageMap),
     (
         LocalChanged = changed,
@@ -858,27 +927,27 @@ unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
 
     % Check each var of a procedure in turn.
     %
-:- pred unused_args_check_all_vars(global_var_usage_map::in,
+:- pred record_required_vars_as_used(global_var_usage_map::in,
     list(prog_var)::in, maybe_changed::in, maybe_changed::out,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-unused_args_check_all_vars(_, [], !Changed, !LocalVarUsageMap).
-unused_args_check_all_vars(GlobalVarUsageMap, [Var | Vars],
+record_required_vars_as_used(_, [], !Changed, !LocalVarUsageMap).
+record_required_vars_as_used(GlobalVarUsageMap, [Var | Vars],
         !Changed, !LocalVarUsageMap) :-
-    map.lookup(!.LocalVarUsageMap, Var, Usage0),
-    Usage0 = unused(AliasVars0, AliasArgs0),
+    map.lookup(!.LocalVarUsageMap, Var, RequiredBy),
+    RequiredBy = required_by(RequiringLocalVars0, RequiringProcArgs0),
     ( if
         (
             % Are there any used procedure arguments that Var depends on?
             some [Argument] (
-                set.member(Argument, AliasArgs0),
+                set.member(Argument, RequiringProcArgs0),
                 Argument = arg_var_in_proc(PredProcId, ArgVar),
                 proc_arg_var_is_used(GlobalVarUsageMap, PredProcId, ArgVar)
             )
         ;
             % Are there any used local variables that Var depends on?
             some [X] (
-                set.member(X, AliasVars0),
+                set.member(X, RequiringLocalVars0),
                 local_var_is_used(!.LocalVarUsageMap, X)
             )
         )
@@ -887,14 +956,14 @@ unused_args_check_all_vars(GlobalVarUsageMap, [Var | Vars],
         % data structure (!LocalVarUsageMap) as we test in the condition
         % above. This is OK because the order in which we mark variables
         % in !.LocalVarUsageMap as used does not matter; the iteration
-        % performed by unused_args_iterate_to_fixpoint is guaranteed
-        % to reach the same final result.
+        % performed by record_required_vars_as_used_to_fixpoint
+        % is guaranteed to reach the same final result.
         record_var_as_used(Var, !LocalVarUsageMap),
         !:Changed = changed
     else
         true
     ),
-    unused_args_check_all_vars(GlobalVarUsageMap, Vars,
+    record_required_vars_as_used(GlobalVarUsageMap, Vars,
         !Changed, !LocalVarUsageMap).
 
 %---------------------------------------------------------------------------%
@@ -1958,7 +2027,7 @@ drop_poly_inserted_args(NumInserted, [HeadArgWith | TailArgsWith],
     % drop_poly_inserted_args.
     %
     % XXX I (zs) would like to know where the first test is done,
-    % since it is *not* done here.
+    % since it is *not* done here. My suspicion is that it is not done at all.
     %
 :- func report_unused_args(module_info, pred_info, list(int)) = error_spec.
 
@@ -2126,19 +2195,23 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
     % Is it just the variables representing the input args of the procedure
     % we are analyzing, or do other variables, such as those aliases,
     % get put in here as well?
-:- type local_var_usage_map == map(prog_var, usage_info).
+:- type local_var_usage_map == map(prog_var, required_by).
 
-    % For each variable that is not yet known to be used, we record
-    % the set of local variables, and the set of procedure arguments,
-    % to which it has been aliased. We do this because if any of those
-    % aliases turn out to be used, we cannot eliminate the argument
-    % represented by the variable.
-:- type usage_info
-    --->    unused(
-                % The set of aliased local variables.
+    % For each variable Var that is not yet definitely known to be used,
+    % we record information about the set of variables whose computation
+    % requires the value of Var. We do this because if any of those
+    % requiring vars is used, then Var is used as well, since it will be used
+    % to compute them.
+    %
+    % We record this set of variables in two parts: a set of local variables,
+    % and a set of procedure argument variables. Note that the second set
+    % *may* refer to the arguments of the procedure in which Var occurs.
+:- type required_by
+    --->    required_by(
+                % The set of requiring local variables.
                 set(prog_var),
 
-                % The set of aliased procedure argument variables.
+                % The set of requiring procedure argument variables.
                 set(arg_var_in_proc)
             ).
 
@@ -2170,64 +2243,70 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
 
 %---------------------%
 %
-% Add variable aliases.
+% Add requirements of local vars.
 %
 
-    % Add a list of aliases for a variable.
-    %
-:- pred add_aliases(prog_var::in, list(prog_var)::in,
+:- pred local_var_is_required_by_local_vars(prog_var::in, list(prog_var)::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_aliases(Var, Aliases, !LocalVarUsageMap) :-
-    ( if map.search(!.LocalVarUsageMap, Var, VarInf0) then
-        VarInf0 = unused(AliasVars0, AliasArgs),
-        set.insert_list(Aliases, AliasVars0, AliasVars),
-        VarInf = unused(AliasVars, AliasArgs),
-        map.det_update(Var, VarInf, !LocalVarUsageMap)
+local_var_is_required_by_local_vars(LocalVar, NewRequiringVars,
+        !LocalVarUsageMap) :-
+    ( if map.search(!.LocalVarUsageMap, LocalVar, RequiredBy0) then
+        RequiredBy0 = required_by(RequiringLocalVars0, RequiringProcArgs),
+        set.insert_list(NewRequiringVars,
+            RequiringLocalVars0, RequiringLocalVars),
+        RequiredBy = required_by(RequiringLocalVars, RequiringProcArgs),
+        map.det_update(LocalVar, RequiredBy, !LocalVarUsageMap)
     else
         true
     ).
 
-    % Add Alias as an alias for all of Vars.
-    %
-:- pred add_construction_aliases(prog_var::in, list(prog_var)::in,
+:- pred local_vars_are_required_by_local_var(list(prog_var)::in, prog_var::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_construction_aliases(_, [], !LocalVarUsageMap).
-add_construction_aliases(AliasVar, [Var | Vars], !LocalVarUsageMap) :-
-    ( if map.search(!.LocalVarUsageMap, Var, VarInfo0) then
-        VarInfo0 = unused(AliasVars0, AliasArgs),
-        set.insert(AliasVar, AliasVars0, AliasVars),
-        VarInfo = unused(AliasVars, AliasArgs),
-        map.det_update(Var, VarInfo, !LocalVarUsageMap)
+local_vars_are_required_by_local_var([], _, !LocalVarUsageMap).
+local_vars_are_required_by_local_var([LocalVar | LocalVars], RequiringVar,
+        !LocalVarUsageMap) :-
+    ( if map.search(!.LocalVarUsageMap, LocalVar, RequiredBy0) then
+        RequiredBy0 = required_by(RequiringLocalVars0, RequiringProcArgs),
+        set.insert(RequiringVar, RequiringLocalVars0, RequiringLocalVars),
+        RequiredBy = required_by(RequiringLocalVars, RequiringProcArgs),
+        map.det_update(LocalVar, RequiredBy, !LocalVarUsageMap)
     else
         true
     ),
-    add_construction_aliases(AliasVar, Vars, !LocalVarUsageMap).
+    local_vars_are_required_by_local_var(LocalVars, RequiringVar,
+        !LocalVarUsageMap).
 
 %---------------------%
 %
-% Add procedure argument aliases.
+% Add requirements of procedure arguments.
 %
 
-:- pred add_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
+:- pred local_var_is_required_by_proc_arg(prog_var::in, arg_var_in_proc::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_arg_dep(Var, PredProcId, Arg, !LocalVarUsageMap) :-
-    ( if map.search(!.LocalVarUsageMap, Var, VarUsage0) then
-        VarUsage0 = unused(AliasVars, AliasArgs0),
-        set.insert(arg_var_in_proc(PredProcId, Arg), AliasArgs0, AliasArgs),
-        VarUsage = unused(AliasVars, AliasArgs),
-        map.det_update(Var, VarUsage, !LocalVarUsageMap)
+local_var_is_required_by_proc_arg(LocalVar, ArgVarInProc, !LocalVarUsageMap) :-
+    ( if map.search(!.LocalVarUsageMap, LocalVar, RequiredBy0) then
+        RequiredBy0 = required_by(RequiringLocalVars, RequiringProcArgs0),
+        set.insert(ArgVarInProc, RequiringProcArgs0, RequiringProcArgs),
+        RequiredBy = required_by(RequiringLocalVars, RequiringProcArgs),
+        map.det_update(LocalVar, RequiredBy, !LocalVarUsageMap)
     else
         true
     ).
 
-:- pred add_rev_arg_dep(prog_var::in, pred_proc_id::in, prog_var::in,
+:- pred local_vars_are_required_by_proc_arg(list(prog_var)::in,
+    arg_var_in_proc::in,
     local_var_usage_map::in, local_var_usage_map::out) is det.
 
-add_rev_arg_dep(Var, PredProcId, Arg, !LocalVarUsageMap) :-
-    add_arg_dep(Arg, PredProcId, Var, !LocalVarUsageMap).
+local_vars_are_required_by_proc_arg([], _ArgVarInProc, !LocalVarUsageMap).
+local_vars_are_required_by_proc_arg([LocalVar | LocalVars], ArgVarInProc,
+        !LocalVarUsageMap) :-
+    local_var_is_required_by_proc_arg(LocalVar, ArgVarInProc,
+        !LocalVarUsageMap),
+    local_vars_are_required_by_proc_arg(LocalVars, ArgVarInProc,
+        !LocalVarUsageMap).
 
 %---------------------%
 %
@@ -2251,17 +2330,27 @@ record_var_as_used(Var, !LocalVarUsageMap) :-
 % Check whether a variable is used.
 %
 
-    % Succeed if and only if the given variable is definitely used.
+    % Succeed if and only if the given argument variable of the
+    % given procedure is *definitely* used, and our record of it is not just
+    % "it is used *if* some of these *other* variables are used".
     %
 :- pred proc_arg_var_is_used(global_var_usage_map::in, pred_proc_id::in,
     prog_var::in) is semidet.
 
 proc_arg_var_is_used(GlobalVarUsageMap, PredProcId, Var) :-
+    % Note that GlobalVarUsageMap will have required_by variable entries
+    % for local procedures that mention non-local procedures, which
+    % do *not* occur in GlobalVarUsageMap as keys. This is why calling
+    % map.lookup on GlobalVarUsageMap would not work.
     not (
         map.search(GlobalVarUsageMap, PredProcId, LocalVarUsageMap),
         map.contains(LocalVarUsageMap, Var)
     ).
 
+    % Succeed if and only if the given local variable is *definitely* used,
+    % and our record of it not just "it is used *if* these *other* variables
+    % are used".
+    %
 :- pred local_var_is_used(local_var_usage_map::in, prog_var::in) is semidet.
 
 local_var_is_used(LocalVarUsageMap, Var) :-
@@ -2400,7 +2489,7 @@ write_local_var_usage_map(Stream, ModuleInfo, PredProcId,
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
     list.foldl2(
-        write_var_usage_info(Stream, ModuleInfo, VarTable), LocalVarUsages,
+        write_var_requiring_vars(Stream, ModuleInfo, VarTable), LocalVarUsages,
         [], RevNoDependVars, !IO),
     list.reverse(RevNoDependVars, NoDependVars),
     (
@@ -2412,34 +2501,35 @@ write_local_var_usage_map(Stream, ModuleInfo, PredProcId,
         io.format(Stream, "nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
     ).
 
-:- pred write_var_usage_info(io.text_output_stream::in, module_info::in,
-    var_table::in, pair(prog_var, usage_info)::in,
+:- pred write_var_requiring_vars(io.text_output_stream::in, module_info::in,
+    var_table::in, pair(prog_var, required_by)::in,
     list(prog_var)::in, list(prog_var)::out, io::di, io::uo) is det.
 
-write_var_usage_info(Stream, ModuleInfo, VarTable, Var - UsageInfo,
+write_var_requiring_vars(Stream, ModuleInfo, VarTable, Var - RequiringVars,
         !RevNoDependVars, !IO) :-
-    UsageInfo = unused(Vars, Args),
-    set.to_sorted_list(Vars, VarList),
-    set.to_sorted_list(Args, ArgList),
-    ( if VarList = [], ArgList = [] then
+    RequiringVars = required_by(LocalVarSet, ArgVarInProcsSet),
+    set.to_sorted_list(LocalVarSet, LocalVars),
+    set.to_sorted_list(ArgVarInProcsSet, ArgVarsInProcs),
+    ( if LocalVars = [], ArgVarsInProcs = [] then
         !:RevNoDependVars = [Var | !.RevNoDependVars]
     else
         VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
-        io.format(Stream, "dependencies of %s:\n", [s(VarStr)], !IO),
+        io.format(Stream, "requiring vars of %s:\n", [s(VarStr)], !IO),
         (
-            VarList = []
+            LocalVars = []
         ;
-            VarList = [_ | _],
-            VarListStr =
-                mercury_vars_to_string(VarTable, print_name_and_num, VarList),
-            io.format(Stream, "on variables: %s\n", [s(VarListStr)], !IO)
+            LocalVars = [_ | _],
+            LocalVarsStr = mercury_vars_to_string(VarTable,
+                print_name_and_num, LocalVars),
+            io.format(Stream, "variables: %s\n", [s(LocalVarsStr)], !IO)
         ),
         (
-            ArgList = []
+            ArgVarsInProcs = []
         ;
-            ArgList = [_ | _],
-            io.write_string(Stream, "on arguments:\n", !IO),
-            list.foldl(write_arg_var_in_proc(Stream, ModuleInfo), ArgList, !IO)
+            ArgVarsInProcs = [_ | _],
+            io.write_string(Stream, "procedure arguments:\n", !IO),
+            list.foldl(write_arg_var_in_proc(Stream, ModuleInfo),
+                ArgVarsInProcs, !IO)
         )
     ).
 
