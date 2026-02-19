@@ -115,7 +115,7 @@
 % Updating elements in assoc_lists.
 %
 
-    % Find the first element of the assoc_list list that matches
+    % Find the first element of the association list that matches
     % the given key, and update the associated value.
     % Fail if there is no matching key.
     %

@@ -208,7 +208,7 @@
 :- mode ulookup(in, in) = out is det.
 
 :- pred ulookup(array(T), uint, T).
-%:- mode lookup(array_ui, in, out) is det.
+%:- mode ulookup(array_ui, in, out) is det.
 :- mode ulookup(in, in, out) is det.
 
     % semidet_lookup(Array, I) returns the element at index I in Array.
@@ -228,7 +228,7 @@
 %:- mode unsafe_lookup(array_ui, in, out) is det.
 :- mode unsafe_lookup(in, in, out) is det.
 :- pred unsafe_ulookup(array(T), uint, T).
-%:- mode unsafe_lookup(array_ui, in, out) is det.
+%:- mode unsafe_ulookup(array_ui, in, out) is det.
 :- mode unsafe_ulookup(in, in, out) is det.
 
     % Array ^ elem(Index) = lookup(Array, Index):
@@ -463,7 +463,7 @@
 :- mode usize(in) = out is det.
 
 :- pred usize(array(_T), uint).
-%:- mode size(array_ui, out) is det.
+%:- mode usize(array_ui, out) is det.
 :- mode usize(in, out) is det.
 
 %---------------------%

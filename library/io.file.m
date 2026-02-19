@@ -97,7 +97,7 @@
 
 %---------------------%
 
-    % check_file_accessibility(FileName, AccessTypes, Result):
+    % check_file_accessibility(FileName, AccessTypes, Result, !IO):
     %
     % Check whether the current process can perform the operations given
     % in AccessTypes on FileName.
@@ -1368,7 +1368,7 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 #else
     Error = ENOSYS;
     DirName = MR_make_string_const("""");
-#endif // HAVE_MKDTEMP
+#endif // MR_HAVE_MKDTEMP
 ").
 
 :- pragma foreign_proc("C#",
@@ -1506,7 +1506,7 @@ using System;      // For Environment, PlatformID.
 using System.IO;   // For Directory, Path, DirectoryInfo.
 using System.Runtime.InteropServices; // For DllImport.
 using System.Security.AccessControl;  // For DirectorySecurity etc.
-using System.Security.Principal;      // For IdentifyReference etc.
+using System.Security.Principal;      // For IdentityReference etc.
 ").
 
 :- pragma foreign_code("C#", "

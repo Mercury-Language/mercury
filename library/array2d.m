@@ -165,7 +165,7 @@
 :- pred unsafe_set(int, int, T, array2d(T), array2d(T)).
 :- mode unsafe_set(in, in, in, array2d_di, array2d_uo) is det.
 :- func 'unsafe_elem :='(int, int, array2d(T), T) = array2d(T).
-:- mode 'unsafe_elem :='(in, in, array_di, in) = array2d_uo is det.
+:- mode 'unsafe_elem :='(in, in, array2d_di, in) = array2d_uo is det.
 
     % lists(Array):
     %
@@ -263,7 +263,7 @@ from_array(NumRows, NumColumns, Array) = Array2d :-
             error($pred, "too few elements")
         )
     else
-        error($pred, " bounds must be non-negative")
+        error($pred, "bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%

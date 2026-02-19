@@ -50,6 +50,7 @@
 :- instance stream.writer(error_stream, bitmap.slice, error_state).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -92,7 +93,7 @@
     % The bitmap has room for the chunk size given as an argument
     % to `new', plus a word.
     %
-    % This means that for a write buffer a word can alway
+    % This means that for a write buffer a word can always
     % be written to the buffer, and the buffer will be flushed
     % if the position is greater than the chunk size.
     %
@@ -163,7 +164,7 @@ new_buffer(BM, Pos, Size, UseStream, Stream, State) =
         new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ok)
     ).
 
-:- func new_buffer_2(bitmap, num_bits, bit_index, bool,
+:- func new_buffer_2(bitmap, bit_index, num_bits, bool,
     Stream, State, stream.res(Error)) = bit_buffer(Stream, State, Error).
 
 new_buffer_2(BM, Pos, Size, UseStream, Stream, State, ReadStatus) =

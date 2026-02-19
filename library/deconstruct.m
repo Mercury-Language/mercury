@@ -224,13 +224,13 @@
     % named_arg_cc(Data, Name, Argument):
     %
     % Does the same job as named_arg/4, but also differs from it
-    % in exactly same ways that arg_cc/3 differs from arg/4.
+    % in exactly the same ways that arg_cc/3 differs from arg/4.
     %
 :- pred named_arg_cc(T::in, string::in, maybe_arg::out) is cc_multi.
 
     % det_arg(Data, NonCanon, Index, Argument):
     %
-    % Does the same job as arg/4, except that it situations where
+    % Does the same job as arg/4, except that in situations where
     % arg/4 would fail, det_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_arg(T, noncanon_handling, int, ArgT).
@@ -241,7 +241,7 @@
 
     % det_named_arg(Data, NonCanon, Name, Argument):
     %
-    % Does the same job as named_arg/4, except that it situations where
+    % Does the same job as named_arg/4, except that in situations where
     % named_arg/4 would fail, det_named_arg/4 will throw an exception.
     %
 :- some [ArgT] pred det_named_arg(T, noncanon_handling, string, ArgT).

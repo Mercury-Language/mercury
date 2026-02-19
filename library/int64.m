@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2021, 2025 The Mercury team.
+% Copyright (C) 2018-2021, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -230,7 +230,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error` exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int64::in) rem (int64::in) = (int64::uo) is det.
 
@@ -567,7 +567,7 @@ nabs(Num) =
 
 %---------------------------------------------------------------------------%
 
-% The operations + and - (both hand binary), plus, minus, *, and times
+% The operations + and - (both unary and binary), plus, minus, *, and times
 % are builtins.
 
 X div Y = Div :-

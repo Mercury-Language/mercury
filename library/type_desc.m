@@ -186,14 +186,14 @@
 
     % type_ctor_name(TypeCtor):
     %
-    % Return the name of the specified type constructors.
+    % Return the name of the specified type constructor.
     % For example, type_ctor_name(type_ctor(type_of([2,3]))) returns "list".
     %
 :- func type_ctor_name(type_ctor_desc) = string.
 
     % type_ctor_module_name(TypeCtor):
     %
-    % Returns the module name of the specified type constructor.
+    % Return the module name of the specified type constructor.
     % For example, type_ctor_module_name(type_ctor(type_of(2)))
     % returns "builtin".
     %
@@ -206,7 +206,7 @@
     %
 :- func type_ctor_arity(type_ctor_desc) = int.
 
-    % type_ctor_name_and_arity(TypeCtor, ModuleName, TypeName, Arity) :-
+    % type_ctor_name_and_arity(TypeCtor, ModuleName, Name, Arity) :-
     %   Name = type_ctor_name(TypeCtor),
     %   ModuleName = type_ctor_module_name(TypeCtor),
     %   Arity = type_ctor_arity(TypeCtor).

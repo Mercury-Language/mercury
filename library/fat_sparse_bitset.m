@@ -134,8 +134,8 @@
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
     <= uenum(T).
 
-    % insert_list(Set, Item) returns the union of Set and the set containing
-    % only the members of Item. Same as `union(Set, list_to_set(Item))',
+    % insert_list(Set, Items) returns the union of Set and the set containing
+    % only the members of Items. Same as `union(Set, list_to_set(Items))',
     % but may be more efficient.
     %
 :- func insert_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)

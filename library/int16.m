@@ -542,7 +542,7 @@ nabs(Num) =
 
 %---------------------------------------------------------------------------%
 
-% The operations + and - (both hand binary), plus, minus, *, and times
+% The operations + and - (both unary and binary), plus, minus, *, and times
 % are builtins.
 
 X div Y = Div :-

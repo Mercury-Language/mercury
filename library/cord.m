@@ -56,15 +56,15 @@
 
     % The init and empty functions do the same job: return the empty cord.
     %
-    % list(cord(init)) = [].
-    % list(cord(empty)) = [].
+    % list(init) = [].
+    % list(empty) = [].
     %
 :- func init = cord(T).
 :- func empty = cord(T).
 
     % Return a cord containing just the given element.
     %
-    % list(cord(singleton(X))) = [X].
+    % list(singleton(X)) = [X].
     %
 :- func singleton(T) = cord(T).
 
@@ -198,7 +198,7 @@
     % head_tail(Cord, Head, Tail):
     %
     % If the cord Cord is not empty, then return its first element as Head,
-    % and the cord containing all the remaining elements as T.
+    % and the cord containing all the remaining elements as Tail.
     % If the cord is empty, then fail.
     %
     %     head_tail(Cord, Head, Tail)  =>  list(Cord) = [Head | list(Tail)]
@@ -214,7 +214,7 @@
     % Return just the last element in Cord, if Cord contains any elements.
     % Otherwise, fail.
     %
-    %     get_last(Cord, Lasr)  =>  some [List]: list(Cord) = List ++ [Last].
+    %     get_last(Cord, Last)  =>  some [List]: list(Cord) = List ++ [Last].
     % not get_last(Cord, _)     =>  Cord = empty
     %
     % This is an O(n) operation.
@@ -253,7 +253,7 @@
     % equal(CA, CB):
     %
     % Succeed if-and-only-if CA and CB contain the same elements
-    % in the same % order.
+    % in the same order.
     %
     % equal(CA, CB)  <=>  list(CA) = list(CB).
     % (Note: the current implementation works exactly this way.)
@@ -303,7 +303,7 @@
     % Return a list containing the same elements as Cord,
     % but in the reverse order.
     %
-    % rev_list(Cord) = list.reverse(list(Cord).
+    % rev_list(Cord) = list.reverse(list(Cord)).
     %
 :- func rev_list(cord(T)) = list(T).
 :- func to_rev_list(cord(T)) = list(T).
@@ -436,9 +436,9 @@
     %
 :- func foldr(func(T, A) = A, cord(T), A) = A.
 
-    % foldr(F, C, !AccA)
+    % foldr_pred(P, C, !AccA):
     %
-    % Equivalent to list.foldr(F, list(C), !AccA), but faster.
+    % Equivalent to list.foldr(P, list(C), !AccA), but faster.
     %
 :- pred foldr_pred(pred(T, A, A), cord(T), A, A).
 :- mode foldr_pred(in(pred(in, in, out) is det), in, in, out) is det.
@@ -466,7 +466,7 @@
 :- mode foldr2(in(pred(in, in, out, di, uo) is semidet), in, in, out,
     di, uo) is semidet.
 
-    % foldr3(P, C, !AccA, !AccB,! AccC):
+    % foldr3(P, C, !AccA, !AccB, !AccC):
     %
     % Equivalent to list.foldr3(P, list(C), !AccA, !AccB, !AccC), but faster.
     %

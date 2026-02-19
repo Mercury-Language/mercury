@@ -2,17 +2,17 @@
 Array = array([])
 M = -1
 N = -1
-EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3: bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = 0
 N = -1
-EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3: bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = -1
 N = 0
-EXCEPTION: "function `array2d.from_array\'/3:  bounds must be non-negative"
+EXCEPTION: "function `array2d.from_array\'/3: bounds must be non-negative"
 ------FROM ARRAY------
 Array = array([])
 M = 2

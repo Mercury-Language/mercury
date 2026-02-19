@@ -285,7 +285,7 @@
     % Convert an integer to a string in a given Base.
     %
     % Base must be between 2 and 36, both inclusive; if it is not,
-    % the predicate will throw an exception.
+    % the function will throw an exception.
     %
 :- func to_base_string(integer, int) = string.
 

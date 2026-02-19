@@ -1004,7 +1004,7 @@ __Compare____tuple_0_0(object x, object y)
     {
         // stub only
         throw new java.lang.Error (
-            ""unify/2 for tuple types not implemented"");
+            ""unify/2 for func types not implemented"");
     }
 
     public static boolean
@@ -1188,7 +1188,7 @@ semipure_true :-
 %---------------------------------------------------------------------------%
 
 % NOTE: dynamic_cast/2 is handled specially in compiler/const_prop.m.
-% Any changes here may need to be reflected here.
+% Any changes here may need to be reflected there.
 
 dynamic_cast(X, Y) :-
     private_builtin.typed_unify(X, Y).

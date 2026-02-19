@@ -181,7 +181,7 @@
 :- pred make_directory(string::in, io.res::out, io::di, io::uo) is det.
 
     % Make only the given directory.
-    % Fails if the directory already exists, or the parent directory
+    % Returns an error if the directory already exists, or the parent directory
     % does not exist.
     %
 :- pred make_single_directory(string::in, io.res::out, io::di, io::uo)

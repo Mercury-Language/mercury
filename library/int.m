@@ -323,7 +323,7 @@
 :- mode fold_up2(in(pred(in, in, out, mdi, muo) is nondet), in, in,
     in, out, mdi, muo) is nondet.
 
-    % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
+    % fold_up3(F, Low, High, !Acc1, !Acc2, !Acc3) <=>
     %   list.foldl3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
     % NOTE: fold_up3/9 is undefined if High = max_int.
@@ -406,7 +406,7 @@
 :- mode fold_down2(in(pred(in, in, out, mdi, muo) is nondet), in, in,
     in, out, mdi, muo) is nondet.
 
-    % fold_down3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
+    % fold_down3(F, Low, High, !Acc1, !Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
     % NOTE: fold_down3/9 is undefined if Low = min_int.

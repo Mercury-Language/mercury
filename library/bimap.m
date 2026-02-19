@@ -367,7 +367,7 @@ init(B) :-
     map.init(Reverse),
     B = bimap(Forward, Reverse).
 
-singleton(K, V) = B:-
+singleton(K, V) = B :-
     Forward = map.singleton(K, V),
     Reverse = map.singleton(V, K),
     B = bimap(Forward, Reverse).

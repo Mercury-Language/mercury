@@ -91,7 +91,7 @@
 % that contains that option.
 %
 % Boolean (i.e. bool or bool_special), maybe_int, maybe_string,
-% maybe_string_special  and accumulating options can be negated.
+% maybe_string_special and accumulating options can be negated.
 % Negating an accumulating option empties the accumulated list of strings.
 % Single-character options can be negated by following them with another `-',
 % for example `-x-' will negate the `-x' option. Long options can be negated

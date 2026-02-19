@@ -1099,7 +1099,7 @@ construct(TypeDesc, Index, Args, Term) :-
 
         case MR_TYPECTOR_REP_TYPECTORDESC:
             MR_fatal_error(
-                ""cannot construct type_descs with construct.construct"");
+                ""cannot construct type_ctor_descs with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_PSEUDOTYPEDESC:

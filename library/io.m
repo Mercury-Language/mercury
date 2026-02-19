@@ -1335,8 +1335,8 @@
     % end of the file. The string returned for each line will not contain
     % the newline character.
     %
-    % With the first version, the returned string is NOT guaranteed
-    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % With the first version, the returned string is NOT guaranteed to be valid
+    % UTF-8 (when targeting C) or UTF-16 (when targeting Java or C#).
     % The version that has the _wf suffix DOES guarantee that the
     % returned string is valid UTF-8 or UTF-16; if the contents of the file
     % is not a well formed string, it will report an error.
@@ -1379,8 +1379,8 @@
     % The same as read_file_as_string, but returns not only a string,
     % but also the number of code units in that string.
     %
-    % With the first two versions, the returned string is NOT guaranteed
-    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % With the first two versions, the returned string is NOT guaranteed to be
+    % valid UTF-8 (when targeting C) or UTF-16 (when targeting Java or C#).
     % The two versions that have the _wf suffix DO guarantee that the
     % returned string is valid UTF-8 or UTF-16; if the contents of the file
     % is not a well formed string, they will report an error.
@@ -1516,7 +1516,7 @@
 :- mode input_stream_foldl2_io_maybe_stop(in,
     in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
-:- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/5),
+:- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/6),
     [stream.input_stream_fold2_state_maybe_stop/6]).
 
 %---------------------%
@@ -1983,8 +1983,7 @@
     % indicating which signal occurred.
     %
 :- pred call_system(string::in, io.res(int)::out, io::di, io::uo) is det.
-:- pragma obsolete(pred(call_system_return_signal/4),
-    [io.call_system.call_system/4]).
+:- pragma obsolete(pred(call_system/4), [io.call_system.call_system/4]).
 
     % call_system_return_signal(Command, Result, !IO):
     %
