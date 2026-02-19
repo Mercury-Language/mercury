@@ -162,7 +162,7 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         NewProcMap0, !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished initialisation.\n", !IO),
 
-    unused_args_fixpoint(0, !.ModuleInfo, FixpointPredProcIds,
+    unused_args_iterate_to_fixpoint(0, !.ModuleInfo, FixpointPredProcIds,
         GlobalVarUsageMap0, GlobalVarUsageMap),
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
@@ -208,14 +208,14 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         list.foldl2(unused_args_create_new_pred(UnusedArgInfo),
             PredProcIdsToFix, NewProcMap0, NewProcMap, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Finished new preds.\n", !IO),
-        unused_args_fixup_module(VeryVerbose, GlobalVarUsageMap,
+        delete_unused_args_in_module(VeryVerbose, GlobalVarUsageMap,
             FixpointPredProcIds, NewProcMap, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Fixed up goals.\n", !IO),
         ( if map.is_empty(NewProcMap) then
             true
         else
-            % The dependencies have changed, so the dependency graph is now
-            % invalid.
+            % The dependencies have changed, so any old dependency graph
+            % is now invalid.
             module_info_clobber_dependency_info(!ModuleInfo)
         )
     ;
@@ -585,9 +585,8 @@ unused_args_traverse_goal(Info, Goal, !LocalVarUsageMap) :-
             ForeignArgs, ForeignExtraArgs, _, _),
         % Only arguments with names can be used in the foreign code.
         % The code in here should be kept in sync with the treatment
-        % of foreign_procs in unused_args_fixup_goal_expr: any variable
-        % considered unused here should be renamed apart in
-        % unused_args_fixup_goal_expr.
+        % of foreign_procs in delete_unused_args_in_goal_expr:
+        % any variable considered unused here should be renamed apart there.
         ArgIsUsed =
             ( pred(ForeignArg::in, Var::out) is semidet :-
                 ForeignArg = foreign_arg(Var, MaybeNameAndMode, _, _),
@@ -794,11 +793,12 @@ unused_args_traverse_cases(Info, [Case | Cases], !LocalVarUsageMap) :-
 
     % Do a full iteration, check if anything changed, if so, repeat.
     %
-:- pred unused_args_fixpoint(int::in, module_info::in, list(pred_proc_id)::in,
+:- pred unused_args_iterate_to_fixpoint(int::in, module_info::in,
+    list(pred_proc_id)::in,
     global_var_usage_map::in, global_var_usage_map::out) is det.
 
-unused_args_fixpoint(PassNum, ModuleInfo, LocalPredProcIds,
-        !GlobalVarUsageMap) :-
+unused_args_iterate_to_fixpoint(PassNum, ModuleInfo,
+        LocalPredProcIds, !GlobalVarUsageMap) :-
     unused_args_single_pass(LocalPredProcIds, unchanged, Changed,
         !GlobalVarUsageMap),
     (
@@ -810,8 +810,8 @@ unused_args_fixpoint(PassNum, ModuleInfo, LocalPredProcIds,
             write_global_var_usage_map(DebugStream, ModuleInfo,
                 !.GlobalVarUsageMap, !IO)
         ),
-        unused_args_fixpoint(PassNum + 1, ModuleInfo, LocalPredProcIds,
-            !GlobalVarUsageMap)
+        unused_args_iterate_to_fixpoint(PassNum + 1, ModuleInfo,
+            LocalPredProcIds, !GlobalVarUsageMap)
     ;
         Changed = unchanged
     ).
@@ -836,6 +836,15 @@ unused_args_single_pass([PredProcId | PredProcIds],
 
 unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
     map.lookup(!.GlobalVarUsageMap, PredProcId, LocalVarUsageMap0),
+    % NOTE: It would be nice to use map.map_foldl here, but that works
+    % when the processing of each key-value pair involves *updating*
+    % the value, whereas the job of unused_args_check_all_vars is to
+    % *delete* whole pairs.
+    %
+    % Technically, we *could* fold over the initial version of
+    % LocalVarUsageMap0 while producing the updated LocalVarUsageMap,
+    % but this would be harder to maintain, due to the abstraction barrier
+    % involved in calls to record_var_as_used.
     map.keys(LocalVarUsageMap0, Vars),
     unused_args_check_all_vars(!.GlobalVarUsageMap, Vars,
         unchanged, LocalChanged, LocalVarUsageMap0, LocalVarUsageMap),
@@ -856,41 +865,37 @@ unused_args_check_proc(PredProcId, !Changed, !GlobalVarUsageMap) :-
 unused_args_check_all_vars(_, [], !Changed, !LocalVarUsageMap).
 unused_args_check_all_vars(GlobalVarUsageMap, [Var | Vars],
         !Changed, !LocalVarUsageMap) :-
-    ( if map.search(!.LocalVarUsageMap, Var, Usage) then
-        Usage = unused(AliasVars0, AliasArgs0),
-        ( if
-            (
-                % Check whether any arguments that the current variable
-                % depends on are used.
-                some [Argument] (
-                    set.member(Argument, AliasArgs0),
-                    Argument = arg_var_in_proc(PredProcId, ArgVar),
-                    var_is_used(GlobalVarUsageMap, PredProcId, ArgVar)
-                )
-            ;
-                % Check whether any variables that the current variable
-                % depends on are used.
-                some [X] (
-                    set.member(X, AliasVars0),
-                    local_var_is_used(!.LocalVarUsageMap, X)
-                )
+    map.lookup(!.LocalVarUsageMap, Var, Usage0),
+    Usage0 = unused(AliasVars0, AliasArgs0),
+    ( if
+        (
+            % Are there any used procedure arguments that Var depends on?
+            some [Argument] (
+                set.member(Argument, AliasArgs0),
+                Argument = arg_var_in_proc(PredProcId, ArgVar),
+                proc_arg_var_is_used(GlobalVarUsageMap, PredProcId, ArgVar)
             )
-        then
-            % Set the current variable to used. Note that we update the same
-            % data structure (!LocalVarUsageMap) as we test in the condition
-            % above. This is OK because we use a fixpoint iteration
-            % to add variables satisfying the above condition to
-            % !LocalVarUsageMap until we can't add any more.
-            record_var_as_used(Var, !LocalVarUsageMap),
-            !:Changed = changed
-        else
-            true
+        ;
+            % Are there any used local variables that Var depends on?
+            some [X] (
+                set.member(X, AliasVars0),
+                local_var_is_used(!.LocalVarUsageMap, X)
+            )
         )
+    then
+        % Mark the current variable as used. Note that we update the same
+        % data structure (!LocalVarUsageMap) as we test in the condition
+        % above. This is OK because the order in which we mark variables
+        % in !.LocalVarUsageMap as used does not matter; the iteration
+        % performed by unused_args_iterate_to_fixpoint is guaranteed
+        % to reach the same final result.
+        record_var_as_used(Var, !LocalVarUsageMap),
+        !:Changed = changed
     else
         true
     ),
-    unused_args_check_all_vars(GlobalVarUsageMap, Vars, !Changed,
-        !LocalVarUsageMap).
+    unused_args_check_all_vars(GlobalVarUsageMap, Vars,
+        !Changed, !LocalVarUsageMap).
 
 %---------------------------------------------------------------------------%
 
@@ -1019,7 +1024,9 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
         pred_info_get_proc_table(NewPredInfo0, NewProcs0),
 
         % Assign the old procedure to a new predicate, which will be fixed up
-        % in unused_args_fixup_module.
+        % in delete_unused_args_in_module.
+        % XXX Fixed up in what sense? And where within the call tree
+        % of delete_unused_args_in_module?
         map.set(ProcId, OrigProcInfo, NewProcs0, NewProcs),
         pred_info_set_proc_table(NewProcs, NewPredInfo0, NewPredInfo),
 
@@ -1068,8 +1075,8 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 
     proc_info_get_headvars(OrigProcInfo, HeadVars0),
     proc_info_get_argmodes(OrigProcInfo, ArgModes0),
-    remove_listof_elements(1, UnusedArgs2, HeadVars0, IntermodHeadVars),
-    remove_listof_elements(1, UnusedArgs2, ArgModes0, IntermodArgModes),
+    remove_specified_positions(UnusedArgs2, HeadVars0, IntermodHeadVars),
+    remove_specified_positions(UnusedArgs2, ArgModes0, IntermodArgModes),
     proc_info_set_headvars(IntermodHeadVars, ExtraProc0, ExtraProc1),
     proc_info_set_argmodes(IntermodArgModes, ExtraProc1, ExtraProc),
 
@@ -1125,7 +1132,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     make_transformed_pred_name(Name1, Transform, TransformedName),
     PredFormArity = pred_info_pred_form_arity(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVars),
-    remove_listof_elements(1, UnusedArgs, ArgTypes0, ArgTypes),
+    remove_specified_positions(UnusedArgs, ArgTypes0, ArgTypes),
     pred_info_get_context(!.PredInfo, Context),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     pred_info_get_markers(!.PredInfo, Markers),
@@ -1174,7 +1181,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId,
     % The varset should probably be fixed up, but it shouldn't make
     % too much difference.
     proc_info_get_rtti_varmaps(!.OldProc, RttiVarMaps0),
-    remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
+    remove_specified_positions(UnusedArgs, HeadVars, NewHeadVars),
     GoalExpr = plain_call(NewPredId, NewProcId, NewHeadVars,
         not_builtin, no, qualified(PredModuleName, PredName)),
     Goal1 = hlds_goal(GoalExpr, GoalInfo1),
@@ -1204,10 +1211,10 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !NewProcMap,
 
     % Assign the old procedure to a new predicate.
     proc_info_get_headvars(ProcInfo0, HeadVars0),
-    remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
+    remove_specified_positions(UnusedArgs, HeadVars0, HeadVars),
     proc_info_set_headvars(HeadVars, ProcInfo0, ProcInfo1),
     proc_info_get_argmodes(ProcInfo1, ArgModes0),
-    remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
+    remove_specified_positions(UnusedArgs, ArgModes0, ArgModes),
     proc_info_set_argmodes(ArgModes, ProcInfo1, ProcInfo),
     map.set(ProcId, ProcInfo, NewProcs0, NewProcs),
     pred_info_set_proc_table(NewProcs, NewPredInfo0, NewPredInfo),
@@ -1223,46 +1230,24 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !NewProcMap,
     NewProcInfo = new_proc_info(NewPredId, ProcId, PredSymName, UnusedArgs),
     map.det_insert(OptProc, NewProcInfo, !NewProcMap).
 
-:- pred remove_listof_elements(int::in, list(int)::in,
-    list(T)::in, list(T)::out) is det.
-
-remove_listof_elements(ArgNo, ElemsToRemove, !List) :-
-    (
-        ElemsToRemove = []
-    ;
-        ElemsToRemove = [_ | _],
-        (
-            !.List = [Head | Tail],
-            NextArg = ArgNo + 1,
-            remove_listof_elements(NextArg, ElemsToRemove, Tail, NewTail),
-            ( if list.member(ArgNo, ElemsToRemove) then
-                !:List = NewTail
-            else
-                !:List = [Head | NewTail]
-            )
-        ;
-            !.List = []
-        )
-    ).
-
 %---------------------------------------------------------------------------%
 
-:- pred unused_args_fixup_module(bool::in, global_var_usage_map::in,
+:- pred delete_unused_args_in_module(bool::in, global_var_usage_map::in,
     list(pred_proc_id)::in, new_proc_map::in,
     module_info::in, module_info::out) is det.
 
-unused_args_fixup_module(VeryVerbose, GlobalVarUsageMap, PredProcIds,
+delete_unused_args_in_module(VeryVerbose, GlobalVarUsageMap, PredProcIds,
         NewProcMap, !ModuleInfo) :-
     list.foldl(
-        unused_args_fixup_proc_msg(VeryVerbose, GlobalVarUsageMap,
+        delete_unused_args_in_proc_msg(VeryVerbose, GlobalVarUsageMap,
             NewProcMap),
         PredProcIds, !ModuleInfo).
 
-:- pred unused_args_fixup_proc_msg(bool::in, global_var_usage_map::in,
+:- pred delete_unused_args_in_proc_msg(bool::in, global_var_usage_map::in,
     new_proc_map::in, pred_proc_id::in,
     module_info::in, module_info::out) is det.
 
-unused_args_fixup_proc_msg(VeryVerbose, GlobalVarUsageMap, NewProcMap,
+delete_unused_args_in_proc_msg(VeryVerbose, GlobalVarUsageMap, NewProcMap,
         PredProcId, !ModuleInfo) :-
     (
         VeryVerbose = yes,
@@ -1283,13 +1268,13 @@ unused_args_fixup_proc_msg(VeryVerbose, GlobalVarUsageMap, NewProcMap,
     ;
         VeryVerbose = no
     ),
-    unused_args_fixup_proc(GlobalVarUsageMap, PredProcId, NewProcMap,
+    delete_unused_args_in_proc(GlobalVarUsageMap, PredProcId, NewProcMap,
         !ModuleInfo).
 
-:- pred unused_args_fixup_proc(global_var_usage_map::in, pred_proc_id::in,
+:- pred delete_unused_args_in_proc(global_var_usage_map::in, pred_proc_id::in,
     new_proc_map::in, module_info::in, module_info::out) is det.
 
-unused_args_fixup_proc(GlobalVarUsageMap, OldPredProcId, NewProcMap,
+delete_unused_args_in_proc(GlobalVarUsageMap, OldPredProcId, NewProcMap,
         !ModuleInfo) :-
     % Work out which proc we should be fixing up.
     ( if map.search(NewProcMap, OldPredProcId, NewProcInfo) then
@@ -1298,16 +1283,16 @@ unused_args_fixup_proc(GlobalVarUsageMap, OldPredProcId, NewProcMap,
         OldPredProcId = proc(PredId, ProcId),
         UnusedArgs = []
     ),
-    map.lookup(GlobalVarUsageMap, OldPredProcId, UsageInfos),
-    map.keys(UsageInfos, UnusedVars),
+    map.lookup(GlobalVarUsageMap, OldPredProcId, OldProcLocalVarUsageMap),
+    map.keys(OldProcLocalVarUsageMap, UnusedVars),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
     proc_info_get_var_table(ProcInfo0, VarTable0),
     proc_info_get_headvars(ProcInfo0, HeadVars0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
     proc_info_get_goal(ProcInfo0, Goal0),
-    remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
-    remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
+    remove_specified_positions(UnusedArgs, HeadVars0, HeadVars),
+    remove_specified_positions(UnusedArgs, ArgModes0, ArgModes),
 
     some [!ProcInfo, !Goal] (
         !:ProcInfo = ProcInfo0,
@@ -1318,10 +1303,10 @@ unused_args_fixup_proc(GlobalVarUsageMap, OldPredProcId, NewProcMap,
 
         % Remove unused vars from goal.
         % NOTE We should probably remove unused variables from the type map.
-        FixupInfo0 =
-            fixup_info(!.ModuleInfo, NewProcMap, VarTable0, UnusedVars),
-        unused_args_fixup_goal(!Goal, FixupInfo0, FixupInfo, Changed),
-        FixupInfo = fixup_info(_, _, VarTable1, _),
+        DeleteInfo0 =
+            delete_info(!.ModuleInfo, NewProcMap, UnusedVars, VarTable0),
+        delete_unused_args_in_goal(!Goal, DeleteInfo0, DeleteInfo, Changed),
+        DeleteInfo = delete_info(_, _, _, VarTable1),
         (
             Changed = changed,
             % If anything has changed, rerun quantification.
@@ -1340,41 +1325,41 @@ unused_args_fixup_proc(GlobalVarUsageMap, OldPredProcId, NewProcMap,
     pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-:- type fixup_info
-    --->    fixup_info(
-                fixup_module_info       :: module_info,
-                fixup_new_proc_map      :: new_proc_map,
-                fixup_var_table         :: var_table,
-                fixup_unused_vars       :: list(prog_var)
+:- type delete_info
+    --->    delete_info(
+                delete_module_info      :: module_info,
+                delete_new_proc_map     :: new_proc_map,
+                delete_unused_vars      :: list(prog_var),
+                delete_var_table        :: var_table
             ).
 
     % This is the important bit of the transformation.
     %
-:- pred unused_args_fixup_goal(hlds_goal::in, hlds_goal::out,
-    fixup_info::in, fixup_info::out, maybe_changed::out) is det.
+:- pred delete_unused_args_in_goal(hlds_goal::in, hlds_goal::out,
+    delete_info::in, delete_info::out, maybe_changed::out) is det.
 
-unused_args_fixup_goal(Goal0, Goal, !Info, Changed) :-
-    unused_args_fixup_goal_expr(Goal0, Goal1, !Info, Changed),
+delete_unused_args_in_goal(Goal0, Goal, !Info, Changed) :-
+    delete_unused_args_in_goal_expr(Goal0, Goal1, !Info, Changed),
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         Changed = changed,
-        UnusedVars = !.Info ^ fixup_unused_vars,
-        unused_args_fixup_goal_info(UnusedVars, GoalInfo1, GoalInfo),
+        UnusedVars = !.Info ^ delete_unused_vars,
+        delete_unused_args_in_goal_info(UnusedVars, GoalInfo1, GoalInfo),
         Goal = hlds_goal(GoalExpr1, GoalInfo)
     ;
         Changed = unchanged,
         Goal = Goal0
     ).
 
-:- pred unused_args_fixup_goal_expr(hlds_goal::in, hlds_goal::out,
-    fixup_info::in, fixup_info::out, maybe_changed::out) is det.
+:- pred delete_unused_args_in_goal_expr(hlds_goal::in, hlds_goal::out,
+    delete_info::in, delete_info::out, maybe_changed::out) is det.
 
-unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
+delete_unused_args_in_goal_expr(Goal0, Goal, !Info, Changed) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_Var, _RHS, _Mode, Unify, _Context),
-        ModuleInfo = !.Info ^ fixup_module_info,
-        UnusedVars = !.Info ^ fixup_unused_vars,
+        ModuleInfo = !.Info ^ delete_module_info,
+        UnusedVars = !.Info ^ delete_unused_vars,
         ( if need_unify(ModuleInfo, UnusedVars, Unify, ChangedPrime) then
             Goal = Goal0,
             Changed = ChangedPrime
@@ -1385,12 +1370,12 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
     ;
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
             UnifyContext, _SymName),
-        NewProcMap = !.Info ^ fixup_new_proc_map,
+        NewProcMap = !.Info ^ delete_new_proc_map,
         ( if map.search(NewProcMap, proc(PredId, ProcId), NewProcInfo) then
             NewProcInfo = new_proc_info(NewPredId, NewProcId, NewSymName,
                 UnusedArgs),
             Changed = changed,
-            remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
+            remove_specified_positions(UnusedArgs, ArgVars0, ArgVars),
             GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
                 UnifyContext, NewSymName),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1419,29 +1404,31 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        unused_args_fixup_conjuncts(Goals0, Goals, !Info, unchanged, Changed),
+        delete_unused_args_in_conjuncts(Goals0, Goals, !Info,
+            unchanged, Changed),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        unused_args_fixup_disjuncts(Goals0, Goals, !Info, unchanged, Changed),
+        delete_unused_args_in_disjuncts(Goals0, Goals, !Info,
+            unchanged, Changed),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        unused_args_fixup_cases(Cases0, Cases, !Info, unchanged, Changed),
+        delete_unused_args_in_cases(Cases0, Cases, !Info, unchanged, Changed),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
-        unused_args_fixup_goal(NegGoal0, NegGoal, !Info, Changed),
+        delete_unused_args_in_goal(NegGoal0, NegGoal, !Info, Changed),
         GoalExpr = negation(NegGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        unused_args_fixup_goal(Cond0, Cond, !Info, Changed1),
-        unused_args_fixup_goal(Then0, Then, !Info, Changed2),
-        unused_args_fixup_goal(Else0, Else, !Info, Changed3),
+        delete_unused_args_in_goal(Cond0, Cond, !Info, Changed1),
+        delete_unused_args_in_goal(Then0, Then, !Info, Changed2),
+        delete_unused_args_in_goal(Else0, Else, !Info, Changed3),
         Changed = maybe_util.or_list([Changed1, Changed2, Changed3]),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1450,7 +1437,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         ( if
             Reason = from_ground_term(TermVar, from_ground_term_construct)
         then
-            UnusedVars = !.Info ^ fixup_unused_vars,
+            UnusedVars = !.Info ^ delete_unused_vars,
             ( if list.member(TermVar, UnusedVars) then
                 Goal = true_goal,
                 % We don't change the set of unneeded variables.
@@ -1460,7 +1447,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
                 Changed = unchanged
             )
         else
-            unused_args_fixup_goal(SubGoal0, SubGoal, !Info, Changed),
+            delete_unused_args_in_goal(SubGoal0, SubGoal, !Info, Changed),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
@@ -1472,7 +1459,7 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
 
 :- pred rename_apart_unused_foreign_arg(foreign_arg::in, foreign_arg::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
-    fixup_info::in, fixup_info::out,
+    delete_info::in, delete_info::out,
     maybe_changed::in, maybe_changed::out) is det.
 
 rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
@@ -1482,10 +1469,10 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         Arg = Arg0
     ;
         MaybeName = no,
-        VarTable0 = !.Info ^ fixup_var_table,
+        VarTable0 = !.Info ^ delete_var_table,
         lookup_var_entry(VarTable0, OldVar, OldVarEntry),
         add_var_entry(OldVarEntry, NewVar, VarTable0, VarTable),
-        !Info ^ fixup_var_table := VarTable,
+        !Info ^ delete_var_table := VarTable,
 
         % It is possible for an unnamed input argument to occur more than once
         % in the list of foreign_args.
@@ -1494,15 +1481,17 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         !:Changed = changed
     ).
 
-    % Fix up each conjunct, and delete the ones whose fixup yields no code.
+    % Remove unused args in each conjunct, and delete the conjuncts
+    % from which nothing is left.
     %
-:- pred unused_args_fixup_conjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
-    fixup_info::in, fixup_info::out,
+:- pred delete_unused_args_in_conjuncts(
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    delete_info::in, delete_info::out,
     maybe_changed::in, maybe_changed::out) is det.
 
-unused_args_fixup_conjuncts([], [], !Info, !Changed).
-unused_args_fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
-    unused_args_fixup_goal(Goal0, Goal, !Info, LocalChanged),
+delete_unused_args_in_conjuncts([], [], !Info, !Changed).
+delete_unused_args_in_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
+    delete_unused_args_in_goal(Goal0, Goal, !Info, LocalChanged),
     (
         LocalChanged = changed,
         !:Changed = changed
@@ -1515,35 +1504,37 @@ unused_args_fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
     else
         Goals = [Goal | Goals1]
     ),
-    unused_args_fixup_conjuncts(Goals0, Goals1, !Info, !Changed).
+    delete_unused_args_in_conjuncts(Goals0, Goals1, !Info, !Changed).
 
     % We can't remove unused goals from the list of disjuncts as we do
     % for conjuncts, since that would change the determinism of the goal.
     %
-:- pred unused_args_fixup_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
-    fixup_info::in, fixup_info::out,
+:- pred delete_unused_args_in_disjuncts(
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    delete_info::in, delete_info::out,
     maybe_changed::in, maybe_changed::out) is det.
 
-unused_args_fixup_disjuncts([], [], !Info, !Changed).
-unused_args_fixup_disjuncts([Goal0 | Goals0], [Goal | Goals],
+delete_unused_args_in_disjuncts([], [], !Info, !Changed).
+delete_unused_args_in_disjuncts([Goal0 | Goals0], [Goal | Goals],
         !Info, !Changed) :-
-    unused_args_fixup_goal(Goal0, Goal, !Info, LocalChanged),
+    delete_unused_args_in_goal(Goal0, Goal, !Info, LocalChanged),
     (
         LocalChanged = changed,
         !:Changed = changed
     ;
         LocalChanged = unchanged
     ),
-    unused_args_fixup_disjuncts(Goals0, Goals, !Info, !Changed).
+    delete_unused_args_in_disjuncts(Goals0, Goals, !Info, !Changed).
 
-:- pred unused_args_fixup_cases(list(case)::in, list(case)::out,
-    fixup_info::in, fixup_info::out,
+:- pred delete_unused_args_in_cases(list(case)::in, list(case)::out,
+    delete_info::in, delete_info::out,
     maybe_changed::in, maybe_changed::out) is det.
 
-unused_args_fixup_cases([], [], !Info, !Changed).
-unused_args_fixup_cases([Case0 | Cases0], [Case | Cases], !Info, !Changed) :-
+delete_unused_args_in_cases([], [], !Info, !Changed).
+delete_unused_args_in_cases([Case0 | Cases0], [Case | Cases],
+        !Info, !Changed) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    unused_args_fixup_goal(Goal0, Goal, !Info, LocalChanged),
+    delete_unused_args_in_goal(Goal0, Goal, !Info, LocalChanged),
     Case = case(MainConsId, OtherConsIds, Goal),
     (
         LocalChanged = changed,
@@ -1551,7 +1542,7 @@ unused_args_fixup_cases([Case0 | Cases0], [Case | Cases], !Info, !Changed) :-
     ;
         LocalChanged = unchanged
     ),
-    unused_args_fixup_cases(Cases0, Cases, !Info, !Changed).
+    delete_unused_args_in_cases(Cases0, Cases, !Info, !Changed).
 
     % Fail if the unification is no longer needed.
     %
@@ -1640,10 +1631,10 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Vars, ArgModes, !.SomeUsed,
     % Remove unused vars from the instmap_delta, quantification fixes up
     % the rest.
     %
-:- pred unused_args_fixup_goal_info(list(prog_var)::in, hlds_goal_info::in,
+:- pred delete_unused_args_in_goal_info(list(prog_var)::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
 
-unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
+delete_unused_args_in_goal_info(UnusedVars, !GoalInfo) :-
     InstMap0 = goal_info_get_instmap_delta(!.GoalInfo),
     instmap_delta_delete_vars(UnusedVars, InstMap0, InstMap),
     goal_info_set_instmap_delta(InstMap, !GoalInfo).
@@ -1827,7 +1818,8 @@ may_gather_warning_pragma_for_pred_new(PredInfo) :-
             % the instance must conform to it.
             ( if
                 ( marker_is_present(Markers, marker_class_instance_method)
-                ; marker_is_present(Markers, marker_named_class_instance_method)
+                ; marker_is_present(Markers,
+                    marker_named_class_instance_method)
                 )
             then
                 fail
@@ -2259,13 +2251,12 @@ record_var_as_used(Var, !LocalVarUsageMap) :-
 % Check whether a variable is used.
 %
 
-    % Searches for the dependencies of a variable, succeeds if the variable
-    % is definitely used.
+    % Succeed if and only if the given variable is definitely used.
     %
-:- pred var_is_used(global_var_usage_map::in, pred_proc_id::in, prog_var::in)
-    is semidet.
+:- pred proc_arg_var_is_used(global_var_usage_map::in, pred_proc_id::in,
+    prog_var::in) is semidet.
 
-var_is_used(GlobalVarUsageMap, PredProcId, Var) :-
+proc_arg_var_is_used(GlobalVarUsageMap, PredProcId, Var) :-
     not (
         map.search(GlobalVarUsageMap, PredProcId, LocalVarUsageMap),
         map.contains(LocalVarUsageMap, Var)
@@ -2275,6 +2266,35 @@ var_is_used(GlobalVarUsageMap, PredProcId, Var) :-
 
 local_var_is_used(LocalVarUsageMap, Var) :-
     not map.contains(LocalVarUsageMap, Var).
+
+%---------------------------------------------------------------------------%
+
+:- pred remove_specified_positions(list(int)::in,
+    list(T)::in, list(T)::out) is det.
+
+remove_specified_positions(ArgNumsToRemove, !List) :-
+    remove_specified_positions_loop(ArgNumsToRemove, 1, !List).
+
+:- pred remove_specified_positions_loop(list(int)::in, int::in,
+    list(T)::in, list(T)::out) is det.
+
+remove_specified_positions_loop(_ArgNumsToRemove, _ArgNum,
+        List0 @ [], List0).
+remove_specified_positions_loop(ArgNumsToRemove, ArgNum,
+        List0 @ [Head0 | Tail0], List) :-
+    (
+        ArgNumsToRemove = [],
+        List = List0
+    ;
+        ArgNumsToRemove = [_ | _],
+        remove_specified_positions_loop(ArgNumsToRemove, ArgNum + 1,
+            Tail0, Tail),
+        ( if list.member(ArgNum, ArgNumsToRemove) then
+            List = Tail
+        else
+            List = [Head0 | Tail]
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
