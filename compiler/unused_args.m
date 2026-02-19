@@ -2206,6 +2206,18 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
     % We record this set of variables in two parts: a set of local variables,
     % and a set of procedure argument variables. Note that the second set
     % *may* refer to the arguments of the procedure in which Var occurs.
+    %
+    % The init_global_var_usage_map pass adds entries to each of these sets
+    % as required. After that pass is finished, the rest of our algorithm,
+    % implemented by record_required_vars_as_used_to_fixpoint, can and will
+    % delete a variable's whole entry from its procedure's local_var_usage_map
+    % when it decides that the variable is definely USED. On the other hand,
+    % our algorithm can never decide that a variable is definitely UNUSED
+    % until record_required_vars_as_used_to_fixpoint is finished. And by then,
+    % only the absence or presence of a required_by entry for a variable in
+    % the local_var_usage_map matters; the contents of any required_by entry
+    % are no longer relevant. This is why we never actually delete
+    % any elements from these two sets.
 :- type required_by
     --->    required_by(
                 % The set of requiring local variables.
