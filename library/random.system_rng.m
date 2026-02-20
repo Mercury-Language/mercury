@@ -355,7 +355,7 @@ generate_uint8(Handle, U8, !IO) :-
         ErrorMsg = \"system RNG handle is closed\";
     } else {
         U8 = Handle.getByte();
-        IsOk = mr_bool.NO;
+        IsOk = mr_bool.YES;
         ErrorMsg = \"\";
     }
 ").
