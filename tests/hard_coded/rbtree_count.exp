@@ -1,0 +1,6 @@
+count(Empty) = 0
+count(Singleton) = 1
+counter(ThreeElems) = 3
+ucount(Empty) = 0
+ucount(Singleton) = 1
+ucounter(ThreeElems) = 3

@@ -1150,7 +1150,7 @@ ucount(Tree, Count) :-
         ),
         rbtree.ucount(L, CountL),
         rbtree.ucount(R, CountR),
-        Count = CountL + CountR
+        Count = CountL + CountR + 1u
     ).
 
 %---------------------------------------------------------------------------%
