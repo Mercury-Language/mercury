@@ -170,6 +170,7 @@ ORDINARY_PROGS = \
 	foreign_type_1 \
 	foreign_type_2 \
 	foreign_type_3 \
+	format_term_nl \
 	frameopt_pragma_redirect \
 	free_free_mode \
 	from_ground_term_bug \

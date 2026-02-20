@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -494,7 +494,7 @@ write_term_nl(OutStream, VarSet, Term, !IO) :-
 
 format_term_nl(Stream, VarSet, Term, !State) :-
     OpTable = init_mercury_op_table,
-    format_term_with_op_table(Stream, OpTable, VarSet, Term, !State).
+    format_term_nl_with_op_table(Stream, OpTable, VarSet, Term, !State).
 
 %---------------------%
 
