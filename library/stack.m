@@ -151,7 +151,7 @@ pop(Elem, !Stack) :-
     !.Stack = stack([Elem | Elems]),
     !:Stack = stack(Elems).
 
-det_pop( Elem, !Stack) :-
+det_pop(Elem, !Stack) :-
     (
         !.Stack = stack([Elem | Elems]),
         !:Stack = stack(Elems)

@@ -190,7 +190,7 @@
     % union(SetA, SetB, Set) is true if-and-only-if
     % Set is the union of SetA and SetB.
     % If the sets are known to be of different sizes, then for
-    % efficiency's make SetA the larger of the two.
+    % efficiency's sake, make SetA the larger of the two.
     %
 :- func union(set_unordlist(T), set_unordlist(T)) = set_unordlist(T).
 :- pred union(set_unordlist(T)::in, set_unordlist(T)::in,

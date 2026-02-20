@@ -75,7 +75,7 @@
 
     % copy_mutvar(OldMutvar, NewMutvar, S0, S) is equivalent to the sequence
     %   get_mutvar(OldMutvar, Value, S0, S1),
-    %   new_mutvar(NewMutvar, Value, S1, S )
+    %   new_mutvar(Value, NewMutvar, S1, S)
     %
 :- pred copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).

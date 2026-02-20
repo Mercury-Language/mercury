@@ -264,7 +264,7 @@
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in
-    % DivideBySet; OutPart consists of those elements of which are
+    % DivideBySet; OutPart consists of those elements of Set which are
     % not in DivideBySet.
     %
 :- pred divide_by_set(set_ctree234(T)::in, set_ctree234(T)::in,
@@ -1567,7 +1567,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
 
 %---------------------%
 
-delete_list(Es, Set0) = Set:-
+delete_list(Es, Set0) = Set :-
     delete_list(Es, Set0, Set).
 
 delete_list(Es, ct(Size0, Tree0), ct(Size, Tree)) :-

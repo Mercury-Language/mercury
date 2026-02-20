@@ -211,7 +211,7 @@
 :- mode intersect(in, in, out) is det.
 :- mode intersect(in, in, in) is semidet.
 
-    % intersect_list(A) = B' is true if-and-only-if
+    % intersect_list(A) = B is true if-and-only-if
     % B is the intersection of all the sets in A.
     %
 :- func intersect_list(list(set_ordlist(T))) = set_ordlist(T).
