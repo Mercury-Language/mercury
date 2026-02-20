@@ -132,7 +132,7 @@
     %
 :- pred told(io::di, io::uo) is det.
 
-    % Closes the current binary output stream. The default binary output
+    % Closes the current binary output stream. The current binary output
     % stream reverts to standard output. As per Prolog told/0. This will
     % throw an io.error exception if an I/O error occurs.
     %

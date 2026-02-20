@@ -20,7 +20,7 @@
 % implemented, but the following still needs to be implemented
 %   * functionality required to support construct.construct
 %   * functionality required to support type_desc.type_ctor
-%   * currently we recognise RTTI for higher order types, however
+%   * currently we recognise RTTI for higher-order types, however
 %     we don't interpret that RTTI fully.
 %
 % The plan is to migrate most of the Mercury level data structures in
@@ -1533,7 +1533,7 @@ result_call_4(_, (=), _, _) :-
 ").
 
 result_call_5(_, (=), _, _, _) :-
-    det_unimplemented("comparison_result").
+    det_unimplemented("result_call_5").
 
 %---------------------%
 
@@ -1557,7 +1557,7 @@ result_call_5(_, (=), _, _, _) :-
 ").
 
 result_call_6(_, (=), _, _, _, _) :-
-    det_unimplemented("comparison_result").
+    det_unimplemented("result_call_6").
 
 %---------------------%
 
@@ -1582,7 +1582,7 @@ result_call_6(_, (=), _, _, _, _) :-
 ").
 
 result_call_7(_, (=), _, _, _, _, _) :-
-    det_unimplemented("comparison_result").
+    det_unimplemented("result_call_7").
 
 %---------------------%
 
@@ -1610,7 +1610,7 @@ result_call_7(_, (=), _, _, _, _, _) :-
 ").
 
 result_call_8(_, (=), _, _, _, _, _, _) :-
-    det_unimplemented("comparison_result").
+    det_unimplemented("result_call_8").
 
 %---------------------%
 

@@ -1692,7 +1692,7 @@
     % foldr2(Pred, List, !Acc1, !Acc2):
     %
     % Does the same job as foldr, but with two accumulators.
-    % Although no more expressive than foldl, this is often
+    % Although no more expressive than foldr, this is often
     % a more convenient format, and a little more efficient.
     % The last accumulator may be an I/O state, or some other
     % destructively updated piece of state.
@@ -1718,7 +1718,7 @@
     % foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
     %
     % Does the same job as foldr, but with three accumulators.
-    % Although no more expressive than foldl, this is often
+    % Although no more expressive than foldr, this is often
     % a more convenient format, and a little more efficient.
     % The last accumulator may be an I/O state, or some other
     % destructively updated piece of state.
@@ -1953,7 +1953,7 @@
     % because the usual use case is that the successive calls to Pred
     % accumulate pieces of information.) The initial value of the accumulator
     % is Start, each call to Pred updates it to the next value, and
-    % foldl returns its final value as End.
+    % map_foldl returns its final value as End.
     %
 :- pred map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode map_foldl(in(pred(in, out, in, out) is det), in, out, in, out)
@@ -2264,7 +2264,7 @@
     % because the usual use case is that the successive calls to Pred
     % accumulate pieces of information.) The initial value of the accumulator
     % is Start, each call to Pred updates it to the next value, and
-    % map_foldl returns its final value as End.
+    % map_foldr returns its final value as End.
     %
 :- pred map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode map_foldr(in(pred(in, out, in, out) is det), in, out, in, out)

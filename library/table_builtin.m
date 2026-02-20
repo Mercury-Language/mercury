@@ -10,7 +10,7 @@
 % Main authors: zs, fjh, ohutch.
 % Stability: high.
 %
-% This file is automatically imported, as if via ":- use_module:, into every
+% This file is automatically imported, as if via ":- use_module", into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',
 % or `pragma minimal_model'). It is intended for the builtin procedures
 % that the compiler generates implicit calls to when implementing tabling.
@@ -97,9 +97,9 @@
 % directive only examine the tabling structures, but do not modify them.
 %
 % At the moment, tabling is supported only by the LLDS and MLDS C backends, so
-% in the next three type definitions, only the C definition is useful.  The
-% Mercury definitions are placeholders only, required to make this module
-% compile cleanly on the non-C backends respectively.
+% in the next three type definitions, only the C definition is useful.
+% The Mercury definitions are placeholders only, required to make this module
+% compile cleanly on the non-C backends.
 
     % This type represents the interior pointers of both call
     % tables and answer tables.
@@ -226,7 +226,7 @@ table_loop_mark_as_inactive(_) :-
 
 table_loop_mark_as_inactive_and_fail(_) :-
     impure private_builtin.imp,
-    private_builtin.sorry("table_loop_mark_as_inactive"),
+    private_builtin.sorry("table_loop_mark_as_inactive_and_fail"),
     fail.
 
 :- pragma foreign_proc("C",
@@ -238,7 +238,7 @@ table_loop_mark_as_inactive_and_fail(_) :-
 
 table_loop_mark_as_active_and_fail(_) :-
     impure private_builtin.imp,
-    private_builtin.sorry("table_loop_mark_as_active"),
+    private_builtin.sorry("table_loop_mark_as_active_and_fail"),
     fail.
 
 %---------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ table_memo_non_answer_is_not_duplicate_shortcut(_) :-
     table_memo_non_create_answer_block_shortcut(R::in),
     [will_not_call_mercury, does_not_affect_liveness],
 "
-    MR_tbl_memo_non_create_answer_block_shortcut(R::in);
+    MR_tbl_memo_non_create_answer_block_shortcut(R);
 ").
 
 table_memo_non_create_answer_block_shortcut(_) :-
@@ -956,7 +956,7 @@ table_mm_return_all_shortcut(_) :-
 :- impure pred table_mmos_answer_is_not_duplicate(ml_trie_node::in) is semidet.
 
     % This is a version of table_mmos_answer_is_not_duplicate
-    % in intended for bundling with other operations.
+    % is intended for bundling with other operations.
     %
 :- impure pred table_mmos_answer_is_not_duplicate_shortcut(ml_generator::in)
     is semidet.
@@ -1211,7 +1211,7 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_string(ml_trie_node::in, string::in,
     ml_trie_node::out) is det.
 
-    % Lookup or insert a float in the current trie.
+    % Lookup or insert a float in the given trie.
     %
 :- impure pred table_lookup_insert_float(ml_trie_node::in, float::in,
     ml_trie_node::out) is det.
