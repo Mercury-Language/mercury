@@ -181,7 +181,7 @@
     % of all the keys in the tree.
     %
     % `sorted_keys_match(Tree, List)' is equivalent to the conjunction,
-    % `sorted_keys(Tree, Keys), Keys = List", but it allocates no memory,
+    % `sorted_keys(Tree, Keys), Keys = List', but it allocates no memory,
     % and it traverses Tree only up to the first mismatch.
     %
 :- pred sorted_keys_match(tree234(K, V)::in, list(K)::in) is semidet.

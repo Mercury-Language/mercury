@@ -122,8 +122,8 @@
 :- pred insert(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= uenum(T).
 
-    % insert_new(X, Set0, Set) returns the union of Set and the set
-    % containing only X if Set0 does not contain 'X'; if it does, it fails.
+    % insert_new(X, Set0, Set) returns the union of Set0 and the set
+    % containing only X if Set0 does not contain X; if it does, it fails.
     % Takes O(log(card(Set))) time and space.
     %
 :- pred insert_new(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
@@ -314,7 +314,7 @@
 % Converting sets to lists.
 %
 
-    % to_sorted_list(Set)' returns a list containing all the members of Set,
+    % to_sorted_list(Set) returns a list containing all the members of Set,
     % in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_sorted_list(tree_bitset(T)) = list(T) <= uenum(T).

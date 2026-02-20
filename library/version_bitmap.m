@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+%c---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
@@ -388,7 +388,7 @@ bitmask(I) = 1 `unchecked_left_shift` int.rem_bits_per_int(I).
     % the given bit in a word.
     %
     % E.g. assuming int.bits_per_int = 8 and I = 11 then
-    % bitmask(I) = 2'00001111
+    % bitmasks(I) = 2'00001111
     %
 :- func bitsmask(int) = int.
 

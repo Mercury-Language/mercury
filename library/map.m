@@ -1727,8 +1727,8 @@ keys_as_set(Map, KeySet) :-
 values(M) = Vs :-
     map.values(M, Vs).
 
-values(Map, KeyList) :-
-    tree234.values(Map, KeyList).
+values(Map, ValueList) :-
+    tree234.values(Map, ValueList).
 
 keys_and_values(Map, KeyList, ValueList) :-
     tree234.keys_and_values(Map, KeyList, ValueList).

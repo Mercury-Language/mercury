@@ -96,7 +96,7 @@
     %
 :- pred contains(ranges::in, int::in) is semidet.
 
-    % nondet_member(Set X):
+    % nondet_member(Set, X):
     %
     % Nondeterministically produce each element in Set.
     % Each time this call succeeds, X will be bound to an element in Set.

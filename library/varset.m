@@ -619,7 +619,7 @@ set_bindings(Values, !VarSet) :-
 :- pragma inline(pred(use_simple_loop/2)).
 
 use_simple_loop(NumAllocatedA, NumAllocatedB) :-
-    % XXX The numbers in this heuristic should to be determined by benchmarks.
+    % XXX The numbers in this heuristic should be determined by benchmarks.
     (
         % If NumAllocatedB (the N in the complexity analysis above)
         % is small, then the asymptotic complexity does not matter as much
@@ -634,7 +634,7 @@ use_simple_loop(NumAllocatedA, NumAllocatedB) :-
 :- pragma inline(pred(use_simple_loop_without_names/2)).
 
 use_simple_loop_without_names(_NumAllocatedA, NumAllocatedB) :-
-    % XXX The numbers in this heuristic should to be determined by benchmarks.
+    % XXX The numbers in this heuristic should be determined by benchmarks.
     % If NumAllocatedB (the N in the complexity analysis above)
     % is small, then the asymptotic complexity does not matter as much
     % as the constant factors.

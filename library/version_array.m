@@ -303,7 +303,7 @@
 
     % unsafe_rewind(VersionArray0) = VersionArray:
     % unsafe_rewind(VersionArray0, VersionArray):
-
+    %
     % Return as VersionArray a version of VersionArray0 for which
     % all accesses are O(1).
     %

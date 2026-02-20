@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -135,7 +135,7 @@
     version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
     % Change a key-value binding in a hash table.
-    % Throw exception if a binding for the key does not already exist.
+    % Throw an exception if a binding for the key does not already exist.
     %
 :- func det_update(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_update(K::in, V::in,
@@ -723,7 +723,7 @@ equal(HashTableA, HashTableB) :-
 compare_item(HashTableB, KeyA, ValueA, unit, unit) :-
     % Fail
     % - if the key from HashTableA does not occur in HashTableB, or
-    % - if the key does occcur in HashTableB, but with a different value.
+    % - if the key does occur in HashTableB, but with a different value.
     version_hash_table.search(HashTableB, KeyA, ValueA).
 
 %---------------------------------------------------------------------------%
