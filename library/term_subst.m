@@ -38,7 +38,7 @@
     % As above, except for a list of terms rather than a single term.
     %
 :- pred var_occurs_in_subst_terms(var(T)::in, substitution(T)::in,
-    list(term(T))::in)   is semidet.
+    list(term(T))::in) is semidet.
 
     % term_is_ground(Term) is true if-and-only-if Term contains no variables.
     %
@@ -189,14 +189,14 @@
 % Conversions between variables and terms.
 %
 
-    % Convert a list of terms which are all variables into
-    % a list of those variables. Throw an exception if the list contains
-    % any terms that are not variables.
+    % Convert a list of terms which are all variables into a list of those
+    % variables. Throw an exception if the list contains any terms that are
+    % not variables.
     %
 :- func term_list_to_var_list(list(term(T))) = list(var(T)).
 
-    % Convert a list of terms which are all variables into
-    % a list of those variables.
+    % Convert a list of terms which are all variables into a list of those
+    % variables. Fails if the list contains any terms that are not variables.
     %
 :- pred term_list_to_var_list(list(term(T))::in, list(var(T))::out) is semidet.
 

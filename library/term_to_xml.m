@@ -210,7 +210,7 @@
     %
     % We provide two predefined mappings:
     %
-    %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the elements
+    %   1. simple: The functors `[|]', `[]' and `{}' are mapped to the elements
     %   `List', `Nil' and `Tuple' respectively. Arrays are assigned the
     %   `Array' element. The builtin types are assigned the elements `Int',
     %   `Int8', `Int16', `Int32', `Int64', `UInt', `UInt8', `UInt16', `UInt32',
