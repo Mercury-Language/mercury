@@ -802,10 +802,10 @@ unused_args_traverse_cases(Info, [Case | Cases], !LocalVarUsageMap) :-
     % Start by assuming that the only input arguments a procedure needs
     % are the ones used in its own procedure body. This denotes the
     % ideal situation, in the sense it has the most "unused" arguments
-    % that can be optimized. However, This assumption is false in most cases,
+    % that can be optimized. However, this assumption is false in most cases,
     % because it does not account for discrepancies such as local variables
     % in procedure P1 that are needed in the body of procedure P2, to which
-    % they is passed.
+    % they are passed.
     %
     % This predicate does a top-down iteration to find the greatest fixpoint
     % of the operation that fixes such discrepancies. Each iteration
@@ -843,7 +843,7 @@ record_required_vars_as_used_to_fixpoint(PassNum, ModuleInfo,
     %
     % - were not known to be definitely used, but
     % - were known to be required for the computation of some variable
-    %   of procedure argument that is NOW known to be definitely used,
+    %   or procedure argument that is NOW known to be definitely used,
     %
     % then mark them as definitely used, and set !:Changed accordingly.
     record_required_vars_as_used_in_procs(LocalPredProcIds,
