@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2025 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -129,7 +129,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -141,7 +141,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -167,7 +167,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -179,7 +179,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -205,7 +205,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -217,7 +217,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -243,7 +243,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -255,7 +255,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -281,7 +281,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -293,7 +293,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -319,7 +319,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -331,7 +331,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -357,7 +357,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -369,7 +369,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -395,7 +395,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -407,7 +407,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -433,7 +433,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -445,7 +445,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -471,7 +471,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream,
@@ -483,7 +483,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
@@ -513,7 +513,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream.stream.WriteByte(System.Convert.ToByte(Byte));
@@ -524,7 +524,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).put(
@@ -549,7 +549,7 @@
 ").
 :- pragma foreign_proc("Java",
     do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
@@ -564,7 +564,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U16);
     try {
@@ -594,7 +594,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U16);
     if (!System.BitConverter.IsLittleEndian) {
@@ -610,7 +610,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
@@ -643,7 +643,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U16);
     if (System.BitConverter.IsLittleEndian) {
@@ -659,7 +659,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
@@ -688,7 +688,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_binary_uint32(Stream::in, U32::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U32);
     try {
@@ -701,7 +701,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint32(Stream::in, U32::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
@@ -734,7 +734,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U32);
     if (!System.BitConverter.IsLittleEndian) {
@@ -750,7 +750,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
@@ -783,7 +783,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U32);
     if (System.BitConverter.IsLittleEndian) {
@@ -799,7 +799,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
@@ -828,7 +828,7 @@
 ").
 :- pragma foreign_proc("C#",
     do_write_binary_uint64(Stream::in, U64::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U64);
     try {
@@ -841,7 +841,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint64(Stream::in, U64::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
@@ -874,7 +874,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint64_le(Stream::in, U64::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U64);
     if (!System.BitConverter.IsLittleEndian) {
@@ -890,7 +890,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint64_le(Stream::in, U64::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
@@ -923,7 +923,7 @@
 :- pragma foreign_proc("C#",
     do_write_binary_uint64_be(Stream::in, U64::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = System.BitConverter.GetBytes(U64);
     if (System.BitConverter.IsLittleEndian) {
@@ -939,7 +939,7 @@
 :- pragma foreign_proc("Java",
     do_write_binary_uint64_be(Stream::in, U64::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
@@ -974,7 +974,7 @@
 % XXX MISSING C# do_write_float
 :- pragma foreign_proc("Java",
     do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.io__stream_ops.MR_TextOutputFile stream =
         (jmercury.io__stream_ops.MR_TextOutputFile) Stream;
@@ -1032,8 +1032,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     try {
@@ -1061,7 +1060,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         char[] buf = java.lang.Character.toChars(Character);
@@ -1098,7 +1097,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__primitives_write.mercury_print_string(Stream, Message);
@@ -1109,7 +1108,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(Message);
@@ -1134,7 +1133,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 :- pragma foreign_proc("C#",
     do_write_binary_string_utf8(Stream::in, String::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = mercury.io__stream_ops.text_encoding.GetBytes(String);
     try {
@@ -1147,7 +1146,7 @@ do_write_float(Stream, Float, Error, !IO) :-
 :- pragma foreign_proc("Java",
     do_write_binary_string_utf8(Stream::in, String::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] bytes = String.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     try {

@@ -2173,14 +2173,14 @@ version_array_to_doc(A) = pretty_printer.version_array_to_doc(A).
 
 :- pragma foreign_proc("C#",
     has_lock(VA::in),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = VA.has_lock();
 ").
 
 :- pragma foreign_proc("Java",
     has_lock(VA::in),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = VA.has_lock();
 ").

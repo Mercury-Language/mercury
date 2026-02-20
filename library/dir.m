@@ -903,7 +903,7 @@ dotnet_path_name_is_absolute(FileName) :-
 
 :- pragma foreign_proc("C#",
     dotnet_path_name_is_absolute_2(FileName::in),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         SUCCESS_INDICATOR = System.IO.Path.IsPathRooted(FileName);
@@ -1058,8 +1058,7 @@ current_directory(Result, !IO) :-
 
 :- pragma foreign_proc("C#",
     current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         CurDir = System.IO.Directory.GetCurrentDirectory();
@@ -1072,8 +1071,7 @@ current_directory(Result, !IO) :-
 
 :- pragma foreign_proc("Java",
     current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         java.io.File dir = new java.io.File(""."");
@@ -1211,7 +1209,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
 :- pragma foreign_proc("C#",
     make_directory_including_parents_2(DirName::in, Error::out,
         CheckAccess::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         System.IO.DirectoryInfo di = new System.IO.DirectoryInfo(DirName);
@@ -1234,7 +1232,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     make_directory_including_parents_2(DirName::in, Error::out,
         CheckAccess::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.io.File dir = new java.io.File(DirName);
@@ -1336,7 +1334,7 @@ make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("C#",
     make_single_directory_2(DirName::in, Status::out, Error::out,
         IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         System.IO.DirectoryInfo di = new System.IO.DirectoryInfo(DirName);
@@ -1369,8 +1367,7 @@ make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     make_single_directory_2(DirName::in, Status::out, Error::out,
         IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         java.io.File newDir = new java.io.File(DirName);
@@ -1805,7 +1802,7 @@ open_2(DirName, DirPattern, Result, !IO) :-
 :- pragma foreign_proc("C#",
     open_3(DirName::in, _DirPattern::in, DirStream::out, Error::out,
         IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_modify_trail, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         DirStream =
@@ -1821,7 +1818,7 @@ open_2(DirName, DirPattern, Result, !IO) :-
 :- pragma foreign_proc("Java",
     open_3(DirName::in, _DirPattern::in, DirStream::out, Error::out,
         IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         java.io.File file = new java.io.File(DirName);
@@ -1944,7 +1941,7 @@ close(DirName, DirStream, Result, !IO) :-
 
 :- pragma foreign_proc("C#",
     close_2(_DirStream::in, Error::out, IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Nothing to do.
     Error = null;
@@ -1953,7 +1950,7 @@ close(DirName, DirStream, Result, !IO) :-
 
 :- pragma foreign_proc("Java",
     close_2(_DirStream::in, Error::out, IsWin32Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Nothing to do.
     Error = null;
@@ -2065,7 +2062,7 @@ read_entry(DirStream, Result, !IO) :-
 :- pragma foreign_proc("C#",
     read_entry_2(DirStream::in, Error::out, IsWin32Error::out,
         HaveFileName::out, FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 
     try {
@@ -2091,7 +2088,7 @@ read_entry(DirStream, Result, !IO) :-
 :- pragma foreign_proc("Java",
     read_entry_2(DirStream::in, Error::out, IsWin32Error::out,
         HaveFileName::out, FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 
     try {

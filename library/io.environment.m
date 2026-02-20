@@ -295,7 +295,7 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 
 :- pragma foreign_proc("C#",
     getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io],
+    [promise_semipure, will_not_call_mercury],
 "
     Value = System.Environment.GetEnvironmentVariable(Var);
     SUCCESS_INDICATOR = (Value != null);
@@ -303,8 +303,7 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 
 :- pragma foreign_proc("Java",
     getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io,
-        may_not_duplicate],
+    [promise_semipure, will_not_call_mercury, may_not_duplicate],
 "
     Value = System.getenv(Var);
     SUCCESS_INDICATOR = (Value != null);
@@ -332,7 +331,7 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 
 :- pragma foreign_proc("C#",
     setenv(Var::in, Value::in),
-    [will_not_call_mercury, tabled_for_io],
+    [will_not_call_mercury],
 "
     try {
         System.Environment.SetEnvironmentVariable(Var, Value);
@@ -344,7 +343,7 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 
 :- pragma foreign_proc("Java",
     setenv(_Var::in, _Value::in),
-    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, may_not_duplicate],
 "
     // Java does not provide a method to set environment variables
     // in the CURRENT process; it provides a way to modify the environment

@@ -170,7 +170,7 @@ read_char_code(text_input_stream(Stream), ResultCode, Error, Char, !IO) :-
 :- pragma foreign_proc("Java",
     read_char_code_2(File::in, ResultCode::out, Error::out, CharCode::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         int c = ((jmercury.io__stream_ops.MR_TextInputFile) File).read_char();
@@ -239,7 +239,7 @@ read_char_code(text_input_stream(Stream), ResultCode, Error, Char, !IO) :-
 
 :- pragma foreign_proc("Java",
     putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     ((jmercury.io__stream_ops.MR_TextInputFile) File).ungetc(Character);
     Ok = bool.YES;
@@ -359,7 +359,7 @@ read_byte_val(text_input_stream(Stream), Result, Error, ByteVal, !IO) :-
 
 :- pragma foreign_proc("Java",
     putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     ((jmercury.io__stream_ops.MR_BinaryInputFile) File).ungetc((byte) UInt8);
     Ok = bool.YES;
@@ -370,8 +370,7 @@ read_byte_val(text_input_stream(Stream), Result, Error, ByteVal, !IO) :-
 :- pragma foreign_proc("C",
     do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
         Error::out, IncompleteBytes::out, UInt16::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ML_do_read_binary_uintN(2, 16, Stream, ByteOrder, ResultCode, Error,
         IncompleteBytes, UInt16);
@@ -472,8 +471,7 @@ read_byte_val(text_input_stream(Stream), Result, Error, ByteVal, !IO) :-
 :- pragma foreign_proc("C",
     do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
         Error::out, IncompleteBytes::out, UInt32::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ML_do_read_binary_uintN(4, 32, Stream, ByteOrder, ResultCode, Error,
         IncompleteBytes, UInt32);
@@ -594,8 +592,7 @@ read_byte_val(text_input_stream(Stream), Result, Error, ByteVal, !IO) :-
 :- pragma foreign_proc("C",
     do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
         Error::out, IncompleteBytes::out, UInt64::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     ML_do_read_binary_uintN(8, 64, Stream, ByteOrder, ResultCode, Error,
         IncompleteBytes, UInt64);

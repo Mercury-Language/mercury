@@ -4839,8 +4839,7 @@ get_temp_directory(Dir, !IO) :-
 
 :- pragma foreign_proc("Java",
     progname(Default::in, PrognameOut::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     PrognameOut = jmercury.runtime.JavaInternal.progname;
     if (PrognameOut == null) {
@@ -4878,7 +4877,7 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("C#",
     command_line_arguments(Args::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     string[] arg_vector = System.Environment.GetCommandLineArgs();
     int i = arg_vector.Length;
@@ -4917,15 +4916,14 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("C#",
     get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     ExitStatus = System.Environment.ExitCode;
 ").
 
 :- pragma foreign_proc("Java",
     get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     ExitStatus = jmercury.runtime.JavaInternal.exit_status;
 ").
@@ -4942,15 +4940,14 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("C#",
     set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     System.Environment.ExitCode = ExitStatus;
 ").
 
 :- pragma foreign_proc("Java",
     set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     jmercury.runtime.JavaInternal.exit_status = ExitStatus;
 ").
@@ -5087,14 +5084,14 @@ unlock_globals :-
 
 :- pragma foreign_proc("C#",
     unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     Globals = io.ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
     unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Globals = io.ML_io_user_globals;
 ").
@@ -5114,14 +5111,14 @@ unlock_globals :-
 
 :- pragma foreign_proc("C#",
     unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     io.ML_io_user_globals = Globals;
 ").
 
 :- pragma foreign_proc("Java",
     unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     io.ML_io_user_globals = Globals;
 ").
@@ -5581,7 +5578,7 @@ file_id(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C#",
     file_id_2(_FileName::in, _FileId::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Error = new System.NotSupportedException(
         ""io.file_id not supported on this platform"");
@@ -5589,7 +5586,7 @@ file_id(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("Java",
     file_id_2(_FileName::in, _FileId::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Error = new java.lang.UnsupportedOperationException(
         ""io.file_id not supported on this platform"");

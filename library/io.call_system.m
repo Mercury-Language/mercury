@@ -168,7 +168,7 @@ call_system_return_signal(Command, Result, !IO) :-
 
 :- pragma foreign_proc("C#",
     call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     try {
         // XXX This could be better... need to handle embedded spaces
@@ -204,7 +204,7 @@ call_system_return_signal(Command, Result, !IO) :-
 
 :- pragma foreign_proc("Java",
     call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     boolean has_sh;
     try {

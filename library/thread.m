@@ -376,8 +376,7 @@ spawn_context_2(_, Res, "", !IO) :-
 :- pragma foreign_proc("Java",
     spawn_context_2(Goal::in(pred(in, di, uo) is cc_multi), Success::out,
         ThreadDesc::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     RunGoalDetached rg = new RunGoalDetached((Object[]) Goal);
     Task task = new Task(rg);
@@ -442,8 +441,7 @@ spawn_native(Goal, Options, Res, !IO) :-
     spawn_native_2(Goal::in(pred(in, di, uo) is cc_multi), _T::in,
         _MinStackSize::in, Success::out, ThreadDesc::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         object[] thread_locals = runtime.ThreadLocalMutables.clone();
@@ -470,8 +468,7 @@ spawn_native(Goal, Options, Res, !IO) :-
     spawn_native_2(Goal::in(pred(in, di, uo) is cc_multi), _T::in,
         _MinStackSize::in, Success::out, ThreadDesc::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         RunGoalDetached rg = new RunGoalDetached((Object[]) Goal);
@@ -544,8 +541,7 @@ spawn_native_joinable(Goal, Options, Res, !IO) :-
     spawn_native_joinable_2(Goal::in(pred(in, out, di, uo) is cc_multi),
         _MinStackSize::in, OutputMutvar::in,
         Success::out, ThreadHandle::out, ErrorMsg::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         object[] thread_locals = runtime.ThreadLocalMutables.clone();
@@ -572,8 +568,7 @@ spawn_native_joinable(Goal, Options, Res, !IO) :-
     spawn_native_joinable_2(Goal::in(pred(in, out, di, uo) is cc_multi),
         _MinStackSize::in, OutputMutvar::in,
         Success::out, ThreadHandle::out, ErrorMsg::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         RunGoalJoinable rg = new RunGoalJoinable(TypeInfo_for_T,
@@ -650,8 +645,7 @@ join_thread(Thread, Res, !IO) :-
 :- pragma foreign_proc("C#",
     join_thread_2(ThreadHandle::in, Success::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         ThreadHandle.Join();
@@ -666,8 +660,7 @@ join_thread(Thread, Res, !IO) :-
 :- pragma foreign_proc("Java",
     join_thread_2(ThreadHandle::in, Success::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         ThreadHandle.join();
@@ -708,16 +701,14 @@ join_thread(Thread, Res, !IO) :-
 
 :- pragma foreign_proc("C#",
     yield(_IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     System.Threading.Thread.Yield();
 ").
 
 :- pragma foreign_proc("Java",
     yield(_IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     java.lang.Thread.yield();
 ").

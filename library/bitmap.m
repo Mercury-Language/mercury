@@ -699,13 +699,13 @@ num_bits(_) = _ :-
 ").
 :- pragma foreign_proc("Java",
     num_bits(BM::in) = (NumBits::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     NumBits = BM.num_bits;
 ").
 :- pragma foreign_proc("C#",
     num_bits(BM::in) = (NumBits::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     NumBits = BM.num_bits;
 ").
@@ -970,14 +970,14 @@ byte(N, BM) = Byte :-
 ").
 :- pragma foreign_proc("Java",
     unsafe_get_byte(BM::in, N::in) = (Byte::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Mask off sign bits so Byte is in range 0-255.
     Byte = ((int) BM.elements[N]) & 0xff;
 ").
 :- pragma foreign_proc("C#",
     unsafe_get_byte(BM::in, N::in) = (Byte::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Byte = BM.elements[N];
 ").
@@ -1013,14 +1013,14 @@ set_byte(N, Byte, !BM) :-
 ").
 :- pragma foreign_proc("Java",
     unsafe_set_byte(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = BM0;
     BM.elements[N] = (byte) Byte;
 ").
 :- pragma foreign_proc("C#",
     unsafe_set_byte(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = BM0;
     BM.elements[N] = (byte) Byte;
@@ -1183,14 +1183,14 @@ unsafe_is_clear(BM, I) :-
 ").
 :- pragma foreign_proc("C#",
     copy(BM0::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = new mercury.runtime.MercuryBitmap(BM0.num_bits);
     System.Array.Copy(BM0.elements, 0, BM.elements, 0, BM0.elements.Length);
 ").
 :- pragma foreign_proc("Java",
     copy(BM0::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = new jmercury.runtime.MercuryBitmap(BM0.num_bits);
     System.arraycopy(BM0.elements, 0, BM.elements, 0, BM0.elements.length);
@@ -1250,14 +1250,14 @@ shrink_without_copying(!.BM, NewSize) = !:BM :-
 ").
 :- pragma foreign_proc("Java",
     set_num_bits(NumBits::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = BM0;
     BM.num_bits = NumBits;
 ").
 :- pragma foreign_proc("C#",
     set_num_bits(NumBits::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = BM0;
     BM.num_bits = NumBits;
@@ -1606,7 +1606,7 @@ do_copy_bytes(SameBM, SrcBM, SrcStartByte, DestStartByte, NumBytes, !DestBM) :-
     unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
         DestFirstByteIndex::in, NumBytes::in,
         DestBM0::bitmap_di, DestBM::bitmap_uo),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     DestBM = DestBM0;
     System.Array.Copy(SrcBM.elements, SrcFirstByteIndex,
@@ -1617,7 +1617,7 @@ do_copy_bytes(SameBM, SrcBM, SrcStartByte, DestStartByte, NumBytes, !DestBM) :-
     unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
         DestFirstByteIndex::in, NumBytes::in,
         DestBM0::bitmap_di, DestBM::bitmap_uo),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     DestBM = DestBM0;
     System.arraycopy(SrcBM.elements, SrcFirstByteIndex,
@@ -2064,7 +2064,7 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
     do_read_bitmap_range(Stream::in, StartByte::in, NumBytes::in,
         Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
 
@@ -2091,7 +2091,7 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
     do_read_bitmap_range(Stream::in, StartByte::in, NumBytes::in,
         Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.io__stream_ops.MR_BinaryInputFile mf =
         (jmercury.io__stream_ops.MR_BinaryInputFile) Stream;
@@ -2191,8 +2191,7 @@ write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
 :- pragma foreign_proc("C#",
     do_write_bitmap_range(Stream::in, Bitmap::in, Start::in, Length::in,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream.stream.Write(Bitmap.elements, Start, Length);
@@ -2205,8 +2204,7 @@ write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
 :- pragma foreign_proc("Java",
     do_write_bitmap_range(Stream::in, Bitmap::in, Start::in, Length::in,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
@@ -2256,14 +2254,14 @@ import jmercury.runtime.MercuryBitmap;
 
 :- pragma foreign_proc("C#",
     bitmap_equal(BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     SUCCESS_INDICATOR = BM1.Equals(BM2);
 ").
 
 :- pragma foreign_proc("Java",
     bitmap_equal(BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure],
 "
     SUCCESS_INDICATOR = BM1.equals(BM2);
 ").
@@ -2300,8 +2298,7 @@ bytes_equal(Index, MaxIndex, BM_A, BM_B) :-
 
 :- pragma foreign_proc("Java",
     bitmap_compare(Result::uo, BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
-        may_not_duplicate],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "
     if (BM1.num_bits < BM2.num_bits) {
         Result = builtin.COMPARE_LESS;
@@ -2327,8 +2324,7 @@ bytes_equal(Index, MaxIndex, BM_A, BM_B) :-
 
 :- pragma foreign_proc("C#",
     bitmap_compare(Result::uo, BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
-        may_not_duplicate],
+    [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "
     if (BM1.num_bits < BM2.num_bits) {
         Result = builtin.COMPARE_LESS;
@@ -2403,14 +2399,14 @@ bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
 
 :- pragma foreign_proc("Java",
     allocate_bitmap(N::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = new jmercury.runtime.MercuryBitmap(N);
 ").
 
 :- pragma foreign_proc("C#",
     allocate_bitmap(N::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     BM = new mercury.runtime.MercuryBitmap(N);
 ").

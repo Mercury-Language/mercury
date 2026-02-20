@@ -3953,7 +3953,7 @@ get_tuple_subterm(_, _, _, -1) :-
 
 :- pragma foreign_proc("C#",
     get_tuple_subterm(Term::in, Index::in, ArgTypeInfo::in, Arg::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Arg = ((object[]) Term)[Index];
     TypeInfo_for_ArgT = ArgTypeInfo;
@@ -3961,7 +3961,7 @@ get_tuple_subterm(_, _, _, -1) :-
 
 :- pragma foreign_proc("Java",
     get_tuple_subterm(Term::in, Index::in, ArgTypeInfo::in, Arg::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Arg = ((Object[]) Term)[Index];
     TypeInfo_for_ArgT = ArgTypeInfo;
@@ -5671,7 +5671,7 @@ unsafe_get_enum_value(_) = _ :-
 
 :- pragma foreign_proc("C#",
     unsafe_get_foreign_enum_value(T::in) = (Value::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Value = (int) T;
 ").

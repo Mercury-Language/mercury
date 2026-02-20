@@ -121,7 +121,7 @@
 :- pragma foreign_proc("C#",
     do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream = mercury.io__stream_ops.mercury_open(FileName, Mode,
@@ -137,8 +137,7 @@
 :- pragma foreign_proc("Java",
     do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         switch (Mode.charAt(0)) {
@@ -187,7 +186,7 @@
 :- pragma foreign_proc("C#",
     do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream = mercury.io__stream_ops.mercury_open(FileName, Mode,
@@ -203,8 +202,7 @@
 :- pragma foreign_proc("Java",
     do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         switch (Mode.charAt(0)) {
@@ -248,7 +246,7 @@
 ").
 :- pragma foreign_proc("C#",
     close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         mercury.io__stream_ops.mercury_close(Stream);
@@ -259,8 +257,7 @@
 ").
 :- pragma foreign_proc("Java",
     close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         Stream.close();
@@ -301,7 +298,7 @@ whence_to_int(end, 2).
 :- pragma foreign_proc("Java",
     seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_BinaryFile) Stream).seek_binary(
@@ -336,7 +333,7 @@ whence_to_int(end, 2).
 :- pragma foreign_proc("Java",
     binary_stream_offset_2(Stream::in, Offset::out, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Offset = ((jmercury.io__stream_ops.MR_BinaryFile) Stream).getOffset();
@@ -367,7 +364,7 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     flush_text_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream.stream.Flush();
@@ -378,7 +375,7 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("Java",
     flush_text_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).flush();
@@ -401,7 +398,7 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Stream.stream.Flush();
@@ -412,7 +409,7 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("Java",
     flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).flush();
@@ -439,13 +436,13 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     get_input_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     LineNum = Stream.line_number;
 ").
 :- pragma foreign_proc("Java",
     get_input_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     LineNum = ((jmercury.io__stream_ops.MR_TextInputFile) Stream).line_number;
 ").
@@ -459,13 +456,13 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     set_input_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "{
     Stream.line_number = LineNum;
 }").
 :- pragma foreign_proc("Java",
     set_input_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     ((jmercury.io__stream_ops.MR_TextInputFile) Stream).line_number = LineNum;
 ").
@@ -481,13 +478,13 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "{
     LineNum = Stream.line_number;
 }").
 :- pragma foreign_proc("Java",
     get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     LineNum = ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).line_number;
 ").
@@ -501,13 +498,13 @@ whence_to_int(end, 2).
 ").
 :- pragma foreign_proc("C#",
     set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "{
     Stream.line_number = LineNum;
 }").
 :- pragma foreign_proc("Java",
     set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).line_number = LineNum;
 ").
@@ -563,14 +560,13 @@ stdin_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Stream = mercury.io__stream_ops.mercury_stdin_binary;
 ").
 :- pragma foreign_proc("Java",
     stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     jmercury.io__stream_ops.ensure_init_mercury_stdin_binary();
     Stream = jmercury.io__stream_ops.mercury_stdin_binary;
@@ -618,14 +614,13 @@ stdout_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Stream = mercury.io__stream_ops.mercury_stdout_binary;
 ").
 :- pragma foreign_proc("Java",
     stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     jmercury.io__stream_ops.ensure_init_mercury_stdout_binary();
     Stream = jmercury.io__stream_ops.mercury_stdout_binary;
@@ -673,13 +668,13 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     Stream = mercury.io__stream_ops.mercury_current_text_input;
 ").
 :- pragma foreign_proc("Java",
     input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_text_input.get();
 ").
@@ -696,13 +691,13 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     Stream = mercury.io__stream_ops.mercury_current_binary_input;
 ").
 :- pragma foreign_proc("Java",
     binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_binary_input.get();
 ").
@@ -719,14 +714,13 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     Stream = mercury.io__stream_ops.mercury_current_text_output;
 ").
 :- pragma foreign_proc("Java",
     output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_text_output.get();
 ").
@@ -743,14 +737,13 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     Stream = mercury.io__stream_ops.mercury_current_binary_output;
 ").
 :- pragma foreign_proc("Java",
     binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_binary_output.get();
 ").
@@ -769,14 +762,14 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = mercury.io__stream_ops.mercury_current_text_input;
     mercury.io__stream_ops.mercury_current_text_input = NewStream;
 ").
 :- pragma foreign_proc("Java",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = jmercury.io__stream_ops.mercury_current_text_input.get();
     jmercury.io__stream_ops.mercury_current_text_input.set(
@@ -799,7 +792,7 @@ stderr_stream_2(Stream, !IO) :-
 :- pragma foreign_proc("C#",
     set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = mercury.io__stream_ops.mercury_current_binary_input;
     mercury.io__stream_ops.mercury_current_binary_input = NewStream;
@@ -807,7 +800,7 @@ stderr_stream_2(Stream, !IO) :-
 :- pragma foreign_proc("Java",
     set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = jmercury.io__stream_ops.mercury_current_binary_input.get();
     jmercury.io__stream_ops.mercury_current_binary_input.set(
@@ -828,14 +821,14 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = mercury.io__stream_ops.mercury_current_text_output;
     mercury.io__stream_ops.mercury_current_text_output = NewStream;
 ").
 :- pragma foreign_proc("Java",
     set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = jmercury.io__stream_ops.mercury_current_text_output.get();
     jmercury.io__stream_ops.mercury_current_text_output.set(
@@ -858,7 +851,7 @@ stderr_stream_2(Stream, !IO) :-
 :- pragma foreign_proc("C#",
     set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = mercury.io__stream_ops.mercury_current_binary_output;
     mercury.io__stream_ops.mercury_current_binary_output = NewStream;
@@ -866,7 +859,7 @@ stderr_stream_2(Stream, !IO) :-
 :- pragma foreign_proc("Java",
     set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure],
 "
     OutStream = jmercury.io__stream_ops.mercury_current_binary_output.get();
     jmercury.io__stream_ops.mercury_current_binary_output.set(

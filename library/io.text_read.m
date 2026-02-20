@@ -196,7 +196,7 @@ read_line_2(Stream, Result, Error, Chars, !IO) :-
 :- pragma foreign_proc("Java",
     read_line_as_string_2(Stream::in, _FirstCall::in, Res::out, Error::out,
         RetString::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+    [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
     try {
@@ -256,7 +256,7 @@ read_line_as_string_2(Stream, FirstCall, Res, Error, String, !IO) :-
 :- pragma foreign_proc("Java",
     read_file_as_string_2(Stream::in, String::out, NumCUs::out,
         Error::out, NullCharError::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     StringBuilder sb = new StringBuilder();
     try {
@@ -479,7 +479,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 
 :- pragma foreign_proc("Java",
     stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         Size = ((jmercury.io__stream_ops.MR_BinaryFile) Stream).size();

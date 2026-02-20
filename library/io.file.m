@@ -298,7 +298,7 @@ remove_file(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("C#",
     remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         // System.IO.File.Delete() does not throw an exception
@@ -320,8 +320,7 @@ remove_file(FileName, Result, !IO) :-
 
 :- pragma foreign_proc("Java",
     remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // Java 7 java.nio.file.Files.delete() provides more detailed information
     // about failure to delete.
@@ -435,7 +434,7 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
 :- pragma foreign_proc("C#",
     rename_file_2(OldFileName::in, NewFileName::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         if (System.IO.Directory.Exists(OldFileName)) {
@@ -455,8 +454,7 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     rename_file_2(OldFileName::in, NewFileName::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // Java 7 java.nio.file.Files.move may provide more detailed information
     // about failure to rename.
@@ -545,8 +543,7 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     make_symlink_2(_FileName::in, _LinkFileName::in, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Error = new java.lang.UnsupportedOperationException(
         ""io.make_symlink_2 not implemented"");
@@ -724,8 +721,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 :- pragma foreign_proc("Java",
     check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
         CheckExecute::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         java.io.File file = new java.io.File(FileName);
@@ -765,8 +761,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
 :- pragma foreign_proc("C#",
     check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
         CheckExecute::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         if (System.IO.Directory.Exists(FileName)) {
@@ -1025,7 +1020,7 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
 :- pragma foreign_proc("C#",
     file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         System.IO.FileAttributes attrs =
@@ -1056,8 +1051,7 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // The Java implementation can distinguish between regular files and
     // directories, and for everything else it just returns unknown.
@@ -1132,7 +1126,7 @@ file_modification_time(File, Result, !IO) :-
 :- pragma foreign_proc("C#",
     file_modification_time_2(FileName::in, Time::out, Error::out,
         _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [may_call_mercury, promise_pure, thread_safe],
 "
     try {
         // We test for existence first because if the file or directory does
@@ -1158,8 +1152,7 @@ file_modification_time(File, Result, !IO) :-
 :- pragma foreign_proc("Java",
     file_modification_time_2(FileName::in, Time::out, Error::out,
         _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [may_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // Java 7 java.nio.file.Files.readAttributes() presumably can
     // distinguish a modtime of 0 from file not found or I/O error.
@@ -1289,7 +1282,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 :- pragma foreign_proc("C#",
     do_make_temp(_DirName::in, _Prefix::in, _Suffix::in, _Sep::in,
         FileName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         FileName = System.IO.Path.GetTempFileName();
@@ -1303,8 +1296,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 :- pragma foreign_proc("Java",
     do_make_temp(DirName::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
         Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     if (Prefix.length() > 5) {
         // The documentation for io.make_temp says that we should only use
@@ -1374,8 +1366,7 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 :- pragma foreign_proc("C#",
     do_make_temp_directory(ParentDirName::in, _Prefix::in, _Suffix::in,
         _Sep::in, DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         DirName = Path.Combine(ParentDirName, Path.GetRandomFileName());
@@ -1430,8 +1421,7 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 :- pragma foreign_proc("Java",
     do_make_temp_directory(ParentDirName::in, Prefix::in, _Suffix::in,
         _Sep::in, DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     if (Prefix.length() > 5) {
         // The documentation for io.make_temp_directory says that we should
@@ -1521,8 +1511,8 @@ using System.Security.Principal;      // For IdentityReference etc.
 %---------------------%
 
 get_temp_directory(Dir, !IO) :-
-    % If using the Java or C# backend then use their API to get the location of
-    % temporary files.
+    % If using the Java or C# backend, then use their API to get the location
+    % of temporary files.
     system_temp_dir(Dir0, OK, !IO),
     ( if OK = 1 then
         Dir = Dir0
@@ -1550,8 +1540,7 @@ get_temp_directory(Dir, !IO) :-
 
 :- pragma foreign_proc("Java",
     system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         Dir = java.lang.System.getProperty(""java.io.tmpdir"");
@@ -1564,8 +1553,7 @@ get_temp_directory(Dir, !IO) :-
 
 :- pragma foreign_proc("C#",
     system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         Dir = System.IO.Path.GetTempPath();
