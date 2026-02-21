@@ -930,7 +930,7 @@ mktime(TM, Time, !IO) :-
         java.time.zone.ZoneRules rules = tz.getRules();
         boolean isDST = rules.isDaylightSavings(Time0);
 
-        if (N == 1 & !isDST) {
+        if (N == 1 && !isDST) {
             // If the time we constructed is not in daylight savings time,
             // but it should be, we need to subtract the DSTSavings.
             java.time.Duration savings = rules.getDaylightSavings(Time0);
