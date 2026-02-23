@@ -2221,215 +2221,210 @@ then
     MERCURY_ENABLE_COLOR=always
     export MERCURY_ENABLE_COLOR
 
-    test_status=0
-
-    if test "${test_status}" = 0
+    if ${test_params}
     then
-        if ${test_params}
-        then
-            cp "${root}"/${stage2dir}/Mmake.params tests
-        else
-            /bin/rm tests/Mmake.params > /dev/null 2>&1
-        fi
-
-        if cmp \
-            "${root}"/doc/mdb_command_test.inp \
-            tests/debugger/mdb_command_test.inp
-        then
-            true
-        else
-            mdb_command_test_inp_status=1
-        fi
-
-        cp "${root}"/doc/mdb_command_test.inp tests/debugger
-
-        ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
-            < tests/WS_FLAGS.ws \
-            > tests/WS_FLAGS
-
-        ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
-            < tests/.mgnuc_copts.ws \
-            > tests/.mgnuc_copts
-
-        # If you modify this, modify SUBDIRS in tests/Mmakefile as well.
-        all_test_dirs="
-            accumulator
-            analysis
-            analysis_ctgc
-            analysis_excp
-            analysis_external
-            analysis_sharing
-            analysis_table
-            analysis_trail
-            analysis_unused_args
-            benchmarks
-            debugger
-            declarative_debugger
-            dppd
-            exceptions
-            feedback
-            general
-            grade_subdirs
-            hard_coded
-            invalid
-            invalid_make_int
-            invalid_nodepend
-            invalid_onlydepend
-            invalid_options_file
-            invalid_purity
-            invalid_submodules
-            misc_tests
-            mmc_make
-            options_file
-            par_conj
-            purity
-            recompilation
-            string_format
-            structure_reuse
-            submodules
-            tabling
-            term
-            trailing
-            typeclasses
-            valid
-            valid_make_int
-            valid_seq
-            warnings"
-
-        for d in ${all_test_dirs}
-        do
-            cp tests/.mgnuc_copts tests/"${d}"
-            cp tests/.mgnuc_opts tests/"${d}"
-            /bin/rm -fr tests/"${d}"/Mercury
-        done
-
-        WORKSPACE_FLAGS=yes
-        export WORKSPACE_FLAGS
-
-        if test "${grade}" = "java"
-        then
-            MERCURY_STAGE2_LAUNCHER_BASE=${root}/${stage2dir}
-            export MERCURY_STAGE2_LAUNCHER_BASE
-        fi
-
-        # Tell the executables for the tests where the stage 2 library lives.
-        # XXX this only works for Mono; MS .NET doesn't have an equivalent of
-        # the MONO_PATH environment variable. (To support MS .NET we may just
-        # have to copy the library DLL into any test directory that creates
-        # executables.)
-        if test "${grade}" = "csharp"
-        then
-            MONO_PATH=${root}/${stage2dir}/library
-            export MONO_PATH
-        fi
-
-        case ${error_file_only} in
-            true)
-                if test ! -f tests/runtests.errs
-                then
-                    echo "bootcheck: \`--failing-tests' specified but" 1>&2
-                    echo "\`tests/runtests.errs' does not exist." 1>&2
-                    exit 1
-                fi
-
-                mv tests/runtests.errs tests/runtests.$$
-                test_log_opt="ERROR_FILE=${root}/tests/runtests.$$"
-                ;;
-            false)
-                test_log_opt=""
-                ;;
-        esac
-
-        case ${failing_tests_only} in
-            true)
-                test_log_opt="FAILED_TESTS_ONLY=yes"
-                ;;
-        esac
-
-        cd "${root}/tests"
-        true > FAILED_TESTS_SUMMARY
-        true > NOMAKE_DIRS
-
-        /bin/rm -fr PASSED_TC_DIR FAILED_TC_DIR > /dev/null 2>&1
-        mkdir -p PASSED_TC_DIR FAILED_TC_DIR
-        echo 0 > PASSED_TC_DIR/NEXT_NUMBER
-        echo 0 > FAILED_TC_DIR/NEXT_NUMBER
-        SLICE_DIR="${root}/slice/"
-        export SLICE_DIR
-
-        if test "${specified_tests_only}" != ""
-        then
-            test_status=0
-            for specified_test in ${specified_tests_only}
-            do
-                specified_test_dir=$(dirname "${specified_test}")
-                specified_test_base=$(basename "${specified_test}")
-                if test -d "${root}/tests/${specified_test_dir}"
-                then
-                    cd "${root}/tests/${specified_test_dir}"
-                    mmake ${mmake_opts} ${target_opt} ${jfactor} \
-                        ${test_grade_opt} \
-                        SPECIFIED_TESTS="${specified_test_base}" \
-                        runtests_local < /dev/null
-                    if test "$?" -ne "0"
-                    then
-                        test_status=$?
-                    fi
-                else
-                    test_status=1
-                fi
-            done
-        else
-            if test "${testdirs}" = ""
-            then
-                testdirs="${all_test_dirs}"
-            fi
-
-            test_status=0
-            for testdir in ${testdirs}
-            do
-                if test -d "${root}/tests/${testdir}"
-                then
-                    cd "${root}/tests/${testdir}"
-                    mmake ${mmake_opts} ${target_opt} ${jfactor} \
-                        ${test_grade_opt} ${test_log_opt} \
-                        runtests_dir < /dev/null
-                    if test "$?" -ne 0
-                    then
-                        test_status=1
-                    fi
-                else
-                    echo "test dir ${testdir} does not exist"
-                    test_status=1
-                fi
-            done
-        fi
-
-        case ${failing_tests_only} in
-            true)
-                rm -f tests/runtests.$$
-                ;;
-        esac
-
-        if test "${type_stats}" != ""
-        then
-            echo "Saving test suite stats in ${type_stats}.test.$$"
-            mv "${type_stats}" "${type_stats}".test.$$
-        fi
-
-        cd "${root}"/tests
-        for tcdir in PASSED_TC_DIR FAILED_TC_DIR
-        do
-            if test "$(cat ${tcdir}/NEXT_NUMBER)" -gt 0
-            then
-                "${SLICE_DIR}"slice/mtc_union -o ${tcdir}/SUMMARY \
-                    ${tcdir}/trace_counts.*
-                /bin/rm ${tcdir}/trace_counts.*
-            fi
-        done
-
-        cd "${root}"
+        cp "${root}"/${stage2dir}/Mmake.params tests
+    else
+        /bin/rm tests/Mmake.params > /dev/null 2>&1
     fi
+
+    if cmp \
+        "${root}"/doc/mdb_command_test.inp \
+        tests/debugger/mdb_command_test.inp
+    then
+        true
+    else
+        mdb_command_test_inp_status=1
+    fi
+
+    cp "${root}"/doc/mdb_command_test.inp tests/debugger
+
+    ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
+        < tests/WS_FLAGS.ws \
+        > tests/WS_FLAGS
+
+    ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
+        < tests/.mgnuc_copts.ws \
+        > tests/.mgnuc_copts
+
+    # If you modify this, modify SUBDIRS in tests/Mmakefile as well.
+    all_test_dirs="
+        accumulator
+        analysis
+        analysis_ctgc
+        analysis_excp
+        analysis_external
+        analysis_sharing
+        analysis_table
+        analysis_trail
+        analysis_unused_args
+        benchmarks
+        debugger
+        declarative_debugger
+        dppd
+        exceptions
+        feedback
+        general
+        grade_subdirs
+        hard_coded
+        invalid
+        invalid_make_int
+        invalid_nodepend
+        invalid_onlydepend
+        invalid_options_file
+        invalid_purity
+        invalid_submodules
+        misc_tests
+        mmc_make
+        options_file
+        par_conj
+        purity
+        recompilation
+        string_format
+        structure_reuse
+        submodules
+        tabling
+        term
+        trailing
+        typeclasses
+        valid
+        valid_make_int
+        valid_seq
+        warnings"
+
+    for d in ${all_test_dirs}
+    do
+        cp tests/.mgnuc_copts tests/"${d}"
+        cp tests/.mgnuc_opts tests/"${d}"
+        /bin/rm -fr tests/"${d}"/Mercury
+    done
+
+    WORKSPACE_FLAGS=yes
+    export WORKSPACE_FLAGS
+
+    if test "${grade}" = "java"
+    then
+        MERCURY_STAGE2_LAUNCHER_BASE=${root}/${stage2dir}
+        export MERCURY_STAGE2_LAUNCHER_BASE
+    fi
+
+    # Tell the executables for the tests where the stage 2 library lives.
+    # XXX this only works for Mono; MS .NET doesn't have an equivalent of
+    # the MONO_PATH environment variable. (To support MS .NET we may just
+    # have to copy the library DLL into any test directory that creates
+    # executables.)
+    if test "${grade}" = "csharp"
+    then
+        MONO_PATH=${root}/${stage2dir}/library
+        export MONO_PATH
+    fi
+
+    case ${error_file_only} in
+        true)
+            if test ! -f tests/runtests.errs
+            then
+                echo "bootcheck: \`--failing-tests' specified but" 1>&2
+                echo "\`tests/runtests.errs' does not exist." 1>&2
+                exit 1
+            fi
+
+            mv tests/runtests.errs tests/runtests.$$
+            test_log_opt="ERROR_FILE=${root}/tests/runtests.$$"
+            ;;
+        false)
+            test_log_opt=""
+            ;;
+    esac
+
+    case ${failing_tests_only} in
+        true)
+            test_log_opt="FAILED_TESTS_ONLY=yes"
+            ;;
+    esac
+
+    cd "${root}/tests"
+    true > FAILED_TESTS_SUMMARY
+    true > NOMAKE_DIRS
+
+    /bin/rm -fr PASSED_TC_DIR FAILED_TC_DIR > /dev/null 2>&1
+    mkdir -p PASSED_TC_DIR FAILED_TC_DIR
+    echo 0 > PASSED_TC_DIR/NEXT_NUMBER
+    echo 0 > FAILED_TC_DIR/NEXT_NUMBER
+    SLICE_DIR="${root}/slice/"
+    export SLICE_DIR
+
+    if test "${specified_tests_only}" != ""
+    then
+        test_status=0
+        for specified_test in ${specified_tests_only}
+        do
+            specified_test_dir=$(dirname "${specified_test}")
+            specified_test_base=$(basename "${specified_test}")
+            if test -d "${root}/tests/${specified_test_dir}"
+            then
+                cd "${root}/tests/${specified_test_dir}"
+                mmake ${mmake_opts} ${target_opt} ${jfactor} \
+                    ${test_grade_opt} \
+                    SPECIFIED_TESTS="${specified_test_base}" \
+                    runtests_local < /dev/null
+                if test "$?" -ne "0"
+                then
+                    test_status=$?
+                fi
+            else
+                test_status=1
+            fi
+        done
+    else
+        if test "${testdirs}" = ""
+        then
+            testdirs="${all_test_dirs}"
+        fi
+
+        test_status=0
+        for testdir in ${testdirs}
+        do
+            if test -d "${root}/tests/${testdir}"
+            then
+                cd "${root}/tests/${testdir}"
+                mmake ${mmake_opts} ${target_opt} ${jfactor} \
+                    ${test_grade_opt} ${test_log_opt} \
+                    runtests_dir < /dev/null
+                if test "$?" -ne 0
+                then
+                    test_status=1
+                fi
+            else
+                echo "test dir ${testdir} does not exist"
+                test_status=1
+            fi
+        done
+    fi
+
+    case ${failing_tests_only} in
+        true)
+            rm -f tests/runtests.$$
+            ;;
+    esac
+
+    if test "${type_stats}" != ""
+    then
+        echo "Saving test suite stats in ${type_stats}.test.$$"
+        mv "${type_stats}" "${type_stats}".test.$$
+    fi
+
+    cd "${root}"/tests
+    for tcdir in PASSED_TC_DIR FAILED_TC_DIR
+    do
+        if test "$(cat ${tcdir}/NEXT_NUMBER)" -gt 0
+        then
+            "${SLICE_DIR}"slice/mtc_union -o ${tcdir}/SUMMARY \
+                ${tcdir}/trace_counts.*
+            /bin/rm ${tcdir}/trace_counts.*
+        fi
+    done
+
+    cd "${root}"
 fi
 
 #-----------------------------------------------------------------------------#
