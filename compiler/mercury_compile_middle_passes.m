@@ -115,6 +115,7 @@
 :- import_module transform_hlds.unneeded_code.
 :- import_module transform_hlds.untupling.
 :- import_module transform_hlds.unused_args.
+:- import_module transform_hlds.unused_args_warn_pragma.
 
 :- import_module bool.
 :- import_module int.

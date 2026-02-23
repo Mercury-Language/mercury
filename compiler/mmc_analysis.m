@@ -62,7 +62,7 @@
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
-:- import_module transform_hlds.unused_args.
+:- import_module transform_hlds.unused_args_analysis.
 
 :- import_module io.
 :- import_module list.

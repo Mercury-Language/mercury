@@ -1875,9 +1875,23 @@ which makes use of the following submodules.
     pd_util.m contains various utility predicates.
     </ul>
 <li>
-unused_args.m issues warnings about unused arguments from predicates,
-and create specialized versions without them.
-Typeinfos are often unused.
+unused_args.m finds out which arguments are unused in procedures
+(typeinfos are often unused),
+relying on the primitive operations in unused_args_base_ops.m.
+    <ul>
+    <li>
+    It can then invoke unused_args_warn_pragma.m
+    either to generate warnings about those unused arguments,
+    or to generate pragmas describing those unused arguments,
+    or both.
+    <li>
+    It can also invoke unused_args_analysis.m
+    to record its results in our experimental intermodule analysis framework.
+    <li>
+    Finally, it can (and usually does) invoke unused_args_optimize.m
+    to create specialized versions of procedures
+    which lack their unused arguments.
+    </ul>
 <li>
 delay_construct.m pushes construction unifications
 to the right in semidet conjunctions,

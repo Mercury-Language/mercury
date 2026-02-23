@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017, 2020-2021, 2023, 2025 The Mercury Team.
+% Copyright (C) 2013-2015, 2017, 2020-2021, 2023, 2025-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,6 +59,8 @@
     :- include_module pd_cost.
 :- include_module delay_construct.
 :- include_module unused_args.
+    :- include_module unused_args_analysis.
+    :- include_module unused_args_warn_pragma.
 :- include_module unneeded_code.
 % Accumulator introduction.
 :- include_module accumulator.
@@ -120,6 +122,9 @@
 
 % Accumulator introduction.
     :- include_module goal_store.
+
+    :- include_module unused_args_base_ops.
+    :- include_module unused_args_optimize.
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.
