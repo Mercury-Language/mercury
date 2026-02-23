@@ -1271,8 +1271,8 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
             type_name_set_to_line_pieces(InInterfaceTypeCtorSet),
         MovingTypePieces =
             [words("Moving these types to a new module would require"),
-            words("current module to import the new module in its interface"),
-            words("to get access to")] ++
+            words("the current module to import the new module"),
+            words("in its interface to get access to")] ++
                 InInterfaceTypeCtorPieces
     ),
 
