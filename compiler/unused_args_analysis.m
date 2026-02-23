@@ -30,7 +30,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred record_analysis_unused_args(unused_arg_info::in,
+:- pred record_analysis_unused_args(proc_to_unused_args_map::in,
     list(pred_proc_id)::in, module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -87,11 +87,11 @@
 
 %---------------------------------------------------------------------------%
 
-record_analysis_unused_args(UnusedArgInfo, FixpointPredProcIds, !ModuleInfo) :-
+record_analysis_unused_args(ProcToUnusedArgsMap, FixpointPredProcIds, !ModuleInfo) :-
     module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(
-        maybe_record_intermod_unused_args(!.ModuleInfo, UnusedArgInfo),
+        maybe_record_intermod_unused_args(!.ModuleInfo, ProcToUnusedArgsMap),
         PredIds, AnalysisInfo0, AnalysisInfo1),
     list.foldl(record_intermod_dependencies(!.ModuleInfo),
         FixpointPredProcIds, AnalysisInfo1, AnalysisInfo),
@@ -99,30 +99,31 @@ record_analysis_unused_args(UnusedArgInfo, FixpointPredProcIds, !ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_record_intermod_unused_args(module_info::in, unused_arg_info::in,
-    pred_id::in, analysis_info::in, analysis_info::out) is det.
+:- pred maybe_record_intermod_unused_args(module_info::in,
+    proc_to_unused_args_map::in, pred_id::in,
+    analysis_info::in, analysis_info::out) is det.
 
-maybe_record_intermod_unused_args(ModuleInfo, UnusedArgInfo, PredId,
+maybe_record_intermod_unused_args(ModuleInfo, ProcToUnusedArgsMap, PredId,
         !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_procids(PredInfo),
     list.foldl(
-        maybe_record_intermod_unused_args_for_proc(ModuleInfo, UnusedArgInfo,
-            PredId, PredInfo),
+        maybe_record_intermod_unused_args_for_proc(ModuleInfo,
+            ProcToUnusedArgsMap, PredId, PredInfo),
         ProcIds, !AnalysisInfo).
 
 :- pred maybe_record_intermod_unused_args_for_proc(module_info::in,
-    unused_arg_info::in, pred_id::in, pred_info::in, proc_id::in,
+    proc_to_unused_args_map::in, pred_id::in, pred_info::in, proc_id::in,
     analysis_info::in, analysis_info::out) is det.
 
-maybe_record_intermod_unused_args_for_proc(ModuleInfo, UnusedArgInfo,
+maybe_record_intermod_unused_args_for_proc(ModuleInfo, ProcToUnusedArgsMap,
         PredId, PredInfo, ProcId, !AnalysisInfo) :-
     ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_index_or_compare_pred(PredInfo)
     then
         PPId = proc(PredId, ProcId),
-        ( if map.search(UnusedArgInfo, PPId, UnusedArgs) then
+        ( if map.search(ProcToUnusedArgsMap, PPId, UnusedArgs) then
             Answer = unused_args_answer(UnusedArgs)
         else
             Answer = unused_args_answer([])

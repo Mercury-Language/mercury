@@ -69,12 +69,15 @@ add_gen_pragma_unused_args(UnusedArgsInfo, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, UserArity, MaybePredId),
     (
         MaybePredId = ok1(PredId),
-        module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
-        % Convert the mode number to a proc_id.
+        module_info_get_proc_to_unused_args_map(!.ModuleInfo,
+            ProcToUnusedArgsMap0),
+        % This calls the reverse mode to convert the mode number to a proc_id.
         proc_id_to_int(ProcId, ModeNum),
         PredProcId = proc(PredId, ProcId),
-        map.set(PredProcId, UnusedArgs, UnusedArgInfo0, UnusedArgInfo),
-        module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
+        map.set(PredProcId, UnusedArgs,
+            ProcToUnusedArgsMap0, ProcToUnusedArgsMap),
+        module_info_set_proc_to_unused_args_map(ProcToUnusedArgsMap,
+            !ModuleInfo)
     ;
         MaybePredId = error1(Specs),
         !:Specs = Specs ++ !.Specs

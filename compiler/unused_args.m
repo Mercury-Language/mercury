@@ -122,11 +122,11 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         FixpointPredProcIds, GlobalVarUsageMap0, GlobalVarUsageMap),
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
-    map.init(UnusedArgInfo0),
-    get_unused_arg_info(!.ModuleInfo, GlobalVarUsageMap, FixpointPredProcIds,
-        UnusedArgInfo0, UnusedArgInfo),
+    map.init(ProcToUnusedArgsMap0),
+    build_proc_to_unused_args_map(!.ModuleInfo, GlobalVarUsageMap, FixpointPredProcIds,
+        ProcToUnusedArgsMap0, ProcToUnusedArgsMap),
 
-    map.keys(UnusedArgInfo, PredProcIdsToFix),
+    map.keys(ProcToUnusedArgsMap, PredProcIdsToFix),
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarnBool),
     ( DoWarnBool = no,  DoWarn = do_not_warn_unused_args
     ; DoWarnBool = yes, DoWarn = do_warn_unused_args
@@ -137,7 +137,7 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         )
     then
         set.init(WarnedPredIds0),
-        gather_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
+        gather_warnings_and_pragmas(!.ModuleInfo, ProcToUnusedArgsMap,
             DoWarn, GatherPragmas, PredProcIdsToFix, WarnedPredIds0,
             [], Specs, set.init, PragmaUnusedArgInfos)
     else
@@ -146,7 +146,7 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
     ),
     (
         RecordAnalysis = do_record_analysis_unused_args,
-        record_analysis_unused_args(UnusedArgInfo, FixpointPredProcIds,
+        record_analysis_unused_args(ProcToUnusedArgsMap, FixpointPredProcIds,
             !ModuleInfo)
     ;
         RecordAnalysis = do_not_record_analysis_unused_args
@@ -155,8 +155,8 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
     OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
     (
         OptUnusedArgs = opt_unused_args,
-        optimize_unused_args(VeryVerbose, UnusedArgInfo, GlobalVarUsageMap,
-            FixpointPredProcIds, NewProcMap0, !ModuleInfo)
+        optimize_unused_args(VeryVerbose, ProcToUnusedArgsMap,
+            GlobalVarUsageMap, FixpointPredProcIds, NewProcMap0, !ModuleInfo)
     ;
         OptUnusedArgs = do_not_opt_unused_args
     ).
@@ -907,20 +907,21 @@ record_required_vars_as_used(GlobalVarUsageMap, [Var | Vars],
 
 %---------------------------------------------------------------------------%
 
-:- pred get_unused_arg_info(module_info::in, global_var_usage_map::in,
-    list(pred_proc_id)::in, unused_arg_info::in, unused_arg_info::out) is det.
+:- pred build_proc_to_unused_args_map(module_info::in,
+    global_var_usage_map::in, list(pred_proc_id)::in,
+    proc_to_unused_args_map::in, proc_to_unused_args_map::out) is det.
 
-get_unused_arg_info(_, _, [], !UnusedArgInfo).
-get_unused_arg_info(ModuleInfo, GlobalVarUsageMap, [PredProcId | PredProcIds],
-        !UnusedArgInfo) :-
+build_proc_to_unused_args_map(_, _, [], !ProcToUnusedArgsMap).
+build_proc_to_unused_args_map(ModuleInfo, GlobalVarUsageMap,
+        [PredProcId | PredProcIds], !ProcToUnusedArgsMap) :-
     PredProcId = proc(PredId, ProcId),
     map.lookup(GlobalVarUsageMap, PredProcId, LocalVarUsageMap),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     get_unused_arg_nums(LocalVarUsageMap, HeadVars, 1, UnusedArgs),
-    map.det_insert(PredProcId, UnusedArgs, !UnusedArgInfo),
-    get_unused_arg_info(ModuleInfo, GlobalVarUsageMap, PredProcIds,
-        !UnusedArgInfo).
+    map.det_insert(PredProcId, UnusedArgs, !ProcToUnusedArgsMap),
+    build_proc_to_unused_args_map(ModuleInfo, GlobalVarUsageMap,
+        PredProcIds, !ProcToUnusedArgsMap).
 
 :- pred get_unused_arg_nums(local_var_usage_map::in, list(prog_var)::in,
     int::in, list(int)::out) is det.

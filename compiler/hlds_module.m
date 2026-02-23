@@ -105,7 +105,7 @@
 
     % Map from proc to a list of unused argument numbers.
     %
-:- type unused_arg_info == map(pred_proc_id, list(int)).
+:- type proc_to_unused_args_map == map(pred_proc_id, list(int)).
 
     % For every procedure that requires its own tabling structure,
     % this field records the information needed to define that structure.
@@ -402,8 +402,8 @@
     list(type_ctor_gen_info)::out) is det.
 :- pred module_info_get_must_be_stratified_preds(module_info::in,
     set(pred_id)::out) is det.
-:- pred module_info_get_unused_arg_info(module_info::in,
-    unused_arg_info::out) is det.
+:- pred module_info_get_proc_to_unused_args_map(module_info::in,
+    proc_to_unused_args_map::out) is det.
 :- pred module_info_get_table_struct_map(module_info::in,
     table_struct_map::out) is det.
 :- pred module_info_get_avail_module_map(module_info::in,
@@ -501,7 +501,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_must_be_stratified_preds(set(pred_id)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_unused_arg_info(unused_arg_info::in,
+:- pred module_info_set_proc_to_unused_args_map(proc_to_unused_args_map::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_table_struct_map(table_struct_map::in,
     module_info::in, module_info::out) is det.
@@ -934,7 +934,7 @@
 
                 % Unused argument info about predicates in the current module
                 % which has been exported in .opt files.
-                mri_unused_arg_info             :: unused_arg_info,
+                mri_proc_to_unused_args_map     :: proc_to_unused_args_map,
 
                 % For every procedure that requires its own tabling structure,
                 % this field records the information needed to define that
@@ -1140,7 +1140,7 @@
 % 26     11342      4885       128  97.45%  num_errors
 % 27     35292      2442      3209  43.21%  type_ctor_gen_infos
 % 28      3506         0         2   0.00%  must_be_stratified_preds
-% 29         1         0         1   0.00%  unused_arg_info
+% 29         1         0         1   0.00%  proc_to_unused_args_map
 % 30   3972001         0   3445467   0.00%  exception_info
 % 31       296         0         0          trailing_info
 % 32      4071         0        75   0.00%  table_struct_map
@@ -1460,8 +1460,8 @@ module_info_get_type_ctor_gen_infos(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_type_ctor_gen_infos.
 module_info_get_must_be_stratified_preds(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_must_be_stratified_preds.
-module_info_get_unused_arg_info(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_unused_arg_info.
+module_info_get_proc_to_unused_args_map(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_proc_to_unused_args_map.
 module_info_get_table_struct_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_table_struct_map.
 module_info_get_lambdas_per_line_number(MI, X) :-
@@ -1596,8 +1596,8 @@ module_info_set_type_ctor_gen_infos(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_type_ctor_gen_infos := X.
 module_info_set_must_be_stratified_preds(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_must_be_stratified_preds := X.
-module_info_set_unused_arg_info(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_unused_arg_info := X.
+module_info_set_proc_to_unused_args_map(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_proc_to_unused_args_map := X.
 module_info_set_table_struct_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_table_struct_map := X.
 module_info_set_lambdas_per_line_number(X, !MI) :-

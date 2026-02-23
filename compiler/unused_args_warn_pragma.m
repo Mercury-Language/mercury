@@ -48,7 +48,8 @@
     % predicate should be unused in all of the modes of a predicate, so we
     % only need to put out one warning for each predicate.
     %
-:- pred gather_warnings_and_pragmas(module_info::in, unused_arg_info::in,
+:- pred gather_warnings_and_pragmas(module_info::in,
+    proc_to_unused_args_map::in,
     maybe_warn_unused_args::in, maybe_gather_pragma_unused_args::in,
     list(pred_proc_id)::in, set(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out,
@@ -82,12 +83,11 @@
 
 %---------------------------------------------------------------------------%
 
-gather_warnings_and_pragmas(_, _, _, _, [], _,
-        !Specs, !PragmaUnusedArgInfos).
-gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
-        [PredProcId | PredProcIds], !.WarnedPredIds,
+gather_warnings_and_pragmas(_, _, _, _, [], _, !Specs, !PragmaUnusedArgInfos).
+gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
+        DoWarn, DoPragma, [PredProcId | PredProcIds], !.WarnedPredIds,
         !Specs, !PragmaUnusedArgInfos) :-
-    ( if map.search(UnusedArgInfo, PredProcId, UnusedArgs) then
+    ( if map.search(ProcToUnusedArgsMap, PredProcId, UnusedArgs) then
         PredProcId = proc(PredId, ProcId) ,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ( if
@@ -113,8 +113,9 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
     else
         true
     ),
-    gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
-        PredProcIds, !.WarnedPredIds, !Specs, !PragmaUnusedArgInfos).
+    gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
+        DoWarn, DoPragma, PredProcIds, !.WarnedPredIds,
+        !Specs, !PragmaUnusedArgInfos).
 
 :- pred may_gather_warning_pragma_for_pred(module_info::in,
     pred_id::in, pred_info::in) is semidet.

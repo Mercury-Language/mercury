@@ -45,10 +45,10 @@
 :- type new_proc_info
     --->    new_proc_info(pred_id, proc_id, sym_name, list(int)).
 
-    % optimize_unused_args(VeryVerbose, UnusedArgInfo, GlobalVarUsageMap,
+    % optimize_unused_args(VeryVerbose, ProcToUnusedArgsMap, GlobalVarUsageMap,
     %   FixpointPredProcIds, NewProcMap0, !ModuleInfo)
     %
-:- pred optimize_unused_args(bool::in, unused_arg_info::in,
+:- pred optimize_unused_args(bool::in, proc_to_unused_args_map::in,
     global_var_usage_map::in, list(pred_proc_id)::in, new_proc_map::in,
     module_info::in, module_info::out) is det.
 
@@ -109,10 +109,10 @@
 
 %---------------------------------------------------------------------------%
 
-optimize_unused_args(VeryVerbose, UnusedArgInfo, GlobalVarUsageMap,
+optimize_unused_args(VeryVerbose, ProcToUnusedArgsMap, GlobalVarUsageMap,
         FixpointPredProcIds, NewProcMap0, !ModuleInfo) :-
-    map.keys(UnusedArgInfo, PredProcIdsToFix),
-    list.foldl2(unused_args_create_new_pred(UnusedArgInfo),
+    map.keys(ProcToUnusedArgsMap, PredProcIdsToFix),
+    list.foldl2(unused_args_create_new_pred(ProcToUnusedArgsMap),
         PredProcIdsToFix, NewProcMap0, NewProcMap, !ModuleInfo),
     % maybe_write_string(VeryVerbose, "% Finished new preds.\n", !IO),
     delete_unused_args_in_module(VeryVerbose, GlobalVarUsageMap,
@@ -133,13 +133,13 @@ optimize_unused_args(VeryVerbose, UnusedArgInfo, GlobalVarUsageMap,
     % calling interface. The other is that the next proc_id for a predicate is
     % chosen based on the length of the list of proc_ids.
     %
-:- pred unused_args_create_new_pred(unused_arg_info::in, pred_proc_id::in,
-    new_proc_map::in, new_proc_map::out,
+:- pred unused_args_create_new_pred(proc_to_unused_args_map::in,
+    pred_proc_id::in, new_proc_map::in, new_proc_map::out,
     module_info::in, module_info::out) is det.
 
-unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
+unused_args_create_new_pred(ProcToUnusedArgsMap, OrigPredProcId,
         !NewProcMap, !ModuleInfo) :-
-    map.lookup(UnusedArgInfo, OrigPredProcId, UnusedArgs),
+    map.lookup(ProcToUnusedArgsMap, OrigPredProcId, UnusedArgs),
     module_info_pred_proc_info(!.ModuleInfo, OrigPredProcId,
         OrigPredInfo, OrigProcInfo),
     PredModuleName = pred_info_module(OrigPredInfo),
