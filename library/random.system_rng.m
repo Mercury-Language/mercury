@@ -19,12 +19,17 @@
 % of random material.
 %
 % On the C backends, the system RNG depends on the operating system.
-% For macOS, Cygwin, OpenBSD, NetBSD and versions of FreeBSD from 12 onwards,
-% we use the arc4random() family of functions.
-% For Windows, we use the rand_s() function.
+%
+% For macOS, OpenBSD, NetBSD and versions of FreeBSD from 12 onwards, we use
+% the arc4random() family of functions.
+%
+% For Windows, we use rand_s() from the Windows CRT; except when using Cygwin,
+% where we use the arc4random() family of functions instead.
+%
 % For Linux, AIX, Solaris and versions of FreeBSD before 12, we read randomness
 % from /dev/urandom; on these system each open system RNG handle will require
 % an open file descriptor.
+%
 % On other operating systems the system RNG is not available; on these systems
 % attempting to open a system RNG handle will throw an exception.
 %
@@ -63,7 +68,16 @@
 
     % open_system_rng(MaybeHandle, !IO):
     %
-    % Returns a handle through which the system RNG can be accessed.
+    % Attempt to open a handle through which the system RNG can be accessed.
+    % On success, return ok(Handle). The caller is responsible for releasing
+    % the handle and any associated OS resources by calling close_system_rng/3
+    % when it is no longer needed.
+    %
+    % Return error(Msg), where Msg is a human-readable description of the
+    % error
+    % - if the system RNG is not supported on this platform, or
+    % - if a handle cannot be obtained (for example because /dev/urandom
+    %   could not be opened).
     %
 :- pred open_system_rng(maybe_error(system_rng)::out, io::di, io::uo)
     is det.
@@ -77,8 +91,15 @@
 
 %---------------------------------------------------------------------------%
 
-    % Generate a uniformly distributed unsigned integer of 8, 16, 32 or
-    % 64 bits respectively using the system RNG.
+    % generate_uint8(Handle, U8, !IO):
+    % generate_uint16(Handle, U16, !IO):
+    % generate_uint32(Handle, U32, !IO):
+    % generate_uint64(Handle, U64, !IO):
+    %
+    % Generate a uniformly distributed unsigned integer of 8-, 16-, 32- or
+    % 64-bits respectively using the system RNG accessed via Handle.
+    % Throw an exception if an error occurs, for example if Handle has been
+    % closed or if the underlying RNG cannot be read.
     %
 :- pred generate_uint8(system_rng::in, uint8::out, io::di, io::uo) is det.
 :- pred generate_uint16(system_rng::in, uint16::out, io::di, io::uo) is det.
@@ -142,7 +163,7 @@
 #elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(MR_CYGWIN)
     #define ML_SYSRAND_IMPL_ARC4RANDOM
 #elif __FreeBSD__ >= 12
-    // arc4random() on FreeBSD used RC4 until version 12.
+    // arc4random() on FreeBSD before version 12 used RC4.
     #define ML_SYSRAND_IMPL_ARC4RANDOM
 #elif defined(__FreeBSD__)
     #define ML_SYSRAND_IMPL_URANDOM
