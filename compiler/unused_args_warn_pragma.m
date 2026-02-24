@@ -77,7 +77,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 :- import_module term_context.
 
@@ -90,9 +89,7 @@ gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
     ( if map.search(ProcToUnusedArgsMap, PredProcId, UnusedArgs) then
         PredProcId = proc(PredId, ProcId) ,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ( if
-            may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo)
-        then
+        ( if may_gather_warning_pragma_for_pred(PredInfo) then
             (
                 DoWarn = do_not_warn_unused_args
             ;
@@ -117,76 +114,9 @@ gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
         DoWarn, DoPragma, PredProcIds, !.WarnedPredIds,
         !Specs, !PragmaUnusedArgInfos).
 
-:- pred may_gather_warning_pragma_for_pred(module_info::in,
-    pred_id::in, pred_info::in) is semidet.
+:- pred may_gather_warning_pragma_for_pred(pred_info::in) is semidet.
 
-may_gather_warning_pragma_for_pred(ModuleInfo, PredId, PredInfo) :-
-    ( if
-        may_gather_warning_pragma_for_pred_old(ModuleInfo, PredId, PredInfo)
-    then
-        ( if may_gather_warning_pragma_for_pred_new(PredInfo) then
-            true
-        else
-            unexpected($pred, "old succeeds, new fails")
-        )
-    else
-        ( if may_gather_warning_pragma_for_pred_new(PredInfo) then
-            unexpected($pred, "old fails, new succeeds")
-        else
-            fail
-        )
-    ).
-
-:- pred may_gather_warning_pragma_for_pred_old(module_info::in,
-    pred_id::in, pred_info::in) is semidet.
-
-may_gather_warning_pragma_for_pred_old(ModuleInfo, PredId, PredInfo) :-
-    not pred_info_is_imported(PredInfo),
-    pred_info_get_status(PredInfo, PredStatus),
-    PredStatus \= pred_status(status_opt_imported),
-
-    % Don't warn about builtins that have unused arguments.
-    not pred_info_is_builtin(PredInfo),
-    not is_unify_index_or_compare_pred(PredInfo),
-
-    % Don't warn about stubs for procedures with no clauses --
-    % in that case, we *expect* none of the arguments to be used.
-    pred_info_get_markers(PredInfo, Markers),
-    not marker_is_present(Markers, marker_stub),
-
-    % Don't warn about lambda expressions not using arguments.
-    % (The warning message for these doesn't contain context,
-    % so it's useless).
-    Name = pred_info_name(PredInfo),
-    not string.sub_string_search(Name, "__LambdaGoal__", _),
-
-    % Don't warn for a specialized version.
-    not (
-        string.sub_string_search(Name, "__ho", Position),
-        string.length(Name, Length),
-        IdLen = Length - Position - 4,
-        string.right(Name, IdLen, Id),
-        string.to_int(Id, _)
-    ),
-    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
-    TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
-    not set.member(PredId, TypeSpecForcePreds),
-
-    % Don't warn for a loop-invariant hoisting-generated procedure.
-    pred_info_get_origin(PredInfo, Origin),
-    not (
-        Origin = origin_proc_transform(proc_transform_loop_inv(_, _), _, _, _)
-    ),
-
-    % XXX We don't currently generate pragmas for the automatically
-    % generated class instance methods because the compiler aborts
-    % when trying to read them back in from the `.opt' files.
-    not marker_is_present(Markers, marker_class_instance_method),
-    not marker_is_present(Markers, marker_named_class_instance_method).
-
-:- pred may_gather_warning_pragma_for_pred_new(pred_info::in) is semidet.
-
-may_gather_warning_pragma_for_pred_new(PredInfo) :-
+may_gather_warning_pragma_for_pred(PredInfo) :-
     pred_info_get_status(PredInfo, PredStatus),
     % Previously, this test was effectively:
     % PredStatus \= pred_status(status_imported(_)),
