@@ -201,7 +201,7 @@
 %---------------------%
 
     % binary_digit_to_int(Char, Int):
-    % True if-and-only-if Char is a binary digit (0-1) representing
+    % True if-and-only-if Char is a binary digit (0 or 1) representing
     % the value Int.
     %
 :- pred binary_digit_to_int(char::in, int::out) is semidet.
@@ -455,8 +455,8 @@
 %   - pred det_from_int/2
 %
 % are implemented in terms of pred to_int/2. For the *from_int operations,
-% this is possible *only* because that predicate has a reverse mode as
-% as its usual forward mode.
+% this is possible *only* because that predicate has a reverse mode as its
+% usual forward mode.
 %
 
 to_int(C) = N :-
