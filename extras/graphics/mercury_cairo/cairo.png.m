@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains support for reading and writing PNG images.
 %
@@ -24,7 +24,8 @@
    %
 :- pred png_is_supported is semidet.
 
-    % png.image_surface_create_from_png(FileName, Surface, !IO):
+    % image_surface_create_from_png(FileName, Surface, !IO):
+    %
     % Surface is a new image surface whose contents are the PNG image
     % from FileName.
     % Throws a cairo.error/0 exception if an error occurs.
@@ -33,6 +34,7 @@
     io::di, io::uo) is det.
 
     % write_surface_to_png(Surface, FileName, !IO):
+    %
     % Write the contents of Surface to a new file FileName as a PNG image.
     % Throws a cairo.error/0 exception if an error occurs.
     %

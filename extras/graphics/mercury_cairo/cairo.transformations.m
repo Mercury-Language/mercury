@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % The predicates in this sub-module manipulate a cairo context's current
 % transformation matrix.
@@ -18,25 +18,29 @@
 
 %-----------------------------------------------------------------------------%
 
-    % transformations.translate(Context, Tx, Ty, !IO):
+    % translate(Context, Tx, Ty, !IO):
+    %
     % Modifies the current transformation matrix for Context by translating the
     % user space origin by (Tx, Ty).
     %
 :- pred translate(context(T)::in, float::in, float::in, io::di, io::uo) is det.
 
-    % transformations.scale(Context, Sx, Sy, !IO):
+    % scale(Context, Sx, Sy, !IO):
+    %
     % Modifies the current transformation matrix for Context by scaling the X
     % and Y user space axes by Sx and Sy respectively.
     %
 :- pred scale(context(T)::in, float::in, float::in, io::di, io::uo) is det.
 
-    % transformations.rotate(Context, Angle, !IO):
+    % rotate(Context, Angle, !IO):
+    %
     % Modifies the current transformation matrix for context by rotating the
     % user space axes by Angle radians.
     %
 :- pred rotate(context(T)::in, float::in, io::di, io::uo) is det.
 
-    % transformations.transform(Context, Matrix, !IO):
+    % transform(Context, Matrix, !IO):
+    %
     % Modifies the current transformation matrix for Context by applying
     % Matrix as an additional transformation.
     % The new transformation of user space takes place after any existing
@@ -44,48 +48,47 @@
     %
 :- pred transform(context(T)::in, matrix::in, io::di, io::uo) is det.
 
-    % transformations.set_matrix(Context, Matrix, !IO):
+    % set_matrix(Context, Matrix, !IO):
+    %
     % Set the current transformation matrix for Context to Matrix.
     %
 :- pred set_matrix(context(T)::in, matrix::in, io::di, io::uo) is det.
 
-    % transformations.get_matrix(Context, Matrix, !IO):
+    % get_matrix(Context, Matrix, !IO):
+    %
     % Matrix is the current transformation matrix for Context.
     %
 :- pred get_matrix(context(T)::in, matrix::out, io::di, io::uo) is det.
 
-    % transformations.identity_matrix(Context, !IO):
+    % identity_matrix(Context, !IO):
+    %
     % Reset the current transformation matrix for Context by setting
     % it equal to the identity matrix.
     %
 :- pred identity_matrix(context(T)::in, io::di, io::uo) is det.
 
-    % transformations.user_to_device(Context, X_usr, Y_usr,
-    %   X_dev, Y_dev, !IO):
+    % user_to_device(Context, X_usr, Y_usr, X_dev, Y_dev, !IO):
     %
     % Transform a coordinate from user space to device space.
     %
 :- pred user_to_device(context(T)::in, float::in, float::in,
     float::out, float::out, io::di, io::uo) is det.
 
-    % transformations.user_to_device_distance(Context, DX_usr, DY_usr,
-    %   DX_dev, DY_dev, !IO):
+    % user_to_device_distance(Context, DX_usr, DY_usr, DX_dev, DY_dev, !IO):
     %
     % Transform a distance vector from device space to user space.
     %
 :- pred user_to_device_distance(context(T)::in, float::in, float::in,
     float::out, float::out, io::di, io::uo) is det.
 
-    % transformations.device_to_user(Context, X_dev, Y_dev,
-    %   X_usr, Y_usr, !IO):
+    % device_to_user(Context, X_dev, Y_dev, X_usr, Y_usr, !IO):
     %
     % Transform a coordinate from device space to user space.
     %
 :- pred device_to_user(context(T)::in, float::in, float::in,
     float::out, float::out, io::di, io::uo) is det.
 
-    % transformations.device_to_user_distance(Context, DX_dev, DY_dev,
-    %   DX_usr, DY_usr, !IO):
+    % device_to_user_distance(Context, DX_dev, DY_dev, DX_usr, DY_usr, !IO):
     %
     % Transform a distance vector from device space to user space.
     %

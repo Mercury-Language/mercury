@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % A Mercury binding to the cairo 2D graphics library.
 %
@@ -192,37 +192,41 @@
 % Operations on cairo contexts
 %
 
-    % cairo.create_context(TargetSurface, Context, !IO):
+    % create_context(TargetSurface, Context, !IO):
+    %
     % Context is a new cairo context with all graphics state parameters set to
     % default values and with TargetSurface as a target surface.
     %
 :- pred create_context(S::in, context(S)::out,
     io::di, io::uo) is det <= surface(S).
 
-    % cairo.save(Context, !IO):
+    % save(Context, !IO):
+    %
     % Make a copy of the current state of Context and save it on an internal
     % stack of saved states for Context.
     %
 :- pred save(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.restore(Context, !IO):
+    % restore(Context, !IO):
+    %
     % Restore Context to the state saved by a preceding call to cairo.save/3
     % and remove that state from the stack of saved states.
     %
 :- pred restore(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.get_target(Context, Surface, !IO):
+    % get_target(Context, Surface, !IO):
+    %
     % Surface is the target surface for Context as passed to
     % cairo.create_context/4.
     %
 :- pred get_target(context(S)::in, S::out,
     io::di, io::uo) is det <= surface(S).
 
-    % cairo.push_group(Context, !IO):
+    % push_group(Context, !IO):
     %
 :- pred push_group(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.push_group_with_content(Context, ContentType, !IO):
+    % push_group_with_content(Context, ContentType, !IO):
     %
 :- pred push_group_with_content(context(S)::in, content::in,
     io::di, io::uo) is det.
@@ -240,12 +244,14 @@
 :- pred set_source_rgba(context(S)::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
 
-    % cairo.set_source(Context, Pattern, !IO):
+    % set_source(Context, Pattern, !IO):
+    %
     % Set the current source pattern for Context to Pattern.
     %
 :- pred set_source(context(S)::in, pattern::in, io::di, io::uo) is det.
 
-    % cairo.set_source_surface(Context, Surface, X, Y, !IO):
+    % set_source_surface(Context, Surface, X, Y, !IO):
+    %
     % Create a pattern from Surface and make it the current source pattern
     % for Context.  (X, Y) is the user-space coordinate at which the surface
     % origin should appear.
@@ -253,7 +259,8 @@
 :- pred set_source_surface(context(S)::in, T::in, float::in, float::in,
     io::di, io::uo) is det <= surface(T).
 
-    % cairo.get_source(Context, Pattern, !IO):
+    % get_source(Context, Pattern, !IO):
+    %
     % Pattern is the current source pattern for Context.
     %
 :- pred get_source(context(S)::in, pattern::out, io::di, io::uo) is det.
@@ -273,17 +280,20 @@
             % Perform antialiasing by taking advantage of the order of
             % subpixel elements on devices such as LCD panel.
 
-    % cairo.set_antialias(Context, AntiAlias, !IO):
+    % set_antialias(Context, AntiAlias, !IO):
+    %
     % Set the antialiasing mode of Context to AntiAlias.
     %
 :- pred set_antialias(context(S)::in, antialias::in, io::di, io::uo) is det.
 
-    % cairo.get_antialias(Context, AntiAlias, !IO):
+    % get_antialias(Context, AntiAlias, !IO):
+    %
     % AntiAlias is the current antialiasing mode for Context.
     %
 :- pred get_antialias(context(S)::in, antialias::out, io::di, io::uo) is det.
 
-    % cairo.set_dash(Context, Dashes, Offset, !IO):
+    % set_dash(Context, Dashes, Offset, !IO):
+    %
     % Dashes is the dash pattern to be used by cairo.stroke/3.
     % Throws a cairo.error/0 exception if an element of Dashes is negative,
     % or all of the elements of Dashes are zero.
@@ -291,7 +301,8 @@
 :- pred set_dash(context(S)::in, list(float)::in, float::in,
     io::di, io::uo) is det.
 
-    % cairo.get_dash_count(Context, Count !IO):
+    % get_dash_count(Context, Count, !IO):
+    %
     % Count is the number of dashes in the current dash pattern for
     % Context.  (Count is 0, if there is no current dash pattern.)
     %
@@ -305,13 +316,15 @@
     --->    fill_rule_winding
     ;       fill_rule_even_odd.
 
-    % cairo.set_fill_rule(Context, FillRule, !IO):
+    % set_fill_rule(Context, FillRule, !IO):
+    %
     % Set the current fill rule for Context to FillRule.
     %
 :- pred set_fill_rule(context(S)::in, fill_rule::in, io::di, io::uo) is det.
 
-    % cairo.get_fill_rule(Context, FillRule, !IO):
-    % FillRule is the current file rule for Context.
+    % get_fill_rule(Context, FillRule, !IO):
+    %
+    % FillRule is the current fill rule for Context.
     %
 :- pred get_fill_rule(context(S)::in, fill_rule::out, io::di, io::uo) is det.
 
@@ -328,12 +341,14 @@
     ;       line_cap_square.
             % Use squared ending, the center of the square is the end point.
 
-    % cairo.set_line_cap(Context, LineCap, !IO):
+    % set_line_cap(Context, LineCap, !IO):
+    %
     % Set the line cap style for Context to LineCap.
     %
 :- pred set_line_cap(context(S)::in, line_cap::in, io::di, io::uo) is det.
 
-    % cairo.get_line_cap(Context, LineCap, !IO):
+    % get_line_cap(Context, LineCap, !IO):
+    %
     % LineCap is the current line cap style for Context.
     %
 :- pred get_line_cap(context(S)::in, line_cap::out, io::di, io::uo) is det.
@@ -352,32 +367,38 @@
             % Use a cut-off join, the join is cut off at half the line width
             % from the joint point.
 
-    % cairo.set_line_join(Context, LineJoin, !IO):
+    % set_line_join(Context, LineJoin, !IO):
+    %
     % Set the line join style for Context to LineJoin.
     %
 :- pred set_line_join(context(S)::in, line_join::in, io::di, io::uo) is det.
 
-    % cairo.get_line_join(Context, LineJoin, !IO):
+    % get_line_join(Context, LineJoin, !IO):
+    %
     % LineJoin is the current line join style for Context.
     %
 :- pred get_line_join(context(S)::in, line_join::out, io::di, io::uo) is det.
 
-    % cairo.set_line_width(Context, Width, !IO):
+    % set_line_width(Context, Width, !IO):
+    %
     % Set the line Width for Context to Width.
     %
 :- pred set_line_width(context(S)::in, float::in, io::di, io::uo) is det.
 
-    % cairo.get_line_width(Context, Width, !IO):
+    % get_line_width(Context, Width, !IO):
+    %
     % Width is the current line width for Context.
     %
 :- pred get_line_width(context(S)::in, float::out, io::di, io::uo) is det.
 
-    % cairo.set_miter_limit(Context, Limit, !IO):
+    % set_miter_limit(Context, Limit, !IO):
+    %
     % Set the miter limit for Context to Limit.
     %
 :- pred set_miter_limit(context(S)::in, float::in, io::di, io::uo) is det.
 
-    % cairo.get_miter_limit(Context, Limit, !IO):
+    % get_miter_limit(Context, Limit, !IO):
+    %
     % Limit is the miter limit for Context.
     %
 :- pred get_miter_limit(context(S)::in, float::out, io::di, io::uo) is det.
@@ -420,25 +441,28 @@
     ;       operator_hsl_color
     ;       operator_hsl_luminosity.
 
-    % cairo.set_operator(Context, Operator, !IO):
+    % set_operator(Context, Operator, !IO):
+    %
     % Set the compositing operator for Context to Operator.
     %
 :- pred set_operator(context(S)::in, operator::in, io::di, io::uo) is det.
 
-    % cairo.get_operator(Context, Operator, !IO):
+    % get_operator(Context, Operator, !IO):
+    %
     % Operator is the current compositing operator for Context.
     %
 :- pred get_operator(context(S)::in, operator::out, io::di, io::uo) is det.
 
-    % cairo.set_tolerance(Context, Tolerance, !IO):
+    % set_tolerance(Context, Tolerance, !IO):
     %
 :- pred set_tolerance(context(S)::in, float::in, io::di, io::uo) is det.
 
-    % cairo.get_tolerance(Context, Tolerance, !IO):
+    % get_tolerance(Context, Tolerance, !IO):
     %
 :- pred get_tolerance(context(S)::in, float::out, io::di, io::uo) is det.
 
-    % cairo.clip(Context, !IO):
+    % clip(Context, !IO):
+    %
     % Establishes a new clip region by intersecting the current clip region
     % with the current path as it would be filled by cairo.fill/3 and according
     % to the current fill rule.
@@ -446,31 +470,36 @@
     %
 :- pred clip(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.clip_preserve(Context, !IO):
+    % clip_preserve(Context, !IO):
+    %
     % As above, but do not clear the current path from Context.
     %
 :- pred clip_preserve(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.clip_extents(Context, Left, Top, Right, Bottom, !IO):
+    % clip_extents(Context, Left, Top, Right, Bottom, !IO):
+    %
     % Compute a bounding box in user coordinates covering the area inside the
     % current clip for Context.
     %
 :- pred clip_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
-    % cairo.in_clip(Context, X, Y Result, !IO):
+    % in_clip(Context, X, Y Result, !IO):
+    %
     % Result is "yes" if the point (X, Y) is inside the area that
     % would be visible through the current clip for Context.
     %
 :- pred in_clip(context(S)::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
-    % cairo.reset_clip(Context, !IO):
+    % reset_clip(Context, !IO):
+    %
     % Reset the current clip region to its original, unrestricted state.
     %
 :- pred reset_clip(context(T)::in, io::di, io::uo) is det.
 
-    % cairo.fill(Context, !IO):
+    % fill(Context, !IO):
+    %
     % Fill the current path according to the current fill rule.
     % (Each sub-path is implicitly closed before being filled.)
     % The current path for Context will be cleared.
@@ -482,7 +511,8 @@
     %
 :- pred fill_preserve(context(T)::in, io::di, io::uo) is det.
 
-    % cairo.fill_extents(Context, Left, Top, Right, Bottom, !IO):
+    % fill_extents(Context, Left, Top, Right, Bottom, !IO):
+    %
     % Compute a bounding box in user coordinates covering the area that would
     % be affected, (the "inked" area), by a cairo.fill/3 operation given the
     % current path and fill parameters. If the current path is empty, returns
@@ -492,7 +522,8 @@
 :- pred fill_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
-    % cairo.in_fill(Context, X, Y, Result, !IO):
+    % in_fill(Context, X, Y, Result, !IO):
+    %
     % Result is "yes" if the coordinate (X, Y) is inside the area that
     % would be affected by a cairo.fill/3 operation given the current
     % path and filling parameters.  Result is "no" otherwise.
@@ -500,42 +531,49 @@
 :- pred in_fill(context(S)::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
-    % cairo.mask(Context, Pattern, !IO):
+    % mask(Context, Pattern, !IO):
+    %
     % Paint the current source using the alpha channel of Pattern as a mask.
     %
 :- pred mask(context(S)::in, pattern::in, io::di, io::uo) is det.
 
-    % cairo.mask_surface(Context, Surface, X, Y, !IO):
+    % mask_surface(Context, Surface, X, Y, !IO):
+    %
     % Paint the current source using the alpha channel of Surface as a mask.
     % (X, Y) is coordinate at which to place the origin of Surface.
     %
 :- pred mask_surface(context(S)::in, Mask::in, float::in, float::in,
     io::di, io::uo) is det <= surface(Mask).
 
-    % cairo.paint(Context, !IO):
+    % paint(Context, !IO):
+    %
     % Paint the current source everywhere within the current clip region.
     %
 :- pred paint(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.paint_with_alpha(Context, Alpha, !IO):
+    % paint_with_alpha(Context, Alpha, !IO):
+    %
     % Paint the current source everywhere within the current clip region using
     % a mask of constant alpha value Alpha.
     %
 :- pred paint_with_alpha(context(S)::in, float::in, io::di, io::uo) is det.
 
-    % cairo.stroke(Context, !IO):
+    % stroke(Context, !IO):
+    %
     % Stroke the current path according to the current line width, line join,
     % line cap, and dash settings for Context.
     % The current path will be cleared.
     %
 :- pred stroke(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.stroke_preserve(Context, !IO):
+    % stroke_preserve(Context, !IO):
+    %
     % As above, but preserve the current path for Context.
     %
 :- pred stroke_preserve(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.stroke_extents(Context, Left, Top, Right, Bottom, !IO):
+    % stroke_extents(Context, Left, Top, Right, Bottom, !IO):
+    %
     % Compute a bounding box in user coordinates covering the area that would
     % be affected, (the "inked" area), by a cairo.stroke/3 operation given the
     % current path and stroke parameters. If the current path is empty, return
@@ -545,7 +583,8 @@
 :- pred stroke_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
-    % cairo.in_stroke(Context, X, Y, Result, !IO):
+    % in_stroke(Context, X, Y, Result, !IO):
+    %
     % Result is "yes" if the coordinate (X, Y) is inside the area that would
     % be affected by a cairo.stroke/3 operation given the current path and
     % stroking parameters.
@@ -553,7 +592,8 @@
 :- pred in_stroke(context(S)::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
-    % cairo.copy_page(Context, !IO):
+    % copy_page(Context, !IO):
+    %
     % Emits the current page for backends that support multiple pages, but
     % doesn't clear it, so, the contents of the current page will be retained
     % for the next page too. Use cairo.show_page/3 if you want to get an empty
@@ -561,7 +601,8 @@
     %
 :- pred copy_page(context(S)::in, io::di, io::uo) is det.
 
-    % cairo.show_page(Context, !IO):
+    % show_page(Context, !IO):
+    %
     % Emits and clears the current page for backends that support multiple
     % pages.
     %
@@ -569,28 +610,33 @@
 
 %---------------------------------------------------------------------------%
 
-    % cairo.status(Context, Status, !IO):
+    % status(Context, Status, !IO):
+    %
     % Status is the current status of Context.
     %
 :- pred status(context(S)::in, status::out, io::di, io::uo) is det.
 
-    % cairo.surface_status(Surface, Status, !IO):
+    % surface_status(Surface, Status, !IO):
+    %
     % Status is the current status of Surface.
     %
 :- pred surface_status(S::in, status::out, io::di, io::uo) is det
    <= surface(S).
 
-    % cairo.pattern_status(Pattern, Status, !IO):
+    % pattern_status(Pattern, Status, !IO):
+    %
     % Status is the current status of Pattern.
     %
 :- pred pattern_status(pattern::in, status::out, io::di, io::uo) is det.
 
-    % cairo.region_status(Region, Status, !IO):
+    % region_status(Region, Status, !IO):
+    %
     % Status is the current status of Region.
     %
 :- pred region_status(region::in, status::out, io::di, io::uo) is det.
 
-    % cairo.status_to_string(Status) = String:
+    % status_to_string(Status) = String:
+    %
     % String is a human-readable description of Status.
     %
 :- func status_to_string(status) = string.
@@ -1016,8 +1062,8 @@ create_context(Surface, Context, !IO) :-
     raw_pattern = cairo_get_source(Ctxt->mcairo_raw_context);
 
     /*
-    ** The value returned by cairo_get_surface() is owned by
-    ** by cairo.  Since we are going to retain a reference to
+    ** The value returned by cairo_get_source() is owned by
+    ** by cairo. Since we are going to retain a reference to
     ** it we need to increment the reference count here.
     */
     raw_pattern = cairo_pattern_reference(raw_pattern);
@@ -1409,7 +1455,7 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 :- pred make_glyph_array(list(glyph)::in, glyph_array::uo, int::out,
     io::di, io::uo) is det.
 
-make_glyph_array(Glyphs, Array, NumGlyphs, !IO) :-
+make_glyph_array(Glyphs, Array, NumGlyphs, IO, IO) :-
     list.length(Glyphs, NumGlyphs),
     alloc_glyph_array(NumGlyphs, Array0),
     fill_glyph_array(Glyphs, 0, Array0, Array).

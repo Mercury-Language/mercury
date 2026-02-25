@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module provides support for rendering text.
 %
@@ -62,69 +62,79 @@
 
 %---------------------------------------------------------------------------%
 
-    % text.select_font_face(Context, Family, Slant, Weight, !IO):
+    % select_font_face(Context, Family, Slant, Weight, !IO):
+    %
     % Selects a family and style of font from a simplified description as a
     % Family name, Slant and Weight.
     %
 :- pred select_font_face(context(T)::in, font_family::in, font_slant::in,
     font_weight::in, io::di, io::uo) is det.
 
-    % text.set_font_size(Context, Size, !IO):
+    % set_font_size(Context, Size, !IO):
+    %
     % Sets the current font matrix to a scale by a factor of Size.
     %
 :- pred set_font_size(context(S)::in, float::in, io::di, io::uo) is det.
 
-    % text.set_font_matrix(Context, Matrix, !IO):
+    % set_font_matrix(Context, Matrix, !IO):
+    %
     % Set the current font matrix for Context to Matrix.
     %
 :- pred set_font_matrix(context(S)::in, matrix::in, io::di, io::uo) is det.
 
-    % text.get_font_matrix(Context, Matrix, !IO):
+    % get_font_matrix(Context, Matrix, !IO):
+    %
     % Matrix is the current font matrix for Context.
     %
 :- pred get_font_matrix(context(S)::in, matrix::out, io::di, io::uo) is det.
 
-    % text.set_font_options(Context, FontOptions, !IO):
+    % set_font_options(Context, FontOptions, !IO):
+    %
     % Set the custom font rendering options for Context to FontOptions.
     %
 :- pred set_font_options(context(S)::in, font_options::in,
     io::di, io::uo) is det.
 
-    % text.get_font_options(Context, FontOptions, !IO):
+    % get_font_options(Context, FontOptions, !IO):
+    %
     % FontOptions are the custom font rendering options for Context.
     %
 :- pred get_font_options(context(S)::in, font_options::out,
     io::di, io::uo) is det.
 
-    % text.set_font_face(Context, FontFace, !IO):
+    % set_font_face(Context, FontFace, !IO):
+    %
     % Replace the current font face for Context with FontFace.
     %
 :- pred set_font_face(context(S)::in, F::in, io::di, io::uo) is det
     <= font_face(F).
 
-    % text.set_default_font_face(Context, !IO):
+    % set_default_font_face(Context, !IO):
+    %
     % Replace the current font face for Context with the default font face.
     %
 :- pred set_default_font_face(context(S)::in, io::di, io::uo) is det.
 
-    % text.get_font_face(Context, FontFace, !IO):
+    % get_font_face(Context, FontFace, !IO):
+    %
     % FontFace is the current font face for Context.
     %
 :- some [F] pred get_font_face(context(S)::in, F::out, io::di, io::uo) is det
     => font_face(F).
 
-    % text.show_text(Context, Text, !IO):
+    % show_text(Context, Text, !IO):
     %
 :- pred show_text(context(S)::in, string::in, io::di, io::uo) is det.
 
-    % text.show_glyphs(Context, Glyphs, !IO):
+    % show_glyphs(Context, Glyphs, !IO):
     %
 :- pred show_glyphs(context(S)::in, list(glyph)::in, io::di, io::uo) is det.
 
 :- pred font_extents(context(S)::in, font_extents::out, io::di, io::uo)
     is det.
 
-    % text.extents(Context, String, Extents, !IO):
+    % extents(Context, String, Extents, !IO):
+    %
     % Extents is the text extents of String.
     %
 :- pred text_extents(context(S)::in, string::in, text_extents::out,

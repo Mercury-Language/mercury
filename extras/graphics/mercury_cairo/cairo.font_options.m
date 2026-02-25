@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains predicates for dealing with font_options
 % objects, which are how cairo controls how fonts are rendered.
@@ -48,6 +48,7 @@
     io::di, io::uo) is det.
 
     % font_options.get_subpixel_order(FontOptions, SubpixelOrder, !IO):
+    %
     % SubpixelOrder is the current subpixel order for FontOptions.
     %
 :- pred get_subpixel_order(font_options::in, subpixel_order::out,

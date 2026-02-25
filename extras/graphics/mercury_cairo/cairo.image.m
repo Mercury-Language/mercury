@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module provides image surface, which allow rendering to memory
 % buffers.
@@ -24,29 +24,34 @@
 
 %---------------------------------------------------------------------------%
 
-    % image.create_surface(Format, Width, Height, Surface, !IO):
+    % create_surface(Format, Width, Height, Surface, !IO):
+    %
     % Surface is a new image surface.
     % Throws a cairo.error/0 exception if the surface cannot be created.
     %
 :- pred create_surface(format::in, int::in, int::in, image_surface::out,
     io::di, io::uo) is det.
 
-    % image.get_format(Surface, Format, !IO):
+    % get_format(Surface, Format, !IO):
+    %
     % Format is the pixel format for Surface.
     %
 :- pred get_format(image_surface::in, format::out, io::di, io::uo) is det.
 
-    % image.get_width(Surface, Width, !IO):
+    % get_width(Surface, Width, !IO):
+    %
     % Width is the width of Surface (in pixels).
     %
 :- pred get_width(image_surface::in, int::out, io::di, io::uo) is det.
 
-    % image.get_height(Surface, Height, !IO):
+    % get_height(Surface, Height, !IO):
+    %
     % Height is the height of Surface (in pixels).
     %
 :- pred get_height(image_surface::in, int::out, io::di, io::uo) is det.
 
-    % image.get_stride(Surface, Stride, !IO):
+    % get_stride(Surface, Stride, !IO):
+    %
     % Stride is the stride of Surface (in bytes).
     %
 :- pred get_stride(image_surface::in, int::out, io::di, io::uo) is det.

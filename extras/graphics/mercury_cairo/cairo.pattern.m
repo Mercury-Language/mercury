@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains predicates and types that deal with patterns.
 %
@@ -84,7 +84,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % pattern.add_color_stop_rgb(Pattern, Offset, Red, Green, Blue, !IO):
+    % add_color_stop_rgb(Pattern, Offset, Red, Green, Blue, !IO):
+    %
     % Adds an opaque color stop to a gradient pattern.
     % Offset specifies the location along the gradient's control vector.
     % Throws a cairo.error/0 exception if Pattern is not a gradient pattern.
@@ -92,8 +93,7 @@
 :- pred add_color_stop_rgb(pattern::in, float::in, float::in, float::in,
     float::in, io::di, io::uo) is det.
 
-    % pattern.add_color_stop_rgba(Pattern, Offset, Red, Green, Blue, Alpha,
-    %   !IO):
+    % add_color_stop_rgba(Pattern, Offset, Red, Green, Blue, Alpha, !IO):
     %
     % Adds a translucent color stop to a gradient pattern.
     % The offset specifies the location along the gradient's control vector.
@@ -106,7 +106,8 @@
 % :- pred get_color_stop_count
 % :- pred get_color_stop_rgba
 
-    % pattern.create_rgb(Red, Green, Blue, Pattern, !IO):
+    % create_rgb(Red, Green, Blue, Pattern, !IO):
+    %
     % Pattern is a new pattern corresponding to an opaque color.
     % The color components, Red, Green, and Blue are in the range [0, 1].
     % Value outside that range will be clamped.
@@ -114,7 +115,8 @@
 :- pred create_rgb(float::in, float::in, float::in, pattern::out,
     io::di, io::uo) is det.
 
-    % pattern.create_rgba(Red, Green, Blue, Alpha, Pattern, !IO):
+    % create_rgba(Red, Green, Blue, Alpha, Pattern, !IO):
+    %
     % Pattern is a new pattern corresponding to a translucent color.
     % The color components, Red, Green, Blue, and Alpha are in the
     % range [0, 1].  Value outside that range will be clamped.
@@ -124,13 +126,15 @@
 
 % :- pred get_rgba - NYI
 
-    % pattern.create_for_surface(Surface, Pattern, !IO):
+    % create_for_surface(Surface, Pattern, !IO):
+    %
     % Pattern is a new pattern for Surface.
     %
 :- pred create_for_surface(S::in, pattern::out, io::di, io::uo)
     is det <= surface(S).
 
-    % pattern.create_linear(X0, Y0, X1, Y1, Pattern, !IO):
+    % create_linear(X0, Y0, X1, Y1, Pattern, !IO):
+    %
     % Pattern is a new linear gradient pattern along the line defined by
     % (X0, Y0) and (X1, Y1).
     %
@@ -139,8 +143,7 @@
 
 % :- pred get_linear_points - NYI.
 
-    % pattern.create_radial(Cx0, Cy0, Radius0, Cx1, Cy1, Radius1,
-    %   Pattern, !IO):
+    % create_radial(Cx0, Cy0, Radius0, Cx1, Cy1, Radius1, Pattern, !IO):
     %
     % Pattern is a new radial gradient pattern between the two circles defined
     % by (Cx0, Cy0, Radius0) and (Cx1, Cy1, Radius1).
@@ -150,37 +153,44 @@
 
 % :- pred get_radial_circles - NYI.
 
-    % pattern.set_extend(Pattern, Extend, !IO):
+    % set_extend(Pattern, Extend, !IO):
+    %
     % Set the extend mode for Pattern to Extend.
     %
 :- pred set_extend(pattern::in, extend::in, io::di, io::uo) is det.
 
-    % pattern.get_extend(Pattern, Extend, !IO):
+    % get_extend(Pattern, Extend, !IO):
+    %
     % Extend is the current extend mode for Pattern.
     %
 :- pred get_extend(pattern::in, extend::out, io::di, io::uo) is det.
 
-    % pattern.set_filter(Pattern, Filter, !IO):
+    % set_filter(Pattern, Filter, !IO):
+    %
     % Set Filter to be the filter used when resizing Pattern.
     %
 :- pred set_filter(pattern::in, filter::in, io::di, io::uo) is det.
 
-    % pattern.get_filter(Pattern, Filter, !IO):
+    % get_filter(Pattern, Filter, !IO):
+    %
     % Filter is the current filter for Pattern.
     %
 :- pred get_filter(pattern::in, filter::out, io::di, io::uo) is det.
 
-    % pattern.set_matrix(Pattern, Matrix, !IO):
+    % set_matrix(Pattern, Matrix, !IO):
+    %
     % Set the transformation matrix for Pattern to Matrix.
     %
 :- pred set_matrix(pattern::in, matrix::in, io::di, io::uo) is det.
 
-    % pattern.get_matrix(Pattern, Matrix, !IO):
+    % get_matrix(Pattern, Matrix, !IO):
+    %
     % Matrix is the current transformation matrix for Pattern.
     %
 :- pred get_matrix(pattern::in, matrix::out, io::di, io::uo) is det.
 
-    % pattern.get_type(Pattern, Type, !IO):
+    % get_type(Pattern, Type, !IO):
+    %
     % Type is pattern type of Pattern.
     %
 :- pred get_type(pattern::in, pattern_type::out, io::di, io::uo) is det.

@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains predicates for creating and manipulating path
 % data.
@@ -20,49 +20,57 @@
 
 %---------------------------------------------------------------------------%
 
-    % path.copy_path(Context, Path, !IO):
+    % copy_path(Context, Path, !IO):
+    %
     % Path is a copy of the current path.
     %
 :- pred copy_path(context(T)::in, path::out, io::di, io::uo) is det.
 
-    % path.copy_path_flat(Context, Path, !IO):
+    % copy_path_flat(Context, Path, !IO):
+    %
     % Path is a flattened copy of the current path.
     % (Curves are replaced by piecewise linear approximations.)
     %
 :- pred copy_path_flat(context(T)::in, path::out, io::di, io::uo) is det.
 
-    % path.append_path(Context, Path, !IO):
+    % append_path(Context, Path, !IO):
+    %
     % Append Path to the current path.
     %
 :- pred append_path(context(T)::in, path::in, io::di, io::uo) is det.
 
-    % path.has_current_point(Context, Result, !IO):
+    % has_current_point(Context, Result, !IO):
+    %
     % Result is "yes" if a current point is defined on the current path
     % and "no" otherwise.
     %
 :- pred has_current_point(context(T)::in, bool::out, io::di, io::uo) is det.
 
-    % path.get_current_point(Context, X, Y, !IO):
+    % get_current_point(Context, X, Y, !IO):
+    %
     % (X, Y) is the current point of the current path.
     % If the current path has no current point then (X, Y) = (0.0, 0.0).
     %
 :- pred get_current_point(context(T)::in, float::out, float::out,
     io::di, io::uo) is det.
 
-    % path.new_path(Context, !IO):
+    % new_path(Context, !IO):
+    %
     % Clears the current point.
     % After this call there will be no path and no current point.
     %
 :- pred new_path(context(T)::in, io::di, io::uo) is det.
 
-    % path.new_sub_path(Context, !IO):
+    % new_sub_path(Context, !IO):
+    %
     % Start a new sub-path.
     % Note that the existing path is not affected.
     % After this call there will be no current point.
     %
 :- pred new_sub_path(context(T)::in, io::di, io::uo) is det.
 
-    % path.close_path(Context, !IO):
+    % close_path(Context, !IO):
+    %
     % Adds a line segment to the path from the current point to the beginning
     % of the current sub-path, (the most recent point passed to
     % cairo.move_to/5), and closes this sub-path.
@@ -71,7 +79,8 @@
     %
 :- pred close_path(context(T)::in, io::di, io::uo) is det.
 
-    % path.arc(Ctxt, Xc, Yc, R, Angle1, Angle2, !IO):
+    % arc(Ctxt, Xc, Yc, R, Angle1, Angle2, !IO):
+    %
     % Add a circular arc of radius R to the current path.
     % The arc is centred at (Xc, Yc), begins at Angle1 and proceeds in the
     % direction of increasing angles to end at Angle2.
@@ -81,7 +90,8 @@
 :- pred arc(context(T)::in, float::in, float::in,
     float::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.arc_negative(Context, Xc, Yc, R, Angle1, Angle2, !IO):
+    % arc_negative(Context, Xc, Yc, R, Angle1, Angle2, !IO):
+    %
     % Add a circular arc of radius R to the current path.
     % The arc is centred at (Xc, Yc), begins at Angle1 and proceeds in the
     % direction of decreasing angles to end at Angle2.
@@ -91,7 +101,8 @@
 :- pred arc_negative(context(T)::in, float::in, float::in,
     float::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.curve_to(Context, X1, Y1, X2, Y2, X3, Y3, !IO):
+    % curve_to(Context, X1, Y1, X2, Y2, X3, Y3, !IO):
+    %
     % Adds a cubic Bezier spline to the path from the current point to position
     % (X3, Y3) in user-space coordinates, using (X1, Y1) and (X2, Y2) as the
     % control points. After this call the current point will be (x3, y3).
@@ -99,7 +110,8 @@
 :- pred curve_to(context(T)::in, float::in, float::in,
     float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.line_to(Context, X, Y, !IO):
+    % line_to(Context, X, Y, !IO):
+    %
     % Adds a line to the path from the current point to position (X, Y) in
     % user-space coordinates. After this call the current point will be (X, Y).
     % If there is no current point, then this behave like calling
@@ -107,29 +119,33 @@
     %
 :- pred line_to(context(T)::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.move_to(Context, X, Y, !IO):
+    % move_to(Context, X, Y, !IO):
+    %
     % Begin a new sub-path. After this call the current point will be (X, Y).
     %
 :- pred move_to(context(T)::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.rectangle(Context, X, Y, Width, Height, !IO):
+    % rectangle(Context, X, Y, Width, Height, !IO):
+    %
     % Adds a closed sub-path rectangle of the given size to the current path at
     % position (X, Y) in user-space coordinates.
     %
 :- pred rectangle(context(T)::in, float::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 
-    % path.text_path(Context, Text, !IO):
+    % text_path(Context, Text, !IO):
+    %
     % Adds closed paths for Text to the current path.
     %
 :- pred text_path(context(T)::in, string::in, io::di, io::uo) is det.
 
-    % path.glyph_path(Context, Glyphs, !IO)
+    % glyph_path(Context, Glyphs, !IO)
     % Adds closed paths for the glyphs to the current path.
     %
 :- pred glyph_path(context(T)::in, list(glyph)::in, io::di, io::uo) is det.
 
-    % path.rel_curve_to(Context, Dx1, Dy1, Dx2, Dy2, Dx3, Dy3, !IO):
+    % rel_curve_to(Context, Dx1, Dy1, Dx2, Dy2, Dx3, Dy3, !IO):
+    %
     % Relative-coordinate version of path.curve_to/9.
     % All offsets are relative to the current point.
     % Throws a cairo.error/0 exception if there is no current point.
@@ -137,7 +153,8 @@
 :- pred rel_curve_to(context(T)::in, float::in, float::in,
     float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 
-    % path.rel_line_to(Context, Dx, Dy, !IO):
+    % rel_line_to(Context, Dx, Dy, !IO):
+    %
     % Relative-coordinate version of path.line_to/5.
     % All offsets are relative to the current point.
     % Throws a cairo.error/0 exception if there is no current point.
@@ -145,14 +162,16 @@
 :- pred rel_line_to(context(T)::in, float::in, float::in,
     io::di, io::uo) is det.
 
-    % path.rel_move_to(Context, Dx, Dy, !IO):
+    % rel_move_to(Context, Dx, Dy, !IO):
+    %
     % Relative-coordinate version of path.move_to/5.
     % Throws a cairo.error/0 exception if there is no current point.
     %
 :- pred rel_move_to(context(T)::in, float::in, float::in,
     io::di, io::uo) is det.
 
-    % path.path_extents(Context, X1, Y1, X2, Y2, !IO):
+    % path_extents(Context, X1, Y1, X2, Y2, !IO):
+    %
     % Computes a bounding box in user-space coordinates covering the points
     % on the current path. If the current path is empty, returns an empty
     % rectangle ((0,0), (0,0)). Stroke parameters, fill rule, surface

@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au.
+% Author: Julien Fischer.
 %
 % This module contains predicates that perform various generic matrix
 % operations on cairo transformation matrices.
@@ -18,7 +18,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % matrix.init(XX, YX, XY, YY, X0, Y0, Matrix, !IO):
+    % init(XX, YX, XY, YY, X0, Y0, Matrix, !IO):
+    %
     % Matrix is the affine transformation given by:
     %
     %     <x_new> = XX * <x> + XY * <y> + X0
@@ -27,26 +28,30 @@
 :- pred init(float::in, float::in, float::in, float::in,
     float::in, float::in, matrix::out, io::di, io::uo) is det.
 
-    % matrix.init_identity(Matrix, !IO):
+    % init_identity(Matrix, !IO):
+    %
     % Matrix is the identity transformation.
     %
 :- pred init_identity(matrix::out, io::di, io::uo) is det.
 
-    % matrix.init_translate(Tx, Ty, Matrix, !IO):
+    % init_translate(Tx, Ty, Matrix, !IO):
+    %
     % Matrix is a transformation that translates by Tx and Ty in the X and Y
     % directions respectively.
     %
 :- pred init_translate(float::in, float::in, matrix::out, io::di, io::uo)
    is det.
 
-    % matrix.init_scale(Sx, Sy, Matrix, !IO):
+    % init_scale(Sx, Sy, Matrix, !IO):
+    %
     % Matrix is a transformation that scales by Sx and Sy in the X and Y
     % directions respectively.
     %
 :- pred init_scale(float::in, float::in, matrix::out, io::di, io::uo)
    is det.
 
-    % matrix.init_rotate(R, Matrix, !IO):
+    % init_rotate(R, Matrix, !IO):
+    %
     % Matrix is a transformation that rotates by R radians.
     % The direction of rotation is defined such that positive angles rotate
     % in the direction from the positive X axis toward the positive Y axis.
@@ -55,51 +60,60 @@
     %
 :- pred init_rotate(float::in, matrix::out, io::di, io::uo) is det.
 
-    % matrix.translate(Matrix, Tx, Ty, !IO):
+    % translate(Matrix, Tx, Ty, !IO):
+    %
     % Apply a translation by Tx, Ty to the transformation in Matrix.
     %
 :- pred translate(matrix::in, float::in, float::in, io::di, io::uo) is det.
 
-    % matrix.scale(Matrix, Sx, Sy, !IO):
+    % scale(Matrix, Sx, Sy, !IO):
+    %
     % Apply scaling by Sx, Sy to the transformation in Matrix.
     %
 :- pred scale(matrix::in, float::in, float::in, io::di, io::uo) is det.
 
-    % matrix.rotate(Matrix, R, !IO):
+    % rotate(Matrix, R, !IO):
+    %
     % Apply a rotation by R radians to the transformation in Matrix.
     %
 :- pred rotate(matrix::in, float::in, io::di, io::uo) is det.
 
-    % matrix.invert(Matrix, !IO):
+    % invert(Matrix, !IO):
+    %
     % Update Matrix to be the inverse of its original value.
     % Throws a cairo.error/0 exception if Matrix is not invertible.
     %
 :- pred invert(matrix::in, io::di, io::uo) is det.
 
-    % matrix.invert(Matrix, HasInverse, !IO):
+    % invert(Matrix, HasInverse, !IO):
+    %
     % If Matrix has an inverse then HasInverse = yes and update Matrix to its
     % inverse. Otherwise HasInverse = no.
     %
 :- pred invert(matrix::in, bool::out, io::di, io::uo) is det.
 
-    % matrix.multiply(Result, A, B, !IO):
+    % multiply(Result, A, B, !IO):
+    %
     % Update Result to be the product of the affine transformations in A and B.
     %
 :- pred multiply(matrix::in, matrix::in, matrix::in, io::di, io::uo) is det.
 
-    % matrix.unpack(Matrix, XX, YX, XY, YY, X0, Y0, !IO):
+    % unpack(Matrix, XX, YX, XY, YY, X0, Y0, !IO):
+    %
     % Return the six components of Matrix.
     %
 :- pred unpack(matrix::in, float::out, float::out, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
-    % matrix.transform_distance(Matrix, Dx0, Dy0, Dx, Dy, !IO):
+    % transform_distance(Matrix, Dx0, Dy0, Dx, Dy, !IO):
+    %
     % Transforms the distance vector (Dx0, Dy0) by Matrix.
     %
 :- pred transform_distance(matrix::in, float::in, float::in,
      float::out, float::out, io::di, io::uo) is det.
 
-    % matrix.transform_point(Matrix, X0, Y0, X, Y, !IO):
+    % transform_point(Matrix, X0, Y0, X, Y, !IO):
+    %
     % (X, Y) is the point (X0, Y0) transformed by Matrix.
     %
 :- pred transform_point(matrix::in, float::in, float::in,

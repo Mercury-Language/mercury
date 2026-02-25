@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains support for rendering PDF documents.
 %
@@ -23,12 +23,14 @@
 
 %---------------------------------------------------------------------------%
 
-    % pdf.have_pdf_surface:
+    % have_pdf_surface:
+    %
     % Succeeds if PDF surfaces are supported by this implementation.
     %
 :- pred have_pdf_surface is semidet.
 
-    % pdf.create_surface(FileName, Width, Height, Surface, !IO):
+    % create_surface(FileName, Width, Height, Surface, !IO):
+    %
     % Surface is a PDF surface of the specified Width and Height in points
     % to be written to FileName.
     % Throws an unsupported_surface_error/0 exception if PDF surfaces are
@@ -38,7 +40,8 @@
 :- pred create_surface(string::in, float::in, float::in, pdf_surface::out,
     io::di, io::uo) is det.
 
-    % pdf.set_size(Surface, Width, Height, !IO):
+    % set_size(Surface, Width, Height, !IO):
+    %
     % Change the size of a PDF surface for the current (and subsequent) pages.
     %
 :- pred set_size(pdf_surface::in, float::in, float::in,

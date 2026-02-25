@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 % This sub-module contains support for rendering PostScript documents.
 %
@@ -39,7 +39,8 @@
     %
 :- pred have_ps_surface is semidet.
 
-    % ps.create_surface(FileName, Width, Height, Surface, !IO):
+    % create_surface(FileName, Width, Height, Surface, !IO):
+    %
     % Surface is a PostScript surface of the specified Width and Height in
     % in points to be written to FileName.
     % Throw an unsupported_surface_error/0 exception if PostScript surfaces
@@ -49,36 +50,41 @@
 :- pred create_surface(string::in, float::in, float::in, ps_surface::out,
     io::di, io::uo) is det.
 
-    % ps.restrict_to_level(Surface, Level, !IO):
+    % restrict_to_level(Surface, Level, !IO):
+    %
     % Restrict Surface to the given Level of the PostScript specification.
     %
 :- pred restrict_to_level(ps_surface::in, ps_level::in,
     io::di, io::uo) is det.
 
-    % ps.set_eps(Surface, EPS, !IO):
-    % If EPS is "yes" then Surface will output Encapsulated PostScript.
+    % set_eps(Surface, EPS, !IO):
+    %
+    % If EPS is "yes", then Surface will output Encapsulated PostScript.
     %
 :- pred set_eps(ps_surface::in, bool::in, io::di, io::uo) is det.
 
-    % ps.get_eps(Surface, EPS, !IO):
+    % get_eps(Surface, EPS, !IO):
+    %
     % EPS is "yes" if Surface is set to output Encapsulated PostScript.
     %
 :- pred get_eps(ps_surface::in, bool::out, io::di, io::uo) is det.
 
-    % ps.set_size(Surface, Width, Height, !IO):
+    % set_size(Surface, Width, Height, !IO):
+    %
     % Change the size of Surface for the current (and subsequent) pages.
     %
 :- pred set_size(ps_surface::in, float::in, float::in, io::di, io::uo) is det.
 
-    % ps.dsc_begin_setup(Surface, !IO):
+    % dsc_begin_setup(Surface, !IO):
     %
 :- pred dsc_begin_setup(ps_surface::in, io::di, io::uo) is det.
 
-    % ps.dsc_begin_page_setup(Surface, !IO):
+    % dsc_begin_page_setup(Surface, !IO):
     %
 :- pred dsc_begin_page_setup(ps_surface::in, io::di, io::uo) is det.
 
-    % ps.dsc_comment(Surface, Comment, !IO):
+    % dsc_comment(Surface, Comment, !IO):
+    %
     % Emit Comment into the PostScript output as a comment for Surface.
     % (See the cairo manual entry for cairo_ps_surface_dsc_comment() for
     % further details.)

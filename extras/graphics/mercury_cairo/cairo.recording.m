@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Peter Wang
+% Author: Peter Wang.
 %
 % This sub-module provides recording surfaces.
 %
@@ -24,26 +24,30 @@
 
 %---------------------------------------------------------------------------%
 
-    % recording.have_recording_surface:
+    % have_recording_surface:
+    %
     % Succeeds if recording surfaces are supported by this implementation.
     %
 :- pred have_recording_surface is semidet.
 
-    % recording.create_surface(Content, MaybeExtents, Surface, !IO):
+    % create_surface(Content, MaybeExtents, Surface, !IO):
+    %
     % Surface is a new recording surface.
     % Throws a cairo.error/0 exception if the surface cannot be created.
     %
 :- pred create_surface(content::in, maybe(rectangle_f)::in,
     recording_surface::out, io::di, io::uo) is det.
 
-    % recording.ink_extents(Surface, X0, Y0, Width, Height):
+    % ink_extents(Surface, X0, Y0, Width, Height):
+    %
     % Measures the extents of the operations stored within the recording
     % surface.
     %
 :- pred ink_extents(recording_surface::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
-    % recording.get_extents(Surface, MaybeExtents):
+    % get_extents(Surface, MaybeExtents):
+    %
     % Get the extents of the recording surface.
     %
 :- pred get_extents(recording_surface::in, maybe(rectangle_f)::out,

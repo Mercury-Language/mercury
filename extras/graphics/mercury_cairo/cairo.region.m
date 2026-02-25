@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2010 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
-% Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
+% Author: Julien Fischer.
 %
 %-----------------------------------------------------------------------------%
 
@@ -15,18 +15,21 @@
 
 %-----------------------------------------------------------------------------%
 
-    % region.create(Region, !IO):
+    % create(Region, !IO):
+    %
     % Region is a new empty region.
     %
 :- pred create(region::out, io::di, io::uo) is det.
 
-    % region.create_rectangle(Rectangle, Region, !IO):
+    % create_rectangle(Rectangle, Region, !IO):
+    %
     % Region is a new region containing Rectangle.
     %
 :- pred create_rectangle(rectangle::in, region::out,
     io::di, io::uo) is det.
 
-    % region.create_rectangles(Rectangles, Region, !IO):
+    % create_rectangles(Rectangles, Region, !IO):
+    %
     % Region is a new region that containing the union of
     % Rectangles.
     %
@@ -34,23 +37,27 @@
 %:- pred create_rectangles(list(rectangle)::in, region::out,
 %    io::di, io::uo) is det.
 
-    % region.copy(Orig, Copy, !IO):
+    % copy(Orig, Copy, !IO):
+    %
     % Copy is a copy of Orig.
     %
 :- pred copy(region::in, region::out, io::di, io::uo) is det.
 
-    % region.get_extents(Region, Rectangle, !IO):
+    % get_extents(Region, Rectangle, !IO):
+    %
     % Rectangle is the bounding rectangle for Region.
     %
 :- pred get_extents(region::in, rectangle::out,
     io::di, io::uo) is det.
 
-    % region.num_rectangles(Region, NumRectangles, !IO):
+    % num_rectangles(Region, NumRectangles, !IO):
+    %
     % NumRectangles is the number of rectangles in Region.
     %
 :- pred num_rectangles(region::in, int::out, io::di, io::uo) is det.
 
-    % region.get_rectangle(Region, N, Rectangle, !IO):
+    % get_rectangle(Region, N, Rectangle, !IO):
+    %
     % Rectangle is the N'th rectangle in Region.
     % XXX the cairo manual doesn't say what happens if there
     % are less than N rectangles in Region.
@@ -58,12 +65,14 @@
 :- pred get_rectangle(region::in, int::in, rectangle::out,
     io::di, io::uo) is det.
 
-    % region.is_empty(Region, IsEmpty, !IO):
+    % is_empty(Region, IsEmpty, !IO):
+    %
     % IsEmpty is "yes" if Region is empty and "no" otherwise.
     %
 :- pred is_empty(region::in, bool::out, io::di, io::uo) is det.
 
-    % region.contains_point(Region, X, Y, Result, !IO):
+    % contains_point(Region, X, Y, Result, !IO):
+    %
     % Result is "yes" if (X, Y) is contained in Region.
     %
 :- pred contains_point(region::in, int::in, int::in, bool::out,
@@ -80,64 +89,76 @@
             % The contents are partially inside and partially outside
             % the region.
 
-    % region.contains_rectangle(Region, Rectangle, Overlap, !IO):
+    % contains_rectangle(Region, Rectangle, Overlap, !IO):
+    %
     % Overlap is the result of checking whether Rectangle is (partially)
     % contained within Region.
     %
 :- pred contains_rectangle(region::in, rectangle::in, overlap::out,
     io::di, io::uo) is det.
 
-    % region.equal(RegionA, RegionB, Result, !IO):
+    % equal(RegionA, RegionB, Result, !IO):
+    %
     % Result is "yes" if RegionA and RegionB contain the some coverage
     % and "no" otherwise.
     %
 :- pred equal(region::in, region::in, bool::out, io::di, io::uo) is det.
 
-    % region.translate(Region, Dx, Dy, !IO):
+    % translate(Region, Dx, Dy, !IO):
+    %
     % Translate Region by (Dx, Dy).
     %
 :- pred translate(region::in, int::in, int::in, io::di, io::uo) is det.
 
-    % region.intersect(Dst, Other, !IO):
+    % intersect(Dst, Other, !IO):
+    %
     % Update Dst to be the intersection of Dst and Other.
     %
 :- pred intersect(region::in, region::in, io::di, io::uo) is det.
 
-    % region.intersect_rectangle(Region, Rectangle, !IO):
+    % intersect_rectangle(Region, Rectangle, !IO):
+    %
     % Update Region to be the intersection of Region and Rectangle.
     %
 :- pred intersect_rectangle(region::in, rectangle::in, io::di, io::uo) is det.
 
-    % region.subtract(Dst, Other, !IO):
+    % subtract(Dst, Other, !IO):
+    %
     % Update Dst to be the result of subtracting Other from Dst.
     %
 :- pred subtract(region::in, region::in, io::di, io::uo) is det.
 
-    % region.subtract_rectangle(Region, Rectangle, !IO):
+    % subtract_rectangle(Region, Rectangle, !IO):
+    %
     % Update Region to be the result of subtracting Rectangle from Region.
     %
 :- pred subtract_rectangle(region::in, rectangle::in, io::di, io::uo) is det.
 
-    % region.union(Dst, Other, !IO):
+    % union(Dst, Other, !IO):
+    %
     % Update Dst to be the union of Dst and Other.
     %
 :- pred union(region::in, region::in, io::di, io::uo) is det.
 
-    % region.union_rectangle(Region, Rectangle, !IO):
+    % union_rectangle(Region, Rectangle, !IO):
+    %
     % Update Region to be the union of Region and Rectangle.
     %
 :- pred union_rectangle(region::in, rectangle::in, io::di, io::uo) is det.
 
-    % region.xor(Dst, Other, !IO):
+    % xor(Dst, Other, !IO):
+    %
     % Update Dst to be the exclusive difference of Dst and Other.
     %
 :- pred xor(region::in, region::in, io::di, io::uo) is det.
 
-    % region.xor_rectangle(Region, Rectangle, !IO):
+    % xor_rectangle(Region, Rectangle, !IO):
+    %
     % Update Region to be the exclusive difference of Region and Rectangle.
     %
 :- pred xor_rectangle(region::in, rectangle::in, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
