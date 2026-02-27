@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -27,7 +27,7 @@
     % to force the window to be redrawn.
     %
 :- pred callback.display_func(pred(io, io), io, io).
-:- mode callback.display_func(pred(di, uo) is det, di, uo)is det.
+:- mode callback.display_func(pred(di, uo) is det, di, uo) is det.
 
     % Unregisters the display callback for the current window.
     %
@@ -216,7 +216,7 @@
 
     % Unregister the overlay display callback for the current window.
     %
-:- pred callback.overlay_display_func(io::di, io::uo) is det.
+:- pred callback.disable_overlay_display_func(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -606,7 +606,7 @@ do_visibility_callback(VisibilityFunc, Visibility, !IO) :-
 
 :- pragma foreign_proc("C",
     disable_visibility_func(_IO0::di, _IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     glutVisibilityFunc(NULL);
 ").
@@ -624,7 +624,7 @@ do_visibility_callback(VisibilityFunc, Visibility, !IO) :-
 
 :- pragma foreign_proc("C",
     idle_func(Closure::pred(di, uo) is det, _IO0::di, _IO::uo),
-    [will_not_call_mercury, tabled_for_io, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     mglut_idle_callback = Closure;
     glutIdleFunc(MGLUT_idle_callback);
@@ -688,7 +688,7 @@ do_keyboard_up_callback(KeyBoardUpFunc, ScanCode, X, Y, !IO) :-
     disable_keyboard_up_func(_IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
-    glutKeyboardFunc(NULL);
+    glutKeyboardUpFunc(NULL);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -720,7 +720,7 @@ do_overlay_display_callback(OverlayDisplayFunc, !IO) :-
     OverlayDisplayFunc(!IO).
 
 :- pragma foreign_proc("C",
-    overlay_display_func(_IO0::di, _IO::uo),
+    disable_overlay_display_func(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     glutOverlayDisplayFunc(NULL);

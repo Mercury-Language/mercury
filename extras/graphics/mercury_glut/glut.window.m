@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -38,7 +38,7 @@
     % window.
 :- pred window.create(string::in, window::out, io::di, io::uo) is det.
 
-    % Create a subwindow.  Implicitly the the current window is set
+    % Create a subwindow.  Implicitly the current window is set
     % to the newly created subwindow.
     % XXX We need a way to handle multiple windows for this to be useful.
     %
@@ -502,6 +502,7 @@ cursor_to_int(inherit) = glut_cursor_inherit.
 "
     V = (MR_Integer) GLUT_CURSOR_CYCLE;
 ").
+
 :- func glut_cursor_wait = int.
 :- pragma foreign_proc("C", glut_cursor_wait = (V::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -711,7 +712,7 @@ window.set_cursor(Cursor, !IO) :-
 ]).
 
 :- pragma foreign_proc("C",
-    window.get(State::in, Value::out, __IO0::di, __IO::uo),
+    window.get(State::in, Value::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     Value = (MR_Integer) glutGet((GLenum) State);
@@ -720,7 +721,7 @@ window.set_cursor(Cursor, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    window.has_overlay(Result::out, __IO0::di, __IO::uo),
+    window.has_overlay(Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     if (glutLayerGet(GLUT_HAS_OVERLAY)) {

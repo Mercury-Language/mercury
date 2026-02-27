@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -13,7 +13,7 @@
 %
 % If used with freeglut then some of the extensions available in freeglut will
 % also be available.  Calling the freeglut extensions when freeglut is *not*
-% available will result in a software_error1/ exception being thrown.
+% available will result in a software_error/1 exception being thrown.
 %
 % You can use the predicate glut.have_freeglut/0 to test for the presence
 % of freeglut.
@@ -294,7 +294,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 :- pragma foreign_proc("C", glut_alpha = (Value::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Value = (MR_Integer) GLUT_ACCUM;
+    Value = (MR_Integer) GLUT_ALPHA;
 ").
 
 :- func glut_depth = int.
