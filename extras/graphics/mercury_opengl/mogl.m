@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2003-2007 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -1733,7 +1733,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
     if (sizeof(MR_Float) == sizeof(GLfloat)) {
         glRasterPos3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
     } else {
-        glRasterPos3d((GLdouble) X, (GLdouble) Y, (GLfloat) Z);
+        glRasterPos3d((GLdouble) X, (GLdouble) Y, (GLdouble) Z);
     }
 ").
 
@@ -1746,7 +1746,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
         glRasterPos4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
             (GLfloat) W);
     } else {
-        glRasterPos4d((GLdouble) X, (GLdouble) Y, (GLfloat) Z,
+        glRasterPos4d((GLdouble) X, (GLdouble) Y, (GLdouble) Z,
             (GLdouble) W);
     }
 ").
@@ -2428,7 +2428,7 @@ read_buffer_to_int_and_offset(aux(I), 10, I).
 
 mogl.bitmap(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO) :-
     ( num_bits(Bitmap) < Width * Height ->
-        throw(software_error("mogl.bitmap/9: bitmap is to small."))
+        throw(software_error("mogl.bitmap/9: bitmap is too small."))
     ;
         bitmap_2(Width, Height, XOrig, YOrig, XMove, YMove, Bitmap, !IO)
     ).
@@ -3401,7 +3401,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
     } while(0)
 
 /*
-** The MGOGL_set_ctrl_point() macro sets the value of a particular
+** The MOGL_set_ctrl_point() macro sets the value of a particular
 ** index in a control point array.
 */
 #define MOGL_set_ctrl_point(array, address, value)          \
@@ -3935,8 +3935,8 @@ is_enabled(Flag, IsEnabled, !IO) :-
 :- pragma foreign_enum("C", hint_target/0, [
     perspective_correction - "GL_PERSPECTIVE_CORRECTION_HINT",
     point_smooth           - "GL_POINT_SMOOTH_HINT",
-    line_smooth            - "GL_LINE_SMOOTH",
-    polygon_smooth         - "GL_POLYGON_SMOOTH",
+    line_smooth            - "GL_LINE_SMOOTH_HINT",
+    polygon_smooth         - "GL_POLYGON_SMOOTH_HINT",
     fog                    - "GL_FOG_HINT"
 ]).
 
