@@ -425,14 +425,14 @@ unsafe_rewind(version_array2d(NumRows, NumColumns, VersionArray)) =
 :- pred out_of_bounds_error(string::in, string::in, int::in, int::in)
     is erroneous.
 
-out_of_bounds_error(PredName, RowOrColumn, Index, Max) :-
+out_of_bounds_error(PredName, RowOrColumn, Index, NumRowsOrColumns) :-
     % Note: we deliberately do not include the array element type name in the
     % error message here, for performance reasons: using the type name could
     % prevent the compiler from optimizing away the construction of the
     % type_info in the caller, because it would prevent unused argument
     % elimination.
     string.format("%s: %s index %d not in range [0, %d]",
-        [s(PredName), s(RowOrColumn), i(Index), i(Max)], Msg),
+        [s(PredName), s(RowOrColumn), i(Index), i(NumRowsOrColumns - 1)], Msg),
     throw(index_out_of_bounds(Msg)).
 
 %---------------------------------------------------------------------------%

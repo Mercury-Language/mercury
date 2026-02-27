@@ -64,16 +64,16 @@ misshapen init: found exception as expected:
 software_error("function `version_array2d.version_array2d\'/1: non-rectangular list of lists")
 
 out-of-bounds test 1: found exception as expected:
-index_out_of_bounds("version_array2d.lookup: column index -1 not in range [0, 4]")
+index_out_of_bounds("version_array2d.lookup: column index -1 not in range [0, 3]")
 
 out-of-bounds test 2: found exception as expected:
-index_out_of_bounds("version_array2d.set: column index -1 not in range [0, 4]")
+index_out_of_bounds("version_array2d.set: column index -1 not in range [0, 3]")
 
 out-of-bounds test 3: found exception as expected:
-index_out_of_bounds("version_array2d.uset: column index 9 not in range [0, 4]")
+index_out_of_bounds("version_array2d.uset: column index 9 not in range [0, 3]")
 
 out-of-bounds test 4: found exception as expected:
-index_out_of_bounds("version_array2d.lookup: row index -1 not in range [0, 4]")
+index_out_of_bounds("version_array2d.lookup: row index -1 not in range [0, 3]")
 
 out-of-bounds test 5: found exception as expected:
-index_out_of_bounds("version_array2d.ulookup: row index 4 not in range [0, 4]")
+index_out_of_bounds("version_array2d.ulookup: row index 4 not in range [0, 3]")
