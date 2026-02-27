@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -28,7 +28,7 @@
     ;       blue
     ;       green.
 
-    % color_map.set_color(Index, Red, Blue, Green, !IO).
+    % color_map.set_color(Index, Red, Green, Blue, !IO).
     % Set the colormap entry for the given index.
     %
 :- pred color_map.set_color(int::in, float::in, float::in, float::in,

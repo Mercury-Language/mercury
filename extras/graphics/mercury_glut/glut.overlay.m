@@ -27,7 +27,7 @@
     --->    normal
     ;       overlay.
 
-    % Returns `yes' of it is possible to establish an overlay for the
+    % Returns `yes' if it is possible to establish an overlay for the
     % current window; `no' otherwise.
     %
 :- pred overlay.possible(bool::out, io::di, io::uo) is det.
@@ -167,14 +167,14 @@ overlay.establish(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     overlay.post_redisplay(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutPostOverlayRedisplay();
 ").
 
 :- pragma foreign_proc("C",
     overlay.post_redisplay(Window::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, tabled_for_io, promise_pure],
 "
     glutPostWindowOverlayRedisplay((int) Window);
 ").

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2012 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -126,7 +126,7 @@ font.bitmap_length(Font, String) = Length :-
     bitmap_length_2(FntPtr::in, Str::in, Length::out),
     [will_not_call_mercury, promise_pure],
 "
-    Length =  (MR_Integer) glutBitmapLength(FntPtr, Str);
+    Length = (MR_Integer) glutBitmapLength(FntPtr, Str);
 ").
 
 :- func bitmap_font_to_ptr(bitmap_font) = font_ptr.
