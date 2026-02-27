@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
 % Copyright (C) 1997-2000, 2002, 2004-2006, 2010 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020, 2023, 2025 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -323,7 +323,7 @@
     // Conservative garbage collection also makes restoring the state
     // after an exception a bit simpler.
 #ifndef MR_CONSERVATIVE_GC
-#error ""The OBDC interface requires conservative garbage collection. \\
+#error ""The ODBC interface requires conservative garbage collection. \\
         Use a compilation grade containing .gc.""
 #endif // ! MR_CONSERVATIVE_GC
 
@@ -1670,7 +1670,7 @@ odbc_is_variable_length_sql_type(SWORD sql_type) {
 // to store an attribute value, returning -1 if there is no maximum size.
 // [SqlType] is the ODBC SQL type of the column
 // [cbColDef] is the size returned by SQLDescribeCol
-// [ibScaler] is the scale returned by SQLDescribeCol
+// [ibScale] is the scale returned by SQLDescribeCol
 // [fNullable] is whether the column can be NULL
 size_t
 odbc_sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
@@ -1702,7 +1702,7 @@ odbc_sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
         // Signed decimal ddd.dd converted to SQL_C_CHAR.
         case SQL_DECIMAL:
             return 1 + cbColDef + 1 + ibScale + 1;
-            // 1 for sign 1, 1 for decimal point, 1, for NUL
+            // 1 for sign, 1 for decimal point, 1, for NUL
 
         // 32-bit float converted to MODBC_SQL_C_FLOAT.
         case SQL_DOUBLE:
