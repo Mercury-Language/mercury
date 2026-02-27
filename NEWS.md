@@ -374,12 +374,12 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
-    - pred `recognize_options/7`
-    - pred `recognize_all_options/7`
+    - pred `recognize_options/8`
+    - pred `recognize_all_options/8`
 
 * The following predicate has been marked obsolete:
 
-    - pred `record_arguments/7` (replacement: `getopt.recognize_options/7`)
+    - pred `record_arguments/8` (replacement: `getopt.recognize_options/8`)
 
 ### Changes to the `hash_table` module
 

@@ -683,7 +683,7 @@
     list(string)::in, list(string)::out, list(string)::out,
     maybe_option_error(OptionType)::out,
     list(option_value(OptionType))::out) is det.
-:- pragma obsolete(pred(record_arguments/8), [recognize_arguments/8]).
+:- pragma obsolete(pred(record_arguments/8), [recognize_options/8]).
 
 %---------------------------------------------------------------------------%
 
