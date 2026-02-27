@@ -43,14 +43,7 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module char.
-:- import_module exception.
-:- import_module float.
-:- import_module int.
-:- import_module map.
-:- import_module require.
-:- import_module std_util.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
