@@ -87,11 +87,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_test.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_test.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.var_locn.

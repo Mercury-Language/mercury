@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2025 The Mercury team.
+% Copyright (C) 2014-2021, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -42,8 +42,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_test.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -52,6 +50,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.mode_test.
 :- import_module hlds.mode_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.

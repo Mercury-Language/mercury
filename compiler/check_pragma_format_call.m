@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,8 +57,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.mode_test.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.

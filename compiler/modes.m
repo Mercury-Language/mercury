@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -139,7 +139,6 @@
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.introduce_exists_casts.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
@@ -158,6 +157,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_lookup.
+:- import_module hlds.inst_match.
 :- import_module hlds.inst_test.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.

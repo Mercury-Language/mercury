@@ -69,14 +69,13 @@
 :- import_module analysis.
 :- import_module analysis.framework.
 :- import_module analysis.operations.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.mode_test.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.

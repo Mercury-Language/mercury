@@ -71,14 +71,13 @@
 :- import_module analysis.
 :- import_module analysis.framework.
 :- import_module analysis.operations.
-:- import_module check_hlds.
-:- import_module check_hlds.inst_match.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.inst_match.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module libs.

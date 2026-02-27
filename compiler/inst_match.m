@@ -20,10 +20,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.inst_match.
+:- module hlds.inst_match.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -189,10 +188,11 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_abstract_unify.
-:- import_module check_hlds.inst_merge.
 :- import_module hlds.hlds_data.
 :- import_module hlds.inst_lookup.
+:- import_module hlds.inst_merge.
 :- import_module hlds.inst_test.
 :- import_module hlds.inst_util.
 :- import_module hlds.mode_util.
@@ -1880,5 +1880,5 @@ same_addr_insts(_, _) :-
     semidet_fail.
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.inst_match.
+:- end_module hlds.inst_match.
 %---------------------------------------------------------------------------%

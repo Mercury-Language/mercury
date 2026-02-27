@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017, 2019, 2021-2023, 2025 The Mercury team.
+% Copyright (C) 2017, 2019, 2021-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -94,9 +94,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.inst_match.
 :- import_module hlds.mode_util.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.var_table.

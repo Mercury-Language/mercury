@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015, 2021, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,10 +13,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.mode_test.
+:- module hlds.mode_test.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -174,5 +173,5 @@ init_final_insts_is_unused(ModuleInfo, InitialInst, FinalInst) :-
     inst_is_free(ModuleInfo, FinalInst).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.mode_test.
+:- end_module hlds.mode_test.
 %---------------------------------------------------------------------------%

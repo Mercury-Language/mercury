@@ -42,8 +42,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_test.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
@@ -54,6 +52,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_promise.
+:- import_module hlds.mode_test.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.

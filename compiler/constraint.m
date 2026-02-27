@@ -52,10 +52,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.inst_match.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.inst_match.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

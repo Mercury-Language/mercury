@@ -127,8 +127,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
-:- import_module check_hlds.
-:- import_module check_hlds.mode_test.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_error_util.
@@ -136,6 +134,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_test.
+:- import_module hlds.mode_test.
 :- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.file_util.

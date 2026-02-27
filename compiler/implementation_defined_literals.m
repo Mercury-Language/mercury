@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,10 +17,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.implementation_defined_literals.
+:- module hlds.implementation_defined_literals.
 :- interface.
 
-:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- pred subst_impl_defined_literals(module_info::in, module_info::out) is det.
@@ -233,5 +232,5 @@ make_impl_defined_literal(Var, IDCKind, Context, Info, Goal) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.implementation_defined_literals.
+:- end_module hlds.implementation_defined_literals.
 %-----------------------------------------------------------------------------%

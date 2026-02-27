@@ -104,7 +104,6 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.implementation_defined_literals.
 :- import_module check_hlds.inst_check.
 :- import_module check_hlds.inst_user.
 :- import_module check_hlds.mode_constraints.
@@ -134,6 +133,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
+:- import_module hlds.implementation_defined_literals.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

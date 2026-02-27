@@ -42,9 +42,6 @@
 % Purity checking.
 :- include_module purity.
 
-% Implementation-defined literals.
-:- include_module implementation_defined_literals.
-
 % The polymorphism transformation.
 % :- module polymorphism.
     :- include_module polymorphism.
@@ -67,12 +64,9 @@
 % on the idea of abstract interpretation.
 % :- module mode_analysis.
    :- include_module inst_abstract_unify.
-   :- include_module inst_match.
-   :- include_module inst_merge.
    :- include_module mode_comparison.
    :- include_module mode_errors.
    :- include_module mode_info.
-   :- include_module mode_test.
    :- include_module modes.
    :- include_module proc_requests.
    :- include_module recompute_instmap_deltas.

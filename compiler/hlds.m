@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2010, 2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,6 +72,9 @@
 :- include_module hlds_error_util.
 :- include_module error_msg_inst.
 
+% Module for expanding out implementation defined literals.
+:- include_module implementation_defined_literals.
+
 % Miscellaneous utilities.
 :- include_module arg_info.
 :- include_module code_model.
@@ -92,6 +95,8 @@
 :- include_module hlds_proc_util.
 :- include_module hlds_statistics.
 :- include_module inst_lookup.
+:- include_module inst_match.
+:- include_module inst_merge.
 :- include_module inst_mode_type_prop.
 :- include_module inst_test.
 :- include_module inst_util.
@@ -100,6 +105,7 @@
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
 :- include_module mode_top_functor.
+:- include_module mode_test.
 :- include_module mode_util.
 :- include_module passes_aux.
 :- include_module pred_name.

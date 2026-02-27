@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,9 +162,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_util.
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_info.
-:- import_module check_hlds.mode_test.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.unique_modes.
@@ -172,9 +170,11 @@
 :- import_module hlds.goal_reorder.
 :- import_module hlds.goal_vars.
 :- import_module hlds.inst_lookup.
+:- import_module hlds.inst_match.
 :- import_module hlds.inst_test.
 :- import_module hlds.inst_util.
 :- import_module hlds.instmap.
+:- import_module hlds.mode_test.
 :- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.globals.
