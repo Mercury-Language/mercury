@@ -1,0 +1,10 @@
+unused_args_some_modes.m:024: In [38;5;87m`p(in(unused_args_some_modes.i1), in, in,[39;49m
+unused_args_some_modes.m:024:   [38;5;87min(free), in(free), out)':[39;49m
+unused_args_some_modes.m:024:   warning: arguments [38;5;87m2[39;49m and [38;5;87m3[39;49m are [38;5;203munused.[39;49m
+unused_args_some_modes.m:024:   (Arguments [38;5;87m4[39;49m and [38;5;87m5[39;49m are also unused, but their
+unused_args_some_modes.m:024:   modes [38;5;40mmark them[39;49m as unused.)
+unused_args_some_modes.m:025: In [38;5;87m`p(in(unused_args_some_modes.i2), in, in,[39;49m
+unused_args_some_modes.m:025:   [38;5;87min(free), in, out)':[39;49m
+unused_args_some_modes.m:025:   warning: arguments [38;5;87m3[39;49m and [38;5;87m5[39;49m are [38;5;203munused.[39;49m
+unused_args_some_modes.m:025:   (Argument [38;5;87m4[39;49m is also unused, but its mode [38;5;40mmarks[39;49m
+unused_args_some_modes.m:025:   [38;5;40mit[39;49m as unused.)

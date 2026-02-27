@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -122,6 +122,17 @@
     %
 :- func describe_one_proc_name_maybe_argmodes(module_info, output_lang,
     maybe(color_name), should_module_qualify, list(format_piece), pred_proc_id)
+    = list(format_piece).
+
+    % describe_one_proc_name_maybe_argmodes(PredInfo, Lang, MaybeColor,
+    %   Qual, SuffixPieces, ProcId) = Spec:
+    %
+    %
+    % Does the same job as describe_one_proc_name_maybe_argmodes, but
+    % lets the caller look up the pred_info.
+    %
+:- func describe_one_proc_name_pred_info_maybe_argmodes(pred_info, output_lang,
+    maybe(color_name), should_module_qualify, list(format_piece), proc_id)
     = list(format_piece).
 
 %---------------------------------------------------------------------------%
@@ -424,13 +435,20 @@ describe_several_pred_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
 
 describe_one_proc_name_maybe_argmodes(ModuleInfo, Lang, MaybeColor,
         ShouldModuleQualify, SuffixPieces, PredProcId) = Pieces :-
-    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    Pieces = describe_one_proc_name_pred_info_maybe_argmodes(PredInfo,
+        Lang, MaybeColor, ShouldModuleQualify, SuffixPieces, ProcId).
+
+describe_one_proc_name_pred_info_maybe_argmodes(PredInfo, Lang, MaybeColor,
+        ShouldModuleQualify, SuffixPieces, ProcId) = Pieces :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.count(ProcTable, NumProcs),
     ( if NumProcs > 1 then
+        pred_info_proc_info(PredInfo, ProcId, ProcInfo),
         pred_info_get_orig_arity(PredInfo, PredFormArity),
         proc_info_get_argmodes(ProcInfo, ArgModes0),
         NumExtraArgs = num_extra_args(PredFormArity, ArgModes0),

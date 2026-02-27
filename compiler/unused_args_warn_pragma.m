@@ -22,7 +22,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
@@ -51,17 +50,17 @@
 :- pred gather_warnings_and_pragmas(module_info::in,
     proc_to_unused_args_map::in,
     maybe_warn_unused_args::in, maybe_gather_pragma_unused_args::in,
-    list(pred_proc_id)::in, set(pred_id)::in,
-    list(error_spec)::in, list(error_spec)::out,
-    set(gen_pragma_unused_args_info)::in,
-    set(gen_pragma_unused_args_info)::out) is det.
+    list(error_spec)::out, set(gen_pragma_unused_args_info)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.
@@ -69,50 +68,58 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
-gather_warnings_and_pragmas(_, _, _, _, [], _, !Specs, !PragmaUnusedArgInfos).
 gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
-        DoWarn, DoPragma, [PredProcId | PredProcIds], !.WarnedPredIds,
-        !Specs, !PragmaUnusedArgInfos) :-
-    ( if map.search(ProcToUnusedArgsMap, PredProcId, UnusedArgs) then
-        PredProcId = proc(PredId, ProcId) ,
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ( if may_gather_warning_pragma_for_pred(PredInfo) then
-            (
-                DoWarn = do_not_warn_unused_args
-            ;
-                DoWarn = do_warn_unused_args,
-                maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId,
-                    UnusedArgs, !WarnedPredIds, !Specs)
-            ),
-            (
-                DoPragma = do_not_gather_pragma_unused_args
-            ;
-                DoPragma = do_gather_pragma_unused_args,
-                maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
-                    !PragmaUnusedArgInfos)
-            )
-        else
-            true
+        DoWarn, DoPragma, Specs, PragmaUnusedArgInfos) :-
+    map.foldl2(gather_warnings_and_pragmas_ppid(ModuleInfo, DoWarn, DoPragma),
+        ProcToUnusedArgsMap,
+        map.init, WarnUnusedPredArgsMap, set.init, PragmaUnusedArgInfos),
+    map.foldl(warn_unused_args_in_pred, WarnUnusedPredArgsMap, [], Specs).
+
+:- pred gather_warnings_and_pragmas_ppid(module_info::in,
+    maybe_warn_unused_args::in, maybe_gather_pragma_unused_args::in,
+    pred_proc_id::in, list(int)::in,
+    warn_unused_pred_args_map::in, warn_unused_pred_args_map::out,
+    set(gen_pragma_unused_args_info)::in,
+    set(gen_pragma_unused_args_info)::out) is det.
+
+gather_warnings_and_pragmas_ppid(ModuleInfo, DoWarn, DoPragma,
+        PredProcId, UnusedArgs,
+        !WarnUnusedPredArgsMap, !PragmaUnusedArgInfos) :-
+    PredProcId = proc(PredId, ProcId) ,
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ( if may_gather_warning_pragma_for_pred(PredInfo) then
+        (
+            DoWarn = do_not_warn_unused_args
+        ;
+            DoWarn = do_warn_unused_args,
+            maybe_add_proc_to_unused_args_map(ModuleInfo, PredInfo, PredId,
+                ProcId, UnusedArgs, !WarnUnusedPredArgsMap)
+        ),
+        (
+            DoPragma = do_not_gather_pragma_unused_args
+        ;
+            DoPragma = do_gather_pragma_unused_args,
+            maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
+                !PragmaUnusedArgInfos)
         )
     else
         true
-    ),
-    gather_warnings_and_pragmas(ModuleInfo, ProcToUnusedArgsMap,
-        DoWarn, DoPragma, PredProcIds, !.WarnedPredIds,
-        !Specs, !PragmaUnusedArgInfos).
+    ).
 
 :- pred may_gather_warning_pragma_for_pred(pred_info::in) is semidet.
 
@@ -260,32 +267,64 @@ may_gather_warning_pragma_for_pred(PredInfo) :-
         )
     ).
 
-:- pred maybe_gather_warning(module_info::in, pred_info::in,
-    pred_id::in, proc_id::in, list(int)::in,
-    set(pred_id)::in, set(pred_id)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+%---------------------------------------------------------------------------%
 
-maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId, UnusedArgs0,
-        !WarnedPredIds, !Specs) :-
-    ( if set.member(PredId, !.WarnedPredIds) then
-        true
-    else
-        set.insert(PredId, !WarnedPredIds),
-        pred_info_get_proc_table(PredInfo, ProcTable),
-        map.lookup(ProcTable, ProcId, Proc),
-        pred_info_get_orig_arity(PredInfo, PredFormArity),
-        proc_info_get_headvars(Proc, HeadVars),
-        NumExtraArgs = num_extra_args(PredFormArity, HeadVars),
-        % Strip off the extra type_info/typeclass_info arguments
-        % inserted at the front by polymorphism.m.
-        drop_poly_inserted_args(NumExtraArgs, UnusedArgs0, UnusedArgs),
-        (
-            UnusedArgs = [_ | _],
-            Spec = report_unused_args(ModuleInfo, PredInfo, UnusedArgs),
-            !:Specs = [Spec | !.Specs]
-        ;
-            UnusedArgs = []
+:- type warn_unused_pred_args_map == map(pred_id, warn_unused_pred_args).
+
+:- type warn_unused_pred_args
+    --->    warn_unused_pred_args(
+                pred_info,
+                one_or_more(pair(proc_id, unused_proc_args))
+            ).
+
+:- type unused_proc_args == one_or_more(unused_proc_arg).
+:- type unused_proc_arg
+    --->    unused_proc_arg(
+                % The argument number.
+                int,
+
+                maybe_marked_unused
+            ).
+
+:- type maybe_marked_unused
+    --->    not_marked_unused
+    ;       marked_unused.
+
+:- pred maybe_add_proc_to_unused_args_map(module_info::in, pred_info::in,
+    pred_id::in, proc_id::in, list(int)::in,
+    warn_unused_pred_args_map::in, warn_unused_pred_args_map::out) is det.
+
+maybe_add_proc_to_unused_args_map(ModuleInfo, PredInfo, PredId, ProcId,
+        UnusedArgs0, !WarnUnusedPredArgsMap) :-
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    NumExtraArgs = num_extra_args(PredFormArity, ArgTypes),
+    % Strip off the extra type_info/typeclass_info arguments
+    % inserted at the front by polymorphism.m.
+    drop_poly_inserted_args(NumExtraArgs, UnusedArgs0, UnusedArgs),
+    (
+        UnusedArgs = [_ | _],
+        pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+        proc_info_get_argmodes(ProcInfo, ArgModes0),
+        list.det_drop(NumExtraArgs, ArgModes0, ArgModes),
+        record_which_unused_args_are_marked(ModuleInfo, ArgModes,
+            UnusedArgs, UnusedProcArgs),
+        % If UnusedArgs is not empty, then UnusedProcArgs cannot be empty.
+        det_list_to_one_or_more(UnusedProcArgs, OoMUnusedProcArgs),
+        ( if
+            map.search(!.WarnUnusedPredArgsMap, PredId, WarnUnusedPredArgs0)
+        then
+            WarnUnusedPredArgs0 = warn_unused_pred_args(_PredInfo, ProcAL0),
+            one_or_more.cons(ProcId - OoMUnusedProcArgs, ProcAL0, ProcAL),
+            WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
+            map.det_update(PredId, WarnUnusedPredArgs, !WarnUnusedPredArgsMap)
+        else
+            ProcAL = one_or_more(ProcId - OoMUnusedProcArgs, []),
+            WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
+            map.det_insert(PredId, WarnUnusedPredArgs, !WarnUnusedPredArgsMap)
         )
+    ;
+        UnusedArgs = []
     ).
 
     % Adjust the argument numbers from how they look in an argument list
@@ -307,42 +346,175 @@ drop_poly_inserted_args(NumInserted, [HeadArgWith | TailArgsWith],
         ArgsWithout = [HeadArgWithout | TailArgsWithout]
     ).
 
-    % Warn about unused arguments in a predicate. We consider an argument
-    % unused *only* if it is unused in *every* mode of the predicate.
-    % We also never warn about arguments inserted by the polymorphism pass.
-    %
-    % The latter test is done by maybe_gather_warning with help from
-    % drop_poly_inserted_args.
-    %
-    % XXX I (zs) would like to know where the first test is done,
-    % since it is *not* done here. My suspicion is that it is not done at all.
-    %
-:- func report_unused_args(module_info, pred_info, list(int)) = error_spec.
+:- pred record_which_unused_args_are_marked(module_info::in,
+    list(mer_mode)::in, list(int)::in, list(unused_proc_arg)::out) is det.
 
-report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
-    list.length(UnusedArgs, NumArgs),
-    pred_info_get_context(PredInfo, Context),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    pred_info_get_orig_arity(PredInfo, PredFormArity),
-    user_arity_pred_form_arity(PredOrFunc,
-        user_arity(UserArityInt), PredFormArity),
-    SNA = sym_name_arity(qualified(ModuleName, PredName), UserArityInt),
-    Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
-        qual_sym_name_arity(SNA), suffix(":"), nl, words("warning:")],
-    UnusedArgNs = list.map(func(N) = int_fixed(N), UnusedArgs),
-    UnusedArgPieces = piece_list_to_color_pieces(color_subject, "and", [],
-        UnusedArgNs),
-    ( if NumArgs = 1 then
-        Pieces2 = [words("argument")] ++ UnusedArgPieces ++
-            [words("is")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+record_which_unused_args_are_marked(_, _, [], []).
+record_which_unused_args_are_marked(ModuleInfo, ArgModes,
+        [ArgNum | ArgNums], [ProcArg | ProcArgs]) :-
+    list.det_index1(ArgModes, ArgNum, ArgMode),
+    ( if mode_is_unused(ModuleInfo, ArgMode) then
+        MaybeMarked = marked_unused
     else
-        Pieces2 = [words("arguments")] ++ UnusedArgPieces ++
-            [words("are")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+        MaybeMarked = not_marked_unused
     ),
-    Spec = spec($pred, severity_warning(warn_requested_by_option),
-        phase_code_gen, Context, Pieces1 ++ Pieces2).
+    ProcArg = unused_proc_arg(ArgNum, MaybeMarked),
+    record_which_unused_args_are_marked(ModuleInfo, ArgModes,
+        ArgNums, ProcArgs).
+
+%---------------------------------------------------------------------------%
+
+:- pred warn_unused_args_in_pred(pred_id::in, warn_unused_pred_args::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_unused_args_in_pred(_PredId, WarnUnusedPredArgs, !Specs) :-
+    WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcUnusedArgsAL0),
+    one_or_more.sort(ProcUnusedArgsAL0, ProcUnusedArgsAL),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    one_or_more.foldl2(do_all_procs_have_same_unused_args, ProcUnusedArgsAL,
+        map.init, UnusedArgsToProcMap, ProcTable, UnmentionedProcTable),
+    map.to_assoc_list(UnusedArgsToProcMap, UnusedArgsToProcAL),
+    % We can generate a single warning that applies to the whole predicate
+    % only if
+    % - all procedures have some unused arguments, and
+    % - they all have the *same set* of unused arguments, *and*
+    %   they agree on which unused args are marked as such.
+    ( if
+        map.is_empty(UnmentionedProcTable),
+        UnusedArgsToProcAL = [UnusedProcArgs - _OoMProcIds]
+    then
+        report_pred_general_unused_args(PredInfo, UnusedProcArgs, !Specs)
+    else
+        % Otherwise, we generate procedure-specific warnings.
+        %
+        % We *could* generate a single warning for whole sets of procedures
+        % that share the same pattern of unused arguments, but
+        %
+        % - having different procedures having different sets of unused args
+        %   is extremely rare, and
+        %
+        % - if that *does* happen, then getting the mode-specific reports
+        %   in mode number order probably does more to improve readability
+        %   than shortening the output would do, especially if the procedures
+        %   in a set sharing the same set of unused args are not adjacent.
+        one_or_more.foldl(report_proc_specific_unused_args(PredInfo),
+            ProcUnusedArgsAL, !Specs)
+    ).
+
+:- pred do_all_procs_have_same_unused_args(
+    pair(proc_id, unused_proc_args)::in,
+    map(unused_proc_args, one_or_more(proc_id))::in,
+    map(unused_proc_args, one_or_more(proc_id))::out,
+    map(proc_id, proc_info)::in, map(proc_id, proc_info)::out) is det.
+
+do_all_procs_have_same_unused_args(ProcId - ProcUnusedArgs,
+        !UnusedArgsToProcmap, !UnmentionedProcTable) :-
+    ( if map.search(!.UnusedArgsToProcmap, ProcUnusedArgs, OoMProcIds0) then
+        one_or_more.cons(ProcId, OoMProcIds0, OoMProcIds),
+        map.det_update(ProcUnusedArgs, OoMProcIds, !UnusedArgsToProcmap)
+    else
+        OoMProcIds = one_or_more(ProcId, []),
+        map.det_insert(ProcUnusedArgs, OoMProcIds, !UnusedArgsToProcmap)
+    ),
+    % By construction, each ProcId may appear in the input list
+    % (or actually one_or_more) only once.
+    map.det_remove(ProcId, _, !UnmentionedProcTable).
+
+    % Warn about unused arguments in a predicate.
+    %
+    % We never warn about arguments inserted by the polymorphism pass.
+    % This filtering out is done by the call to drop_poly_inserted_args
+    % in maybe_add_proc_to_unused_args_map above.
+    %
+:- pred report_pred_general_unused_args(pred_info::in, unused_proc_args::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_pred_general_unused_args(PredInfo, ProcUnusedArgs, !Specs) :-
+    NameColonNlPieces = describe_one_pred_info_name(yes(color_subject),
+        should_not_module_qualify, [suffix(":"), nl], PredInfo),
+    pred_info_get_context(PredInfo, Context),
+    report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs).
+
+:- pred report_proc_specific_unused_args(pred_info::in,
+    pair(proc_id, unused_proc_args)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_proc_specific_unused_args(PredInfo, ProcId - ProcUnusedArgs, !Specs) :-
+    NameColonNlPieces = describe_one_proc_name_pred_info_maybe_argmodes(
+        PredInfo, output_mercury, yes(color_subject),
+        should_not_module_qualify, [suffix(":"), nl], ProcId),
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    proc_info_get_context(ProcInfo, Context),
+    report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs).
+
+:- pred report_unused_args(list(format_piece)::in, prog_context::in,
+    unused_proc_args::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs) :-
+    one_or_more.foldl2(classify_unused_proc_arg, ProcUnusedArgs,
+        [], UnmarkedArgs0, [], MarkedArgs0),
+    list.sort(UnmarkedArgs0, UnmarkedArgs),
+    list.sort(MarkedArgs0, MarkedArgs),
+    (
+        UnmarkedArgs = []
+        % Since ProcUnusedArgs cannot be empty, we get here only if
+        % all the unused arguments are explicitly marked as such.
+        % In such cases, the warning would be a distraction, not a help.
+    ;
+        UnmarkedArgs = [_ | TailUnmarkedArgs],
+        Pieces1 = [words("In")] ++ NameColonNlPieces ++ [words("warning:")],
+        UnmarkedArgPieces = piece_list_to_color_pieces(color_subject,
+            "and", [], UnmarkedArgs),
+        (
+            TailUnmarkedArgs = [],
+            Pieces2 = [words("argument")] ++ UnmarkedArgPieces ++
+                [words("is")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+        ;
+            TailUnmarkedArgs = [_ | _],
+            Pieces2 = [words("arguments")] ++ UnmarkedArgPieces ++
+                [words("are")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+        ),
+        Addendum = marked_unused_args_addendum(MarkedArgs),
+        Spec = spec($pred, severity_warning(warn_requested_by_option),
+            phase_code_gen, Context, Pieces1 ++ Pieces2 ++ Addendum),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred classify_unused_proc_arg(unused_proc_arg::in,
+    list(format_piece)::in, list(format_piece)::out,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+classify_unused_proc_arg(UnusedProcArg, !UnmarkedArgNums, !MarkedArgNums) :-
+    UnusedProcArg = unused_proc_arg(ArgNum, MaybeMarked),
+    (
+        MaybeMarked = not_marked_unused,
+        !:UnmarkedArgNums = [int_fixed(ArgNum) | !.UnmarkedArgNums]
+    ;
+        MaybeMarked = marked_unused,
+        !:MarkedArgNums = [int_fixed(ArgNum) | !.MarkedArgNums]
+    ).
+
+:- func marked_unused_args_addendum(list(format_piece)) = list(format_piece).
+
+marked_unused_args_addendum(MarkedArgs) = Pieces :-
+    MarkedArgPieces = piece_list_to_color_pieces(color_subject,
+        "and", [], MarkedArgs),
+    (
+        MarkedArgs = [],
+        Pieces = []
+    ;
+        MarkedArgs = [_],
+        Pieces = [words("(Argument")] ++ MarkedArgPieces ++
+            [words("is also unused, but its mode")] ++
+            color_as_correct([words("marks it")]) ++
+            [words("as unused.)"), nl]
+    ;
+        MarkedArgs = [_, _ | _],
+        Pieces = [words("(Arguments")] ++ MarkedArgPieces ++
+            [words("are also unused, but their modes")] ++
+            color_as_correct([words("mark them")]) ++
+            [words("as unused.)"), nl]
+    ).
 
 %---------------------------------------------------------------------------%
 

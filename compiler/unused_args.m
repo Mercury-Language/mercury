@@ -122,10 +122,9 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
     % maybe_write_string(VeryVerbose, "% Finished analysis.\n", !IO),
 
     map.init(ProcToUnusedArgsMap0),
-    build_proc_to_unused_args_map(!.ModuleInfo, GlobalVarUsageMap, FixpointPredProcIds,
-        ProcToUnusedArgsMap0, ProcToUnusedArgsMap),
+    build_proc_to_unused_args_map(!.ModuleInfo, GlobalVarUsageMap,
+        FixpointPredProcIds, ProcToUnusedArgsMap0, ProcToUnusedArgsMap),
 
-    map.keys(ProcToUnusedArgsMap, PredProcIdsToFix),
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarnBool),
     ( DoWarnBool = no,  DoWarn = do_not_warn_unused_args
     ; DoWarnBool = yes, DoWarn = do_warn_unused_args
@@ -135,10 +134,8 @@ unused_args_process_module(GatherPragmas, RecordAnalysis,
         ; GatherPragmas = do_gather_pragma_unused_args
         )
     then
-        set.init(WarnedPredIds0),
         gather_warnings_and_pragmas(!.ModuleInfo, ProcToUnusedArgsMap,
-            DoWarn, GatherPragmas, PredProcIdsToFix, WarnedPredIds0,
-            [], Specs, set.init, PragmaUnusedArgInfos)
+            DoWarn, GatherPragmas, Specs, PragmaUnusedArgInfos)
     else
         Specs = [],
         set.init(PragmaUnusedArgInfos)
