@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2020-2025 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // file: mercury_wrapper.c
@@ -1286,6 +1286,7 @@ enum MR_long_option {
     MR_MEM_USAGE_REPORT,
     MR_BOEHM_GC_FREE_SPACE_DIVISOR,
     MR_BOEHM_GC_CALC_TIME,
+    MR_BOEHM_WRITE_SIZE_MAP,
     MR_FP_ROUNDING_MODE
 };
 
@@ -1399,6 +1400,7 @@ struct MR_option MR_long_opts[] = {
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
     { "boehm-gc-free-space-divisor",    1, 0, MR_BOEHM_GC_FREE_SPACE_DIVISOR },
     { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
+    { "boehm-write-size-map",           0, 0, MR_BOEHM_WRITE_SIZE_MAP },
     { "fp-rounding-mode",               1, 0, MR_FP_ROUNDING_MODE },
 
     // This needs to be kept at the end.
@@ -2025,6 +2027,14 @@ MR_process_options(int argc, char **argv)
             case MR_BOEHM_GC_CALC_TIME:
 #ifdef MR_BOEHM_GC
                 GC_start_performance_measurement();
+#endif
+                break;
+
+            case MR_BOEHM_WRITE_SIZE_MAP:
+#ifdef MR_BOEHM_GC
+                fprintf(stdout, "The boehm gc size map:\n");
+                GC_mercury_write_size_map(stdout);
+                fprintf(stdout, "\n");
 #endif
                 break;
 
