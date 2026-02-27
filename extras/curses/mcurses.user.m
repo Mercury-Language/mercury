@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000, 2005-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014, 2021-2022 The Mercury team.
+% Copyright (C) 2014, 2021-2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -226,8 +226,8 @@ create(Parent, Opts, X, Y, W, H, Child, !IO) :-
     require(
         ((pred) is semidet :-
             X >= 0, Y >= 0,
-            X+W =< W0,
-            Y+H =< H0
+            X + W =< W0,
+            Y + H =< H0
         ), "create: window out of range!"),
     array.init(W * H, ' ' - [], Data),
     CWindow = win(P0, W, H, Opts, Data, [], []),
@@ -330,7 +330,7 @@ refresh(Win, !IO) :-
     Yb = Y0 + A,
     for(0, Rows - 1,
         ( pred(Y::in, !.IO::di, !:IO::uo) is det :-
-            Offset = Y*Cols,
+            Offset = Y * Cols,
             for(0, Cols - 1,
                 ( pred(X::in, !.IO::di, !:IO::uo) is det :-
                     cursor(Xb + X, Yb + Y, !IO),
@@ -342,7 +342,7 @@ refresh(Win, !IO) :-
 
 :- pred refresh_child(child::in, io::di, io::uo) is det.
 
-refresh_child(child(X, Y, Win), !IO):-
+refresh_child(child(X, Y, Win), !IO) :-
     get_cursor(cursor(X0, Y0), !IO),
     set_cursor(cursor(X0 + X, Y0 + Y), !IO),
     refresh(Win, !IO),
@@ -526,7 +526,7 @@ scroll(Win, N, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
     require(((pred) is semidet :-
         N > 0,
-        N < Cols
+        N < Rows
     ), "scroll: out of range"),
     for(0, Rows - N - 1,
         ( pred(Y::in, array_di, array_uo) is det -->
@@ -552,7 +552,7 @@ place_char(Win, X, Y, C - As, !IO) :-
     require(
         ((pred) is semidet :-
             X >= 0, Y >= 0,
-            X < Cols, Y < Cols
+            X < Cols, Y < Rows
         ), "place_char: out of range"),
     set(X + Y * Cols, C - As, u(Data0), Data),
     set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden), !IO).
@@ -573,7 +573,7 @@ place_string(Win, X, Y, Str, !IO) :-
     require(
         ((pred) is semidet :-
             X >= 0, Y >= 0,
-            X < Cols, Y < Cols
+            X < Cols, Y < Rows
         ), "place_string: out of range"),
     string.to_char_list(Str, Chars),
     update_data(Chars, Y * Cols, X, X + Cols, u(Data0), Data),
