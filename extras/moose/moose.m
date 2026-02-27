@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2004, 2006, 2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020-2023 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020-2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -81,7 +81,7 @@ report_critical_error(Message, !IO) :-
     io.nl(StdErr, !IO),
     io.set_exit_status(1, !IO).
 
-:- pred main2(options::in, list(string)::in, io::di, io::uo).
+:- pred main2(options::in, list(string)::in, io::di, io::uo) is det.
 
 main2(_Options, [], !IO) :-
     report_critical_error("no input files.", !IO),
