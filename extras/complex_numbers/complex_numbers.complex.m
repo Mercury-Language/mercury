@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2001, 2005-2006 The University of Melbourne.
-% Copyright (C) 2015, 2018, 2025 The Mercury team.
+% Copyright (C) 2015, 2018, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -118,7 +118,7 @@
     %
 :- func polar_to_complex(float, float) = complex.
 
-    % polar_to_complex(Z, R, Theta).
+    % complex_to_polar(Z, R, Theta).
     % Conversion to polar coordinates.
     %
 :- pred complex_to_polar(complex::in, float::out, float::out) is det.
