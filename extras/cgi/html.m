@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997, 2006 The University of Melbourne.
-% Copyright (C) 2014, 2018, 2022, 2025 The Mercury team.
+% Copyright (C) 2014, 2018, 2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -197,7 +197,7 @@ style_name(var) = "var".
 
 :- func font_name(font) = string.
 
-font_name(italics) = "it".
+font_name(italics) = "i".
 font_name(bold) = "b".
 font_name(underline) = "u".
 font_name(typewriter) = "tt".
@@ -337,7 +337,7 @@ output_field(Name, reset(Value), !IO) :-
     io.format("<input name=""%s"" type=""reset"" value=""%s"">",
         [s(Name), s(escape_attr_string(Value))], !IO).
 output_field(Name, hidden(Value), !IO) :-
-    io.format("<input name=""=%s"" type=""hidden"" value=""%s"">",
+    io.format("<input name=""%s"" type=""hidden"" value=""%s"">",
         [s(Name), s(escape_attr_string(Value))], !IO).
 
 :- pred output_selection_option(pair(string, bool)::in, io::di, io::uo)
@@ -432,16 +432,15 @@ special_html_char('>',"&gt;").
 
 :- pred special_attr_char(char::in, string::out) is semidet.
 
-special_attr_char('&',"&amp;").
-special_attr_char('>',"&gt;"). % needed only for broken browsers
-special_attr_char('\t',"&#09;").
-special_attr_char('\r',"&#10;").
-special_attr_char('\n',"&#12;").
-special_attr_char(' ',"&#32;").
-special_attr_char('"',"&#34;").
+special_attr_char('&', "&amp;").
+special_attr_char('>', "&gt;").
+special_attr_char('\t', "&#09;").
+special_attr_char('\r', "&#13;").
+special_attr_char('\n', "&#10;").
+special_attr_char(' ', "&#32;").
+special_attr_char('"', "&#34;").
 
-:- pred insert(list(T), list(T), list(T)).
-:- mode insert(in, out, in) is det.
+:- pred insert(list(T)::in, list(T)::out, list(T)::in) is det.
 
 insert(NewChars, Chars, Chars0) :-
     list.append(NewChars, Chars0, Chars).
