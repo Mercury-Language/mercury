@@ -31,6 +31,7 @@ MCFLAGS-unused_args_analysis            += --warn-unused-args
 MCFLAGS-unused_args_analysis_helper_1   += --intermodule-analysis
 MCFLAGS-unused_args_analysis_helper_1   += --optimize-unused-args
 MCFLAGS-unused_args_analysis_helper_1   += --trace-optimized
+MCFLAGS-unused_args_only_rec            += --warn-unused-args
 MCFLAGS-unused_args_some_modes          += --warn-unused-args
 MCFLAGS-unused_args_test                += --warn-unused-args
 MCFLAGS-unused_import                   += --warn-unused-interface-imports

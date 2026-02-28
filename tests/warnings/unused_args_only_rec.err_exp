@@ -1,0 +1,4 @@
+unused_args_only_rec.m:012: In predicate [38;5;87m`p'/5:[39;49m
+unused_args_only_rec.m:012:   warning: arguments [38;5;87m1[39;49m and [38;5;87m2[39;49m are [38;5;203munused.[39;49m
+unused_args_only_rec.m:014: In predicate [38;5;87m`q'/5:[39;49m
+unused_args_only_rec.m:014:   warning: arguments [38;5;87m1[39;49m and [38;5;87m2[39;49m are [38;5;203munused.[39;49m

@@ -67,6 +67,7 @@ STD_PROGS = \
 	unneeded_final_statevar \
 	unsigned_zero_cmp \
 	unsorted_import_blocks \
+	unused_args_only_rec \
 	unused_args_some_modes \
 	unused_args_test \
 	unused_import \
