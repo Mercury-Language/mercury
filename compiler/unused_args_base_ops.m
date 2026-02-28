@@ -265,44 +265,57 @@ write_local_var_usage_map(Stream, ModuleInfo, PredProcId,
     proc_info_get_var_table(ProcInfo, VarTable),
     list.foldl2(
         write_var_requiring_vars(Stream, ModuleInfo, VarTable), LocalVarUsages,
-        [], RevNoDependVars, !IO),
-    list.reverse(RevNoDependVars, NoDependVars),
+        [], RevNotRequiredVars, !IO),
+    list.reverse(RevNotRequiredVars, NotRequiredVars),
     (
-        NoDependVars = []
+        NotRequiredVars = []
     ;
-        NoDependVars = [_ | _],
-        NoDependVarsStr =
-            mercury_vars_to_string(VarTable, print_name_and_num, NoDependVars),
-        io.format(Stream, "nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
-    ).
+        NotRequiredVars = [_ | _],
+        NotRequiredVarsStr = mercury_vars_to_string(VarTable,
+            print_name_and_num, NotRequiredVars),
+        % NotRequiredVars lists the variables that have both
+        % - an empty set of requiring vars, and
+        % - an empty set of requiring proc arguments.
+        % init_global_var_usage_map_entry_for_proc initializes the local var
+        % usage map entry of every variable in the procedure's var table
+        % to this value. If the traversal of the procedure body neither
+        % added any new elements to either set, nor deleted the variable's
+        % entry, then the variable is not mentioned at all in the body.
+        % This can happen if an earlier pass, such as simplification,
+        % deleted the last reference to the variable from the body, but
+        % left the variable in the var table.
+        io.format(Stream, "  not required but present vars: %s\n",
+            [s(NotRequiredVarsStr)], !IO)
+    ),
+    io.nl(Stream, !IO).
 
 :- pred write_var_requiring_vars(io.text_output_stream::in, module_info::in,
     var_table::in, pair(prog_var, required_by)::in,
     list(prog_var)::in, list(prog_var)::out, io::di, io::uo) is det.
 
 write_var_requiring_vars(Stream, ModuleInfo, VarTable, Var - RequiringVars,
-        !RevNoDependVars, !IO) :-
+        !RevNotRequiredVars, !IO) :-
     RequiringVars = required_by(LocalVarSet, ArgVarInProcsSet),
     set.to_sorted_list(LocalVarSet, LocalVars),
     set.to_sorted_list(ArgVarInProcsSet, ArgVarsInProcs),
     ( if LocalVars = [], ArgVarsInProcs = [] then
-        !:RevNoDependVars = [Var | !.RevNoDependVars]
+        !:RevNotRequiredVars = [Var | !.RevNotRequiredVars]
     else
         VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
-        io.format(Stream, "requiring vars of %s:\n", [s(VarStr)], !IO),
+        io.format(Stream, "  requiring vars of %s:\n", [s(VarStr)], !IO),
         (
             LocalVars = []
         ;
             LocalVars = [_ | _],
             LocalVarsStr = mercury_vars_to_string(VarTable,
                 print_name_and_num, LocalVars),
-            io.format(Stream, "variables: %s\n", [s(LocalVarsStr)], !IO)
+            io.format(Stream, "    variables: %s\n", [s(LocalVarsStr)], !IO)
         ),
         (
             ArgVarsInProcs = []
         ;
             ArgVarsInProcs = [_ | _],
-            io.write_string(Stream, "procedure arguments:\n", !IO),
+            io.write_string(Stream, "    procedure arguments:\n", !IO),
             list.foldl(write_arg_var_in_proc(Stream, ModuleInfo),
                 ArgVarsInProcs, !IO)
         )
@@ -317,7 +330,7 @@ write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
     VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
-    io.format(Stream, "%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
+    io.format(Stream, "      %s, %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
