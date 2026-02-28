@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000, 2010 The University of Melbourne.
-% Copyright (C) 2019, 2022 The Mercury team.
+% Copyright (C) 2019, 2022, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -13,17 +13,6 @@
 % Stability:     Medium
 %
 % This module defines the low-level bindings to the C library for (n)curses.
-%
-% Please note that this is still a partial binding; it does not provide
-% complete curses functionality.
-% Major things this binding implements:
-%     * Creation, destruction, clearing, raising, and lowering of arbitary
-%       windows.
-%     * Scrolling.
-%     * Colour on a character by character basis.
-%
-% See the man pages for ncurses for detailed information about using the
-% curses libraries.
 %
 %---------------------------------------------------------------------------%
 
@@ -463,14 +452,12 @@
 
 #ifdef MR_CONSERVATIVE_GC
 
-/*
-** The addresses of the closures that we pass to curses
-** will be stored by curses in malloc()'ed memory.
-** However, it is essential that these pointers be
-** visible to the garbage collector, otherwise it will
-** think that the closures are unreferenced and reuse the storage.
-** Hence we redefine malloc() and friends to call GC_malloc().
-*/
+// The addresses of the closures that we pass to curses
+// will be stored by curses in malloc()'ed memory.
+// However, it is essential that these pointers be
+// visible to the garbage collector, otherwise it will
+// think that the closures are unreferenced and reuse the storage.
+// Hence we redefine malloc() and friends to call GC_malloc().
 
 void *malloc(size_t s)
 {

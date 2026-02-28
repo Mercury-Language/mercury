@@ -9,7 +9,8 @@
 % File:        misc.m
 % Main author: conway
 %
-% Provides miscellaneous functionality required by user.m and basics.m
+% Provides miscellaneous functionality required by
+% mcurses.user.m and mcurses.basics.m.
 %
 %---------------------------------------------------------------------------%
 
@@ -20,18 +21,21 @@
 :- import_module int.
 
   % for(Accumulator, Max, Closure, StoreIn, StoreOut)
-  % perform an operation much like a `for loop' in imperative languages. For
-  % every value of Accumulator =< Max, call Closure with the current value of
-  % Accumulator.
+  % perform an operation much like a `for loop' in imperative languages.
+  % For every value of Accumulator =< Max, call Closure with the
+  % current value of Accumulator.
   %
   % Example:
   %
   % main -->
-  %     for(0, 5, (pred(Num::in, di, uo) is det -->
+  %     for(0, 5,
+  %         ( pred(Num::in, di, uo) is det -->
   %             io.print(Num)
-  %     )).
+  %         )
+  %     ).
   %
   % Would print "012345".
+  %
 :- pred for(int, int, pred(int, T, T), T, T).
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.
 :- mode for(in, in, pred(in, in, out) is semidet, in, out) is semidet.
@@ -43,10 +47,10 @@
 
 :- implementation.
 
-for(Min, Max, Pred, Acc0, Acc) :-
+for(Min, Max, Pred, !Acc) :-
     ( if Min =< Max then
-        Pred(Min, Acc0, Acc1),
-        for(Min + 1, Max, Pred, Acc1, Acc)
+        Pred(Min, !Acc),
+        for(Min + 1, Max, Pred, !Acc)
     else
-        Acc = Acc0
+        true
     ).

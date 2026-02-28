@@ -14,14 +14,6 @@
 %
 % This module provides the user-level functionality for the (n)curses binding.
 %
-% Please note that this is still a partial binding; it does not provide
-% complete curses functionality.
-% Major things this binding implements:
-%     * Creation, destruction, clearing, raising, and lowering of arbitrary
-%       windows.
-%     * Scrolling.
-%     * Colour on a character by character basis.
-%
 %---------------------------------------------------------------------------%
 
 :- module mcurses.user.
@@ -185,21 +177,21 @@
 
 :- type window
     --->    win(
-            win,        % parent
-            int,        % width
-            int,        % height
-            list(wopt),
-            array(chtype),  % contents
-            list(child),    % visible
-            list(child) % hidden
-        ).
+                win,            % parent
+                int,            % width
+                int,            % height
+                list(wopt),
+                array(chtype),  % contents
+                list(child),    % visible
+                list(child)     % hidden
+            ).
 
 :- type child
     --->    child(
-            int,        % x
-            int,        % y
-            win
-        ).
+                int,        % x
+                int,        % y
+                win
+            ).
 
 :- type cursor
     --->    cursor(int, int). % X, Y
@@ -224,7 +216,7 @@ create(Parent, Opts, X, Y, W, H, Child, !IO) :-
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(P0, W0, H0, Opts0, PData, Visi0, Hidden),
     require(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             X >= 0, Y >= 0,
             X + W =< W0,
             Y + H =< H0
@@ -283,7 +275,7 @@ refresh(Win, !IO) :-
             ZZ = title(Ti)
         ), Titles),
     ( if list.member(border, Opts) then
-        for(Y0+1, Y0+Rows,
+        for(Y0 + 1, Y0 + Rows,
             ( pred(By::in, !.IO::di, !:IO::uo) is det :-
                 cursor(X0, By, !IO),
                 putchar('|', !IO),
@@ -458,9 +450,10 @@ hide(Win, !IO) :-
     Window = win(Parent, _, _, _, _, _, _),
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(PP, PC, PR, PO, PD, Visi0, Hidden0),
-    filter((pred(Child::in) is semidet :-
-        Child = child(_, _, Win)
-    ), Visi0, This, Visi),
+    filter(
+        ( pred(Child::in) is semidet :-
+            Child = child(_, _, Win)
+        ), Visi0, This, Visi),
     append(This, Hidden0, Hidden),
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
@@ -472,9 +465,10 @@ show(Win, !IO) :-
     Window = win(Parent, _, _, _, _, _, _),
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(PP, PC, PR, PO, PD, Visi0, Hidden0),
-    filter((pred(Child::in) is semidet :-
-        Child = child(_, _, Win)
-    ), Hidden0, This, Hidden),
+    filter(
+        ( pred(Child::in) is semidet :-
+            Child = child(_, _, Win)
+        ), Hidden0, This, Hidden),
     append(Visi0, This, Visi),
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
@@ -486,9 +480,10 @@ raise(Win, !IO) :-
     Window = win(Parent, _, _, _, _, _, _),
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(PP, PC, PR, PO, PD, Visi0, Hidden),
-    filter((pred(Child::in) is semidet :-
-        Child = child(_, _, Win)
-    ), Visi0, This, Rest),
+    filter(
+        ( pred(Child::in) is semidet :-
+            Child = child(_, _, Win)
+        ), Visi0, This, Rest),
     append(Rest, This, Visi),
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
@@ -500,9 +495,10 @@ lower(Win, !IO) :-
     Window = win(Parent, _, _, _, _, _, _),
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(PP, PC, PR, PO, PD, Visi0, Hidden),
-    filter((pred(Child::in) is semidet :-
-        Child = child(_, _, Win)
-    ), Visi0, This, Rest),
+    filter(
+        ( pred(Child::in) is semidet :-
+            Child = child(_, _, Win)
+        ), Visi0, This, Rest),
     append(This, Rest, Visi),
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
@@ -524,10 +520,11 @@ clear(Win, !IO) :-
 
 scroll(Win, N, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
-    require(((pred) is semidet :-
-        N > 0,
-        N < Rows
-    ), "scroll: out of range"),
+    require(
+        ( (pred) is semidet :-
+            N > 0,
+            N < Rows
+        ), "scroll: out of range"),
     for(0, Rows - N - 1,
         ( pred(Y::in, array_di, array_uo) is det -->
             for(0, Cols - 1,
@@ -550,7 +547,7 @@ scroll(Win, N, !IO) :-
 place_char(Win, X, Y, C - As, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
     require(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             X >= 0, Y >= 0,
             X < Cols, Y < Rows
         ), "place_char: out of range"),
@@ -571,7 +568,7 @@ place_char(Win, X, Y, C - As, !IO) :-
 place_string(Win, X, Y, Str, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
     require(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             X >= 0, Y >= 0,
             X < Cols, Y < Rows
         ), "place_string: out of range"),

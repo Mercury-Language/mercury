@@ -6,15 +6,19 @@
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
 %
-% Top-level of the curses binding
+% Top-level of the curses binding.
 %
 % Please note that this is still a partial binding; it does not provide
 % complete curses functionality.
+%
 % Major things this binding implements:
-%     * Creation, destruction, clearing, raising, and lowering of arbitrary
-%       windows.
-%     * Scrolling.
-%     * Colour on a character by character basis.
+%
+% - Creating, destroying, clearing, raising, and lowering of arbitary windows.
+% - Scrolling.
+% - Setting colour on a character by character basis.
+%
+% See the man pages for ncurses for detailed information about using the
+% curses libraries.
 %
 %---------------------------------------------------------------------------%
 
