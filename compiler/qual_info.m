@@ -243,11 +243,11 @@ process_type_qualification(Var, Type0, VarSet, Context, !QualInfo, !Specs) :-
 
     % Expand equivalence types.
     % We don't need to record the expanded types for smart recompilation
-    % because at the moment no recompilation.item_id can depend on a
+    % because at the moment, no recompilation.item_id can depend on a
     % clause item.
-    ExpandInfo0 = no_eqv_expand_info,
+    ItemRecompDeps0 = no_item_recomp_deps,
     equiv_type.replace_in_type(TypeEqvMap, Type2, Type, _, TVarSet1, TVarSet,
-        ExpandInfo0, _),
+        ItemRecompDeps0, _),
     update_var_types(Var, Type, Context, VarTypes0, VarTypes, !Specs),
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, TVarRenaming,
         TVarNameMap, VarTypes, MQInfo, MaybeOptImported,

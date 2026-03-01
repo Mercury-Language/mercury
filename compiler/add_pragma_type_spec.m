@@ -371,9 +371,9 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
 
 %---------------------%
 
-    % add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
-    %     TVarSet, Types, ExistQVars, Constraints, SpecProcTable0,
-    %     ApplicableModes, SpecPredId, SpecPredStatus, !ModuleInfo):
+    % add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity,
+    %   TypeSpecInfo0, TVarSet, Types, ExistQVars, Constraints, SpecProcTable0,
+    %   ApplicableModes, SpecPredId, SpecPredStatus, !ModuleInfo):
     %
     % The input parameters of add_forcing_caller_of_pred, including PredId
     % and PredInfo0, describe the predicate that has a type_spec pragma
@@ -395,10 +395,10 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
     univ_exist_constraints::in, proc_table::in, clause_applicable_modes::in,
     pred_id::out, pred_status::out, module_info::in, module_info::out) is det.
 
-add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
+add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TypeSpecInfo0,
         TVarSet, Types, ExistQVars, Constraints, ForcingProcTable0,
         ApplicableModes, ForcingPredId, ForcingPredStatus, !ModuleInfo) :-
-    TSInfo0 = decl_pragma_type_spec_info(PFUMM0, SymName, SpecModuleName,
+    TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM0, SymName, SpecModuleName,
         Subst, TVarSet0, _ExpandedItems, _PragmaContext, _SeqNum),
 
     % Remove any imported structure sharing and reuse information
@@ -408,7 +408,7 @@ add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
         ForcingProcTable0, ForcingProcTable),
 
     % Build a clause to call the old predicate with the specified types
-    % to force the specialization. For imported predicates this forces
+    % to force the specialization. For imported predicates, this forces
     % the creation of the proper interface.
     varset.init(ArgVarSet0),
     PredFormArity = pred_form_arity(PredFormArityInt),
@@ -536,7 +536,7 @@ record_type_specialization(TypeSpecInfo0, PredId, ForcingPredId,
     qual_info::in, qual_info::out) is det.
 
 maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
-        TSInfo, !QualInfo) :-
+        TypeSpecInfo, !QualInfo) :-
     IsImported = pred_status_is_imported(PredStatus),
     (
         IsImported = yes,
@@ -544,9 +544,9 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
         UserArity = user_arity(UserArityInt),
         ItemName = recomp_item_name(SymName, UserArityInt),
         ItemId = recomp_item_id(ItemType, ItemName),
-        ExpandedItems = TSInfo ^ tspec_items,
+        ItemRecompDeps = TypeSpecInfo ^ tspec_items,
         apply_to_recompilation_info(
-            record_expanded_items(ItemId, ExpandedItems),
+            record_gathered_item_deps(ItemId, ItemRecompDeps),
             !QualInfo)
     ;
         IsImported = no

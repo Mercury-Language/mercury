@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,50 +120,99 @@
     recomp_item_name::in, recomp_item_name::in,
     recompilation_info::in, recompilation_info::out) is det.
 
-    % For each imported item we need to record which equivalence types
-    % are used because equiv_type.m removes all references to the
-    % equivalence types, and at that point we don't know which imported
-    % items are going to be used by the compilation.
+    % record_gathered_item_deps(ItemId, GatheredItemDeps, !Info):
     %
-    % For predicates declared using `with_type` annotations,
-    % the version number in the interface file and the
-    % version_numbers map will refer to the arity before expansion
-    % of the `with_type` annotation, so that needs to be recorded
-    % here as well.
+    % This predicate does the final part of the job of
+    % finish_gathering_item_recomp_deps, i.e. the incorporation
+    % of the gathered information in the recompilation_info.
     %
-:- pred record_expanded_items(recomp_item_id::in, set(recomp_item_id)::in,
+    % It is a separate predicate because for decl_pragma_type_spec_info
+    % and decl_pragma_type_spec_constr_info items, even though equiv_type.m
+    % gathers the ids of the items expanded out within them, it does NOT
+    % record the result of this gathering in the recompilation_info.
+    % (In fact, the code there does this gathering even in the *absence*
+    % of any recompilation_info.) Instead, it records the gathered item_ids
+    % in the updated decl_pragma_type_spec{,_constr}_info, and leaves it
+    % to add add_pragma_type_spec.m to invoke this predicate.
+    %
+    % I (zs) have no idea what the point of this delay is.
+    %
+:- pred record_gathered_item_deps(recomp_item_id::in, set(recomp_item_id)::in,
     recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % XXX RECOMP RENAME It is the eqv_expanded_item_set type that plays
-    % the role that X_info types (for X = polymorphism, simplify etc)
-    % play in the rest of the compiler, in that it contains a data structure
-    % that is threaded through a set of predicates (a) to give them the
-    % info they need to do their jobs, and (b) to collect their observations.
-    %
-:- type eqv_expand_info
-    --->    no_eqv_expand_info
-    ;       eqv_expand_info(module_name, set(recomp_item_id)).
-            % The module_name field contains the name of the module
-            % currently being compiled.
-            %
-            % XXX Document the meaning of the second field.
-
     % For smart recompilation we need to record which items were expanded
-    % in each declaration. Any items which depend on that declaration also
-    % depend on the expanded items.
+    % in each declaration.
     %
-:- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
-    maybe(recompilation_info)::in, eqv_expand_info::out) is det.
+    % For each imported item we need to record which equivalence types
+    % are used in it, because equiv_type.m removes all references to the
+    % equivalence types, and at that point we don't know which imported items
+    % are going to be used by the compilation.
+    %
+    % For predicates declared using `with_type` annotations,
+    % the version number in the interface file and the
+    % version_numbers map will refer to the arity before expansion
+:- type item_recomp_deps
+    --->    no_item_recomp_deps
+    ;       item_recomp_deps(
+                % The name of the module currently being compiled.
+                module_name,
 
-:- pred record_expanded_item(recomp_item_id::in,
-    eqv_expand_info::in, eqv_expand_info::out) is det.
+                % We create one of these structures when we start recording
+                % the set of items expanded out within a declaration item
+                % (such as a item_type_defn_info, item_pred_decl_info,
+                % item_mode_decl_info, item_typeclass_info etc).
+                % This field contains the ids of those expanded-out items.
+                set(recomp_item_id)
+            ).
 
+    % maybe_start_gathering_item_recomp_deps(ModuleName, ItemId,
+    %   MaybeRecompInfo, MaybeGatheredItemDeps):
+    %
+    % If smart recompilation is enabled (as shown by the presence of a
+    % recompilation_info in the third argument), then return the initial
+    % version of the data structure in we will gather (by means of calls
+    % to gather_item_recomp_dep) the set of items that were expanded out
+    % while processing the given item, which will be a declaration.
+    %
+    % We do this because entities that depend on that declaration
+    % also depend on the expanded-out items within that declaration.
+    %
+    % maybe_start_gathering_item_recomp_deps_sym_name does the same job,
+    % but it callable from a context in which a recomp_item_id cannot (yet)
+    % be constructed. The contexts are pred declarations and mode declarations
+    % that, due to the presence of with_type and/or with_inst annotations,
+    % don't know their final arity yet, and may possibly also lack
+    % a pred_or_func indication. (recomp_item_ids for those kinds of items
+    % need both the arity and the pred_or_func indication.)
+    %
+:- pred maybe_start_gathering_item_recomp_deps(module_name::in,
+    recomp_item_id::in, maybe(recompilation_info)::in,
+    item_recomp_deps::out) is det.
+:- pred maybe_start_gathering_item_recomp_deps_sym_name(module_name::in,
+    sym_name::in, maybe(recompilation_info)::in,
+    item_recomp_deps::out) is det.
+
+    % gather_item_recomp_dep(DepItemId, !MaybeGatheredItemDeps):
+    %
+    % Record DepItemId as being expanded during the processing
+    % of the declaration item for which !.MaybeGatheredItemDeps was created.
+    %
+:- pred gather_item_recomp_dep(recomp_item_id::in,
+    item_recomp_deps::in, item_recomp_deps::out) is det.
+
+    % finish_gathering_item_recomp_deps(ItemId, MaybeGatheredItemDeps,
+    %   MaybeRecomp0, MaybeRecomp):
+    %
+    % This predicate should be called when the compiler has finished
+    % expanding out equivalences in the various components of the
+    % original declaration item. This predicate then records
+    % the fact that
     % Record all the expanded items in the recompilation_info.
     %
-:- pred finish_recording_expanded_items(recomp_item_id::in,
-    eqv_expand_info::in,
+:- pred finish_gathering_item_recomp_deps(recomp_item_id::in,
+    item_recomp_deps::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -290,62 +339,78 @@ ignore_unqual_item_for_item_type(UsedItemType) = Ignore :-
 
 %-----------------------------------------------------------------------------%
 
-record_expanded_items(Item, ExpandedItems, !Info) :-
-    ( if set.is_empty(ExpandedItems) then
+record_gathered_item_deps(ItemId, GatheredItemDeps, !Info) :-
+    ( if set.is_empty(GatheredItemDeps) then
         true
     else
         DepsMap0 = !.Info ^ recomp_dependencies,
-        ( if map.search(DepsMap0, Item, Deps0) then
-            set.union(ExpandedItems, Deps0, Deps),
-            map.det_update(Item, Deps, DepsMap0, DepsMap)
+        ( if map.search(DepsMap0, ItemId, Deps0) then
+            set.union(GatheredItemDeps, Deps0, Deps),
+            map.det_update(ItemId, Deps, DepsMap0, DepsMap)
         else
-            map.det_insert(Item, ExpandedItems, DepsMap0, DepsMap)
+            map.det_insert(ItemId, GatheredItemDeps, DepsMap0, DepsMap)
         ),
         !Info ^ recomp_dependencies := DepsMap
     ).
 
-maybe_start_recording_expanded_items(ModuleName, SymName, MaybeRecompInfo,
-        ExpandInfo) :-
+maybe_start_gathering_item_recomp_deps(ModuleName, ItemId, MaybeRecompInfo,
+        MaybeGatheredItemDeps) :-
     (
         MaybeRecompInfo = no,
-        ExpandInfo = no_eqv_expand_info
+        MaybeGatheredItemDeps = no_item_recomp_deps
     ;
         MaybeRecompInfo = yes(_),
-        ( if SymName = qualified(ModuleName, _) then
-            ExpandInfo = no_eqv_expand_info
+        ItemId = recomp_item_id(_, ItemName),
+        ItemName = recomp_item_name(ItemSymName, _ItemArity),
+        ( if ItemSymName = qualified(ModuleName, _) then
+            MaybeGatheredItemDeps = no_item_recomp_deps
         else
-            ExpandInfo = eqv_expand_info(ModuleName, set.init)
+            MaybeGatheredItemDeps = item_recomp_deps(ModuleName, set.init)
         )
     ).
 
-record_expanded_item(ItemId, !ExpandInfo) :-
+maybe_start_gathering_item_recomp_deps_sym_name(ModuleName, ItemSymName,
+        MaybeRecompInfo, MaybeGatheredItemDeps) :-
     (
-        !.ExpandInfo = no_eqv_expand_info
+        MaybeRecompInfo = no,
+        MaybeGatheredItemDeps = no_item_recomp_deps
     ;
-        !.ExpandInfo = eqv_expand_info(ModuleName, ExpandedItemIds0),
-        ItemId = recomp_item_id(_, ItemName),
-        ( if ItemName = recomp_item_name(qualified(ModuleName, _), _) then
+        MaybeRecompInfo = yes(_),
+        ( if ItemSymName = qualified(ModuleName, _) then
+            MaybeGatheredItemDeps = no_item_recomp_deps
+        else
+            MaybeGatheredItemDeps = item_recomp_deps(ModuleName, set.init)
+        )
+    ).
+
+gather_item_recomp_dep(DepItemId, !MaybeGatheredItemDeps) :-
+    (
+        !.MaybeGatheredItemDeps = no_item_recomp_deps
+    ;
+        !.MaybeGatheredItemDeps = item_recomp_deps(ModuleName, GatheredDeps0),
+        DepItemId = recomp_item_id(_, DepItemName),
+        ( if DepItemName = recomp_item_name(qualified(ModuleName, _), _) then
             % We don't need to record local items.
             true
         else
-            set.insert(ItemId, ExpandedItemIds0, ExpandedItemIds),
-            !:ExpandInfo = eqv_expand_info(ModuleName, ExpandedItemIds)
+            set.insert(DepItemId, GatheredDeps0, GatheredDeps),
+            !:MaybeGatheredItemDeps = item_recomp_deps(ModuleName, GatheredDeps)
         )
     ).
 
-finish_recording_expanded_items(ItemId, ExpandInfo,
+finish_gathering_item_recomp_deps(ItemId, MaybeGatheredItemDeps,
         MaybeRecomp0, MaybeRecomp) :-
     (
-        ExpandInfo = no_eqv_expand_info,
+        MaybeGatheredItemDeps = no_item_recomp_deps,
         MaybeRecomp = MaybeRecomp0
     ;
-        ExpandInfo = eqv_expand_info(_, ExpandedItemIds),
+        MaybeGatheredItemDeps = item_recomp_deps(_, GatheredDeps),
         (
             MaybeRecomp0 = no,
-            unexpected($pred, "items but no info")
+            unexpected($pred, "gathered deps but no recomp info")
         ;
             MaybeRecomp0 = yes(Recomp0),
-            record_expanded_items(ItemId, ExpandedItemIds, Recomp0, Recomp),
+            record_gathered_item_deps(ItemId, GatheredDeps, Recomp0, Recomp),
             MaybeRecomp = yes(Recomp)
         )
     ).

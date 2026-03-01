@@ -175,10 +175,10 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         !MaybeRecompInfo) :-
     hlds_data.get_type_defn_tvarset(!.Defn, TVarSet0),
     hlds_data.get_type_defn_body(!.Defn, Body0),
-    TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
     TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
-    maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
-        !.MaybeRecompInfo, EquivTypeInfo0),
+    ItemId = recomp_item_id(recomp_type_defn, TypeCtorItem),
+    maybe_start_gathering_item_recomp_deps(ModuleName, ItemId,
+        !.MaybeRecompInfo, ItemRecompDeps0),
     (
         Body0 = hlds_du_type(BodyDu0),
         BodyDu0 = type_body_du(Ctors0, _AlphaSortedCtors0, MaybeSuperType0,
@@ -194,21 +194,21 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
             TVarSet1 = TVarSet0
         ),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
-            TVarSet1, TVarSet2, EquivTypeInfo0, EquivTypeInfo1),
+            TVarSet1, TVarSet2, ItemRecompDeps0, ItemRecompDeps1),
         one_or_more.sort(compare_ctors_by_name_arity,
             Ctors, AlphaSortedCtors),
         (
             MaybeRepn0 = no,
             MaybeRepn = no,
             TVarSet = TVarSet2,
-            EquivTypeInfo = EquivTypeInfo1
+            ItemRecompDeps = ItemRecompDeps1
         ;
             MaybeRepn0 = yes(Repn0),
             Repn0 = du_type_repn(CtorRepns0, _CtorNameToRepnMap0,
                 CheaperTagTest, DuKind, DirectArgCtors),
             list.map_foldl3(replace_in_ctor_repn(TypeEqvMap),
                 CtorRepns0, CtorRepns, map.init, CtorNameToRepnMap,
-                TVarSet2, TVarSet, EquivTypeInfo1, EquivTypeInfo),
+                TVarSet2, TVarSet, ItemRecompDeps1, ItemRecompDeps),
             Repn = du_type_repn(CtorRepns, CtorNameToRepnMap,
                 CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
@@ -219,11 +219,11 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     ;
         Body0 = hlds_eqv_type(Type0),
         equiv_type.replace_in_type(TypeEqvMap, Type0, Type, _,
-            TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
+            TVarSet0, TVarSet, ItemRecompDeps0, ItemRecompDeps),
         Body = hlds_eqv_type(Type)
     ;
         Body0 = hlds_foreign_type(_),
-        EquivTypeInfo = EquivTypeInfo0,
+        ItemRecompDeps = ItemRecompDeps0,
         Body = Body0,
         TVarSet = TVarSet0
     ;
@@ -232,19 +232,19 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         SolverTypeDetails0 = solver_type_details(RepnType0,
             GroundInst, AnyInst, MutableItems),
         equiv_type.replace_in_type(TypeEqvMap, RepnType0, RepnType, _,
-            TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
+            TVarSet0, TVarSet, ItemRecompDeps0, ItemRecompDeps),
         SolverTypeDetails = solver_type_details(RepnType,
             GroundInst, AnyInst, MutableItems),
         DetailsSolver = type_details_solver(SolverTypeDetails, UserEq),
         Body = hlds_solver_type(DetailsSolver)
     ;
         Body0 = hlds_abstract_type(_),
-        EquivTypeInfo = EquivTypeInfo0,
+        ItemRecompDeps = ItemRecompDeps0,
         Body = Body0,
         TVarSet = TVarSet0
     ),
-    ItemId = recomp_item_id(recomp_type_defn, TypeCtorItem),
-    finish_recording_expanded_items(ItemId, EquivTypeInfo, !MaybeRecompInfo),
+    finish_gathering_item_recomp_deps(ItemId, ItemRecompDeps,
+        !MaybeRecompInfo),
     hlds_data.set_type_defn_body(Body, !Defn),
     hlds_data.set_type_defn_tvarset(TVarSet, !Defn).
 
@@ -252,14 +252,14 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     constructor_repn::in, constructor_repn::out,
     ctor_name_to_repn_map::in, ctor_name_to_repn_map::out,
     tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out) is det.
+    item_recomp_deps::in, item_recomp_deps::out) is det.
 
 replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
-        !TVarSet, !EquivTypeInfo) :-
+        !TVarSet, !ItemRecompDeps) :-
     CtorRepn0 = ctor_repn(Ordinal, MaybeExistConstraints0, CtorName, Tag,
         CtorArgRepns0, Arity, Context),
     list.map_foldl2(replace_in_ctor_arg_repn(TypeEqvMap),
-        CtorArgRepns0, CtorArgRepns, !TVarSet, !EquivTypeInfo),
+        CtorArgRepns0, CtorArgRepns, !TVarSet, !ItemRecompDeps),
     (
         MaybeExistConstraints0 = no_exist_constraints,
         MaybeExistConstraints = no_exist_constraints
@@ -268,7 +268,7 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
         ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
             UnconstrainedExistQVars, ConstrainedExistQVars),
         replace_in_prog_constraints(TypeEqvMap, Constraints0, Constraints,
-            !TVarSet, !EquivTypeInfo),
+            !TVarSet, !ItemRecompDeps),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             UnconstrainedExistQVars, ConstrainedExistQVars),
         MaybeExistConstraints = exist_constraints(ExistConstraints)
@@ -280,14 +280,14 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
 :- pred replace_in_ctor_arg_repn(type_eqv_map::in,
     constructor_arg_repn::in, constructor_arg_repn::out,
     tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out) is det.
+    item_recomp_deps::in, item_recomp_deps::out) is det.
 
 replace_in_ctor_arg_repn(TypeEqvMap, CtorArgRepn0, CtorArgRepn,
-        !TVarSet, !EquivTypeInfo) :-
+        !TVarSet, !ItemRecompDeps) :-
     CtorArgRepn0 = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
         Type0, Width, Context),
     replace_in_type(TypeEqvMap, Type0, Type, Changed,
-        !TVarSet, !EquivTypeInfo),
+        !TVarSet, !ItemRecompDeps),
     (
         Changed = unchanged,
         CtorArgRepn = CtorArgRepn0
@@ -601,7 +601,7 @@ replace_in_cons_defn(TypeEqvMap, ConsDefn0, ConsDefn) :-
 replace_in_constructor_arg(TypeEqvMap, CtorArg0, CtorArg, !TVarSet) :-
     CtorArg0 = ctor_arg(MaybeFieldName, Type0, Context),
     replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
-        no_eqv_expand_info, _),
+        no_item_recomp_deps, _),
     (
         Changed = unchanged,
         CtorArg = CtorArg0
@@ -617,38 +617,35 @@ replace_in_constructor_arg(TypeEqvMap, CtorArg0, CtorArg, !TVarSet) :-
     inst_cache::in, inst_cache::out) is det.
 
 replace_in_pred(TypeEqvMap, PredId, !ModuleInfo, !Cache) :-
-    some [!PredInfo, !EquivTypeInfo] (
+    some [!PredInfo, !ItemRecompDeps] (
         module_info_get_name(!.ModuleInfo, ModuleName),
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         module_info_get_maybe_recompilation_info(!.ModuleInfo,
             MaybeRecompInfo0),
 
-        PredName = pred_info_name(!.PredInfo),
-        maybe_start_recording_expanded_items(ModuleName,
-            qualified(ModuleName, PredName), MaybeRecompInfo0,
-            !:EquivTypeInfo),
+        PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
+        ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
+        pred_info_get_sym_name(!.PredInfo, PredSymName),
+        pred_info_get_orig_arity(!.PredInfo, pred_form_arity(PredFormArity)),
+        ItemName = recomp_item_name(PredSymName, PredFormArity),
+        ItemId = recomp_item_id(ItemType, ItemName),
+        maybe_start_gathering_item_recomp_deps(ModuleName, ItemId,
+            MaybeRecompInfo0, !:ItemRecompDeps),
 
         pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars,
             ArgTypes0),
         equiv_type.replace_in_type_list(TypeEqvMap, ArgTypes0, ArgTypes,
-            _, ArgTVarSet0, ArgTVarSet1, !EquivTypeInfo),
+            _, ArgTVarSet0, ArgTVarSet1, !ItemRecompDeps),
 
         % The constraint_proofs aren't used after polymorphism,
         % so they don't need to be processed.
         pred_info_get_class_context(!.PredInfo, ClassContext0),
         equiv_type.replace_in_univ_exist_constraints(TypeEqvMap, ClassContext0,
-            ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
+            ClassContext, ArgTVarSet1, ArgTVarSet, !ItemRecompDeps),
         pred_info_set_class_context(ClassContext, !PredInfo),
         pred_info_set_arg_types(ArgTVarSet, ExistQVars, ArgTypes, !PredInfo),
 
-        PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
-        ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
-        PredModuleName = pred_info_module(!.PredInfo),
-        PredSymName = qualified(PredModuleName, PredName),
-        pred_info_get_orig_arity(!.PredInfo, pred_form_arity(PredFormArity)),
-        ItemName = recomp_item_name(PredSymName, PredFormArity),
-        ItemId = recomp_item_id(ItemType, ItemName),
-        finish_recording_expanded_items(ItemId, !.EquivTypeInfo,
+        finish_gathering_item_recomp_deps(ItemId, !.ItemRecompDeps,
             MaybeRecompInfo0, MaybeRecompInfo),
         module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
@@ -1392,14 +1389,14 @@ replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
     ;
         InstName0 = typed_ground(Uniq, Type0),
         replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
-            no_eqv_expand_info, _),
+            no_item_recomp_deps, _),
         ( Changed = unchanged, InstName = InstName0
         ; Changed = changed, InstName = typed_ground(Uniq, Type)
         )
     ;
         InstName0 = typed_inst(Type0, Name0),
         replace_in_type(TypeEqvMap, Type0, Type, TypeChanged, !TVarSet,
-            no_eqv_expand_info, _),
+            no_item_recomp_deps, _),
         replace_in_inst_name(TypeEqvMap, Name0, Name, InstChanged,
             !TVarSet, !Cache),
         ( if TypeChanged = unchanged, InstChanged = unchanged then
@@ -1599,10 +1596,10 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         TVarSet0 = !.Info ^ ethri_tvarset,
         replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_args,
             Args, ChangedArgs, TVarSet0, TVarSet1,
-            no_eqv_expand_info, _),
+            no_item_recomp_deps, _),
         replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_extra_args,
             ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet,
-            no_eqv_expand_info, _),
+            no_item_recomp_deps, _),
         ( if ChangedArgs = unchanged, ChangedExtraArgs = unchanged then
             Changed = unchanged,
             GoalExpr = GoalExpr0
@@ -1812,7 +1809,7 @@ replace_in_unification(TypeEqvMap, Uni0, Uni, Changed, !Info) :-
 :- pred replace_in_foreign_arg(type_eqv_map::in,
     foreign_arg::in, foreign_arg::out, maybe_changed::out,
     tvarset::in, tvarset::out,
-    eqv_expand_info::in, eqv_expand_info::out) is det.
+    item_recomp_deps::in, item_recomp_deps::out) is det.
 
 replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !TVarSet, !Info) :-
     Arg0 = foreign_arg(Var, NameMode, Type0, BoxPolicy),
@@ -1823,7 +1820,7 @@ replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !TVarSet, !Info) :-
 
 :- pred replace_in_foreign_arg_list(type_eqv_map::in,
     list(foreign_arg)::in, list(foreign_arg)::out, maybe_changed::out,
-    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out)
+    tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out)
     is det.
 
 replace_in_foreign_arg_list(_EqvMap, [], [], unchanged, !TVarSet, !Info).
