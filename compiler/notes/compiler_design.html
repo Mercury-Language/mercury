@@ -698,17 +698,22 @@ are module qualified during mode analysis.
 </ul>
 
 <p>
-The parse tree module also contains equiv_type.m,
-which does expansion of equivalence types,
-and of `with_type` and `with_inst` annotations
-on predicate and function type and mode declarations.
+The parse tree module also contains equiv_type_parse_tree.m,
+which orchestrates
+the expansion of equivalence types in all parse tree components,
+and also propagates the information
+in `with_type` and `with_inst` annotations
+into the type and mode declarations of predicates and functions.
 The part of its job gathering the definitions to be expanded
-is done by build_eqv_maps.m.
+is done by build_eqv_maps.m,
+and the part involving expansions in basic parts of program representations
+(meaning, those significantly smaller than a prog_item)
+is done by equiv_type.m.
 <p>
 Expansion of equivalence types is really part of type-checking,
 but is done on the parse tree rather than on the HLDS
 because it turned out to be much easier to implement that way.
-(Though later we had to add a pass the expand equivalence types
+(Though later we had to add a pass to expand equivalence types
 in the HLDS anyway.)
 
 <h4>The hlds.m package</h4>

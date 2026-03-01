@@ -61,7 +61,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.build_eqv_maps.
-:- import_module parse_tree.equiv_type.
+:- import_module parse_tree.equiv_type_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_mmakefile_fragments.

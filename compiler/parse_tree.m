@@ -115,6 +115,7 @@
 :- include_module convert_parse_tree.
 :- include_module deps_map.
 :- include_module equiv_type.
+:- include_module equiv_type_parse_tree.
 :- include_module file_names.
 :- include_module get_dependencies.
 :- include_module grab_modules.

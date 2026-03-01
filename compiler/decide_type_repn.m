@@ -166,6 +166,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.build_eqv_maps.
 :- import_module parse_tree.equiv_type.
+:- import_module parse_tree.equiv_type_parse_tree.
 :- import_module parse_tree.parse_tree_out_type_repn.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
