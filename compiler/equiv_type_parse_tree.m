@@ -1027,7 +1027,7 @@ replace_in_mode_decl_info(Params, MaybeRecord,
         !.RecompInfo, ItemRecompDeps0),
     PredFormArity = arg_list_arity(Modes0),
     replace_in_with_inst(Params, MaybeRecord, PredSymName, PredFormArity,
-        Context, mode_decl, MaybePredOrFunc0, MaybePredOrFunc,
+        Context, mode_only_decl, MaybePredOrFunc0, MaybePredOrFunc,
         WithInst0, WithInst, ExtraModes, MaybeDetism0, MaybeDetism,
         ItemRecompDeps0, ItemRecompDeps, !UsedModules, Specs),
     (
@@ -1153,29 +1153,29 @@ replace_in_class_decl(Params, MaybeRecord, Decl0, Decl,
         !ItemRecompDeps, !UsedModules, !Specs) :-
     (
         Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
-        PredOrFuncInfo0 = class_pred_or_func_info(PredName, PredOrFunc,
+        PredOrFuncInfo0 = class_pred_or_func_info(PredSymName, PredOrFunc,
             TypesAndModes0, WithType0, WithInst0, MaybeDetism0,
             TVarSet0, InstVarSet, ExistQVars, Purity,
             ClassContext0, Context),
         replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
-            PredName, PredOrFunc, Context,
+            PredSymName, PredOrFunc, Context,
             ClassContext0, ClassContext, TypesAndModes0, TypesAndModes,
             TVarSet0, TVarSet, WithType0, WithType, WithInst0, WithInst,
             MaybeDetism0, MaybeDetism, !ItemRecompDeps, !UsedModules,
             NewSpecs),
         !:Specs = NewSpecs ++ !.Specs,
-        PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
+        PredOrFuncInfo = class_pred_or_func_info(PredSymName, PredOrFunc,
             TypesAndModes, WithType, WithInst, MaybeDetism,
             TVarSet, InstVarSet, ExistQVars, Purity,
             ClassContext, Context),
         Decl = class_decl_pred_or_func(PredOrFuncInfo)
     ;
         Decl0 = class_decl_mode(ModeInfo0),
-        ModeInfo0 = class_mode_info(PredName, MaybePredOrFunc0, Modes0,
+        ModeInfo0 = class_mode_info(PredSymName, MaybePredOrFunc0, Modes0,
             WithInst0, MaybeDetism0, InstVarSet, Context),
         PredFormArity = arg_list_arity(Modes0),
         replace_in_with_inst(Params, MaybeRecord,
-            PredName, PredFormArity, Context, mode_decl,
+            PredSymName, PredFormArity, Context, mode_only_decl,
             MaybePredOrFunc0, MaybePredOrFunc, WithInst0, WithInst, ExtraModes,
             MaybeDetism0, MaybeDetism, !ItemRecompDeps, !UsedModules,
             NewSpecs),
@@ -1187,7 +1187,7 @@ replace_in_class_decl(Params, MaybeRecord, Decl0, Decl,
             Modes = Modes0 ++ ExtraModes
         ),
         !:Specs = NewSpecs ++ !.Specs,
-        ModeInfo = class_mode_info(PredName, MaybePredOrFunc, Modes,
+        ModeInfo = class_mode_info(PredSymName, MaybePredOrFunc, Modes,
             WithInst, MaybeDetism, InstVarSet, Context),
         Decl = class_decl_mode(ModeInfo)
     ).
@@ -1355,19 +1355,19 @@ replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
 replace_in_decl_pragma_type_spec_constr(Params, MaybeRecord,
         TypeSpecInfoConstr0, TypeSpecInfoConstr, !UsedModules, []) :-
     TypeSpecInfoConstr0 = decl_pragma_type_spec_constr_info(PragmaModuleName,
-        OoMConstraints0, ApplyToSupers, OoMSubsts0, TVarSet0, ItemIds0,
+        OoMConstraints0, ApplyToSupers, OoMSubsts0, TVarSet0, GatheredItemIds0,
         Context, SeqNum),
     % XXX I (zs) don't understand the purpose of the test in the code that
     % sets ItemRecompDeps0 in replace_in_decl_pragma_type_spec below.
     % The commit that added that code (the commit by Simon that added
     % the initial implementation of smart recompilation) does not mention
-    % any rationale either. I cannot copy that test since there is no PredName
-    % here. So this setting of ItemRecompDeps0 here is just a guess. Whether
-    % it is a correct guess or not will matter only once smart recompilation
-    % is completed, in the fullness of time.
+    % any rationale either. I cannot copy that test since there is
+    % no PredSymName here. So this setting of ItemRecompDeps0 here
+    % is just a guess. Whether it is a correct guess or not will matter
+    % only once smart recompilation is completed, in the fullness of time.
     OoMConstraints0 = one_or_more(HeadConstraint0, TailConstraints0),
     ModuleName = Params ^ ep_module_name,
-    ItemRecompDeps0 = item_recomp_deps(ModuleName, ItemIds0),
+    ItemRecompDeps0 = item_recomp_deps(ModuleName, GatheredItemIds0),
     replace_in_var_or_ground_constraint_location(TypeEqvMap, MaybeRecord,
         HeadConstraint0, HeadConstraint, TVarSet0, TVarSet1,
         ItemRecompDeps0, ItemRecompDeps1, !UsedModules),
@@ -1387,12 +1387,12 @@ replace_in_decl_pragma_type_spec_constr(Params, MaybeRecord,
     OoMSubsts = one_or_more(HeadSubst, TailSubsts),
     (
         ItemRecompDeps = no_item_recomp_deps,
-        ItemIds = ItemIds0
+        GatheredItemIds = GatheredItemIds0
     ;
-        ItemRecompDeps = item_recomp_deps(_, ItemIds)
+        ItemRecompDeps = item_recomp_deps(_, GatheredItemIds)
     ),
     TypeSpecInfoConstr = decl_pragma_type_spec_constr_info(PragmaModuleName,
-        OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, ItemIds,
+        OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, GatheredItemIds,
         Context, SeqNum).
 
 :- pred replace_in_decl_pragma_type_spec(equiv_params::in,
@@ -1413,31 +1413,31 @@ replace_in_decl_pragma_type_spec(Params, MaybeRecord,
     %
     % Note that we must nevertheless return a RecompInfo, since this is
     % required by the interface of replace_in_list.
-    TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM, PredName, NewName,
-        Subst0, TVarSet0, ItemIds0, Context, SeqNum),
+    TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM, PredSymName,
+        SrcModuleName, Subst0, TVarSet0, GatheredItemIds0, Context, SeqNum),
     ModuleName = Params ^ ep_module_name,
     ( if
         ( RecompInfo = no
-        ; PredName = qualified(ModuleName, _)
+        ; PredSymName = qualified(ModuleName, _)
         )
     then
         ItemRecompDeps0 = no_item_recomp_deps
     else
-        ItemRecompDeps0 = item_recomp_deps(ModuleName, ItemIds0)
+        ItemRecompDeps0 = item_recomp_deps(ModuleName, GatheredItemIds0)
     ),
     TypeEqvMap = Params ^ ep_type_eqv_map,
     replace_in_subst(TypeEqvMap, MaybeRecord, Subst0, Subst,
         TVarSet0, TVarSet, ItemRecompDeps0, ItemRecompDeps, !UsedModules),
     (
         ItemRecompDeps = no_item_recomp_deps,
-        % The field in TypeSpecInfo0 holding ItemIds0 wasd initialized
-        % to the empty set, and ItemIds0 should still be empty.
-        ItemIds = ItemIds0
+        % The field in TypeSpecInfo0 holding ItemIds0 was initialized
+        % to the empty set, and GatheredItemIds0 should still be empty.
+        GatheredItemIds = GatheredItemIds0
     ;
-        ItemRecompDeps = item_recomp_deps(_, ItemIds)
+        ItemRecompDeps = item_recomp_deps(_, GatheredItemIds)
     ),
-    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName, NewName,
-        Subst, TVarSet, ItemIds, Context, SeqNum).
+    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredSymName,
+        SrcModuleName, Subst, TVarSet, GatheredItemIds, Context, SeqNum).
 
 %---------------------%
 
@@ -1531,10 +1531,10 @@ replace_in_var_or_ground_type_location(TypeEqvMap, MaybeRecord,
 
 replace_in_foreign_proc(Params, MaybeRecord, FPInfo0, FPInfo,
         !RecompInfo, !UsedModules, []) :-
-    FPInfo0 = item_foreign_proc_info(Attrs0, PredName, PredOrFunc,
+    FPInfo0 = item_foreign_proc_info(Attrs0, PredSymName, PredOrFunc,
         ProcVars, ProcVarset, ProcInstVarset, ProcImpl, Context, SeqNum),
     ModuleName = Params ^ ep_module_name,
-    ItemName = recomp_item_name(PredName, list.length(ProcVars)),
+    ItemName = recomp_item_name(PredSymName, list.length(ProcVars)),
     ItemId = recomp_item_id(recomp_foreign_proc, ItemName),
     maybe_start_gathering_item_recomp_deps(ModuleName, ItemId,
         !.RecompInfo, ItemRecompDeps0),
@@ -1557,7 +1557,7 @@ replace_in_foreign_proc(Params, MaybeRecord, FPInfo0, FPInfo,
         ItemRecompDeps = ItemRecompDeps0
     ),
     finish_gathering_item_recomp_deps(ItemId, ItemRecompDeps, !RecompInfo),
-    FPInfo = item_foreign_proc_info(Attrs, PredName, PredOrFunc,
+    FPInfo = item_foreign_proc_info(Attrs, PredSymName, PredOrFunc,
         ProcVars, ProcVarset, ProcInstVarset, ProcImpl, Context, SeqNum).
 
 %---------------------%
@@ -1744,7 +1744,7 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules) :-
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
-        PredName, PredOrFunc, Context, ClassContext0, ClassContext,
+        PredSymName, PredOrFunc, Context, ClassContext0, ClassContext,
         TypesAndMaybeModes0, TypesAndMaybeModes, !TVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
         !MaybeDetism, !ItemRecompDeps, !UsedModules, !:Specs) :-
@@ -1754,116 +1754,23 @@ replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
     replace_in_types_and_maybe_modes(TypeEqvMap, MaybeRecord,
         TypesAndMaybeModes0, TypesAndMaybeModes1,
         !TVarSet, !ItemRecompDeps, !UsedModules),
-    (
-        MaybeWithType0 = yes(WithType0),
-        replace_in_type_maybe_record_use_ignore_circ(TypeEqvMap, MaybeRecord,
-            WithType0, WithType, _, !TVarSet, !ItemRecompDeps, !UsedModules),
-        ( if
-            type_is_higher_order_details(WithType, _Purity, PredOrFunc,
-                ExtraTypesPrime)
-        then
-            ExtraTypes = ExtraTypesPrime,
-            !:Specs = []
-        else
-            ExtraTypes = [],
-            ExtraTypePieces = [words("In type declaration for"),
-                p_or_f(PredOrFunc), qual_sym_name(PredName), suffix(":"), nl,
-                words("error: expected the type after"), quote("with_type"),
-                words("to be a")] ++
-                color_as_correct([words("higher order"), p_or_f(PredOrFunc),
-                    words("type,")]) ++
-                [words("but")] ++
-                color_as_incorrect([words("it is not.")]) ++
-                [nl],
-            ExtraTypeSpec = spec($pred, severity_error, phase_expand_types,
-                Context, ExtraTypePieces),
-            !:Specs = [ExtraTypeSpec]
-        )
-    ;
-        MaybeWithType0 = no,
-        ExtraTypes = [],
-        !:Specs = []
-    ),
-
+    replace_in_with_type(TypeEqvMap, MaybeRecord, PredOrFunc, PredSymName,
+        Context, MaybeWithType0, ExtraTypes,
+        !TVarSet, !ItemRecompDeps, !UsedModules, !:Specs),
     PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes0),
-    replace_in_with_inst(Params, MaybeRecord, PredName, PredFormArity,
-        Context, type_decl, yes(PredOrFunc), _, MaybeWithInst0, _, ExtraModes,
+    replace_in_with_inst(Params, MaybeRecord, PredSymName, PredFormArity,
+        Context, type_and_mode_decl, yes(PredOrFunc), _,
+        MaybeWithInst0, _, ExtraModes,
         !MaybeDetism, !ItemRecompDeps, !UsedModules, ModeSpecs),
     !:Specs = !.Specs ++ ModeSpecs,
-
     (
         !.Specs = [_ | _],
         TypesAndMaybeModes = TypesAndMaybeModes1
     ;
         !.Specs = [],
-        ( if
-            ExtraTypes = [],
-            ExtraModes = []
-        then
-            % Optimize this common path.
-            TypesAndMaybeModes = TypesAndMaybeModes1
-        else
-            (
-                TypesAndMaybeModes1 = no_types_arity_zero,
-                (
-                    ExtraModes = [],
-                    % ExtraTypes must be nonempty, because otherwise,
-                    % we wouldn't get here.
-                    TypesAndMaybeModes = types_only(ExtraTypes)
-                ;
-                    ExtraModes = [_ | _],
-                    % ExtraTypes may be empty if we get here, but if it is,
-                    % that is an error.
-                    try_to_pair_extra_types_and_modes(PredOrFunc, PredName,
-                        Context, ExtraTypes, ExtraModes,
-                        MaybeExtraTypesAndModes),
-                    (
-                        MaybeExtraTypesAndModes = ok1(ExtraTypesAndModes),
-                        TypesAndMaybeModes =
-                            types_and_modes(ExtraTypesAndModes)
-                    ;
-                        MaybeExtraTypesAndModes = error1(ExtraSpecs),
-                        TypesAndMaybeModes = TypesAndMaybeModes1,
-                        !:Specs = ExtraSpecs ++ !.Specs
-                    )
-                )
-            ;
-                TypesAndMaybeModes1 = types_only(Types1),
-                expect_not(unify(Types1, []), $pred, "Types1 = []"),
-                (
-                    ExtraModes = [],
-                    Types = Types1 ++ ExtraTypes,
-                    TypesAndMaybeModes = types_only(Types)
-                ;
-                    ExtraModes = [_ | _],
-                    TypesAndMaybeModes = TypesAndMaybeModes1,
-                    Pieces = pred_decl_error_prefix(PredOrFunc, PredName) ++
-                        [words("error: the declaration"),
-                        words("has a `with_inst` annotation,"),
-                        words("but the declaration")] ++
-                        color_as_incorrect([words("does not specify")]) ++
-                        [words("the mode of any of the other arguments."), nl],
-                    Spec = spec($pred, severity_error, phase_expand_types,
-                        Context, Pieces),
-                    !:Specs = [Spec | !.Specs]
-                )
-            ;
-                TypesAndMaybeModes1 = types_and_modes(TypesAndModes1),
-                expect_not(unify(TypesAndModes1, []), $pred,
-                    "TypesAndModes1 = []"),
-                try_to_pair_extra_types_and_modes(PredOrFunc, PredName,
-                    Context, ExtraTypes, ExtraModes, MaybeExtraTypesAndModes),
-                (
-                    MaybeExtraTypesAndModes = ok1(ExtraTypesAndModes),
-                    TypesAndModes = TypesAndModes1 ++ ExtraTypesAndModes,
-                    TypesAndMaybeModes = types_and_modes(TypesAndModes)
-                ;
-                    MaybeExtraTypesAndModes = error1(ExtraSpecs),
-                    TypesAndMaybeModes = TypesAndMaybeModes1,
-                    !:Specs = ExtraSpecs ++ !.Specs
-                )
-            )
-        )
+        check_and_maybe_add_extra_types_and_modes(PredOrFunc, PredSymName,
+            Context, ExtraTypes, ExtraModes,
+            TypesAndMaybeModes1, TypesAndMaybeModes, !Specs)
     ),
     (
         !.Specs = [],
@@ -1871,8 +1778,8 @@ replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
         MaybeWithInst = no
     ;
         !.Specs = [_ | _],
-        % Leave the `with_type` and `with_inst` fields so that make_hlds knows
-        % to discard this declaration.
+        % Leave the `with_type` and `with_inst` fields so that
+        % make_hlds knows to discard this declaration.
         MaybeWithType = MaybeWithType0,
         MaybeWithInst = MaybeWithInst0
     ),
@@ -1884,16 +1791,92 @@ replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
     else
         PredFormArity = pred_form_arity(Arity),
         OrigItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
-        OrigItemName = recomp_item_name(PredName, Arity),
+        OrigItemName = recomp_item_name(PredSymName, Arity),
         OrigItemId = recomp_item_id(OrigItemType, OrigItemName),
+        % I (zs) do not understand what this call is for.
         gather_item_recomp_dep(OrigItemId, !ItemRecompDeps)
+    ).
+
+:- pred check_and_maybe_add_extra_types_and_modes(pred_or_func::in,
+    sym_name::in, prog_context::in, list(mer_type)::in, list(mer_mode)::in,
+    types_and_maybe_modes::in, types_and_maybe_modes::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_and_maybe_add_extra_types_and_modes(PredOrFunc, PredSymName, Context,
+        ExtraTypes, ExtraModes, TypesAndMaybeModes1, TypesAndMaybeModes,
+        !Specs) :-
+    ( if
+        ExtraTypes = [],
+        ExtraModes = []
+    then
+        % Optimize this common path.
+        TypesAndMaybeModes = TypesAndMaybeModes1
+    else
+        (
+            TypesAndMaybeModes1 = no_types_arity_zero,
+            (
+                ExtraModes = [],
+                % ExtraTypes must be nonempty, because otherwise,
+                % we wouldn't get here.
+                TypesAndMaybeModes = types_only(ExtraTypes)
+            ;
+                ExtraModes = [_ | _],
+                % ExtraTypes may be empty if we get here, but if it is,
+                % that is an error.
+                try_to_pair_extra_types_and_modes(PredOrFunc, PredSymName,
+                    Context, ExtraTypes, ExtraModes, MaybeExtraTypesAndModes),
+                (
+                    MaybeExtraTypesAndModes = ok1(ExtraTypesAndModes),
+                    TypesAndMaybeModes = types_and_modes(ExtraTypesAndModes)
+                ;
+                    MaybeExtraTypesAndModes = error1(ExtraSpecs),
+                    TypesAndMaybeModes = TypesAndMaybeModes1,
+                    !:Specs = ExtraSpecs ++ !.Specs
+                )
+            )
+        ;
+            TypesAndMaybeModes1 = types_only(Types1),
+            expect_not(unify(Types1, []), $pred, "Types1 = []"),
+            (
+                ExtraModes = [],
+                Types = Types1 ++ ExtraTypes,
+                TypesAndMaybeModes = types_only(Types)
+            ;
+                ExtraModes = [_ | _],
+                TypesAndMaybeModes = TypesAndMaybeModes1,
+                Pieces = pred_decl_error_prefix(PredOrFunc, PredSymName) ++
+                    [words("error: the declaration"),
+                    words("has a `with_inst` annotation,"),
+                    words("but the declaration")] ++
+                    color_as_incorrect([words("does not specify")]) ++
+                    [words("the mode of any of the other arguments."), nl],
+                Spec = spec($pred, severity_error, phase_expand_types,
+                    Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            TypesAndMaybeModes1 = types_and_modes(TypesAndModes1),
+            expect_not(unify(TypesAndModes1, []), $pred,
+                "TypesAndModes1 = []"),
+            try_to_pair_extra_types_and_modes(PredOrFunc, PredSymName,
+                Context, ExtraTypes, ExtraModes, MaybeExtraTypesAndModes),
+            (
+                MaybeExtraTypesAndModes = ok1(ExtraTypesAndModes),
+                TypesAndModes = TypesAndModes1 ++ ExtraTypesAndModes,
+                TypesAndMaybeModes = types_and_modes(TypesAndModes)
+            ;
+                MaybeExtraTypesAndModes = error1(ExtraSpecs),
+                TypesAndMaybeModes = TypesAndMaybeModes1,
+                !:Specs = ExtraSpecs ++ !.Specs
+            )
+        )
     ).
 
 :- pred try_to_pair_extra_types_and_modes(pred_or_func::in, sym_name::in,
     prog_context::in, list(mer_type)::in, list(mer_mode)::in,
     maybe1(list(type_and_mode))::out) is det.
 
-try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
+try_to_pair_extra_types_and_modes(PredOrFunc, PredSymName, Context,
         ExtraTypes, ExtraModes, MaybeExtraTypesAndModes) :-
     list.length(ExtraTypes, NumExtraTypes),
     list.length(ExtraModes, NumExtraModes),
@@ -1901,7 +1884,7 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
         pair_extra_types_and_modes(ExtraTypes, ExtraModes, ExtraTypesAndModes),
         MaybeExtraTypesAndModes = ok1(ExtraTypesAndModes)
     else
-        PrefixPieces = pred_decl_error_prefix(PredOrFunc, PredName),
+        PrefixPieces = pred_decl_error_prefix(PredOrFunc, PredSymName),
         ( if ExtraTypes = [] then
             Pieces = PrefixPieces ++
                 [words("error: the `with_inst` annotation must be"),
@@ -1941,9 +1924,9 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
 
 :- func pred_decl_error_prefix(pred_or_func, sym_name) = list(format_piece).
 
-pred_decl_error_prefix(PredOrFunc, PredName) = PrefixPieces :-
+pred_decl_error_prefix(PredOrFunc, PredSymName) = PrefixPieces :-
     PrefixPieces = [words("In the declaration of"),
-        p_or_f(PredOrFunc), unqual_sym_name(PredName), suffix(":"), nl].
+        p_or_f(PredOrFunc), unqual_sym_name(PredSymName), suffix(":"), nl].
 
 :- pred pair_extra_types_and_modes(list(mer_type)::in, list(mer_mode)::in,
     list(type_and_mode)::out) is det.
@@ -1957,11 +1940,60 @@ pair_extra_types_and_modes([Type | Types], [Mode | Modes],
         [type_and_mode(Type, Mode) | TypesAndModes]) :-
     pair_extra_types_and_modes(Types, Modes, TypesAndModes).
 
-:- type pred_or_func_decl_type
-    --->    type_decl
-    ;       mode_decl.
-
 %---------------------------------------------------------------------------%
+
+    % This predicate is used when handling the mode declaration part of both
+    % - stand-alone predicate (and function) declarations, and
+    % - declarations of class methods.
+    % In both cases, it is invoked indirectly, via the predicate
+    % replace_in_pred_types_and_maybe_modes.
+    %
+:- pred replace_in_with_type(type_eqv_map::in, maybe_record_sym_name_use::in,
+    pred_or_func::in, sym_name::in, prog_context::in,
+    maybe(mer_type)::in, list(mer_type)::out,
+    tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_with_type(TypeEqvMap, MaybeRecord, PredOrFunc, PredSymName,
+        Context, MaybeWithType0, ExtraTypes,
+        !TVarSet, !ItemRecompDeps, !UsedModules, Specs) :-
+    (
+        MaybeWithType0 = yes(WithType0),
+        replace_in_type_maybe_record_use_ignore_circ(TypeEqvMap, MaybeRecord,
+            WithType0, WithType, _, !TVarSet, !ItemRecompDeps, !UsedModules),
+        ( if
+            type_is_higher_order_details(WithType, _Purity, PredOrFunc,
+                ExtraTypesPrime)
+        then
+            ExtraTypes = ExtraTypesPrime,
+            Specs = []
+        else
+            ExtraTypes = [],
+            ExtraTypePieces = [words("In type declaration for"),
+                p_or_f(PredOrFunc), qual_sym_name(PredSymName),
+                suffix(":"), nl,
+                words("error: expected the type after"), quote("with_type"),
+                words("to be a")] ++
+                color_as_correct([words("higher order"), p_or_f(PredOrFunc),
+                    words("type,")]) ++
+                [words("but")] ++
+                color_as_incorrect([words("it is not.")]) ++
+                [nl],
+            ExtraTypeSpec = spec($pred, severity_error, phase_expand_types,
+                Context, ExtraTypePieces),
+            Specs = [ExtraTypeSpec]
+        )
+    ;
+        MaybeWithType0 = no,
+        ExtraTypes = [],
+        Specs = []
+    ).
+
+%---------------------%
+
+:- type pred_or_func_decl_type
+    --->    type_and_mode_decl
+    ;       mode_only_decl.
 
     % This predicate is used when handling the mode declaration part of both
     % - stand-alone predicate (and function) declarations, and
@@ -1977,7 +2009,7 @@ pair_extra_types_and_modes([Type | Types], [Mode | Modes],
     item_recomp_deps::in, item_recomp_deps::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_with_inst(Params, MaybeRecord, PredName, PredFormArity, Context,
+replace_in_with_inst(Params, MaybeRecord, PredSymName, PredFormArity, Context,
         DeclType, MaybePredOrFunc0, MaybePredOrFunc,
         MaybeWithInst0, MaybeWithInst, ExtraModes,
         !MaybeDetism, !ItemRecompDeps, !UsedModules, Specs) :-
@@ -2006,8 +2038,9 @@ replace_in_with_inst(Params, MaybeRecord, PredName, PredFormArity, Context,
             ),
             ItemType = pred_or_func_to_recomp_item_type(RecordedPredOrFunc),
             PredFormArity = pred_form_arity(Arity),
-            ItemName = recomp_item_name(PredName, Arity),
+            ItemName = recomp_item_name(PredSymName, Arity),
             OrigItemId = recomp_item_id(ItemType, ItemName),
+            % I (zs) do not understand what this call is for.
             gather_item_recomp_dep(OrigItemId, !ItemRecompDeps),
             Specs = []
         else
@@ -2016,8 +2049,8 @@ replace_in_with_inst(Params, MaybeRecord, PredName, PredFormArity, Context,
             % Leave the `with_inst` fields so that make_hlds
             % knows to discard this declaration.
             MaybeWithInst = MaybeWithInst0,
-            ( DeclType = type_decl, DeclStr = "declaration"
-            ; DeclType = mode_decl, DeclStr = "mode declaration"
+            ( DeclType = type_and_mode_decl, DeclStr = "declaration"
+            ; DeclType = mode_only_decl, DeclStr = "mode declaration"
             ),
             (
                 MaybePredOrFunc = no,
@@ -2027,7 +2060,8 @@ replace_in_with_inst(Params, MaybeRecord, PredName, PredFormArity, Context,
                 PredOrFuncPieces = [p_or_f(PredOrFunc)]
             ),
             Pieces = [words("In"), words(DeclStr), words("for")] ++
-                PredOrFuncPieces ++ [qual_sym_name(PredName), suffix(":"), nl,
+                PredOrFuncPieces ++
+                [qual_sym_name(PredSymName), suffix(":"), nl,
                 words("error: expected the inst after"), quote("with_inst"),
                 words("to be a")] ++
                 color_as_correct([words("higher order")] ++ PredOrFuncPieces ++
