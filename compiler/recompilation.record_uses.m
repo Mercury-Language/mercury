@@ -120,26 +120,6 @@
     recomp_item_name::in, recomp_item_name::in,
     recompilation_info::in, recompilation_info::out) is det.
 
-    % record_gathered_item_deps(ItemId, GatheredItemDeps, !Info):
-    %
-    % This predicate does the final part of the job of
-    % finish_gathering_item_recomp_deps, i.e. the incorporation
-    % of the gathered information in the recompilation_info.
-    %
-    % It is a separate predicate because for decl_pragma_type_spec_info
-    % and decl_pragma_type_spec_constr_info items, even though equiv_type.m
-    % gathers the ids of the items expanded out within them, it does NOT
-    % record the result of this gathering in the recompilation_info.
-    % (In fact, the code there does this gathering even in the *absence*
-    % of any recompilation_info.) Instead, it records the gathered item_ids
-    % in the updated decl_pragma_type_spec{,_constr}_info, and leaves it
-    % to add add_pragma_type_spec.m to invoke this predicate.
-    %
-    % I (zs) have no idea what the point of this delay is.
-    %
-:- pred record_gathered_item_deps(recomp_item_id::in, set(recomp_item_id)::in,
-    recompilation_info::in, recompilation_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 
     % For smart recompilation we need to record which items were expanded
@@ -214,6 +194,26 @@
 :- pred finish_gathering_item_recomp_deps(recomp_item_id::in,
     item_recomp_deps::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
+
+    % record_gathered_item_deps(ItemId, GatheredItemDeps, !Info):
+    %
+    % This predicate does the final part of the job of
+    % finish_gathering_item_recomp_deps, i.e. the incorporation
+    % of the gathered information in the recompilation_info.
+    %
+    % It is a separate predicate because for decl_pragma_type_spec_info
+    % and decl_pragma_type_spec_constr_info items, even though equiv_type.m
+    % gathers the ids of the items expanded out within them, it does NOT
+    % record the result of this gathering in the recompilation_info.
+    % (In fact, the code there does this gathering even in the *absence*
+    % of any recompilation_info.) Instead, it records the gathered item_ids
+    % in the updated decl_pragma_type_spec{,_constr}_info, and leaves it
+    % to add add_pragma_type_spec.m to invoke this predicate.
+    %
+    % I (zs) have no idea what the point of this delay is.
+    %
+:- pred record_gathered_item_deps(recomp_item_id::in, set(recomp_item_id)::in,
+    recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -339,20 +339,6 @@ ignore_unqual_item_for_item_type(UsedItemType) = Ignore :-
 
 %-----------------------------------------------------------------------------%
 
-record_gathered_item_deps(ItemId, GatheredItemDeps, !Info) :-
-    ( if set.is_empty(GatheredItemDeps) then
-        true
-    else
-        DepsMap0 = !.Info ^ recomp_dependencies,
-        ( if map.search(DepsMap0, ItemId, Deps0) then
-            set.union(GatheredItemDeps, Deps0, Deps),
-            map.det_update(ItemId, Deps, DepsMap0, DepsMap)
-        else
-            map.det_insert(ItemId, GatheredItemDeps, DepsMap0, DepsMap)
-        ),
-        !Info ^ recomp_dependencies := DepsMap
-    ).
-
 maybe_start_gathering_item_recomp_deps(ModuleName, ItemId, MaybeRecompInfo,
         MaybeGatheredItemDeps) :-
     (
@@ -413,6 +399,20 @@ finish_gathering_item_recomp_deps(ItemId, MaybeGatheredItemDeps,
             record_gathered_item_deps(ItemId, GatheredDeps, Recomp0, Recomp),
             MaybeRecomp = yes(Recomp)
         )
+    ).
+
+record_gathered_item_deps(ItemId, GatheredItemDeps, !Info) :-
+    ( if set.is_empty(GatheredItemDeps) then
+        true
+    else
+        DepsMap0 = !.Info ^ recomp_dependencies,
+        ( if map.search(DepsMap0, ItemId, Deps0) then
+            set.union(GatheredItemDeps, Deps0, Deps),
+            map.det_update(ItemId, Deps, DepsMap0, DepsMap)
+        else
+            map.det_insert(ItemId, GatheredItemDeps, DepsMap0, DepsMap)
+        ),
+        !Info ^ recomp_dependencies := DepsMap
     ).
 
 %-----------------------------------------------------------------------------%
