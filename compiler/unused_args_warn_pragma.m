@@ -468,11 +468,13 @@ report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs) :-
         (
             TailUnmarkedArgs = [],
             Pieces2 = [words("argument")] ++ UnmarkedArgPieces ++
-                [words("is")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+                [words("is")] ++ color_as_incorrect([words("unused.")]) ++
+                [nl]
         ;
             TailUnmarkedArgs = [_ | _],
             Pieces2 = [words("arguments")] ++ UnmarkedArgPieces ++
-                [words("are")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
+                [words("are")] ++ color_as_incorrect([words("unused.")]) ++
+                [nl]
         ),
         Addendum = marked_unused_args_addendum(MarkedArgs),
         Spec = spec($pred, severity_warning(warn_requested_by_option),

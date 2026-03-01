@@ -87,7 +87,8 @@
 
 %---------------------------------------------------------------------------%
 
-record_analysis_unused_args(ProcToUnusedArgsMap, FixpointPredProcIds, !ModuleInfo) :-
+record_analysis_unused_args(ProcToUnusedArgsMap, FixpointPredProcIds,
+        !ModuleInfo) :-
     module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(
