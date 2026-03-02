@@ -26,7 +26,7 @@ The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
 and only when using GCC version 4.3 or later as the C compiler.
 
 If `clang` is being used as the C compiler, then the only low-level C grades
-available are the `none*` grades. The high-level C, Java and C# grades
+available are the `none*` grades. The high-level C, Java, and C# grades
 all work. The C# grades require the Mono .NET implementation.
 (See [README.CSharp.md](README.CSharp.md) for further details.)
 
@@ -67,7 +67,7 @@ that *cannot* be used to compile Mercury. The `configure` script will print
 a warning if it detects that you are using the broken version.
 
 A discussion of this issue can be found at
-[this](<https://forums.developer.apple.com/thread/121887>) thread in the Apple
+[this](https://forums.developer.apple.com/thread/121887) thread in the Apple
 Developer forum.
 This
 [post](https://github.com/Mercury-Language/mercury/issues/88#issuecomment-624329679)

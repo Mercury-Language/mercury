@@ -54,7 +54,7 @@ Using Mercury on Windows
 On Windows systems the usual name for the Mercury compiler, `mmc`, conflicts
 with the name of the executable for the Microsoft Management Console.
 See the "Using the Mercury compiler" chapter of the
-[Mercury Users's Guide](https://mercurylang.org/documentation/documentation.html) for
+[The Mercury User's Guide](https://mercurylang.org/documentation/documentation.html) for
 how to deal with this.
 
 -----------------------------------------------------------------------------

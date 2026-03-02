@@ -63,7 +63,7 @@ Instructions for GCC
     cross-compiler. It is required if the cross-compiler is not called
     `HOST-gcc`, where HOST is the value of the `--host` option.
 
-    Those two options must be appear first. Any later options are passed
+    Those two options must appear first. Any later options are passed
     through to the configure script. A call to the `configure_cross` script
     might look like:
 
