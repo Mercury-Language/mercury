@@ -493,7 +493,7 @@
     %
     % Given As and Bs, two lists that must both be sorted in non-descending
     % order according to Compare (or the standard comparison operation, for the
-    % versions that do not take a Compare argument), return the list AB
+    % versions that do not take a Compare argument), return the list ABs
     % which contains the elements of both lists, and which is also
     % in non-descending order. (Note: non-descending order is just another name
     % for "ascending order but with duplicates permitted".)
@@ -1391,6 +1391,7 @@
     in, in, out, in, out, in, out, mdi, muo) is nondet.
 
     % foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5):
+    %
     % Does the same job as foldl, but with five accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
@@ -1431,6 +1432,7 @@
     in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
     % foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6):
+    %
     % Does the same job as foldl, but with six accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
@@ -1468,6 +1470,7 @@
     in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
     % foldl7(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6, !Acc7):
+    %
     % Does the same job as foldl, but with seven accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
@@ -1515,6 +1518,7 @@
 
     % foldl8(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6, !Acc7,
     %   !Acc8):
+    %
     % Does the same job as foldl, but with eight accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
@@ -1895,7 +1899,7 @@
 
     % foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3):
     %
-    % like foldl_corresponding3 but with three accumulators.
+    % Like foldl_corresponding3, but with three accumulators.
     %
 :- pred foldl3_corresponding3(pred(A, B, C, D, D, E, E, F, F),
     list(A), list(B), list(C), D, D, E, E, F, F).
@@ -1920,7 +1924,7 @@
 
     % foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4):
     %
-    % like foldl_corresponding3 but with four accumulators.
+    % Like foldl_corresponding3, but with four accumulators.
     %
 :- pred foldl4_corresponding3(pred(A, B, C, D, D, E, E, F, F, G, G),
     list(A), list(B), list(C), D, D, E, E, F, F, G, G).
