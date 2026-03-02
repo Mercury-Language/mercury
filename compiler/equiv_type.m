@@ -36,6 +36,14 @@
 
 %---------------------------------------------------------------------------%
 
+:- type circ_types == set(type_ctor).
+
+:- type maybe_record_sym_name_use
+    --->    do_not_record_sym_name_use
+    ;       record_sym_name_use(item_visibility).
+
+%---------------------------------------------------------------------------%
+
 :- pred replace_in_ctors(type_eqv_map::in,
     one_or_more(constructor)::in, one_or_more(constructor)::out,
     tvarset::in, tvarset::out,
@@ -124,21 +132,6 @@
     maybe_record_sym_name_use::in, list(type_ctor)::in,
     mer_type::in, mer_type::out,
     maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
-    item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- type circ_types == set(type_ctor).
-
-:- type maybe_record_sym_name_use
-    --->    do_not_record_sym_name_use
-    ;       record_sym_name_use(item_visibility).
-
-:- pred replace_type_ctor(type_eqv_map::in, maybe_record_sym_name_use::in,
-    list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
-    kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
-    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
     used_modules::in, used_modules::out) is det.
 
@@ -436,9 +429,18 @@ replace_in_type_maybe_record_use(TypeEqvMap, MaybeRecord,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred replace_type_ctor(type_eqv_map::in, maybe_record_sym_name_use::in,
+    list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
+    kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
+    circ_types::in, circ_types::out, tvarset::in, tvarset::out,
+    item_recomp_deps::in, item_recomp_deps::out,
+    used_modules::in, used_modules::out) is det.
+
 replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
-        TypeCtor, ArgTypes, Kind, Type, !Changed, !Circ, !TVarSet,
-        !ItemRecompDeps, !UsedModules) :-
+        TypeCtor, ArgTypes, Kind, Type, ArgTypesChanged, Changed,
+        !Circ, !TVarSet, !ItemRecompDeps, !UsedModules) :-
     ( if list.member(TypeCtor, TypeCtorsAlreadyExpanded) then
         AlreadyExpanded = yes,
         NewCirc = set.make_singleton_set(TypeCtor)
@@ -449,15 +451,14 @@ replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
     ( if
         map.search(TypeEqvMap, TypeCtor, EqvTypeBody),
         EqvTypeBody = eqv_type_body(EqvTVarSet, EqvTypeParams0, Body0),
-
-        % Don't merge in the variable names from the type declaration to avoid
-        % creating multiple variables with the same name so that
-        % `varset.create_name_var_map' can be used on the resulting tvarset.
-        % make_hlds uses `varset.create_name_var_map' to match up type
-        % variables in `:- pragma type_spec' declarations and explicit type
-        % qualifications with the type variables in the predicate's
-        % declaration.
-
+        % Don't merge in the variable names from the type declaration,
+        % in order to to avoid creating multiple variables with the same name.
+        % This is so that make_hlds can later use `varset.create_name_var_map'
+        % on the resulting tvarset to match up type variables in
+        % `:- pragma type_spec' declarations, and explicit type qualifications
+        % with the type variables in the predicate's declaration.
+        % XXX That paragraphs should be simplified by someone who understands
+        % exactly what it is talking about :-(.
         tvarset_merge_renaming_without_names(!.TVarSet, EqvTVarSet, !:TVarSet,
             Renaming),
         set.is_empty(!.Circ),
@@ -465,8 +466,7 @@ replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
     then
         maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor,
             !UsedModules),
-
-        !:Changed = changed,
+        Changed = changed,
         map.apply_to_list(EqvTypeParams0, Renaming, EqvTypeParams),
         apply_renaming_to_type(Renaming, Body0, Body1),
         TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
@@ -479,13 +479,14 @@ replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
             Type, _, !:Circ, !TVarSet, !ItemRecompDeps, !UsedModules)
     else
         (
-            !.Changed = changed,
+            ArgTypesChanged = changed,
             TypeCtor = type_ctor(SymName, _Arity),
             Type = defined_type(SymName, ArgTypes, Kind)
         ;
-            !.Changed = unchanged,
+            ArgTypesChanged = unchanged,
             Type = Type0
         ),
+        Changed = ArgTypesChanged,
         set.union(NewCirc, !Circ)
     ).
 
