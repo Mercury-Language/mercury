@@ -340,6 +340,7 @@ long_option("no-wrap", no_format).
 long_option("borg", borg_mode).
 long_option("dead", dead_mode).
 long_option("greedy", greedy_mode).
+long_option("paranoid", paranoid_mode).
 long_option("stoned", stoned_mode).
 long_option("tired", tired_mode).
 long_option("wired", wired_mode).
