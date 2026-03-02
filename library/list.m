@@ -433,8 +433,9 @@
 
     % det_replace_nth(List0, N, R) = List:
     %
-    % True if-and-only-if List is List0 with its N'th element replaced with R.
-    % Throws an exception if N < 1 or if length of List0 < N.
+    % Succeed if-and-only-if List is List0 with its N'th element
+    % replaced with R.
+    % Throw an exception if either N < 1, or if length of List0 < N.
     % (Position numbers start from 1.)
     %
 :- func det_replace_nth(list(T), int, T) = list(T).
@@ -658,8 +659,8 @@
 
     % split_upto(N, List, Start, End):
     %
-    % Splits List into a prefix Start of length `min(N, length(List))',
-    % and a remainder End. Throws an exception if N < 0.
+    % Split List into a prefix Start of length `min(N, length(List))',
+    % and a remainder End. Throw an exception if N < 0.
     % See also: split_list, take, drop.
     %
 :- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out) is det.
@@ -668,7 +669,7 @@
 
     % last(List, Last):
     %
-    % True if Last is the last element of List.
+    % Succeed if-and-only-if Last is the last element of List.
     %
 :- pred last(list(T)::in, T::out) is semidet.
 
@@ -682,8 +683,8 @@
 
     % split_last(List, AllButLast, Last):
     %
-    % True if Last is the last element of List and AllButLast is the list
-    % of elements before it.
+    % Succeed if-and-only-if Last is the last element of List, and
+    % AllButLast is the list of elements before it.
     %
 :- pred split_last(list(T)::in, list(T)::out, T::out) is semidet.
 
@@ -745,8 +746,8 @@
 
     % take_upto(N, List) = Start:
     %
-    % Start is the first N elements of List. If List has less than
-    % N elements, return the entire list. Throws an exception if N < 0.
+    % Return the first N elements of List as Start. If List has less than
+    % N elements, return the entire list. Throw an exception if N < 0.
     %
 :- func take_upto(int, list(T)) = list(T).
 :- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
@@ -755,16 +756,16 @@
 
     % drop(N, List, End):
     %
-    % End is the remainder of List after removing the first N elements.
-    % Fails if N is not in `0 .. length(List)'.
+    % Remove the first N elements of List, and return the remainder as End.
+    % Fail if N is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred drop(int::in, list(T)::in, list(T)::out) is semidet.
 
     % det_drop(N, List, End):
     %
-    % End is the remainder of List after removing the first N elements.
-    % Throws an exception if N is not in `0 .. length(List)'.
+    % Remove the first N elements of List, and return the remainder as End.
+    % Throw an exception if N is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
@@ -773,36 +774,37 @@
 
     % take_while(Pred, List, Start, End):
     %
-    % List = Start ++ End. Start is the longest prefix of List where Pred
-    % succeeds for every element in Start. End is the remainder of the list.
+    % Split List into two parts, Start and End, where List = Start ++ End.
+    % Set Start to the longest prefix of List where Pred succeeds for
+    % every element. Set End to be the remainder of List.
     %
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
     % take_while_not(Pred, List, Start, End):
     %
-    % List = Start ++ End. Start is the longest prefix of List where Pred
-    % fails for every element in Start. End is the remainder of the list.
+    % Split List into two parts, Start and End, where List = Start ++ End.
+    % Set Start to the longest prefix of List where Pred fails for
+    % every element. Set End to be the remainder of List.
     %
 :- pred take_while_not(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
-    % take_while(Pred, List) = Start :-
-    %     take_while(Pred, List, Start, _End)
+    % take_while(Pred, List) = Start:
+    % take_while(Pred, List, Start):
     %
-    % Start is the longest prefix of List where Pred succeeds for every element
-    % in Start.
+    % Versions of take_while(Pred, List, Start, End) that do not return End.
     %
 :- func take_while(pred(T)::in(pred(in) is semidet), list(T)::in) =
     (list(T)::out) is det.
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out) is det.
 
-    % take_while_not(Pred, List) = Start :-
-    %     take_while_not(Pred, List, Start, _End)
+    % take_while_not(Pred, List) = Start:
+    % take_while_not(Pred, List, Start):
     %
-    % Start is the longest prefix of List where Pred fails for every element
-    % in Start.
+    % Versions of take_while_not(Pred, List, Start, End) that
+    % do not return End.
     %
 :- func take_while_not(pred(T)::in(pred(in) is semidet), list(T)::in) =
     (list(T)::out) is det.
@@ -811,11 +813,10 @@
 
 %---------------------%
 
-    % drop_while(Pred, List) = End :-
-    %     take_while(Pred, List, _Start, End).
+    % drop_while(Pred, List) = End:
+    % drop_while(Pred, List, End):
     %
-    % End is the remainder of List after removing all the consecutive
-    % elements from the start of List for which Pred succeeds.
+    % Versions of take_while(Pred, List, Start, End) that do not return Start.
     %
 :- func drop_while(pred(T)::in(pred(in) is semidet), list(T)::in) =
     (list(T)::out) is det.
@@ -826,15 +827,14 @@
 
     % duplicate(Count, Elem) = List:
     %
-    % True if-and-only-if List is a list containing Count duplicate copies
-    % of Elem.
+    % Return as List a list containing Count copies of Elem.
     %
 :- func duplicate(int, T) = list(T).
 :- pred duplicate(int::in, T::in, list(T)::out) is det.
 
     % all_same(List):
     %
-    % True if all elements of the list are the same.
+    % Succeed if-and-only-if all elements of List are the same.
     %
 :- pred all_same(list(T)::in) is semidet.
 
@@ -842,18 +842,19 @@
 
     % condense(ListOfLists) = List:
     %
-    % List is the result of concatenating all the elements of ListOfLists.
+    % Return as List the concatenation of all the lists in ListOfLists.
     %
 :- func condense(list(list(T))) = list(T).
 :- pred condense(list(list(T))::in, list(T)::out) is det.
 
     % chunk(List, ChunkSize) = Chunks:
     %
-    % Takes a list List and breaks it into a list of lists Chunks,
-    % such that the length of each list in Chunks is at most ChunkSize.
-    % (More precisely, the length of each list in Chunks other than the
-    % last one is exactly ChunkSize, while the length of the last list in
-    % Chunks may vary between one and ChunkSize.)
+    % Break List into a list of lists Chunks, such that the length
+    % of each list in Chunks is at most ChunkSize.
+    %
+    % More precisely, the length of each list in Chunks other than the
+    % last one will be exactly ChunkSize, while the length of the last list
+    % in Chunks may vary between one and ChunkSize.
     %
 :- func chunk(list(T), int) = list(list(T)).
 :- pred chunk(list(T)::in, int::in, list(list(T))::out) is det.
@@ -875,7 +876,7 @@
 
     % perm(List0, List):
     %
-    % True if-and-only-if List is a permutation of List0.
+    % Succeed if-and-only-if List is a permutation of List0.
     %
 :- pred perm(list(T)::in, list(T)::out) is multi.
 
