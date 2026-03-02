@@ -732,21 +732,21 @@
 
     % take(N, List, Start):
     %
-    % Start is the first Len elements of List.
+    % Start is the first N elements of List.
     % Fails if N is not in `0 .. length(List)'.
     %
 :- pred take(int::in, list(T)::in, list(T)::out) is semidet.
 
-    % det_take(Len, List, Start):
+    % det_take(N, List, Start):
     %
     % As above, but throw an exception instead of failing.
     %
 :- pred det_take(int::in, list(T)::in, list(T)::out) is det.
 
-    % take_upto(Len, List) = Start:
+    % take_upto(N, List) = Start:
     %
-    % Start is the first Len elements of List. If List has less than
-    % Len elements, return the entire list. Throws an exception if N < 0.
+    % Start is the first N elements of List. If List has less than
+    % N elements, return the entire list. Throws an exception if N < 0.
     %
 :- func take_upto(int, list(T)) = list(T).
 :- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
@@ -1359,6 +1359,7 @@
     in, in, out, in, out, di, uo) is cc_multi.
 
     % foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4):
+    %
     % Does the same job as foldl, but with four accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
