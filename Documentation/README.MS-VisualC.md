@@ -16,6 +16,7 @@ Contents
 * Setting up the build environment
 * Configuration and installation
 * Using Mercury in the MSYS2 or Cygwin shells
+* Using Mercury in the Windows Command Prompt
 * Limitations
 
 Supported MSVC versions
@@ -36,7 +37,7 @@ You can use either [Cygwin](https://www.cygwin.com) or
 You only need a Unix-like environment for the installation. You do not need
 one to run Mercury later.
 
-To make MSVC the toolchain available in the Cygwin or MSYS2 shells, do the
+To make the MSVC toolchain available in the Cygwin or MSYS2 shells, do the
 following:
 
 1. Open the Visual Studio Command Prompt.
