@@ -534,7 +534,7 @@
     % all be sorted in non-descending order according to Compare
     % (or the standard comparison operation, for the versions that
     % do not take a Compare argument), return the list MergedList
-    % which contains the elements of both lists, and which is also
+    % which contains the elements of all of the lists, and which is also
     % in non-descending order.
     %
     % Lists in ListOfLists may contain repeated elements, meaning elements
