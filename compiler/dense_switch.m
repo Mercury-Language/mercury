@@ -60,7 +60,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
-:- import_module hlds.type_util.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
 
@@ -84,41 +83,12 @@
 tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
         LowerLimit, UpperLimit, NumValues, ReqDensity, CanFail,
         DenseSwitchInfo) :-
-    list.length(TaggedCases, NumCases),
-    NumCases > 2,
-
-    Span = UpperLimit - LowerLimit,
-    Range = Span + 1,
-    Density = switch_density(NumValues, Range),
-    Density > ReqDensity,
-    (
-        CanFail = can_fail,
-        % For semidet switches, we normally need to check that the variable
-        % is in range before we index into the jump table. However, if the
-        % range of the type is sufficiently small, we can make the jump table
-        % large enough to hold all of the values for the type.
-        get_module_info(CI, ModuleInfo),
-        classify_type(ModuleInfo, VarType) = TypeCategory,
-        ( if
-            type_range(ModuleInfo, TypeCategory, VarType,
-                TypeMin, TypeMax, TypeRange),
-            DetDensity = switch_density(NumValues, TypeRange),
-            DetDensity > ReqDensity
-        then
-            NeedRangeCheck = do_not_need_range_check,
-            FirstVal = TypeMin,
-            LastVal = TypeMax
-        else
-            NeedRangeCheck = need_range_check,
-            FirstVal = LowerLimit,
-            LastVal = UpperLimit
-        )
-    ;
-        CanFail = cannot_fail,
-        NeedRangeCheck = do_not_need_range_check,
-        FirstVal = LowerLimit,
-        LastVal = UpperLimit
-    ),
+    % Test that there are least two cases.
+    TaggedCases = [_, _ | _],
+    get_module_info(CI, ModuleInfo),
+    find_int_lookup_switch_params(ModuleInfo, VarType, CanFail,
+        LowerLimit, UpperLimit, NumValues, ReqDensity,
+        _NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
     DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, NeedRangeCheck).
 
 %---------------------------------------------------------------------------%
