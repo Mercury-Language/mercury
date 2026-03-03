@@ -573,7 +573,7 @@
     %
     % Take the non-empty list of maps [M | Ms], and union pairs of those maps
     % (using union above) until there is only one map left. Return this map
-    % as ResultM. The order of in which those union operations are performed
+    % as ResultM. The order in which those union operations are performed
     % is not defined, so the caller should choose a Pred for which the order
     % does not matter.
     %
