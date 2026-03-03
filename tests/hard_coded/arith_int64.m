@@ -41,7 +41,11 @@ main(!IO) :-
     io.nl(!IO),
     run_binop_test((func(X, Y) = X / Y), "/", !IO),
     io.nl(!IO),
-    run_binop_test((func(X, Y) = X rem Y), "rem", !IO).
+    run_binop_test((func(X, Y) = X rem Y), "rem", !IO),
+    io.nl(!IO),
+    run_binop_test(int64.max, "max", !IO),
+    io.nl(!IO),
+    run_binop_test(int64.min, "min", !IO).
 
 %---------------------------------------------------------------------------%
 

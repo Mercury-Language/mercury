@@ -33,7 +33,11 @@ main(!IO) :-
     io.nl(!IO),
     run_binop_test((func(X, Y) = X / Y), "/", !IO),
     io.nl(!IO),
-    run_binop_test((func(X, Y) = X rem Y), "rem", !IO).
+    run_binop_test((func(X, Y) = X rem Y), "rem", !IO),
+    io.nl(!IO),
+    run_binop_test(uint64.max, "max", !IO),
+    io.nl(!IO),
+    run_binop_test(uint64.min, "min", !IO).
 
 :- pred run_binop_test((func(uint64, uint64) = uint64)::in, string::in,
     io::di, io::uo) is cc_multi.
