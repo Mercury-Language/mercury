@@ -767,7 +767,7 @@ min(X, Y) =
 
 clamp(Min, Max, N) =
     ( if Max >= Min then
-        max(Min, min(Max, N))
+        ( if N < Min then Min else if N > Max then Max else N )
     else
         func_error($pred, "Max < Min")
     ).
