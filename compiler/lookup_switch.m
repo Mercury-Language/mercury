@@ -554,14 +554,12 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
     end_branch_info::in, llds_code::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-% ZZZ StartVal -> FirstValI
-% ZZZ EndVal -> LastValI
-generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal, CaseValues,
+generate_simple_int_lookup_switch(IndexRval, FirstValI, LastValI, CaseValues,
         OutVars, OutTypes, NeedBitVecCheck, EndBranch,
         RangeCheckCode, Code, !CI, !.CLD) :-
     (
         NeedBitVecCheck = need_bit_vec_check,
-        generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
+        generate_bitvec_test(IndexRval, CaseValues, FirstValI, LastValI,
             CheckBitVecCode, !CI, !CLD)
     ;
         ( NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
@@ -586,14 +584,14 @@ generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal, CaseValues,
         OutVars = [_ | _],
 
         % Generate the static lookup table for this switch.
-        construct_simple_int_lookup_vector(CaseValues, StartVal, OutTypes,
+        construct_simple_int_lookup_vector(CaseValues, FirstValI, OutTypes,
             cord.init, TableRvalsCord),
         TableRvals = cord.list(TableRvalsCord),
         add_vector_static_cell(OutTypes, TableRvals, TableDataId, !CI),
 
         % Generate code to look up each of the variables in OutVars in its slot
-        % in the table row IndexRval (which will be row VarRval - StartVal).
-        % IndexRval has already had StartVal subtracted from it.
+        % in the table row IndexRval (which will be row VarRval - FirstValI).
+        % IndexRval has already had FirstValI subtracted from it.
         RowSelect = main_row_number_reg(IndexRval, OutTypes),
         NumPrevColumns = 0,
         generate_single_soln_table_lookup_code_some_vars(TableDataId,
@@ -640,7 +638,7 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest0], CurIndex, OutTypes,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
-        EndLabel, StartVal, EndVal, CaseSolns, OutVars, OutTypes,
+        EndLabel, FirstValI, LastValI, CaseSolns, OutVars, OutTypes,
         NeedBitVecCheck, EndBranch, RangeCheckCode, Code,
         !MaybeEnd, !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
@@ -657,7 +655,7 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
     InitLaterSolnRowNumber = 1,
     DummyLaterSolnRow = list.map(default_value_for_type, OutTypes),
     LaterSolnsRowsCord0 = cord.singleton(DummyLaterSolnRow),
-    construct_several_soln_int_lookup_vector(StartVal, EndVal,
+    construct_several_soln_int_lookup_vector(FirstValI, LastValI,
         OutTypes, NumOutTypes, CaseSolns, MainRows,
         InitLaterSolnRowNumber, LaterSolnsRowsCord0, LaterSolnsRowsCord,
         0, FailCaseCount, 0, OneSolnCaseCount, 0, SeveralSolnCaseCount),
@@ -1041,21 +1039,21 @@ generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
     int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-construct_several_soln_int_lookup_vector(CurIndex, EndVal,
+construct_several_soln_int_lookup_vector(CurIndex, LastValI,
         OutTypes, NumOutTypes, [], MainRows,
         !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
-    ( if CurIndex > EndVal then
+    ( if CurIndex > LastValI then
         MainRows = []
     else
         construct_fail_row(OutTypes, MainRow, !FailCaseCount),
-        construct_several_soln_int_lookup_vector(CurIndex + 1, EndVal,
+        construct_several_soln_int_lookup_vector(CurIndex + 1, LastValI,
             OutTypes, NumOutTypes, [], MoreMainRows,
             !.LaterNextRow, !LaterSolnArray,
             !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount),
         MainRows = [MainRow | MoreMainRows]
     ).
-construct_several_soln_int_lookup_vector(CurIndex, EndVal,
+construct_several_soln_int_lookup_vector(CurIndex, LastValI,
         OutTypes, NumOutTypes, [Index - Soln | Rest], [MainRow | MainRows],
         !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
@@ -1084,7 +1082,7 @@ construct_several_soln_int_lookup_vector(CurIndex, EndVal,
         ),
         Remainder = Rest
     ),
-    construct_several_soln_int_lookup_vector(CurIndex + 1, EndVal,
+    construct_several_soln_int_lookup_vector(CurIndex + 1, LastValI,
         OutTypes, NumOutTypes, Remainder, MainRows,
         !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount).
