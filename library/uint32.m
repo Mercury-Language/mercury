@@ -26,14 +26,14 @@
     % from_int(I, U32):
     %
     % Convert an int into a uint32.
-    % Fails if I is not in [0, 2^32 - 1].
+    % Fail if I is not in the range [0, 2^32 - 1].
     %
 :- pred from_int(int::in, uint32::out) is semidet.
 
     % det_from_int(I) = U32:
     %
     % Convert an int into a uint32.
-    % Throws an exception if I is not in [0, 2^32 - 1].
+    % Throw an exception if I is not in the range [0, 2^32 - 1].
     %
 :- func det_from_int(int) = uint32.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^32 - 1].
+    % to I only if I is in the range [0, 2^32 - 1].
     %
 :- func cast_from_int(int) = uint32.
 
@@ -53,14 +53,14 @@
     % from_uint(U, U32):
     %
     % Convert a uint into a uint32.
-    % Fails if U is not in [0, 2^32 - 1].
+    % Fail if U is not in the range [0, 2^32 - 1].
     %
 :- pred from_uint(uint::in, uint32::out) is semidet.
 
     % det_from_uint(U) = U32:
     %
     % Convert a uint into a uint32.
-    % Throws an exception if U is not in [0, 2^32 - 1].
+    % Throw an exception if U is not in the range [0, 2^32 - 1].
     %
 :- func det_from_uint(uint) = uint32.
 
@@ -68,7 +68,7 @@
     %
     % Convert a uint to a uint32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U only if U is in [0, 2^32 - 1].
+    % to U only if U is in the range [0, 2^32 - 1].
     %
 :- func cast_from_uint(uint) = uint32.
 
@@ -80,10 +80,12 @@
     % cast_to_int(U32) = I:
     %
     % Convert a uint32 to an int.
-    % Always succeeds. If ints are 64 bits, I will always be
-    % mathematically equal to U32. However, if ints are 32 bits,
-    % then I will be mathematically equal to U32 only if
-    % U32 is in [0, 2^31 - 1].
+    % Always succeeds.
+    %
+    % - If ints are 64 bits, I will always be mathematically equal to U32.
+    %
+    % - If ints are 32 bits, then I will be mathematically equal to U32
+    %   only if U32 is in the range [0, 2^31 - 1].
     %
 :- func cast_to_int(uint32) = int.
 
@@ -109,7 +111,7 @@
     %
     % Convert a uint32 to a uint8.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U32 only if U32 is in [0, 2^8 - 1].
+    % to U32 only if U32 is in the range [0, 2^8 - 1].
     %
 :- func cast_to_uint8(uint32) = uint8.
 
@@ -130,7 +132,7 @@
     %
     % Convert a uint32 to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U32 only if U32 is in [0, 2^16 - 1].
+    % to U32 only if U32 is in the range [0, 2^16 - 1].
     %
 :- func cast_to_uint16(uint32) = uint16.
 
@@ -159,7 +161,7 @@
     %
     % Convert a uint64 to a uint32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^32 - 1].
+    % to I only if I is in the range [0, 2^32 - 1].
     %
 :- func cast_from_uint64(uint64) = uint32.
 
@@ -171,7 +173,7 @@
     % cast_from_int32(I32) = U32:
     %
     % Convert an int32 to a uint32. This will yield a result that is
-    % mathematically equal to I32 only if I32 is in [0, 2^31 - 1].
+    % mathematically equal to I32 only if I32 is in the range [0, 2^31 - 1].
     %
 :- func cast_from_int32(int32) = uint32.
 
@@ -309,13 +311,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 32).
+    % Throws an exception if Y is not in the range [0, 32).
     %
 :- func (uint32::in) << (int::in) = (uint32::uo) is det.
 :- func (uint32::in) <<u (uint::in) = (uint32::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, 32).
+    % behaviour is undefined if Y is not in the range [0, 32).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint32::in, int::in) = (uint32::uo) is det.
@@ -324,13 +326,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 32).
+    % Throws an exception if Y is not in the range [0, 32).
     %
 :- func (uint32::in) >> (int::in) = (uint32::uo) is det.
 :- func (uint32::in) >>u (uint::in) = (uint32::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, 32).
+    % behaviour is undefined if Y is not in the range [0, 32).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(uint32::in, int::in) = (uint32::uo) is det.

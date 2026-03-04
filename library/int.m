@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2023, 2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -193,7 +193,7 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, bits_per_int).
+    % Throws an exception if Y is not in the range [0, bits_per_int).
     %
 :- func (int::in) << (int::in) = (int::uo) is det.
 :- func (int::in) <<u (uint::in) = (int::uo) is det.
@@ -209,7 +209,7 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by the sign bit.
-    % Throws an exception if Y is not in [0, bits_per_int).
+    % Throws an exception if Y is not in the range [0, bits_per_int).
     %
 :- func (int::in) >> (int::in) = (int::uo) is det.
 :- func (int::in) >>u (uint::in) = (int::uo) is det.

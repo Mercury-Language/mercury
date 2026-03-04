@@ -26,14 +26,14 @@
     % from_int(I, I8):
     %
     % Convert an int to an int8.
-    % Fails if I is not in [-(2^7), 2^7 - 1].
+    % Fail if I is not in the range [-(2^7), 2^7 - 1].
     %
 :- pred from_int(int::in, int8::out) is semidet.
 
     % det_from_int(I) = I8:
     %
     % Convert an int to an int8.
-    % Throws an exception if I is not in [-(2^7), 2^7 - 1].
+    % Throw an exception if I is not in the range [-(2^7), 2^7 - 1].
     %
 :- func det_from_int(int) = int8.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to an int8.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [-(2^7), 2^7 - 1].
+    % to I only if I is in the range [-(2^7), 2^7 - 1].
     %
 :- func cast_from_int(int) = int8.
 
@@ -74,7 +74,7 @@
     % cast_from_uint8(U8) = I8:
     %
     % Convert a uint8 to an int8. This will yield a result that is
-    % mathematically equal to U8 only if U8 is in [0, 2^7 - 1].
+    % mathematically equal to U8 only if U8 is in the range [0, 2^7 - 1].
     %
 :- func cast_from_uint8(uint8) = int8.
 
@@ -223,13 +223,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 8).
+    % Throws an exception if Y is not in the range [0, 8).
     %
 :- func (int8::in) << (int::in) = (int8::uo) is det.
 :- func (int8::in) <<u (uint::in) = (int8::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, 8).
+    % behaviour is undefined if Y is not in the range [0, 8).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int8::in, int::in) = (int8::uo) is det.
@@ -238,13 +238,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by the sign bit.
-    % Throws an exception if Y is not in [0, 8).
+    % Throws an exception if Y is not in the range [0, 8).
     %
 :- func (int8::in) >> (int::in) = (int8::uo) is det.
 :- func (int8::in) >>u (uint::in) = (int8::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, 8).
+    % behaviour is undefined if Y is not in the range [0, 8).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int8::in, int::in) = (int8::uo) is det.

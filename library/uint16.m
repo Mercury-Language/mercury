@@ -26,14 +26,14 @@
     % from_int(I, U16):
     %
     % Convert an int into a uint16.
-    % Fails if I is not in [0, 2^16 - 1].
+    % Fail if I is not in the range [0, 2^16 - 1].
     %
 :- pred from_int(int::in, uint16::out) is semidet.
 
     % det_from_int(I) = U16:
     %
     % Convert an int into a uint16.
-    % Throws an exception if I is not in [0, 2^16 - 1].
+    % Throw an exception if I is not in the range [0, 2^16 - 1].
     %
 :- func det_from_int(int) = uint16.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^16 - 1].
+    % to I only if I is in the range [0, 2^16 - 1].
     %
 :- func cast_from_int(int) = uint16.
 
@@ -53,14 +53,14 @@
     % from_uint(U, U16):
     %
     % Convert a uint into a uint16.
-    % Fails if U is not in [0, 2^16 - 1].
+    % Fail if U is not in the range [0, 2^16 - 1].
     %
 :- pred from_uint(uint::in, uint16::out) is semidet.
 
     % det_from_uint(U) = U16:
     %
     % Convert a uint into a uint16.
-    % Throws an exception if U is not in [0, 2^16 - 1].
+    % Throw an exception if U is not in the range [0, 2^16 - 1].
     %
 :- func det_from_uint(uint) = uint16.
 
@@ -68,7 +68,7 @@
     %
     % Convert a uint to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U only if U is in [0, 2^16 - 1].
+    % to U only if U is in the range [0, 2^16 - 1].
     %
 :- func cast_from_uint(uint) = uint16.
 
@@ -115,7 +115,7 @@
     %
     % Convert a uint16 to a uint8.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U16 only if U16 is in [0, 2^8 - 1].
+    % to U16 only if U16 is in the range [0, 2^8 - 1].
     %
 :- func cast_to_uint8(uint16) = uint8.
 
@@ -144,7 +144,7 @@
     %
     % Convert a uint64 to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to U64 only if U64 is in [0, 2^16 - 1].
+    % to U64 only if U64 is in the range [0, 2^16 - 1].
     %
 :- func cast_from_uint64(uint64) = uint16.
 
@@ -156,7 +156,7 @@
     % cast_from_int16(I16) = U16:
     %
     % Convert an int16 to a uint16. This will yield a result that is
-    % mathematically equal to I16 only if I16 is in [0, 2^15 - 1].
+    % mathematically equal to I16 only if I16 is in the range [0, 2^15 - 1].
     %
 :- func cast_from_int16(int16) = uint16.
 
@@ -292,13 +292,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 16).
+    % Throws an exception if Y is not in the range [0, 16).
     %
 :- func (uint16::in) << (int::in) = (uint16::uo) is det.
 :- func (uint16::in) <<u (uint::in) = (uint16::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, 16).
+    % behaviour is undefined if Y is not in the range [0, 16).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint16::in, int::in) = (uint16::uo) is det.
@@ -307,13 +307,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 16).
+    % Throws an exception if Y is not in the range [0, 16).
     %
 :- func (uint16::in) >> (int::in) = (uint16::uo) is det.
 :- func (uint16::in) >>u (uint::in) = (uint16::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, 16).
+    % behaviour is undefined if Y is not in the range [0, 16).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(uint16::in, int::in) = (uint16::uo) is det.

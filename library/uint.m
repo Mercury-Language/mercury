@@ -27,17 +27,20 @@
 %---------------------------------------------------------------------------%
 
     % Convert an int to a uint.
-    % Fails if the int is less than zero.
+    % Fail if the int is less than zero.
     %
 :- pred from_int(int::in, uint::out) is semidet.
 
-    % As above, but throws an exception instead of failing.
+    % Convert an int to a uint.
+    % Throw an exception if the int is less than zero.
     %
 :- func det_from_int(int) = uint.
 
 :- func cast_from_int(int) = uint.
 
 :- func cast_to_int(uint) = int.
+
+%---------------------------------------------------------------------------%
 
     % Less than.
     %
@@ -129,13 +132,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, bits_per_uint).
+    % Throws an exception if Y is not in the range [0, bits_per_uint).
     %
 :- func (uint::in) << (int::in) = (uint::uo) is det.
 :- func (uint::in) <<u (uint::in) = (uint::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, bits_per_uint).
+    % behaviour is undefined if Y is not in the range [0, bits_per_uint).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint::in, int::in) = (uint::uo) is det.
@@ -144,13 +147,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, bits_per_uint).
+    % Throws an exception if Y is not in the range [0, bits_per_uint).
     %
 :- func (uint::in) >> (int::in) = (uint::uo) is det.
 :- func (uint::in) >>u (uint::in) = (uint::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, bits_per_uint).
+    % behaviour is undefined if Y is not in the range [0, bits_per_uint).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(uint::in, int::in) = (uint::uo) is det.

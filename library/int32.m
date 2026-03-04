@@ -26,14 +26,14 @@
     % from_int(I, I32):
     %
     % Convert an int to an int32.
-    % Fails if I is not in [-(2^31), 2^31 - 1].
+    % Fail if I is not in the range [-(2^31), 2^31 - 1].
     %
 :- pred from_int(int::in, int32::out) is semidet.
 
     % det_from_int(I) = I32:
     %
     % Convert an int to an int32.
-    % Throws an exception if I is not in [-(2^31), 2^31 - 1].
+    % Throw an exception if I is not in the range [-(2^31), 2^31 - 1].
     %
 :- func det_from_int(int) = int32.
 
@@ -41,7 +41,7 @@
     %
     % Convert an int to an int32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [-(2^31), 2^31 - 1].
+    % to I only if I is in the range [-(2^31), 2^31 - 1].
     %
 :- func cast_from_int(int) = int32.
 
@@ -75,7 +75,7 @@
     %
     % Convert an int32 to an int8.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I32 only if I32 is in [-(2^7), 2^7 - 1].
+    % to I32 only if I32 is in the range [-(2^7), 2^7 - 1].
     %
 :- func cast_to_int8(int32) = int8.
 
@@ -95,7 +95,7 @@
     %
     % Convert an int32 to an int16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I32 only if I32 is in [-(2^15), 2^15 - 1].
+    % to I32 only if I32 is in the range [-(2^15), 2^15 - 1].
     %
 :- func cast_to_int16(int32) = int16.
 
@@ -123,7 +123,7 @@
     %
     % Convert an int64 to an int32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I64 only if I64 is in [-(2^31), 2^31 - 1].
+    % to I64 only if I64 is in the range [-(2^31), 2^31 - 1].
     %
 :- func cast_from_int64(int64) = int32.
 
@@ -135,7 +135,7 @@
     % cast_from_uint32(U32) = I32:
     %
     % Convert a uint32 to an int32. This will yield a result that is
-    % mathematically equal to U32 only if U32 is in [0, 2^31 - 1].
+    % mathematically equal to U32 only if U32 is in the range [0, 2^31 - 1].
     %
 :- func cast_from_uint32(uint32) = int32.
 
@@ -313,13 +313,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 32).
+    % Throws an exception if Y is not in the range [0, 32).
     %
 :- func (int32::in) << (int::in) = (int32::uo) is det.
 :- func (int32::in) <<u (uint::in) = (int32::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
-    % behaviour is undefined if Y is not in [0, 32).
+    % behaviour is undefined if Y is not in the range [0, 32).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int32::in, int::in) = (int32::uo) is det.
@@ -328,13 +328,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by the sign bit.
-    % Throws an exception if Y is not in [0, 32).
+    % Throws an exception if Y is not in the range [0, 32).
     %
 :- func (int32::in) >> (int::in) = (int32::uo) is det.
 :- func (int32::in) >>u (uint::in) = (int32::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
-    % behaviour is undefined if Y is not in [0, bits_per_int32).
+    % behaviour is undefined if Y is not in the range [0, bits_per_int32).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int32::in, int::in) = (int32::uo) is det.

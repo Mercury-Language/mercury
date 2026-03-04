@@ -54,24 +54,27 @@
     % to_int(I64, I):
     %
     % Convert an int64 into an int.
-    % Fails if I64 is not in [int.min_int, int.max_int].
+    % Fail if I64 is not in the range [int.min_int, int.max_int].
     %
 :- pred to_int(int64::in, int::out) is semidet.
 
     % det_to_int(I64) = I:
     %
     % Convert an int64 into an int.
-    % Throws an exception if I64 is not in [int.min_int, int.max_int].
+    % Throw an exception if I64 is not in the range
+    % [int.min_int, int.max_int].
     %
 :- func det_to_int(int64) = int.
 
     % cast_to_int(I64) = I:
     %
     % Convert an int64 to an int.
-    % Always succeeds. If ints are 64 bits, I will always be
-    % mathematically equal to I64. However, if ints are 32 bits,
-    % then I will be mathematically equal to I64 only if
-    % I64 is in [-(2^31), 2^31 - 1].
+    % Always succeeds.
+    %
+    % - If ints are 64 bits, I will always be mathematically equal to I64.
+    %
+    % - If ints are 32 bits, then I will be mathematically equal to I64
+    %   only if I64 is in the range [-(2^31), 2^31 - 1].
     %
 :- func cast_to_int(int64) = int.
 
@@ -83,7 +86,7 @@
     % cast_from_uint64(U64) = I64:
     %
     % Convert a uint64 to an int64. This will yield a result that is
-    % mathematically equal to U64 only if U64 is in [0, 2^63 - 1].
+    % mathematically equal to U64 only if U64 is in the range [0, 2^63 - 1].
     %
 :- func cast_from_uint64(uint64) = int64.
 
@@ -255,13 +258,13 @@
     % Left shift.
     % X << Y returns X "left shifted" by Y bits.
     % The bit positions vacated by the shift are filled by zeros.
-    % Throws an exception if Y is not in [0, 64).
+    % Throws an exception if Y is not in the range [0, 64).
     %
 :- func (int64::in) << (int::in) = (int64::uo) is det.
 :- func (int64::in) <<u (uint::in) = (int64::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that
-    % the behaviour is undefined if Y is not in [0, 64).
+    % the behaviour is undefined if Y is not in the range [0, 64).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int64::in, int::in) = (int64::uo) is det.
@@ -270,13 +273,13 @@
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
     % The bit positions vacated by the shift are filled by the sign bit.
-    % Throws an exception if Y is not in [0, 64).
+    % Throws an exception if Y is not in the range [0, 64).
     %
 :- func (int64::in) >> (int::in) = (int64::uo) is det.
 :- func (int64::in) >>u (uint::in) = (int64::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that
-    % the behaviour is undefined if Y is not in [0, 64).
+    % the behaviour is undefined if Y is not in the range [0, 64).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int64::in, int::in) = (int64::uo) is det.
