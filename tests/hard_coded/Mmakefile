@@ -789,6 +789,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		bitwise_uint64 \
 		bitwise_uint8 \
 		char_to_string \
+		clamp_int32 \
 		cmp_int16 \
 		cmp_int32 \
 		cmp_int64 \

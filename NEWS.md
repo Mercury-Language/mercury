@@ -458,6 +458,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 

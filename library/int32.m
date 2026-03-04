@@ -189,6 +189,14 @@
     %
 :- func min(int32, int32) = int32.
 
+    % clamp(Min, Max, N):
+    %
+    % Clamp N to the range [Min, Max] (inclusive).
+    % Returns Min if N < Min, Max if N > Max, and N otherwise.
+    % Throws an exception if Max < Min.
+    %
+:- func clamp(int32, int32, int32) = int32.
+
 %---------------------------------------------------------------------------%
 %
 % Absolute values.
@@ -756,6 +764,13 @@ max(X, Y) =
 
 min(X, Y) =
     ( if X < Y then X else Y ).
+
+clamp(Min, Max, N) =
+    ( if Max >= Min then
+        max(Min, min(Max, N))
+    else
+        func_error($pred, "Max < Min")
+    ).
 
 %---------------------------------------------------------------------------%
 
