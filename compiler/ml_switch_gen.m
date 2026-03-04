@@ -583,7 +583,6 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
         Limits = int_switch_limits(MinI32, MaxI32),
         MinI = int32.cast_to_int(MinI32),
         MaxI = int32.cast_to_int(MaxI32),
-        % ZZZ The arguments of mlds_switch_range should be int32s.
         Range = mlds_switch_range(MinI, MaxI)
     else
         Range = mlds_switch_range_unknown
