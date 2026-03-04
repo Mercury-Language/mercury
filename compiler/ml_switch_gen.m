@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2022-2025 The Mercury team.
+% Copyright (C) 2013-2020, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -158,10 +158,12 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module int32.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -257,24 +259,27 @@ ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, TaggedCases,
         % XXX It should be possible to implement lookup switches
         % for Java and C# (HighLevelData = yes) as well.
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
-        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         globals.get_opt_tuple(Globals, OptTuple),
         OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
         LookupSize = OptTuple ^ ot_lookup_switch_size,
         NumConsIds >= LookupSize,
         NumArms > 1,
-        ReqDensity = OptTuple ^ ot_lookup_switch_req_density,
+        ReqDensityI = OptTuple ^ ot_lookup_switch_req_density,
+        uint.from_int(ReqDensityI, ReqDensityU),
         filter_out_failing_cases_if_needed(CodeModel,
             TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
         find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
-            FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-            ReqDensity, NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
+            FilteredCanFail, IntSwitchInfo, ReqDensityU,
+            NeedBitVecCheck, NeedRangeCheck, Limits),
         ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
             CodeModel, !.Info, MaybeLookupSwitchInfo),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
+        Limits = int_switch_limits(FirstValI32, LastValI32),
+        FirstValI = int32.cast_to_int(FirstValI32),
+        LastValI =  int32.cast_to_int(LastValI32),
         ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases,
-            LookupSwitchInfo, CodeModel, Context, FirstVal, LastVal,
+            LookupSwitchInfo, CodeModel, Context, FirstValI, LastValI,
             NeedBitVecCheck, NeedRangeCheck, LookupStmt, !:Info),
         Stmts = [LookupStmt]
     else
@@ -573,9 +578,13 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ( if
         MLDS_Type = mercury_nb_type(Type, TypeCategory),
         type_range(ModuleInfo, coerce(TypeCategory), Type,
-            MinRange, MaxRange, _NumValuesInRange)
+            _NumValuesInRange, Limits)
     then
-        Range = mlds_switch_range(MinRange, MaxRange)
+        Limits = int_switch_limits(MinI32, MaxI32),
+        MinI = int32.cast_to_int(MinI32),
+        MaxI = int32.cast_to_int(MaxI32),
+        % ZZZ The arguments of mlds_switch_range should be int32s.
+        Range = mlds_switch_range(MinI, MaxI)
     else
         Range = mlds_switch_range_unknown
     ).

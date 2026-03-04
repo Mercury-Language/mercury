@@ -63,13 +63,27 @@
 % Conversion to int.
 %
 
+% UNDOC_PART_START
+    % to_int(U64, I):
+    %
+    % Convert a uint64 to an int.
+    %
+    % If ints are 64 bits, succeed only if U64 is in the range [0, 2^63 - 1].
+    %
+    % If ints are 32 bits, succeed only if U64 is in the range [0, 2^31 - 1].
+    %
+% :- pred to_int(uint64::in, int::out) is semidet.
+% UNDOC_PART_END
     % cast_to_int(U64) = I:
     %
     % Convert a uint64 to an int.
-    % Always succeeds. If ints are 64 bits, I will be mathematically
-    % equal to U64 only if U64 is in [0, 2^63 - 1]. If ints are 32
-    % bits, I will be mathematically equal to U64 only if U64 is in
-    % [0, 2^31 - 1].
+    % Always succeeds.
+    %
+    % If ints are 64 bits, I will be mathematically equal to U64
+    % only if U64 is in the range [0, 2^63 - 1].
+    %
+    % If ints are 32 bits, I will be mathematically equal to U64
+    % only if U64 is in the range [0, 2^31 - 1].
     %
 :- func cast_to_int(uint64) = int.
 
@@ -918,7 +932,7 @@ num_zeros(U) = 64 - num_ones(U).
         int n = 63;
         y = (int32_t) U;
         if (y != 0) {
-            n -=  32; x = y;
+            n -= 32; x = y;
         } else {
             x = (uint32_t) (U >> 32);
         }

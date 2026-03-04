@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,6 +18,7 @@
 :- module backend_libs.lookup_switch_util.
 :- interface.
 
+:- import_module backend_libs.switch_util.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -38,23 +39,23 @@
 % Stuff for dense switches.
 %
 
-    % type_range(ModuleInfo, TypeCtorCategory, Type, Min, Max,
-    %   NumValuesInRange):
+    % type_range(ModuleInfo, TypeCtorCategory, Type,
+    %   NumValuesInRange, Limits):
     %
     % Determine the range [Min..Max] of an atomic type, and the number of
     % values in that range (including both endpoints). Values within the range
     % are not necessarily used by the type.
-    % Fail if the type isn't the sort of type that has a range
-    % or if the type's range is too big to switch on (e.g. int).
+    % Fail if the type isn't the sort of type that has a range, or
+    % if the type's range is too big to do a *dense* switch on (e.g. int).
     %
 :- pred type_range(module_info::in, type_ctor_category::in, mer_type::in,
-    int::out, int::out, int::out) is semidet.
+    uint::out, int_switch_limits::out) is semidet.
 
     % switch_density(NumCases, NumValuesInRange):
     %
     % Calculate the percentage density given the range and the number of cases.
     %
-:- func switch_density(int, int) = int.
+:- func switch_density(uint, uint) = uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -104,9 +105,9 @@
     can_fail::in, can_fail::out) is det.
 
 :- pred find_int_lookup_switch_params(module_info::in, mer_type::in,
-    can_fail::in, int::in, int::in, int::in, int::in,
-    need_bit_vec_check::out, need_range_check::out, int::out, int::out)
-    is semidet.
+    can_fail::in, int_switch_info::in, uint::in,
+    need_bit_vec_check::out, need_range_check::out,
+    int_switch_limits::out) is semidet.
 
 :- pred project_all_to_one_solution(map(Key, soln_consts(Rval))::in,
     map(Key, list(Rval))::out) is semidet.
@@ -119,16 +120,26 @@
 % These predicates are used in both the LLDS and MLDS backends
 % when testing whether a switch is a lookup switch.
 %
+% Note that for switches on (signed or unsigned, sized or not) integers,
+% we should have checked that both the min and max tag values fit
+% into the range of an int32. Therefore this should also be true for
+% all the case tags we test afterwards.
+%
 
-    % If the cons_tag specifies an int_tag, return the int;
-    % otherwise abort.
+    % If the int_tag specifies a value that fits in an int32,
+    % return the value; otherwise, abort.
     %
-:- func get_int_tag(cons_tag) = int.
+:- func get_int32_tag_value(int_tag) = int32.
+
+    % If the cons_tag specifies an int_tag whose value fits in an int32,
+    % return the value; otherwise, abort.
+    %
+:- func get_int_in_cons_tag(cons_tag) = int.
 
     % If the cons_tag specifies a string_tag, return the string;
-    % otherwise abort.
+    % otherwise, abort.
     %
-:- func get_string_tag(cons_tag) = string.
+:- func get_string_in_cons_tag(cons_tag) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -142,24 +153,41 @@
 
 :- import_module cord.
 :- import_module int.
+:- import_module int32.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
+:- import_module uint.
+:- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
+:- import_module uint64.
 
 %---------------------------------------------------------------------------%
 %
 % Stuff for dense switches.
 %
 
-type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
+type_range(ModuleInfo, TypeCtorCat, Type, NumValuesInRangeU, Limits) :-
     (
         TypeCtorCat = ctor_cat_builtin(cat_builtin_char),
         % Note also that some code in both dense_switch.m and in
         % lookup_switch.m assumes that min_char_value is 0.
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
-        target_char_range(Target, Min, Max)
+        target_char_range(Target, Min, Max),
+        ( if
+            int32.from_int(Min, Min32),
+            int32.from_int(Max, Max32)
+        then
+            NumValuesInRangeI32 = Max32 - Min32 + 1i32,
+            NumValuesInRangeI = int32.cast_to_int(NumValuesInRangeI32),
+            NumValuesInRangeU = uint.cast_from_int(NumValuesInRangeI),
+            Limits = int_switch_limits(Min32, Max32)
+        else
+            unexpected($pred, "char range does not fit in int32")
+        )
     ;
         TypeCtorCat = ctor_cat_enum(cat_enum_mercury),
         type_to_ctor_det(Type, TypeCtor),
@@ -190,6 +218,17 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
                 % the max.
                 CtorRepns = Repn ^ dur_ctor_repns,
                 ctor_repns_int_tag_range(CtorRepns, Min, Max)
+            ),
+            ( if
+                int32.from_int(Min, Min32),
+                int32.from_int(Max, Max32)
+            then
+                NumValuesInRangeI32 = Max32 - Min32 + 1i32,
+                NumValuesInRangeI = int32.cast_to_int(NumValuesInRangeI32),
+                NumValuesInRangeU = uint.cast_from_int(NumValuesInRangeI),
+                Limits = int_switch_limits(Min32, Max32)
+            else
+                fail
             )
         ;
             ( TypeBody = hlds_eqv_type(_)
@@ -199,15 +238,14 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
             ),
             unexpected($pred, "enum type is not d.u. type?")
         )
-    ),
-    NumValuesInRange = Max - Min + 1.
+    ).
 
 :- pred ctor_repns_int_tag_range(list(constructor_repn)::in,
     int::out, int::out) is semidet.
 
 ctor_repns_int_tag_range([CtorRepn | CtorRepns], Min, Max) :-
     ConsTag = CtorRepn ^ cr_tag,
-    Int = get_int_tag(ConsTag),
+    Int = get_enum_int_in_cons_tag(ConsTag),
     list.foldl2(add_to_ctor_repn_int_tag_range, CtorRepns, Int, Min, Int, Max).
 
 :- pred add_to_ctor_repn_int_tag_range(constructor_repn::in,
@@ -215,14 +253,14 @@ ctor_repns_int_tag_range([CtorRepn | CtorRepns], Min, Max) :-
 
 add_to_ctor_repn_int_tag_range(CtorRepn, !Min, !Max) :-
     ConsTag = CtorRepn ^ cr_tag,
-    Int = get_int_tag(ConsTag),
+    Int = get_enum_int_in_cons_tag(ConsTag),
     int.min(Int, !Min),
     int.max(Int, !Max).
 
 %---------------------------------------------------------------------------%
 
 switch_density(NumCases, NumValuesInRange) = Density :-
-    Density = (NumCases * 100) // NumValuesInRange.
+    Density = (NumCases * 100u) // NumValuesInRange.
 
 %---------------------------------------------------------------------------%
 %
@@ -267,14 +305,14 @@ filter_out_failing_cases_loop([TaggedCase | TaggedCases], !TaggedCasesCord,
 %---------------------------------------------------------------------------%
 
 find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
-        LowerLimit, UpperLimit, NumValues, ReqDensity,
-        NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal) :-
+        IntSwitchInfo, ReqDensity, NeedBitVecCheck, NeedRangeCheck, Limits) :-
+    IntSwitchInfo = int_switch_info(_IntType,
+        NumValuesInRange, NumValuesInCases, CaseLimits),
+
     % We want to generate a lookup switch for any switch that is dense enough
     % - we don't care how many cases it has. A memory lookup tends to be
     % cheaper than a branch.
-    Span = UpperLimit - LowerLimit,
-    Range = Span + 1,
-    Density = switch_density(NumValues, Range),
+    Density = switch_density(NumValuesInCases, NumValuesInRange),
     Density > ReqDensity,
 
     (
@@ -287,41 +325,39 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
         ( if
             type_range(ModuleInfo, TypeCategory, SwitchVarType,
-                TypeMin, TypeMax, TypeRange),
-            DetDensity = switch_density(NumValues, TypeRange),
+                NumValuesInType, TypeLimits),
+            DetDensity = switch_density(NumValuesInCases, NumValuesInType),
             DetDensity > ReqDensity
         then
             NeedRangeCheck = do_not_need_range_check,
             NeedBitVecCheck = need_bit_vec_check,
-            FirstVal = TypeMin,
-            LastVal = TypeMax
+            Limits = TypeLimits
         else
             % First check the variable is in range.
             NeedRangeCheck = need_range_check,
             % We will need to perform the bitvector test if the lookup table
             % is going to contain any gaps.
-            ( if NumValues = Range then
+            ( if NumValuesInCases = NumValuesInRange then
                 NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
             else
                 NeedBitVecCheck = need_bit_vec_check
             ),
-            FirstVal = LowerLimit,
-            LastVal = UpperLimit
+            Limits = CaseLimits
         )
     ;
         SwitchCanFail = cannot_fail,
         % The cannot_fail guarantees that the values that are in range
         % but are not covered by any of the cases won't actually be reached.
         NeedRangeCheck = do_not_need_range_check,
-        % There may be gaps in the lookup table if switching on a variable of
-        % a subtype which does not use some values in the range.
-        ( if NumValues = Range then
+        % There may be gaps in the lookup table, for example when
+        % switching on a variable of a subtype which does not use
+        % some values in the range.
+        ( if NumValuesInCases = NumValuesInRange then
             NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
         else
             NeedBitVecCheck = do_not_need_bit_vec_check_with_gaps
         ),
-        FirstVal = LowerLimit,
-        LastVal = UpperLimit
+        Limits = CaseLimits
     ).
 
 %---------------------------------------------------------------------------%
@@ -352,14 +388,59 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
 
 %---------------------------------------------------------------------------%
 
-get_int_tag(ConsTag) = Int :-
-    ( if ConsTag = int_tag(int_tag_int(IntPrime)) then
-        Int = IntPrime
+get_int32_tag_value(IntTag) = I32 :-
+    (
+        IntTag = int_tag_int(IW),
+        I32 = int32.det_from_int(IW)
+    ;
+        IntTag = int_tag_int8(I8),
+        I32 = int32.cast_from_int8(I8)
+    ;
+        IntTag = int_tag_int16(I16),
+        I32 = int32.cast_from_int16(I16)
+    ;
+        IntTag = int_tag_int32(I32)
+    ;
+        IntTag = int_tag_int64(I64),
+        % XXX We should test for fit, and abort if needed.
+        I32 = int32.cast_from_int64(I64)
+    ;
+        IntTag = int_tag_uint(U),
+        I32 = int32.cast_from_int(uint.cast_to_int(U))
+    ;
+        IntTag = int_tag_uint8(U8),
+        I32 = int32.cast_from_int(uint8.cast_to_int(U8))
+    ;
+        IntTag = int_tag_uint16(U16),
+        I32 = int32.cast_from_int(uint16.cast_to_int(U16))
+    ;
+        IntTag = int_tag_uint32(U32),
+        % XXX We should test for fit, and abort if needed.
+        I32 = int32.cast_from_int(uint32.cast_to_int(U32))
+    ;
+        IntTag = int_tag_uint64(U64),
+        % XXX We should test for fit, and abort if needed.
+        I32 = int32.cast_from_int(uint64.cast_to_int(U64))
+    ).
+
+:- func get_enum_int_in_cons_tag(cons_tag) = int.
+
+get_enum_int_in_cons_tag(ConsTag) = I :-
+    ( if ConsTag = int_tag(int_tag_int(IPrime)) then
+        I = IPrime
+    else
+        unexpected($pred, "not int_tag_int")
+    ).
+
+get_int_in_cons_tag(ConsTag) = I :-
+    ( if ConsTag = int_tag(IntTag) then
+        I32 = get_int32_tag_value(IntTag),
+        I = int32.cast_to_int(I32)
     else
         unexpected($pred, "not int_tag")
     ).
 
-get_string_tag(ConsTag) = Str :-
+get_string_in_cons_tag(ConsTag) = Str :-
     ( if ConsTag = string_tag(StrPrime) then
         Str = StrPrime
     else

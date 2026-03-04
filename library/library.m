@@ -366,8 +366,8 @@
 %   not be included in that documentation).
 %
 % Please keep all these lists in alphabetical order.
-% NOTES_TO_IMPLEMENTORS But do it manually. The standard Unix sort program
-% NOTES_TO_IMPLEMENTORS screws up the ordering of e.g. int8 vs int16.
+% NOTE_TO_IMPLEMENTORS But do it manually. The standard Unix sort program
+% NOTE_TO_IMPLEMENTORS screws up the ordering of e.g. int8 vs int16.
 
 % The modules intended for application programmers.
 :- import_module array.

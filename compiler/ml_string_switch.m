@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2021-2024 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -869,8 +869,8 @@ ml_generate_string_hash_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
         ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes, !:Info),
     (
         CaseIdConsts = all_one_soln(CaseIdValueMap),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
-            CaseIdValueMap, StrValueMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_string_in_cons_tag,
+            TaggedCases, CaseIdValueMap, StrValueMap),
         map.to_assoc_list(StrValueMap, StrValues),
         ml_generate_string_hash_simple_lookup_switch(VarRval,
             StrValues, CodeModel, CanFail, OutVars, OutTypes, Context,
@@ -878,8 +878,8 @@ ml_generate_string_hash_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
     ;
         CaseIdConsts = some_several_solns(CaseIdSolnMap, _Unit),
         expect(unify(CodeModel, model_non), $pred, "CodeModel != model_non"),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
-            CaseIdSolnMap, StrSolnMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_string_in_cons_tag,
+            TaggedCases, CaseIdSolnMap, StrSolnMap),
         map.to_assoc_list(StrSolnMap, StrSolns),
         ml_generate_string_hash_several_soln_lookup_switch(VarRval,
             StrSolns, CodeModel, CanFail, OutVars, OutTypes, Context,
@@ -1551,8 +1551,8 @@ ml_generate_string_binary_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
         ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes, !:Info),
     (
         CaseIdConsts = all_one_soln(CaseIdValueMap),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
-            CaseIdValueMap, StrValueMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_string_in_cons_tag,
+            TaggedCases, CaseIdValueMap, StrValueMap),
         map.to_assoc_list(StrValueMap, StrValues),
         ml_generate_string_binary_simple_lookup_switch(VarRval,
             StrValues, CodeModel, CanFail, OutVars, OutTypes,
@@ -1560,8 +1560,8 @@ ml_generate_string_binary_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
     ;
         CaseIdConsts = some_several_solns(CaseIdSolnMap, _Unit),
         expect(unify(CodeModel, model_non), $pred, "CodeModel != model_non"),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
-            CaseIdSolnMap, StrSolnMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_string_in_cons_tag,
+            TaggedCases, CaseIdSolnMap, StrSolnMap),
         map.to_assoc_list(StrSolnMap, StrSolns),
         ml_generate_string_binary_several_soln_lookup_switch(VarRval,
             StrSolns, CodeModel, CanFail, OutVars, OutTypes,

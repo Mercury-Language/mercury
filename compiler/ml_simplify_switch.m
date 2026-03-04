@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2011 The University of Melbourne.
-% Copyright (C) 2015-2018,2024 The Mercury team.
+% Copyright (C) 2015-2018, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,6 +57,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -85,7 +86,8 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
         NumCases >= DenseSize,
 
         % ... and dense enough?
-        ReqDensity = OptTuple ^ ot_dense_switch_req_density,
+        ReqDensityI = OptTuple ^ ot_dense_switch_req_density,
+        uint.from_int(ReqDensityI, ReqDensity),
         is_dense_switch(Cases, ReqDensity)
     then
         maybe_eliminate_default(Range, Cases, Default, ReqDensity,
@@ -185,16 +187,16 @@ is_integral_type(MLDSType, IntType) :-
         )
     ).
 
-:- pred is_dense_switch(list(mlds_switch_case)::in, int::in) is semidet.
+:- pred is_dense_switch(list(mlds_switch_case)::in, uint::in) is semidet.
 
 is_dense_switch(Cases, ReqDensity) :-
-    % Need at least two cases
-    NumCases = list.length(Cases),
-    NumCases > 2,
+    % Need at least two cases.
+    list.ulength(Cases, NumCases),
+    NumCases > 2u,
 
     % The switch needs to be dense enough.
     find_min_and_max_in_cases(Cases, FirstCaseVal, LastCaseVal),
-    CasesRange = LastCaseVal - FirstCaseVal + 1,
+    uint.from_int(LastCaseVal - FirstCaseVal + 1, CasesRange),
     Density = switch_density(NumCases, CasesRange),
     Density > ReqDensity.
 
@@ -205,7 +207,7 @@ is_dense_switch(Cases, ReqDensity) :-
     % of the values for the type.
     %
 :- pred maybe_eliminate_default(mlds_switch_range::in,
-    list(mlds_switch_case)::in, mlds_switch_default::in, int::in,
+    list(mlds_switch_case)::in, mlds_switch_default::in, uint::in,
     int::out, int::out, need_range_check::out) is det.
 
 maybe_eliminate_default(Range, Cases, Default, ReqDensity,
@@ -213,8 +215,8 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
     ( if
         Default \= default_is_unreachable,
         Range = mlds_switch_range(Min, Max),
-        TypeRange = Max - Min + 1,
-        NumCases = list.length(Cases),
+        uint.from_int(Max - Min + 1, TypeRange),
+        list.ulength(Cases, NumCases),
         NoDefaultDensity = switch_density(NumCases, TypeRange),
         NoDefaultDensity > ReqDensity
     then

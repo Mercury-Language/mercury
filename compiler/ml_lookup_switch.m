@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -274,8 +274,8 @@ ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
     ),
     (
         CaseIdConstMap = all_one_soln(CaseIdValueMap),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_int_tag, TaggedCases,
-            CaseIdValueMap, IntValueMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_int_in_cons_tag,
+            TaggedCases, CaseIdValueMap, IntValueMap),
         map.to_assoc_list(IntValueMap, IntValues),
         ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, FieldTypes,
             IntValues, CodeModel, Context, StartVal, EndVal,
@@ -283,8 +283,8 @@ ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
     ;
         CaseIdConstMap = some_several_solns(CaseIdSolnMap, _Unit),
         expect(unify(CodeModel, model_non), $pred, "CodeModel != model_non"),
-        ml_case_id_soln_consts_to_tag_soln_consts(get_int_tag, TaggedCases,
-            CaseIdSolnMap, IntSolnMap),
+        ml_case_id_soln_consts_to_tag_soln_consts(get_int_in_cons_tag,
+            TaggedCases, CaseIdSolnMap, IntSolnMap),
         map.to_assoc_list(IntSolnMap, IntSolns),
         ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars,
             FieldTypes, IntSolns, Context, StartVal, EndVal,

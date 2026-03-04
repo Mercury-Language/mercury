@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2015-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,6 +17,8 @@
 :- module ll_backend.dense_switch.
 :- interface.
 
+:- import_module backend_libs.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
@@ -32,13 +34,16 @@
 
 :- type dense_switch_info.
 
+    % tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
+    %   IntSwitchInfo, ReqDensity, CanFail, DenseSwitchInfo):
+    %
     % Should this switch be implemented as a dense jump table, i.e.
     % by calling generate_dense_switch below? If so, return some information
     % we gathered in the process of finding that out that may prove useful
     % in generate_dense_switch.
     %
 :- pred tagged_case_list_is_dense_switch(code_info::in, mer_type::in,
-    list(tagged_case)::in, int::in, int::in, int::in, int::in,
+    list(tagged_case)::in, int_switch_info::in, uint::in,
     can_fail::in, dense_switch_info::out) is semidet.
 
     % Generate code for a switch using a dense jump table.
@@ -53,7 +58,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.lookup_switch_util.
 :- import_module hlds.hlds_data.
@@ -66,6 +70,7 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
+:- import_module int32.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -75,21 +80,19 @@
 
 :- type dense_switch_info
     --->    dense_switch_info(
-                first_value         :: int,
-                last_value          :: int,
-                need_range_check    :: need_range_check
+                dsi_need_range_check    :: need_range_check,
+                dsi_limits              :: int_switch_limits
             ).
 
 tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
-        LowerLimit, UpperLimit, NumValues, ReqDensity, CanFail,
-        DenseSwitchInfo) :-
+        IntSwitchInfo, ReqDensity, CanFail, DenseSwitchInfo) :-
     % Test that there are least two cases.
     TaggedCases = [_, _ | _],
     get_module_info(CI, ModuleInfo),
     find_int_lookup_switch_params(ModuleInfo, VarType, CanFail,
-        LowerLimit, UpperLimit, NumValues, ReqDensity,
-        _NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
-    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, NeedRangeCheck).
+        IntSwitchInfo, ReqDensity,
+        _NeedBitVecCheck, NeedRangeCheck, SwitchLimits),
+    DenseSwitchInfo = dense_switch_info(NeedRangeCheck, SwitchLimits).
 
 %---------------------------------------------------------------------------%
 
@@ -98,21 +101,24 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     % Evaluate the variable which we are going to be switching on.
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
-    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, NeedRangeCheck),
-    ( if FirstVal = 0 then
+    DenseSwitchInfo = dense_switch_info(NeedRangeCheck, Limits),
+    Limits = int_switch_limits(FirstValI32, LastValI32),
+    FirstValI = int32.cast_to_int(FirstValI32),
+    LastValI =  int32.cast_to_int(LastValI32),
+    ( if FirstValI = 0 then
         IndexRval = VarRval
     else
         IndexRval = binop(int_arith(int_type_int, ao_sub), VarRval,
-            const(llconst_int(FirstVal)))
+            const(llconst_int(FirstValI)))
     ),
     % Check that the value of the variable lies within the appropriate range
     % if necessary.
-    LastFirstValDifference = LastVal - FirstVal,
+    LastFirstValDifferenceI = LastValI - FirstValI,
     (
         NeedRangeCheck = need_range_check,
         fail_if_rval_is_false(
             binop(int_as_uint_cmp(le),
-                IndexRval, const(llconst_int(LastFirstValDifference))),
+                IndexRval, const(llconst_int(LastFirstValDifferenceI))),
             RangeCheckCode, !CI, !CLD)
     ;
         NeedRangeCheck = do_not_need_range_check,
@@ -133,11 +139,11 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
 
     % Generate the jump table.
     map.to_assoc_list(IndexMap, IndexPairs),
-    generate_dense_jump_table(FirstVal, LastVal, IndexPairs, Targets,
+    generate_dense_jump_table(FirstValI, LastValI, IndexPairs, Targets,
         no, MaybeFailLabel, !CI),
     JumpCode = singleton(
         llds_instr(
-            computed_goto(IndexRval, yes(LastFirstValDifference), Targets),
+            computed_goto(IndexRval, yes(LastFirstValDifferenceI), Targets),
             "switch (using dense jump table)")
     ),
 
@@ -204,8 +210,10 @@ generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo, EndLabel,
     map(int, label)::in, map(int, label)::out) is det.
 
 record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
-    ( if ConsTag = int_tag(int_tag_int(Index)) then
-        map.det_insert(Index, Label, !IndexMap)
+    ( if ConsTag = int_tag(IntTag) then
+        IndexI32 = get_int32_tag_value(IntTag),
+        IndexI = int32.cast_to_int(IndexI32),
+        map.det_insert(IndexI, Label, !IndexMap)
     else
         unexpected($pred, "not int_tag")
     ).

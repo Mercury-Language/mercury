@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -126,6 +126,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -202,7 +203,6 @@ generate_int_switch(ModuleInfo, Globals,
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ( if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
-        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         % Since lookup switches rely on static ground terms to work
         % efficiently, there is no point in using a lookup switch
         % if static ground terms are not enabled. Well, actually,
@@ -220,34 +220,32 @@ generate_int_switch(ModuleInfo, Globals,
         LookupSize = OptTuple ^ ot_lookup_switch_size,
         NumConsIds >= LookupSize,
         NumArms > 1,
-        ReqDensity = OptTuple ^ ot_lookup_switch_req_density,
+        ReqDensityI = OptTuple ^ ot_lookup_switch_req_density,
+        uint.from_int(ReqDensityI, ReqDensityU),
         filter_out_failing_cases_if_needed(CodeModel,
-            TaggedCases, FilteredTaggedCases,
-            CanFail, FilteredCanFail),
+            TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
         find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
-            FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-            ReqDensity, NeedBitVecCheck, NeedRangeCheck,
-            FirstVal, LastVal),
-        is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo,
+            FilteredCanFail, IntSwitchInfo, ReqDensityU,
+            NeedBitVecCheck, NeedRangeCheck, SwitchLimits),
+        is_lookup_switch(get_int_in_cons_tag, FilteredTaggedCases, GoalInfo,
             !.CI, CLD, MaybeLookupSwitchInfo),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
         % We update MaybeEnd1 to MaybeEnd to account for the possible
         % reservation of temp slots for model_non switches.
         generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
-            EndLabel, FirstVal, LastVal, NeedBitVecCheck, NeedRangeCheck,
+            EndLabel, NeedBitVecCheck, NeedRangeCheck, SwitchLimits,
             MaybeEnd, SwitchCode, !:CI)
     else if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
-        IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         globals.get_opt_tuple(Globals, OptTuple),
         DenseSize = OptTuple ^ ot_dense_switch_size,
         NumConsIds >= DenseSize,
         NumArms > 1,
-        ReqDensity = OptTuple ^ ot_dense_switch_req_density,
+        ReqDensityI = OptTuple ^ ot_dense_switch_req_density,
+        uint.from_int(ReqDensityI, ReqDensity),
         tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
-            TaggedCases, LowerLimit, UpperLimit, NumValues,
-            ReqDensity, CanFail, DenseSwitchInfo)
+            TaggedCases, IntSwitchInfo, ReqDensity, CanFail, DenseSwitchInfo)
     then
         generate_dense_switch(TaggedCases, SwitchVarRval,
             SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
@@ -294,7 +292,7 @@ generate_smart_string_switch(Globals,
         TaggedCases, FilteredTaggedCases,
         CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
         EndLabel, MaybeEnd, SwitchCode, !CI, CLD) :-
-    is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo,
+    is_lookup_switch(get_string_in_cons_tag, FilteredTaggedCases, GoalInfo,
         !.CI, CLD, MaybeLookupSwitchInfo),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if

@@ -1,0 +1,33 @@
+action_table( 3,  0) failed
+action_table( 3,  1) failed
+action_table( 3,  2) failed
+action_table( 3,  3) failed
+action_table( 3,  4) failed
+action_table( 3,  5) failed
+action_table( 3,  6) failed
+action_table( 3,  7) failed
+action_table( 3,  8) failed
+action_table( 3,  9) failed
+action_table( 3, 10) failed
+action_table( 5,  0) = 1661
+action_table( 5,  1) = 1663
+action_table( 5,  2) = 1665
+action_table( 5,  3) = 1667
+action_table( 5,  4) = 1669
+action_table( 5,  5) failed
+action_table( 5,  6) failed
+action_table( 5,  7) failed
+action_table( 5,  8) failed
+action_table( 5,  9) failed
+action_table( 5, 10) failed
+action_table( 7,  0) failed
+action_table( 7,  1) failed
+action_table( 7,  2) failed
+action_table( 7,  3) failed
+action_table( 7,  4) failed
+action_table( 7,  5) = 1660
+action_table( 7,  6) = 1662
+action_table( 7,  7) = 1664
+action_table( 7,  8) = 1666
+action_table( 7,  9) = 1668
+action_table( 7, 10) failed

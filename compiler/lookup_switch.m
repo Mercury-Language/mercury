@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,6 +48,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.lookup_switch_util.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -70,11 +71,11 @@
     % to the values of the output variables for that Key.
     %
     % Lookup_switch_infos have traditionally stored just this composed map.
-    % This was because this was the only map we needed before the addition of 
+    % This was because this was the only map we needed before the addition of
     %
     % - multi-cons-id switch arms, and
     % - lookup trie switches.
- 
+
     % The lookup tables we generate for det or semidet switches have
     % traditionally looked like this:
     %
@@ -168,8 +169,9 @@
     % Generate code for the switch that the lookup_switch_info came from.
     %
 :- pred generate_int_lookup_switch(rval::in, lookup_switch_info(int)::in,
-    label::in, int::in, int::in, need_bit_vec_check::in, need_range_check::in,
-    branch_end::out, llds_code::out, code_info::out) is det.
+    label::in, need_bit_vec_check::in, need_range_check::in,
+    int_switch_limits::in, branch_end::out,
+    llds_code::out, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -319,7 +321,6 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.switch_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
@@ -337,6 +338,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module int32.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -498,27 +500,29 @@ record_case_id_for_tagged_cons_id(GetTag, CaseId, TaggedConsId,
 %---------------------------------------------------------------------------%
 
 generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !:MaybeEnd, Code,
-        !:CI) :-
+        NeedBitVecCheck, NeedRangeCheck, Limits, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(KeyToCaseMap, CaseConsts,
         OutVars, OutTypes, EndBranch, !:MaybeEnd, !:CI, CLD0),
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
-    ( if StartVal = 0 then
+    Limits = int_switch_limits(FirstValI32, LastValI32),
+    FirstValI = int32.cast_to_int(FirstValI32),
+    LastValI =  int32.cast_to_int(LastValI32),
+    ( if FirstValI = 0 then
         IndexRval = VarRval
     else
         IndexRval = binop(int_arith(int_type_int, ao_sub),
-            VarRval, const(llconst_int(StartVal)))
+            VarRval, const(llconst_int(FirstValI)))
     ),
 
     % If the switch is not locally deterministic, we may need to check that
     % the value of the variable lies within the appropriate range.
     (
         NeedRangeCheck = need_range_check,
-        Difference = EndVal - StartVal,
+        LastFirstValDifferenceI = LastValI - FirstValI,
         CmpRval = binop(int_as_uint_cmp(le),
-            IndexRval, const(llconst_int(Difference))),
+            IndexRval, const(llconst_int(LastFirstValDifferenceI))),
         fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, CLD0, CLD)
     ;
         NeedRangeCheck = do_not_need_range_check,
@@ -530,7 +534,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
         CaseConsts = all_one_soln(CaseIdToValuesMap),
         compose_maps(KeyToCaseMap, CaseIdToValuesMap, KeyToSolnsMap),
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
-        generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal,
+        generate_simple_int_lookup_switch(IndexRval, FirstValI, LastValI,
             KeySolnsAL, OutVars, OutTypes, NeedBitVecCheck, EndBranch,
             RangeCheckCode, Code, !CI, CLD)
     ;
@@ -539,7 +543,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
         compose_maps(KeyToCaseMap, CaseIdToValuesListMap, KeyToSolnsListMap),
         map.to_assoc_list(KeyToSolnsListMap, KeySolnsListAL),
         generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds,
-            IndexRval, EndLabel, StartVal, EndVal, KeySolnsListAL,
+            IndexRval, EndLabel, FirstValI, LastValI, KeySolnsListAL,
             OutVars, OutTypes, NeedBitVecCheck,
             EndBranch, RangeCheckCode, Code, !MaybeEnd, !CI, CLD)
     ).
@@ -550,6 +554,8 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
     end_branch_info::in, llds_code::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
+% ZZZ StartVal -> FirstValI
+% ZZZ EndVal -> LastValI
 generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal, CaseValues,
         OutVars, OutTypes, NeedBitVecCheck, EndBranch,
         RangeCheckCode, Code, !CI, !.CLD) :-
@@ -572,7 +578,8 @@ generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal, CaseValues,
     % This can happen for semidet switches.
     (
         OutVars = [],
-        % ZZZ _MaybeEnd other copies
+        % XXX Can we optimize away the creation of _MaybeEnd,
+        % both here and in other places?
         generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
             no, _MaybeEnd, !.CLD)
     ;

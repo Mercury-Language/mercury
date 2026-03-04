@@ -54,6 +54,7 @@ ORDINARY_PROGS = \
 	bug567 \
 	bug570 \
 	bug570_can_fail \
+	bug582 \
 	bug_pack_bits \
 	bulk_compare_packed \
 	c89_neg_int \
