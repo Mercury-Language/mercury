@@ -2645,7 +2645,12 @@ then
             ;;
     esac
 
-    if test -d TEST_FAILS
+    if test -d "${TEST_FAILS_DIR}"
+    then
+        datestr=$(date +%F_time_%2H_%2M)
+        cp "${tests_dir}"/UNEXPECTED_FAILED_TESTS \
+            "${TEST_FAILS_DIR}/${test_grade}_${datestr}"
+    elif test -d TEST_FAILS
     then
         datestr=$(date +%F_time_%2H_%2M)
         cp "${tests_dir}"/UNEXPECTED_FAILED_TESTS \
