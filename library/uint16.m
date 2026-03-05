@@ -208,6 +208,14 @@
     %
 :- func min(uint16, uint16) = uint16.
 
+    % clamp(Min, Max, N):
+    %
+    % Clamp N to the range [Min, Max] (inclusive).
+    % Returns Min if N < Min, Max if N > Max, and N otherwise.
+    % Throws an exception if Max < Min.
+    %
+:- func clamp(uint16, uint16, uint16) = uint16.
+
 %---------------------------------------------------------------------------%
 %
 % Arithmetic operations.
@@ -808,6 +816,13 @@ max(X, Y) =
 
 min(X, Y) =
     ( if X < Y then X else Y ).
+
+clamp(Min, Max, N) =
+    ( if Max >= Min then
+        ( if N < Min then Min else if N > Max then Max else N )
+    else
+        func_error($pred, "Max < Min")
+    ).
 
 %---------------------------------------------------------------------------%
 

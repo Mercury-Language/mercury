@@ -204,8 +204,8 @@ test_between_code_points_2(Str, Start, End, !IO) :-
 slow_between_code_points(Str, Start, End, SubString) :-
     Chars = to_char_list(Str),
     NumCodePoints = length(Chars),
-    ClampStart = clamp(0, Start, NumCodePoints),
-    ClampEnd = clamp(ClampStart, End, NumCodePoints),
+    ClampStart = string_code_point.clamp(0, Start, NumCodePoints),
+    ClampEnd = string_code_point.clamp(ClampStart, End, NumCodePoints),
     ClampLen = ClampEnd - ClampStart,
     det_split_list(ClampStart, Chars, _, CharsRight),
     det_split_list(ClampLen, CharsRight, CharsMid, _),

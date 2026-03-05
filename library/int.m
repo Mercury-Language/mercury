@@ -81,6 +81,14 @@
 :- func min(int, int) = int.
 :- pred min(int::in, int::in, int::out) is det.
 
+    % clamp(Min, Max, N):
+    %
+    % Clamp N to the range [Min, Max] (inclusive).
+    % Returns Min if N < Min, Max if N > Max, and N otherwise.
+    % Throws an exception if Max < Min.
+    %
+:- func clamp(int, int, int) = int.
+
 %---------------------------------------------------------------------------%
 
     % Unary plus.
@@ -652,6 +660,13 @@ min(X, Y, Min) :-
         Min = X
     else
         Min = Y
+    ).
+
+clamp(Min, Max, N) =
+    ( if Max >= Min then
+        ( if N < Min then Min else if N > Max then Max else N )
+    else
+        throw(software_error("int.clamp: Max < Min"))
     ).
 
 %---------------------------------------------------------------------------%

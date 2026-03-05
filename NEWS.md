@@ -417,6 +417,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
     - func `ubits_per_int/0`
@@ -432,6 +433,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -445,6 +447,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -472,6 +475,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -1449,6 +1453,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
     - func `ubits_per_uint/0`
@@ -1463,6 +1468,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -1476,6 +1482,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -1489,6 +1496,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
@@ -1502,6 +1510,7 @@ Changes to the Mercury standard library
 
     - func `<<u/2`
     - func `>>u/2`
+    - func `clamp/3`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
