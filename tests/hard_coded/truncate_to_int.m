@@ -251,7 +251,7 @@ test_u32(U32, !IO) :-
 
 :- pragma foreign_proc("Java",
     uint64_to_int(U64::in, I::out),
-    [will_not_call_mercury, promise_pure, thread_safe],,
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // In Java, Mercury's int is 32 bits (int) and Mercury's uint64 is
     // represented as a Java long (interpreted as unsigned). The value fits in
