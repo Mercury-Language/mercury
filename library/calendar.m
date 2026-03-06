@@ -660,7 +660,7 @@ tm_to_date(TM) = Date :-
 
 julian_day_number(date(Year, Month, Day, _, _, _, _)) = JDN :-
     % The algorithm is described at
-    % http://en.wikipedia.org/wiki/Julian_day.
+    % https://en.wikipedia.org/wiki/Julian_day.
     A = (14 - Month) div 12,
     Y = Year + 4800 - A,
     M = Month + 12 * A - 3,
@@ -867,7 +867,7 @@ microsecond_string(MicroSeconds) = Str :-
 % Adding durations to date times.
 %
 % The following is a fairly direct translation of the algorithm at
-% http://www.w3.org/TR/xmlschema-2/#adding-durations-to-dateTimes.
+% https://www.w3.org/TR/xmlschema-2/#adding-durations-to-dateTimes.
 %
 
 add_duration(D, S, !:E) :-
@@ -980,7 +980,7 @@ max_day_in_month_for(YearValue, MonthValue) = Max :-
 
 duration_leq(DurA, DurB) :-
     % Partial relation on durations. This algorithm is described at
-    % http://www.w3.org/TR/xmlschema-2/#duration.
+    % https://www.w3.org/TR/xmlschema-2/#duration.
     list.all_true(
         ( pred(TestDate::in) is semidet :-
             add_duration(DurA, TestDate, DateA),
