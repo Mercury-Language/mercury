@@ -684,34 +684,48 @@ minutes(Dur) = (Dur ^ dur_seconds rem 3600) // 60.
 seconds(Dur) = Dur ^ dur_seconds rem 60.
 microseconds(Dur) = Dur ^ dur_microseconds.
 
-init_duration(Years0, Months0, Days0, Hours0, Minutes0, Seconds0,
-        MicroSeconds0) = Dur :-
+init_duration(Years, Months, Days, Hours, Minutes, Seconds, MicroSeconds)
+        = Duration :-
     ( if
         (
-            Years0 >= 0,
-            Months0 >= 0,
-            Days0 >= 0,
-            Hours0 >= 0,
-            Minutes0 >= 0,
-            Seconds0 >= 0,
-            MicroSeconds0 >= 0
+            Years >= 0,
+            Months >= 0,
+            Days >= 0,
+            Hours >= 0,
+            Minutes >= 0,
+            Seconds >= 0,
+            MicroSeconds >= 0
         ;
-            Years0 =< 0,
-            Months0 =< 0,
-            Days0 =< 0,
-            Hours0 =< 0,
-            Minutes0 =< 0,
-            Seconds0 =< 0,
-            MicroSeconds0 =< 0
+            Years =< 0,
+            Months =< 0,
+            Days =< 0,
+            Hours =< 0,
+            Minutes =< 0,
+            Seconds =< 0,
+            MicroSeconds =< 0
         )
     then
-        Months = Years0 * 12 + Months0,
-        Seconds1 = Seconds0 + MicroSeconds0 // microseconds_per_second,
-        MicroSeconds = MicroSeconds0 rem microseconds_per_second,
-        Seconds2 = Seconds1 + Minutes0 * 60 + Hours0 * 3600,
-        Days = Days0 + Seconds2 // seconds_per_day,
-        Seconds = Seconds2 rem seconds_per_day,
-        Dur = duration(Months, Days, Seconds, MicroSeconds)
+        % Internally, the inputs are normalised into four components:
+        % months, days, seconds and microseconds.
+
+        % Normalise months: convert years into months, and add that to
+        % the count of months.
+        NormMonths = Years * 12 + Months,
+
+        % Normalise microseconds: carry any full seconds up, and keep the
+        % remaining microseconds.
+        SecondsToCarry = MicroSeconds // microseconds_per_second,
+        NormMicroSeconds = MicroSeconds rem microseconds_per_second,
+        TotalSeconds = Hours * 3600 + Minutes * 60 + Seconds + SecondsToCarry,
+
+        % Normalise seconds: carry any full days up, and keep the remaining
+        % seconds.
+        DaysToCarry = TotalSeconds // seconds_per_day,
+        NormSeconds = TotalSeconds rem seconds_per_day,
+        NormDays = Days + DaysToCarry,
+
+        Duration = duration(NormMonths, NormDays, NormSeconds,
+            NormMicroSeconds)
     else
         unexpected($pred, "some components negative and some positive")
     ).
