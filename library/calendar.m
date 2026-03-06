@@ -553,9 +553,13 @@ month_to_int0(Month) = Int :-
 init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
     Day >= 1,
     Day =< max_day_in_month_for(Year, month_to_int(Month)),
+    Hour >= 0,
     Hour < 24,
+    Minute >= 0,
     Minute < 60,
+    Second >= 0,
     Second < 62,
+    MicroSecond >= 0,
     MicroSecond < 1000000,
     Date = date(Year, month_to_int(Month), Day, Hour, Minute, Second,
         MicroSecond).
