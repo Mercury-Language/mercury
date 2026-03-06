@@ -59,7 +59,7 @@
     % are effectively identical.
     %
     % If ints are 32 bits, succeed only if I64 is in the range
-    % [int.min_int, int.max_int], meaning [2^31, 2^31 - 1].
+    % [int.min_int, int.max_int], meaning [-2^31, 2^31 - 1].
     %
 :- pred to_int(int64::in, int::out) is semidet.
 
