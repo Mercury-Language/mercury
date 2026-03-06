@@ -402,8 +402,7 @@ get_int32_tag_value(IntTag) = I32 :-
         IntTag = int_tag_int32(I32)
     ;
         IntTag = int_tag_int64(I64),
-        % XXX We should test for fit, and abort if needed.
-        I32 = int32.cast_from_int64(I64)
+        I32 = int32.det_from_int64(I64)
     ;
         IntTag = int_tag_uint(U),
         I32 = int32.cast_from_int(uint.cast_to_int(U))
@@ -415,12 +414,10 @@ get_int32_tag_value(IntTag) = I32 :-
         I32 = int32.cast_from_int(uint16.cast_to_int(U16))
     ;
         IntTag = int_tag_uint32(U32),
-        % XXX We should test for fit, and abort if needed.
-        I32 = int32.cast_from_int(uint32.cast_to_int(U32))
+        I32 = int32.det_from_int(uint32.det_to_int(U32))
     ;
         IntTag = int_tag_uint64(U64),
-        % XXX We should test for fit, and abort if needed.
-        I32 = int32.cast_from_int(uint64.cast_to_int(U64))
+        I32 = int32.det_from_int(uint64.det_to_int(U64))
     ).
 
 :- func get_enum_int_in_cons_tag(cons_tag) = int.

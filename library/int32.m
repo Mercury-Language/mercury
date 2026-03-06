@@ -119,6 +119,20 @@
     %
 :- func cast_to_int64(int32) = int64.
 
+    % from_int(I64, I32):
+    %
+    % Convert an int64 to an int32.
+    % Fail if I64 is not in the range [-(2^31), 2^31 - 1].
+    %
+:- pred from_int64(int64::in, int32::out) is semidet.
+
+    % det_from_int(I64) = I32:
+    %
+    % Convert an int64 to an int32.
+    % Throw an exception if I64 is not in the range [-(2^31), 2^31 - 1].
+    %
+:- func det_from_int64(int64) = int32.
+
     % cast_from_int64(I64) = I32:
     %
     % Convert an int64 to an int32.
@@ -437,6 +451,7 @@
 
 :- import_module exception.
 :- import_module int.
+:- import_module int64.
 :- import_module require.
 :- import_module uint.
 :- import_module uint32.
@@ -665,6 +680,24 @@ det_from_int(I) = I32 :-
 "
     I64 = (long) I32;
 ").
+
+%---------------------------------------------------------------------------%
+
+from_int64(I64, I32) :-
+    ( if I64 > int32.cast_to_int64(int32.max_int32) then
+        fail
+    else if I64 < int32.cast_to_int64(int32.min_int32) then
+        fail
+    else
+        I32 = int32.cast_from_int64(I64)
+    ).
+
+det_from_int64(I64) = I32 :-
+    ( if from_int64(I64, I32Prime) then
+        I32 = I32Prime
+    else
+        error($pred, "cannot convert int64 to int32")
+    ).
 
 %---------------------------------------------------------------------------%
 

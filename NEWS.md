@@ -457,11 +457,13 @@ Changes to the Mercury standard library
 
 ### Changes to the `int32` module
 
-* The following functions have been added:
+* The following predicates and functions have been added:
 
     - func `<<u/2`
     - func `>>u/2`
     - func `clamp/3`
+    - pred `det_from_int64/2`
+    - func `from_int64/1`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
