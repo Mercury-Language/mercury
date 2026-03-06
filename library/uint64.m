@@ -63,17 +63,23 @@
 % Conversion to int.
 %
 
-% UNDOC_PART_START
     % to_int(U64, I):
     %
-    % Convert a uint64 to an int.
+    % Convert a uint64 to a mathematically equivalent int.
     %
     % If ints are 64 bits, succeed only if U64 is in the range [0, 2^63 - 1].
     %
     % If ints are 32 bits, succeed only if U64 is in the range [0, 2^31 - 1].
     %
-% :- pred to_int(uint64::in, int::out) is semidet.
-% UNDOC_PART_END
+:- pred to_int(uint64::in, int::out) is semidet.
+
+    % det_to_int(U64) = I:
+    %
+    % Convert an uint64 into an int. If the given value of U64
+    % does not fit into an int, throw an exception.
+    %
+:- func det_to_int(uint64) = int.
+
     % cast_to_int(U64) = I:
     %
     % Convert a uint64 to an int.
@@ -569,6 +575,77 @@ det_from_int(I) = U64 :-
 "
     U64 = (long) U & 0xffffffffL;
 ").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    to_int(U64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    uint64_t    mask_for_int;
+
+#if MR_BYTES_PER_WORD == 8
+    mask_for_int = (1UL << 63) - 1;
+#else
+    mask_for_int = (1UL << 31) - 1;
+#endif
+
+    if ((U64 & (~mask_for_int)) == 0UL) {
+        // Every bit in U64 means the same in I.
+        I = (MR_Integer) U64;
+        SUCCESS_INDICATOR = MR_TRUE;
+    } else {
+        // Some bit in U64 does not mean the same in I.
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    to_int(U64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is 32 bits (int) and Mercury's uint64 is
+    // a C# ulong. The value fits in a Mercury int iff it is in the range
+    // [0, Int32.MaxValue]. The uint64 type guarantees the lower bound,
+    // so we need to check only the upper bound.
+    if (U64 > (ulong) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    to_int(U64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In Java, Mercury's int is 32 bits (int) and Mercury's uint64 is
+    // represented as a Java long (which is a signed type, but which
+    // all of our operations interpret as unsigned). The value fits
+    // in a Mercury int iff it is in the range [0, Integer.MAX_VALUE].
+    // Since uint64 is unsigned, a negative long value means the high bit is
+    // set, so it is always out of range. We also check the upper 32-bit
+    // bound explicitly.
+    if (U64 < 0L || U64 > (long) java.lang.Integer.MAX_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+%---------------------------------------------------------------------------%
+
+det_to_int(U64) = I :-
+    ( if to_int(U64, IPrime) then
+        I = IPrime
+    else
+        error($pred, "cannot convert uint64 to int")
+    ).
 
 %---------------------------------------------------------------------------%
 

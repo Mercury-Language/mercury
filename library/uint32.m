@@ -77,6 +77,24 @@
 % Conversion to int.
 %
 
+    % to_int(U32, I):
+    %
+    % Convert a uint32 to a mathematically equivalent int.
+    %
+    % If ints are 64 bits, always succeed, since the range of uint32s
+    % is completely contained in the range of ints.
+    %
+    % If ints are 32 bits, succeed only if U32 is in the range [0, 2^31 - 1].
+    %
+:- pred to_int(uint32::in, int::out) is semidet.
+
+    % det_to_int(U32) = I:
+    %
+    % Convert an uint32 into an int. If the given value of U32
+    % does not fit into an int, throw an exception.
+    %
+:- func det_to_int(uint32) = int.
+
     % cast_to_int(U32) = I:
     %
     % Convert a uint32 to an int.
@@ -651,6 +669,74 @@ det_from_uint(U) = U32 :-
 "
     U32 = U;
 ").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    to_int(U32::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if MR_BYTES_PER_WORD == 8
+    // Every bit in U32 means the same in I.
+    I = (MR_Integer) U32;
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    uint32_t    mask_for_int;
+
+    mask_for_int = (1UL << 31) - 1;
+    if ((U32 & (~mask_for_int)) == 0UL) {
+        // Every bit in U32 means the same in I.
+        I = (MR_Integer) U32;
+        SUCCESS_INDICATOR = MR_TRUE;
+    } else {
+        // Some bit in U32 does not mean the same in I.
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    to_int(U32::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is 32 bits (int) and Mercury's uint32 is C#'s uint.
+    // The value fits in a Mercury int iff it is at most Int32.MaxValue.
+    if (U32 > (uint) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U32;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    to_int(U32::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In Java, Mercury's int is 32 bits (int) and Mercury's uint32 is
+    // represented as an int (interpreted as unsigned). The value fits in a
+    // Mercury int iff the high bit (sign bit) is not set, i.e. the value is
+    // non-negative when interpreted as a signed Java int.
+    if (U32 < 0) {
+        I = 0;
+        // High bit is set: value exceeds Integer.MAX_VALUE.
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = U32;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+%---------------------------------------------------------------------------%
+
+det_to_int(U32) = I :-
+    ( if to_int(U32, IPrime) then
+        I = IPrime
+    else
+        error($pred, "cannot convert uint32 to int")
+    ).
 
 %---------------------------------------------------------------------------%
 

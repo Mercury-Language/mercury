@@ -53,16 +53,20 @@
 
     % to_int(I64, I):
     %
-    % Convert an int64 into an int.
-    % Fail if I64 is not in the range [int.min_int, int.max_int].
+    % Convert an int64 to a mathematically equivalent int.
+    %
+    % If ints are 64 bits, always succeed, since the two types
+    % are effectively identical.
+    %
+    % If ints are 32 bits, succeed only if I64 is in the range
+    % [int.min_int, int.max_int], meaning [2^31, 2^31 - 1].
     %
 :- pred to_int(int64::in, int::out) is semidet.
 
     % det_to_int(I64) = I:
     %
-    % Convert an int64 into an int.
-    % Throw an exception if I64 is not in the range
-    % [int.min_int, int.max_int].
+    % Convert an int64 into an int. If the given value of I64
+    % does not fit into an int, throw an exception.
     %
 :- func det_to_int(int64) = int.
 
@@ -421,10 +425,75 @@ from_int(I) = cast_from_int(I).
 
 %---------------------------------------------------------------------------%
 
-to_int(I64, I) :-
-    I64 =< cast_from_int(int.max_int),
-    I64 >= cast_from_int(int.min_int),
-    I = cast_to_int(I64).
+:- pragma foreign_proc("C",
+    to_int(I64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if MR_BYTES_PER_WORD == 8
+    // Every bit in I64 means the same in I.
+    I = (MR_Integer) I64;
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    // This is the code of int32.from_int, but with different types.
+    //
+    // In int32.from_int,
+    // - the input is an int, which may be 32 or 64 bits, and
+    // - the output is an int32.
+    //
+    // Here,
+    // - the input is an int64, and
+    // - the output is an int, which happens to be 32 bits.
+    //
+    // So while the types are different, the bit counts are the same.
+    if (I64 > (int64_t) INT32_MAX) {
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else if (I64 < (int64_t) INT32_MIN) {
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else {
+        I = (MR_Integer) I64;
+        SUCCESS_INDICATOR = MR_TRUE;
+    }
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    to_int(I64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is always 32 bits (int), and Mercury's int64 is
+    // a C# long. Check that the value fits in the range of a C# int.
+    if (I64 > (long) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else if (I64 < (long) System.Int32.MinValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) I64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    to_int(I64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In Java, Mercury's int is always 32 bits (int), and Mercury's int64 is
+    // a Java long. Check that the value fits in the range of a Java int.
+    if (I64 > (long) java.lang.Integer.MAX_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else if (I64 < (long) java.lang.Integer.MIN_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) I64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+%---------------------------------------------------------------------------%
 
 det_to_int(I64) = I :-
     ( if to_int(I64, IPrime) then
