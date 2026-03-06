@@ -170,6 +170,42 @@ test_u32(U32, !IO) :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    int64_to_int(I64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is always 32 bits (int), and Mercury's int64 is a
+    // C# long. Check that the value fits in the range of a C# int.
+    if (I64 > (long) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else if (I64 < (long) System.Int32.MinValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) I64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    int64_to_int(I64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In Java, Mercury's int is always 32 bits (int), and Mercury's int64 is
+    // a Java long. Check that the value fits in the range of a Java int.
+    if (I64 > (long) java.lang.Integer.MAX_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else if (I64 < (long) java.lang.Integer.MIN_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) I64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
 %---------------------------------------------------------------------------%
 
 :- pred uint64_to_int(uint64::in, int::out) is semidet.
@@ -197,6 +233,42 @@ test_u32(U32, !IO) :-
     }
 ").
 
+:- pragma foreign_proc("C#",
+    uint64_to_int(U64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is 32 bits (int) and Mercury's uint64 is a C#
+    // ulong. The value fits in a Mercury int iff it is in the range
+    // [0, Int32.MaxValue].
+    if (U64 > (ulong) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    uint64_to_int(U64::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],,
+"
+    // In Java, Mercury's int is 32 bits (int) and Mercury's uint64 is
+    // represented as a Java long (interpreted as unsigned). The value fits in
+    // a Mercury int iff it is in the range [0, Integer.MAX_VALUE].
+    // Since uint64 is unsigned, a negative long value means the high bit is
+    // set, so it is always out of range. We also check the upper 32-bit
+    // bound explicitly.
+    if (U64 < 0L || U64 > (long) java.lang.Integer.MAX_VALUE) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U64;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+
 %---------------------------------------------------------------------------%
 
 :- pred uint32_to_int(uint32::in, int::out) is semidet.
@@ -223,6 +295,40 @@ test_u32(U32, !IO) :-
         SUCCESS_INDICATOR = MR_FALSE;
     }
 #endif
+").
+
+:- pragma foreign_proc("C#",
+    uint32_to_int(U32::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In C#, Mercury's int is 32 bits (int) and Mercury's uint32 is C#'s uint.
+    // The value fits in a Mercury int iff it is at most Int32.MaxValue.
+    if (U32 > (uint) System.Int32.MaxValue) {
+        I = 0;
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = (int) U32;
+        SUCCESS_INDICATOR = true;
+    }
+").
+
+
+:- pragma foreign_proc("Java",
+    uint32_to_int(U32::in, I::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // In Java, Mercury's int is 32 bits (int) and Mercury's uint32 is
+    // represented as an int (interpreted as unsigned). The value fits in a
+    // Mercury int iff the high bit (sign bit) is not set, i.e. the value is
+    // non-negative when interpreted as a signed Java int.
+    if (U32 < 0) {
+        I = 0;
+        // High bit is set: value exceeds Integer.MAX_VALUE.
+        SUCCESS_INDICATOR = false;
+    } else {
+        I = U32;
+        SUCCESS_INDICATOR = true;
+    }
 ").
 
 %---------------------------------------------------------------------------%
