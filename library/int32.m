@@ -119,14 +119,14 @@
     %
 :- func cast_to_int64(int32) = int64.
 
-    % from_int(I64, I32):
+    % from_int64(I64, I32):
     %
     % Convert an int64 to an int32.
     % Fail if I64 is not in the range [-(2^31), 2^31 - 1].
     %
 :- pred from_int64(int64::in, int32::out) is semidet.
 
-    % det_from_int(I64) = I32:
+    % det_from_int64(I64) = I32:
     %
     % Convert an int64 to an int32.
     % Throw an exception if I64 is not in the range [-(2^31), 2^31 - 1].
