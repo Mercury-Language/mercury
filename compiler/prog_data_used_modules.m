@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2022, 2025 The Mercury team.
+% Copyright (C) 2016, 2022, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,10 +15,23 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 
 :- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
+
+:- type used_eqv_modules
+    --->    used_eqv_modules(
+                % The equivalence types expanded in the interface
+                % and in implementation. Each expansion is a "use"
+                % of the type; we use this information to warn about
+                % unused local equivalence types.
+                int_eqv_type_ctors  :: set_tree234(type_ctor),
+                imp_eqv_type_ctors  :: set_tree234(type_ctor),
+
+                all_used_modules    :: used_modules
+            ).
 
 :- type used_modules
     --->    used_modules(
@@ -31,9 +44,15 @@
     --->    visibility_public
     ;       visibility_private.
 
-    % Initialize the used_modules structure.
+    % Initialize the used_eqv_modules structure.
     %
-:- func used_modules_init = used_modules.
+:- func used_eqv_modules_init = used_eqv_modules.
+
+    % Record a type_ctor, which should represent an equivalence type,
+    % as being expanded.
+    %
+:- pred record_expanded_eqv_type_ctor(item_visibility::in, type_ctor::in,
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
     % Given a sym_name, call record_module_and_ancestors_as_used on the module
     % part of the name.
@@ -58,7 +77,30 @@
 
 :- import_module list.
 
-used_modules_init = used_modules(set_tree234.init, set_tree234.init).
+%---------------------------------------------------------------------------%
+
+used_eqv_modules_init = UsedEqvModules :-
+    UsedModules = used_modules(set_tree234.init, set_tree234.init),
+    UsedEqvModules = used_eqv_modules(set_tree234.init, set_tree234.init,
+        UsedModules).
+
+record_expanded_eqv_type_ctor(Visibility, TypeCtor, !UsedEqvModules) :-
+    (
+        Visibility = visibility_public,
+        IntEqvTypeCtors0 = !.UsedEqvModules ^ int_eqv_type_ctors,
+        set_tree234.insert(TypeCtor, IntEqvTypeCtors0, IntEqvTypeCtors),
+        !UsedEqvModules ^ int_eqv_type_ctors := IntEqvTypeCtors
+    ;
+        Visibility = visibility_private,
+        ImpEqvTypeCtors0 = !.UsedEqvModules ^ imp_eqv_type_ctors,
+        set_tree234.insert(TypeCtor, ImpEqvTypeCtors0, ImpEqvTypeCtors),
+        !UsedEqvModules ^ imp_eqv_type_ctors := ImpEqvTypeCtors
+    ),
+    TypeCtor = type_ctor(SymName, _Arity),
+    UsedModules0 = !.UsedEqvModules ^ all_used_modules,
+    record_sym_name_module_as_used(Visibility, SymName,
+        UsedModules0, UsedModules),
+    !UsedEqvModules ^ all_used_modules := UsedModules.
 
 record_sym_name_module_as_used(Visibility, SymName, !UsedModules) :-
     (

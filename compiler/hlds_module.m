@@ -287,7 +287,7 @@
     %
 :- pred module_info_init(globals::in, module_name::in, prog_context::in,
     string::in, include_module_map::in,
-    used_modules::in, set(module_name)::in, set_tree234(module_name)::in,
+    used_eqv_modules::in, set(module_name)::in, set_tree234(module_name)::in,
     partial_qualifier_info::in, maybe(recompilation_info)::in,
     type_repn_decision_data::in, module_info::out) is det.
 
@@ -408,8 +408,8 @@
     table_struct_map::out) is det.
 :- pred module_info_get_avail_module_map(module_info::in,
     avail_module_map::out) is det.
-:- pred module_info_get_used_modules(module_info::in,
-    used_modules::out) is det.
+:- pred module_info_get_used_eqv_modules(module_info::in,
+    used_eqv_modules::out) is det.
 :- pred module_info_get_unused_interface_imports(module_info::in,
     set_tree234(module_name)::out) is det.
 :- pred module_info_get_maybe_complexity_proc_map(module_info::in,
@@ -505,7 +505,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_table_struct_map(table_struct_map::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_used_modules(used_modules::in,
+:- pred module_info_set_used_eqv_modules(used_eqv_modules::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_maybe_complexity_proc_map(
     maybe(pair(int, complexity_proc_map))::in,
@@ -719,9 +719,6 @@
     %
 :- pred module_info_get_all_avail_modules(module_info::in,
     set(module_name)::out) is det.
-
-:- pred module_info_add_module_to_public_used_modules(module_name::in,
-    module_info::in, module_info::out) is det.
 
 %---------------------%
 
@@ -1028,7 +1025,7 @@
                 % by ancestors to this field, but that prevented the compiler
                 % from generating useful warnings about unused local
                 % imports/uses of those modules.
-                mri_used_modules                :: used_modules,
+                mri_used_eqv_modules            :: used_eqv_modules,
 
                 mri_unused_interface_imports    :: set_tree234(module_name),
 
@@ -1474,8 +1471,8 @@ module_info_get_avail_module_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_map.
 module_info_get_avail_module_sets(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_sets.
-module_info_get_used_modules(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_used_modules.
+module_info_get_used_eqv_modules(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_used_eqv_modules.
 module_info_get_unused_interface_imports(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_unused_interface_imports.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
@@ -1608,8 +1605,8 @@ module_info_set_loop_invs_per_line_number(X, !MI) :-
 %     !MI ^ mi_rare_info ^ mri_atomics_per_line_number := X.
 module_info_set_avail_module_sets(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_avail_module_sets := X.
-module_info_set_used_modules(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_used_modules := X.
+module_info_set_used_eqv_modules(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_used_eqv_modules := X.
 module_info_set_maybe_complexity_proc_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map := X.
 module_info_set_complexity_proc_infos(X, !MI) :-
@@ -1971,12 +1968,6 @@ module_info_get_all_avail_modules(ModuleInfo, UnionModules) :-
         ImplicitlyImportedModules),
     UnionModules = set.union_list([Ancestors, DirectImports, IndirectImports,
         ImportedInAncestors, ImportedForOpts, ImplicitlyImportedModules]).
-
-module_info_add_module_to_public_used_modules(ModuleName, !MI) :-
-    module_info_get_used_modules(!.MI, UsedModules0),
-    record_module_and_ancestors_as_used(visibility_public, ModuleName,
-        UsedModules0, UsedModules),
-    module_info_set_used_modules(UsedModules, !MI).
 
 %---------------------%
 

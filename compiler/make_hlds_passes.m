@@ -38,7 +38,7 @@
 
     % parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals,
     %   DumpBaseFileName, MQInfo0, TypeEqvMap,
-    %   UsedModules, UnusedInterfaceImports,
+    %   UsedEqvModules, UnusedInterfaceImports,
     %   QualInfo, InvalidType, InvalidInstOrMode, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
@@ -52,7 +52,7 @@
     %
 :- pred parse_tree_to_hlds(io.text_output_stream::in, aug_compilation_unit::in,
     globals::in, string::in, mq_info::in, type_eqv_map::in,
-    used_modules::in, set_tree234(module_name)::in,
+    used_eqv_modules::in, set_tree234(module_name)::in,
     qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
@@ -118,8 +118,9 @@
 %---------------------------------------------------------------------------%
 
 parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
-        MQInfo0, TypeEqvMap, UsedModules, UnusedInterfaceImports, !:QualInfo,
-        !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
+        MQInfo0, TypeEqvMap, UsedEqvModules, UnusedInterfaceImports,
+        !:QualInfo, !:FoundInvalidType, !:FoundInvalidInstOrMode,
+        !:ModuleInfo, !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, InclSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -223,7 +224,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
         ForeignEnums, ForeignExportEnums),
     module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
-        InclMap, UsedModules, ImplicitlyUsedModules, UnusedInterfaceImports,
+        InclMap, UsedEqvModules, ImplicitlyUsedModules, UnusedInterfaceImports,
         PQInfo, no, TypeRepnDec, !:ModuleInfo),
 
     % The old pass 1.

@@ -481,7 +481,8 @@ find_all_non_warn_modules(ProgressStream, ModuleInfo, !:UsedModules) :-
     % inherited by this module, so we have to add the used modules
     % of the parents to the set of used modules, as an import in the parent
     % may only be consumed by the parent.
-    module_info_get_used_modules(ModuleInfo, !:UsedModules),
+    module_info_get_used_eqv_modules(ModuleInfo, UsedEqvModules),
+    !:UsedModules = UsedEqvModules ^ all_used_modules,
     UsedModulesInit = !.UsedModules,
 
     module_info_get_type_table(ModuleInfo, TypeTable),

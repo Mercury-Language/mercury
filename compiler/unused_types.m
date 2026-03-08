@@ -49,6 +49,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.var_table.
 
@@ -73,9 +74,40 @@ warn_about_unused_types(ModuleInfo, !Specs) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
         collect_should_be_used_type_ctors(TypeCtorsDefns,
-            [], ShouldBeUsedTypeCtors),
-        set_tree234.list_to_set(ShouldBeUsedTypeCtors,
-            ShouldBeUsedTypeCtorsSet),
+            [], ShouldBeUsedEqvTypeCtors, [], ShouldBeUsedDuTypeCtors),
+        set_tree234.list_to_set(ShouldBeUsedEqvTypeCtors,
+            ShouldBeUsedEqvTypeCtorsSet),
+        set_tree234.list_to_set(ShouldBeUsedDuTypeCtors,
+            ShouldBeUsedDuTypeCtorsSet),
+
+        module_info_get_used_eqv_modules(ModuleInfo, UsedEqvModules),
+        UsedEqvModules = used_eqv_modules(ExpandedInIntTypeCtorSet,
+            ExpandedInImpTypeCtorSet, _UsedModules),
+        % Any equivalence type defined in the implementation section
+        % should not be expanded in the interface section, because
+        % referring to it there is not allowed by our visibility rules.
+        % This call to union is here as insurance, against the possibility
+        % that we ever get invoked with code that has such errors.
+        set_tree234.union(ExpandedInIntTypeCtorSet, ExpandedInImpTypeCtorSet,
+            ExpandedTypeCtorsSet),
+        % NOTE The analysis below can report entire cliques of discriminated
+        % union type definitions as unused, but unfortunately, we cannot do
+        % the same for equivalence types that are used *only* in the
+        % definitions of other types that are *also* unused.
+        %
+        % To report them, equiv_type.m would have to record not just that
+        % a given equivalence type was expanded *somewhere*, but also whether
+        % that somewhere was in the definition of a type, and if so,
+        % which type.
+        %
+        % Collecting that extra information would add some overhead.
+        % It would be unlikely to be enough to be noticeable, but there is
+        % no point in adding *any* overhead until we see an actual example
+        % in the wild of an equivalence type that is part of a mutually
+        % recursive set of type definitions, all of which are unused.
+        set_tree234.difference(ShouldBeUsedEqvTypeCtorsSet,
+            ExpandedTypeCtorsSet, UnusedEqvTypeCtorSet),
+
         module_info_get_predicate_table(ModuleInfo, PredTable),
         predicate_table_get_pred_id_table(PredTable, PredIdTable),
         map.values(PredIdTable, PredInfos),
@@ -85,25 +117,28 @@ warn_about_unused_types(ModuleInfo, !Specs) :-
         % due to a type error. This happens e.g. in the module
         % tests/invalid/coerce_type_error.m.
         record_type_ctors_used_in_preds(PredInfos,
-            ShouldBeUsedTypeCtorsSet, UnusedTypeCtorSet0),
-        ( if set_tree234.is_empty(UnusedTypeCtorSet0) then
-            UnusedTypeCtorSet1 = UnusedTypeCtorSet0
+            ShouldBeUsedDuTypeCtorsSet, UnusedDuTypeCtorSet0),
+        ( if set_tree234.is_empty(UnusedDuTypeCtorSet0) then
+            UnusedDuTypeCtorSet1 = UnusedDuTypeCtorSet0
         else
             module_info_get_type_repn_dec(ModuleInfo, DecisionData),
             FEEInfos = DecisionData ^ trdd_foreign_exports,
             list.foldl(record_type_ctors_used_in_foreign_export_enum_info,
-                FEEInfos, UnusedTypeCtorSet0, UnusedTypeCtorSet1)
+                FEEInfos, UnusedDuTypeCtorSet0, UnusedDuTypeCtorSet1)
         ),
-        ( if set_tree234.is_empty(UnusedTypeCtorSet1) then
-            UnusedTypeCtorSet = UnusedTypeCtorSet1
+        ( if set_tree234.is_empty(UnusedDuTypeCtorSet1) then
+            UnusedDuTypeCtorSet = UnusedDuTypeCtorSet1
         else
             % This call must be last predicate we invoke here
             % to mark type_ctors as used. The reason is explained
             % in the comment on made_for_uci predicates
-            % in record_type_ctors_used_in_preds below.
-            record_type_ctors_used_in_type_defns(UnusedTypeCtorSet1,
-                TypeCtorsDefns, UnusedTypeCtorSet1, UnusedTypeCtorSet)
+            % in record_type_ctors_used_in_pred below.
+            record_type_ctors_used_in_type_defns(UnusedDuTypeCtorSet1,
+                TypeCtorsDefns, UnusedDuTypeCtorSet1, UnusedDuTypeCtorSet)
         ),
+
+        set_tree234.union(UnusedEqvTypeCtorSet, UnusedDuTypeCtorSet,
+            UnusedTypeCtorSet),
         set_tree234.foldl(report_unused_type_ctor(TypeTable),
             UnusedTypeCtorSet, !Specs)
     ).
@@ -112,10 +147,13 @@ warn_about_unused_types(ModuleInfo, !Specs) :-
 
 :- pred collect_should_be_used_type_ctors(
     assoc_list(type_ctor, hlds_type_defn)::in,
+    list(type_ctor)::in, list(type_ctor)::out,
     list(type_ctor)::in, list(type_ctor)::out) is det.
 
-collect_should_be_used_type_ctors([], !ShouldBeUsedTypeCtors).
-collect_should_be_used_type_ctors([Pair | Pairs], !ShouldBeUsedTypeCtors) :-
+collect_should_be_used_type_ctors([],
+        !ShouldBeUsedEqvTypeCtors, !ShouldBeUsedDuTypeCtors).
+collect_should_be_used_type_ctors([Pair | Pairs],
+        !ShouldBeUsedEqvTypeCtors, !ShouldBeUsedDuTypeCtors) :-
     Pair = TypeCtor - TypeDefn,
     get_type_defn_status(TypeDefn, TypeStatus),
     get_type_defn_body(TypeDefn, TypeBody),
@@ -124,18 +162,33 @@ collect_should_be_used_type_ctors([Pair | Pairs], !ShouldBeUsedTypeCtors) :-
         % - the type is defined in the implementation section, AND
         % - the type is not exported even to submodules.
         type_status_defined_in_impl_section(TypeStatus) = yes,
-        type_status_is_exported(TypeStatus) = no,
-        % XXX We should check whether equivalence types are unused as well,
-        % but we can do that only if we keep track of which equivalence types
-        % were expanded by equiv_type.m. We do not yet do that.
-        TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu ^ du_type_is_foreign_type = no
+        type_status_is_exported(TypeStatus) = no
     then
-        !:ShouldBeUsedTypeCtors = [TypeCtor | !.ShouldBeUsedTypeCtors]
+        (
+            TypeBody = hlds_du_type(TypeBodyDu),
+            IsForeignType = TypeBodyDu ^ du_type_is_foreign_type,
+            (
+                IsForeignType = no,
+                !:ShouldBeUsedDuTypeCtors =
+                    [TypeCtor | !.ShouldBeUsedDuTypeCtors]
+            ;
+                IsForeignType = yes(_)
+            )
+        ;
+            TypeBody = hlds_eqv_type(_),
+            !:ShouldBeUsedEqvTypeCtors =
+                [TypeCtor | !.ShouldBeUsedEqvTypeCtors]
+        ;
+            ( TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_solver_type(_)
+            ; TypeBody = hlds_abstract_type(_)
+            )
+        )
     else
         true
     ),
-    collect_should_be_used_type_ctors(Pairs, !ShouldBeUsedTypeCtors).
+    collect_should_be_used_type_ctors(Pairs,
+        !ShouldBeUsedEqvTypeCtors, !ShouldBeUsedDuTypeCtors).
 
 %---------------------------------------------------------------------------%
 

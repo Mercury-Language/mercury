@@ -53,7 +53,7 @@
     maybe_record_sym_name_use::in,
     one_or_more(constructor)::in, one_or_more(constructor)::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %------------------%
 
@@ -66,7 +66,7 @@
     maybe_record_sym_name_use::in,
     univ_exist_constraints::in, univ_exist_constraints::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %------------------%
 
@@ -79,7 +79,7 @@
     maybe_record_sym_name_use::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %------------------%
 
@@ -93,13 +93,13 @@
     list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 :- pred replace_in_type_list_location_circ(type_eqv_map::in,
     maybe_record_sym_name_use::in, list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %------------------%
 
@@ -123,7 +123,7 @@
     maybe_record_sym_name_use::in,
     mer_type::in, mer_type::out, maybe_changed::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
     % Replace all equivalence types in a given type, detecting
     % any circularities.
@@ -133,13 +133,13 @@
     mer_type::in, mer_type::out,
     maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_inst(inst_eqv_map::in, maybe_record_sym_name_use::in,
     mer_inst::in, mer_inst::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -164,7 +164,7 @@
 
 replace_in_ctors(TypeEqvMap, !Ctors, !TVarSet, !ItemRecompDeps) :-
     replace_in_ctors_location(TypeEqvMap, do_not_record_sym_name_use,
-        !Ctors, !TVarSet, !ItemRecompDeps, used_modules_init, _).
+        !Ctors, !TVarSet, !ItemRecompDeps, used_eqv_modules_init, _).
 
 replace_in_ctors_location(TypeEqvMap, MaybeRecord, Ctors0, Ctors, !TVarSet,
         !ItemRecompDeps, !UsedModules) :-
@@ -179,7 +179,7 @@ replace_in_ctors_location(TypeEqvMap, MaybeRecord, Ctors0, Ctors, !TVarSet,
 :- pred replace_in_ctor(type_eqv_map::in, maybe_record_sym_name_use::in,
     constructor::in, constructor::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_ctor(TypeEqvMap, MaybeRecord, Ctor0, Ctor,
         !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -211,7 +211,7 @@ replace_in_ctor(TypeEqvMap, MaybeRecord, Ctor0, Ctor,
     list(constructor_arg)::in, list(constructor_arg)::out,
     circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_ctor_arg_list(TypeEqvMap, MaybeRecord, !CtorArgs,
         ContainsCirc, !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -223,7 +223,7 @@ replace_in_ctor_arg_list(TypeEqvMap, MaybeRecord, !CtorArgs,
     list(constructor_arg)::in, list(constructor_arg)::out,
     circ_types::in, circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_ctor_arg_list_loop(_TypeEqvMap, _MaybeRecord, _Seen, [], [],
         !Circ, !TVarSet, !ItemRecompDeps, !UsedModules).
@@ -245,7 +245,7 @@ replace_in_univ_exist_constraints(TypeEqvMap, Cs0, Cs,
         !TVarSet, !ItemRecompDeps) :-
     replace_in_univ_exist_constraints_location(TypeEqvMap,
         do_not_record_sym_name_use, Cs0, Cs,
-        !TVarSet, !ItemRecompDeps, used_modules_init, _).
+        !TVarSet, !ItemRecompDeps, used_eqv_modules_init, _).
 
 replace_in_univ_exist_constraints_location(TypeEqvMap, MaybeRecord, Cs0, Cs,
         !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -260,7 +260,7 @@ replace_in_prog_constraints(TypeEqvMap,
         !Constraints, !TVarSet, !ItemRecompDeps) :-
     replace_in_prog_constraints_location(TypeEqvMap,
         do_not_record_sym_name_use, !Constraints,
-        !TVarSet, !ItemRecompDeps, used_modules_init, _).
+        !TVarSet, !ItemRecompDeps, used_eqv_modules_init, _).
 
 replace_in_prog_constraints_location(TypeEqvMap, MaybeRecord,
         !Constraints, !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -271,7 +271,7 @@ replace_in_prog_constraints_location(TypeEqvMap, MaybeRecord,
 :- pred replace_in_prog_constraint_location(type_eqv_map::in,
     maybe_record_sym_name_use::in, prog_constraint::in, prog_constraint::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_prog_constraint_location(TypeEqvMap, MaybeRecord,
         Constraint0, Constraint, !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -284,7 +284,7 @@ replace_in_prog_constraint_location(TypeEqvMap, MaybeRecord,
 
 replace_in_type_list(TypeEqvMap, !Types, Changed, !TVarSet, !ItemRecompDeps) :-
     replace_in_type_list_location(TypeEqvMap, do_not_record_sym_name_use,
-        !Types, Changed, !TVarSet, !ItemRecompDeps, used_modules_init, _).
+        !Types, Changed, !TVarSet, !ItemRecompDeps, used_eqv_modules_init, _).
 
 replace_in_type_list_location(TypeEqvMap, MaybeRecord, !Types,
         Changed, !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -302,7 +302,7 @@ replace_in_type_list_location_circ(TypeEqvMap, MaybeRecord, !Types,
     list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, circ_types::in, circ_types::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_type_list_location_acc_circ(_TypeEqvMap, _MaybeRecord, _Seen,
         [], [], unchanged, !ContainsCirc, !TVarSet,
@@ -335,7 +335,7 @@ replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
         Type0, Type, Changed, !Specs) :-
     replace_in_type_maybe_record_use(TypeEqvMap, do_not_record_sym_name_use,
         [], Type0, Type, Changed, Circ,
-        TVarSet0, _TVarSet, no_item_recomp_deps, _, used_modules_init, _),
+        TVarSet0, _TVarSet, no_item_recomp_deps, _, used_eqv_modules_init, _),
     set.to_sorted_list(Circ, CircTypes),
     (
         CircTypes = [HeadCircTypeCtor | TailCircTypeCtors],
@@ -349,7 +349,7 @@ replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
 replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !ItemRecompDeps) :-
     replace_in_type_maybe_record_use(TypeEqvMap, do_not_record_sym_name_use,
         [], Type0, Type, Changed, _Circ, !TVarSet,
-        !ItemRecompDeps, used_modules_init, _).
+        !ItemRecompDeps, used_eqv_modules_init, _).
 
 replace_in_type_maybe_record_use_ignore_circ(TypeEqvMap, MaybeRecord,
         Type0, Type, Changed, !TVarSet, !ItemRecompDeps, !UsedModules) :-
@@ -436,7 +436,7 @@ replace_in_type_maybe_record_use(TypeEqvMap, MaybeRecord,
     kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
     circ_types::in, circ_types::out, tvarset::in, tvarset::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
         TypeCtor, ArgTypes, Kind, Type, ArgTypesChanged, Changed,
@@ -464,8 +464,12 @@ replace_type_ctor(TypeEqvMap, MaybeRecord, TypeCtorsAlreadyExpanded, Type0,
         set.is_empty(!.Circ),
         AlreadyExpanded = no
     then
-        maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor,
-            !UsedModules),
+        (
+            MaybeRecord = do_not_record_sym_name_use
+        ;
+            MaybeRecord = record_sym_name_use(Visibility),
+            record_expanded_eqv_type_ctor(Visibility, TypeCtor, !UsedModules)
+        ),
         Changed = changed,
         map.apply_to_list(EqvTypeParams0, Renaming, EqvTypeParams),
         apply_renaming_to_type(Renaming, Body0, Body1),
@@ -501,7 +505,7 @@ replace_in_inst(InstEqvMap, MaybeRecord, Inst0, Inst,
     maybe_record_sym_name_use::in, set(inst_ctor)::in,
     mer_inst::in, mer_inst::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_modules::in, used_modules::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out) is det.
 
 replace_in_inst_location(InstEqvMap, MaybeRecord,
         ExpandedInstCtors0, Inst0, Inst, !ItemRecompDeps, !UsedModules) :-
@@ -528,22 +532,6 @@ replace_in_inst_location(InstEqvMap, MaybeRecord,
         )
     else
         Inst = Inst0
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred maybe_record_type_ctor_sym_name_use(maybe_record_sym_name_use::in,
-    type_ctor::in, used_modules::in, used_modules::out) is det.
-
-maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor, !UsedModules) :-
-    (
-        MaybeRecord = do_not_record_sym_name_use
-    ;
-        MaybeRecord = record_sym_name_use(Visibility),
-        TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
-        record_sym_name_module_as_used(Visibility, TypeCtorSymName,
-            !UsedModules)
     ).
 
 %---------------------------------------------------------------------------%
