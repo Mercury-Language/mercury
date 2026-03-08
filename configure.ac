@@ -5471,28 +5471,21 @@ fi
 export conf_h_copy
 export had_old_conf_h
 
-executable_output_files='
-scripts/mmc
-scripts/mercury
-scripts/mercury.bat
-scripts/mprof
-scripts/mprof.bat
-scripts/mercury_update_interface
-scripts/mgnuc
-scripts/ml
-scripts/c2init
-scripts/mmake
-scripts/mdb
-scripts/mdb.bat
-scripts/mdprof
-scripts/mtags
-scripts/canonical_grade
-scripts/mkfifo_using_mknod
-scripts/mercury_config
-scripts/prepare_install_dir
-tools/lmc
-tools/dotime
-'
+# IMPORTANT NOTES
+# --------------
+#
+# Any new entries in the following two lists may need to be handled by
+# scripts/mercury_config.in. Failing to do this correctly may break
+# the binary distributions. This is especially true of files in the runtime
+# or java directories; if you add new .in files to either of those
+# you *must* update scripts/mercury_config.in.
+#
+# Also note that the order in which we output files matters, because
+# in some cases, one of the non-executable files we output (such as
+# scripts/parse_ml_options.sh-subr) will be bodily included in other files
+# we output (including scripts/ml, scripts/c2init, and so on). If we
+# attempted to create the latter files first, the bodily inclusion
+# would include the empty file instead.
 
 nonexecutable_output_files='
 Mmake.common
@@ -5518,77 +5511,94 @@ tests/DEFNS_FOR_TESTS
 tests/TESTS_FLAGS
 '
 
-# The order in which we output files matters, because in some cases, one of the
-# non-executable files we output (e.g. scripts/parse_ml_options.sh-subr)
-# will be bodily included in other files we output (e.g. scripts/ml,
-# scripts/c2init etc). If we attempted to create the latter files first,
-# the bodily inclusion would include the empty file instead.
+executable_output_files='
+scripts/mmc
+scripts/mercury
+scripts/mercury.bat
+scripts/mprof
+scripts/mprof.bat
+scripts/mercury_update_interface
+scripts/mgnuc
+scripts/ml
+scripts/c2init
+scripts/mmake
+scripts/mdb
+scripts/mdb.bat
+scripts/mdprof
+scripts/mtags
+scripts/canonical_grade
+scripts/mkfifo_using_mknod
+scripts/mercury_config
+scripts/prepare_install_dir
+tools/lmc
+tools/dotime
+'
+
 output_files="$nonexecutable_output_files $executable_output_files"
-
-# IMPORTANT NOTE
-# --------------
-# Any new entries in the lists above may need to be handled by
-# scripts/mercury_config.in. Failing to do this correctly may break
-# the binary distributions. This is especially true of files in the runtime
-# or java directories; if you add new .in files to either of those
-# you *must* update scripts/mercury_config.in.
-
 AC_CONFIG_FILES($output_files)
+
 AC_CONFIG_COMMANDS([default],
+    # NOTE If you add any options to scripts/Mercury.config.in that are not
+    # understood by the installed compiler, then change this to something like
+    #
+    # grep -v NEWOPTION < scripts/Mercury.config \
+    #   > scripts/Mercury.config.bootstrap
+    #
+    # You should then make the same change to the rule in scripts/Mmakefile
+    # that builds Mercury.config.bootstrap.
+    #
+    # NOTE You should ensure that filtering out the new option does not leave
+    # a dangling backslash at the end of the now-last line of the file.
+    cp scripts/Mercury.config scripts/Mercury.config.bootstrap
 
-# NOTE If you add any options to scripts/Mercury.config.in that are not
-# understood by the installed compiler, then change this to something like
-#
-# grep -v NEWOPTION < scripts/Mercury.config > scripts/Mercury.config.bootstrap
-#
-# You should then make the same change to the rule in scripts/Mmakefile
-# that builds Mercury.config.bootstrap.
-#
-# NOTE You should ensure that filtering out the new option does not leave
-# a dangling backslash at the end of the now-last line of the file.
-cp scripts/Mercury.config scripts/Mercury.config.bootstrap
+    [
+    # Only do this when compiling the source, not when reconfiguring
+    # an installation.
+    case $reconfiguring in
+        no)
+            # XXX What is the point of this loop, given that it processes
+            # - only one element of the list,
+            # - that we KNOW will be there?
+            for header in $CONFIG_HEADERS ; do
+                if test "$header" = "runtime/mercury_conf.h"; then
+                    if $had_old_conf_h && \
+                        cmp runtime/mercury_conf.h "$conf_h_copy" \
+                            > /dev/null && \
+                        test -f runtime/mercury_conf.h.date
+                    then
+                        # The date file does need not be updated, so
+                        # do not update it, since doing so would lead to
+                        # the unnecessary rebuilding of all the files
+                        # that depend on it.
+                        true
+                    else
+                        touch runtime/mercury_conf.h.date
+                    fi
+                fi
+            done
+            # We use conftest.junk to avoid a warning if there are no files
+            # in the list passed to chmod.
+            touch conftest.junk
+            chmod +x `echo $CONFIG_FILES | \
+                sed -e 's/[[^ ]]*Mmake.common//' ` conftest.junk
+            rm -f conftest.junk
 
-[
-# Only do this when compiling the source, not when reconfiguring
-# an installation.
-case $reconfiguring in no)
-    for header in $CONFIG_HEADERS ; do
-        if test "$header" = "runtime/mercury_conf.h"; then
-            if $had_old_conf_h && \
-                cmp runtime/mercury_conf.h "$conf_h_copy" > /dev/null && \
-                test -f runtime/mercury_conf.h.date
-            then
-                # The date file does need not be updated, so do not update it,
-                # since doing so would lead to the unnecessary rebuilding
-                # of all the files that depend on it.
-                true
-            else
-                touch runtime/mercury_conf.h.date
-            fi
-        fi
-    done
-    # We use conftest.junk to avoid a warning if there are no files
-    # in the list passed to chmod.
-    touch conftest.junk
-    chmod +x `echo $CONFIG_FILES | \
-        sed -e 's/[[^ ]]*Mmake.common//' ` conftest.junk
-    rm -f conftest.junk
-
-    # The --prefix is hard-coded in the scripts, which are regenerated
-    # every time you run configure, and also (unfortunately) in the .so files.
-    # The following rm commands are here to ensure that things will work
-    # correctly if you rerun configure with a new --prefix and then
-    # do not do a `make clean' before running `make'.
-    rm -f runtime/libmer_rt.so library/libmer_std.so
-    rm -f trace/libmer_trace.so browser/libmer_browser.so
-    rm -f mdbcomp/libmer_mdbcomp.so
-    rm -f runtime/libmer_rt.dylib library/libmer_std.dylib
-    rm -f boehm_gc/libgc.dylib
-    rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
-    rm -f mdbcomp/libmer_mdbcomp.dylib
-    ;;
-esac],
-[reconfiguring=$reconfiguring]
+            # The --prefix is hard-coded in the scripts, which are regenerated
+            # every time you run configure, and also (unfortunately) in the
+            # .so files.
+            # The following rm commands are here to ensure that things will work
+            # correctly if you rerun configure with a new --prefix, and then
+            # do not do a `make clean' before running `make'.
+            rm -f runtime/libmer_rt.so library/libmer_std.so
+            rm -f trace/libmer_trace.so browser/libmer_browser.so
+            rm -f mdbcomp/libmer_mdbcomp.so
+            rm -f runtime/libmer_rt.dylib library/libmer_std.dylib
+            rm -f boehm_gc/libgc.dylib
+            rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
+            rm -f mdbcomp/libmer_mdbcomp.dylib
+            ;;
+    esac],
+    [reconfiguring=$reconfiguring]
 )
 AC_OUTPUT
 
