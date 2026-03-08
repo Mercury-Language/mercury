@@ -229,13 +229,13 @@ CFILES = \
 CHECK_HDRS  = $(HDRS)
 CHECK_MHDRS =
 CHECK_OBJS  = $(CFILES:.c=.$O)
-ALLOW_LIB_PREFIX=no
-ALLOW_BROWSER_PREFIX=no
-ALLOW_MDBCOMP_PREFIX=no
-ALLOW_SSDB_PREFIX=no
+ALLOW_LIB_PREFIX = no
+ALLOW_BROWSER_PREFIX = no
+ALLOW_MDBCOMP_PREFIX = no
+ALLOW_SSDB_PREFIX = no
 
-MERCURY_DIR=..
-LINK_BOEHM_GC_ONLY=yes
+MERCURY_DIR = ..
+LINK_BOEHM_GC_ONLY = yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.runtime.params
 
@@ -278,20 +278,20 @@ $(HDR_CHECK_POBJS):	mercury_conf.h
 
 ifeq ($(USE_DLLS),yes)
 
-DLL_CFLAGS	= -Dlib$(RT_LIB_NAME)_DEFINE_DLL
+    DLL_CFLAGS	= -Dlib$(RT_LIB_NAME)_DEFINE_DLL
 
-# the following header files are created automatically by Makefile.DLLs
-LIB_DLL_H     = lib$(RT_LIB_NAME)_dll.h
-LIB_GLOBALS_H = lib$(RT_LIB_NAME)_globals.h
+    # The following header files are created automatically by Makefile.DLLs.
+    LIB_DLL_H     = lib$(RT_LIB_NAME)_dll.h
+    LIB_GLOBALS_H = lib$(RT_LIB_NAME)_globals.h
 
-include $(MERCURY_DIR)/Makefile.DLLs
+    include $(MERCURY_DIR)/Makefile.DLLs
 
 else
 
-DLL_CFLAGS =
-LIB_DLL_H =
-LIB_GLOBALS_H =
-DLL_DEF_LIB =
+    DLL_CFLAGS =
+    LIB_DLL_H =
+    LIB_GLOBALS_H =
+    DLL_DEF_LIB =
 
 endif
 
@@ -299,15 +299,19 @@ endif
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS) $(LIB_DLL_H)
 
-mercury_builtin_types.$(O):	mercury_hand_unify_compare_body.h
-mercury_builtin_types.(O):	mercury_hand_unify_body.h mercury_hand_compare_body.h
+mercury_builtin_types.$(O):	\
+				mercury_hand_unify_compare_body.h \
+				mercury_hand_unify_body.h \
+				mercury_hand_compare_body.h
 mercury_deconstruct.$(O):	mercury_ml_expand_body.h
 mercury_deep_copy.$(O):		mercury_deep_copy_body.h
 mercury_type_info.$(O):		mercury_make_type_info_body.h
 mercury_ho_call.$(O):		mercury_unify_compare_body.h
 
-mercury_builtin_types.$(EXT_FOR_PIC_OBJECTS):	mercury_hand_unify_compare_body.h
-mercury_builtin_types.(EXT_FOR_PIC_OBJECTS):	mercury_hand_unify_body.h mercury_hand_compare_body.h
+mercury_builtin_types.$(EXT_FOR_PIC_OBJECTS): \
+				mercury_hand_unify_compare_body.h \
+				mercury_hand_unify_body.h \
+				mercury_hand_compare_body.h
 mercury_deconstruct.$(EXT_FOR_PIC_OBJECTS):	mercury_ml_expand_body.h
 mercury_deep_copy.$(EXT_FOR_PIC_OBJECTS):	mercury_deep_copy_body.h
 mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
@@ -359,8 +363,8 @@ mercury_method_call_codes.i: ../tools/make_spec_method_call
 all:	runtime $(TAGS_FILE_EXISTS)
 
 ifneq "$(filter csharp% java%,$(GRADE))" ""
-#
-# For these grades, there's nothing to do.
+
+# For these grades, there is nothing to do.
 
 .PHONY: runtime
 runtime:
@@ -386,7 +390,6 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 		$(ALL_LD_LIBFLAGS) $(LDLIBS) $(THREADLIBS)		\
 		$(SHARED_LIBS)
 
-# For Darwin we should pass the -install_name option.
 lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) $(LDFLAGS_FOR_SANITIZERS) \
 		-o lib$(RT_LIB_NAME).dylib $(PIC_OBJS)			\
@@ -400,9 +403,9 @@ endif
 $(RT_LIB_NAME).init: $(CFILES)
 	cat `vpath_find $(CFILES)` | grep '^INIT ' > $(RT_LIB_NAME).init
 
-# The point of the code adds the "runtime/" prefix to "mercury.conf.h" is that
-# whether the "runtime/" prefix gets added to that comment line depends on
-# whether mercury_conf.h was created
+# The point of the code that adds the "runtime/" prefix to "mercury.conf.h"
+# is that whether the "runtime/" prefix gets added to that comment line
+# depends on whether mercury_conf.h was created
 #
 # (a) by invoking the main configure script in the *parent* directory,
 #     which add the prefix, or
@@ -463,7 +466,7 @@ all_cs:	$(CFILES)
 tags:	$(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 	-ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 
-# We ignore the exit status because we expect to get lots of messages
+# We ignore the exit status, because we expect to get lots of messages
 # saying "Duplicate entry", due to the fact that many .h and .c files
 # have two or more definitions of the same macro or function. Even though
 # #ifs and #elses guarantee that the C compiler sees exactly one,
@@ -477,7 +480,7 @@ tags_file_exists:
 
 #-----------------------------------------------------------------------------#
 
-# installation rules
+# Installation rules.
 
 .PHONY: install
 install: install_headers install_lib
