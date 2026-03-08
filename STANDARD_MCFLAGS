@@ -20,3 +20,4 @@
 --warn-unknown-format-calls
 --warn-unsorted-import-blocks
 --warn-unused-imports
+--warn-unused-types

@@ -500,10 +500,9 @@ digraph_key_from_uint(UInt, digraph_key(UInt)).
 
 %---------------------------------------------------------------------------%
 
-    % Note that the integer keys in these maps are actually digraph keys.
-    % We use the raw integers as keys to allow type specialization.
+    % Note that the keys in key_set_maps are actually digraph keys.
+    % The reason we use raw uints as keys is to allow type specialization.
     %
-:- type key_map(T)     == map(uint, digraph_key(T)).
 :- type key_set_map(T) == map(uint, digraph_key_set(T)).
 
 :- pred key_set_map_add(uint::in, digraph_key(T)::in,

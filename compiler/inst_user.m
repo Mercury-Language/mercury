@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,11 +39,7 @@
 :- import_module require.
 :- import_module set.
 
-:- type maybe_user_inst
-    --->    user_inst_being_processed
-    ;       processed_user_inst(hlds_inst_defn).
-
-:- type maybe_inst_defns_map == map(inst_ctor, maybe_user_inst).
+%-----------------------------------------------------------------------------%
 
 pretest_user_inst_table(!ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -58,6 +54,10 @@ pretest_user_inst_table(!ModuleInfo) :-
     module_info_set_inst_table(InstTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+
+:- type maybe_user_inst
+    --->    user_inst_being_processed
+    ;       processed_user_inst(hlds_inst_defn).
 
 :- pred pretest_user_inst_defns(module_info::in,
     assoc_list(inst_ctor, hlds_inst_defn)::in,

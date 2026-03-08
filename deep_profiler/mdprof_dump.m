@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2008, 2011 The University of Melbourne.
-% Copyright (C) 2015, 2017 2020-2021 The Mercury team.
+% Copyright (C) 2015, 2017, 2020-2021, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -131,8 +131,6 @@ make_dump_options(Options, MaybeDumpOptions) :-
     --->    help
     ;       dump_options
     ;       option_restrict.
-
-:- type option_table == (option_table(option)).
 
 :- pred short_option(char::in, option::out) is semidet.
 

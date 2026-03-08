@@ -608,7 +608,7 @@ EOF
             $link_static_opt conftest \
             --scout-disj-2025-11-15 \
             --warn-include-and-non-include \
-            --allow-ho-insts-as-modes \
+            --no-warn-unused-types \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&

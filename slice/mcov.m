@@ -527,8 +527,6 @@ write_copyright_notice(OutStream, !IO) :-
     ;       ignore_stdlib
     ;       ignore_mdbcomp.
 
-:- type option_table == option_table(option).
-
 :- pred short_option(character::in, option::out) is semidet.
 
 short_option('?', help).

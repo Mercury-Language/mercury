@@ -195,10 +195,6 @@
 % switch arms.
 %
 
-:- type is_int_switch
-    --->    is_int_switch
-    ;       is_not_int_switch.
-
 tag_cases(_ModuleInfo, _SwitchType, [], [], _) :-
     unexpected($pred, "no cases").
 tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],

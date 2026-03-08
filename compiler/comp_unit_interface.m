@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2018-2025 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1344,7 +1344,6 @@ make_imports_into_uses(ImpNeededModules, ModuleName, Explicit0, Explicit) :-
 %---------------------%
 
 :- type type_defn_map == one_or_more_map(type_ctor, item_type_defn_info).
-:- type type_defn_pair == pair(type_ctor, item_type_defn_info).
 
 :- pred record_type_defn_int(item_type_defn_info::in,
     type_defn_map::in, type_defn_map::out) is det.

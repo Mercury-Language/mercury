@@ -70,7 +70,6 @@ order_pred_and_mode_decls(PredDecls, ModeDecls, PredOrModeDecls) :-
 
 %---------------------------------------------------------------------------%
 
-:- type sym_name_items_map == map(sym_name_arity, cord(item)).
 :- type pred_related_items_map == map(sym_name, pred_related_items).
 
 :- type are_arities_pfs_known

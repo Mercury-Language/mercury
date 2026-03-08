@@ -418,17 +418,6 @@ expectation_context_to_msg(Context, SubMsg) :-
     SubPieces = [words("The expected name is specified here."), nl],
     SubMsg = msg(Context, SubPieces).
 
-%---------------------%
-
-:- type read_parse_tree(PT) ==
-    pred(file_name, string, int, line_context, line_posn, module_name,
-        list(prog_context), maybe(PT), read_module_errors).
-:- inst read_parse_tree
-    == (pred(in, in, in, in, in, in, in, out, out) is det).
-
-:- type make_dummy_parse_tree(PT) == pred(module_name, PT).
-:- inst make_dummy_parse_tree == (pred(in, out) is det).
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 % This part of the module parses optimization files.

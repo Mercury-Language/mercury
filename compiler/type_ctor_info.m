@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -543,8 +543,6 @@ make_notag_details(ModuleInfo, TypeArity, MaybeSuperType, SymName, ArgType,
 
 %---------------------------------------------------------------------------%
 
-:- type name_sort_info == assoc_list(pair(string, int), ctor_rtti_name).
-
     % Make the functor and layout tables for an enum type.
     %
 :- pred make_mercury_enum_details(module_info::in, maybe_subtype::in,
@@ -745,11 +743,6 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
     map.det_insert(FunctorName, ForeignEnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
-
-:- type tag_map == map(int,
-    pair(sectag_locn, map(int, ctor_rtti_name))).
-:- type tag_list == assoc_list(int,
-    pair(sectag_locn, map(int, ctor_rtti_name))).
 
     % Make the functor and layout tables for a du type.
     %
