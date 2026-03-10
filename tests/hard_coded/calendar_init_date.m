@@ -106,7 +106,10 @@ valid_dates = [
     test_date("negative year",        -1, january,   1,  0,  0,  0,  0),
 
     % Year zero (1 BC).
-    test_date("year zero",             0, march,     1,  0,  0,  0,  0)
+    test_date("year zero",             0, march,     1,  0,  0,  0,  0),
+
+    % Year with more than 4 digits.
+    test_date("far future",      1000000, march,    13,  0,  0,  0,  0)
 ].
 
 %---------------------------------------------------------------------------%
