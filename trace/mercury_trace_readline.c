@@ -55,7 +55,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
  && (defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE))
     char    *line;
     MR_bool in_isatty;
-    char    *last_nl;
+    const char    *last_nl;
 
     in_isatty = isatty(fileno(in));
     if (in_isatty || MR_force_readline) {
