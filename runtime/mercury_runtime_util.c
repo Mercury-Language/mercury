@@ -179,7 +179,7 @@ MR_get_program_basename(const char *program_name)
         // NOTE: on Cygwin, the .exe extension, if present, will not be
         // included in argv[0], so we do not need to strip it here.
 
-        char    *slash;
+        const char    *slash;
 
         basename = MR_copy_string(program_name);
         slash = strrchr(basename, '/');
