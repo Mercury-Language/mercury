@@ -1667,6 +1667,11 @@ Changes to the Mercury compiler
   that tells the compiler to generate warnings for type conversions
   from one type to the same type. This option is enabled by default.
 
+* We have added a new option `--warn-unused-types`,
+  that tells the compiler to generate warnings for type definitions
+  that are visible only in their defining module, but are not used
+  in that module.
+
 * We have added a new option `--warn-repeated-singleton-variables`,
   which may be shortened to `--warn-repeated-singleton-vars`,
   that tells the compiler to generate warnings for variables whose name
