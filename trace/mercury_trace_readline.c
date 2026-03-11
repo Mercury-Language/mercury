@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2005-2007 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // A simple interface to read a line, normally done using GNU readline.
@@ -53,9 +53,9 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 #if (defined(isatty) || defined(MR_HAVE_ISATTY)) \
  && (defined(fileno) || defined(MR_HAVE_FILENO)) \
  && (defined(MR_USE_READLINE) || defined(MR_USE_EDITLINE))
-    char    *line;
-    MR_bool in_isatty;
-    const char    *last_nl;
+    char        *line;
+    MR_bool     in_isatty;
+    const char  *last_nl;
 
     in_isatty = isatty(fileno(in));
     if (in_isatty || MR_force_readline) {
@@ -65,7 +65,6 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
         // The cast to (void *) silences a spurious "assignment from
         // incompatible pointer type" warning (old versions of readline
         // are very sloppy about declaring the types of function pointers).
-
         rl_completion_entry_function = (void *) &MR_trace_line_completer;
         rl_readline_name = (char *) "mdb";
 
@@ -79,7 +78,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
             rl_deprep_term_function = (void *) MR_dummy_deprep_term_function;
         }
 
-        // If the prompt contains newlines then readline doesn't
+        // If the prompt contains newlines, then readline does not
         // display it properly.
 
         last_nl = strrchr(prompt, '\n');
@@ -121,7 +120,10 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
     }
 #endif // have isatty && have fileno && (have readline || have editline)
 
-    // Otherwise, don't use readline.
+    // We get here *either* the three-line compile-time #if directive
+    // immediately at the start of this function is false, *or* if it is true
+    // but the executable if-then-else's condition is false. In such cases,
+    // we do not use readline.
     fprintf(out, "%s", prompt);
     fflush(out);
     return MR_trace_readline_raw(in);
@@ -176,7 +178,6 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
             return NULL;
         }
         // Ignore lines starting with '#'.
-
     } while (*line == '#');
 
     line_length = strlen(line);
