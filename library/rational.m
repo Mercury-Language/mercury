@@ -153,7 +153,7 @@ r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 R1 / R2 = R1 * reciprocal(R2).
 
 reciprocal(r(Num, Den)) =
-    ( if Num = integer.zero then
+    ( if integer.is_zero(Num) then
         func_error($pred, "division by zero")
     else
         r(signum(Num) * Den, integer.abs(Num))
@@ -164,9 +164,9 @@ abs(r(Num, Den)) = r(integer.abs(Num), Den).
 :- func rational_norm(integer, integer) = rational.
 
 rational_norm(Num, Den) = Rat :-
-    ( if Den = integer.zero then
+    ( if integer.is_zero(Den) then
         error("rational.rational_norm: division by zero")
-    else if Num = integer.zero then
+    else if integer.is_zero(Num) then
         Rat = r(integer.zero, integer.one)
     else
         G    = gcd(Num, Den),
@@ -181,14 +181,14 @@ gcd(A, B) = gcd_2(integer.abs(A), integer.abs(B)).
 
 :- func gcd_2(integer, integer) = integer.
 
-gcd_2(A, B) = ( if B = integer.zero then A else gcd_2(B, A rem B) ).
+gcd_2(A, B) = ( if integer.is_zero(B) then A else gcd_2(B, A rem B) ).
 
 :- func lcm(integer, integer) = integer.
 
 lcm(A, B) =
-    ( if A = integer.zero then
+    ( if integer.is_zero(A) then
         integer.zero
-    else if B = integer.zero then
+    else if integer.is_zero(B) then
         integer.zero
     else
         integer.abs((A // gcd(A, B)) * B)
@@ -197,7 +197,7 @@ lcm(A, B) =
 :- func signum(integer) = integer.
 
 signum(N) =
-    ( if N = integer.zero then
+    ( if integer.is_zero(N) then
         integer.zero
     else if N < integer.zero then
         -integer.one
@@ -219,7 +219,7 @@ cmp(R1, R2) = Cmp :-
 
 :- pred is_zero(rational::in) is semidet.
 
-is_zero(r(integer.zero, _)).
+is_zero(r(Num, _)) :- integer.is_zero(Num).
 
 :- pred is_negative(rational::in) is semidet.
 

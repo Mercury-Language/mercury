@@ -642,6 +642,9 @@ sixteen = i(1, [16]).
 abs(N) = big_abs(N).
 
 is_zero(i(0, [])).
+is_zero(i(_, [D | Ds])) :-
+    D = 0,
+    list.all_true(pred(0::in) is semidet, Ds).
 
 %---------------------%
 
@@ -896,11 +899,15 @@ mul_base_2([H | T]) = [H | mul_base_2(T)].
 :- func mul_by_digit(digit, integer) = integer.
 
 mul_by_digit(Digit, i(Len, Digits0)) = Out :-
-    mul_by_digit_2(Digit, Mod, Digits0, Digits),
-    ( if Mod = 0 then
-        Out = i(Len, Digits)
+    ( if Digit = 0 then
+        Out = integer.zero
     else
-        Out = i(Len + 1, [Mod | Digits])
+        mul_by_digit_2(Digit, Mod, Digits0, Digits),
+        ( if Mod = 0 then
+            Out = i(Len, Digits)
+        else
+            Out = i(Len + 1, [Mod | Digits])
+        )
     ).
 
 :- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
@@ -1758,11 +1765,15 @@ printbase_chop(printbase(Base), N, Div, Mod) :-
 :- func printbase_mul_by_digit(printbase, digit, integer) = integer.
 
 printbase_mul_by_digit(Base, D, i(Len, Ds)) = Out :-
-    printbase_mul_by_digit_2(Base, D, Div, Ds, DsOut),
-    ( if Div = 0 then
-        Out = i(Len, DsOut)
+    ( if D = 0 then
+        Out = integer.zero
     else
-        Out = i(Len + 1, [Div | DsOut])
+        printbase_mul_by_digit_2(Base, D, Div, Ds, DsOut),
+        ( if Div = 0 then
+            Out = i(Len, DsOut)
+        else
+            Out = i(Len + 1, [Div | DsOut])
+        )
     ).
 
 :- pred printbase_mul_by_digit_2(printbase::in, digit::in, digit::out,
