@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Test calendar.init_data/8 and calendar.det_init_date/7.
+% Test calendar.init_date/8 and calendar.det_init_date/7.
 %---------------------------------------------------------------------------%
 
 :- module calendar_init_date.

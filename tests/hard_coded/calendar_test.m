@@ -32,6 +32,8 @@ main(!IO) :-
     test_add_dur("1901-12-31 00:00:00", "P1D", !IO),
     test_add_dur("1901-12-31 00:00:00", "P1M", !IO),
     test_add_dur("1901-12-31 00:00:00", "P1Y", !IO),
+    test_add_dur("2020-02-29 00:00:00", "P1Y", !IO),
+    test_add_dur("2020-02-29 00:00:00", "-P1Y", !IO),
     test_add_dur("1901-12-31 00:00:00", "PT1H", !IO),
     test_add_dur("1901-12-31 00:00:00", "PT1M", !IO),
     test_add_dur("1901-12-31 00:00:00", "PT1S", !IO),
