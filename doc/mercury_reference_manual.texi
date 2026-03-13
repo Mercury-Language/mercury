@@ -1459,7 +1459,7 @@ This is an abbreviation for @samp{not (@var{Goal2}, not @var{Goal1})}.
 A logical equivalence.
 @var{Goal1} and @var{Goal2} are goals.
 This is an abbreviation for
-@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}).
+@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2})}.
 
 @item promise_pure @var{Goal}
 A purity cast.
@@ -2526,7 +2526,7 @@ iterate_while2(Test, Update, !A, !B) :-
 
 @item Introducing state
 @example
-compute_out(InA, InB, InsC, Out) :-
+compute_out(InA, InB, InC, Out) :-
     some [!State]
     (
         init_state(!:State),
@@ -2782,7 +2782,7 @@ transform(V_in, V_out, (DCG_goal1 ; DCG_goal2)) =
 
 transform(V_in, V_out, @{ Goal @}) = (Goal, V_out = V_in)
 
-transform(V_in, V_out, [Expr, @dots{}]) = (V_in = [Expr, @dots{} | V_Out])
+transform(V_in, V_out, [Expr, @dots{}]) = (V_in = [Expr, @dots{} | V_out])
 
 transform(V_in, V_out, []) = (V_out = V_in)
 
@@ -11314,7 +11314,7 @@ For example:
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure],
 "
-    SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
+    SUCCESS_INDICATOR = (Str.indexOf(Ch) != -1);
 ").
 @end example
 
@@ -11877,9 +11877,9 @@ For example:
 :- func map(impure func(T1) = T2, list(T1)) = list(T2).
 
 map(_ImpureFunc, []) = [].
-map(ImpureFunc, [X|Xs]) = [Y|Ys] :-
+map(ImpureFunc, [X | Xs]) = [Y | Ys] :-
     impure Y = impure_apply(ImpureFunc, X),
-    impure Ys = map(ImpureFunc, Ys).
+    impure Ys = map(ImpureFunc, Xs).
 @end example
 
 @node Solver types
