@@ -1323,11 +1323,11 @@ make_single_directory(DirName, Result, !IO) :-
         }
       #endif // EEXIST
     }
-    IsWin32Error = MR_NO
+    IsWin32Error = MR_NO;
 #else // !MR_WIN32 && !MR_HAVE_MKDIR
     Status = ML_MAKE_SINGLE_DIRECTORY_ERROR;
     Error = ENOSYS;
-    IsWin32Error = MR_NO
+    IsWin32Error = MR_NO;
 #endif
 ").
 
