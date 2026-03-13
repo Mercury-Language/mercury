@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2023, 2025-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the code for managing information about the
@@ -1859,6 +1859,10 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
         return NULL;
     }
 
+#if 0
+    fprintf(stderr, "ti %p, val %lx, path %s\n", type_info, *value, path);
+#endif
+
     while (*path != '\0') {
         old_path = path;
 
@@ -1902,6 +1906,10 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
         {
             type_info = arg_type_info;
             if (word_sized_arg_ptr == NULL) {
+#if 0
+                fprintf(stderr, "arg_ti %p, arg_val %lx, wsap NULL\n",
+                    arg_type_info, arg_value);
+#endif
                 // XXX This is *very* strange code. However, this issue
                 // was not brought up during review in 2011, from Jun 27
                 // to Jul 5.
@@ -1911,15 +1919,27 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
                 ((MR_Word *) storage)[0] = arg_value;
                 value = (MR_Word *) storage;
             } else {
+#if 0
+                fprintf(stderr, "arg_ti %p, arg_val %lx, wsap * %lx, wsap %p\n",
+                    arg_type_info, arg_value,
+                    *word_sized_arg_ptr, word_sized_arg_ptr);
+#endif
                 value = word_sized_arg_ptr;
             }
+#if 0
+            fprintf(stderr, "new_ti %p, new_val %lx\n", type_info, *value);
+#endif
         } else {
             return old_path;
         }
     }
 
-    *sub_value = value;
     *sub_type_info = type_info;
+    *sub_value = value;
+
+#if 0
+    fprintf(stderr, "sub_ti %p, sub_val %lx\n", type_info, *value);
+#endif
     return NULL;
 }
 

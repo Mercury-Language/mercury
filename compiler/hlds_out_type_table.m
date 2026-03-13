@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2025 The Mercury team.
+% Copyright (C) 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -494,8 +494,9 @@ format_ctor(TVarSet, Ctor, !State) :-
         Args = [HeadArg | TailArgs],
         string.builder.format("%s%s(\n", [s(BracePrefix), s(NameStr)], !State),
         AnyFieldName = does_any_arg_have_a_field_name(Args),
-        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
-        format_ctor_args(TVarSet, BaseASIndent1Str, AnyFieldName,
+        decide_arg_name_type_indents(AnyFieldName,
+            ArgTypeIndentStr, AnyFieldNameIndent),
+        format_ctor_args(TVarSet, ArgTypeIndentStr, AnyFieldNameIndent,
             HeadArg, TailArgs, !State),
         string.builder.format("%s)%s\n",
             [s(BaseASIndentStr), s(BraceSuffix)], !State)
@@ -538,12 +539,13 @@ format_ctor_repn(TVarSet, CtorRepn, !State) :-
             !State)
     ;
         ArgRepns = [HeadArgRepn | TailArgRepns],
-        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
         string.builder.format("%s%s(\n%s",
             [s(BracePrefix), s(NameStr), s(ConsTagString)], !State),
         AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),
-        format_ctor_arg_repns(TVarSet, BaseASIndent1Str,
-            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !State),
+        decide_arg_name_type_indents(AnyFieldName,
+            ArgTypeIndentStr, AnyFieldNameIndent),
+        format_ctor_arg_repns(TVarSet, ArgTypeIndentStr, AnyFieldNameIndent,
+            1, HeadArgRepn, TailArgRepns, !State),
         string.builder.format("%s)%s\n",
             [s(BaseASIndentStr), s(BraceSuffix)], !State)
     ),
@@ -551,27 +553,15 @@ format_ctor_repn(TVarSet, CtorRepn, !State) :-
 
 %---------------------%
 
-:- pred format_ctor_args(tvarset::in, string::in, bool::in,
+:- pred format_ctor_args(tvarset::in, string::in, maybe_field_name_indent::in,
     constructor_arg::in, list(constructor_arg)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_ctor_args(TVarSet, IndentStr, AnyFieldName,
+format_ctor_args(TVarSet, ArgTypeIndentStr, AnyFieldName,
         HeadArg, TailArgs, !State) :-
     HeadArg = ctor_arg(MaybeFieldName, Type, _Context),
-    string.builder.append_string(IndentStr, !State),
-    (
-        AnyFieldName = no
-    ;
-        AnyFieldName = yes,
-        (
-            MaybeFieldName = no,
-            string.builder.format("%24s", [s("")], !State)
-        ;
-            MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
-            string.builder.format("%-20s :: ",
-                [s(unqualify_name(FieldName))], !State)
-        )
-    ),
+    format_any_ctor_arg_field_name(AnyFieldName, MaybeFieldName, !State),
+    string.builder.append_string(ArgTypeIndentStr, !State),
     mercury_format_type(TVarSet, print_name_only, Type,
         string.builder.handle, !State),
     (
@@ -580,70 +570,113 @@ format_ctor_args(TVarSet, IndentStr, AnyFieldName,
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
         string.builder.append_string(",\n", !State),
-        format_ctor_args(TVarSet, IndentStr, AnyFieldName,
+        format_ctor_args(TVarSet, ArgTypeIndentStr, AnyFieldName,
             HeadTailArg, TailTailArgs, !State)
     ).
 
-:- pred format_ctor_arg_repns(tvarset::in, string::in, bool::in,
-    int::in, constructor_arg_repn::in, list(constructor_arg_repn)::in,
+:- pred format_ctor_arg_repns(tvarset::in, string::in,
+    maybe_field_name_indent::in, int::in,
+    constructor_arg_repn::in, list(constructor_arg_repn)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_ctor_arg_repns(TVarSet, IndentStr, AnyFieldName,
+format_ctor_arg_repns(TVarSet, ArgTypeIndentStr, AnyFieldName,
         CurArgNum, HeadArgRepn, TailArgRepns, !State) :-
     HeadArgRepn = ctor_arg_repn(MaybeFieldName, _MaybeBaseCtorArg, Type,
         ArgPosWidth, _Context),
-    string.builder.append_string(IndentStr, !State),
-    (
-        AnyFieldName = no
-    ;
-        AnyFieldName = yes,
-        (
-            MaybeFieldName = no,
-            string.builder.format("%24s", [s("")], !State)
-        ;
-            MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
-            string.builder.format("%-20s :: ",
-                [s(unqualify_name(FieldName))], !State)
-        )
-    ),
+    format_any_ctor_arg_field_name(AnyFieldName, MaybeFieldName, !State),
+    string.builder.append_string(ArgTypeIndentStr, !State),
     mercury_format_type(TVarSet, print_name_only, Type,
         string.builder.handle, !State),
     (
         TailArgRepns = [],
         string.builder.append_string("\n", !State),
-        format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State)
+        format_arg_pos_width(ArgTypeIndentStr, CurArgNum, ArgPosWidth, !State)
     ;
         TailArgRepns = [HeadTailArgRepn | TailTailArgRepns],
         string.builder.append_string(",\n", !State),
-        format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State),
-        format_ctor_arg_repns(TVarSet, IndentStr, AnyFieldName,
+        format_arg_pos_width(ArgTypeIndentStr, CurArgNum, ArgPosWidth, !State),
+        format_ctor_arg_repns(TVarSet, ArgTypeIndentStr, AnyFieldName,
             CurArgNum + 1, HeadTailArgRepn, TailTailArgRepns, !State)
     ).
 
 %---------------------%
 
-:- func does_any_arg_have_a_field_name(list(constructor_arg)) = bool.
+:- type maybe_field_name_indent
+    --->    no_field_names
+    ;       field_name_indent(string).
 
-does_any_arg_have_a_field_name([]) = no.
+:- pred decide_arg_name_type_indents(arg_field_names::in,
+    string::out, maybe_field_name_indent::out) is det.
+
+decide_arg_name_type_indents(AnyFieldName,
+        ArgTypeIndentStr, AnyFieldNameIndent) :-
+    % The width of ArrowOrSemi is eight spaces, which is the same as
+    % four indents. This comes after the original one indent.
+    BaseIndent = 1u,
+    ASIndent = 4u,
+    (
+        AnyFieldName = no_arg_has_field_name,
+        AnyFieldNameIndent = no_field_names,
+        ArgTypeIndentStr = indent2_string(BaseIndent + ASIndent + 1u)
+    ;
+        AnyFieldName = some_arg_has_field_name,
+        ArgFieldNameIndentStr = indent2_string(BaseIndent + ASIndent + 1u),
+        AnyFieldNameIndent = field_name_indent(ArgFieldNameIndentStr),
+        ArgTypeIndentStr = indent2_string(BaseIndent + ASIndent + 2u)
+    ).
+
+%---------------------%
+
+:- pred format_any_ctor_arg_field_name(maybe_field_name_indent::in,
+    maybe(ctor_field_name)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_any_ctor_arg_field_name(AnyFieldName, MaybeFieldName, !State) :-
+    (
+        AnyFieldName = no_field_names
+    ;
+        AnyFieldName = field_name_indent(ArgFieldNameIndentStr),
+        string.builder.append_string(ArgFieldNameIndentStr, !State),
+        (
+            MaybeFieldName = no,
+            string.builder.append_string("<unnamed field>\n", !State)
+        ;
+            MaybeFieldName = yes(ctor_field_name(FieldSymName, _Ctxt)),
+            string.builder.format("%s ::\n",
+                [s(unqualify_name(FieldSymName))], !State)
+        )
+    ).
+
+%---------------------%
+
+:- type arg_field_names
+    --->    no_arg_has_field_name
+    ;       some_arg_has_field_name.
+
+:- func does_any_arg_have_a_field_name(list(constructor_arg))
+    = arg_field_names.
+
+does_any_arg_have_a_field_name([]) = no_arg_has_field_name.
 does_any_arg_have_a_field_name([Arg | Args]) = SomeArgHasFieldName :-
     Arg = ctor_arg(MaybeFieldName, _, _),
     (
         MaybeFieldName = yes(_),
-        SomeArgHasFieldName = yes
+        SomeArgHasFieldName = some_arg_has_field_name
     ;
         MaybeFieldName = no,
         SomeArgHasFieldName = does_any_arg_have_a_field_name(Args)
     ).
 
-:- func does_any_arg_repn_have_a_field_name(list(constructor_arg_repn)) = bool.
+:- func does_any_arg_repn_have_a_field_name(list(constructor_arg_repn))
+    = arg_field_names.
 
-does_any_arg_repn_have_a_field_name([]) = no.
+does_any_arg_repn_have_a_field_name([]) = no_arg_has_field_name.
 does_any_arg_repn_have_a_field_name([ArgRepn | ArgRepns])
         = SomeArgHasFieldName :-
     ArgRepn = ctor_arg_repn(MaybeFieldName, _, _, _, _),
     (
         MaybeFieldName = yes(_),
-        SomeArgHasFieldName = yes
+        SomeArgHasFieldName = some_arg_has_field_name
     ;
         MaybeFieldName = no,
         SomeArgHasFieldName = does_any_arg_repn_have_a_field_name(ArgRepns)

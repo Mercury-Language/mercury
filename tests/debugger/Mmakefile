@@ -34,6 +34,7 @@ NONRETRY_PROGS = \
 	cond				\
 	debugger_regs			\
 	dice				\
+	direct_arg_test			\
 	double_print			\
 	exception_cmd			\
 	exception_value			\
@@ -327,6 +328,10 @@ debugger_regs.out: debugger_regs debugger_regs.inp
 deeply_nested_typeinfo.out: deeply_nested_typeinfo deeply_nested_typeinfo.inp
 	$(MDB_STD) ./deeply_nested_typeinfo < deeply_nested_typeinfo.inp \
 		> deeply_nested_typeinfo.out 2>&1
+
+direct_arg_test.out: direct_arg_test direct_arg_test.inp
+	$(MDB_STD) ./direct_arg_test < direct_arg_test.inp \
+		> direct_arg_test.out 2>&1
 
 double_print.out: double_print double_print.inp
 	$(MDB_STD) ./double_print < double_print.inp > double_print.out 2>&1

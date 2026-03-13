@@ -1,0 +1,18 @@
+      E1:     C1 CALL pred direct_arg_test.main/2-0 (det) direct_arg_test.m:48
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break get_maybe_t
+ 0: + stop  interface pred direct_arg_test.get_maybe_t/1-0 (det)
+mdb> continue
+      E2:     C2 CALL pred direct_arg_test.get_maybe_t/1-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred direct_arg_test.get_maybe_t/1-0 (det)
+mdb> print MaybeT
+       MaybeT (arg 1)         	yes_t(t(1, 2, 43))
+mdb> print MaybeT^1
+       MaybeT (arg 1)^1       	t(1, 2, 43)
+mdb> continue
+yes_t(t(1, 2, 43))

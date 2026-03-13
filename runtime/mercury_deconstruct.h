@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002, 2005, 2007, 2011 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_deconstruct.h
@@ -116,9 +116,15 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
 // If the given term has an argument at the specified position, MR_arg returns
 // MR_TRUE, and fills in *arg_type_info_ptr and *arg_term_ptr with the
 // type_info and value of that argument at the selected position. It also
-// fills in *word_sized_arg_ptr, with the address of the argument
-// if the argument's size is exactly one word, or with NULL if the size
-// is anything else (double word, subword, or nothing for dummies).
+// fills in *word_sized_arg_ptr. It sets *word_sized_arg_ptr
+//
+// - to the address of the argument if the argument's size in the argument
+//   vector is exactly one word, or
+//
+// - to NULL, if the size is anything else (double word, subword, or nothing
+//   for dummies), or if the argument is not IN the argument vector
+//   (as with direct_args, where the argument is in what would usually be
+//   the *pointer* to the argument vector).
 //
 // If the given term does not have an argument at the specified position,
 // MR_arg fails, i.e. it returns MR_FALSE.

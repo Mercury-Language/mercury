@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2007, 2012 The University of Melbourne.
-// Copyright (C) 2013, 2015-2018, 2021, 2024 The Mercury team.
+// Copyright (C) 2013, 2015-2018, 2021, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_ml_expand_body.h
@@ -17,14 +17,14 @@
 // a million typeinfos can cause a system to start paging.) Therefore we try to
 // make sure that in every circumstance we perform the minimum work possible.
 //
-// The code including this file must define these macros:
+// The code that includes this file *must* define these macros:
 //
 // EXPAND_FUNCTION_NAME     Gives the name of the function being defined.
 //
 // EXPAND_TYPE_NAME         Gives the name of the type of the expand_info
 //                          argument.
 //
-// The code including this file may define these macros:
+// The code including this file *may* define these macros:
 //
 // EXPAND_FUNCTOR_FIELD     If defined, gives the name of the field in the
 //                          expand_info structure that contains the name of the
@@ -210,7 +210,7 @@
 #ifdef  EXPAND_ONE_ARG
   #define handle_zero_arity_one_arg()                                       \
         do {                                                                \
-            expand_info->chosen_index_exists = MR_FALSE;           \
+            expand_info->chosen_index_exists = MR_FALSE;                    \
         } while (0)
 #else   // EXPAND_ONE_ARG
   #define handle_zero_arity_one_arg()                                       \
@@ -258,7 +258,7 @@
 // If we are implementing the limited arity version of deconstruct
 // and the current term is above the limit arity, say so and return.
 // We rely on the default initialization of the limit_reached field
-// to MR_FALSE If we are below the limit.
+// to MR_FALSE if we are below the limit.
 
 #ifdef  EXPAND_APPLY_LIMIT
   #define maybe_set_limit_reached_and_return(ei, max)                       \
@@ -368,13 +368,13 @@
 #define notag_arg_get_chosen(ei, arg_ti_expr, dw_ptr, chosen)               \
         do {                                                                \
             if (chosen == 0) {                                              \
-                (ei)->chosen_index_exists = MR_TRUE;               \
+                (ei)->chosen_index_exists = MR_TRUE;                        \
                                                                             \
-                (ei)->chosen_arg_type_info = (arg_ti_expr);        \
-                (ei)->chosen_arg_term = (dw_ptr)[0];               \
-                (ei)->chosen_arg_word_sized_ptr = (dw_ptr);        \
+                (ei)->chosen_arg_type_info = (arg_ti_expr);                 \
+                (ei)->chosen_arg_term = (dw_ptr)[0];                        \
+                (ei)->chosen_arg_word_sized_ptr = (dw_ptr);                 \
             } else {                                                        \
-                (ei)->chosen_index_exists = MR_FALSE;              \
+                (ei)->chosen_index_exists = MR_FALSE;                       \
             }                                                               \
         } while (0)
 
@@ -445,14 +445,14 @@
 #define same_type_args_get_chosen(ei, arg_ti, arg_vector, chosen)           \
         do {                                                                \
             if (0 <= chosen && chosen < (ei)->arity) {                      \
-                (ei)->chosen_index_exists = MR_TRUE;               \
+                (ei)->chosen_index_exists = MR_TRUE;                        \
                                                                             \
-                (ei)->chosen_arg_type_info = (arg_ti);             \
-                (ei)->chosen_arg_term = (arg_vector)[chosen];      \
-                (ei)->chosen_arg_word_sized_ptr =                  \
+                (ei)->chosen_arg_type_info = (arg_ti);                      \
+                (ei)->chosen_arg_term = (arg_vector)[chosen];               \
+                (ei)->chosen_arg_word_sized_ptr =                           \
                     &((arg_vector)[chosen]);                                \
             } else {                                                        \
-                (ei)->chosen_index_exists = MR_FALSE;              \
+                (ei)->chosen_index_exists = MR_FALSE;                       \
             }                                                               \
         } while (0)
 
@@ -638,7 +638,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         MR_Word                 *ti_arg_vector;
         MR_Word                 *ao_arg_vector;
         MR_Word                 *word_size_arg_ptr;
-        MR_Word                 direct_arg;
+        MR_Word                 direct_arg = 0;
         int                     arg_num;
 
         data = *data_word_ptr;
@@ -665,6 +665,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 functor_desc);
             assert_no_exist_info(functor_desc, "MR_SECTAG_NONE_DIRECT_ARG");
             direct_arg = MR_body(data, ptag);
+#if 0
+            fprintf(stderr, "DIRECT_ARG data %lx, ptag %d,", data, ptag);
+            fprintf(stderr, " direct_arg %lx, direct_arg_ptr %p\n",
+                direct_arg, &direct_arg);
+#endif
             // The word containing the direct arg in effect forms an argument
             // vector with just one element.
             ti_arg_vector = &direct_arg;
@@ -682,9 +687,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_SECTAG_LOCAL_BITS:
-            sectag = MR_unmkbody(data) &
             // XXX ARG_PACK
-            // Consider storing this mask in the ptag_layout.
+            // Consider storing the mask in the ptag_layout.
+            sectag = MR_unmkbody(data) &
                 ((1 << ptag_layout->MR_sectag_numbits) - 1);
             MR_index_or_search_sectag_functor(ptag_layout, sectag,
                 functor_desc);
@@ -856,6 +861,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             }
         } else {
             expand_info->chosen_index_exists = MR_FALSE;
+        }
+
+        if (direct_arg != 0) {
+            // In the case of direct args, the argument is not in the
+            // argument vector, and therefore may not be on the heap.
+            // Some of our callers care about that.
+            expand_info->chosen_arg_word_sized_ptr = NULL;
         }
 #endif  // EXPAND_ONE_ARG
         return;
