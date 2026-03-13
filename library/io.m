@@ -2776,7 +2776,7 @@ get_line_number(text_input_stream(Stream), LineNum, !IO) :-
 %---------------------%
 
 set_line_number(LineNum, !IO) :-
-    output_stream_2(Stream, !IO),
+    input_stream_2(Stream, !IO),
     set_input_line_number_2(Stream, LineNum, !IO).
 
 set_line_number(text_input_stream(Stream), LineNum, !IO) :-

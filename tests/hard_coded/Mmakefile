@@ -24,6 +24,7 @@ ORDINARY_PROGS = \
 	array_test_1 \
 	array_test_2 \
 	array_unify_compare \
+	bad_set_line_number \
 	bag_various \
 	bidirectional \
 	bigtest \

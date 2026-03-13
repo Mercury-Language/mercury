@@ -1,0 +1,4 @@
+Input line number before set_line_number: 1.
+Input line number after set_line_number(100): 100.
+Output line number: 3.
+PASS: set_line_number correctly set input line number.
