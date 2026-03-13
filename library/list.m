@@ -1527,7 +1527,7 @@
     %
 :- pred foldl8(pred(L, A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H),
     list(L),
-    A, A, B, B, C, C, D, D, E, E, F, F, G, G, H , H).
+    A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H).
 :- mode foldl8(in(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out,
