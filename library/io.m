@@ -468,7 +468,8 @@
 :- pred get_output_line_number(io.text_output_stream::in, int::out,
     io::di, io::uo) is det.
 
-    % Set the line number of the current output stream.
+    % Set the line number of the current output stream or the specified
+    % output stream.
     %
 :- pred set_output_line_number(int::in, io::di, io::uo) is det.
 :- pred set_output_line_number(io.text_output_stream::in, int::in,
