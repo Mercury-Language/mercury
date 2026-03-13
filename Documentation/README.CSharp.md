@@ -67,8 +67,8 @@ assembly, e.g. `hello.exe`, and a wrapper shell script named `hello`.
 
 The wrapper shell script will set the `MONO_PATH` environment variable
 to point to the location of the Mercury standard library assemblies.
-It will then invoke then CLI execution environment on the process assembly.
-You can run the program using wrapper shell script, for example:
+It will then invoke the CLI execution environment on the process assembly.
+You can run the program using the wrapper shell script, for example:
 
 ```
     ./hello
@@ -163,7 +163,7 @@ supported or not fully implemented:
     Due to some limitations in RTTI support, dynamic type checking is missing
     for these predicates. They should be used with care.
 
-4.  `math.fma/3`
+4. `math.fma/3`
 
     This function is not available because it is not supported by C# 5.0.
     (It will be supported once the minimum version of C# required by

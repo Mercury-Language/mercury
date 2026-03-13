@@ -94,8 +94,8 @@ If you want to install a Mercury compiler that creates native 64-bit Windows
 executables, then we recommend using the `UCRT64` environment. We do not
 recommend using the `MINGW64` environment *unless* your code requires the
 MSVCRT (e.g. because it contains foreign code that depends on it).
-You should also note that MSYS2 project considers the `MINGW32` environment to
-be a legacy environment.
+You should also note that the MSYS2 project considers the `MINGW32` environment
+to be a legacy environment.
 
 Aside from the above, there is also a `CLANGARM64` MSYS2 environment. We have
 not tested Mercury in this environment. It may or may not work. Users who
@@ -190,7 +190,7 @@ To build Mercury directly from `git`, you also need the following packages:
 
 To install these packages do:
 
-     pacman -S m4 autoconf flex bison
+    pacman -S m4 autoconf flex bison
 
 Building Mercury directly from `git` requires that you have an already
 installed Mercury compiler in the MSYS2 `PATH` to bootstrap from. You can
@@ -300,7 +300,7 @@ To install the Mercury source distribution in any of the MSYS2 `UCRT64`,
 
    **Correct installation prefix**:    
 
-        ./configure --prefix="C:/mercury" (Drive letter and forward slash)
+       ./configure --prefix="C:/mercury" (Drive letter and forward slash)
 
    **Incorrect installation prefixes**:
 
@@ -319,7 +319,7 @@ To install the Mercury source distribution in any of the MSYS2 `UCRT64`,
    `configure` command to tell it that you want to use `clang` as the C compiler
    to build Mercury.
 
-      ./configure --prefix="C:/mercury" --with-cc=clang
+       ./configure --prefix="C:/mercury" --with-cc=clang
 
    Other options to the `configure` script behave as they do on other systems.
 
@@ -359,7 +359,7 @@ in the MSYS2 `PATH`.
 
 To add it to the MSYS2 `PATH`, do the following:
 
-     export PATH="/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/":$PATH
+    export PATH="/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/":$PATH
 
 The details will vary depending on which version of .NET you are using.
 
