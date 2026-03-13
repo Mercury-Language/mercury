@@ -1,0 +1,10 @@
+echo on
+context none
+register --quiet
+break get_maybe_t
+continue
+finish
+print MaybeT
+print MaybeT^1
+continue
+
