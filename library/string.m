@@ -1308,7 +1308,7 @@
     % Replaces any occurrences of Pattern in String0 with Subst to give
     % String.
     %
-    % If Pattern is the empty string then Subst is inserted at every point
+    % If Pattern is the empty string, then Subst is inserted at every point
     % in String0 except between two code units in an encoding of a code point.
     % For example, these are true:
     %
