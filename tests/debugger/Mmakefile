@@ -74,60 +74,57 @@ NONRETRY_PROGS = \
 	user_event_1			\
 	user_event_2
 
-TABLING_PROGS = \
-	fib				\
-	loopcheck
-
 # We currently don't pass this test.
 #	deeply_nested_typeinfo
 # This test is currently not useful.
 #	output_term_dep
-
-SENSITIVE_PROGS = \
-	completion			\
-	nondet_stack
-
-SHALLOW_PROGS = \
-	shallow				\
-	user_event_shallow
-
-INTERACTIVE_PROGS = \
-	interactive
 
 # Since the `interactive' test case requires the use of shared libraries,
 # this means it won't work properly if the static libraries are linked
 # (as is done by tools/bootcheck and tools/lmc).
 # So we only enable it if LINK_STATIC is not set.
 #
-# The value of LINK_STATIC is normally in set in ../Mmake.common. However,
-# we include ./Mmake.common only later on in this file, because
-# ../Mmake.commmon depends on the value of the TESTS make variable, and hence
-# on the value of PROGS, part of which we are trying to compute here.
-# We resolve this circularity by repeating the critical test of WORKSPACE from
-# ../Mmake.common here,
+# The value of LINK_STATIC is normally in set in ../../Mmake.workspace,
+# which we include indirectly via ../Mmake.common. However, we include
+# ./Mmake.common only later on in this file, because ../Mmake.commmon
+# depends on the value of the TESTS make variable, and hence on the value
+# of PROGS, part of which we are trying to compute here. We resolve this
+# circularity by adding a duplicate copy of the code setting LINK_STATIC.
 
 ifneq ($(origin WORKSPACE),undefined)
     LINK_STATIC = yes
-endif
-ifeq ($(origin LINK_STATIC),undefined)
-    LINK_STATIC = no
+else
+    ifeq ($(origin LINK_STATIC),undefined)
+        LINK_STATIC = no
+    endif
 endif
 
 ifneq ($(LINK_STATIC),no)
-    INTERACTIVE_PROGS :=
+    INTERACTIVE_PROGS =
+else
+    INTERACTIVE_PROGS = \
+	interactive
 endif
 
 # Declarative debugging grades don't support trace level shallow,
 # so we execute the tests exercising shallow tracing only in grades
 # other than .decldebug grades.
 ifneq "$(findstring decldebug,$(GRADE))" ""
-    SHALLOW_PROGS :=
+    SHALLOW_PROGS =
+else
+    SHALLOW_PROGS = \
+	shallow				\
+	user_event_shallow
 endif
 
 # Tabling is not compatible with parallel execution,
 # so tests exercising tabling will never succeed in .par grades.
 ifneq "$(findstring par,$(GRADE))" ""
-    TABLING_PROGS :=
+    TABLING_PROGS =
+else
+    TABLING_PROGS = \
+	fib				\
+	loopcheck
 endif
 
 # The sensitive tests are so named because they are sensitive to details
@@ -136,25 +133,33 @@ endif
 # in trailing grades without debugging do not test anything that the tests in
 # .debug.tr grades do not.
 
-ifneq "$(findstring prof,$(GRADE))" ""
-    SENSITIVE_PROGS :=
-endif
-ifneq "$(findstring memprof,$(GRADE))" ""
-    SENSITIVE_PROGS :=
-endif
-ifeq "$(findstring debug,$(GRADE))" ""
-    ifneq "$(findstring tr,$(GRADE))" ""
-	SENSITIVE_PROGS :=
+SENSITIVE_PROGS0 = \
+	completion			\
+	nondet_stack
+
+# NOTE Do NOT put quotes around the right hand sides of the next five lines.
+# If you do, the first test will not do its job correctly.
+G_PROF    = $(findstring prof,$(GRADE))
+G_MEMPROF = $(findstring memprof,$(GRADE))
+G_MM      = $(findstring mm,$(GRADE))
+G_TSW     = $(findstring tsw,$(GRADE))
+G_TSC     = $(findstring tsc,$(GRADE))
+ifneq "$(G_PROF)$(G_MEMPROF)$(G_MM)$(G_TSW)$(G_TSC)" ""
+    DIS = "x$(G_PROF)$(G_MEMPROF)$(G_MM)$(G_TSW)$(G_TSC)y"
+    SENSITIVE_PROGS =
+else
+    ifeq "$(findstring debug,$(GRADE))" ""
+        ifneq "$(findstring tr,$(GRADE))" ""
+	    DIS = "b"
+            SENSITIVE_PROGS =
+        else
+	    DIS = "c"
+            SENSITIVE_PROGS = $(SENSITIVE_PROGS0)
+        endif
+    else
+	DIS = "d"
+        SENSITIVE_PROGS = $(SENSITIVE_PROGS0)
     endif
-endif
-ifneq "$(findstring mm,$(GRADE))" ""
-    SENSITIVE_PROGS :=
-endif
-ifneq "$(findstring tsw,$(GRADE))" ""
-    SENSITIVE_PROGS :=
-endif
-ifneq "$(findstring tsc,$(GRADE))" ""
-    SENSITIVE_PROGS :=
 endif
 
 # The no_inline_builtins test only works if the library is built with
@@ -177,9 +182,9 @@ ifneq "$(findstring .tsw,$(GRADE))" ""
     TERM_SIZE_PROGS = term_size_words
 else
     ifneq "$(findstring .tsc,$(GRADE))" ""
-	TERM_SIZE_PROGS = term_size_cells
+        TERM_SIZE_PROGS = term_size_cells
     else
-	TERM_SIZE_PROGS =
+        TERM_SIZE_PROGS =
     endif
 endif
 
@@ -202,14 +207,10 @@ ALL_NONRETRY_PROGS = \
 	$(TERM_SIZE_PROGS) \
 	$(MMOS_PROGS)
 
-# Debugging doesn't yet work in MLDS grades (hl*, csharp, java) or
-# parallel grades.
-# The retry command doesn't and will not work in deep profiling
-# grades (profdeep).
-# Also base grades `jump' and `fast' cannot be used with
-# stack layouts (which are required for tracing).
-
 ifneq "$(findstring profdeep,$(GRADE))" ""
+    # The retry command doesn't and will not work in deep profiling
+    # grades (profdeep).
+    #
     # Eventually, this should be DEBUGGER_PROGS0=$(ALL_NONRETRY_PROGS).
     # However, the code that is required to switch off the profiling
     # primitives in Mercury code invoked by the debugger (e.g. for
@@ -228,8 +229,12 @@ else
 endif
 
 ifneq "$(filter hl% java% csharp%,$(GRADE))$(findstring par,$(GRADE))" ""
+    # Mdb debugging is not designed to work either in MLDS grades
+    # (hlc, csharp, java), or in parallel grades.
     PROGS =
 else
+    # Base grades `jump' and `fast' cannot be used with
+    # stack layouts (which are required for tracing).
     ifneq "$(findstring asm_,$(GRADE))" ""
         PROGS = $(DEBUGGER_PROGS)
     else
@@ -259,7 +264,6 @@ MLFLAGS += --trace
 # Some of the test cases require a different input in decldebug grades,
 # so we set INP to the appropriate extension to use for those tests.
 # All other tests ignore this variable.
-#
 ifneq "$(findstring .decldebug,$(GRADE))" ""
     INP = inp2
 else
@@ -688,7 +692,7 @@ ifneq ($(origin WORKSPACE),undefined)
 endif
 	echo "echo on" > interactive.inp.tmp
 	echo mmc_options $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-			--trace minimum >> interactive.inp.tmp
+		--trace minimum >> interactive.inp.tmp
 	cat interactive.inp >> interactive.inp.tmp
 	PATH="`pwd`/lmc:$$PATH" $(MDB) ./interactive \
 		< interactive.inp.tmp > interactive.out.orig 2>&1
