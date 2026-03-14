@@ -15,37 +15,29 @@
 % Floats are double precision, except in .spf grades where they
 % are single precision.
 %
-% Note that implementations which support IEEE floating point
-% should ensure that in cases where the only valid answer is a "NaN"
-% (the IEEE float representation for "not a number"), the det
-% functions here will halt with a runtime error (or throw an exception)
-% rather than returning a NaN. Quiet (non-signalling) NaNs have a
-% semantics which is not valid in Mercury, since they don't obey the
-% axiom "all [X] X = X".
+% All current Mercury backends use IEEE floating point. In cases where the only
+% valid answer is a "NaN" (the IEEE float representation for "not a number"),
+% the det functions here should throw an exception rather than returning a NaN.
+% Quiet (non-signalling) NaNs have a semantics which is not valid in Mercury,
+% since they do not obey the axiom `all [X] X = X'.
 %
-% XXX Unfortunately the current Mercury implementation does not
-% do that on all platforms, since neither ANSI C nor POSIX provides
-% any portable way of ensuring that floating point operations
-% whose result is not representable will raise a signal rather
-% than returning a NaN. (Maybe C9X will help...?)
-% The behaviour is correct on Linux and Digital Unix,
-% but not on Solaris, for example.
+% XXX The current Mercury implementation does not enforce this properly.
+% NaN values may be silently produced and propagated, instead of an exception
+% being thrown.
 %
-% IEEE floating point also specifies that some functions should
-% return different results for +0.0 and -0.0, but that +0.0 and -0.0
-% should compare equal. This semantics is not valid in Mercury,
-% since it doesn't obey the axiom `all [F, X, Y] X = Y => F(X) = F(Y)'.
-% Again, the resolution is that in Mercury, functions which would
-% return different results for +0.0 and -0.0 should instead halt
-% execution with a run-time error (or throw an exception).
+% IEEE floating point also specifies that some functions return different
+% results for +0.0 and -0.0, but that +0.0 and -0.0 compare equal.
+% That semantics is not valid in Mercury, since it does not obey the axiom
+% `all [F, X, Y] X = Y => F(X) = F(Y)'. The intended resolution is that
+% in Mercury, functions which return different results for +0.0 and -0.0
+% should throw an exception when passed -0.0 as an argument.
 %
-% XXX Here too the current Mercury implementation does not
-% implement the intended semantics correctly on all platforms.
+% XXX The current Mercury implementation does not enforce this either.
 %
-% XXX On machines such as x86 which support extra precision
-% for intermediate results, the results may depend on the
-% level of optimization, in particular inlining and evaluation
-% of constant expressions.
+% XXX On platforms which support extra precision for intermediate
+% floating-point results, the results of floating-point operations
+% may depend on the level of optimization, in particular inlining
+% and evaluation of constant expressions.
 % For example, the goal `1.0/9.0 = std_util.id(1.0)/9.0' may fail.
 %
 %---------------------------------------------------------------------------%
