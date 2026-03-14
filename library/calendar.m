@@ -10,15 +10,20 @@
 % Main authors: maclarty
 % Stability: high.
 %
-% Proleptic Gregorian calendar utilities with date-time representation to
-% microsecond resolution.
+% This module provides a representation of points in time,
+% a representation of durations (differences between two points in time),
+% and operations on those representations.
 %
-% The Gregorian calendar is the calendar that is currently used by most of
-% the world. In this calendar, a year is a leap year if it is divisible by
-% 400, or if it is divisible by 4 but not by 100. For example, 2000 and 2024
-% were leap years, while 1900 and 2023 were not. The proleptic Gregorian
-% calendar is an extension of the Gregorian calendar backward in time to
-% before it was first introduced in October 1582.
+% This module identifies points in time by a date specifying a day,
+% and a time within that day. It uses dates from the proleptic Gregorian
+% calendar, which is a version of the Gregorian calendar that has been
+% extended backward in time to dates before its introduction in 1582.
+% (https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar contains
+% a detailed description.) This is the calendar that is currently used
+% by most of the world.
+%
+% This modules allow times to be represented at microsecond resolution,
+% though of course not all sources of time information are that precise.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -34,18 +39,18 @@
     %
 :- type date.
 
-    % A more meaningful name for the above.
+    % A more precisely descriptive name for the above.
     %
 :- type date_time == date.
 
     % Date components.
     %
 :- type year == int.         % Year 0 is 1 BC, -1 is 2 BC, etc.
-:- type day_of_month == int. % 1..31 depending on the month and year
-:- type hour == int.         % 0..23
-:- type minute == int.       % 0..59
-:- type second == int.       % 0..61 (60 and 61 are for leap seconds)
-:- type microsecond == int.  % 0..999999
+:- type day_of_month == int. % 1 .. 31 depending on the month and year
+:- type hour == int.         % 0 .. 23
+:- type minute == int.       % 0 .. 59
+:- type second == int.       % 0 .. 61 (60 and 61 are for leap seconds)
+:- type microsecond == int.  % 0 .. 999,999
 
 :- type month
     --->    january
@@ -126,15 +131,19 @@
     % Initialise a new date from the given components. Fails if any of the
     % following conditions are not met:
     %
-    %   - Day is in the range 1..N, where N is the number of days in Month
-    %     of Year
-    %   - Hour is in the range 0..23
-    %   - Minute is in the range 0..59
-    %   - Second is in the range 0..61 (to account for up to two leap second
-    %     per year)
-    %   - MicroSecond is in the range 0..999999
+    %   - Day is in the range 1 .. N,
+    %     where N is the number of days in Month of Year
     %
-    % This predicates accept all values for Year.
+    %   - Hour is in the range 0 .. 23
+    %
+    %   - Minute is in the range 0 .. 59
+    %
+    %   - Second is in the range 0 .. 61
+    %     (to account for up to two leap seconds being added in a year)
+    %
+    %   - MicroSecond is in the range 0 .. 999,999
+    %
+    % This predicate accepts all values for Year.
     %
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
     minute::in, second::in, microsecond::in, date::out) is semidet.
@@ -207,8 +216,8 @@
 
     % same_date(A, B):
     %
-    % Succeed if-and-only-if A and B are equal with respect to
-    % only their date components. The time components are ignored.
+    % Succeed if-and-only-if A and B refer to the exact same day.
+    % Their time components are ignored.
     %
 :- pred same_date(date::in, date::in) is semidet.
 
@@ -243,7 +252,7 @@
     % Note on leap seconds: although individual dates can represent times
     % with leap seconds (seconds 60-61), durations ignore them. A day is
     % always treated as exactly 86,400 seconds, even though UTC days
-    % containing leap seconds are 86,401 seconds long.
+    % containing leap seconds are 86,401 or 86,401 seconds long.
     %
     % Durations are stored internally using four components only: months, days,
     % seconds and microseconds. When a duration is constructed by
@@ -280,8 +289,8 @@
 
     % Functions to retrieve the components of a duration.
     %
-    % Years and months are derived from the single combined months total in the
-    % duration:
+    % Years and months are derived from the single combined months total
+    % in the duration:
     %
     %   The years function returns total months // 12
     %   The months function returns total months rem 12
@@ -300,20 +309,20 @@
     %   The microseconds function returns total microseconds
     %
     % For positive durations:
-    %   months/1 returns a value in 0..11
-    %   days/1 returns a a value in 0..max_int
-    %   hours/1 returns a value in 0..23
-    %   minutes/1 returns a value in 0..59
-    %   seconds/1 returns a value in 0..59
-    %   microseconds/1 returns a value in 0..999999
+    %   months/1 returns       a value in the range 0 .. 11
+    %   days/1 returns         a value in the range 0 .. max_int
+    %   hours/1 returns        a value in the range 0 .. 23
+    %   minutes/1 returns      a value in the range 0 .. 59
+    %   seconds/1 returns      a value in the range 0 .. 59
+    %   microseconds/1 returns a value in the range 0 .. 999,999
     %
     % For negative durations:
-    %   months/1 returns a value in -11..0
-    %   days/1 returns a a value in min_int..0
-    %   hours/1 returns a value in -23..0
-    %   minutes/1 returns a value in -59..0
-    %   seconds/1 returns a value in -59..0
-    %   microseconds/1 returns a value in -999999..0
+    %   months/1 returns       a value in the range -11 .. 0
+    %   days/1 returns         a value in the range min_int .. 0
+    %   hours/1 returns        a value in the range -23 .. 0
+    %   minutes/1 returns      a value in the range -59 .. 0
+    %   seconds/1 returns      a value in the range -59 .. 0
+    %   microseconds/1 returns a value in the range -999,999 .. 0
     %
 :- func years(duration) = years.
 :- func months(duration) = months.
@@ -371,15 +380,14 @@
     % The string should have the form "[-]PnYnMnDTnHnMnS" where each "n" is a
     % non-negative integer representing the number of years (Y), months (M),
     % days (D), hours (H), minutes (M) or seconds (S). The units must follow
-    % the numbers, not precede them. The duration string always starts with an
-    % optional '-' sign followed by 'P', and the 'T' separates the date and
-    % time components of the duration. A component may be omitted if it is
-    % zero, and the 'T' separator is not required if all the time components
-    % are zero.
+    % the numbers, not precede them. The duration string always starts with
+    % either 'P' or '-P', and the 'T' separates the date and time components
+    % of the duration. A component may be omitted if it is zero, and
+    % the 'T' separator is not required if all the time components are zero.
     %
     % The seconds component may include a fraction component using a period.
-    % This fraction component cannot have a resolution higher than a
-    % microsecond (six digits).
+    % This fraction component cannot include more than six digits, since
+    % the maximum resolution of a duration is a microsecond.
     %
     % Fail if the string does not conform to the above format, or if the
     % fractional part of the seconds component has more than six digits.
@@ -393,7 +401,7 @@
     %
     %   -P1M2D
     %
-    % Note that the input is normalised when parsed, so
+    % Note that this function normalises its input, so that (for example)
     % duration_to_string(det_duration_from_string("P1Y18M100DT10H15M90.0003S"))
     % will return "P2Y6M100DT10H16M30.0003S".
     %
@@ -430,7 +438,8 @@
     % DurationA is considered less than or equal to DurationB if adding
     % DurationA to each of the following dates yields a result no later
     % than adding DurationB to the same date. These dates are chosen to
-    % exercise leap-year and variable month-length boundaries:
+    % exercise all possible combinations of leap-year and variable
+    % month-length boundaries:
     %
     %    1696-09-01 00:00:00
     %    1697-02-01 00:00:00
@@ -453,7 +462,7 @@
     %
     % To convert UTC time to local time, add Offset to UTC using
     % add_duration/3. To convert local time to UTC, negate Offset using
-    % negate/1 and add the result to the local time.
+    % negate/1, and add the result to the local time.
     %
 :- pred local_time_offset(duration::out, io::di, io::uo) is det.
 
@@ -1202,9 +1211,9 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
     ).
 
     % subtract_ints_with_borrow(BorrowAmount, Val1, Val2, Val, Borrow):
+    %
     % Subtract Val2 from Val1, possibly borrowing BorrowAmount if Val1 < Val2.
-    % If an amount is borrowed, then Borrow is set to 1, otherwise it is set
-    % to 0.
+    % If an amount is borrowed, then set Borrow to 1; otherwise, set it to 0.
     %
 :- pred subtract_ints_with_borrow(int::in, int::in, int::in, int::out,
     int::out) is det.
