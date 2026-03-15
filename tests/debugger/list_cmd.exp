@@ -1,9 +1,9 @@
-       1:      1  1 CALL pred list_cmd.main/2-0 (det) list_cmd.m:22
+      E1:     C1 CALL pred list_cmd.main/2-0 (det) list_cmd.m:22
 mdb> echo on
 Command echo enabled.
 mdb> list_cmd ./list_cmd.sh
 mdb> step
-       2:      2  2 CALL pred list_cmd.fib/2-0 (det) list_cmd.m:29 (list_cmd.m:23)
+      E2:     C2 CALL pred list_cmd.fib/2-0 (det) list_cmd.m:29 (list_cmd.m:23)
 mdb> list
  27 :- pred fib(int::in, int::out) is det.
  28 

@@ -304,35 +304,10 @@ include ../Mmake.common
 
 #---------------------#
 
-all_solutions.out: all_solutions all_solutions.inp
-	$(MDB) ./all_solutions < all_solutions.inp > all_solutions.out 2>&1
-
-browse_packed.out: browse_packed browse_packed.inp
-	$(MDB) ./browse_packed < browse_packed.inp > browse_packed.out 2>&1
-
-browse_pretty.out: browse_pretty browse_pretty.inp
-	$(MDB) ./browse_pretty < browse_pretty.inp 2>&1 | \
-		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browse_pretty.out 2>&1
-
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-class_decl.out: class_decl class_decl.inp
-	$(MDB) ./class_decl < class_decl.inp 2>&1 | \
-		sed 's/io.m:[0-9]*/io.m:NNNN/g' > class_decl.out 2>&1
-
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-cmd_quote.out: cmd_quote cmd_quote.inp
-	$(MDB) ./cmd_quote < cmd_quote.inp 2>&1 | \
-		sed 's/io.m:[0-9]*/io.m:NNNN/g' > cmd_quote.out 2>&1
-
 # Set up readline to make it easier to use completion non-interactively.
 completion.out: completion completion.inp
 	INPUTRC=completion.inputrc $(MDB) ./completion \
 		< completion.inp 2>&1 | sed -e '/^$$/d' > completion.out 2>&1
-
-debugger_regs.out: debugger_regs debugger_regs.inp
-	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
 
 # The exception_cmd, exception_vars and loopcheck tests
 # are supposed to return a non-zero exit status, since they exit by throwing
@@ -414,33 +389,16 @@ existential_type_classes.out: existential_type_classes \
 		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> existential_type_classes.out
 
-exported_eqv_type.out: exported_eqv_type exported_eqv_type.inp
-	$(MDB_STD) ./exported_eqv_type < exported_eqv_type.inp \
-		> exported_eqv_type.out 2>&1
-
-field_names.out: field_names field_names.inp
-	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
-
 foreign_type.out: foreign_type foreign_type.inp
 	$(MDB_STD) ./foreign_type < foreign_type.inp | \
 		sed 's/coord, 0x[-0-9A-Fa-f]*/coord, 0xXXXX/g'  |\
 		sed 's/coord, [0-9A-F][0-9A-F][0-9A-F]*/coord, 0xXXXX/g'  \
 		> foreign_type.out 2>&1
 
-implied_instance.out: implied_instance implied_instance.inp
-	$(MDB) ./implied_instance < implied_instance.inp \
-		> implied_instance.out 2>&1
-
 # NOTE This program takes its own source code as input.
 interpreter.out: interpreter interpreter.inp
 	$(MDB_STD) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1
-
-label_layout.out: label_layout label_layout.inp
-	$(MDB) ./label_layout < label_layout.inp > label_layout.out 2>&1
-
-list_cmd.out: list_cmd list_cmd.inp
-	$(MDB) ./list_cmd < list_cmd.inp > list_cmd.out 2>&1
 
 loopcheck.out: loopcheck loopcheck.$(INP)
 	if $(MDB) ./loopcheck < loopcheck.$(INP)		\
@@ -465,10 +423,6 @@ interpreter.m: ../../samples/interpreter.m
 	cp ../../samples/interpreter.m .
 	chmod a-w interpreter.m
 
-lval_desc_array.out: lval_desc_array lval_desc_array.inp
-	$(MDB) ./lval_desc_array < lval_desc_array.inp \
-		> lval_desc_array.out 2>&1
-
 # The use of MDB_STD_NOINIT here is to override the default mdbrc file
 # specified by the MDB make variable.
 mdbrc_test.out: mdbrc_test mdbrc_test.inp mdbrc_test.mdbrc
@@ -476,31 +430,6 @@ mdbrc_test.out: mdbrc_test mdbrc_test.inp mdbrc_test.mdbrc
 	$(MDB_STD_NOINIT) ./mdbrc_test < mdbrc_test.inp \
 		> mdbrc_test.out 2>&1
 	/bin/rm .mdbrc
-
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-multi_parameter.out: multi_parameter multi_parameter.inp
-	$(MDB) ./multi_parameter < multi_parameter.inp 2>&1 | \
-		sed 's/char.m:[0-9]*/char.m:NNNN/g' > multi_parameter.out
-
-no_inline_builtins.out: no_inline_builtins no_inline_builtins.inp
-	$(MDB) ./no_inline_builtins < no_inline_builtins.inp \
-		> no_inline_builtins.out 2>&1
-
-mmos_print.out: mmos_print mmos_print.inp
-	$(MDB) ./mmos_print < mmos_print.inp > mmos_print.out 2>&1
-
-mutrec.out: 	mutrec mutrec.inp
-	$(MDB) ./mutrec < mutrec.inp > mutrec.out 2>&1
-
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-output_term_dep.out: output_term_dep output_term_dep.inp
-	$(MDB) ./output_term_dep < output_term_dep.inp 2>&1 | \
-		sed 's/io.m:[0-9]*/io.m:NNNN/g' > output_term_dep.out 2>&1
-
-queens_rep.out: queens_rep queens_rep.inp
-	$(MDB) ./queens_rep < queens_rep.inp > queens_rep.out 2>&1
 
 # We insert the names of entry labels into the label table only in a few grades
 # (e.g. profiling grades). The debugger's redo label is an entry label. To
@@ -535,9 +464,6 @@ save.out: save save.inp
 
 scripts.out: scripts scripts.inp
 	EDITOR=cat $(MDB_STD) ./scripts < scripts.inp > scripts.out 2>&1
-
-shallow.out: shallow shallow.inp
-	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
 
 tabled_read_unitize.out: tabled_read_unitize.data
 

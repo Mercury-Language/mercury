@@ -8,10 +8,10 @@
 %
 % This source file is hereby placed in the public domain.  -fjh (the author).
 %
-% The .exp file is for ???.
-% The .exp2 file is for ???.
-% The .exp3 file is for debug grade bootchecks with intermodule optimization.
-% The .exp4 file is ???.
+% The .exp file is for non-debug grades.
+% The .exp2 file is for debug grades.
+% The .exp3 file is for debug grades with intermodule opt. zs: NO, IT ISN'T
+% The .exp4 file is decldebug grades.
 %
 
 :- module all_solutions.

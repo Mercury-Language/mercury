@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred browse_packed.main/2-0 (det) browse_packed.m:58
+      E1:     C1 CALL pred browse_packed.main/2-0 (det) browse_packed.m:58
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -7,7 +7,7 @@ mdb> register --quiet
 mdb> break smallest_t
  0: + stop  interface pred browse_packed.smallest_t/7-0 (det)
 mdb> continue
-       2:      2  2 CALL pred browse_packed.smallest_t/7-0 (det)
+      E2:     C2 CALL pred browse_packed.smallest_t/7-0 (det)
 mdb> p F0_B
        F0_B (arg 1)           	f0_b(flag_set, blue, peach)
 mdb> p F0_B^f0_b1

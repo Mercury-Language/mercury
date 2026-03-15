@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:26
+      E1:     C1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:26
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -7,7 +7,7 @@ mdb> register --quiet
 mdb> break hello
  0: + stop  interface pred all_solutions.hello/1-0 (multi)
 mdb> continue
-       2:      2  2 CALL pred all_solutions.hello/1-0 (multi)
+      E2:     C2 CALL pred all_solutions.hello/1-0 (multi)
 mdb> stack
    0       pred all_solutions.hello/1-0 (multi)
 reached unknown label.

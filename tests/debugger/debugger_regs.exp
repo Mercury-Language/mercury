@@ -1,10 +1,10 @@
-       1:      1  1 CALL pred debugger_regs.main/2-0 (det) debugger_regs.m:24
+      E1:     C1 CALL pred debugger_regs.main/2-0 (det) debugger_regs.m:24
 mdb> echo on
 Command echo enabled.
 mdb> 
-       2:      2  2 CALL pred debugger_regs.data/41-0 (det) debugger_regs.m:93 (debugger_regs.m:33)
+      E2:     C2 CALL pred debugger_regs.data/41-0 (det) debugger_regs.m:93 (debugger_regs.m:33)
 mdb> 
-       3:      2  2 EXIT pred debugger_regs.data/41-0 (det) debugger_regs.m:93 (debugger_regs.m:33)
+      E3:     C2 EXIT pred debugger_regs.data/41-0 (det) debugger_regs.m:93 (debugger_regs.m:33)
 mdb> print NoSuchVar
 mdb: there is no such variable.
 mdb> print *
