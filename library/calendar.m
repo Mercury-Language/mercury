@@ -162,12 +162,21 @@
 %---------------------%
 
     % Convert a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm" to a date.
-    % The year must have at least four digits; years with more than four digits
-    % are accepted. The microseconds component (.mmmmmm) is optional. If
-    % present, it may have between one and six digits.
     %
-    % Fail if the string does not conform to the above format, or if any
-    % date or time component is outside its valid range.
+    % The year must have at least four digits. This requirement comes from
+    % ISO standard 8601, and its main intention is to prevent repeats of
+    % the Y2K problem (see https://en.wikipedia.org/wiki/Year_2000_problem).
+    % It also prevents possible confusion between the year part of the date,
+    % and the month or the day parts.
+    %
+    % Since some simulation programs may want to handle dates in the far
+    % future, the predicate accepts years with more than four digits.
+    %
+    % The microseconds component (.mmmmmm) is optional. If present,
+    % it may have between one and six digits.
+    %
+    % This predicate fails if the string does not conform to the above format,
+    % or if any date or time component is outside its valid range.
     %
 :- pred date_from_string(string::in, date::out) is semidet.
 
