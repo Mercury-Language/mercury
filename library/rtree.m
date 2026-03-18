@@ -982,7 +982,7 @@ search_general_2(Node, KeyTest, ValueTest, !Values) :-
     search_general_subtree(K0, T0, KeyTest, ValueTest, !Values),
     search_general_subtree(K1, T1, KeyTest, ValueTest, !Values),
     search_general_subtree(K2, T2, KeyTest, ValueTest, !Values),
-search_general_subtree(K3, T3, KeyTest, ValueTest, !Values).
+    search_general_subtree(K3, T3, KeyTest, ValueTest, !Values).
 
 :- pred search_general_subtree(K::in, rtree_2(K, V)::in,
     pred(K)::in(pred(in) is semidet),
