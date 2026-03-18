@@ -261,7 +261,7 @@
     % Note on leap seconds: although individual dates can represent times
     % with leap seconds (seconds 60-61), durations ignore them. A day is
     % always treated as exactly 86,400 seconds, even though UTC days
-    % containing leap seconds are 86,401 or 86,401 seconds long.
+    % containing leap seconds are 86,401 or 86,402 seconds long.
     %
     % Durations are stored internally using four components only: months, days,
     % seconds and microseconds. When a duration is constructed by
@@ -346,8 +346,8 @@
     %
     % Create a new duration from the given components.
     % All non-zero components must have the same sign (they must be entirely
-    % positive or entirely negative). This function throws an exception is
-    % thrown if two non-zero components have different signs.
+    % positive or entirely negative). This function throws an exception if
+    % two non-zero components have different signs.
     %
     % For example, all of the following are valid:
     %
