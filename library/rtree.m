@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1742,7 +1742,7 @@ interval_contains(A, B) :-
 
 :- func interval_length(interval) = float.
 
-interval_length(interval(Max, Min)) = Max - Min.
+interval_length(interval(Min, Max)) = Max - Min.
 
 %---------------------------------------------------------------------------%
 
