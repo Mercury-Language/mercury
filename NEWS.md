@@ -251,7 +251,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `cord` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `is_non_empty/1`
     - pred `foldr2/6`
@@ -260,6 +260,7 @@ Changes to the Mercury standard library
     - pred `is_singleton/2`
     - pred `cons_list/2`
     - pred `snoc_list/2`
+    - func `ulength/1`
 
 ### Changes to the `counter` module
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2018, 2021-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2021-2022, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -241,10 +241,12 @@
 %
 
     % length(C) = list.length(list(C))
+    % ulength(C) = list.ulength(list(C))
     %
     % This is an O(n) operation.
     %
 :- func length(cord(T)) = int.
+:- func ulength(cord(T)) = uint.
 
     % member(X, C) <=> list.member(X, list(C)).
     %
@@ -529,6 +531,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module uint.
 
 % The original implementation of the cord/1 type had four function symbols
 % in one type: empty, unit, node and branch. However, this representation
@@ -799,7 +802,9 @@ split_list_last(Prev, [H | T], AllButLast, Last) :-
 
 %---------------------------------------------------------------------------%
 
-length(C) = foldl(func(_, N) = N + 1, C, 0).
+length(C) = cord.foldl(func(_, N) = N + 1, C, 0).
+
+ulength(C) = cord.foldl(func(_, N) = N + 1u, C, 0u).
 
 %---------------------%
 
