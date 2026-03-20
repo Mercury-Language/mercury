@@ -199,39 +199,21 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     trace [io(!IO)] (
-        (
-            MaybeProgressStream = no
-        ;
-            MaybeProgressStream = yes(ProgressStream),
-            maybe_report_stats(ProgressStream, Statistics, !IO)
-        )
+        report_stats_if_called_for(MaybeProgressStream, Statistics, !IO)
     ),
     (
         Redo = no
     ;
         Redo = yes,
         trace [io(!IO)] (
-            ( if
-                VeryVerbose = yes,
-                MaybeProgressStream = yes(ProgressStream)
-            then
-                io.format(ProgressStream,
-                    "%% Repeating mode check for %s\n",
-                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
-            else
-                true
-            )
+            print_very_verbose_msg_for_pred(MaybeProgressStream, VeryVerbose,
+                !.ModuleInfo, PredId, "Repeating mode check for", !IO)
         ),
         map.init(ProcModeErrorMap0),
         modecheck_proc(PredId, ProcId, !ModuleInfo,
             ProcModeErrorMap0, _ProcModeErrorMap, _Changed, ModeSpecs),
         trace [io(!IO)] (
-            (
-                MaybeProgressStream = yes(ProgressStream),
-                maybe_report_stats(ProgressStream, Statistics, !IO)
-            ;
-                MaybeProgressStream = no
-            )
+            report_stats_if_called_for(MaybeProgressStream, Statistics, !IO)
         ),
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (
@@ -255,16 +237,8 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
             % have been gathered during the initial mode analysis pass.
         ),
         trace [io(!IO)] (
-            ( if
-                VeryVerbose = yes,
-                MaybeProgressStream = yes(ProgressStream)
-            then
-                io.format(ProgressStream,
-                    "%% Repeating switch detection for %s\n",
-                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
-            else
-                true
-            )
+            print_very_verbose_msg_for_pred(MaybeProgressStream, VeryVerbose,
+                !.ModuleInfo, PredId, "Repeating switch detection for", !IO)
         ),
 
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo2),
@@ -277,24 +251,10 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
         module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
         trace [io(!IO)] (
-            (
-                MaybeProgressStream = no
-            ;
-                MaybeProgressStream = yes(ProgressStream),
-                maybe_report_stats(ProgressStream, Statistics, !IO)
-            )
-        ),
-        trace [io(!IO)] (
-            ( if
-                VeryVerbose = yes,
-                MaybeProgressStream = yes(ProgressStream)
-            then
-                io.format(ProgressStream,
-                    "%% Repeating common deconstruction detection for %s\n",
-                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
-            else
-                true
-            )
+            report_stats_if_called_for(MaybeProgressStream, Statistics, !IO),
+            print_very_verbose_msg_for_pred(MaybeProgressStream, VeryVerbose,
+                !.ModuleInfo, PredId,
+                "Repeating common deconstruction detection for", !IO)
         ),
         disable_warning [suspicious_recursion] (
             detect_cse_in_proc(MaybeProgressStream, PredId, ProcId,
@@ -1214,6 +1174,34 @@ compute_may_pull_cons_id(ModuleInfo, [BoundFunctor | BoundFunctors],
     else
         compute_may_pull_cons_id(ModuleInfo, BoundFunctors,
             ConsId, MayPullConsId)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred report_stats_if_called_for(maybe(io.text_output_stream)::in,
+    bool::in, io::di, io::uo) is det.
+
+report_stats_if_called_for(MaybeProgressStream, Statistics, !IO) :-
+    (
+        MaybeProgressStream = no
+    ;
+        MaybeProgressStream = yes(ProgressStream),
+        maybe_report_stats(ProgressStream, Statistics, !IO)
+    ).
+
+:- pred print_very_verbose_msg_for_pred(maybe(io.text_output_stream)::in,
+    bool::in, module_info::in, pred_id::in, string::in, io::di, io::uo) is det.
+
+print_very_verbose_msg_for_pred(MaybeProgressStream, VeryVerbose,
+        ModuleInfo, PredId, Msg, !IO) :-
+    ( if
+        VeryVerbose = yes,
+        MaybeProgressStream = yes(ProgressStream)
+    then
+        PredNameStr = pred_id_to_user_string(ModuleInfo, PredId),
+        io.format(ProgressStream, "%% %s %s\n", [s(Msg), s(PredNameStr)], !IO)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
