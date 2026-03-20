@@ -136,9 +136,11 @@
     % Succeed if-and-only-if Year is a leap year in the proleptic
     % Gregorian calendar.
     %
-    % A year is a leap year if it is divisible by 4, except that years
-    % divisible by 100 are not leap years, unless they are also divisible
-    % by 400.
+    % The rules are:
+    % - A year divisible by 400 is a leap year.
+    % - A year not divisible by 400 but divisible by 100 is NOT a leap year.
+    % - A year not divisible by 100 but divisible by 4 IS a leap year.
+    % - A year not divisible by 4 is NOT a leap year.
     %
 :- pred is_leap_year(year::in) is semidet.
 
@@ -692,26 +694,37 @@ days_in_month(Year, Month) =
     max_day_in_month_for(Year, month_to_int(Month)).
 
 is_leap_year(Year) :-
-    ( if Year /\ 3 = 0 then
-        % Year is divisible by 4.
-        ( if Year `unchecked_rem` 25 \= 0 then
-            % Year is not divisible by 25. Since it is divisible by 4
-            % but not by 25, it is not divisible by lcm(4, 25) = 100,
-            % so it is not a century year. All non-century years that are
-            % multiples of 4 are leap years.
+    % The rule numbers here refer to the comment on the declaration
+    % of this predicate, duplicated here:
+    % - A year divisible by 400 is a leap year.
+    % - A year not divisible by 400 but divisible by 100 is NOT a leap year.
+    % - A year not divisible by 100 but divisible by 4 IS a leap year.
+    % - A year not divisible by 4 is NOT a leap year.
+    %
+    % Note that while the description is clearest if we go from the
+    % largest divisors to the smallest (because this allows us to avoid
+    % talking about exceptions nested within exceptions), efficiency
+    % is better served by going from the smallest divisors to the largest.
+    ( if Year /\ 3 \= 0 then
+        % Rule 4: Year is not divisible by 4, so it is not a leap year.
+        fail
+    else
+        % Year is divisible by 4. Is it divisible by 100?
+        ( if Year `unchecked_rem` 100 \= 0 then
+            % Rule 3: Year is not divisible by 100, but is divisible
+            % by 4, so it is a leap year.
             true
         else
-            % Year is divisible by both 4 and 25, therefore it is
-            % divisible by lcm(4, 25) = 100: it is a century year.
-            % A century year is a leap year only if it is divisible
-            % by 400. Since Year is already divisible by 100,
-            % it is divisible by 400 iff it is also divisible by
-            % lcm(100, 16) = 400, i.e. iff it is divisible by 16.
-            Year /\ 15 = 0
+            % Year is divisible by 100. Is it divisible by 400?
+            ( if Year `unchecked_rem` 400 \= 0 then
+                % Rule 2: Year is not divisible by 400, but is divisible
+                % by 100, so it is not a leap year.
+                fail
+            else
+                % Rule 1: Year is divisible by 400, so it is a leap year.
+                true
+            )
         )
-    else
-        % Year is not divisible by 4, so it is not a leap year.
-        fail
     ).
 
 %---------------------------------------------------------------------------%
