@@ -124,6 +124,24 @@
     %
 :- func month_to_int0(month) = int.
 
+    % days_in_month(Year, Month) = Days:
+    %
+    % Return the number of days in Month of Year in the proleptic
+    % Gregorian calendar.
+    %
+:- func days_in_month(year, month) = int.
+
+    % is_leap_year(Year):
+    %
+    % Succeed if-and-only-if Year is a leap year in the proleptic
+    % Gregorian calendar.
+    %
+    % A year is a leap year if it is divisible by 4, except that years
+    % divisible by 100 are not leap years, unless they are also divisible
+    % by 400.
+    %
+:- pred is_leap_year(year::in) is semidet.
+
 %---------------------%
 
     % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date):
@@ -670,11 +688,37 @@ month_to_int(Month) = Int :-
 month_to_int0(Month) = Int :-
     int0_to_month(Int, Month).
 
+days_in_month(Year, Month) =
+    max_day_in_month_for(Year, month_to_int(Month)).
+
+is_leap_year(Year) :-
+    ( if Year /\ 3 = 0 then
+        % Year is divisible by 4.
+        ( if Year `unchecked_rem` 25 \= 0 then
+            % Year is not divisible by 25. Since it is divisible by 4
+            % but not by 25, it is not divisible by lcm(4, 25) = 100,
+            % so it is not a century year. All non-century years that are
+            % multiples of 4 are leap years.
+            true
+        else
+            % Year is divisible by both 4 and 25, therefore it is
+            % divisible by lcm(4, 25) = 100: it is a century year.
+            % A century year is a leap year only if it is divisible
+            % by 400. Since Year is already divisible by 100,
+            % it is divisible by 400 iff it is also divisible by
+            % lcm(100, 16) = 400, i.e. iff it is divisible by 16.
+            Year /\ 15 = 0
+        )
+    else
+        % Year is not divisible by 4, so it is not a leap year.
+        fail
+    ).
+
 %---------------------------------------------------------------------------%
 
 init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
     Day >= 1,
-    Day =< max_day_in_month_for(Year, month_to_int(Month)),
+    Day =< days_in_month(Year, Month),
     Hour >= 0,
     Hour < 24,
     Minute >= 0,
@@ -1089,7 +1133,7 @@ max_day_in_month_for(YearValue, MonthValue) = Max :-
             Max0 = 30
         ;
             M = 2,
-            ( if ( Y mod 400 = 0 ; ( Y mod 100 \= 0, Y mod 4 = 0 ) ) then
+            ( if is_leap_year(Y) then
                 Max0 = 29
             else
                 Max0 = 28

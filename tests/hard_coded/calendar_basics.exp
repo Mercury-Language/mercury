@@ -1,0 +1,109 @@
+=== Test det_int_to_month/2 ===
+
+det_int_to_month(-1) ==> EXCEPTION
+det_int_to_month(0) ==> EXCEPTION
+det_int_to_month(1) ==> january
+det_int_to_month(2) ==> february
+det_int_to_month(11) ==> november
+det_int_to_month(12) ==> december
+det_int_to_month(13) ==> EXCEPTION
+
+=== Test det_int0_to_month/2 ===
+
+det_int0_to_month(-1) ==> EXCEPTION
+det_int0_to_month(0) ==> january
+det_int0_to_month(1) ==> february
+det_int0_to_month(2) ==> march
+det_int0_to_month(11) ==> december
+det_int0_to_month(12) ==> EXCEPTION
+det_int0_to_month(13) ==> EXCEPTION
+
+=== Test int_to_month/2 ===
+
+int_to_month(-1) ==> FAILED
+int_to_month(0) ==> FAILED
+int_to_month(1) ==> january
+int_to_month(2) ==> february
+int_to_month(11) ==> november
+int_to_month(12) ==> december
+int_to_month(13) ==> FAILED
+
+=== Test int0_to_month/2 ===
+
+int0_to_month(-1) ==> FAILED
+int0_to_month(0) ==> january
+int0_to_month(1) ==> february
+int0_to_month(2) ==> march
+int0_to_month(11) ==> december
+int0_to_month(12) ==> FAILED
+int0_to_month(13) ==> FAILED
+
+=== Test month_to_int/1 ===
+
+month_to_int(january) = 1
+month_to_int(february) = 2
+month_to_int(march) = 3
+month_to_int(april) = 4
+month_to_int(may) = 5
+month_to_int(june) = 6
+month_to_int(july) = 7
+month_to_int(august) = 8
+month_to_int(september) = 9
+month_to_int(october) = 10
+month_to_int(november) = 11
+month_to_int(december) = 12
+
+=== Test month_to_int0/1 ===
+
+month_to_int0(january) = 0
+month_to_int0(february) = 1
+month_to_int0(march) = 2
+month_to_int0(april) = 3
+month_to_int0(may) = 4
+month_to_int0(june) = 5
+month_to_int0(july) = 6
+month_to_int0(august) = 7
+month_to_int0(september) = 8
+month_to_int0(october) = 9
+month_to_int0(november) = 10
+month_to_int0(december) = 11
+
+=== Test days_in_month/2 ===
+
+days_in_month(1977, january) = 31
+days_in_month(1977, february) = 28
+days_in_month(1977, march) = 31
+days_in_month(1977, april) = 30
+days_in_month(1977, may) = 31
+days_in_month(1977, june) = 30
+days_in_month(1977, july) = 31
+days_in_month(1977, august) = 31
+days_in_month(1977, september) = 30
+days_in_month(1977, october) = 31
+days_in_month(1977, november) = 30
+days_in_month(1977, december) = 31
+
+days_in_month(2000, january) = 31
+days_in_month(2000, february) = 29
+days_in_month(2000, march) = 31
+days_in_month(2000, april) = 30
+days_in_month(2000, may) = 31
+days_in_month(2000, june) = 30
+days_in_month(2000, july) = 31
+days_in_month(2000, august) = 31
+days_in_month(2000, september) = 30
+days_in_month(2000, october) = 31
+days_in_month(2000, november) = 30
+days_in_month(2000, december) = 31
+
+=== Test is_leap_year/1 ===
+
+Year 2000 is a leap year.
+Year 1900 is a common year.
+Year 2024 is a leap year.
+Year 2023 is a common year.
+Year 0 is a leap year.
+Year -1 is a common year.
+Year -4 is a leap year.
+Year -100 is a common year.
+

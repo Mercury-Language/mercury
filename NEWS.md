@@ -224,6 +224,13 @@ Changes to the Mercury standard library
     - func `promise_only_solution/1`
     - pred `promise_only_solution_io/4`
 
+### Changes to the `calendar` module
+
+* The following function and predicate have been added:
+
+    - func `days_in_month/2` 
+    - pred `is_leap_year/1`
+
 ### Changes to the `char` module
 
 * The following type has had its typeclass memberships changed:
