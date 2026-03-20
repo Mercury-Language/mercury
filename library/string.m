@@ -1078,7 +1078,7 @@
 :- pred uncapitalize_first(string::in, string::out) is det.
 
     % Converts a string to uppercase.
-    % Only letters (A-Z) in the ASCII range are converted.
+    % Only letters (a-z) in the ASCII range are converted.
     %
     % This function transforms each code point individually.
     % Letters that occur within a combining sequence will be converted,
