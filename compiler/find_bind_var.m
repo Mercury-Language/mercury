@@ -238,9 +238,11 @@ conj_find_bind_var(Var, ProcessUnify, [HeadGoal0 | TailGoals0], Goals,
         FoundDeconstruct1 = found_deconstruct,
         FoundDeconstruct = FoundDeconstruct1,
         HeadGoal = hlds_goal(HeadGoalExpr, _),
-        ( if HeadGoalExpr = conj(_, []) then
-            % HeadGoal is "true". Delete it now, so simplify doesn't have to.
-            Goals = TailGoals0
+        ( if HeadGoalExpr = conj(plain_conj, HeadGoalConjuncts) then
+            % Flatten any nested conjunction we would be about to create.
+            % In addition, if HeadGoal is "true", this delete it now,
+            % sparing the simplification pass the trouble of doing it.
+            Goals = HeadGoalConjuncts ++ TailGoals0
         else
             Goals = [HeadGoal | TailGoals0]
         )
