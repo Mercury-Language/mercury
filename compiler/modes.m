@@ -1370,7 +1370,7 @@ modecheck_queued_proc(ProgressStream, HowToCheckGoal, PredProcId,
             pred_info_set_proc_info(ProcId, ProcInfo3, PredInfo2, PredInfo3),
             module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
-            detect_cse_in_proc(maybe.no, PredId, ProcId, !ModuleInfo),
+            detect_cse_in_queued_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProgressStream, PredId, ProcId,
                 DetismSpecs, !ModuleInfo),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
