@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -526,7 +526,7 @@ compute_grade_components(Options, GradeComponents) :-
     %
     % `IncludeGradeStr' is `yes' if the component should be included
     % in the grade string. It is `no' for those components that are
-    % just synonyms for other comments, as .mm is for .mmsc.
+    % just synonyms for other components, as .mm is for .mmsc.
     %
 :- pred grade_component_table(string, grade_component,
     list(pair(option, option_data)), maybe(list(option_data)), bool).
@@ -541,7 +541,7 @@ grade_component_table("none", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code          - bool(no) ],
+        highlevel_code          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("reg", comp_gcc_ext, [
         asm_labels              - bool(no),

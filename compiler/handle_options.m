@@ -842,6 +842,25 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
         add_error(phase_options, ExtraInitsSpec, !Specs)
     else
         true
+    ),
+
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    ( if
+        Target = target_c,
+        HighLevelCode = no,
+        Parallel = yes
+    then
+        LowParSpec =
+            [words("Sorry, but the implementation of parallelism"),
+            words("for low-level C code currently has a bug that"),
+            words("causes the generated code to be unreliable."),
+            words("Until that bug is fixed, this mmc does not support"),
+            words("this combination."), nl],
+        add_error(phase_options, LowParSpec, !Specs)
+    else
+        true
     ).
 
 %---------------------%
