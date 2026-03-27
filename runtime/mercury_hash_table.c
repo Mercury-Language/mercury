@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-2000, 2004-2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Hash table handling module.
@@ -69,7 +69,7 @@ MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 
 #ifdef  MR_HASHDEBUG
     if (! (0 <= h && h < table->MR_ht_size)) {
-        fprintf(stderr, "internal error: bad hash index in lookup_table: "
+        fprintf(stderr, "internal error: bad hash index in insert_table: "
             "%d, table size %d\n",
             h, table->MR_ht_size);
     }
