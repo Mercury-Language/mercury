@@ -2351,7 +2351,6 @@ MR_usage(void)
 static MR_bool
 MR_matches_exec_name(const char *option)
 {
-    char        *s;
     const char  *exec_name;
 
     exec_name = MR_get_program_basename(MR_progname);
