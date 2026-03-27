@@ -2081,7 +2081,7 @@ MR_process_options(int argc, char **argv)
 #else
                 printf("Mercury runtime: `--fp-rounding-mode' is specified "
                     "in MERCURY_OPTIONS\n");
-                printf("but the rounding mode cannot be changed"
+                printf("but the rounding mode cannot be changed "
                     "on this system.\n");
                 fflush(stdout);
                 exit(1);
