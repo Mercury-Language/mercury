@@ -852,6 +852,9 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
         HighLevelCode = no,
         Parallel = yes
     then
+        % When the bug referred to below is fixed, don't forget to
+        % to re-enable parallel low-level C grades in the configure
+        % script.
         LowParSpec =
             [words("Sorry, but the implementation of parallelism"),
             words("for low-level C code currently has a bug that"),

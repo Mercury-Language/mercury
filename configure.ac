@@ -3806,7 +3806,11 @@ fi
 if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != "" \
     -a "$MR_HAVE_PTHREAD_H" = 1
 then
-    LIBGRADES="$LIBGRADES hlc.par.gc $BEST_LLDS_BASE_GRADE.par.gc.stseg"
+    # We should also add $BEST_LLDS_BASE_GRADE.par.gc.stseg to LIBGRADES
+    # here, but that is currently disabled until a bug in parallel low
+    # level-C grades is fixed. (See check_for_incompatibilities/4 in
+    # in compiler/handel_options.m.)
+    LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
 # Add the .stseg (stack segments) version of the library.
