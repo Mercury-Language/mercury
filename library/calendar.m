@@ -22,7 +22,7 @@
 % a detailed description.) This is the calendar that is currently used
 % by most of the world.
 %
-% This modules allows times to be represented at microsecond resolution,
+% This module allows times to be represented at microsecond resolution,
 % though of course not all sources of time information are that precise.
 %
 %---------------------------------------------------------------------------%
