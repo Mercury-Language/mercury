@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains the accurate garbage collector.
@@ -293,9 +293,8 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
                     "has no stack layout info\n", entry_label->MR_entry_addr);
             }
             fprintf(stderr, "Mercury runtime: PC address = %p\n", pc_at_signal);
-            fprintf(stderr, "Mercury runtime: PC = label + 0x%lx\n",
-                (long) ((char *) pc_at_signal -
-                    (char *)entry_label->MR_entry_addr));
+            fprintf(stderr, "Mercury runtime: PC = label + 0x%zx\n",
+                ((char *) pc_at_signal - (char *) entry_label->MR_entry_addr));
         } else {
             fprintf(stderr, "Mercury runtime: no entry label ");
             fprintf(stderr, "for PC address %p\n", pc_at_signal);
@@ -893,11 +892,11 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
         MR_virtual_hp_word = (MR_Word) new_hp;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 
-        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-            (long) ((char *) old_hp - (char *) old_heap->MR_zone_min),
-            (long) ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
-        fprintf(stderr, "%ld bytes recovered\n",
-            (long) ((char *) old_hp - (char *) old_heap->MR_zone_min) -
+        fprintf(stderr, "old heap: %td bytes, new heap: %td bytes\n",
+            ((char *) old_hp - (char *) old_heap->MR_zone_min),
+            ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
+        fprintf(stderr, "%td bytes recovered\n",
+            ((char *) old_hp - (char *) old_heap->MR_zone_min) -
             ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
 
         fprintf(stderr, "Garbage collection done.\n\n");

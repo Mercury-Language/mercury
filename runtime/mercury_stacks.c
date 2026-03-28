@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2001, 2003-2006, 2008, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains code for printing statistics about stack frame sizes,
@@ -91,8 +91,8 @@ MR_print_stack_frame_stats(void)
         det_frame_total_size);
     fprintf(fp, "average size of a det stack frame:   %.3f\n",
         det_frame_total_size / det_frame_count);
-    fprintf(fp, "max size of det stack:               %ld\n",
-        (long) (MR_det_frame_max - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+    fprintf(fp, "max size of det stack:               %td\n",
+        (MR_det_frame_max - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
     fprintf(fp, "\n");
 
     fprintf(fp, "number of non stack frames created:  %.0f\n",
@@ -101,8 +101,8 @@ MR_print_stack_frame_stats(void)
         non_frame_total_size);
     fprintf(fp, "average size of a non stack frame:   %.3f\n",
         non_frame_total_size / non_frame_count);
-    fprintf(fp, "max size of non stack:               %ld\n",
-        (long) (MR_non_frame_max - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+    fprintf(fp, "max size of non stack:               %td\n",
+        (MR_non_frame_max - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
     fprintf(fp, "-------------------------------------------\n");
 
     MR_checked_fclose(fp, MR_STACK_FRAME_STATS);

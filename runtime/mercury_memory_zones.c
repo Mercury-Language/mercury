@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2000, 2002-2007, 2010-2012 The University of Melbourne.
-// Copyright (C) 2013-2016, 2018, 2022, 2024 The Mercury team.
+// Copyright (C) 2013-2016, 2018, 2022, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the MR_MemoryZone data structure and operations
@@ -1276,12 +1276,10 @@ MR_debug_memory(FILE *fp)
     MR_MemoryZone   *zone;
 
     fprintf(fp, "\n");
-    fprintf(fp, "pcache_size  = %lu (0x%lx)\n",
-        (unsigned long) MR_pcache_size, (unsigned long) MR_pcache_size);
-    fprintf(fp, "page_size    = %lu (0x%lx)\n",
-        (unsigned long) MR_page_size, (unsigned long) MR_page_size);
-    fprintf(fp, "unit         = %lu (0x%lx)\n",
-        (unsigned long) MR_unit, (unsigned long) MR_unit);
+    fprintf(fp, "pcache_size  = %zu (0x%zx)\n", MR_pcache_size,
+        MR_pcache_size);
+    fprintf(fp, "page_size    = %zu (0x%zx)\n", MR_page_size, MR_page_size);
+    fprintf(fp, "unit         = %zu (0x%zx)\n", MR_unit, MR_unit);
 
     fprintf(fp, "\n");
     fprintf(fp, "fake_reg       = %p (offset %" MR_INTEGER_LENGTH_MODIFIER "d)\n",
@@ -1298,9 +1296,9 @@ MR_debug_memory(FILE *fp)
 void
 MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
 {
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-dessize   = %lu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-dessize   = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
-        (unsigned long) zone->MR_zone_desired_size);
+        zone->MR_zone_desired_size);
     fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-base  = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_bottom);
@@ -1314,9 +1312,9 @@ MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_end);
 #ifdef  MR_CHECK_OVERFLOW_VIA_MPROTECT
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redsize   = %lu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redsize   = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
-        (unsigned long) zone->MR_zone_redzone_size);
+        zone->MR_zone_redzone_size);
     fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-redzone   = %p\n",
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_redzone);
@@ -1329,9 +1327,9 @@ MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone)
         zone->MR_zone_name, zone->MR_zone_id,
         (void *) zone->MR_zone_hardmax);
 #endif
-    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-size      = %lu\n",
+    fprintf(fp, "%-16s#%" MR_INTEGER_LENGTH_MODIFIER "d-size      = %zu\n",
         zone->MR_zone_name, zone->MR_zone_id,
-        (unsigned long) get_zone_alloc_size(zone));
+        get_zone_alloc_size(zone));
     fprintf(fp, "\n");
 }
 

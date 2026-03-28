@@ -771,7 +771,7 @@ mercury_runtime_init(int argc, char **argv)
 #ifdef MR_BOEHM_GC
 static void * GC_CALLBACK MR_oom_func(size_t bytes)
 {
-    MR_fatal_error("Could not allocate %d bytes, exiting.\n", bytes);
+    MR_fatal_error("Could not allocate %zu bytes, exiting.\n", bytes);
 }
 #endif
 
@@ -1411,7 +1411,7 @@ struct MR_option MR_long_opts[] = {
 static void
 MR_process_options(int argc, char **argv)
 {
-    unsigned long   size;
+    size_t          size;
     int             c;
     int             long_index;
 
@@ -1421,7 +1421,7 @@ MR_process_options(int argc, char **argv)
         switch (c)
         {
             case MR_HEAP_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1429,7 +1429,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_HEAP_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1437,7 +1437,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_DETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1445,7 +1445,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_DETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1453,7 +1453,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_NONDETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1461,7 +1461,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_NONDETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1469,7 +1469,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SMALL_DETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1479,7 +1479,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SMALL_DETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1489,7 +1489,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SMALL_NONDETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1499,7 +1499,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SMALL_NONDETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 #ifndef MR_STACK_SEGMENTS
@@ -1508,7 +1508,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1516,7 +1516,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1524,7 +1524,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1534,7 +1534,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1544,7 +1544,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_SEGMENT_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1554,7 +1554,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_SEGMENT_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1564,7 +1564,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_HEAP_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1572,7 +1572,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_HEAP_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1580,7 +1580,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_DETSTACK_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1588,7 +1588,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_DETSTACK_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1596,7 +1596,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_NONDETSTACK_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1604,7 +1604,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_NONDETSTACK_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1612,7 +1612,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1620,7 +1620,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1628,7 +1628,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1636,7 +1636,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRAIL_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1644,7 +1644,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_HEAP_MARGIN_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1652,7 +1652,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_HEAP_MARGIN_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1666,7 +1666,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GENSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1674,7 +1674,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GENSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1682,7 +1682,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_CUTSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1690,7 +1690,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_CUTSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1698,7 +1698,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_PNEGSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1706,7 +1706,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_PNEGSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1714,7 +1714,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_DETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1722,7 +1722,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_DETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1730,7 +1730,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_NONDETSTACK_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1738,7 +1738,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_NONDETSTACK_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1746,7 +1746,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_DETSTACK_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1754,7 +1754,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1762,7 +1762,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_NONDETSTACK_REDZONE_SIZE:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1770,7 +1770,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1779,7 +1779,7 @@ MR_process_options(int argc, char **argv)
 
             case MR_MAX_ENGINES:
 #ifdef MR_LL_PARALLEL_CONJ
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1791,7 +1791,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_MAX_CONTEXTS_PER_THREAD:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1799,7 +1799,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_NUM_CONTEXTS_PER_LC_PER_THREAD:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1861,7 +1861,7 @@ MR_process_options(int argc, char **argv)
 
             case 'n':
             case MR_NUM_OUTPUT_ARGS:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -1995,7 +1995,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_TRACE_COUNT_SUMMARY_MAX_OPT:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -2011,7 +2011,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_BOEHM_GC_FREE_SPACE_DIVISOR:
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
@@ -2107,7 +2107,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case 'C':
-                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                if (sscanf(MR_optarg, "%zu", &size) != 1) {
                     MR_usage();
                 }
 
