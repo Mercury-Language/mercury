@@ -17,52 +17,52 @@
 
 main(!IO) :-
     % Test 1: 1900 was not a leap year.
-    Date1A = det_init_date(1900, february, 25, 0, 0, 0, 0),
-    Date1B = det_init_date(1900, march, 1, 0, 0, 0, 0),
+    Date1A = det_init_date_time(1900, february, 25, 0, 0, 0, 0),
+    Date1B = det_init_date_time(1900, march, 1, 0, 0, 0, 0),
     io.write_string("Test 1:\n", !IO),
-    foldl_days(write_date, Date1A, Date1B, !IO),
+    foldl_days(write_date_time, Date1A, Date1B, !IO),
     io.nl(!IO),
 
     % Test 2: 2000 was a leap year.
-    Date2A = det_init_date(2000, february, 25, 0, 0, 0, 0),
-    Date2B = det_init_date(2000, march, 1, 0, 0, 0, 0),
+    Date2A = det_init_date_time(2000, february, 25, 0, 0, 0, 0),
+    Date2B = det_init_date_time(2000, march, 1, 0, 0, 0, 0),
     io.write_string("Test 2:\n", !IO),
-    foldl_days(write_date, Date2A, Date2B, !IO),
+    foldl_days(write_date_time, Date2A, Date2B, !IO),
     io.nl(!IO),
 
     % Test 3: 1977 was not a leap year.
-    Date3A = det_init_date(1977, february, 25, 0, 0, 0, 0),
-    Date3B = det_init_date(1977, march, 1, 0, 0, 0, 0),
+    Date3A = det_init_date_time(1977, february, 25, 0, 0, 0, 0),
+    Date3B = det_init_date_time(1977, march, 1, 0, 0, 0, 0),
     io.write_string("Test 3:\n", !IO),
-    foldl_days(write_date, Date3A, Date3B, !IO),
+    foldl_days(write_date_time, Date3A, Date3B, !IO),
     io.nl(!IO),
 
     % Test 4: calendar dates of start and end are the same,
     % time of start is less than that of the end.
-    Date4A = det_init_date(1977, february, 17, 0, 0, 0, 0),
-    Date4B = det_init_date(1977, february, 17, 1, 0, 0, 0),
+    Date4A = det_init_date_time(1977, february, 17, 0, 0, 0, 0),
+    Date4B = det_init_date_time(1977, february, 17, 1, 0, 0, 0),
     io.write_string("Test 4:\n", !IO),
-    foldl_days(write_date, Date4A, Date4B, !IO),
+    foldl_days(write_date_time, Date4A, Date4B, !IO),
     io.nl(!IO),
 
     % Test 5: calendar dates of start and end are the same,
     % time of start is equal to that of the end.
-    Date5A = det_init_date(1977, february, 17, 0, 0, 0, 0),
-    Date5B = det_init_date(1977, february, 17, 0, 0, 0, 0),
+    Date5A = det_init_date_time(1977, february, 17, 0, 0, 0, 0),
+    Date5B = det_init_date_time(1977, february, 17, 0, 0, 0, 0),
     io.write_string("Test 5:\n", !IO),
-    foldl_days(write_date, Date5A, Date5B, !IO),
+    foldl_days(write_date_time, Date5A, Date5B, !IO),
     io.nl(!IO),
 
     % Test 6: calendar dates of start and end are the same,
     % time of the start is greater than that of the end.
-    Date6A = det_init_date(1977, february, 17, 1, 0, 0, 0),
-    Date6B = det_init_date(1977, february, 17, 0, 0, 0, 0),
+    Date6A = det_init_date_time(1977, february, 17, 1, 0, 0, 0),
+    Date6B = det_init_date_time(1977, february, 17, 0, 0, 0, 0),
     io.write_string("Test 6:\n", !IO),
-    foldl_days(write_date, Date6A, Date6B, !IO),
+    foldl_days(write_date_time, Date6A, Date6B, !IO),
     io.nl(!IO).
 
-:- pred write_date(date::in, io::di, io::uo) is det.
+:- pred write_date_time(date_time::in, io::di, io::uo) is det.
 
-write_date(Date, !IO) :-
-    Str = date_to_string(Date),
+write_date_time(DateTime, !IO) :-
+    Str = date_time_to_string(DateTime),
     io.write_string(Str ++ "\n", !IO).

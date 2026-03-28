@@ -15,7 +15,7 @@ module builtin, name c_pointer, arity 0
 module bitmap, name bitmap, arity 0
 module integer, name integer, arity 0
 module univ, name univ, arity 0
-module calendar, name date, arity 0
+module calendar, name date_time, arity 0
 module calendar, name duration, arity 0
 module type_desc, name type_desc, arity 0
 module type_desc, name type_ctor_desc, arity 0

@@ -622,7 +622,7 @@ print(Stream, NonCanon, Term, !State) :-
         ;
             TypeCtorModuleName = "calendar",
             ( if dynamic_cast(Term, DateTime) then
-                put(Stream, date_to_string(DateTime), !State)
+                put(Stream, date_time_to_string(DateTime), !State)
             else if dynamic_cast(Term, Duration) then
                 put(Stream, duration_to_string(Duration), !State)
             else

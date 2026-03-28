@@ -94,9 +94,9 @@ main(!IO) :-
     list.foldl(test_int0_to_month, -1..13, !IO),
     io.nl(!IO),
     io.write_string("Same date:\n", !IO),
-    Date1 = det_date_from_string("2014-12-04 12:53:00"),
-    Date2 = det_date_from_string("2014-12-04 12:54:00"),
-    Date3 = det_date_from_string("2014-12-05 12:53:00"),
+    Date1 = det_date_time_from_string("2014-12-04 12:53:00"),
+    Date2 = det_date_time_from_string("2014-12-04 12:54:00"),
+    Date3 = det_date_time_from_string("2014-12-05 12:53:00"),
     test_same_date(Date1, Date1, !IO),
     test_same_date(Date1, Date2, !IO),
     test_same_date(Date1, Date3, !IO),
@@ -210,12 +210,13 @@ test_int0_to_month(Int, !IO) :-
     ),
     io.format("%d -> %s\n", [i(Int), s(Result)], !IO).
 
-:- pred test_same_date(date::in, date::in, io::di, io::uo) is det.
+:- pred test_same_date(date_time::in, date_time::in, io::di, io::uo) is det.
 
 test_same_date(A, B, !IO) :-
     Result = ( if same_date(A, B) then "==" else "!=" ),
     io.format("%s %s %s\n",
-        [s(date_to_string(A)), s(Result), s(date_to_string(B))], !IO).
+        [s(date_time_to_string(A)), s(Result), s(date_time_to_string(B))],
+            !IO).
 
 :- func all_months = list(month).
 

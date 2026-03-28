@@ -14,7 +14,7 @@
 % a representation of durations (differences between two points in time),
 % and operations on those representations.
 %
-% This module identifies points in time by a date specifying a day,
+% This module identifies points in time by a date_time specifying a day,
 % and a time within that day. It uses dates from the proleptic Gregorian
 % calendar, which is a version of the Gregorian calendar that has been
 % extended backward in time to dates before its introduction in 1582.
@@ -37,13 +37,15 @@
 
     % A point on the proleptic Gregorian calendar, to the nearest microsecond.
     %
-:- type date.
+:- type date_time.
 
-    % A more precisely descriptive name for the above.
+    % A deprecated name for date_time.
+    % In a future release, this name will be used for date values without
+    % a time component.
     %
-:- type date_time == date.
+:- type date == date_time.
 
-    % Date components.
+    % Date_time components.
     %
 :- type year == int.         % Year 0 is 1 BC, -1 is 2 BC, etc.
 :- type day_of_month == int. % 1 .. 31 depending on the month and year
@@ -77,16 +79,16 @@
 
 %---------------------%
 
-    % Functions to retrieve the components of a date.
+    % Functions to retrieve the components of a date_time.
     %
-:- func year(date) = year.
-:- func month(date) = month.
-:- func day_of_month(date) = day_of_month.
-:- func day_of_week(date) = day_of_week.
-:- func hour(date) = hour.
-:- func minute(date) = minute.
-:- func second(date) = second.
-:- func microsecond(date) = microsecond.
+:- func year(date_time) = year.
+:- func month(date_time) = month.
+:- func day_of_month(date_time) = day_of_month.
+:- func day_of_week(date_time) = day_of_week.
+:- func hour(date_time) = hour.
+:- func minute(date_time) = minute.
+:- func second(date_time) = second.
+:- func microsecond(date_time) = microsecond.
 
     % int_to_month(Int, Month):
     %
@@ -146,9 +148,10 @@
 
 %---------------------%
 
-    % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date):
+    % init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
+    %   DateTime):
     %
-    % Initialise a new date from the given components. Fails if any of the
+    % Initialise a new date_time from the given components. Fails if any of the
     % following conditions are not met:
     %
     %   - Day is in the range 1 .. N,
@@ -165,23 +168,37 @@
     %
     % This predicate accepts all values for Year.
     %
+:- pred init_date_time(year::in, month::in, day_of_month::in, hour::in,
+    minute::in, second::in, microsecond::in, date_time::out) is semidet.
+
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
-    minute::in, second::in, microsecond::in, date::out) is semidet.
+    minute::in, second::in, microsecond::in, date_time::out) is semidet.
+:- pragma obsolete(pred(init_date/8), [init_date_time/8]).
 
     % As above, but throw an exception if the date is invalid.
     %
+:- func det_init_date_time(year, month, day_of_month, hour, minute, second,
+    microsecond) = date_time.
+
 :- func det_init_date(year, month, day_of_month, hour, minute, second,
-    microsecond) = date.
+    microsecond) = date_time.
+:- pragma obsolete(func(det_init_date/7), [det_init_date_time/7]).
 
     % Retrieve all the components of a date.
     %
-:- pred unpack_date(date::in,
+:- pred unpack_date_time(date_time::in,
     year::out, month::out, day_of_month::out, hour::out, minute::out,
     second::out, microsecond::out) is det.
 
+:- pred unpack_date(date_time::in,
+    year::out, month::out, day_of_month::out, hour::out, minute::out,
+    second::out, microsecond::out) is det.
+:- pragma obsolete(pred(unpack_date/8), [unpack_date_time/8]).
+
 %---------------------%
 
-    % Convert a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm" to a date.
+    % Convert a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm" to a
+    % date_time.
     %
     % The year must have at least four digits. This requirement comes from
     % ISO standard 8601, and its main intention is to prevent repeats of
@@ -189,7 +206,7 @@
     % It also prevents possible confusion between the year part of the date,
     % and the month or the day parts.
     %
-    % Since some simulation programs may want to handle dates in the far
+    % Since some simulation programs may want to handle date_times in the far
     % future, the predicate accepts years with more than four digits.
     %
     % The microseconds component (.mmmmmm) is optional. If present,
@@ -198,57 +215,67 @@
     % This predicate fails if the string does not conform to the above format,
     % or if any date or time component is outside its valid range.
     %
-:- pred date_from_string(string::in, date::out) is semidet.
+:- pred date_time_from_string(string::in, date_time::out) is semidet.
+
+:- pred date_from_string(string::in, date_time::out) is semidet.
+:- pragma obsolete(pred(date_from_string/2), [date_time_from_string/2]).
 
     % As above, but throw an exception if the string is not a valid date.
     %
-:- func det_date_from_string(string) = date.
+:- func det_date_time_from_string(string) = date_time.
 
-    % Convert a date to a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm".
+:- func det_date_from_string(string) = date_time.
+:- pragma obsolete(func(det_date_from_string/1),
+    [det_date_time_from_string/1]).
+
+    % Convert a date_time to a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm".
     % If the microseconds component of the date is zero, then omit the
     % ".mmmmmm" part.
     %
-:- func date_to_string(date) = string.
+:- func date_time_to_string(date_time) = string.
+
+:- func date_to_string(date_time) = string.
+:- pragma obsolete(func(date_to_string/1), [date_time_to_string/1]).
 
 %---------------------%
 
     % current_local_time(Now, !IO):
     %
-    % Return the current local time as a date. The microseconds component
-    % of the returned date is always zero, as the underlying system call
-    % has only second-level resolution. The timezone used is the system
-    % local timezone.
+    % Return the current local time as a date_time. The microseconds component
+    % of the returned date_time is always zero, as the underlying system call
+    % has only second-level resolution. The timezone used is the system local
+    % timezone.
     %
-:- pred current_local_time(date::out, io::di, io::uo) is det.
+:- pred current_local_time(date_time::out, io::di, io::uo) is det.
 
     % current_utc_time(Now, !IO):
     %
-    % Return the current UTC time as a date. The microseconds component
-    % of the returned date is always zero, as the underlying system call
-    % has only second-level resolution.
+    % Return the current UTC time as a date_time. The microseconds component of
+    % the returned date_time is always zero, as the underlying system call has
+    % only second-level resolution.
     %
-:- pred current_utc_time(date::out, io::di, io::uo) is det.
+:- pred current_utc_time(date_time::out, io::di, io::uo) is det.
 
-    % julian_day_number(Date) = JDN:
+    % julian_day_number(DateTime) = JDN:
     %
-    % Return the Julian day number for Date on the proleptic Gregorian
+    % Return the Julian day number for DateTime on the proleptic Gregorian
     % calendar. The Julian day number is the integer number of days since
     % the start of the Julian period (noon on 1 January, 4713 BC in the
-    % proleptic Julian calendar). The time-of-day components of Date are
+    % proleptic Julian calendar). The time-of-day components of DateTime are
     % ignored; the result is the Julian day number for the date at noon.
     %
-:- func julian_day_number(date) = int.
+:- func julian_day_number(date_time) = int.
 
     % Return the Unix epoch, 1970-01-01 00:00:00.
     %
-:- func unix_epoch = date.
+:- func unix_epoch = date_time.
 
     % same_date(A, B):
     %
     % Succeed if-and-only-if A and B refer to the exact same day.
     % Their time components are ignored.
     %
-:- pred same_date(date::in, date::in) is semidet.
+:- pred same_date(date_time::in, date_time::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -447,14 +474,14 @@
 
 %---------------------%
 
-    % add_duration(Duration, Date0, Date):
+    % add_duration(Duration, DateTime0, DateTime):
     %
-    % Add Duration to Date0 to yield Date, clamping the day to the end of the
-    % month if the month or year component of the duration causes it to fall
-    % out of range.
+    % Add Duration to DateTime0 to yield DateTime, clamping the day to the end
+    % of the month if the month or year component of the duration causes it to
+    % fall out of range.
     % (See the documentation of the type duration/0 for the clamping rules.)
     %
-:- pred add_duration(duration::in, date::in, date::out) is det.
+:- pred add_duration(duration::in, date_time::in, date_time::out) is det.
 
     % duration_leq(DurationA, DurationB):
     %
@@ -495,12 +522,13 @@
     %
 :- pred local_time_offset(duration::out, io::di, io::uo) is det.
 
-    % duration(DateA, DateB) = Duration:
+    % duration(DateTimeA, DateTimeB) = Duration:
     %
-    % Return the duration from DateA to DateB using a greedy algorithm that
-    % maximises each component in this order: years, months, days, hours,
-    % minutes, seconds, microseconds. The result is positive if DateB is after
-    % DateA and negative if DateB is before DateA. Leap seconds are ignored.
+    % Return the duration from DateTimeA to DateTimeB using a greedy algorithm
+    % that maximises each component in this order: years, months, days, hours,
+    % minutes, seconds, microseconds. The result is positive if DateTimeB is
+    % after DateTimeA and negative if DateTimeB is before DateTimeA. Leap
+    % seconds are ignored.
     %
     % The dates should be in the same timezone and daylight savings phase;
     % to find the duration between dates in different timezones or daylight
@@ -511,26 +539,26 @@
     % to 2001-02-28 is 1 month, but adding -1 month to 2001-02-28 yields
     % 2001-01-28, not 2001-01-31.
     %
-:- func duration(date, date) = duration.
+:- func duration(date_time, date_time) = duration.
 
     % As for duration/2, but the year and month components of the returned
     % duration are always zero; the result is expressed in days, hours,
     % minutes, seconds and microseconds only.
     %
-:- func day_duration(date, date) = duration.
+:- func day_duration(date_time, date_time) = duration.
 
 %---------------------------------------------------------------------------%
 %
-% Folds over ranges of dates.
+% Folds over ranges of date_times.
 %
 
     % foldl_days(Pred, Start, End, !Acc):
     %
-    % Call Pred for each date in the range Start to End (inclusive), passing an
-    % accumulator. Each date in the range is generated by adding a duration of
-    % one day to the previous date using add_duration/3.
+    % Call Pred for each date_time in the range Start to End (inclusive),
+    % passing an accumulator. Each date_time in the range is generated by
+    % adding a duration of one day to the previous date using add_duration/3.
     %
-:- pred foldl_days(pred(date, A, A), date, date, A, A).
+:- pred foldl_days(pred(date_time, A, A), date_time, date_time, A, A).
 :- mode foldl_days(in(pred(in, in, out) is det),
     in, in, in, out) is det.
 :- mode foldl_days(in(pred(in, mdi, muo) is det),
@@ -548,7 +576,8 @@
     %
     % As above, but with two accumulators.
     %
-:- pred foldl2_days(pred(date, A, A, B, B), date, date, A, A, B, B).
+:- pred foldl2_days(pred(date_time, A, A, B, B), date_time, date_time,
+    A, A, B, B).
 :- mode foldl2_days(in(pred(in, in, out, in, out) is det),
     in, in, in, out, in, out) is det.
 :- mode foldl2_days(in(pred(in, in, out, mdi, muo) is det),
@@ -566,7 +595,7 @@
     %
     % As above, but with three accumulators.
     %
-:- pred foldl3_days(pred(date, A, A, B, B, C, C), date, date,
+:- pred foldl3_days(pred(date_time, A, A, B, B, C, C), date_time, date_time,
     A, A, B, B, C, C).
 :- mode foldl3_days(in(pred(in, in, out, in, out, in, out) is det),
     in, in, in, out, in, out, in, out) is det.
@@ -595,8 +624,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- type date
-    --->    date(
+:- type date_time
+    --->    date_time(
                 dt_year             :: int,
                 dt_month            :: int,
                 dt_day              :: int,
@@ -729,7 +758,8 @@ is_leap_year(Year) :-
 
 %---------------------------------------------------------------------------%
 
-init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
+init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
+        DateTime) :-
     Day >= 1,
     Day =< days_in_month(Year, Month),
     Hour >= 0,
@@ -740,28 +770,44 @@ init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
     Second < 62,
     MicroSecond >= 0,
     MicroSecond < 1000000,
-    Date = date(Year, month_to_int(Month), Day, Hour, Minute, Second,
+    DateTime = date_time(Year, month_to_int(Month), Day, Hour, Minute, Second,
         MicroSecond).
 
-det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
-        = Date :-
+init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, DateTime) :-
+    init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
+        DateTime).
+
+det_init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        = DateTime :-
     ( if
-        init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date0)
+        init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
+            DateTime0)
     then
-        Date = Date0
+        DateTime = DateTime0
     else
-        Msg = string.format("invalid date: %i-%i-%i %i:%i:%i",
+        Msg = string.format("invalid date_time: %i-%i-%i %i:%i:%i",
             [i(Year), i(month_to_int(Month)), i(Day), i(Hour),
             i(Minute), i(Second)]),
         unexpected($pred, Msg)
     ).
 
-unpack_date(date(Year, Month, Day, Hour, Minute, Second, MicroSecond),
-    Year, det_int_to_month(Month), Day, Hour, Minute, Second, MicroSecond).
+det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond) =
+    det_init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond).
+
+unpack_date_time(DateTime, Year, Month, Day, Hour, Minute, Second,
+        MicroSecond) :-
+    DateTime = date_time(Year, IntMonth, Day, Hour, Minute, Second,
+        MicroSecond),
+    Month = det_int_to_month(IntMonth).
+
+unpack_date(DateTime, Year, Month, Day, Hour, Minute, Second,
+        MicroSecond) :-
+    unpack_date_time(DateTime, Year, Month, Day, Hour, Minute, Second,
+        MicroSecond).
 
 %---------------------------------------------------------------------------%
 
-date_from_string(Str, Date) :-
+date_time_from_string(Str, Date) :-
     some [!Chars] (
         !:Chars = string.to_char_list(Str),
         ( if read_char((-), !.Chars, Rest1) then
@@ -793,18 +839,24 @@ date_from_string(Str, Date) :-
         Second < 62,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
-        Date = date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        Date = date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)
     ).
 
-det_date_from_string(Str) = Date :-
-    ( if date_from_string(Str, Date0) then
-        Date = Date0
+date_from_string(Str, Date) :-
+    date_time_from_string(Str, Date).
+
+det_date_time_from_string(Str) = DateTime :-
+    ( if date_time_from_string(Str, DateTime0) then
+        DateTime = DateTime0
     else
-        unexpected($pred, "invalid date: " ++ Str)
+        unexpected($pred, "invalid date_time: " ++ Str)
     ).
 
-date_to_string(Date) = Str :-
-    unpack_date(Date, Year0, Month, Day, Hour, Minute, Second, MicroSecond),
+det_date_from_string(Str) = det_date_time_from_string(Str).
+
+date_time_to_string(DateTime) = Str :-
+    unpack_date_time(DateTime, Year0, Month, Day, Hour, Minute, Second,
+        MicroSecond),
     ( if Year0 < 0 then
         SignStr = "-",
         Year = -Year0
@@ -816,6 +868,8 @@ date_to_string(Date) = Str :-
     Str = string.format("%s%04d-%02d-%02d %02d:%02d:%02d%s",
         [s(SignStr), i(Year), i(month_to_int(Month)), i(Day),
         i(Hour), i(Minute), i(Second), s(MicroSecondStr)]).
+
+date_to_string(DateTime) = date_time_to_string(DateTime).
 
 %---------------------------------------------------------------------------%
 
@@ -839,9 +893,9 @@ tm_to_date(TM) = Date :-
     Hour = TMHour,
     Minute = TMMinute,
     Second = TMSecond,
-    Date = date(Year, Month, Day, Hour, Minute, Second, 0).
+    Date = date_time(Year, Month, Day, Hour, Minute, Second, 0).
 
-julian_day_number(date(Year, Month, Day, _, _, _, _)) = JDN :-
+julian_day_number(date_time(Year, Month, Day, _, _, _, _)) = JDN :-
     % The algorithm is described at
     % https://en.wikipedia.org/wiki/Julian_day.
     A = (14 - Month) div 12,
@@ -850,11 +904,11 @@ julian_day_number(date(Year, Month, Day, _, _, _, _)) = JDN :-
     JDN = Day + ( 153 * M + 2 ) div 5 + 365 * Y + Y div 4 - Y div 100 +
         Y div 400 - 32045.
 
-unix_epoch = date(1970, 1, 1, 0, 0, 0, 0).
+unix_epoch = date_time(1970, 1, 1, 0, 0, 0, 0).
 
 same_date(A, B) :-
-    A = date(Year, Month, Day, _, _, _, _),
-    B = date(Year, Month, Day, _, _, _, _).
+    A = date_time(Year, Month, Day, _, _, _, _),
+    B = date_time(Year, Month, Day, _, _, _, _).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1087,7 +1141,7 @@ add_duration(D, S, !:E) :-
             TempDays = S ^ dt_day
         ),
         EDay = TempDays + D ^ dur_days + !.Carry,
-        !:E = date(EYear, EMonth, EDay, EHour, EMinute, ESecond, EMicrosecond),
+        !:E = date_time(EYear, EMonth, EDay, EHour, EMinute, ESecond, EMicrosecond),
         add_duration_loop(D, S, !E)
     ).
 
@@ -1177,10 +1231,10 @@ duration_leq(DurA, DurB) :-
 :- func test_dates = list(date).
 
 test_dates = [
-    date(1696, 9, 1, 0, 0, 0, 0),
-    date(1697, 2, 1, 0, 0, 0, 0),
-    date(1903, 3, 1, 0, 0, 0, 0),
-    date(1903, 7, 1, 0, 0, 0, 0)
+    date_time(1696, 9, 1, 0, 0, 0, 0),
+    date_time(1697, 2, 1, 0, 0, 0, 0),
+    date_time(1903, 3, 1, 0, 0, 0, 0),
+    date_time(1903, 7, 1, 0, 0, 0, 0)
 ].
 
 local_time_offset(TZ, !IO) :-

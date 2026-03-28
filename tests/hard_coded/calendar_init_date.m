@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Test calendar.init_date/8 and calendar.det_init_date/7.
+% Test calendar.init_date_time/8 and calendar.det_init_date_time/7.
 %---------------------------------------------------------------------------%
 
 :- module calendar_init_date.
@@ -56,19 +56,20 @@ test_valid_dates(!IO) :-
 
 test_valid_case(TestDate, !IO) :-
     TestDate  = test_date(Desc, Y, M, D, H, Min, S, Us),
-    ( if init_date(Y, M, D, H, Min, S, Us, Date) then
-        % Round-trip: verify that components are preserved by unpack_date/8.
-        unpack_date(Date, Y2, M2, D2, H2, Min2, S2, Us2),
+    ( if init_date_time(Y, M, D, H, Min, S, Us, DateTime) then
+        % Round-trip: verify that components are preserved by
+        % unpack_date_time/8.
+        unpack_date_time(DateTime, Y2, M2, D2, H2, Min2, S2, Us2),
         ( if
             Y = Y2, M = M2, D = D2, H = H2, Min = Min2, S = S2, Us = Us2
         then
-            io.format("PASS: valid date (%s)\n", [s(Desc)], !IO)
+            io.format("PASS: valid date_time (%s)\n", [s(Desc)], !IO)
         else
-            io.format("FAIL: round-trip mismatch for valid date (%s)\n",
+            io.format("FAIL: round-trip mismatch for valid date_time (%s)\n",
                 [s(Desc)], !IO)
         )
     else
-        io.format("FAIL: init_date/8 failed for valid date (%s)\n",
+        io.format("FAIL: init_date_time/8 failed for valid date_time (%s)\n",
             [s(Desc)], !IO)
     ).
 
@@ -126,11 +127,11 @@ test_invalid_dates(!IO) :-
 
 test_invalid_case(TestDate, !IO) :-
     TestDate = test_date(Desc, Y, M, D, H, Min, S, Us),
-    ( if init_date(Y, M, D, H, Min, S, Us, _Date) then
-        io.format("FAIL: init_date/8 succeeded for invalid date (%s)\n",
+    ( if init_date_time(Y, M, D, H, Min, S, Us, _DateTime) then
+        io.format("FAIL: init_date_time/8 succeeded for invalid date_time (%s)\n",
             [s(Desc)], !IO)
     else
-        io.format("PASS: init_date/8 failed for invalid date (%s)\n",
+        io.format("PASS: init_date_time/8 failed for invalid date_time (%s)\n",
             [s(Desc)], !IO)
     ).
 
@@ -163,7 +164,7 @@ invalid_dates = [
 
 %---------------------------------------------------------------------------%
 %
-% Test det_init_date/7.
+% Test det_init_date_time/7.
 %
 
 :- pred test_det_init_date(io::di, io::uo) is cc_multi.
@@ -176,13 +177,13 @@ test_det_init_date(!IO) :-
 test_det_exception_case(TestDate, !IO) :-
     TestDate = test_date(Desc, Y, M, D, H, Min, S, Us),
     ( try []
-        Date = det_init_date(Y, M, D, H, Min, S, Us)
+        DateTime = det_init_date_time(Y, M, D, H, Min, S, Us)
     then
-        use_date(Date, !IO),
-        io.format("FAIL: det_init_date did not throw for (%s)\n",
+        use_date_time(DateTime, !IO),
+        io.format("FAIL: det_init_date_time did not throw for (%s)\n",
             [s(Desc)], !IO)
     catch_any _ ->
-        io.format("PASS: det_init_date threw exception for (%s)\n",
+        io.format("PASS: det_init_date_time threw exception for (%s)\n",
             [s(Desc)], !IO)
     ).
 
@@ -194,10 +195,10 @@ exception_dates = [
     test_date("det: minute 60", 2024, january,  1, 0, 60, 0, 0)
 ].
 
-:- pragma no_inline(pred(use_date/3)).
-:- pred use_date(date::in, io::di, io::uo) is det.
+:- pragma no_inline(pred(use_date_time/3)).
+:- pred use_date_time(date_time::in, io::di, io::uo) is det.
 
-use_date(_, !IO).
+use_date_time(_, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar_init_date.
