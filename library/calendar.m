@@ -277,7 +277,10 @@
     % same_date(A, B):
     %
     % Succeed if-and-only-if A and B refer to the exact same day.
-    % Their time components are ignored.
+    % Their time components are ignored. A and B should refer to
+    % the same time zone; comparing dates in different time zones
+    % may give incorrect results, because the same point in time can
+    % fall on different days in different time zones.
     %
 :- pred same_date(date_time::in, date_time::in) is semidet.
 
