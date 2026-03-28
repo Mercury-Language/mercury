@@ -224,7 +224,7 @@
 :- pred date_from_string(string::in, date_time::out) is semidet.
 :- pragma obsolete(pred(date_from_string/2), [date_time_from_string/2]).
 
-    % As above, but throw an exception if the string is not a valid date.
+    % As above, but throw an exception if the string is not a valid date_time.
     %
 :- func det_date_time_from_string(string) = date_time.
 
