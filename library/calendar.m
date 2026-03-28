@@ -36,6 +36,10 @@
 %---------------------------------------------------------------------------%
 
     % A point on the proleptic Gregorian calendar, to the nearest microsecond.
+    % A date_time carries no time zone information; it is the responsibility
+    % of code that creates and uses date_times to ensure that any two
+    % date_times passed to the same operation refer to the same time zone.
+    % To convert between local time and UTC, see local_time_offset/3.
     %
 :- type date_time.
 
