@@ -226,13 +226,18 @@ Changes to the Mercury standard library
 
 ### Changes to the `calendar` module
 
-* The `date/0` type has been renamed to `date_time/0` and `date/0` is now
-  a type synonym for `date_time/0` rather than the other way around, as
-  previously.
+* The `date/0` type, whose values contain information about times
+  as well as dates, has been renamed to `date_time/0`. `date_time/0`
+  has previously been an equivalence type that expanded to the old
+  `date/0` type.
 
-  The use of the name `date/0` is deprecated. Its meaning will be changed
-  in a future release. As a result of this, the following predicates and
-  functions are now obsolete:
+  `date/0` is now an equivalence type that expands to `date_time/0`
+  (effectively reversing their relationship). However, this is a temporary
+  measure, to allow time for programmers to switch to using `date_time/0`.
+  The reason for this is that at the next release, we intend to reuse the
+  `date/0` name for a new type that contains only date information,
+  without any time information. To encourage this switchover, the following
+  predicates and functions have been marked obsolete:
 
     - pred `init_date/8`            (replacement: `init_date_time/8`)
     - func `det_init_date/7`        (replacement: `det_init_date_time/7`)
@@ -241,16 +246,16 @@ Changes to the Mercury standard library
     - func `det_date_from_string/1` (replacement: `det_date_time_from_string/1`)
     - func `date_to_string/1`       (replacement: `date_time_to_string/1`)
 
-* The following function and predicate have been added:
+* The following functions and predicates have been added:
 
-    - func `days_in_month/2` 
-    - pred `is_leap_year/1`
     - pred `init_date_time/8`
     - func `det_init_date_time/7`
     - pred `unpack_date_time/8`
     - pred `date_time_from_string/2`
     - func `det_date_time_from_string/1`
     - func `date_time_to_string/1`
+    - func `days_in_month/2` 
+    - pred `is_leap_year/1`
 
 ### Changes to the `char` module
 
