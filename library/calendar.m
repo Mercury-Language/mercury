@@ -22,7 +22,7 @@
 % a detailed description.) This is the calendar that is currently used
 % by most of the world.
 %
-% This modules allow times to be represented at microsecond resolution,
+% This modules allows times to be represented at microsecond resolution,
 % though of course not all sources of time information are that precise.
 %
 %---------------------------------------------------------------------------%
@@ -188,7 +188,7 @@
     microsecond) = date_time.
 :- pragma obsolete(func(det_init_date/7), [det_init_date_time/7]).
 
-    % Retrieve all the components of a date.
+    % Retrieve all the components of a date_time.
     %
 :- pred unpack_date_time(date_time::in,
     year::out, month::out, day_of_month::out, hour::out, minute::out,
@@ -233,7 +233,7 @@
     [det_date_time_from_string/1]).
 
     % Convert a date_time to a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm".
-    % If the microseconds component of the date is zero, then omit the
+    % If the microseconds component of the date_time is zero, then omit the
     % ".mmmmmm" part.
     %
 :- func date_time_to_string(date_time) = string.
@@ -461,7 +461,7 @@
     %
     %   -P1M2D
     %
-    % Note that this function normalises its input, so that (for example)
+    % Note that this predicate normalises its input, so that (for example)
     % duration_to_string(det_duration_from_string("P1Y18M100DT10H15M90.0003S"))
     % will return "P2Y6M100DT10H16M30.0003S".
     %
