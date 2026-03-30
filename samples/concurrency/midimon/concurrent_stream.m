@@ -90,7 +90,7 @@ new(Stream, !IO) :-
 
 put(Stream, Thing, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),
-    sempahore.wait(Lock, !IO),
+    semaphore.wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
     queue.put(ok(Thing), Queue0, Queue),
     store.set_mutvar(QueueRef, Queue, !IO),
