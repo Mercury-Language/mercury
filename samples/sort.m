@@ -49,7 +49,7 @@ main(!IO) :-
         sort(InputFile, OutputFile, !IO)
     ;
         Args = [_, _, _ | _],
-        io.write_string("Usage: sort [Input [Output]]\\n", !IO)
+        io.write_string("Usage: sort [Input [Output]]\n", !IO)
     ).
 
 :- pred handle_args(maybe(string)::in, io.text_input_stream::out,

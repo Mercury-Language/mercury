@@ -114,7 +114,6 @@ report_eval_error(Error, !IO) :-
         io.format("unknown variable `%s'.\n", [s(Name)], !IO)
     ;
         Error = unexpected_const(Const),
-        io.write_string("unexpected ", !IO),
         (
             Const = term.float(Float),
             io.format("unexpected float `%f'\n", [f(Float)], !IO)
