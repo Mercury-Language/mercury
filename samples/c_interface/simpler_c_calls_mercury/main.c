@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 		printf("baz(1, &value) returns TRUE with value = %ld\n",
 			(long) value);
 	} else {
-		printf("baz(100, &value) returns FALSE\n");
+		printf("baz(1, &value) returns FALSE\n");
 	}
 	if (baz(100, &value)) {
 		printf("baz(100, &value) returns TRUE with value = %ld\n",
