@@ -1,12 +1,18 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 %
 % lazy_list_test.m:
 %    This is a trivial example of the use of lazy lists.
 %
 % This source file is hereby placed in the public domain.  -fjh (the author).
+%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module lazy_list_test.
 :- interface.
+
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
@@ -14,14 +20,20 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module lazy, lazy_list, int.
+
+:- import_module int.
+:- import_module lazy.
+:- import_module lazy_list.
+
+%-----------------------------------------------------------------------------%
+
+main(!IO) :-
+    L = iterate(double, 1),               % construct an infinite list...
+    L10 = take(10, L),                  % extract the first 10 elements
+    io.print_line(to_list(L10), !IO). % print them
 
 :- func double(int) = int.
-double(X) = 2 * X.
 
-main -->
-    { L = iterate(double, 1) },    % construct an infinite list...
-    { L10 = take(10, L) },        % extract the first 10 elements
-    print(to_list(L10)), nl.    % print them
+double(X) = 2 * X.
 
 %-----------------------------------------------------------------------------%

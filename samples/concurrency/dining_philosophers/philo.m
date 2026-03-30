@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000, 2006-2007, 2010 The University of Melbourne.
-% Copyright (C) 2013, 2016, 2018 The Mercury team.
+% Copyright (C) 2013, 2016, 2018, 2016 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -85,7 +85,7 @@ philosopher(Who, Lock, !IO) :-
         )
     else
         % Our 2 forks were not available
-        signal(Lock, !IO)
+        semaphore.signal(Lock, !IO)
     ),
     philosopher(Who, Lock, !IO).
 

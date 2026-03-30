@@ -254,7 +254,7 @@ words_to_strings([X | Xs], [Y | Ys]) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Generate and display a repeat message
+    % Generate and display a repeat message.
     %
 :- pred generate_repeat(eliza_state::in, eliza_state::out,
     io::di, io::uo) is det.
@@ -264,7 +264,7 @@ generate_repeat(!State, !IO) :-
     io.write_string(Msg, !IO),
     io.write_string("\n", !IO).
 
-    % Generate and display a repeat message
+    % Generate and display a response.
     %
 :- pred generate_response(list(string)::in,
     eliza_state::in, eliza_state::out, io::di, io::uo) is det.
