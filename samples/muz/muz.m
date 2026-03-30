@@ -206,7 +206,7 @@ processFiles([zinput(Stream, Flags0) | Rest], Abbrev, ZPragma0, ZPragma,
 
 :- type zphase0 == pair(zphase, schema_table).
 
-% Used to indicate the earliest phase in which errors have occured.
+% Used to indicate the earliest phase in which errors have occurred.
 :- type zphase
     --->    lexical
     ;       syntax
@@ -296,7 +296,7 @@ usage(!IO) :-
         "-a-, --no-abbreviate",
         "\tTurn off use of type abbreviations.",
         "-t <toolkit>, --toolkit <toolkit>",
-        "\tTypecheck with the specified toolkit, overiding the",
+        "\tTypecheck with the specified toolkit, overriding the",
         "\tbuiltin default and MUZ_TOOLKIT environment variable",
         "\t(-t- for typechecking without a toolkit).",
         "-?, -h, --help",

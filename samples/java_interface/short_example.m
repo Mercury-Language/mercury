@@ -15,7 +15,7 @@ main(!IO) :-
     java_write_line("Hello, world", !IO).
 
 :- pred java_write_line(string::in, io::di, io::uo) is det.
-:- pragma foreign_proc("JAva",
+:- pragma foreign_proc("Java",
     java_write_line(S::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "

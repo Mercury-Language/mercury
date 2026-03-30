@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000, 2006, 2010 The University of Melbourne.
-% Copyright (C) 2016, 2018 The Mercury team.
+% Copyright (C) 2016, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -90,12 +90,12 @@ new(Stream, !IO) :-
 
 put(Stream, Thing, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),
-    wait(Lock, !IO),
+    sempahore.wait(Lock, !IO),
     store.get_mutvar(QueueRef, Queue0, !IO),
     queue.put(ok(Thing), Queue0, Queue),
     store.set_mutvar(QueueRef, Queue, !IO),
-    signal(Lock, !IO),
-    signal(Semaphore, !IO).
+    semaphore.signal(Lock, !IO),
+    semaphore.signal(Semaphore, !IO).
 
 end(Stream, !IO) :-
     Stream = concurrent_stream(Lock, QueueRef, Semaphore),

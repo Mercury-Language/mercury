@@ -24,4 +24,4 @@
 ").
 
 main(!IO) :-
-    puts("Hello, world\n", !IO).
+    puts("Hello, world", !IO).
