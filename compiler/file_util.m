@@ -104,30 +104,15 @@
 
 %---------------------------------------------------------------------------%
 
-    % msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg):
-    % msg_for_cannot_open_file_for_output(Globals, FileName, ErrorMsg):
-    %
-    % Return the error message we should print for when an attempt
-    % to open FileName for input or output results in the error
-    % described by ErrorMsg.
+    % Print a report to the specified stream about not being able
+    % to open the named file. Set the exit status to indicate
+    % an error exit.
     %
     % If the canonicalize_error_path_names option is given, then the functions
     % whose names do not have the _nc (no canonicalization) suffix will
     % delete the parts of path names in error messages that cause
     % unnecessary differences between .err and .err_exp* files
     % in our test suite.
-    %
-:- func msg_for_cannot_open_file_for_input(globals, file_name, string)
-    = string.
-:- func msg_for_cannot_open_file_for_output(globals, file_name, string)
-    = string.
-:- func msg_for_cannot_open_file_for_input_nc(file_name, string) = string.
-:- func msg_for_cannot_open_file_for_output_nc(file_name, string) = string.
-
-    % Print a report to the specified stream about not being able
-    % to open the named file. Set the exit status to indicate
-    % an error exit. (For an expression of the the _nc suffix versions,
-    % see the comment block just above.)
     %
 :- pred report_cannot_open_file_for_input(io.text_output_stream::in,
     globals::in, file_name::in, io.error::in, io::di, io::uo) is det.
@@ -280,21 +265,22 @@ write_include_file_contents(OutputStream, Globals, FileName, Result, !IO) :-
             ;
                 CopyResult = error(Error),
                 ErrorMsg = io.error_message(Error),
-                Msg = msg_for_cannot_open_file_for_input(Globals,
-                    FileName, ErrorMsg),
+                Msg0 = msg_for_cannot_open_file_for_input(FileName, ErrorMsg),
+                maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
                 Result = error(Msg)
             )
         else
-            NotRegular = "Not a regular file",
-            Msg = msg_for_cannot_open_file_for_input(Globals,
-                FileName, NotRegular),
+            ErrorMsg = "Not a regular file",
+            Msg0 = msg_for_cannot_open_file_for_input(FileName, ErrorMsg),
+            maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
             Result = error(Msg)
         )
     ;
         MaybeFileType = error(FileTypeError),
         ErrorMsg = string.remove_prefix_if_present("can't find file type: ",
             io.error_message(FileTypeError)),
-        Msg = msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg),
+        Msg0 = msg_for_cannot_open_file_for_input(FileName, ErrorMsg),
+        maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
         Result = error(Msg)
     ).
 
@@ -403,19 +389,15 @@ maybe_flush_output_to_stream(no, !IO).
 
 %---------------------------------------------------------------------------%
 
-msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg) = Msg :-
-    Msg0 = msg_for_cannot_open_file_for_input_nc(FileName, ErrorMsg),
-    maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
+:- func msg_for_cannot_open_file_for_input(file_name, string) = string.
 
-msg_for_cannot_open_file_for_output(Globals, FileName, ErrorMsg) = Msg :-
-    Msg0 = msg_for_cannot_open_file_for_output_nc(FileName, ErrorMsg),
-    maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
-
-msg_for_cannot_open_file_for_input_nc(FileName, ErrorMsg) = Msg :-
+msg_for_cannot_open_file_for_input(FileName, ErrorMsg) = Msg :-
     string.format("can't open `%s' for input: %s",
         [s(FileName), s(ErrorMsg)], Msg).
 
-msg_for_cannot_open_file_for_output_nc(FileName, ErrorMsg) = Msg :-
+:- func msg_for_cannot_open_file_for_output(file_name, string) = string.
+
+msg_for_cannot_open_file_for_output(FileName, ErrorMsg) = Msg :-
     string.format("can't open `%s' for output: %s",
         [s(FileName), s(ErrorMsg)], Msg).
 
@@ -459,29 +441,31 @@ canonicalize_quote_chunks([QChunk0 | QChunks0], [QChunk | QChunks]) :-
 
 report_cannot_open_file_for_input(ProgressStream, Globals,
         FileName, IOError, !IO) :-
-    IOErrorMsr = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_input(Globals, FileName, IOErrorMsr),
+    IOErrorMsg = io.error_message(IOError),
+    Msg0 = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
     io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
 report_cannot_open_file_for_output(ProgressStream, Globals,
         FileName, IOError, !IO) :-
-    IOErrorMsr = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_output(Globals, FileName, IOErrorMsr),
+    IOErrorMsg = io.error_message(IOError),
+    Msg0 = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
     io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
 report_cannot_open_file_for_input_nc(ProgressStream, FileName,
         IOError, !IO) :-
-    IOErrorMsr = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_input_nc(FileName, IOErrorMsr),
+    IOErrorMsg = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
     io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
 report_cannot_open_file_for_output_nc(ProgressStream, FileName,
         IOError, !IO) :-
-    IOErrorMsr = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_output_nc(FileName, IOErrorMsr),
+    IOErrorMsg = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
     io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
