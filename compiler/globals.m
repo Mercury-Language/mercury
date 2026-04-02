@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury Team.
+% Copyright (C) 2013-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1361,16 +1361,14 @@ get_output_stream(Globals, ModuleName, Option, Get, Set, Stream, !IO) :-
                 % to a module-specific file, and we can and do.
                 CompilerStream = specific_stream(Stream)
             ;
-                OpenResult = error(Error),
+                OpenResult = error(IOError),
                 % The user wants to redirect this kind output
                 % to a module-specific file, but we can't open it.
                 % Besides reporting the problem, acting as if
                 % the request wasn't made is the best we can do.
-                ErrorMsg = io.error_message(Error),
                 io.stderr_stream(StdErr, !IO),
-                io.format(StdErr, "can't open file `%s' for output: %s\n",
-                    [s(FileName), s(ErrorMsg)], !IO),
-                io.set_exit_status(1, !IO),
+                report_cannot_open_file_for_input(StdErr, Globals, FileName,
+                    IOError, !IO),
                 Stream = StdErr,
                 CompilerStream = general_stream(Stream)
             )

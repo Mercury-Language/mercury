@@ -458,7 +458,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     % generating target language code.
     handle_op_mode_implications(OpMode, !Globals),
     handle_option_to_option_implications(OpMode, !Globals),
-    maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
+    maybe_disable_smart_recompilation(OpMode, !Globals, !Specs, !IO),
 
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
     handle_libgrades(ProgressStream, !Globals, !Specs, !IO),
@@ -2057,10 +2057,11 @@ handle_option_to_option_implications(OpMode, !Globals) :-
     % Options updated:
     %   smart_recompilation (done inside disable_smart_recompilation)
     %
-:- pred maybe_disable_smart_recompilation(io.text_output_stream::in,
-    op_mode::in, globals::in, globals::out, io::di, io::uo) is det.
+:- pred maybe_disable_smart_recompilation(op_mode::in,
+    globals::in, globals::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
+maybe_disable_smart_recompilation(OpMode, !Globals, !Specs, !IO) :-
     % XXX Smart recompilation does not yet work with intermodule
     % optimization, but we still want to generate version numbers
     % in interface files for users of a library compiled with
@@ -2075,14 +2076,14 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
             globals.lookup_bool_option(!.Globals, intermodule_optimization,
                 yes)
         then
-            disable_smart_recompilation(ProgressStream,
-                "`--intermodule-optimization'", !Globals, !IO)
+            OptionDescrI = "`--intermodule-optimization'",
+            disable_smart_recompilation(OptionDescrI, !Globals, !Specs, !IO)
         else
             true
         ),
         ( if globals.lookup_bool_option(!.Globals, use_opt_files, yes) then
-            disable_smart_recompilation(ProgressStream,
-                "`--use-opt-files'", !Globals, !IO)
+            OptionDescrU = "`--use-opt-files'",
+            disable_smart_recompilation(OptionDescrU, !Globals, !Specs, !IO)
         else
             true
         ),
@@ -2112,12 +2113,12 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
                 OpModeFrontAndMiddle = opfam_target_code_only
             ;
                 OpModeFrontAndMiddle = opfam_target_and_object_code_only,
-                disable_smart_recompilation(ProgressStream,
-                    "compiling target language files", !Globals, !IO)
+                TaskDescr = "compiling target language files",
+                disable_smart_recompilation(TaskDescr, !Globals, !Specs, !IO)
             ;
                 OpModeFrontAndMiddle = opfam_target_object_and_executable,
-                disable_smart_recompilation(ProgressStream,
-                    "making executables", !Globals, !IO)
+                TaskDescr = "making executables",
+                disable_smart_recompilation(TaskDescr, !Globals, !Specs, !IO)
             )
         else
             % decide_op_mode should have set Smart to "no" in these op_modes.
@@ -3346,10 +3347,10 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         globals.set_option(ImpliedOption, ImpliedOptionValue, !Globals)
     ).
 
-:- pred disable_smart_recompilation(io.text_output_stream::in, string::in,
-    globals::in, globals::out, io::di, io::uo) is det.
+:- pred disable_smart_recompilation(string::in, globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
+disable_smart_recompilation(OptionDescr, !Globals, !Specs, !IO) :-
     io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),
     globals.set_option(smart_recompilation, bool(no), !Globals),
     globals.lookup_bool_option(!.Globals, warn_smart_recompilation, WarnSmart),
@@ -3357,16 +3358,11 @@ disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
         WarnSmart = yes,
         % Disabling smart recompilation is not a module-specific thing,
         % so we cannot direct the error message to a module-specific file.
-        io.format(ProgressStream,
-            "Warning: smart recompilation does not yet work with %s.\n",
-            [s(OptionDescr)], !IO),
-        globals.lookup_bool_option(!.Globals, halt_at_warn, Halt),
-        (
-            Halt = yes,
-            io.set_exit_status(1, !IO)
-        ;
-            Halt = no
-        )
+        Pieces = [words("Warning: smart recompilation does not yet work"),
+            words("with"), words(OptionDescr), suffix("."), nl],
+        Severity = severity_warning(warn_smart_recompilation),
+        Spec = no_ctxt_spec($pred, Severity, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
     ;
         WarnSmart = no
     ).

@@ -256,10 +256,8 @@ write_usage_file(ProgressStream, ModuleInfo, UsedFileContents, !IO) :-
         io.close_output(UsedFileStream, !IO)
     ;
         UsedFileOpenResult = error(IOError),
-        io.error_message(IOError, IOErrorMessage),
-        io.format(ProgressStream, "\nError opening `%s' for output: %s.\n",
-            [s(UsedFileName), s(IOErrorMessage)], !IO),
-        io.set_exit_status(1, !IO)
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            UsedFileName, IOError, !IO)
     ).
 
 :- pred write_usage_file_to_stream(io.text_output_stream::in,
