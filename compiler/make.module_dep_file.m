@@ -145,11 +145,9 @@ do_write_module_dep_file(ProgressStream, Globals, BurdenedModule, !IO) :-
             Baggage, ParseTreeModuleSrc, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
-        ProgDepResult = error(Error),
-        io.error_message(Error, Msg),
-        io.format(ProgressStream, "Error opening %s for output: %s\n",
-            [s(ProgDepFile), s(Msg)], !IO),
-        io.set_exit_status(1, !IO)
+        ProgDepResult = error(IOError),
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            ProgDepFile, IOError, !IO)
     ).
 
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,

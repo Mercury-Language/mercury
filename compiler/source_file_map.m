@@ -88,8 +88,6 @@
     %
 :- pred lookup_source_file_maybe_module(file_name::in, maybe(module_name)::out,
     io::di, io::uo) is det.
-:- pred lookup_source_file_module(file_name::in, module_name::out,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -311,50 +309,6 @@ lookup_source_file_maybe_module(FileName, MaybeModuleName, !IO) :-
             )
         else
             MaybeModuleName = no
-        )
-    ).
-
-lookup_source_file_module(FileName, ModuleName, !IO) :-
-    get_source_file_map(SourceFileMap, !IO),
-    ( if bimap.reverse_search(SourceFileMap, ModuleNamePrime, FileName) then
-        ModuleName = ModuleNamePrime
-    else
-        ( if default_module_name_for_file(FileName, DefaultModuleName) then
-            ( if bimap.search(SourceFileMap, DefaultModuleName, _) then
-                io.progname_base("mercury_compile", Progname, !IO),
-                Pieces = [fixed(Progname), suffix(":"),
-                    words("cannot find out which module is contained in"),
-                    words("file"), fixed(FileName), suffix(","),
-                    words("because its name does not appear"),
-                    words("in Mercury.modules, and the module"),
-                    words("whose name is the file name minus the"),
-                    quote(".m"), words("suffix is recorded as"),
-                    words("being in a different file."), nl],
-                ErrorLines = error_pieces_to_std_lines(Pieces),
-                ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
-                io.stderr_stream(StdErr, !IO),
-                io.write_string(StdErr, ErrorStr, !IO),
-                io.set_exit_status(1, !IO),
-                unexpected($pred, "cannot continue")
-            else
-                ModuleName = DefaultModuleName
-            )
-        else
-            io.progname_base("mercury_compile", Progname, !IO),
-            Pieces = [fixed(Progname), suffix(":"),
-                words("cannot find out which module is contained in"),
-                words("file"), fixed(FileName), suffix(","),
-                words("because its name does not appear in Mercury.modules,"),
-                words("and the file name does it end in"),
-                quote(".m"), suffix("."), nl],
-            % This is the only situation in which default_module_name_for_file
-            % fails.
-            ErrorLines = error_pieces_to_std_lines(Pieces),
-            ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
-            io.stderr_stream(StdErr, !IO),
-            io.write_string(StdErr, ErrorStr, !IO),
-            io.set_exit_status(1, !IO),
-            unexpected($pred, "cannot continue")
         )
     ).
 

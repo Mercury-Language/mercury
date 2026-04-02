@@ -544,14 +544,10 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
                 )
             )
         ;
-            WriteFileResult = error(Error),
+            WriteFileResult = error(IOError),
             TouchDateFile = no,
-            io.progname_base("mmc", ProgName, !IO),
-            io.error_message(Error, ErrorMsg),
-            io.format(ProgressStream,
-                "%s: cannot open `%s' for output: %s\n",
-                [s(ProgName), s(TransOptFileName), s(ErrorMsg)], !IO),
-            io.set_exit_status(1, !IO)
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                TransOptFileName, IOError, !IO)
         )
     ),
 
