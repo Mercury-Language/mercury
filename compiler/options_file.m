@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1767,10 +1767,9 @@ dump_options_file(ProgressStream, FileName, Variables, !IO) :-
         write_env_optfile_variables(DumpStream, Variables, !IO),
         io.close_output(DumpStream, !IO)
     ;
-        OpenResult = error(Error),
-        ErrorMsg = io.error_message(Error),
-        io.format(ProgressStream, "mercury_compile: %s\n", [s(ErrorMsg)], !IO),
-        io.set_exit_status(1, !IO)
+        OpenResult = error(IOError),
+        report_cannot_open_file_for_output_nc(ProgressStream, FileName,
+            IOError, !IO)
     ).
 
     % Write out the given database to the given stream. Intended only

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -744,11 +744,9 @@ output_mh_header_file(ProgressStream, ModuleInfo, !IO) :-
             list.foldl(report_arbitrary_error(ProgressStream), Errors, !IO)
         )
     ;
-        Result = error(_),
-        io.progname_base("export.m", ProgName, !IO),
-        io.format(ProgressStream, "\n%s: can't open `%s' for output\n",
-            [s(ProgName), s(TmpFileName)], !IO),
-        io.set_exit_status(1, !IO)
+        Result = error(IOError),
+        report_cannot_open_file_for_output(ProgressStream, Globals,
+            TmpFileName, IOError, !IO)
     ).
 
 :- pred write_export_decls(io.text_output_stream::in,
@@ -776,7 +774,7 @@ write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
     io::di, io::uo) is det.
 
 output_foreign_decl(Stream, Globals, MaybeSetLineNumbers, ThisFileName,
-        SourceFileName, MaybeDesiredIsLocal, DeclCode, Res, !IO) :-
+        SourceFileName, MaybeDesiredIsLocal, DeclCode, Result, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $pred, "Lang != lang_c"),
     ( if
@@ -789,9 +787,9 @@ output_foreign_decl(Stream, Globals, MaybeSetLineNumbers, ThisFileName,
     then
         output_foreign_literal_or_include(Stream, Globals, MaybeSetLineNumbers,
             ThisFileName, SourceFileName, LiteralOrInclude, Context,
-            Res, !IO)
+            Result, !IO)
     else
-        Res = ok
+        Result = ok
     ).
 
 :- pred output_foreign_literal_or_include(io.text_output_stream::in,

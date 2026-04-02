@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2018, 2020-2025 The Mercury team.
+% Copyright (C) 2013-2015, 2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -111,7 +111,8 @@
     % to open FileName for input or output results in the error
     % described by ErrorMsg.
     %
-    % If the canonicalize_error_path_names option is given, then
+    % If the canonicalize_error_path_names option is given, then the functions
+    % whose names do not have the _nc (no canonicalization) suffix will
     % delete the parts of path names in error messages that cause
     % unnecessary differences between .err and .err_exp* files
     % in our test suite.
@@ -120,15 +121,22 @@
     = string.
 :- func msg_for_cannot_open_file_for_output(globals, file_name, string)
     = string.
+:- func msg_for_cannot_open_file_for_input_nc(file_name, string) = string.
+:- func msg_for_cannot_open_file_for_output_nc(file_name, string) = string.
 
     % Print a report to the specified stream about not being able
     % to open the named file. Set the exit status to indicate
-    % an error exit.
+    % an error exit. (For an expression of the the _nc suffix versions,
+    % see the comment block just above.)
     %
 :- pred report_cannot_open_file_for_input(io.text_output_stream::in,
     globals::in, file_name::in, io.error::in, io::di, io::uo) is det.
 :- pred report_cannot_open_file_for_output(io.text_output_stream::in,
     globals::in, file_name::in, io.error::in, io::di, io::uo) is det.
+:- pred report_cannot_open_file_for_input_nc(io.text_output_stream::in,
+    file_name::in, io.error::in, io::di, io::uo) is det.
+:- pred report_cannot_open_file_for_output_nc(io.text_output_stream::in,
+    file_name::in, io.error::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -396,14 +404,20 @@ maybe_flush_output_to_stream(no, !IO).
 %---------------------------------------------------------------------------%
 
 msg_for_cannot_open_file_for_input(Globals, FileName, ErrorMsg) = Msg :-
-    string.format("can't open `%s' for input: %s",
-        [s(FileName), s(ErrorMsg)], Msg0),
+    Msg0 = msg_for_cannot_open_file_for_input_nc(FileName, ErrorMsg),
     maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
 
 msg_for_cannot_open_file_for_output(Globals, FileName, ErrorMsg) = Msg :-
-    string.format("can't open `%s' for output: %s",
-        [s(FileName), s(ErrorMsg)], Msg0),
+    Msg0 = msg_for_cannot_open_file_for_output_nc(FileName, ErrorMsg),
     maybe_canonicalize_error_path_names(Globals, Msg0, Msg).
+
+msg_for_cannot_open_file_for_input_nc(FileName, ErrorMsg) = Msg :-
+    string.format("can't open `%s' for input: %s",
+        [s(FileName), s(ErrorMsg)], Msg).
+
+msg_for_cannot_open_file_for_output_nc(FileName, ErrorMsg) = Msg :-
+    string.format("can't open `%s' for output: %s",
+        [s(FileName), s(ErrorMsg)], Msg).
 
 :- pred maybe_canonicalize_error_path_names(globals::in,
     string::in, string::out) is det.
@@ -454,6 +468,20 @@ report_cannot_open_file_for_output(ProgressStream, Globals,
         FileName, IOError, !IO) :-
     IOErrorMsr = io.error_message(IOError),
     Msg = msg_for_cannot_open_file_for_output(Globals, FileName, IOErrorMsr),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_input_nc(ProgressStream, FileName,
+        IOError, !IO) :-
+    IOErrorMsr = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_input_nc(FileName, IOErrorMsr),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_output_nc(ProgressStream, FileName,
+        IOError, !IO) :-
+    IOErrorMsr = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_output_nc(FileName, IOErrorMsr),
     io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
