@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
-% Copyright (C) 2014, 2017-2023, 2025 The Mercury team.
+% Copyright (C) 2014, 2017-2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module puts everything together, compiling a list of lexemes into state
@@ -87,7 +87,7 @@
 :- func *(T)      = regexp <= (regexp(T)).
 
     % One of the following two functions may be deprecated in future,
-    % depending upon whether there's a concensus concerning
+    % depending upon whether there's a consensus concerning
     % which is preferable. Both express alternation.
     %
 :- func  T1 \/ T2  = regexp <= (regexp(T1), regexp(T2)).
@@ -148,8 +148,8 @@
 :- func charset(int, int) = charset.
 
     % Function to create a sparse bitset from a range of Unicode codepoints.
-    % These codepoints are checked for validity, any invalid codepoints
-    % are ignored. Throws an exception if cr_first value is less than cr_last.
+    % These codepoints are checked for validity, any invalid codepoints are
+    % ignored. Throws an exception if cr_first value is greater than cr_last.
     %
 :- func charset(char_range) = charset.
 
@@ -172,7 +172,7 @@
 :- pred ignore(Token::in, Token::in) is semidet.
 
    % Utility function to return noval tokens.
-   % Use it in the form `return(my_token) inside a lexeme definition.
+   % Use it in the form `return(my_token)' inside a lexeme definition.
    %
 :- func return(T, string) = T.
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et ft=mercury
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
 % regex.m
@@ -24,7 +24,7 @@
 % - regex will complain if `-' appears other than as an end-point
 %   of a range or the range delimiter in a character set;
 % - regex is a little more sensible about including `[' and `]' in character
-%   sets - either character can appear as and end-point of a range;
+%   sets - either character can appear as an end-point of a range;
 % - literal `)' must be backslash escaped, even in the absence of an `(';
 % - `.' matches any character except `\n';
 % - [^...] matches any character not in ... or `\n'.
@@ -202,7 +202,7 @@
 
 :- type lexer_state == lexer_state(string, string).
 
-    % This states of the regex parser.
+    % The states of the regex parser.
     %
 :- type parser_state
     --->    res(list(re))                        % Parsing as usual.

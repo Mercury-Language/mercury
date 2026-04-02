@@ -5,7 +5,7 @@
 % lex.convert_NFA_to_DFA.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018-2019, 2023, 2025 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Fri Aug 18 12:30:25 BST 2000
@@ -234,7 +234,7 @@ map_state_set_transitions_to_numbers(Map, [ST | STs]) = [T | Ts] :-
     ST = trans(SX, C, SY),
     X = map.lookup(Map, SX),
     Y = map.lookup(Map, SY),
-    T = trans(X, C ,Y).
+    T = trans(X, C, Y).
 
 %---------------------------------------------------------------------------%
 :- end_module lex.convert_NFA_to_DFA.
