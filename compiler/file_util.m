@@ -389,6 +389,38 @@ maybe_flush_output_to_stream(no, !IO).
 
 %---------------------------------------------------------------------------%
 
+report_cannot_open_file_for_input(ProgressStream, Globals,
+        FileName, IOError, !IO) :-
+    IOErrorMsg = io.error_message(IOError),
+    Msg0 = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_output(ProgressStream, Globals,
+        FileName, IOError, !IO) :-
+    IOErrorMsg = io.error_message(IOError),
+    Msg0 = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
+    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_input_nc(ProgressStream, FileName,
+        IOError, !IO) :-
+    IOErrorMsg = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+report_cannot_open_file_for_output_nc(ProgressStream, FileName,
+        IOError, !IO) :-
+    IOErrorMsg = io.error_message(IOError),
+    Msg = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
+    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
+    io.set_exit_status(1, !IO).
+
+%---------------------------------------------------------------------------%
+
 :- func msg_for_cannot_open_file_for_input(file_name, string) = string.
 
 msg_for_cannot_open_file_for_input(FileName, ErrorMsg) = Msg :-
@@ -436,38 +468,6 @@ canonicalize_quote_chunks([QChunk0 | QChunks0], [QChunk | QChunks]) :-
         QChunk = QChunk0
     ),
     canonicalize_quote_chunks(QChunks0, QChunks).
-
-%---------------------------------------------------------------------------%
-
-report_cannot_open_file_for_input(ProgressStream, Globals,
-        FileName, IOError, !IO) :-
-    IOErrorMsg = io.error_message(IOError),
-    Msg0 = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
-    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
-    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
-    io.set_exit_status(1, !IO).
-
-report_cannot_open_file_for_output(ProgressStream, Globals,
-        FileName, IOError, !IO) :-
-    IOErrorMsg = io.error_message(IOError),
-    Msg0 = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
-    maybe_canonicalize_error_path_names(Globals, Msg0, Msg),
-    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
-    io.set_exit_status(1, !IO).
-
-report_cannot_open_file_for_input_nc(ProgressStream, FileName,
-        IOError, !IO) :-
-    IOErrorMsg = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
-    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
-    io.set_exit_status(1, !IO).
-
-report_cannot_open_file_for_output_nc(ProgressStream, FileName,
-        IOError, !IO) :-
-    IOErrorMsg = io.error_message(IOError),
-    Msg = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
-    io.format(ProgressStream, "%s\n", [s(Msg)], !IO),
-    io.set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
 
