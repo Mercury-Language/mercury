@@ -44,9 +44,10 @@
     list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
     io::di, io::uo) is det.
 
-    % usage_errors(Globals, Specs, !IO)
+    % usage_errors(ProgressStream, Globals, Specs, !IO)
     %
     % Print the list of error messages, and then the usage message.
+    % XXX Except that is NOT what this predicate does.
     %
 :- pred usage_errors(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.

@@ -1,3 +1,4 @@
+mmc:
 nonexistent_file.options_file:002: Error: cannot open options file
 nonexistent_file.options_file:002:   `/nonexistent.xyzzy': cannot find
 nonexistent_file.options_file:002:   `nonexistent.xyzzy' in directory `/'.

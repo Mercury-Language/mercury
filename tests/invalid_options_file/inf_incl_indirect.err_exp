@@ -1,3 +1,4 @@
+mmc:
 inf_incl_indirect.options_file:002: Error: options file
 inf_incl_indirect.options_file:002:   `./inf_incl_indirect.options_file_a'
 inf_incl_indirect.options_file:002:   indirectly includes itself through the

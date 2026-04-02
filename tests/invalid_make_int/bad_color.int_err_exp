@@ -1,4 +1,4 @@
-mercury_compile:
+mmc:
 Error in the value of the `--color-scheme' option: `cow' is not the name of a
   known color, the #RRGGBB specification of a 24 bit color, or a decimal
   integer between 0 and 255 specifying an 8 bit color.

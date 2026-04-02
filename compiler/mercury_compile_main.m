@@ -96,6 +96,7 @@
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -117,7 +118,7 @@ real_main(!IO) :-
     unlimit_stack(!IO),
     io.command_line_arguments(CmdLineArgs, !IO),
 
-    setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO),
+    setup_all_args(ProgressStream, CmdLineArgs, ArgResult, !IO),
     (
         ArgResult = apr_success(Globals, ArgPack),
         main_after_setup(ProgressStream, ErrorStream, Globals, ArgPack, !IO),
@@ -125,9 +126,20 @@ real_main(!IO) :-
             write_translations_record_if_any(Globals, !TIO)
         )
     ;
-        ArgResult = apr_failure
-        % All the error messages that explain the reason for the failure
-        % have already been printed.
+        ArgResult = apr_failure(OptionTable, OoMArgSpecs),
+        ArgSpecs = one_or_more_to_list(OoMArgSpecs),
+        io.write_string(ProgressStream, "mmc:\n", !IO),
+        write_error_specs_opt_table(ProgressStream, OptionTable,
+            ArgSpecs, !IO),
+        % In most cases, ArgSpecs should contain errors, so the above
+        % should have set the exit status to 1. However, in cases such as
+        % tests/invalid_options_file/undefined_var.m, it contains
+        % only warnings.
+        %
+        % XXX In such cases, should we get our caller to return apr_success?
+        % And if so, should we do so only with --no-halt-at-warn, or
+        % with --halt-at-warn as well?
+        io.set_exit_status(1, !IO)
     ),
     record_make_prereqs_cache_stats(!IO),
     record_module_ext_cache_stats(!IO),
