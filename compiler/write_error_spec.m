@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -220,7 +220,6 @@
 :- implementation.
 
 :- import_module libs.color_schemes.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -357,7 +356,14 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
                 io.set_exit_status(1, !IO)
             ;
                 ActualSeverity = actual_severity_warning,
-                record_warning_opt_table(OptionTable, !IO)
+                getopt.lookup_bool_option(OptionTable, halt_at_warn,
+                    HaltAtWarn),
+                (
+                    HaltAtWarn = yes,
+                    io.set_exit_status(1, !IO)
+                ;
+                    HaltAtWarn = no
+                )
             ;
                 ActualSeverity = actual_severity_informational
             )

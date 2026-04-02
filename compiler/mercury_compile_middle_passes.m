@@ -206,7 +206,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 133, "untupling", !DumpInfo, !IO),
 
-    maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 134, "tupling", !DumpInfo, !IO),
 
     maybe_higher_order_or_type_spec(ProgressStream, Verbose, Stats,
@@ -925,9 +925,10 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_tuple_arguments(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Tuple = OptTuple ^ ot_tuple,
@@ -935,7 +936,8 @@ maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         Tuple = tuple,
         maybe_write_string(ProgressStream, Verbose, "% Tupling...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        tuple_arguments(ProgressStream, !HLDS, !IO),
+        tuple_arguments(ProgressStream, TupleSpecs, !HLDS, !IO),
+        !:Specs = TupleSpecs ++ !.Specs,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

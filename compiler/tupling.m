@@ -87,10 +87,13 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
+:- import_module list.
 
-:- pred tuple_arguments(io.text_output_stream::in,
+:- pred tuple_arguments(io.text_output_stream::in, list(error_spec)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -118,7 +121,6 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -133,7 +135,6 @@
 :- import_module mdbcomp.read_trace_counts.
 :- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.trace_counts.
-:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -148,7 +149,6 @@
 :- import_module digraph.
 :- import_module float.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -165,7 +165,7 @@
 % The top level.
 %
 
-tuple_arguments(ProgressStream, !ModuleInfo, !IO) :-
+tuple_arguments(ProgressStream, Specs, !ModuleInfo, !IO) :-
     % XXX We should add a mechanism that would allow us to check whether
     % we have already read in this file, and if we have, then avoid reading
     % it in again.
@@ -173,28 +173,34 @@ tuple_arguments(ProgressStream, !ModuleInfo, !IO) :-
     globals.get_opt_tuple(Globals, OptTuple),
     TraceCountsFile = OptTuple ^ ot_tuple_trace_counts_file,
     ( if TraceCountsFile = "" then
-        report_warning(ProgressStream, Globals,
-            "Warning: --tuple requires --tuple-trace-counts-file to work.\n",
-            !IO)
+        Pieces = [words("Warning: --tuple requires"),
+            words("--tuple-trace-counts-file to work."), nl],
+        Severity = severity_warning(warn_requested_by_option),
+        Spec = no_ctxt_spec($pred, Severity, phase_options, Pieces),
+        Specs = [Spec]
     else
         read_trace_counts_file(TraceCountsFile, Result, !IO),
         (
             Result = rtcf_ok(_, TraceCounts),
             tuple_arguments_with_trace_counts(ProgressStream,
-                !ModuleInfo, TraceCounts)
+                TraceCounts, !ModuleInfo),
+            Specs = []
         ;
             Result = rtcf_error_message(Reason),
-            string.format(
-                "Warning: unable to read trace count summary from %s (%s)\n",
-                [s(TraceCountsFile), s(Reason)], Message),
-            report_warning(ProgressStream, Globals, Message, !IO)
+            ReasonInParens = "(" ++ Reason ++ ")",
+            Pieces = [words("Warning: unable to read trace count summary"),
+                words("from"), fixed(TraceCountsFile),
+                words(ReasonInParens), nl],
+            Severity = severity_warning(warn_requested_by_option),
+            Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
+            Specs = [Spec]
         )
     ).
 
 :- pred tuple_arguments_with_trace_counts(io.text_output_stream::in,
-    module_info::in, module_info::out, trace_counts::in) is det.
+    trace_counts::in, module_info::in, module_info::out) is det.
 
-tuple_arguments_with_trace_counts(ProgressStream, !ModuleInfo, TraceCounts0) :-
+tuple_arguments_with_trace_counts(ProgressStream, TraceCounts0, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     % We use the same cost options as for the stack optimisation.
     globals.get_opt_tuple(Globals, OptTuple),
@@ -229,9 +235,9 @@ tuple_arguments_with_trace_counts(ProgressStream, !ModuleInfo, TraceCounts0) :-
         SCCs, !ModuleInfo, counter.init(0), _, map.init, TransformMap),
 
     % Update the callers of the original procedures to call their
-    % transformed versions instead. Do the same for the transformed
-    % procedures themselves.
+    % transformed versions instead.
     list.foldl(fix_calls_in_procs(TransformMap), SCCs, !ModuleInfo),
+    % Do the same for the transformed procedures themselves.
     fix_calls_in_transformed_procs(TransformMap, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
