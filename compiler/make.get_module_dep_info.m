@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -99,9 +99,8 @@ get_maybe_module_dep_info(ProgressStream, Globals, ModuleName,
         % If the module is a nested module, its dependencies will be generated
         % as a side effect of generating the parent's dependencies.
         AncestorsAndSelf = get_ancestors(ModuleName) ++ [ModuleName],
-        Error0 = no,
         maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
-            RebuildModuleDeps, AncestorsAndSelf, Error0, !Info, !IO),
+            RebuildModuleDeps, AncestorsAndSelf, !Info, !IO),
 
         ModuleDepMap = make_info_get_maybe_module_dep_info_map(!.Info),
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
@@ -109,32 +108,26 @@ get_maybe_module_dep_info(ProgressStream, Globals, ModuleName,
 
 :- pred maybe_record_modules_maybe_module_dep_infos(io.text_output_stream::in,
     globals::in, maybe_rebuild_module_deps::in, list(module_name)::in,
-    bool::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_record_modules_maybe_module_dep_infos(_, _, _, [], _, !Info, !IO).
+maybe_record_modules_maybe_module_dep_infos(_, _, _, [], !Info, !IO).
 maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
-        RebuildModuleDeps, [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
+        RebuildModuleDeps, [ModuleName | ModuleNames], !Info, !IO) :-
+    maybe_get_maybe_module_dep_info(ProgressStream, Globals,
+        RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
-        !.Error = no,
-        maybe_get_maybe_module_dep_info(ProgressStream, Globals,
-            RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO),
-        (
-            MaybeModuleDepInfo = some_module_dep_info(_)
-        ;
-            MaybeModuleDepInfo = no_module_dep_info,
-            !:Error = yes
-        )
+        MaybeModuleDepInfo = some_module_dep_info(_),
+        maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
+            RebuildModuleDeps, ModuleNames, !Info, !IO)
     ;
-        !.Error = yes,
+        MaybeModuleDepInfo = no_module_dep_info,
         % If we found a problem when processing an ancestor, don't even try
-        % to process the later modules.
+        % to process its descendant modules.
         ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
-        % XXX Could this be map.det_update or map.det_insert?
-        map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
+        list.foldl(record_no_module_dep_info_for_module, ModuleNames,
+            ModuleDepMap0, ModuleDepMap),
         make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info)
-    ),
-    maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
-        RebuildModuleDeps, ModuleNames, !.Error, !Info, !IO).
+    ).
 
 :- pred maybe_get_maybe_module_dep_info(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
@@ -304,6 +297,19 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         !:MaybeModuleDepInfo = no_module_dep_info,
         make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info)
     ).
+
+:- pred record_no_module_dep_info_for_module(module_name::in,
+    map(module_name, maybe_module_dep_info)::in,
+    map(module_name, maybe_module_dep_info)::out) is det.
+
+record_no_module_dep_info_for_module(ModuleName, !ModuleDepMap) :-
+    % We get called if there was a problem with the one of the ancestors
+    % of ModuleDepMap in its source file. Note that any *other* attempt to
+    % compute the module_dep_info for ModuleName would have to process
+    % the same sequence of in-source-file ancestors whose processing led
+    % to this call, so if !.ModuleDepMap contains any value for ModuleName,
+    % I (zs) can see no way for it to be anything except no_module_dep_info.
+    map.set(ModuleName, no_module_dep_info, !ModuleDepMap).
 
 %---------------------------------------------------------------------------%
 
