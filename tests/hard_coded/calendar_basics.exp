@@ -107,3 +107,33 @@ Year -1 is a common year.
 Year -4 is a leap year.
 Year -100 is a common year.
 
+=== Test unix_epoch/0 ===
+
+Unix epoch year   = 1970
+Unix epoch month  = january
+Unix epoch day    = 1
+Unix epoch hour   = 0
+Unix epoch minute = 0
+Unix epoch second = 0
+Unix epoch microsecond = 0
+
+=== Test julian_day_number/1 ===
+
+julian_day_number(-4713-11-24 00:00:00) = 0 OK (Start of Julian period)
+julian_day_number(1970-01-01 00:00:00) = 2440588 OK (Unix epoch)
+julian_day_number(2000-01-01 00:00:00) = 2451545 OK (J2000)
+julian_day_number(1582-10-14 00:00:00) = 2299160 OK (Day before Gregorian calender adoption)
+julian_day_number(1582-10-15 00:00:00) = 2299161 OK (First day of the Gregorian calendar)
+julian_day_number(2000-02-29 00:00:00) = 2451604 OK (Leap day)
+julian_day_number(2000-03-01 00:00:00) = 2451605 OK (Day after leap day)
+julian_day_number(1900-02-28 00:00:00) = 2415079 OK (Non-leap century)
+julian_day_number(1900-03-01 00:00:00) = 2415080 OK (Day after non-leap Feb)
+julian_day_number(2024-02-29 00:00:00) = 2460370 OK (Ordinary leap year)
+julian_day_number(2007-12-31 00:00:00) = 2454466 WRONG (expected: 2454465)
+julian_day_number(2008-01-01 00:00:00) = 2454467 WRONG (expected: 2454466)
+julian_day_number(0000-01-01 00:00:00) = 1721060 OK (Year zero)
+julian_day_number(-0001-01-01 00:00:00) = 1720695 OK (Year -1)
+julian_day_number(2000-01-01 00:00:00) = 2451545 OK (Midnight)
+julian_day_number(2000-01-01 23:59:59) = 2451545 OK (End of day)
+julian_day_number(10000-01-01 00:00:00) = 5373485 OK (Large year)
+

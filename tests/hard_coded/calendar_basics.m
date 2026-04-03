@@ -30,7 +30,9 @@ main(!IO) :-
     test_month_to_int("month_to_int", month_to_int, !IO),
     test_month_to_int("month_to_int0", month_to_int0, !IO),
     test_days_in_month(!IO),
-    test_is_leap_year(!IO).
+    test_is_leap_year(!IO),
+    test_unix_epoch(!IO),
+    test_julian_day_number(!IO).
 
 %---------------------------------------------------------------------------%
 
@@ -153,6 +155,143 @@ test_years = [
       -1,   % Not divisible by 4: common year.
       -4,   % Divisible by 4: leap year.
     -100    % Divisible by 100, but not 400: common year.
+].
+
+%---------------------------------------------------------------------------%
+
+:- pred test_unix_epoch(io::di, io::uo) is det.
+
+test_unix_epoch(!IO) :-
+    io.write_string("=== Test unix_epoch/0 ===\n\n", !IO),
+    unpack_date_time(unix_epoch, Year, Month, DayOfMonth, Hour,
+        Minute, Second, Microsecond),
+    io.format("Unix epoch year   = %d\n", [i(Year)], !IO),
+    io.format("Unix epoch month  = %s\n", [s(string(Month))], !IO),
+    io.format("Unix epoch day    = %d\n", [i(DayOfMonth)], !IO),
+    io.format("Unix epoch hour   = %d\n", [i(Hour)], !IO),
+    io.format("Unix epoch minute = %d\n", [i(Minute)], !IO),
+    io.format("Unix epoch second = %d\n", [i(Second)], !IO),
+    io.format("Unix epoch microsecond = %d\n", [i(Microsecond)], !IO),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred test_julian_day_number(io::di, io::uo) is det.
+
+test_julian_day_number(!IO) :-
+    io.write_string("=== Test julian_day_number/1 ===\n\n", !IO),
+    list.foldl(do_test_julian_day_number, julian_day_tests, !IO),
+    io.nl(!IO).
+
+:- pred do_test_julian_day_number(julian_day_test::in, io::di, io::uo) is det.
+
+do_test_julian_day_number(Test, !IO) :-
+    Test = julian_day_test(Desc, DateTime, ExpectedJDN),
+    ComputedJDN = julian_day_number(DateTime),
+    io.format("julian_day_number(%s) = %d",
+        [s(date_time_to_string(DateTime)), i(ComputedJDN)], !IO),
+    ( if ComputedJDN = ExpectedJDN then
+        io.format(" OK (%s)\n", [s(Desc)], !IO)
+    else
+        io.format(" WRONG (expected: %d)\n",
+            [i(ExpectedJDN)], !IO)
+    ).
+
+:- type julian_day_test
+    --->    julian_day_test(
+                description :: string,
+                date_time   :: date_time,
+                julian_day  :: int
+            ).
+
+:- func julian_day_tests = list(julian_day_test).
+
+julian_day_tests = [
+    julian_day_test(
+        "Start of Julian period",
+        det_init_date_time(-4713, november, 24, 0, 0, 0, 0),
+        0
+    ),
+    julian_day_test(
+        "Unix epoch",
+        unix_epoch,
+        2440588
+    ),
+    julian_day_test(
+        "J2000",
+        det_init_date_time(2000, january, 1, 0, 0, 0, 0),
+        2451545
+    ),
+    julian_day_test(
+        "Day before Gregorian calender adoption",
+        det_init_date_time(1582, october, 14, 0, 0, 0, 0),
+        2299160
+    ),
+    julian_day_test(
+        "First day of the Gregorian calendar",
+        det_init_date_time(1582, october, 15, 0, 0, 0, 0),
+        2299161
+    ),
+    julian_day_test(
+        "Leap day",
+        det_init_date_time(2000, february, 29, 0, 0, 0, 0),
+        2451604
+    ),
+    julian_day_test(
+        "Day after leap day",
+        det_init_date_time(2000, march, 1, 0, 0, 0, 0),
+        2451605
+    ),
+    julian_day_test(
+        "Non-leap century",
+        det_init_date_time(1900, february, 28, 0, 0, 0, 0),
+        2415079
+    ),
+    julian_day_test(
+        "Day after non-leap Feb",
+        det_init_date_time(1900, march, 1, 0, 0, 0, 0),
+        2415080
+    ),
+    julian_day_test(
+        "Ordinary leap year",
+        det_init_date_time(2024, february, 29, 0, 0, 0, 0),
+        2460370
+    ),
+    julian_day_test(
+        "New Year's Eve",
+        det_init_date_time(2007, december, 31, 0, 0, 0, 0),
+        2454465
+    ),
+    julian_day_test(
+        "New year's Day",
+        det_init_date_time(2008, january, 1, 0, 0, 0, 0),
+        2454466
+    ),
+    julian_day_test(
+        "Year zero",
+        det_init_date_time(0, january, 1, 0, 0, 0, 0),
+        1721060
+    ),
+    julian_day_test(
+        "Year -1",
+        det_init_date_time(-1, january, 1, 0, 0, 0, 0),
+        1720695
+    ),
+    julian_day_test(
+        "Midnight",
+        det_init_date_time(2000, january, 1, 0, 0, 0, 0),
+        2451545
+    ),
+    julian_day_test(
+        "End of day",
+        det_init_date_time(2000, january, 1, 23, 59, 59, 0),
+        2451545
+    ),
+    julian_day_test(
+        "Large year",
+        det_init_date_time(10000, january, 1, 0, 0, 0, 0),
+        5373485
+    )
 ].
 
 %---------------------------------------------------------------------------%
