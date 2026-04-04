@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,8 +10,17 @@
 % File stack_opt.
 % Author: zs.
 %
-% The input to this module is a HLDS structure with annotations on three kinds
-% of goals:
+% This module implements an optimization that aims to reduce the number
+% of memory accesses needed to variables stored in stack frames. It is based
+% on the idea that after a unification such as A = f(B, C, D), saving
+% variable A on the stack also indirectly saves the values of B, C and D.
+%
+% The principles of this optimization, and its overall algorithm, are
+% documented in the paper "Using the heap to eliminate stack accesses"
+% by Zoltan Somogyi and Peter Stuckey.
+%
+% The input to the code in this module is the HLDS representation
+% of a procedure with annotations on three kinds of goals:
 %
 % - calls, including generic calls and foreign_proc goals which may
 %   call back to Mercury, should have need_across_call annotations;
@@ -64,9 +73,6 @@
 % via the cell variable the field variables that have been selected to be so
 % accessed by the first pass.
 %
-% The principles of this optimization are documented in the paper "Using the
-% heap to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.stack_opt.
@@ -80,9 +86,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred stack_opt_cell(io.text_output_stream::in,
-    pred_proc_id::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out) is det.
+:- pred stack_opt_cell(io.text_output_stream::in, pred_proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -738,26 +743,36 @@ add_anchor_to_path(Anchor, !.Path) = !:Path :-
 
 :- func anchor_requires_close(interval_info, anchor) = bool.
 
-anchor_requires_close(_, anchor_proc_start) = no.
-anchor_requires_close(_, anchor_proc_end) = yes.
-anchor_requires_close(IntervalInfo, anchor_branch_start(_, GoalId)) =
-        resume_save_status_requires_close(ResumeSaveStatus) :-
-    map.lookup(IntervalInfo ^ ii_branch_resume_map, GoalId,
-        ResumeSaveStatus).
-anchor_requires_close(_, anchor_cond_then(_)) = no.
-anchor_requires_close(_, anchor_branch_end(BranchType, _)) = NeedsClose :-
+anchor_requires_close(IntervalInfo, Anchor) = RequiresClose :-
     (
-        BranchType = branch_neg,
-        NeedsClose = no
-    ;
-        ( BranchType = branch_ite
-        ; BranchType = branch_disj
-        ; BranchType = branch_switch
-        ; BranchType = branch_par_conj
+        ( Anchor = anchor_proc_start
+        ; Anchor = anchor_cond_then(_)
         ),
-        NeedsClose = yes
+        RequiresClose = no
+    ;
+        ( Anchor = anchor_proc_end
+        ; Anchor = anchor_call_site(_)
+        ),
+        RequiresClose = yes
+    ;
+        Anchor = anchor_branch_start(_, GoalId),
+        map.lookup(IntervalInfo ^ ii_branch_resume_map, GoalId,
+            ResumeSaveStatus),
+        RequiresClose = resume_save_status_requires_close(ResumeSaveStatus)
+    ;
+        Anchor = anchor_branch_end(BranchType, _),
+        (
+            BranchType = branch_neg,
+            RequiresClose = no
+        ;
+            ( BranchType = branch_ite
+            ; BranchType = branch_disj
+            ; BranchType = branch_switch
+            ; BranchType = branch_par_conj
+            ),
+            RequiresClose = yes
+        )
     ).
-anchor_requires_close(_, anchor_call_site(_)) = yes.
 
 :- func resume_save_status_requires_close(resume_save_status) = bool.
 
