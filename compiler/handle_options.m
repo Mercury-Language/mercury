@@ -716,6 +716,22 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_OptFollowCode = OT_OptFollowCode0
     ),
 
+    globals.lookup_bool_option(!.Globals, structure_reuse_analysis, Reuse),
+    globals.lookup_bool_option(!.Globals, use_regions, Regions),
+    ( if
+        ( Reuse = yes
+        ; Regions = yes
+        )
+    then
+        % The code of interval.m, which this optimization uses,
+        % throws an exception if given a unification whose HowToConstruct
+        % field contains either reuse_cell, or construct_in_region.
+        % Fixing this is future work.
+        OT_OptSVCell1 = do_not_opt_svcell
+    else
+        OT_OptSVCell1 = OT_OptSVCell0
+    ),
+
     (
         AllowSrcChangesDebug = do_not_allow_src_changes,
         OT_OptDupCalls = do_not_opt_dup_calls,
@@ -728,7 +744,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     ;
         AllowSrcChangesDebug = allow_src_changes,
         OT_OptDupCalls = OT_OptDupCalls0,
-        OT_OptSVCell = OT_OptSVCell0,
+        OT_OptSVCell = OT_OptSVCell1,
         OT_OptLoopInvariants = OT_OptLoopInvariants0,
         OT_OptHigherOrder = OT_OptHigherOrder0,
         OT_Tuple = OT_Tuple0,
