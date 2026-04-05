@@ -7,6 +7,17 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
+# While most of the output of this script goes to stdout, some goes
+# to stderr. This causes bootcheck invocations that redirect stdout
+# to a file, but (probably accidentally) forget to redirect stderr
+# to the same file, to litter the invoking terminal. This is particularly
+# inconvenient when the user has put the bootcheck into the background,
+# and then started doing something else in the foreground.
+#
+# Prevent such minor inconveniences by directing stderr to go to
+# the same stream as stdout.
+exec 2>&1
+
 usage="\
 Usage: $0 [options]
 Options:
