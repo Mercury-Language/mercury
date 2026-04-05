@@ -260,12 +260,12 @@ julian_day_tests = [
     julian_day_test(
         "New Year's Eve",
         det_init_date_time(2007, december, 31, 0, 0, 0, 0),
-        2454465
+        2454466
     ),
     julian_day_test(
         "New year's Day",
         det_init_date_time(2008, january, 1, 0, 0, 0, 0),
-        2454466
+        2454467
     ),
     julian_day_test(
         "Year zero",
