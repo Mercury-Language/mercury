@@ -154,9 +154,17 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     ),
 
     maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, Verbose, MaybeDFileTransOptDeps, IntermodError,
+        OpModeAugment, Verbose, MaybeDFileTransOptDeps, OptBlockingSpecs,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
         !HaveReadModuleMaps, !IO),
+    (
+        OptBlockingSpecs = [],
+        IntermodError = no
+    ;
+        OptBlockingSpecs = [_ | _],
+        !:Specs = OptBlockingSpecs ++ !.Specs,
+        IntermodError = yes
+    ),
     MaybeTimestampMap = Baggage1 ^ mb_maybe_timestamp_map,
 
     !:Specs = get_read_module_specs(Baggage1 ^ mb_errors) ++ !.Specs,
@@ -500,14 +508,14 @@ read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
 
 :- pred maybe_grab_plain_and_trans_opt_files(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    bool::in, maybe(list(module_name))::in, bool::out,
+    bool::in, maybe(list(module_name))::in, list(error_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, Verbose, MaybeDFileTransOptDeps, Error,
+        OpModeAugment, Verbose, MaybeDFileTransOptDeps, BlockingSpecs,
         !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
@@ -524,12 +532,12 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
         maybe_write_string(ProgressStream, Verbose,
             "% Reading .opt files...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream,
-            Globals, PlainOptError, !Baggage, !AugCompUnit,
-            !HaveReadModuleMaps, !IO),
+        grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
+            PlainOptBlockingSpecs,
+            !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
         maybe_write_string(ProgressStream, Verbose, "% Done.\n", !IO)
     else
-        PlainOptError = no_opt_file_error
+        PlainOptBlockingSpecs = []
     ),
     (
         OpModeAugment = opmau_make_trans_opt,
@@ -538,12 +546,12 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
             % When creating the trans_opt file, only import the
             % trans_opt files which are listed as dependencies of the
             % trans_opt_deps rule in the `.d' file.
-            grab_trans_opt_files(ProgressStream, Globals,
-                DFileTransOptDeps, TransOptError, !Baggage, !AugCompUnit,
-                !HaveReadModuleMaps, !IO)
+            grab_trans_opt_files(ProgressStream, Globals, DFileTransOptDeps,
+                TransOptBlockingSpecs,
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             MaybeDFileTransOptDeps = no,
-            TransOptError = no_opt_file_error,
+            TransOptBlockingSpecs = [],
             ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
             ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
             globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
@@ -566,7 +574,7 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
         % If we are making the `.opt' file, then we cannot read any
         % `.trans_opt' files, since `.opt' files aren't allowed to depend on
         % `.trans_opt' files.
-        TransOptError = no_opt_file_error
+        TransOptBlockingSpecs = []
     ;
         ( OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
@@ -589,24 +597,17 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
             % For those, we don't want to read in their .trans_opt file,
             % since we already have their .m file.
             set.delete(ModuleName, Deps0, Deps),
-            TransOptFiles = set.union_list([Ancestors, Deps]),
-            set.to_sorted_list(TransOptFiles, TransOptFilesList),
-            grab_trans_opt_files(ProgressStream, Globals,
-                TransOptFilesList, TransOptError, !Baggage, !AugCompUnit,
-                !HaveReadModuleMaps, !IO)
+            TransOptFilesSet = set.union_list([Ancestors, Deps]),
+            set.to_sorted_list(TransOptFilesSet, TransOptFiles),
+            grab_trans_opt_files(ProgressStream, Globals, TransOptFiles,
+                TransOptBlockingSpecs,
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             TransOpt = no,
-            TransOptError = no_opt_file_error
+            TransOptBlockingSpecs = []
         )
     ),
-    ( if
-        PlainOptError = no_opt_file_error,
-        TransOptError = no_opt_file_error
-    then
-        Error = no
-    else
-        Error = yes
-    ).
+    BlockingSpecs = PlainOptBlockingSpecs ++ TransOptBlockingSpecs.
 
 %---------------------%
 

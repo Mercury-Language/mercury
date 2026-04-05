@@ -60,6 +60,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
@@ -126,31 +127,27 @@
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-:- type maybe_opt_file_error
-    --->    no_opt_file_error
-    ;       opt_file_error.
-
-    % grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals, FoundError,
-    %   !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO):
+    % grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
+    %   BlockingSpecs, !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO):
     %
     % Add the contents of the .opt files of imported modules, as well as
     % the .int files needed to make sense of them, to !AugCompUnit.
     %
 :- pred grab_plain_opt_and_int_for_opt_files(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, maybe_opt_file_error::out,
+    globals::in, list(error_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % grab_trans_opt_files(ProgressStream, Globals, Modules, FoundError,
-    %   !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO):
+    % grab_trans_opt_files(ProgressStream, Globals, Modules,
+    %   BlockingSpecs, !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO):
     %
     % Add the contents of the .trans_opt file of each module in Modules
     % to !AugCompUnit.
     %
 :- pred grab_trans_opt_files(io.text_output_stream::in, globals::in,
-    list(module_name)::in, maybe_opt_file_error::out,
+    list(module_name)::in, list(error_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -167,7 +164,6 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.check_import_accessibility.
 :- import_module parse_tree.convert_import_use.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
@@ -176,7 +172,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module cord.
@@ -576,8 +571,8 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
 
 %---------------------------------------------------------------------------%
 
-grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
-        FoundError, !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO) :-
+grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
+        !:BlockingSpecs, !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -598,8 +593,8 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
         ReadOptFilesTransitively,
         set.to_sorted_list(OptModules), DontQueueOptModules,
         cord.empty, ParseTreePlainOptsCord0, set.init, ExplicitDeps,
-        cord.empty, ImplicitNeedsCord, [], OptSpecs0,
-        no_opt_file_error, OptError0, !IO),
+        cord.empty, ImplicitNeedsCord,
+        [], NonBlockingSpecs0, [], !:BlockingSpecs, !IO),
     ParseTreePlainOpts0 = cord.list(ParseTreePlainOptsCord0),
 
     % Get the :- pragma unused_args(...) declarations created when writing
@@ -631,27 +626,24 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
                 UnusedArgs, StructureReuse,
                 OwnParseTreePlainOpt0, OwnParseTreePlainOpt),
             ParseTreePlainOpts = [OwnParseTreePlainOpt | ParseTreePlainOpts0],
-            update_opt_error_status_on_success(OwnOptModuleErrors,
-                OptSpecs0, OptSpecs1, OptError0, OptError)
+            report_any_errors_in_read_opt_file(OwnOptModuleErrors,
+                !BlockingSpecs),
+            NonBlockingSpecs = NonBlockingSpecs0
         ;
             HaveReadOwnPlainOpt0 =
                 have_not_read_module(OwnOptFileName, OwnOptModuleErrors),
             ParseTreePlainOpts = ParseTreePlainOpts0,
-            update_opt_error_status_on_failure(Globals, warn_missing_opt_files,
+            report_cannot_read_opt_file(Globals, warn_missing_opt_files,
                 OwnOptFileName, OwnOptModuleErrors,
-                OptSpecs0, OptSpecs1, OptError0, OptError)
-        ),
-        maybe_write_out_errors(ErrorStream, VeryVerbose, Globals,
-            OptSpecs1, OptSpecs, !IO)
+                NonBlockingSpecs0, NonBlockingSpecs)
+        )
     else
         ParseTreePlainOpts = ParseTreePlainOpts0,
-        OptSpecs = OptSpecs0,
-        OptError = OptError0
+        NonBlockingSpecs = NonBlockingSpecs0
     ),
 
     list.foldl(aug_compilation_unit_add_plain_opt, ParseTreePlainOpts,
         !AugCompUnit),
-    module_baggage_add_nonfatal_specs(OptSpecs, !Baggage),
 
     % Read .int0 files required by the `.opt' files, except the ones
     % we have already read as ancestors of ModuleName,
@@ -678,7 +670,7 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
     NewDeps = set.union_list([ExplicitDeps, ImplicitDeps,
         OptAncestorImports, OptAncestorUses]),
 
-    % Read in the .int, and .int2 files needed by the .opt files.
+    % Read in the .int/.int2 files needed by the .opt files.
     grab_module_int1_files(ProgressStream, Globals,
         "opt_new_deps", rwi1_opt,
         set.to_sorted_list(NewDeps),
@@ -689,38 +681,51 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
         set.union(NewIntIndirectDeps, NewImpIndirectDeps),
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
 
-    % Figure out whether anything went wrong.
-    % XXX We should try to put all the relevant error indications into
-    % !AugCompUnit, and let our caller figure out what to do with them.
+    % Return the diagnostics that describe the things that went wrong
+    % in a way that prevents us continuing on to the semantic analysis passes.
+    %
+    % Instead of returning a list of error_specs, we used to return a flag
+    % meaning "do not continue to semantic analysis". We set this flag to its
+    % "do not continue" value not just when ModuleErrors ^ rm_fatal_errors
+    % was nonempty, but also when ModuleErrors ^ rm_nonfatal_errors was
+    % nonempty. This was a legacy of the time when we stored fatal and
+    % nonfatal errors mixed together.
     ModuleErrors = !.Baggage ^ mb_errors,
-    ( if
-        ( set.is_non_empty(ModuleErrors ^ rm_fatal_errors)
-        ; set.is_non_empty(ModuleErrors ^ rm_nonfatal_errors)
-        ; OptError = opt_file_error
-        )
-    then
-        FoundError = opt_file_error
-    else
-        FoundError = no_opt_file_error
-    ).
+    !:BlockingSpecs =
+        ModuleErrors ^ rm_fatal_error_specs ++
+        % ModuleErrors ^ rm_nonfatal_error_specs ++     see above
+        !.BlockingSpecs,
+
+    % This adds NonBlockingSpecs to ModuleErrors ^ rm_nonfatal_error_specs.
+    % If we ever want to go back to the old behavior of considering
+    % ModuleErrors ^ rm_nonfatal_error_specs being nonempty as grounds for
+    % stopping compiler execution before semantic analysis, then we would
+    % want the computation of !:BlockingSpecs to use the value of that field
+    % before this addition.
+    %
+    % NOTE Another legacy of the time when we stored fatal and nonfatal
+    % errors mixed together was that previously, we also added the original
+    % !.BlockingSpecs (i.e. the version from before adding
+    % ModuleErrors ^ rm_fatal_error_specs) to the baggage as well.
+    module_baggage_add_nonfatal_specs(NonBlockingSpecs, !Baggage).
 
 %---------------------------------------------------------------------------%
 
-grab_trans_opt_files(ProgressStream, Globals, TransOptModuleNames, FoundError,
-        !Baggage, !AugCompUnit, HaveParseTreeMaps, HaveParseTreeMaps, !IO) :-
+grab_trans_opt_files(ProgressStream, Globals, TransOptModuleNames,
+        BlockingSpecs, !Baggage, !AugCompUnit,
+        HaveParseTreeMaps, HaveParseTreeMaps, !IO) :-
     % XXX We should be using !HaveParseTreeMaps.
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
         "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
 
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
-        TransOptModuleNames, cord.init, ParseTreeTransOptsCord,
-        [], TransOptSpecs, no_opt_file_error, FoundError, !IO),
+    read_trans_opt_files(ProgressStream, Globals, TransOptModuleNames,
+        cord.init, ParseTreeTransOptsCord,
+        [], NonBlockingSpecs, [], BlockingSpecs, !IO),
     list.foldl(aug_compilation_unit_add_trans_opt,
         cord.list(ParseTreeTransOptsCord), !AugCompUnit),
-    module_baggage_add_nonfatal_specs(TransOptSpecs, !Baggage),
+    module_baggage_add_nonfatal_specs(NonBlockingSpecs, !Baggage),
     % XXX why ignore any existing errors?
     !Baggage ^ mb_errors := init_read_module_errors,
 
@@ -1401,15 +1406,16 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
     set(module_name)::in, set(module_name)::out,
     cord(implicit_avail_needs)::in, cord(implicit_avail_needs)::out,
     list(error_spec)::in, list(error_spec)::out,
-    maybe_opt_file_error::in, maybe_opt_file_error::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 read_plain_opt_files(_, _, _, _, [], _, !ParseTreePlainOptsCord,
-        !ExplicitDeps, !ImplicitNeeds, !Specs, !OptError, !IO).
+        !ExplicitDeps, !ImplicitNeeds, !NonBlockingSpecs, !BlockingSpecs, !IO).
 read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         ReadOptFilesTransitively, [ModuleName | ModuleNames0],
         DontQueueOptModules0, !ParseTreePlainOptsCord,
-        !ExplicitDeps, !ImplicitNeeds, !Specs, !OptError, !IO) :-
+        !ExplicitDeps, !ImplicitNeeds,
+        !NonBlockingSpecs, !BlockingSpecs, !IO) :-
     read_module_plain_opt(ProgressStream, Globals, ModuleName,
         HaveReadPlainOpt, !IO),
     (
@@ -1417,7 +1423,7 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         have_parse_tree_source_get_maybe_timestamp_errors(Source,
             _, ModuleErrors),
         cord.snoc(ParseTreePlainOpt, !ParseTreePlainOptsCord),
-        update_opt_error_status_on_success(ModuleErrors, !Specs, !OptError),
+        report_any_errors_in_read_opt_file(ModuleErrors, !BlockingSpecs),
 
         get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
             ParseTreePlainOpt, ParseTreeExplicitDeps, ParseTreeImplicitNeeds),
@@ -1439,31 +1445,30 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         )
     ;
         HaveReadPlainOpt = have_not_read_module(FileName, ModuleErrors),
-        update_opt_error_status_on_failure(Globals, warn_missing_opt_files,
-            FileName, ModuleErrors, !Specs, !OptError),
+        report_cannot_read_opt_file(Globals, warn_missing_opt_files,
+            FileName, ModuleErrors, !NonBlockingSpecs),
         ModuleNames1 = ModuleNames0,
         DontQueueOptModules1 = DontQueueOptModules0
     ),
 
-    maybe_write_out_errors(ProgressStream, VeryVerbose, Globals, !Specs, !IO),
     read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         ReadOptFilesTransitively, ModuleNames1, DontQueueOptModules1,
         !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
-        !Specs, !OptError, !IO).
+        !NonBlockingSpecs, !BlockingSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred read_trans_opt_files(io.text_output_stream::in, globals::in,
-    bool::in, list(module_name)::in,
+    list(module_name)::in,
     cord(parse_tree_trans_opt)::in, cord(parse_tree_trans_opt)::out,
     list(error_spec)::in, list(error_spec)::out,
-    maybe_opt_file_error::in, maybe_opt_file_error::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-read_trans_opt_files(_, _, _, [], !ParseTreeTransOpts, !Specs, !Error, !IO).
-read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
-        [ModuleName | ModuleNames], !ParseTreeTransOptsCord,
-        !Specs, !OptError, !IO) :-
+read_trans_opt_files(_, _, [], !ParseTreeTransOpts,
+        !NonBlockingSpecs, !BlockingSpecs, !IO).
+read_trans_opt_files(ProgressStream, Globals, [ModuleName | ModuleNames],
+        !ParseTreeTransOptsCord, !NonBlockingSpecs, !BlockingSpecs, !IO) :-
     read_module_trans_opt(ProgressStream, Globals, ModuleName,
         HaveReadTransOpt, !IO),
     (
@@ -1471,21 +1476,20 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
         have_parse_tree_source_get_maybe_timestamp_errors(Source,
             _, ModuleErrors),
         cord.snoc(ParseTreeTransOpt, !ParseTreeTransOptsCord),
-        update_opt_error_status_on_success(ModuleErrors, !Specs, !OptError)
+        report_any_errors_in_read_opt_file(ModuleErrors, !BlockingSpecs)
     ;
-        HaveReadTransOpt = have_not_read_module(FileName, Errors),
-        update_opt_error_status_on_failure(Globals,
-            warn_missing_trans_opt_files, FileName, Errors, !Specs, !OptError)
+        HaveReadTransOpt = have_not_read_module(FileName, ReadErrors),
+        WarnOpt = warn_missing_trans_opt_files,
+        report_cannot_read_opt_file(Globals, WarnOpt, FileName,
+            ReadErrors, !NonBlockingSpecs)
     ),
-    maybe_write_out_errors(ProgressStream, VeryVerbose, Globals, !Specs, !IO),
-
-    read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
-        ModuleNames, !ParseTreeTransOptsCord, !Specs, !OptError, !IO).
+    read_trans_opt_files(ProgressStream, Globals, ModuleNames,
+        !ParseTreeTransOptsCord, !NonBlockingSpecs, !BlockingSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
-    % update_opt_error_status_on_failure(Globals, WarnOption, FileName,
-    %   !Specs, !Error):
+    % report_cannot_read_opt_file(Globals, WarnOption, FileName,
+    %   !Specs):
     %
     % Process the failure of opening a .opt or .trans_opt file.
     %
@@ -1498,13 +1502,12 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
     % `--warn-missing-opt-files' or `--warn-missing-trans-opt-files'
     % respectively.
     %
-:- pred update_opt_error_status_on_failure(globals::in, option::in,
+:- pred report_cannot_read_opt_file(globals::in, option::in,
     file_name::in, read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out,
-    maybe_opt_file_error::in, maybe_opt_file_error::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-update_opt_error_status_on_failure(Globals, WarnOption, FileName,
-        ReadModuleErrors, !Specs, Error, Error) :-
+report_cannot_read_opt_file(Globals, WarnOption, FileName,
+        ReadModuleErrors, !NonBlockingSpecs) :-
     % We get here if we couldn't find and/or open the file.
     % ModuleErrors ^ rm_fatal_error_specs will already contain
     % an error_severity error_spec about that, with more details
@@ -1531,27 +1534,31 @@ update_opt_error_status_on_failure(Globals, WarnOption, FileName,
         ),
         Spec = no_ctxt_spec($pred, severity_warning(WarnOption),
             Phase, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:NonBlockingSpecs = [Spec | !.NonBlockingSpecs]
     ).
-    % NOTE: We do NOT update !Error, since a missing optimization
+    % NOTE: We do NOT update !BlockingSpecs, since a missing optimization
     % interface file is not necessarily an error.
 
-    % update_opt_error_status_on_success(ModuleErrors, !Specs, !Error):
+    % report_any_errors_in_read_opt_file(ModuleErrors, !BlockingSpecs):
     %
     % Work out whether any errors have occurred while reading
-    % a .opt or .trans_opt file, and update !Error accordingly.
-    % Note that we can ignore *not finding* a .opt or .trans_opt file,
-    % a situation handled by update_opt_error_status_on_failure,
-    % finding any error, whether syntax or semantic, inside one of these files
-    % that does exist is always fatal. This is because it indicates that
-    % - either the Mercury compiler invocation that created it had a bug,
-    % - or that the file has been tampered with later.
+    % a .opt or .trans_opt file, and update !BlockingSpecs accordingly.
+    % Note that
     %
-:- pred update_opt_error_status_on_success(read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out,
-    maybe_opt_file_error::in, maybe_opt_file_error::out) is det.
+    % - we can ignore *not finding* a .opt or .trans_opt file,
+    %   a situation handled by report_cannot_read_opt_file, but
+    %
+    % - finding any error, whether syntax or semantic, inside one
+    %   of these files that *does* exist is always fatal.
+    %   This is because it indicates that
+    %
+    %   - either the Mercury compiler invocation that created it had a bug,
+    %   - or that the file has been tampered with later.
+    %
+:- pred report_any_errors_in_read_opt_file(read_module_errors::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-update_opt_error_status_on_success(ModuleErrors, !Specs, !Error) :-
+report_any_errors_in_read_opt_file(ModuleErrors, !BlockingSpecs) :-
     FatalErrors = ModuleErrors ^ rm_fatal_errors,
     NonFatalErrors0 = ModuleErrors ^ rm_nonfatal_errors,
     set.delete(rme_nec, NonFatalErrors0, NonFatalErrors),
@@ -1572,8 +1579,9 @@ update_opt_error_status_on_success(ModuleErrors, !Specs, !Error) :-
         % Not adding either of those to !Specs preserves old behavior.
         true
     else
-        !:Specs = get_read_module_specs(ModuleErrors) ++ !.Specs,
-        !:Error = opt_file_error
+        ModuleSpecs = get_read_module_specs(ModuleErrors),
+        expect_not(unify(ModuleSpecs, []), $pred, "ModuleSpecs = []"),
+        !:BlockingSpecs = ModuleSpecs ++ !.BlockingSpecs
     ).
 
 %---------------------------------------------------------------------------%
