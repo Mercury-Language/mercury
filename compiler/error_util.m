@@ -151,12 +151,12 @@
 
 %---------------------------------------------------------------------------%
 
-does_spec_print_anything(Globals, Spec) :-
-    does_spec_print_anything_2(Globals, Spec) = yes.
+does_spec_print_anything(_Globals, Spec) :-
+    does_spec_print_anything_2(Spec) = yes.
 
-:- func does_spec_print_anything_2(globals, error_spec) = bool.
+:- func does_spec_print_anything_2(error_spec) = bool.
 
-does_spec_print_anything_2(Globals, Spec) = Prints :-
+does_spec_print_anything_2(Spec) = Prints :-
     (
         ( Spec = spec(_, _, _, _, _)
         ; Spec = no_ctxt_spec(_, _, _, _)
@@ -164,13 +164,13 @@ does_spec_print_anything_2(Globals, Spec) = Prints :-
         Prints = yes
     ;
         Spec = error_spec(_, _, _, Msgs),
-        PrintsList = list.map(does_msg_print_anything(Globals), Msgs),
+        PrintsList = list.map(does_msg_print_anything, Msgs),
         bool.or_list(PrintsList, Prints)
     ).
 
-:- func does_msg_print_anything(globals, error_msg) = bool.
+:- func does_msg_print_anything(error_msg) = bool.
 
-does_msg_print_anything(Globals, Msg) = Prints :-
+does_msg_print_anything(Msg) = Prints :-
     (
         ( Msg = msg(_, _)
         ; Msg = no_ctxt_msg(_)
@@ -183,29 +183,12 @@ does_msg_print_anything(Globals, Msg) = Prints :-
         ( Msg = simple_msg(_, MsgComponents)
         ; Msg = error_msg(_, _, _, MsgComponents)
         ),
-        PrintsList = list.map(does_msg_component_print_anything(Globals),
-            MsgComponents),
-        bool.or_list(PrintsList, Prints)
-    ).
-
-:- func does_msg_component_print_anything(globals, error_msg_component) = bool.
-
-does_msg_component_print_anything(Globals, MsgComponent) = Prints :-
-    (
-        ( MsgComponent = always(_)
-        ; MsgComponent = verbose_only(_, _)
-        ; MsgComponent = verbose_and_nonverbose(_, _)
-        ),
-        Prints = yes
-    ;
-        MsgComponent = option_is_set(Option, MatchValue, MsgComponents),
-        globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            PrintsList = list.map(does_msg_component_print_anything(Globals),
-                MsgComponents),
-            bool.or_list(PrintsList, Prints)
-        else
-            Prints = no
+        (
+            MsgComponents = [],
+            unexpected($pred, "MsgComponents = []")
+        ;
+            MsgComponents = [_ | _],
+            Prints = yes
         )
     ).
 

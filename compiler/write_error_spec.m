@@ -260,7 +260,7 @@
 % of write_error_specs, in practice it won't happen.
 
 write_error_spec(Stream, Globals, Spec, !IO) :-
-    standardize_error_specs(Globals, [Spec], StdSpecs),
+    standardize_error_specs([Spec], StdSpecs),
     (
         StdSpecs = []
     ;
@@ -274,7 +274,7 @@ write_error_spec(Stream, Globals, Spec, !IO) :-
 %---------------------%
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
-    standardize_error_specs(Globals, Specs0, StdSpecs),
+    standardize_error_specs(Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
@@ -283,7 +283,7 @@ write_error_specs(Stream, Globals, Specs0, !IO) :-
 %---------------------%
 
 write_error_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
-    standardize_error_specs_option_table(OptionTable, Specs, StdSpecs),
+    standardize_error_specs(Specs, StdSpecs),
     getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContexts),
     % There is nothing we can usefully do about _BadOptions.
@@ -433,7 +433,7 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
     % the verbose components of some messages are not marked to be printed.
     %
 :- pred collect_msg_components(option_table::in,
-    list(std_error_msg_component)::in,
+    list(error_msg_component)::in,
     cord(format_piece)::in, cord(format_piece)::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.

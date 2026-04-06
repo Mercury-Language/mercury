@@ -28,7 +28,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
-:- import_module bool.
 :- import_module edit_seq.
 :- import_module list.
 :- import_module maybe.
@@ -108,6 +107,17 @@
                 es_phase                :: spec_phase,
                 es_msgs                 :: list(error_msg)
             ).
+% If we ever want to both
+% - print an error_spec just after it is generated, and
+% - also return it to inform decisions about the presence of errors,
+% we can print the actual message and return it wrapped up in this
+% new function symbol, which preserves its severity (for decisions)
+% and its text (which may be helpful when debugging the code that
+% makes those decision).
+%
+%   ;       already_printed_spec(
+%               ap_spec                 :: std_error_spec
+%           ).
 
     % An error_spec that is *intended* to contain a warning,
     % XXX We can now enforce that intention using subtypes.
@@ -257,7 +267,7 @@
                 error_context           :: maybe(prog_context),
                 error_treat_as_first    :: maybe_always_treat_as_first,
                 error_extra_indent      :: uint,
-                error_components        :: list(std_error_msg_component)
+                error_components        :: list(error_msg_component)
             ).
 
 :- type verbose_always_or_once
@@ -269,10 +279,6 @@
 :- type error_msg_component
     --->    always(list(format_piece))
             % Print these components under all circumstances.
-
-    ;       option_is_set(option, bool, list(error_msg_component))
-            % Print the embedded components only if the specified boolean
-            % option has the specified value.
 
     ;       verbose_only(verbose_always_or_once, list(format_piece))
             % Print these components only if --verbose-errors is specified.
@@ -288,11 +294,6 @@
             % and set the flag that triggers the printing of the message
             % reminding the user about --verbose-errors. The verbose part
             % is implicitly verbose_always.
-
-:- type std_error_msg_component =< error_msg_component
-    --->    always(list(format_piece))
-    ;       verbose_only(verbose_always_or_once, list(format_piece))
-    ;       verbose_and_nonverbose(list(format_piece), list(format_piece)).
 
 %---------------------------------------------------------------------------%
 
@@ -798,6 +799,7 @@
 
 :- import_module parse_tree.parse_tree_out_term.
 
+:- import_module bool.
 :- import_module char.
 :- import_module edit_distance.
 :- import_module getopt.

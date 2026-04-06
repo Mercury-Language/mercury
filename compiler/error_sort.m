@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,10 +38,9 @@
     % - "option_is_set(OptionName, yes, always(...))" in the other.
     %
     % But if OptionName is yes, then this difference has no effect.
-:- pred standardize_error_specs(globals::in,
-    list(error_spec)::in, list(std_error_spec)::out) is det.
-:- pred standardize_error_specs_option_table(option_table::in,
-    list(error_spec)::in, list(std_error_spec)::out) is det.
+    %
+:- pred standardize_error_specs(list(error_spec)::in,
+    list(std_error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -73,20 +72,76 @@
 :- implementation.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module getopt.
 :- import_module maybe.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
-standardize_error_specs(Globals, Specs, StdSpecs) :-
-    globals.get_options(Globals, OptionTable),
-    standardize_error_specs_option_table(OptionTable, Specs, StdSpecs).
+standardize_error_specs(Specs, StdSpecs) :-
+    list.filter_map(standardize_error_spec, Specs, StdSpecs).
 
-standardize_error_specs_option_table(OptionTable, Specs, StdSpecs) :-
-    list.filter_map(remove_conditionals_in_spec(OptionTable),
-        Specs, StdSpecs).
+:- pred standardize_error_spec(error_spec::in, std_error_spec::out) is semidet.
+
+standardize_error_spec(Spec0, StdSpec) :-
+    require_det (
+        (
+            Spec0 = error_spec(Id, Severity, Phase, Msgs0),
+            list.filter_map(standardize_error_msg, Msgs0, StdMsgs)
+        ;
+            Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
+            StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
+                [always(Pieces0)])]
+        ;
+            Spec0 = no_ctxt_spec(Id, Severity, Phase, Pieces0),
+            StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
+                [always(Pieces0)])]
+        )
+    ),
+    (
+        StdMsgs = [_ | _],
+        StdSpec = error_spec(Id, Severity, Phase, StdMsgs)
+    ;
+        StdMsgs = [],
+        % Spec0 would result in nothing being printed.
+        fail
+    ).
+
+:- pred standardize_error_msg(error_msg::in, std_error_msg::out) is semidet.
+
+standardize_error_msg(Msg0, StdMsg) :-
+    require_det (
+        (
+            Msg0 = msg(Context, Pieces0),
+            MaybeContext = yes(Context),
+            TreatAsFirst = treat_based_on_posn,
+            ExtraIndent = 0u,
+            StdComponents = [always(Pieces0)]
+        ;
+            Msg0 = no_ctxt_msg(Pieces0),
+            MaybeContext = no,
+            TreatAsFirst = treat_based_on_posn,
+            ExtraIndent = 0u,
+            StdComponents = [always(Pieces0)]
+        ;
+            Msg0 = simple_msg(Context, StdComponents),
+            MaybeContext = yes(Context),
+            TreatAsFirst = treat_based_on_posn,
+            ExtraIndent = 0u
+        ;
+            Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
+                StdComponents)
+        ;
+            Msg0 = blank_msg(MaybeContext),
+            TreatAsFirst = always_treat_as_first,
+            ExtraIndent = 0u,
+            StdComponents = [always([blank_line])]
+        ),
+        StdMsg = error_msg(MaybeContext, TreatAsFirst,
+            ExtraIndent, StdComponents)
+    ),
+    % Don't return StdMsg if StdComponents is empty.
+    StdComponents = [_ | _].
 
 %---------------------------------------------------------------------------%
 
@@ -100,115 +155,6 @@ sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
     list.sort_and_remove_dups(
         compare_std_error_specs(ReverseErrorOrder),
         StdSpecs, SortedStdSpecs).
-
-:- pred remove_conditionals_in_spec(option_table::in,
-    error_spec::in, std_error_spec::out) is semidet.
-
-remove_conditionals_in_spec(OptionTable, Spec0, StdSpec) :-
-    require_det (
-        (
-            Spec0 = error_spec(Id, Severity0, Phase, Msgs0),
-            MaybeStdSeverity = yes(Severity0),
-            list.filter_map(remove_conditionals_in_msg(OptionTable),
-                Msgs0, StdMsgs)
-        ;
-            Spec0 = spec(Id, Severity0, Phase, Context0, Pieces0),
-            MaybeStdSeverity = yes(Severity0),
-            StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
-                [always(Pieces0)])]
-        ;
-            Spec0 = no_ctxt_spec(Id, Severity0, Phase, Pieces0),
-            MaybeStdSeverity = yes(Severity0),
-            StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
-                [always(Pieces0)])]
-        )
-    ),
-    ( if
-        MaybeStdSeverity = yes(StdSeverity),
-        StdMsgs = [_ | _]
-    then
-        StdSpec = error_spec(Id, StdSeverity, Phase, StdMsgs)
-    else
-        % Spec0 would result in nothing being printed.
-        fail
-    ).
-
-:- pred remove_conditionals_in_msg(option_table::in,
-    error_msg::in, std_error_msg::out) is semidet.
-
-remove_conditionals_in_msg(OptionTable, Msg0, StdMsg) :-
-    require_det (
-        (
-            Msg0 = msg(Context, Pieces0),
-            MaybeContext = yes(Context),
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u,
-            Components0 = [always(Pieces0)]
-        ;
-            Msg0 = no_ctxt_msg(Pieces0),
-            MaybeContext = no,
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u,
-            Components0 = [always(Pieces0)]
-        ;
-            Msg0 = simple_msg(Context, Components0),
-            MaybeContext = yes(Context),
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u
-        ;
-            Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
-                Components0)
-        ;
-            Msg0 = blank_msg(MaybeContext),
-            TreatAsFirst = always_treat_as_first,
-            ExtraIndent = 0u,
-            Components0 = [always([blank_line])]
-        ),
-        list.foldl(remove_conditionals_in_msg_component(OptionTable),
-            Components0, cord.init, StdComponentCord),
-        StdComponents = cord.list(StdComponentCord),
-        StdMsg = error_msg(MaybeContext, TreatAsFirst,
-            ExtraIndent, StdComponents)
-    ),
-    % Don't return StdMsg if StdComponents is empty.
-    StdComponents = [_ | _].
-
-:- pred remove_conditionals_in_msg_component(option_table::in,
-    error_msg_component::in,
-    cord(std_error_msg_component)::in, cord(std_error_msg_component)::out)
-    is det.
-
-remove_conditionals_in_msg_component(OptionTable, Component,
-        !StdComponentCord) :-
-    (
-        Component = option_is_set(Option, MatchValue, EmbeddedComponents),
-        % We could recurse down into EmbeddedComponents, but we currently
-        % have any places in the compiler that can generate two error messages
-        % that differ only in nested option settings, so there would be
-        % no point.
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            list.foldl(remove_conditionals_in_msg_component(OptionTable),
-                EmbeddedComponents, cord.init, StdEmbeddedComponents),
-            !:StdComponentCord = !.StdComponentCord ++ StdEmbeddedComponents
-        else
-            true
-        )
-    ;
-        % We don't want to eliminate the verbose only part of a message
-        % even if verbose_errors isn't set. We want to keep them around
-        % until we print the component, so that we can record the presence
-        % of such verbose components, and generate a reminder of their
-        % existence at the end of the compilation.
-        %
-        % Besides, the compiler can't (yet) generate two error_msg_components
-        % that differ only in the presence of a verbose error.
-        ( Component = always(_)
-        ; Component = verbose_only(_, _)
-        ; Component = verbose_and_nonverbose(_, _)
-        ),
-        cord.snoc(coerce(Component), !StdComponentCord)
-    ).
 
 %---------------------%
 
@@ -302,6 +248,8 @@ compare_error_msg_groups(GroupA, GroupB, Result) :-
         ),
         Result = Result0
     ).
+
+%---------------------------------------------------------------------------%
 
 flatten_error_msg_groups(Groups) = Msgs :-
     MsgLists = list.map(flatten_error_msg_group, Groups),
