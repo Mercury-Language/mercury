@@ -333,7 +333,7 @@ test_clocks(!IO) :-
     do_clock_test("current_utc_time/3", current_utc_time, !IO).
 
 :- pred do_clock_test(string::in,
-    pred(date_time, io, io)::in(pred(out,di, uo) is det),
+    pred(date_time, io, io)::in(pred(out, di, uo) is det),
     io::di, io::uo) is cc_multi.
 
 do_clock_test(ClockDesc, ClockPred, !IO) :-
