@@ -67,7 +67,7 @@ main(!IO) :-
     foldl_days(write_date_time, Date6A, Date6B, !IO),
     io.nl(!IO),
 
-    % Test 7: calender date of start is after that of end.
+    % Test 7: calendar date of start is after that of end.
     Date7A = det_init_date_time(2026, april, 7, 0, 0, 0, 0),
     Date7B = det_init_date_time(2025, april, 7, 0, 0, 0, 0),
     io.write_string("Test 7:\n", !IO),
