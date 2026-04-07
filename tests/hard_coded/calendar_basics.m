@@ -148,8 +148,8 @@ do_test_is_leap_year(Year, !IO) :-
 
 test_years = [
     2000,   % Divisible by 400: leap year.
-    1900,   % Divisible by 100, but not by 100: common year.
-    2024,   % Divisible by 4, but not by 1000: leap year.
+    1900,   % Divisible by 100, but not by 400: common year.
+    2024,   % Divisible by 4, but not by 100: leap year.
     2023,   % Not divisible by 4: common year.
        0,   % Divisible by 400: leap year.
       -1,   % Not divisible by 4: common year.
