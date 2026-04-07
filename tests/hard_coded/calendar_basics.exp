@@ -122,7 +122,7 @@ Unix epoch microsecond = 0
 julian_day_number(-4713-11-24 00:00:00) = 0 OK (Start of Julian period)
 julian_day_number(1970-01-01 00:00:00) = 2440588 OK (Unix epoch)
 julian_day_number(2000-01-01 00:00:00) = 2451545 OK (J2000)
-julian_day_number(1582-10-14 00:00:00) = 2299160 OK (Day before Gregorian calender adoption)
+julian_day_number(1582-10-14 00:00:00) = 2299160 OK (Day before Gregorian calendar adoption)
 julian_day_number(1582-10-15 00:00:00) = 2299161 OK (First day of the Gregorian calendar)
 julian_day_number(2000-02-29 00:00:00) = 2451604 OK (Leap day)
 julian_day_number(2000-03-01 00:00:00) = 2451605 OK (Day after leap day)
@@ -137,3 +137,7 @@ julian_day_number(2000-01-01 00:00:00) = 2451545 OK (Midnight)
 julian_day_number(2000-01-01 23:59:59) = 2451545 OK (End of day)
 julian_day_number(10000-01-01 00:00:00) = 5373485 OK (Large year)
 
+=== Test current_{local,utc}_time/3 ===
+
+TEST: current_local_time/3 PASSED
+TEST: current_utc_time/3 PASSED

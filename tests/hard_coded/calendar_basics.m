@@ -32,7 +32,8 @@ main(!IO) :-
     test_days_in_month(!IO),
     test_is_leap_year(!IO),
     test_unix_epoch(!IO),
-    test_julian_day_number(!IO).
+    test_julian_day_number(!IO),
+    test_clocks(!IO).
 
 %---------------------------------------------------------------------------%
 
@@ -223,7 +224,7 @@ julian_day_tests = [
         2451545
     ),
     julian_day_test(
-        "Day before Gregorian calender adoption",
+        "Day before Gregorian calendar adoption",
         det_init_date_time(1582, october, 14, 0, 0, 0, 0),
         2299160
     ),
@@ -312,6 +313,44 @@ months = [
     november,
     december
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred test_clocks(io::di, io::uo) is cc_multi.
+
+test_clocks(!IO) :-
+    io.write_string("=== Test current_{local,utc}_time/3 ===\n\n", !IO),
+
+    % Any test that examines the entire date_time returned by
+    % current_{local,utc}_time/3 will necessarily be nondeterministic.
+    % We can however check that:
+    %
+    % 1. The predicate returns a valid date_time and does not throw an
+    %    exception.
+    % 2. The microsecond component is zero (as documented).
+
+    do_clock_test("current_local_time/3", current_local_time, !IO),
+    do_clock_test("current_utc_time/3", current_utc_time, !IO).
+
+:- pred do_clock_test(string::in,
+    pred(date_time, io, io)::in(pred(out,di, uo) is det),
+    io::di, io::uo) is cc_multi.
+
+do_clock_test(ClockDesc, ClockPred, !IO) :-
+    io.format("TEST: %s ", [s(ClockDesc)], !IO),
+    ( try [io(!IO)]
+        ClockPred(DateTime, !IO)
+    then
+        Microseconds = DateTime ^ microsecond,
+        ( if Microseconds = 0 then
+            io.write_string("PASSED\n", !IO)
+        else
+            io.format("FAILED (microseconds = %d)\n",
+                [i(Microseconds)], !IO)
+        )
+    catch_any _ ->
+        io.write_string("FAILED (exception)\n", !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar_basics.
