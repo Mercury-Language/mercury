@@ -793,6 +793,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		bitwise_uint8 \
 		calendar_basics \
 		calendar_date_time_conv \
+		calendar_duration_conv \
 		calendar_init_date \
 		char_to_string \
 		clamp_int \
