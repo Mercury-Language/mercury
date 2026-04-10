@@ -4938,7 +4938,7 @@ for which the predicate is true,
 or (in the case of functions)
 for which the function term is equal to the result term.
 Conversely, an annotation of @code{det} or @code{semidet} is an assertion
-that for every value each of the inputs,
+that for every value of each of the inputs,
 there exists at most one value of the outputs for which the predicate is true,
 or (in the case of functions)
 for which the function term is equal to the result term.
@@ -5997,7 +5997,7 @@ where you have defined @samp{not_equal} using
 not_equal(X, Y) :- X \= Y.
 @end example
 
-Another case when this arises is when want to curry a higher-order term.
+Another case when this arises is when you want to curry a higher-order term.
 Suppose, for example, that you have
 a higher-order predicate term @samp{OldPred}
 of type @samp{pred(int, char, float)},
@@ -6135,7 +6135,7 @@ Note that the compiler will catch only
 @emph{direct} attempts at unifications or comparisons of higher-order terms.
 Indirect attempts,
 using for example polymorphic predicates
-such as @samp{(list.append([], [P], [Q])},
+such as @samp{list.append([], [P], [Q])},
 will result in an error at run-time rather than at compile-time.
 
 @node Higher-order insts and modes
@@ -7042,7 +7042,7 @@ with one of the following signatures:
 
 @example
 :- pred @var{finalpredname}(io::di, io::uo) is @var{Det}.
-:- impure pred @var{finalpredname} is @var{Det}
+:- impure pred @var{finalpredname} is @var{Det}.
 @end example
 
 @var{Det} must be either @code{det} or @code{cc_multi}.
@@ -9608,7 +9608,7 @@ which is the same size as a pointer of type @samp{void *};
 which is the same size as a pointer of type @samp{void *};
 @code{MR_Float} is a typedef for @code{double}
 (unless the program and the Mercury library
-was compiled with @samp{--single-prec-float},
+were compiled with @samp{--single-prec-float},
 in which case it is a typedef for @code{float});
 @code{MR_Char} is a typedef for a signed 32-bit integral type
 and @code{MR_String} is a typedef for @samp{char *}.
@@ -12063,7 +12063,7 @@ If a solver type has no equality predicate specified,
 then the compiler will generate an equality predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
-Likewise, if a solver type has no equality comparison specified,
+Likewise, if a solver type has no comparison predicate specified,
 then the compiler will generate a comparison predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
@@ -13230,7 +13230,7 @@ and then cuts away all later solutions
 (e.g.@: via a quantification
 that only asks whether a solution satisfying a particular test exists),
 then the cut-away call never gets a chance
-to record the fact that it is not longer active.
+to record the fact that it is no longer active.
 The next call to that predicate with the same arguments
 will therefore think that the previous call is still active,
 and will consider this call to be an infinite loop.
