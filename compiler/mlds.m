@@ -638,7 +638,7 @@
                 mecd_implements     :: maybe(mlds_interface_id),
 
                 % Type parameters.
-                mcd_tparams         :: list(type_param),
+                mecd_tparams        :: list(type_param),
 
                 % XXX ml_type_gen.m generates this "value" field variable
                 % for each enum type. However, this field var's definition
@@ -700,7 +700,7 @@
                 % We treat environment structures as structs when targeting C,
                 % and as classes when targeting C# or Java.
                 %
-                % Environments structures inherit nothing when targeting C,
+                % Environment structures inherit nothing when targeting C,
                 % but inherit the generic env_ptr type when targeting C# or
                 % Java.
                 %
@@ -2370,7 +2370,7 @@
     ;       fvn_prev
     ;       fvn_trace.
             % These MLDS variables represent two fixed fields in the frames
-            % that hold variables when we compiler for accurate gc. fvn_prev
+            % that hold variables when we compile for accurate gc. fvn_prev
             % points to the previous frame (if any) in the chain of frames,
             % while fvn_trace points to the function that traces the contents
             % of the current frame.
@@ -2759,7 +2759,7 @@ is_std_lib_module(Module, Name) :-
 mlds_append_class_qualifier(Target, ModuleName0, QualKind,
         ClassName, ClassArity) = ModuleName :-
     ModuleName0 = mlds_module_name(Package, Module0),
-    % For the Java back-end, we flip the initial case of an type qualifiers,
+    % For the Java back-end, we flip the initial case of any type qualifiers,
     % in order to match the usual Java conventions.
     ( if
         Target = ml_target_java,
