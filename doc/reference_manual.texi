@@ -8930,7 +8930,6 @@ A @samp{true} return value denotes success and @samp{false} denotes failure.
 Output arguments are handled in the same way
 as multiple outputs for deterministic procedures,
 using @samp{out} parameters.
-On failure the values of the @samp{val} fields are undefined.
 
 Mercury lists can be manipulated by C# code using the following methods,
 which are defined by the Mercury implementation.
