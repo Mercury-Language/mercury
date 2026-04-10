@@ -264,7 +264,7 @@ followed by zero or more letters, underscores, and digits.
 For example,
 @samp{Sum}, @samp{_NotNeeded}, @samp{_a}, and @samp{_123} are variables,
 whereas @samp{x} and @samp{_#} are not.
-A variable token consisting of single underscore is treated specially:
+A variable token consisting of a single underscore is treated specially:
 each instance of @samp{_} denotes a distinct variable.
 
 Variables starting with an uppercase letter
@@ -2843,7 +2843,7 @@ or are defined in the standard library.
 
 There is a special syntax
 for constants of all primitive types except @code{char}.
-(For @code{char}, the standard syntax suffixes.)
+(For @code{char}, the standard syntax suffices.)
 
 @menu
 * Signed integer types::
@@ -2918,7 +2918,7 @@ Values of the type @code{uint64} must be in the range
 @math{0} (@math{2^0 - 1}) to @math{18446744073709551615} (@math{2^64 - 1}),
 both inclusive.
 
-Values of the type @math{uint} must be in the range
+Values of the type @code{uint} must be in the range
 @math{0} (@math{2^0 - 1}) to @math{2^N - 1},
 both inclusive;
 @math{N} being the width of @code{uint} in bits.
@@ -3205,7 +3205,7 @@ impure
 
 Phantom type parameters are useful when you have
 two distinct concepts that you want to keep separate,
-but for which nevertheless you want to use the representation.
+but for which nevertheless you want to use the same representation.
 This is an example of their use, taken from the Mercury compiler:
 
 @example
@@ -4932,7 +4932,7 @@ For example:
 @end example
 
 An annotation of @code{det} or @code{multi} is an assertion
-that for every value each of the inputs,
+that for every value of each of the inputs,
 there exists at least one value of the outputs
 for which the predicate is true,
 or (in the case of functions)
@@ -5887,7 +5887,7 @@ the type of @code{X}, @code{Y}, and @code{Z} is
 @samp{func(int, list(int)) = list(int)},
 which means a function of two arguments,
 whose types are @code{int} and @code{list(int)},
-with a return type of @code{int}.
+with a return type of @code{list(int)}.
 As with @samp{:- func} declarations,
 if the modes and determinism of the function
 are omitted in a higher-order function term,
@@ -6767,7 +6767,7 @@ here is the definition of a simple module for managing queues:
 
 % Queues are implemented as lists. We need the `list' module
 % for the declaration of the type list(T), with its constructors
-% '[]'/0 % and '.'/2, and for the declaration of the predicate
+% '[]'/0 and '[|]'/2, and for the declaration of the predicate
 % list.append/3.
 
 :- import_module list.
@@ -7915,7 +7915,7 @@ For example, in this code
 :- pred q(Q, R) <= quux(P, Q, R).
 @end example
 the signature of @code{q/2} is acceptable
-since the superclass constraint on @code{quux/2}
+since the superclass constraint on @code{quux/3}
 induces the dependency @samp{R -> P} on the type variables,
 hence @var{P} is in the closure of @{@var{Q}, @var{R}@}.
 
@@ -8226,7 +8226,7 @@ For example:
     ;       f2(T)
     ;       some [T1] f3(T1)
     ;       some [T1, T2] f4(T1, T2, T) => (showable(T1), showable(T2))
-    ;       some [T1, T2] f5(list(T1), T2) => fooable(T1, T2).
+    ;       some [T1, T2] f5(list(T1), T2) => foo(T1, T2).
 @end example
 
 Construction and deconstruction of existentially quantified data types
@@ -8281,7 +8281,7 @@ to the values in such a list.
 
 @example
 :- func process_list(showable_list) = list(string).
-process_list(nil) = "".
+process_list(nil) = [].
 process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 @end example
 
@@ -9707,12 +9707,12 @@ to the following Common Language Infrastructure (CLI) and C# types:
 @multitable {Mercury_type} {System_String} {double}
   @headitem Mercury type @tab CLI type @tab C# type
   @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
-  @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
+  @item @code{int8}   @tab @code{System.SByte}  @tab @code{sbyte}
   @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
   @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
   @item @code{int64}  @tab @code{System.Int64}  @tab @code{long}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
-  @item @code{uint8}  @tab @code{System.UInt8}  @tab @code{byte}
+  @item @code{uint8}  @tab @code{System.Byte}   @tab @code{byte}
   @item @code{uint16} @tab @code{System.UInt16} @tab @code{ushort}
   @item @code{uint32} @tab @code{System.UInt32} @tab @code{uint}
   @item @code{uint64} @tab @code{System.UInt64} @tab @code{ulong}
@@ -10649,14 +10649,14 @@ For example:
 
 :- pragma foreign_proc("C",
     initialise_complicated_structure(Structure::uo),
-    [will_not_call_mercury, may_call_mercury],
+    [promise_pure, will_not_call_mercury],
 "
     Structure = init_struct();
 ").
 
 :- pragma foreign_proc("C",
     do_calculation(Value::in, Structure0::di, Structure::uo),
-    [will_not_call_mercury, may_call_mercury],
+    [promise_pure, will_not_call_mercury],
 "
     Structure = perform_calculation(Value, Structure0);
 ").
