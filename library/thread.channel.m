@@ -87,25 +87,25 @@
 
 %---------------------------------------------------------------------------%
 
-channel.init(channel(Read, Write), !IO) :-
+init(channel(Read, Write), !IO) :-
     mvar.init(Read, !IO),
     mvar.init(Write, !IO),
     mvar.init(Hole, !IO),
     mvar.put(Read, Hole, !IO),
     mvar.put(Write, Hole, !IO).
 
-channel.put(channel(_Read, Write), Val, !IO) :-
+put(channel(_Read, Write), Val, !IO) :-
     mvar.init(NewHole, !IO),
     mvar.take(Write, OldHole, !IO),
     mvar.put(Write, NewHole, !IO),
     mvar.put(OldHole, item(Val, NewHole), !IO).
 
-channel.take(channel(Read, _Write), Val, !IO) :-
+take(channel(Read, _Write), Val, !IO) :-
     mvar.take(Read, Head, !IO),
     mvar.take(Head, item(Val, NewHead), !IO),
     mvar.put(Read, NewHead, !IO).
 
-channel.try_take(channel(Read, _Write), MaybeVal, !IO) :-
+try_take(channel(Read, _Write), MaybeVal, !IO) :-
     mvar.take(Read, Head, !IO),
     mvar.try_take(Head, MaybeItem, !IO),
     (
@@ -118,13 +118,13 @@ channel.try_take(channel(Read, _Write), MaybeVal, !IO) :-
     ),
     mvar.put(Read, NewHead, !IO).
 
-channel.duplicate(channel(_Read, Write), channel(NewRead, Write), !IO) :-
+duplicate(channel(_Read, Write), channel(NewRead, Write), !IO) :-
     mvar.init(NewRead, !IO),
     mvar.take(Write, Hole, !IO),
     mvar.put(Write, Hole, !IO),
     mvar.put(NewRead, Hole, !IO).
 
-channel.untake(channel(Read, _Write), Val, !IO) :-
+untake(channel(Read, _Write), Val, !IO) :-
     mvar.init(NewHead, !IO),
     mvar.take(Read, Head, !IO),
     mvar.put(NewHead, item(Val, Head), !IO),
