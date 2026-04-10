@@ -5408,7 +5408,7 @@ of committed choice logic programming languages such as GHC.
 
 One way to stop propagating committed choice nondeterminism
 is the one mentioned above: if a goal has no non-local output variables
-(i.e.@ none of the goal's outputs are visible from outside the goal),
+(i.e.@: none of the goal's outputs are visible from outside the goal),
 then the goal's solutions are indistinguishable from the outside,
 and the implementation will only attempt to satisfy the goal once,
 whether or not the goal is committed choice.
@@ -5428,7 +5428,7 @@ but no matter which order you iterate over them,
 the maximum value in the set should be the same.
 
 If this condition is satisfied,
-i.e.@ if you know that there will only ever be at most one distinct solution
+i.e.@: if you know that there will only ever be at most one distinct solution
 under your equality theory of the output variables,
 then you can use a @samp{promise_equivalent_solutions} determinism cast.
 If goal @samp{G} is a @code{cc_multi} goal
@@ -6844,7 +6844,7 @@ if the interface section of a submodule contains any of the following:
 a declaration for a function or a predicate;
 @item
 an abstract declaration for a type, inst, mode or typeclass,
-i.e.@ a declaration that does not itself serve as a definition
+i.e.@: a declaration that does not itself serve as a definition
 of that type, inst, mode or typeclass;
 @item
 an abstract declaration of a typeclass instance; or
