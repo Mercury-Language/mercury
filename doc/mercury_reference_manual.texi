@@ -189,7 +189,7 @@ These separators are mostly ignored by the parser,
 but in some cases whitespace may be required to separate tokens
 that would otherwise be ambiguous.
 In other cases whitespace is not allowed,
-e.g., before the @var{open-ct} token,
+e.g.@: before the @var{open-ct} token,
 or after a @samp{.} operator
 that would otherwise be interpreted as an @var{end} token.
 
@@ -481,7 +481,7 @@ and as such they can be used without arguments supplied.
 For example, @samp{f(+)} is syntactically valid.
 In some cases parentheses may be required
 to limit the scope of an operator without arguments,
-e.g. if it appears as an argument to another operator.
+e.g.@: if it appears as an argument to another operator.
 The comma operator is not a name and therefore requires single quotes
 in order to be used without arguments.
 An operator in single quotes is still an operator,
@@ -1066,7 +1066,7 @@ For example, it is true that 1 plus 1 is 2,
 and that the length of the list [1, 2, 3] is 3.
 Statements that are either true or false like this
 are known as @dfn{propositions},
-e.g., 1 + 1 = 2 and 1 + 2 = 5 are both propositions;
+e.g.@: 1 + 1 = 2 and 1 + 2 = 5 are both propositions;
 if + is interpreted as integer addition
 then the first proposition is true and the second is false.
 
@@ -5371,7 +5371,7 @@ In other words, the implementation should @emph{commit} to the first solution.
 The commit to the first solution means that
 a piece of @code{cc_nondet} or @code{cc_multi} code
 can never be asked to generate a second solution.
-If e.g. a @code{cc_nondet} call is in a conjunction,
+If e.g.@: a @code{cc_nondet} call is in a conjunction,
 then no later goal in that conjunction (after mode reordering) may fail,
 because that would ask the committed choice goal for a second solution.
 The compiler enforces this rule.
@@ -12853,7 +12853,7 @@ The pragma
 tells the compiler that calls to this predicate
 should be checked the same way
 as calls to the four formatting predicates and one formatting function
-listed the above,
+listed above,
 with the format string in the second argument,
 and the values in the list in the third.
 This way, while @code{maybe_log_message} cannot ensure
