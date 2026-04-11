@@ -422,7 +422,7 @@ Ensure that the following directories are present in the Windows `PATH`:
 Be careful about adding the above directories to the Windows System or User
 `PATH`. Doing so may result in conflicts between DLLs and executables in the
 MSYS2 `bin` directory and those installed elsewhere. A better approach is to
-create batch file (e.g. `mercury_env.bat`) that sets the `PATH` for Mercury
+create a batch file (e.g. `mercury_env.bat`) that sets the `PATH` for Mercury
 on a per-session basis.
 
 You can then invoke the Mercury compiler using the command `mercury`.
