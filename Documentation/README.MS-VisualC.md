@@ -151,7 +151,7 @@ Make sure that the following are present in the Windows `PATH`:
    `C:\mercury`, then you would add `C:\mercury\bin` to the Windows `PATH`.
 
 You can then run the Mercury compiler using the command `mercury`.
-This is a batch file that is the same as `mmc` in other environments.
+This is a batch file that is equivalent to `mmc` in other environments.
 We use the name `mercury` instead of `mmc` in the Windows Command Prompt.
 This is because the name `mmc` is also used by the Microsoft Management
 Console.
