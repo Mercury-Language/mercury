@@ -16,8 +16,8 @@ Supported versions of Windows
 
 Mercury has been tested with the following versions of Windows:
 
-    * Windows 10
-    * Windows 11
+* Windows 10
+* Windows 11
 
 We no longer actively maintain support for older versions of Windows.
 
