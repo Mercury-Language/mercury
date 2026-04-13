@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014-2018 The Mercury team.
+// Copyright (C) 2014-2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_THREAD_H
@@ -208,7 +208,7 @@
   // create_worksteal_thread() creates a new POSIX thread, and creates and
   // initializes a work-stealing Mercury engine to run in that thread.
 
-  extern MercuryThread      *MR_create_worksteal_thread(void);
+  extern MercuryThread      MR_create_worksteal_thread(void);
 
   // The primordial thread. Currently used for debugging.
 

@@ -299,6 +299,8 @@ static  int         MR_num_output_args = 0;
 
 #ifdef MR_LL_PARALLEL_CONJ
 MR_Unsigned         MR_num_ws_engines = 0;
+static MercuryThread *MR_ws_engine_threads; // Will be initialised to an array
+                                            // of length MR_num_ws_engines - 1.
 MR_Unsigned         MR_max_engines = 1024;
 
 MR_Unsigned         MR_granularity_wsdeque_length_factor = 8;
@@ -639,12 +641,16 @@ mercury_runtime_init(int argc, char **argv)
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
 
     // Start up additional work-stealing Mercury engines.
+    // The current thread will be running the first engine.
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
 
-        for (i = 1; i < MR_num_ws_engines; i++) {
-            MR_create_worksteal_thread();
+        MR_ws_engine_threads = MR_GC_NEW_ARRAY(MercuryThread,
+            MR_num_ws_engines - 1);
+
+        for (i = 0; i < MR_num_ws_engines - 1; i++) {
+            MR_ws_engine_threads[i] = MR_create_worksteal_thread();
         }
 
     #ifdef MR_THREADSCOPE
@@ -655,7 +661,7 @@ mercury_runtime_init(int argc, char **argv)
         }
     #endif
 
-        while (MR_num_idle_ws_engines < MR_num_ws_engines-1) {
+        while (MR_num_idle_ws_engines < MR_num_ws_engines - 1) {
             // busy wait until the worker threads are ready
             MR_ATOMIC_PAUSE;
         }
@@ -2999,6 +3005,18 @@ mercury_runtime_terminate(void)
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
     MR_shutdown_ws_engines();
+
+    // Each work-stealing engine has been notified to shut down.
+    // Wait for the threads that they are running on to terminate before
+    // continuing.
+    {
+        int i;
+
+        for (i = 0; i < MR_num_ws_engines - 1; i++) {
+            pthread_join(MR_ws_engine_threads[i], NULL);
+            MR_ws_engine_threads[i] = MR_null_thread();
+        }
+    }
 
 #ifdef MR_THREADSCOPE
     if (MR_ENGINE(MR_eng_ts_buffer)) {

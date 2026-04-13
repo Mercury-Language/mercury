@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018, 2020-2021, 2024 The Mercury team.
+// Copyright (C) 2014, 2016-2018, 2020-2021, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_context.c - handles multithreading stuff.
@@ -271,7 +271,6 @@ static MR_Context       *free_small_context_list = NULL;
 #ifdef  MR_LL_PARALLEL_CONJ
 MR_Integer volatile         MR_num_idle_ws_engines = 0;
 static MR_Integer volatile  MR_num_outstanding_contexts = 0;
-static MercurySem           shutdown_ws_semaphore;
 
 static MercuryLock      MR_par_cond_stats_lock;
 
@@ -362,7 +361,6 @@ MR_init_context_stuff(void)
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
-    MR_sem_init(&shutdown_ws_semaphore, 0);
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
 
@@ -880,9 +878,6 @@ MR_finalize_context_stuff(void)
 #ifdef MR_THREAD_SAFE
     pthread_mutex_destroy(&MR_runqueue_lock);
     pthread_mutex_destroy(&free_context_list_lock);
-  #ifdef MR_LL_PARALLEL_CONJ
-    MR_sem_destroy(&shutdown_ws_semaphore);
-  #endif
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -2133,14 +2128,6 @@ MR_shutdown_ws_engines(void)
             MR_sched_yield();
         }
     }
-
-    for (i = 0; i < (MR_num_ws_engines - 1); i++) {
-        int err;
-
-        do {
-            err = MR_SEM_WAIT(&shutdown_ws_semaphore, "MR_shutdown_ws_engines");
-        } while (err == -1 && MR_SEM_IS_EINTR(errno));
-    }
 }
 
 #endif // MR_LL_PARALLEL_CONJ
@@ -2571,7 +2558,6 @@ action_shutdown_ws_engine(void)
     assert(engine_id != 0);
     assert(MR_ENGINE(MR_eng_type) == MR_ENGINE_TYPE_SHARED);
     MR_finalize_thread_engine();
-    MR_SEM_POST(&shutdown_ws_semaphore, "MR_do_sleep shutdown_sem");
     pthread_exit(0);
 }
 

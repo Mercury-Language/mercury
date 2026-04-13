@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #include "mercury_imp.h"
@@ -60,25 +60,16 @@ MR_shutdown_engine_for_threads(MercuryEngine *eng);
 static void *
 MR_create_worksteal_thread_2(void *goal);
 
-MercuryThread *
+MercuryThread
 MR_create_worksteal_thread(void)
 {
-    MercuryThread   *thread;
-    pthread_attr_t  attrs;
+    MercuryThread   thread;
     int             err;
     char            errbuf[MR_STRERROR_BUF_SIZE];
 
     assert(!MR_thread_equal(MR_primordial_thread, MR_null_thread()));
 
-    // Create threads in the detached state so that resources will be
-    // automatically freed when threads terminate (we don't call
-    // pthread_join() anywhere).
-
-    thread = MR_GC_NEW_ATTRIB(MercuryThread, MR_ALLOC_SITE_RUNTIME);
-    pthread_attr_init(&attrs);
-    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    err = pthread_create(thread, &attrs, MR_create_worksteal_thread_2, NULL);
-    pthread_attr_destroy(&attrs);
+    err = pthread_create(&thread, NULL, MR_create_worksteal_thread_2, NULL);
 
 #if 0
     fprintf(stderr, "pthread_create returned %d (errno = %d)\n", err, errno);
