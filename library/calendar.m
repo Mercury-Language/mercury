@@ -661,11 +661,11 @@ minute(Date) = Date ^ dt_minute.
 second(Date) = Date ^ dt_second.
 microsecond(Date) = Date ^ dt_microsecond.
 
-:- func compute_day_of_week(date) = day_of_week.
+:- func compute_day_of_week(date_time) = day_of_week.
 
-compute_day_of_week(Date) = DayOfWeek :-
+compute_day_of_week(DateTime) = DayOfWeek :-
     % We compute the day of the week by working out the Julian day modulo 7.
-    JDN = julian_day_number(Date),
+    JDN = julian_day_number(DateTime),
     Mod = JDN mod 7,
     DayOfWeek = det_day_of_week_from_mod(Mod).
 
@@ -890,9 +890,9 @@ current_utc_time(Now, !IO) :-
     TM = time.gmtime(TimeT),
     Now = tm_to_date(TM).
 
-:- func tm_to_date(time.tm) = date.
+:- func tm_to_date(time.tm) = date_time.
 
-tm_to_date(TM) = Date :-
+tm_to_date(TM) = DateTime :-
     TM = tm(TMYear, TMMonth, TMDay, TMHour, TMMinute, TMSecond, _, _, _),
     Year = 1900 + TMYear,
     Month = TMMonth + 1,
@@ -900,7 +900,7 @@ tm_to_date(TM) = Date :-
     Hour = TMHour,
     Minute = TMMinute,
     Second = TMSecond,
-    Date = date_time(Year, Month, Day, Hour, Minute, Second, 0).
+    DateTime = date_time(Year, Month, Day, Hour, Minute, Second, 0).
 
 julian_day_number(date_time(Year, Month, Day, _, _, _, _)) = JDN :-
     % The algorithm is described at
