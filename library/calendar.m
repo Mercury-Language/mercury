@@ -652,14 +652,14 @@
 
 %---------------------------------------------------------------------------%
 
-year(Date) = Date ^ dt_year.
-month(Date) = det_int_to_month(Date ^ dt_month).
-day_of_month(Date) = Date ^ dt_day.
-day_of_week(Date) = compute_day_of_week(Date).
-hour(Date) = Date ^ dt_hour.
-minute(Date) = Date ^ dt_minute.
-second(Date) = Date ^ dt_second.
-microsecond(Date) = Date ^ dt_microsecond.
+year(DateTime) = DateTime ^ dt_year.
+month(DateTime) = det_int_to_month(DateTime ^ dt_month).
+day_of_month(DateTime) = DateTime ^ dt_day.
+day_of_week(DateTime) = compute_day_of_week(DateTime).
+hour(DateTime) = DateTime ^ dt_hour.
+minute(DateTime) = DateTime ^ dt_minute.
+second(DateTime) = DateTime ^ dt_second.
+microsecond(DateTime) = DateTime ^ dt_microsecond.
 
 :- func compute_day_of_week(date_time) = day_of_week.
 
@@ -814,7 +814,7 @@ unpack_date(DateTime, Year, Month, Day, Hour, Minute, Second,
 
 %---------------------------------------------------------------------------%
 
-date_time_from_string(Str, Date) :-
+date_time_from_string(Str, DateTime) :-
     some [!Chars] (
         !:Chars = string.to_char_list(Str),
         ( if read_char((-), !.Chars, Rest1) then
@@ -846,7 +846,7 @@ date_time_from_string(Str, Date) :-
         Second < 61,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
-        Date = date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        DateTime = date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)
     ).
 
 date_from_string(Str, Date) :-
