@@ -71,8 +71,8 @@
                 tm_mday :: int,         % MonthDay (1-31)
                 tm_hour :: int,         % Hours (after midnight, 0-23)
                 tm_min  :: int,         % Minutes (0-59)
-                tm_sec  :: int,         % Seconds (0-61)
-                                        % (60 and 61 are for leap seconds)
+                tm_sec  :: int,         % Seconds (0-60)
+                                        % (60 allows for a positive leap second)
                 tm_yday :: int,         % YearDay (number since Jan 1st, 0-365)
                 tm_wday :: int,         % WeekDay (number since Sunday, 0-6)
                 tm_dst  :: maybe(dst)   % IsDST (is DST applicable, and if so,

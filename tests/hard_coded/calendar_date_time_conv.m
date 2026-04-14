@@ -204,7 +204,6 @@ valid_date_times = [
     dt_conv_test("midnight", "2024-01-01 00:00:00"),
     dt_conv_test("last second of the day", "2024-01-01 23:59:59"),
     dt_conv_test("leap second", "2024-01-01 00:00:60"),
-    dt_conv_test("double leap second", "2024-01-01 00:00:61"),
 
     dt_conv_test("one fractional digit", "2024-01-01 00:00:00.1"),
     dt_conv_test("two fractional digits", "2024-01-01 00:00:00.12"),
@@ -215,7 +214,7 @@ valid_date_times = [
     dt_conv_test("smallest nonzero microsecond", "2024-01-01 00:00:00.000001"),
     dt_conv_test("largest microsecond value", "2024-01-01 00:00:00.999999"),
 
-    dt_conv_test("all maximum", "2024-12-31 23:59:61.999999"),
+    dt_conv_test("all maximum", "2024-12-31 23:59:60.999999"),
     dt_conv_test("Unix epoch", "1970-01-01 00:00:00"),
     dt_conv_test("first day of the Gregorian calendar",
         "1582-10-15 00:00:00")
@@ -287,7 +286,7 @@ invalid_date_times = [
     dt_conv_test("day 31 in a 30-day month", "2024-04-31 00:00:00"),
     dt_conv_test("hour 24", "2024-01-01 24:00:00"),
     dt_conv_test("minute 60", "2024-01-01 00:60:00"),
-    dt_conv_test("second 62", "2024-01-01 00:00:62"),
+    dt_conv_test("second 61", "2024-01-01 00:00:61"),
 
     dt_conv_test("trailing dot with no digits", "2024-01-01 00:00:00."),
     dt_conv_test("seven fractional digits", "2024-01-01 00:00:00.1234567"),

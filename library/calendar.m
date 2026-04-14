@@ -55,7 +55,7 @@
 :- type day_of_month == int. % 1 .. 31 depending on the month and year
 :- type hour == int.         % 0 .. 23
 :- type minute == int.       % 0 .. 59
-:- type second == int.       % 0 .. 61 (60 and 61 are for leap seconds)
+:- type second == int.       % 0 .. 60 (60 is for a positive leap second)
 :- type microsecond == int.  % 0 .. 999,999
 
 :- type month
@@ -165,8 +165,8 @@
     %
     %   - Minute is in the range 0 .. 59
     %
-    %   - Second is in the range 0 .. 61
-    %     (to account for up to two leap seconds being added in a year)
+    %   - Second is in the range 0 .. 60
+    %     (to account for one positive leap second being added to a day)
     %
     %   - MicroSecond is in the range 0 .. 999,999
     %
@@ -313,9 +313,9 @@
     %   - Adding -1 year   to February 29, 2020 gives February 28, 2019
     %
     % Note on leap seconds: although individual dates can represent times
-    % with leap seconds (seconds 60-61), durations ignore them. A day is
+    % with leap seconds (second 60), durations ignore them. A day is
     % always treated as exactly 86,400 seconds, even though UTC days
-    % containing leap seconds are 86,401 or 86,402 seconds long.
+    % containing leap seconds are 86,399 or 86,401 seconds long.
     %
     % Durations are stored internally using four components only: months, days,
     % seconds and microseconds. When a duration is constructed by
@@ -774,7 +774,7 @@ init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
     Minute >= 0,
     Minute < 60,
     Second >= 0,
-    Second < 62,
+    Second < 61,
     MicroSecond >= 0,
     MicroSecond < 1000000,
     DateTime = date_time(Year, month_to_int(Month), Day, Hour, Minute, Second,
@@ -843,7 +843,7 @@ date_time_from_string(Str, Date) :-
         Minute =< 59,
         read_char((:), !Chars),
         read_int_and_num_chars(Second, 2, !Chars),
-        Second < 62,
+        Second < 61,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
         Date = date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)

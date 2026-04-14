@@ -246,6 +246,9 @@ Changes to the Mercury standard library
     - func `det_date_from_string/1` (replacement: `det_date_time_from_string/1`)
     - func `date_to_string/1`       (replacement: `date_time_to_string/1`)
 
+* `date_time/0` and `duration/0` values now only allow for a single positive
+  leap second for any given minute.
+
 * The following functions and predicates have been added:
 
     - pred `init_date_time/8`
@@ -1423,6 +1426,11 @@ Changes to the Mercury standard library
 
     - pred `spawn_native_joinable/5`
     - pred `join_thread/4`
+
+### Changes to the `time` module
+
+*  The `tm_sec` field of the `tm/0` type now only allows for a single positive
+   leap second for any given minute.
 
 ### Changes to the `tree_bitset` module
 
