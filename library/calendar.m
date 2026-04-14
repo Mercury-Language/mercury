@@ -776,7 +776,7 @@ init_date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond,
     Second >= 0,
     Second < 61,
     MicroSecond >= 0,
-    MicroSecond < 1000000,
+    MicroSecond < 1_000_000,
     DateTime = date_time(Year, month_to_int(Month), Day, Hour, Minute, Second,
         MicroSecond).
 
@@ -846,7 +846,8 @@ date_time_from_string(Str, DateTime) :-
         Second < 61,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
-        DateTime = date_time(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        DateTime = date_time(Year, Month, Day, Hour, Minute, Second,
+            MicroSecond)
     ).
 
 date_from_string(Str, Date) :-
@@ -976,11 +977,11 @@ init_duration(Years, Months, Days, Hours, Minutes, Seconds, MicroSeconds)
 
 :- func seconds_per_day = int.
 
-seconds_per_day = 86400.
+seconds_per_day = 86_400.
 
 :- func microseconds_per_second = int.
 
-microseconds_per_second = 1000000.
+microseconds_per_second = 1_000_000.
 
 unpack_duration(Duration,
     years(Duration), months(Duration), days(Duration), hours(Duration),
@@ -1149,11 +1150,13 @@ add_duration(D, S, !:E) :-
             TempDays = S ^ dt_day
         ),
         EDay = TempDays + D ^ dur_days + !.Carry,
-        !:E = date_time(EYear, EMonth, EDay, EHour, EMinute, ESecond, EMicrosecond),
+        !:E = date_time(EYear, EMonth, EDay, EHour, EMinute, ESecond,
+            EMicrosecond),
         add_duration_loop(D, S, !E)
     ).
 
-:- pred add_duration_loop(duration::in, date::in, date::in, date::out) is det.
+:- pred add_duration_loop(duration::in, date_time::in, date_time::in,
+    date_time::out) is det.
 
 add_duration_loop(D, S, !E) :-
     ( if !.E ^ dt_day < 1 then
@@ -1285,8 +1288,8 @@ duration(DateA, DateB) = Duration :-
     %   add_duration(duration(DateA, DateB), DateA, DateB)
     % to hold, and in the case where DateA > DateB, Duration will be negative.
     %
-:- pred greedy_subtract_descending(order::in, date::in, date::in,
-    duration::out) is det.
+:- pred greedy_subtract_descending(order::in, date_time::in,
+    date_time::in, duration::out) is det.
 
 greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
     some [!Borrow] (
