@@ -179,7 +179,7 @@
     minute::in, second::in, microsecond::in, date_time::out) is semidet.
 :- pragma obsolete(pred(init_date/8), [init_date_time/8]).
 
-    % As above, but throw an exception if the date is invalid.
+    % As above, but throw an exception if the date_time is invalid.
     %
 :- func det_init_date_time(year, month, day_of_month, hour, minute, second,
     microsecond) = date_time.
@@ -312,7 +312,7 @@
     %   - Adding -1 month  to March 31    gives February 28 (29 in a leap year)
     %   - Adding -1 year   to February 29, 2020 gives February 28, 2019
     %
-    % Note on leap seconds: although individual dates can represent times
+    % Note on leap seconds: although individual date_times can represent times
     % with leap seconds (second 60), durations ignore them. A day is
     % always treated as exactly 86,400 seconds, even though UTC days
     % containing leap seconds are 86,399 or 86,401 seconds long.
@@ -322,7 +322,7 @@
     % init_duration/7, the seven input components are normalised into these
     % four.
     %
-    %   - Years are converted to months and added to the months component
+    %   - Years are converted to months and added to the months component.
     %   - Microseconds are divided into whole seconds (which are carried over)
     %     and a microseconds remainder.
     %   - Hours, minutes, seconds, and any carried seconds are combined into a
