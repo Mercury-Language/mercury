@@ -1239,7 +1239,7 @@ duration_leq(DurA, DurB) :-
 
     % Returns dates used to compare durations.
     %
-:- func test_dates = list(date).
+:- func test_dates = list(date_time).
 
 test_dates = [
     date_time(1696, 9, 1, 0, 0, 0, 0),
