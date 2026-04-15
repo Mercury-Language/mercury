@@ -521,7 +521,7 @@
     % Offset is the difference between local and UTC time, that is, the
     % value of duration(UTC, Local), where Local and UTC are the local and UTC
     % representations of the same point in time. Offset reflects the system's
-    % current daylight savings state at the time of the call.
+    % current daylight saving state at the time of the call.
     %
     % To convert UTC time to local time, add Offset to UTC using
     % add_duration/3. To convert local time to UTC, negate Offset using
@@ -537,9 +537,9 @@
     % after DateTimeA and negative if DateTimeB is before DateTimeA. Leap
     % seconds are ignored.
     %
-    % The dates should be in the same timezone and daylight savings phase;
+    % The dates should be in the same timezone and daylight saving phase;
     % to find the duration between dates in different timezones or daylight
-    % savings phases, first convert them both to UTC.
+    % saving phases, first convert them both to UTC.
     %
     % Note that due to month-end clamping, duration/2 is not always the
     % inverse of add_duration/3. For example, the duration from 2001-01-31
