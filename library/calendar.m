@@ -207,8 +207,8 @@
     % The year must have at least four digits. This requirement comes from
     % ISO standard 8601, and its main intention is to prevent repeats of
     % the Y2K problem (see https://en.wikipedia.org/wiki/Year_2000_problem).
-    % It also prevents possible confusion between the year part of the date,
-    % and the month or the day parts.
+    % It also prevents possible confusion between the year part of the
+    % date_time, and the month or the day parts.
     %
     % Since some simulation programs may want to handle date_times in the far
     % future, the predicate accepts years with more than four digits.
@@ -559,7 +559,7 @@
     % zero. The result is positive if DateTimeB is after DateTimeA and
     % negative if DateTimeB is before DateTimeA. Leap seconds are ignored.
     %
-    % The dates should be in the same timezone and daylight savings phase;
+    % The dates should be in the same timezone and daylight saving phase;
     % to find the duration between dates in different timezones or daylight
     % savings phases, first convert them both to UTC.
     %
@@ -1295,13 +1295,14 @@ duration(DateA, DateB) = duration_between(DateA, DateB).
     --->    ascending
     ;       descending.
 
-    % This predicate has the precondition that DateA < DateB. OriginalOrder is
-    % the original order of the date arguments (descending means that in the
-    % original call DateA < DateB, while ascending means that in the original
-    % call DateA > DateB). This is needed to correctly compute the days
-    % component of the resulting duration. The calculation is different
-    % depending on the original order, because we want the invariant:
-    %   add_duration(duration(DateA, DateB), DateA, DateB)
+    % This predicate has the precondition that DateA < DateB.
+    % OriginalOrder is the original order of the date_time arguments
+    % (descending means that in the original call DateA < DateB, while
+    % ascending means that in the original call DateA > DateB). This is needed
+    % to correctly compute the days component of the resulting duration.
+    % The calculation is different depending on the original order, because we
+    % want the invariant:
+    %   add_duration(duration_between(DateA, DateB), DateA, DateB)
     % to hold, and in the case where DateA > DateB, Duration will be negative.
     %
 :- pred greedy_subtract_descending(order::in, date_time::in,
@@ -1390,7 +1391,7 @@ fixed_duration_between(DateA, DateB) = Duration :-
 
 day_duration(DateA, DateB) = fixed_duration_between(DateA, DateB).
 
-:- func do_fixed_duration_between(date, date) = duration.
+:- func do_fixed_duration_between(date_time, date_time) = duration.
 
 do_fixed_duration_between(DateA, DateB) = Duration :-
     some [!Borrow] (
