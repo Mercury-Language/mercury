@@ -529,7 +529,7 @@
     %
 :- pred local_time_offset(duration::out, io::di, io::uo) is det.
 
-    % duration(DateTimeA, DateTimeB) = Duration:
+    % duration_between(DateTimeA, DateTimeB) = Duration:
     %
     % Return the duration from DateTimeA to DateTimeB using a greedy algorithm
     % that maximises each component in this order: years, months, days, hours,
@@ -541,18 +541,32 @@
     % to find the duration between dates in different timezones or daylight
     % saving phases, first convert them both to UTC.
     %
-    % Note that due to month-end clamping, duration/2 is not always the
+    % Note that due to month-end clamping, duration_between/2 is not always the
     % inverse of add_duration/3. For example, the duration from 2001-01-31
     % to 2001-02-28 is 1 month, but adding -1 month to 2001-02-28 yields
     % 2001-01-28, not 2001-01-31.
     %
-:- func duration(date_time, date_time) = duration.
+:- func duration_between(date_time, date_time) = duration.
 
-    % As for duration/2, but the year and month components of the returned
-    % duration are always zero; the result is expressed in days, hours,
-    % minutes, seconds and microseconds only.
+:- func duration(date_time, date_time) = duration.
+:- pragma obsolete(func(duration/2), [duration_between/2]).
+
+    % fixed_duration_between(DateTimeA, DateTimeB) = Duration:
     %
+    % Return the duration from DateTimeA to DateTimeB, expressed using only
+    % fixed-length units: days, hours, minutes, seconds and microseconds.
+    % The years and months components of the returned duration are always
+    % zero. The result is positive if DateTimeB is after DateTimeA and
+    % negative if DateTimeB is before DateTimeA. Leap seconds are ignored.
+    %
+    % The dates should be in the same timezone and daylight savings phase;
+    % to find the duration between dates in different timezones or daylight
+    % savings phases, first convert them both to UTC.
+    %
+:- func fixed_duration_between(date_time, date_time) = duration.
+
 :- func day_duration(date_time, date_time) = duration.
+:- pragma obsolete(func(day_duration/2), [fixed_duration_between/2]).
 
 %---------------------------------------------------------------------------%
 %
@@ -1254,14 +1268,14 @@ local_time_offset(TZ, !IO) :-
     GMTM = time.gmtime(TimeT),
     LocalTime = tm_to_date(LocalTM),
     GMTime = tm_to_date(GMTM),
-    TZ = duration(GMTime, LocalTime).
+    TZ = duration_between(GMTime, LocalTime).
 
 %---------------------------------------------------------------------------%
 %
 % Computing the duration between two dates.
 %
 
-duration(DateA, DateB) = Duration :-
+duration_between(DateA, DateB) = Duration :-
     compare(CompResult, DateB, DateA),
     (
         CompResult = (<),
@@ -1274,6 +1288,8 @@ duration(DateA, DateB) = Duration :-
         CompResult = (>),
         greedy_subtract_descending(descending, DateB, DateA, Duration)
     ).
+
+duration(DateA, DateB) = duration_between(DateA, DateB).
 
 :- type order
     --->    ascending
@@ -1358,23 +1374,25 @@ subtract_ints_with_borrow(BorrowVal, Val1, Val2, Diff, Borrow) :-
         Diff = BorrowVal + Val1 - Val2
     ).
 
-day_duration(DateA, DateB) = Duration :-
+fixed_duration_between(DateA, DateB) = Duration :-
     builtin.compare(CompResult, DateB, DateA),
     (
         CompResult = (<),
-        Duration0 = do_day_duration(DateB, DateA),
+        Duration0 = do_fixed_duration_between(DateB, DateA),
         Duration = negate(Duration0)
     ;
         CompResult = (=),
         Duration = zero_duration
     ;
         CompResult = (>),
-        Duration = do_day_duration(DateA, DateB)
+        Duration = do_fixed_duration_between(DateA, DateB)
     ).
 
-:- func do_day_duration(date, date) = duration.
+day_duration(DateA, DateB) = fixed_duration_between(DateA, DateB).
 
-do_day_duration(DateA, DateB) = Duration :-
+:- func do_fixed_duration_between(date, date) = duration.
+
+do_fixed_duration_between(DateA, DateB) = Duration :-
     some [!Borrow] (
         MicroSecond1 = DateB ^ dt_microsecond,
         MicroSecond2 = DateA ^ dt_microsecond,

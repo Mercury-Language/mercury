@@ -122,10 +122,10 @@ test_dur_leq(Str1, Str2, !IO) :-
 :- pred test_add_dur(string::in, string::in, io::di, io::uo) is det.
 
 test_add_dur(Date0Str, DurStr, !IO) :-
-    Date0 = det_date_from_string(Date0Str),
+    Date0 = det_date_time_from_string(Date0Str),
     Dur = det_duration_from_string(DurStr),
     add_duration(Dur, Date0, Date),
-    DateStr = date_to_string(Date),
+    DateStr = date_time_to_string(Date),
     io.format("%s + %s = %s\n", [s(Date0Str), s(DurStr), s(DateStr)], !IO).
 
 :- pred test_diff(string::in, string::in, io::di, io::uo) is det.
@@ -144,39 +144,38 @@ test_diff(Date1, Date2, !IO) :-
 :- pred test_greedy_diff(string::in, string::in, io::di, io::uo) is det.
 
 test_greedy_diff(Date1Str, Date2Str, !IO) :-
-    Date1 = det_date_from_string(Date1Str),
-    Date2 = det_date_from_string(Date2Str),
-    duration(Date1, Date2) = Dur,
+    Date1 = det_date_time_from_string(Date1Str),
+    Date2 = det_date_time_from_string(Date2Str),
+    duration_between(Date1, Date2) = Dur,
     DurStr = duration_to_string(Dur),
     io.format("%s -> %s = %s", [s(Date1Str), s(Date2Str), s(DurStr)], !IO),
     add_duration(Dur, Date1, Date3),
     ( if Date2 = Date3 then
         io.write_string(" checked ok\n", !IO)
     else
-        io.write_string(" error: " ++ date_to_string(Date3) ++ "\n", !IO)
+        io.write_string(" error: " ++ date_time_to_string(Date3) ++ "\n", !IO)
     ).
 
 :- pred test_days_diff(string::in, string::in, io::di, io::uo) is det.
 
 test_days_diff(Date1Str, Date2Str, !IO) :-
-    Date1 = det_date_from_string(Date1Str),
-    Date2 = det_date_from_string(Date2Str),
-    Dur = day_duration(Date1, Date2),
+    Date1 = det_date_time_from_string(Date1Str),
+    Date2 = det_date_time_from_string(Date2Str),
+    Dur = fixed_duration_between(Date1, Date2),
     DurStr = duration_to_string(Dur),
     io.format("%s -> %s = %s", [s(Date1Str), s(Date2Str), s(DurStr)], !IO),
     add_duration(Dur, Date1, Date3),
     ( if Date2 = Date3 then
         io.write_string(" checked ok\n", !IO)
     else
-        io.write_string(" error: " ++ date_to_string(Date3) ++ "\n", !IO)
+        io.write_string(" error: " ++ date_time_to_string(Date3) ++ "\n", !IO)
     ).
 
 :- pred test_day_of_week(string::in, io::di, io::uo) is det.
 
 test_day_of_week(DateStr, !IO) :-
     io.write_string(DateStr ++ " : ", !IO),
-    io.write(day_of_week(det_date_from_string(DateStr)), !IO),
-    io.nl(!IO).
+    io.write_line(day_of_week(det_date_time_from_string(DateStr)), !IO).
 
 :- pred test_month_to_int(month::in, io::di, io::uo) is det.
 

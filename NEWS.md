@@ -249,6 +249,11 @@ Changes to the Mercury standard library
 * `date_time/0` and `duration/0` values now only allow for a single positive
   leap second for any given minute.
 
+* The following functions have been marked obsolete:
+
+    - func `duration/2`             (replacement: `duration_between/2`)
+    - func `day_duration/2`         (replacement: `fixed_duration_between/2`)
+
 * The following functions and predicates have been added:
 
     - pred `init_date_time/8`
@@ -259,6 +264,8 @@ Changes to the Mercury standard library
     - func `date_time_to_string/1`
     - func `days_in_month/2` 
     - pred `is_leap_year/1`
+    - func `duration_between/2`
+    - func `fixed_duration_between/2`
 
 ### Changes to the `char` module
 
