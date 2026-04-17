@@ -247,8 +247,8 @@
     %
     % Return the current local time as a date_time. The microseconds component
     % of the returned date_time is always zero, as the underlying system call
-    % has only second-level resolution. The timezone used is the system local
-    % timezone.
+    % has only second-level resolution. The time zone used is the system local
+    % time zone.
     %
 :- pred current_local_time(date_time::out, io::di, io::uo) is det.
 
@@ -537,8 +537,8 @@
     % after DateTimeA and negative if DateTimeB is before DateTimeA. Leap
     % seconds are ignored.
     %
-    % The dates should be in the same timezone and daylight saving phase;
-    % to find the duration between dates in different timezones or daylight
+    % The dates should be in the same time zone and daylight saving phase;
+    % to find the duration between dates in different time zones or daylight
     % saving phases, first convert them both to UTC.
     %
     % Note that due to month-end clamping, duration_between/2 is not always the
@@ -559,9 +559,9 @@
     % zero. The result is positive if DateTimeB is after DateTimeA and
     % negative if DateTimeB is before DateTimeA. Leap seconds are ignored.
     %
-    % The dates should be in the same timezone and daylight saving phase;
-    % to find the duration between dates in different timezones or daylight
-    % savings phases, first convert them both to UTC.
+    % The dates should be in the same time zone and daylight saving phase;
+    % to find the duration between dates in different time zones or daylight
+    % saving phases, first convert them both to UTC.
     %
 :- func fixed_duration_between(date_time, date_time) = duration.
 
@@ -1376,7 +1376,7 @@ subtract_ints_with_borrow(BorrowVal, Val1, Val2, Diff, Borrow) :-
     ).
 
 fixed_duration_between(DateA, DateB) = Duration :-
-    builtin.compare(CompResult, DateB, DateA),
+    compare(CompResult, DateB, DateA),
     (
         CompResult = (<),
         Duration0 = do_fixed_duration_between(DateB, DateA),
