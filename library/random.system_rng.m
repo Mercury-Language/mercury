@@ -27,7 +27,7 @@
 % where we use the arc4random() family of functions instead.
 %
 % For Linux, AIX, Solaris and versions of FreeBSD before 12, we read randomness
-% from /dev/urandom; on these system each open system RNG handle will require
+% from /dev/urandom; on these systems each open system RNG handle will require
 % an open file descriptor.
 %
 % On other operating systems the system RNG is not available; on these systems
