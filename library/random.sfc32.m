@@ -83,7 +83,6 @@
 
 :- import_module array.
 :- import_module int.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint64.
@@ -152,8 +151,7 @@ urandom_dup(S, S1, S2) :-
 
 generate_uint8(N, !S) :-
     sfc32.generate_uint32(N0, !S),
-    N1 = uint32.cast_to_int(N0 >> 24),
-    N = uint8.cast_from_int(N1).
+    N = uint32.cast_to_uint8(N0 >> 24).
 
 generate_uint16(N, !S) :-
     sfc32.generate_uint32(N0, !S),

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019, 2022, 2025 The Mercury team.
+% Copyright (C) 2019, 2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -56,7 +56,6 @@
 
 :- import_module int.
 :- import_module uint.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint64.
@@ -92,8 +91,7 @@ skip(N, !R) :-
 
 generate_uint8(N, !R) :-
     sfc16.generate_uint16(N0, !R),
-    N1 = uint16.to_int(N0 >> 8),
-    N = uint8.cast_from_int(N1).
+    N = uint16.cast_to_uint8(N0 >> 8).
 
 generate_uint16(N, random(S0), random(S)) :-
     unpack_uint64(S0, A0, B0, C0, Counter0),

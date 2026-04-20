@@ -623,7 +623,7 @@ throw_system_rng_error(Pred, Msg) :-
 
 // When succeeded is MR_TRUE, returns a handle through which the system
 // RNG can be accessed; err_msg will point to the empty string in this case.
-// When succeeded is MR_FALSE, the value return is not a valid handle and
+// When succeeded is MR_FALSE, the value returned is not a valid handle and
 // err_msg will point to a string (on the Mercury heap) describing why a handle
 // for the system RNG could not be acquired.
 //

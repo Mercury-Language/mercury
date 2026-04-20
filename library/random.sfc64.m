@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2020, 2022, 2025 The Mercury team.
+% Copyright (C) 2019-2020, 2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -80,7 +80,6 @@
 
 :- import_module array.
 :- import_module int.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint64.
@@ -153,8 +152,7 @@ urandom_dup(S, S1, S2) :-
 
 generate_uint8(N, !S) :-
     sfc64.generate_uint64(N0, !S),
-    N1 = uint64.cast_to_int(N0 >> 56),
-    N = uint8.cast_from_int(N1).
+    N = uint64.cast_to_uint8(N0 >> 56).
 
 generate_uint16(N, !S) :-
     sfc64.generate_uint64(N0, !S),
