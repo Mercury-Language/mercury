@@ -141,3 +141,7 @@ julian_day_number(10000-01-01 00:00:00) = 5373485 OK (Large year)
 
 TEST: current_local_time/3 PASSED
 TEST: current_utc_time/3 PASSED
+
+=== Test local_time_offset/3 ===
+
+TEST: local_time_offset/3 PASSED

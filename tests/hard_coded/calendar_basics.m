@@ -15,6 +15,7 @@
 :- implementation.
 
 :- import_module calendar.
+:- import_module int.
 :- import_module list.
 :- import_module string.
 
@@ -33,7 +34,8 @@ main(!IO) :-
     test_is_leap_year(!IO),
     test_unix_epoch(!IO),
     test_julian_day_number(!IO),
-    test_clocks(!IO).
+    test_clocks(!IO),
+    test_local_time_offset(!IO).
 
 %---------------------------------------------------------------------------%
 
@@ -330,7 +332,8 @@ test_clocks(!IO) :-
     % 2. The microsecond component is zero (as documented).
 
     do_clock_test("current_local_time/3", current_local_time, !IO),
-    do_clock_test("current_utc_time/3", current_utc_time, !IO).
+    do_clock_test("current_utc_time/3", current_utc_time, !IO),
+    io.nl(!IO).
 
 :- pred do_clock_test(string::in,
     pred(date_time, io, io)::in(pred(out, di, uo) is det),
@@ -347,6 +350,33 @@ do_clock_test(ClockDesc, ClockPred, !IO) :-
         else
             io.format("FAILED (microseconds = %d)\n",
                 [i(Microseconds)], !IO)
+        )
+    catch_any _ ->
+        io.write_string("FAILED (exception)\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred test_local_time_offset(io::di, io::uo) is cc_multi.
+
+test_local_time_offset(!IO) :-
+    io.write_string("=== Test local_time_offset/3 ===\n\n", !IO),
+    io.write_string("TEST: local_time_offset/3 ", !IO),
+    ( try [io(!IO)]
+        local_time_offset(Offset, !IO)
+    then
+        % UTC offsets range from -12:00 to +14:00, check that we are within
+        % these.
+        ( if
+            Offset ^ years = 0,
+            Offset ^ months = 0,
+            Offset ^ days = 0,
+            Offset ^ hours > -13,
+            Offset ^ hours < 15
+        then
+            io.write_string("PASSED\n", !IO)
+        else
+            io.format("FAILED (offset = %s)\n", [s(string(Offset))], !IO)
         )
     catch_any _ ->
         io.write_string("FAILED (exception)\n", !IO)
