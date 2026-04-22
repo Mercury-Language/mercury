@@ -381,7 +381,7 @@ time(Result, !IO) :-
     time_t_is_invalid(Val::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = (Val == -1);
+    SUCCESS_INDICATOR = (Val == (time_t) -1);
 ").
 :- pragma foreign_proc("C#",
     time_t_is_invalid(_Val::in),
