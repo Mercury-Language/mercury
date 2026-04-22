@@ -237,10 +237,9 @@
 
 %---------------------------------------------------------------------------%
 
-
     % clock_t is represented as int64 because that matches the return
     % type of the corresponding APIs on the Java and C# backends (long
-    % in both case).  On the C backends, a signed representation also allows
+    % in both cases). On the C backends, a signed representation also allows
     % the (clock_t) -1 error returned from clock() to be tested directly as -1.
     %
 :- type clock_t
