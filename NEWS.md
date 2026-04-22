@@ -113,6 +113,12 @@ Changes that may break compatibility
 * We have disabled support for concurrency in non-parallel low-level C grades.
   It was never useful for anything other than trivial programs.
 
+* The `clock_t` type in the `time` module of the Mercury standard library is
+  now abstract, with an underlying representation of `int64` rather than `int`.
+  This avoids overflow on backends where Mercury's `int` type is 32 bits.
+  Code that performs arithmetic on `clock_t` values directly will need to use
+  the new `clock_t_to_int64/1` access function.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -1438,6 +1444,12 @@ Changes to the Mercury standard library
 
 *  The `tm_sec` field of the `tm/0` type now only allows for a single positive
    leap second for any given minute.
+
+* The `clock_t` type is now abstract (see the compatibility note above).
+  The following functions have been added for accessing its representation:
+
+    - func `clock_t_to_int/1`
+    - func `clock_t_to_int64/1`
 
 ### Changes to the `tree_bitset` module
 

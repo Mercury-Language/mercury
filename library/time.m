@@ -5,7 +5,7 @@
 % "Feel free to use this code or parts of it any way you want."
 %
 % Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -31,7 +31,7 @@
     % returned by `clock' or `times'. See the comments on these
     % predicates below.
     %
-:- type clock_t == int.
+:- type clock_t.
 
     % The `tms' type holds information about the amount of processor time
     % that a process and its child processes have consumed.
@@ -84,7 +84,7 @@
     ;       daylight_time.  % yes, DST is in effect
 
     % Some of the procedures in this module throw this type
-    % as an exception if they can't obtain a result.
+    % as an exception if they cannot obtain a result.
     %
 :- type time_error
     --->    time_error(string). % Error message
@@ -111,6 +111,19 @@
     % scaling factor for the results of `clock'.
     %
 :- func clocks_per_sec = int.
+
+    % Return the number of clock ticks in a `clock_t' value as an int.
+    %
+    % This function exists for compatibility with code written when
+    % `clock_t' was equivalent to `int'. On platforms where int is 32-bit,
+    % the result may be silently truncated; use clock_t_to_int64/1 instead.
+    %
+:- func clock_t_to_int(clock_t) = int.
+:- pragma obsolete(func(clock_t_to_int/1), [clock_t_to_int64/1]).
+
+    % Return the number of clock ticks in a `clock_t' value as an int64.
+    %
+:- func clock_t_to_int64(clock_t) = int64.
 
 %---------------------------------------------------------------------------%
 
@@ -198,6 +211,7 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
+:- import_module int64.
 :- import_module list.
 :- import_module require.
 :- import_module string.
@@ -221,6 +235,17 @@
     #include ""mercury_string.h""       // For MR_make_aligned_string_copy etc.
 ").
 
+%---------------------------------------------------------------------------%
+
+
+    % clock_t is represented as int64 because that matches the return
+    % type of the corresponding APIs on the Java and C# backends (long
+    % in both case).  On the C backends, a signed representation also allows
+    % the (clock_t) -1 error returned from clock() to be tested directly as -1.
+    %
+:- type clock_t
+    --->    clock_t(int64).
+
     % We use a no-tag wrapper type for time_t, rather than defining it as an
     % equivalence type or just using a d.u./pragma foreign_type directly,
     % to avoid the following problems:
@@ -229,7 +254,7 @@
     %     the abstract type, but the callee seeing the equivalence type
     %     definition or the foreign_type definition.
     %
-    %   - users can't define instance declarations for abstract equiv. types.
+    %   - users cannot define instance declarations for abstract equiv. types.
     %
 :- type time_t
     --->    time_t(time_t_rep).
@@ -254,26 +279,25 @@ compare_time_t_reps(Result, X, Y) :-
 
 clock(Result, !IO) :-
     target_clock(Ret, !IO),
-    ( if Ret = -1 then
-        throw(time_error("can't get clock value"))
+    ( if Ret = -1i64 then
+        throw(time_error("cannot get clock value"))
     else
-        Result = Ret
+        Result = clock_t(Ret)
     ).
 
-:- pred target_clock(int::out, io::di, io::uo) is det.
+:- pred target_clock(int64::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     target_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    Ret = (MR_Integer) clock();
+    Ret = (int64_t) clock();
 ").
 :- pragma foreign_proc("C#",
     target_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    // XXX Ticks is long in .NET!
-    Ret = (int) System.Diagnostics.Process.GetCurrentProcess().
+    Ret = System.Diagnostics.Process.GetCurrentProcess().
         UserProcessorTime.Ticks;
 ").
 :- pragma foreign_proc("Java",
@@ -284,10 +308,10 @@ clock(Result, !IO) :-
         java.lang.management.ManagementFactory.getThreadMXBean();
     long nsecs = bean.getCurrentThreadCpuTime();
     if (nsecs == -1) {
-        Ret = -1;
+        Ret = -1L;
     } else {
         // This must match the definition of clocks_per_sec.
-        Ret = (int) (nsecs / 1000L);
+        Ret = nsecs / 1000L;
     }
 ").
 
@@ -316,10 +340,17 @@ clock(Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+
+clock_t_to_int(clock_t(Int64)) = int64.cast_to_int(Int64).
+
+clock_t_to_int64(clock_t(Int64)) = Int64.
+
+%---------------------------------------------------------------------------%
+
 time(Result, !IO) :-
     target_time(Ret, !IO),
     ( if time_t_is_invalid(Ret) then
-        throw(time_error("can't get time value"))
+        throw(time_error("cannot get time value"))
     else
         Result = time_t(Ret)
     ).
@@ -369,10 +400,15 @@ time(Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 times(Tms, Result, !IO) :-
-    target_times(Ret, Ut, St, CUt, CSt, !IO),
-    ( if Ret = -1 then
-        throw(time_error("can't get times value"))
+    target_times(Ret0, Ut0, St0, CUt0, CSt0, !IO),
+    ( if Ret0 = -1i64 then
+        throw(time_error("cannot get times value"))
     else
+        Ret = clock_t(Ret0),
+        Ut = clock_t(Ut0),
+        St = clock_t(St0),
+        CUt = clock_t(CUt0),
+        CSt = clock_t(CSt0),
         Tms = tms(Ut, St, CUt, CSt),
         Result = Ret
     ).
@@ -388,8 +424,8 @@ times(Tms, Result, !IO) :-
 #endif
 ").
 
-:- pred target_times(int::out, int::out, int::out, int::out, int::out,
-    io::di, io::uo) is det.
+:- pred target_times(int64::out, int64::out, int64::out, int64::out,
+    int64::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
@@ -400,12 +436,12 @@ times(Tms, Result, !IO) :-
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
 
-    Ret = (MR_Integer) times(&t);
+    Ret = (int64_t) times(&t);
 
-    Ut = (MR_Integer) t.tms_utime;
-    St = (MR_Integer) t.tms_stime;
-    CUt = (MR_Integer) t.tms_cutime;
-    CSt = (MR_Integer) t.tms_cstime;
+    Ut = (int64_t) t.tms_utime;
+    St = (int64_t) t.tms_stime;
+    CUt = (int64_t) t.tms_cutime;
+    CSt = (int64_t) t.tms_cstime;
 #else
   #if defined(MR_WIN32) && defined(MR_CLOCK_TICKS_PER_SECOND)
     HANDLE hProcess;
@@ -422,8 +458,8 @@ times(Tms, Result, !IO) :-
     user.ft = ftUser;
     kernel.ft = ftKernel;
 
-    Ut = (MR_Integer) (user.i64 / factor);
-    St = (MR_Integer) (kernel.i64 / factor);
+    Ut = (int64_t) (user.i64 / factor);
+    St = (int64_t) (kernel.i64 / factor);
 
     // XXX Not sure how to return children times.
     CUt = 0;
@@ -439,8 +475,7 @@ times(Tms, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    // We can only keep the lower 31 bits of the timestamp.
-    Ret = (int) (System.currentTimeMillis() & 0x7fffffff);
+    Ret = System.currentTimeMillis();
 
     try {
         java.lang.management.ThreadMXBean bean =
@@ -452,16 +487,16 @@ times(Tms, Result, !IO) :-
             St = -1;
         } else {
             // These units must match the definition of clk_tck.
-            Ut = (int) (user_nsecs / 1000000L);
-            St = (int) ((cpu_nsecs - user_nsecs) / 1000000L);
+            Ut = user_nsecs / 1000000L;
+            St = (cpu_nsecs - user_nsecs) / 1000000L;
         }
     } catch (java.lang.UnsupportedOperationException e) {
-        Ut = -1;
-        St = -1;
+        Ut = -1L;
+        St = -1L;
     }
 
-    CUt = 0;
-    CSt = 0;
+    CUt = 0L;
+    CSt = 0L;
 ").
 
 :- pragma foreign_proc("C#",
@@ -469,18 +504,15 @@ times(Tms, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    Ret = (int) System.DateTime.UtcNow.Ticks;
-
-    // Should we keep only the lower 31 bits of the timestamp, like in java?
-    // Ret = Ret & 0x7fffffff;
+    Ret = System.DateTime.UtcNow.Ticks;
 
     long user =
         System.Diagnostics.Process.GetCurrentProcess().UserProcessorTime.Ticks;
     long total =
         System.Diagnostics.Process.GetCurrentProcess().TotalProcessorTime.Ticks;
 
-    Ut = (int) user;
-    St = (int) (total - user);
+    Ut = user;
+    St = total - user;
 
     CUt = 0;
     CSt = 0;
@@ -488,24 +520,15 @@ times(Tms, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C#",
-    clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    // TicksPerSecond is guaranteed to be 10,000,000.
-    Ret = (int) System.TimeSpan.TicksPerSecond;
-").
-
 clk_tck = Ret :-
     Ret0 = target_clk_tck,
     ( if Ret0 = -1 then
-        throw(time_error("can't get clk_tck value"))
+        throw(time_error("cannot get clk_tck value"))
     else
         Ret = Ret0
     ).
 
 :- func target_clk_tck = int.
-:- pragma consider_used(func(target_clk_tck/0)).
 :- pragma foreign_proc("C",
     target_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -516,6 +539,15 @@ clk_tck = Ret :-
     Ret = -1;
 #endif
 ").
+
+:- pragma foreign_proc("C#",
+    target_clk_tck = (Ret::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // TicksPerSecond is guaranteed to be 10,000,000.
+    Ret = (int) System.TimeSpan.TicksPerSecond;
+").
+
 :- pragma foreign_proc("Java",
     target_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -524,8 +556,6 @@ clk_tck = Ret :-
     // so say that there are 1000 clock ticks per second.
     Ret = 1000;
 ").
-
-target_clk_tck = -1.   % default, to get clk_tck to throw an exception.
 
 %---------------------------------------------------------------------------%
 
