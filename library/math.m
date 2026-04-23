@@ -295,7 +295,7 @@
     // This is not defined in the .NET Frameworks.
     // For pi and e we use the constants defined in System.Math.
 
-    public static double ML_FLOAT_LN2 = 0.69314718055994530941;
+    public const double ML_FLOAT_LN2 = 0.69314718055994530941;
 
 ").
 
