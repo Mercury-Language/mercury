@@ -303,7 +303,7 @@
 
     // As for .NET, java does not have a built-in ln2
 
-    private static final double ML_FLOAT_LN2 = 0.69314718055994530941;
+    public static final double ML_FLOAT_LN2 = 0.69314718055994530941;
 
 ").
 
@@ -659,15 +659,17 @@ log2(X) = Log :-
     unchecked_log2(X::in) = (Log2::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
+    Log2 = System.Math.Log(X) / mercury.math.ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("Java",
     unchecked_log2(X::in) = (Log2::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    Log2 = java.lang.Math.log(X) / ML_FLOAT_LN2;
+    Log2 = java.lang.Math.log(X) / jmercury.math.ML_FLOAT_LN2;
 ").
 unchecked_log2(X) = math.unchecked_ln(X) / math.unchecked_ln(2.0).
+
+% NOTE: more recent versions of .NET provide System.Math.Log2.
 
 log(B, X) = Log :-
     ( if
