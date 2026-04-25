@@ -195,11 +195,14 @@ get_environment_var_map(EnvVarMap, !IO) :-
     [may_call_mercury, promise_pure],
 "
     EnvVarAL = EnvVarAL0;
+    // System.Environment.GetEnvironmentVariables() returns a non-generic
+    // IDictionary (a Hashtable underneath), but every key and value is a
+    // string for this API.  Iterate via the typed Keys collection so the
+    // foreach loop avoids non-generic DictionaryEntry boxing.
     System.Collections.IDictionary env =
         System.Environment.GetEnvironmentVariables();
-    foreach (System.Collections.DictionaryEntry entry in env) {
-        string name = (string) entry.Key;
-        string value = (string) entry.Value;
+    foreach (string name in env.Keys) {
+        string value = (string) env[name];
         EnvVarAL = mercury.io__environment.ML_record_env_var_and_value(name,
             value, EnvVarAL);
     }

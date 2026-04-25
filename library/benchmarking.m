@@ -490,30 +490,55 @@ ML_report_standard_stats(mercury.io__stream_ops.MR_MercuryFileStruct stream)
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.DateTime.Now.Ticks;
 
+    long managed_heap = System.GC.GetTotalMemory(false);
+    System.Diagnostics.Process proc =
+        System.Diagnostics.Process.GetCurrentProcess();
+    long working_set = proc.WorkingSet64;
+
     mercury.io__primitives_write.mercury_print_string(stream,
         System.String.Format(
-            ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
+            ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s "" +
+            ""Managed heap: {4} bytes, Working set: {5} bytes]\\n"",
             (user_time_at_last_stat - user_time_at_prev_stat),
             (user_time_at_last_stat - user_time_at_start),
             ((real_time_at_last_stat - real_time_at_prev_stat)
                 / (double) System.TimeSpan.TicksPerSecond),
             ((real_time_at_last_stat - real_time_at_start)
-               / (double) System.TimeSpan.TicksPerSecond)
+               / (double) System.TimeSpan.TicksPerSecond),
+            managed_heap,
+            working_set
             )
         );
-    // XXX At this point there should be a whole bunch of memory usage
-    // statistics.
 }
 
 public static void
 ML_report_full_memory_stats(mercury.io__stream_ops.MR_MercuryFileStruct stream)
 {
-    // XXX The support for this predicate is even worse. Since we don't have
-    // access to memory usage statistics, all you get here is an apology.
-    // But at least it doesn't just crash with an error.
+    // .NET 5+ exposes enough GC and process information to give a useful
+    // (though coarser-grained than the C backend's) memory snapshot.
+    long managed_heap_before = System.GC.GetTotalMemory(false);
+    int gen0 = System.GC.CollectionCount(0);
+    int gen1 = System.GC.CollectionCount(1);
+    int gen2 = System.GC.CollectionCount(2);
+    System.Diagnostics.Process proc =
+        System.Diagnostics.Process.GetCurrentProcess();
+    long working_set = proc.WorkingSet64;
+    long private_bytes = proc.PrivateMemorySize64;
+    long virtual_bytes = proc.VirtualMemorySize64;
+    long peak_working_set = proc.PeakWorkingSet64;
+
     mercury.io__primitives_write.mercury_print_string(stream,
-        ""Sorry, report_full_memory_stats is not yet "" +
-            ""implemented for the C# back-end.\\n"");
+        System.String.Format(
+            ""[Managed heap: {0:N0} bytes\\n"" +
+            "" GC collections: gen0={1}, gen1={2}, gen2={3}\\n"" +
+            "" Working set: {4:N0} bytes (peak {5:N0})\\n"" +
+            "" Private bytes: {6:N0}, Virtual bytes: {7:N0}]\\n"",
+            managed_heap_before,
+            gen0, gen1, gen2,
+            working_set, peak_working_set,
+            private_bytes, virtual_bytes
+            )
+        );
 }
 ").
 
