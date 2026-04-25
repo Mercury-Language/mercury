@@ -1,13 +1,13 @@
 Mercury C# Backend
 ==================
 
-The Mercury compiler has a backend that generates C# source code, that can be
-compiled into bytecode suitable for running using the .NET or Mono runtime
-systems. The backend is mostly complete, but some parts of the Mercury standard
-library are not yet implemented.
+The Mercury compiler has a backend that generates C# source code, that is
+compiled into a managed assembly by the .NET 10 SDK and run on the
+.NET 10 runtime.  The backend is mostly complete, but some parts of the
+Mercury standard library are not yet implemented.
 
-The C# backend requires C# 5.0 or higher -- older versions of C# are *not*
-supported.
+The C# backend requires C# 14 or higher.  Older versions of C# (and the
+.NET Framework / Mono runtimes) are *not* supported.
 
 Contents
 --------
@@ -26,30 +26,31 @@ Contents
 Prerequisites
 -------------
 
-In order to use Mercury's C# backend you will need either:
+To use Mercury's C# backend you need a working .NET SDK at version 10.0
+or above.  The `dotnet` command must be on your `PATH`; the SDK install
+must contain the Roslyn compiler at `<sdk>/Roslyn/bincore/csc.dll`.
 
-* Microsoft .NET 4.5 or above.
-* Mono 4.0 or above.
+There is no longer any support for Mono or for the .NET Framework
+runtime.
 
 Installing the `csharp` grade
 -----------------------------
 
-The Mercury compiler uses the grade `csharp` to target C# source code that
-is then compiled by a C# compiler.
+The Mercury compiler uses the grade `csharp` to target C# source code
+that is then compiled by the .NET SDK.
 
-Mercury's autoconfiguration script will cause the `csharp` grade to be installed
-if it finds a suitable C# compiler (e.g. `csc`) and .NET runtime in your `PATH`.
-
-You can check if your Mercury installation has been configured to include the
-`csharp` grade by looking if `csharp` is included in the output of the Mercury
-compiler's `--output-stdlib-grades` option.
+Mercury's autoconfiguration script will install the `csharp` grade when
+it detects `dotnet` on your `PATH` along with a usable >= 10.0 SDK.
+You can force this by passing `--with-csharp-compiler=dotnet` to
+`./configure`, and you can check the result by running
+`mmc --output-stdlib-grades` and looking for `csharp` in the list.
 
 Compiling programs with the `csharp` grade
 ------------------------------------------
 
-Once you have a Mercury installation that includes the `csharp` grade, you
-can build programs such as `hello.m` or `calculator.m` in the [samples](samples)
-directory.
+Once you have a Mercury installation that includes the `csharp` grade,
+you can build programs such as `hello.m` or `calculator.m` in the
+[samples](samples) directory.
 
 ```
     mmc --grade csharp --make hello
@@ -58,63 +59,40 @@ directory.
 When building programs with the `csharp` grade you *must* use `mmc --make`.
 Using `mmake` to build programs using the `csharp` grade is _not_ supported.
 
-Running `csharp` grade programs with Mono
------------------------------------------
+Behind the scenes, `mmc --make` generates a `<MainModule>.csproj` next
+to the linked target and runs `dotnet build` on it.  The .NET SDK
+produces:
 
-For the example in the previous section on a Unix (or more generally,
-non-Windows) system using Mono, the Mercury compiler will generate a process
-assembly, e.g. `hello.exe`, and a wrapper shell script named `hello`.
+* `<MainModule>.dll`             -- the managed assembly,
+* `<MainModule>.exe`             -- the apphost / native launcher
+                                    (renamed from the bare `<MainModule>`
+                                    on Linux and macOS to match
+                                    Mercury's csharp_executable convention),
+* `<MainModule>.runtimeconfig.json`,
+* `<MainModule>.deps.json`,
 
-The wrapper shell script will set the `MONO_PATH` environment variable
-to point to the location of the Mercury standard library assemblies.
-It will then invoke the CLI execution environment on the process assembly.
-You can run the program using the wrapper shell script, for example:
+plus the standard `bin/` and `obj/` MSBuild scratch directories.  The
+referenced Mercury standard-library assemblies (`mer_std.dll` and so
+on) are copied next to the executable via the SDK's
+`<Private>true</Private>` reference setting, so no `MONO_PATH`,
+wrapper script or GAC registration is required.
 
-```
-    ./hello
-```
-
-Running `csharp` grade programs on Windows with .NET
-----------------------------------------------------
-
-On Windows, the Mercury compiler will only generate a process assembly, e.g.
-`hello.exe`. On Windows there is no need to generate a wrapper shell script.
-
-With .NET, the library assemblies (.dlls) for the Mercury standard
-libraries must either (1) reside in (or under) the same directory as the process
-assembly (.exe) or (2) be entered into the global assembly cache (GAC).
-If neither of these things is done then execution will abort with a message that
-begins:
+You can run the resulting program directly:
 
 ```
-    Unhandled Exception: System.IO.FileNotFoundException: Could not load file
-    or assembly 'mer_std',  Version=...
+    ./hello.exe
 ```
 
-For (1), you will need to copy the library assemblies from the Mercury library
-installation directory into the same directory as the process assembly.
-The files for the Mercury library assemblies are located in
+Trimmed publish
+---------------
 
-```
-     <prefix>\lib\mercury\lib\csharp
-```
-
-where `<prefix>` is the location of the Mercury installation.
-Copy all of the .dll files in the above directory into that of the process
-assembly.
-
-To enter assemblies into the GAC, run the following command for each
-assembly.
-
-```
-    gacutil /i mer_std.dll
-```
-
-Assemblies can be removed from the GAC by doing, for example
-
-```
-    gacutil /u mer_std.dll
-```
+The generated `<MainModule>.csproj` for libraries carries
+`<IsTrimmable>true</IsTrimmable>`, and the hand-written runtime and
+standard-library C# code uses no name-based reflection that would defeat
+the IL-linker.  Downstream consumers can therefore add their own
+`<PublishTrimmed>true</PublishTrimmed>` and `dotnet publish` Mercury
+applications without losing functionality.  `mmc` itself does not
+invoke `dotnet publish`.
 
 Limitations
 -----------
@@ -151,23 +129,22 @@ supported or not fully implemented:
     The current implementation of `read_binary` does not work with the
     way Mercury file streams are implemented for the C# backend.
 
-2. `benchmarking.report_stats/0`    
-   `benchmarking.report_full_memory_stats/0`
-
-    Memory usage statistics are not yet available, and cpu time
-    is not the same as in the C backends, as per `time.m`.
-
-3. `store.arg_ref/5`    
+2. `store.arg_ref/5`    
    `store.new_arg_ref/5`
 
-    Due to some limitations in RTTI support, dynamic type checking is missing
-    for these predicates. They should be used with care.
+    Due to some limitations in RTTI support, dynamic type checking is
+    missing for these predicates.  They should be used with care.
 
-4. `math.fma/3`
+3. `deconstruct.functor_number/3`
 
-    This function is not available because it is not supported by C# 5.0.
-    (It will be supported once the minimum version of C# required by
-    Mercury increases.)
+    Not implemented; the C backend implements this through a header
+    inclusion that is not portable to C#, and the C# RTTI layer does
+    not yet expose an equivalent functor-number lookup.
+
+4. `exception.catch_impl/3` for the `semidet` and `cc_nondet` modes.
+
+    Currently throws `Sorry, not implemented'.  The `det`, `cc_multi`
+    and `multi` modes are implemented.
 
 Interfacing with C#
 -------------------
