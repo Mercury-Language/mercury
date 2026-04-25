@@ -1268,194 +1268,333 @@ create_archive_for_c(Globals, ProgressStream, FullLibFileName, Quote,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
-        MainModuleName, FullOutputFileName0, SourceList0,
+        _MainModuleName, FullOutputFileName, SourceList,
         Specs, Succeeded, !IO) :-
-    get_system_env_type(Globals, EnvType),
-    get_csharp_compiler_type(Globals, CSharpCompilerType),
-
-    FullOutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
-        FullOutputFileName0),
-    SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
-        SourceList0),
-
-    % Suppress the MS C# compiler's banner message.
-    (
-        CSharpCompilerType = csharp_microsoft,
-        NoLogoOpt = "-nologo "
-    ;
-        ( CSharpCompilerType = csharp_mono
-        ; CSharpCompilerType = csharp_unknown
-        ),
-        NoLogoOpt = ""
-    ),
-
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
-    (
-        % If we output line numbers, the mono C# compiler outputs lots of
-        % spurious warnings about unused variables and unreachable code,
-        % so disable these warnings. It also confuses #pragma warning,
-        % which is why we make the options global.
-        LineNumbers = yes,
-        NoWarnLineNumberOpt = "-nowarn:162,219 "
-    ;
-        LineNumbers = no,
-        NoWarnLineNumberOpt = ""
-    ),
-
-    % NOTE: we use the -option style options in preference to the /option
-    % style in order to avoid problems with POSIX style shells.
-    globals.lookup_bool_option(Globals, target_debug, Debug),
-    (
-        Debug = yes,
-        DebugOpt = "-debug "
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-    (
-        LinkedTargetType = csharp_executable,
-        TargetOption = "-target:exe",
-        SignAssemblyOpt = ""
-    ;
-        LinkedTargetType = csharp_library,
-        TargetOption = "-target:library",
-        globals.lookup_string_option(Globals, sign_assembly, KeyFile),
-        ( if KeyFile = "" then
-            SignAssemblyOpt = ""
-        else
-            SignAssemblyOpt = "-keyfile:" ++ KeyFile ++ " "
-        )
-    ),
-
-    globals.lookup_accumulating_option(Globals, link_library_directories,
-        LinkLibraryDirectoriesList0),
-    LinkLibraryDirectoriesList =
-        list.map(csharp_file_name(EnvType, CSharpCompilerType),
-        LinkLibraryDirectoriesList0),
-    LinkerPathFlag = "-lib:",
-    join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
-        " ", LinkLibraryDirectories),
-
+    % Build the list of references for the generated csproj by parsing
+    % the same `-r:Lib.dll' flag strings that the legacy csc invocation
+    % used to consume, then resolving each name to a HintPath via the
+    % `-lib:' search dirs.
     get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
         Specs, !IO),
     (
-        MaybeLinkLibraries = yes(LinkLibrariesList0),
-        LinkLibrariesList =
-            list.map(csharp_file_name(EnvType, CSharpCompilerType),
-            LinkLibrariesList0),
-        join_quoted_string_list(LinkLibrariesList, "", "", " ",
-            LinkLibraries)
+        MaybeLinkLibraries = yes(LinkLibrariesList),
+        LinkLibrariesStr = string.join_list(" ", LinkLibrariesList)
     ;
         MaybeLinkLibraries = no,
-        LinkLibraries = ""
+        LinkLibrariesStr = ""
     ),
-
-    globals.lookup_string_option(Globals, csharp_compiler, CSharpCompilerCmd),
     get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, MercuryStdLibs),
-    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
-    CmdArgs = string.join_list(" ", [
-        NoLogoOpt,
-        NoWarnLineNumberOpt,
-        DebugOpt,
-        TargetOption,
-        "-out:" ++ FullOutputFileName,
-        SignAssemblyOpt,
-        LinkLibraryDirectories,
-        LinkLibraries,
-        MercuryStdLibs] ++
-        CSCFlagsList ++
-        SourceList),
-    invoke_long_system_command(Globals, ProgressStream, ProgressStream,
-        cmd_verbose_commands, CSharpCompilerCmd, CmdArgs, Succeeded0, !IO),
+    parse_csharp_ref_flags(MercuryStdLibs ++ " " ++ LinkLibrariesStr,
+        RefNames),
 
-    % Also create a shell script to launch it if necessary.
-    globals.get_target_env_type(Globals, TargetEnvType),
-    globals.lookup_string_option(Globals, cli_interpreter, CLI),
-    ( if
-        Succeeded0 = succeeded,
-        LinkedTargetType = csharp_executable,
-        CLI \= "",
-        TargetEnvType = env_type_posix
-    then
-        construct_cli_shell_script_for_csharp(Globals, FullOutputFileName,
-            ContentStr),
-        create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            ContentStr, Succeeded, !IO)
-    else
-        Succeeded = Succeeded0
-    ).
-
-%---------------------%
-
-    % Converts the given filename into a format acceptable to the C# compiler.
-    %
-    % Older MS C# compilers only allowed \ as the path separator, so we convert
-    % all / into \ when using an MS C# compiler on Windows.
-    %
-    % XXX do current MS C# compilers still have this behaviour?
-    % - juliensf, 2025-08-17
-    %
-:- func csharp_file_name(env_type, csharp_compiler_type, file_name)
-    = file_name.
-
-csharp_file_name(EnvType, CSharpCompiler, FileName0) = FileName :-
-    (
-        EnvType = env_type_posix,
-        FileName = FileName0
-    ;
-        ( EnvType = env_type_cygwin
-        ; EnvType = env_type_win_cmd
-        ; EnvType = env_type_powershell
-        ),
-        (
-            ( CSharpCompiler = csharp_microsoft
-            ; CSharpCompiler = csharp_unknown
-            ),
-            FileName = convert_to_windows_path_format(FileName0)
-        ;
-            CSharpCompiler = csharp_mono,
-            FileName = FileName0
-        )
-    ;
-        EnvType = env_type_msys,
-        (
-            CSharpCompiler = csharp_microsoft,
-            FileName = convert_to_windows_path_format(FileName0)
-        ;
-            ( CSharpCompiler = csharp_mono
-            ; CSharpCompiler = csharp_unknown
-            ),
-            FileName = FileName0
-        )
-    ).
-
-:- func convert_to_windows_path_format(file_name) = file_name.
-
-convert_to_windows_path_format(FileName) =
-    string.replace_all(FileName, "/", "\\\\").
-
-%---------------------%
-
-:- pred construct_cli_shell_script_for_csharp(globals::in, string::in,
-    string::out) is det.
-
-construct_cli_shell_script_for_csharp(Globals, ExeFileName, ContentStr) :-
-    globals.lookup_string_option(Globals, cli_interpreter, CLI),
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
-    globals.lookup_accumulating_option(Globals, mono_path_directories,
-        MonoPathDirectoriesList),
-    AllSearchPaths = LinkLibraryDirectoriesList ++ MonoPathDirectoriesList,
-    join_quoted_string_list(AllSearchPaths, "", "",
-        ":", MonoPathDirectories),
-    ContentStr = string.append_list([
-        "#!/bin/sh\n",
-        "DIR=${0%/*}\n",
-        "MONO_PATH=$MONO_PATH:", MonoPathDirectories, "\n",
-        "export MONO_PATH\n",
-        "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
-        "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
+    resolve_csharp_refs(LinkLibraryDirectoriesList, RefNames,
+        RefEntries, !IO),
+
+    % The csproj sits next to FullOutputFileName.  MSBuild's <OutputPath>
+    % is set to `./' (relative to the csproj) so the produced .dll, apphost
+    % and runtimeconfig.json land where Mercury expects them - including
+    % under `Mercury/csharp/' when --use-subdir is enabled, since
+    % FullOutputFileName already carries the right prefix.
+    OutputBaseName = dir.det_basename(FullOutputFileName),
+    AssemblyName = strip_csharp_exec_ext(OutputBaseName),
+    ( if dir.split_name(FullOutputFileName, OutputDir0, _) then
+        OutputDir = OutputDir0
+    else
+        OutputDir = "."
+    ),
+    CsprojPath = OutputDir / (AssemblyName ++ ".csproj"),
+
+    globals.lookup_bool_option(Globals, target_debug, Debug),
+    globals.lookup_accumulating_option(Globals, csharp_flags, ExtraCSCFlags),
+    (
+        LinkedTargetType = csharp_library,
+        globals.lookup_string_option(Globals, sign_assembly, KeyFile)
+    ;
+        LinkedTargetType = csharp_executable,
+        KeyFile = ""
+    ),
+    csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
+        Debug, ExtraCSCFlags, KeyFile, CsprojContent),
+
+    io.open_output(CsprojPath, OpenRes, !IO),
+    (
+        OpenRes = ok(Stream),
+        io.write_string(Stream, CsprojContent, !IO),
+        io.close_output(Stream, !IO),
+
+        % Invoke `dotnet build' once on the generated csproj.  MSBuild
+        % handles framework references, runtimeconfig.json emission and
+        % apphost generation; we no longer need a wrapper shell script.
+        DotnetCmd = "dotnet",
+        DotnetArgs = "build " ++ quote_shell_cmd_arg(CsprojPath) ++
+            " -c Release -v:quiet --nologo",
+        invoke_long_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose_commands, DotnetCmd, DotnetArgs, Succeeded0, !IO),
+
+        % On non-Windows hosts the apphost has no `.exe' suffix, but
+        % Mercury's `csharp_executable' linked-target convention always
+        % uses `.exe'.  If the build succeeded but FullOutputFileName
+        % does not exist, while the apphost without the suffix does,
+        % rename it so post_link_maybe_make_symlink_or_copy finds it.
+        ( if
+            Succeeded0 = succeeded,
+            LinkedTargetType = csharp_executable
+        then
+            maybe_rename_apphost(FullOutputFileName, OutputDir, AssemblyName,
+                !IO)
+        else
+            true
+        ),
+        Succeeded = Succeeded0
+    ;
+        OpenRes = error(_),
+        Succeeded = did_not_succeed
+    ).
+
+%---------------------%
+%
+% Helpers for csproj-based linking.
+%
+
+    % If the apphost was emitted without the `.exe' suffix (the default on
+    % non-Windows hosts) and FullOutputFileName does not yet exist, rename
+    % the bare apphost so callers can find it under its expected name.
+    %
+:- pred maybe_rename_apphost(string::in, string::in, string::in,
+    io::di, io::uo) is det.
+
+maybe_rename_apphost(FullOutputFileName, OutputDir, AssemblyName, !IO) :-
+    io.file.check_file_accessibility(FullOutputFileName, [read],
+        ExpectedRes, !IO),
+    (
+        ExpectedRes = ok
+        % File is already where Mercury expects it (apphost on Windows
+        % already includes `.exe'); nothing to do.
+    ;
+        ExpectedRes = error(_),
+        BareApphost = OutputDir / AssemblyName,
+        io.file.check_file_accessibility(BareApphost, [read],
+            BareRes, !IO),
+        (
+            BareRes = ok,
+            io.file.rename_file(BareApphost, FullOutputFileName,
+                _RenameRes, !IO)
+        ;
+            BareRes = error(_)
+            % Neither file exists; let the caller error out cleanly.
+        )
+    ).
+
+    % Strip the trailing .exe or .dll from a Mercury-emitted output basename.
+    %
+:- func strip_csharp_exec_ext(string) = string.
+
+strip_csharp_exec_ext(Name) = Stripped :-
+    ( if string.remove_suffix(Name, ".exe", Bare) then
+        Stripped = Bare
+    else if string.remove_suffix(Name, ".dll", Bare) then
+        Stripped = Bare
+    else
+        Stripped = Name
+    ).
+
+    % Parse a flag string of the form "-r:foo.dll -r:'bar.dll' ..." into
+    % a deduplicated list of bare assembly names ["foo", "bar", ...].
+    % Naive: assumes individual paths do not contain spaces.
+    %
+:- pred parse_csharp_ref_flags(string::in, list(string)::out) is det.
+
+parse_csharp_ref_flags(FlagsStr, Names) :-
+    Tokens = string.words(FlagsStr),
+    list.filter_map(extract_csharp_ref_name, Tokens, Names0),
+    list.remove_dups(Names0, Names).
+
+:- pred extract_csharp_ref_name(string::in, string::out) is semidet.
+
+extract_csharp_ref_name(Token0, Name) :-
+    Token = csharp_strip_quotes(Token0),
+    string.remove_prefix("-r:", Token, AfterPrefix0),
+    AfterPrefix = csharp_strip_quotes(AfterPrefix0),
+    AfterPrefix \= "",
+    BareName = ( if string.remove_suffix(AfterPrefix, ".dll", X) then X
+                 else AfterPrefix ),
+    % Strip any leading directory portion: csc accepts paths in -r:, but
+    % csproj <Reference Include=...> expects bare assembly names.
+    Name = dir.det_basename(BareName).
+
+:- func csharp_strip_quotes(string) = string.
+
+csharp_strip_quotes(S) =
+    string.replace_all(string.replace_all(S, "'", ""), """", "").
+
+    % Resolve each reference name against the list of -lib: search dirs.
+    % For names we cannot find on disk, the entry is emitted without a
+    % HintPath; MSBuild will report a clear error if it cannot locate the
+    % assembly via its own resolution.
+    %
+:- pred resolve_csharp_refs(list(string)::in, list(string)::in,
+    list(csharp_ref_entry)::out, io::di, io::uo) is det.
+
+resolve_csharp_refs(_SearchDirs, [], [], !IO).
+resolve_csharp_refs(SearchDirs, [Name | Names],
+        [csharp_ref_entry(Name, MaybePath) | Rest], !IO) :-
+    find_csharp_ref_dll(SearchDirs, Name ++ ".dll", MaybePath, !IO),
+    resolve_csharp_refs(SearchDirs, Names, Rest, !IO).
+
+:- type csharp_ref_entry
+    --->    csharp_ref_entry(string, maybe(string)).
+
+:- pred find_csharp_ref_dll(list(string)::in, string::in,
+    maybe(string)::out, io::di, io::uo) is det.
+
+find_csharp_ref_dll([], _DllName, no, !IO).
+find_csharp_ref_dll([Dir | Dirs], DllName, MaybePath, !IO) :-
+    Path = Dir / DllName,
+    io.file.check_file_accessibility(Path, [read], CheckRes, !IO),
+    (
+        CheckRes = ok,
+        MaybePath = yes(Path)
+    ;
+        CheckRes = error(_),
+        find_csharp_ref_dll(Dirs, DllName, MaybePath, !IO)
+    ).
+
+    % Build the .csproj content as a single string.
+    %
+:- pred csproj_content(linked_target_type::in, string::in, list(string)::in,
+    list(csharp_ref_entry)::in, bool::in, list(string)::in, string::in,
+    string::out) is det.
+
+csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
+        Debug, ExtraCSCFlags, KeyFile, Content) :-
+    (
+        LinkedTargetType = csharp_executable,
+        OutputType = "Exe",
+        UseAppHost = "true",
+        IsTrimmableLine = ""
+    ;
+        LinkedTargetType = csharp_library,
+        OutputType = "Library",
+        UseAppHost = "false",
+        IsTrimmableLine = "    <IsTrimmable>true</IsTrimmable>\n"
+    ),
+    (
+        Debug = yes,
+        DebugType = "portable",
+        OptimizeLine = "    <Optimize>false</Optimize>\n"
+    ;
+        Debug = no,
+        DebugType = "none",
+        OptimizeLine = "    <Optimize>true</Optimize>\n"
+    ),
+    ( if KeyFile = "" then
+        SignLines = ""
+    else
+        SignLines = string.append_list([
+            "    <SignAssembly>true</SignAssembly>\n",
+            "    <AssemblyOriginatorKeyFile>", xml_escape(KeyFile),
+            "</AssemblyOriginatorKeyFile>\n"
+        ])
+    ),
+    list.map(format_compile_item, SourceList, CompileItems),
+    list.map(format_reference_item, RefEntries, RefItems),
+    % Pass through any --csharp-flag values that look like /define:SYM via
+    % <DefineConstants>.  Other flags must be set on the csproj manually.
+    list.filter_map(parse_define_constant, ExtraCSCFlags, ExtraDefines),
+    ( if ExtraDefines = [] then
+        DefineLine = ""
+    else
+        DefineLine = string.append_list([
+            "    <DefineConstants>", string.join_list(";", ExtraDefines),
+            "</DefineConstants>\n"
+        ])
+    ),
+    Header = string.append_list([
+        "<!-- Generated by Mercury (mmc --grade csharp). Do not edit. -->\n",
+        "<Project Sdk=""Microsoft.NET.Sdk"">\n",
+        "  <PropertyGroup>\n",
+        "    <TargetFramework>net10.0</TargetFramework>\n",
+        "    <LangVersion>14</LangVersion>\n",
+        "    <Nullable>disable</Nullable>\n",
+        "    <OutputType>", OutputType, "</OutputType>\n",
+        "    <AssemblyName>", xml_escape(AssemblyName), "</AssemblyName>\n",
+        "    <RootNamespace>mercury</RootNamespace>\n",
+        "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n",
+        "    <AppendTargetFrameworkToOutputPath>false",
+        "</AppendTargetFrameworkToOutputPath>\n",
+        "    <AppendRuntimeIdentifierToOutputPath>false",
+        "</AppendRuntimeIdentifierToOutputPath>\n",
+        "    <OutputPath>./</OutputPath>\n",
+        "    <UseAppHost>", UseAppHost, "</UseAppHost>\n",
+        "    <DebugType>", DebugType, "</DebugType>\n",
+        OptimizeLine,
+        "    <NoWarn>0162;0219</NoWarn>\n",
+        "    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>\n",
+        "    <CopyLocalLockFileAssemblies>false",
+        "</CopyLocalLockFileAssemblies>\n",
+        "    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n",
+        IsTrimmableLine,
+        SignLines,
+        DefineLine,
+        "  </PropertyGroup>\n",
+        "  <ItemGroup>\n"]),
+    Middle = string.append_list([
+        "  </ItemGroup>\n",
+        "  <ItemGroup>\n"]),
+    Footer = string.append_list([
+        "  </ItemGroup>\n",
+        "</Project>\n"]),
+    Content = string.append_list([Header] ++ CompileItems ++ [Middle] ++
+        RefItems ++ [Footer]).
+
+:- pred parse_define_constant(string::in, string::out) is semidet.
+
+parse_define_constant(Flag, Symbol) :-
+    ( string.remove_prefix("-define:", Flag, Symbol)
+    ; string.remove_prefix("/define:", Flag, Symbol)
+    ; string.remove_prefix("-d:", Flag, Symbol)
+    ; string.remove_prefix("/d:", Flag, Symbol)
+    ).
+
+:- pred format_compile_item(string::in, string::out) is det.
+
+format_compile_item(Path, Item) :-
+    Item = string.append_list([
+        "    <Compile Include=""", xml_escape(Path), """ />\n"
     ]).
+
+:- pred format_reference_item(csharp_ref_entry::in, string::out) is det.
+
+format_reference_item(csharp_ref_entry(Name, MaybeHintPath), Item) :-
+    (
+        MaybeHintPath = yes(HintPath),
+        Item = string.append_list([
+            "    <Reference Include=""", xml_escape(Name), """>\n",
+            "      <HintPath>", xml_escape(HintPath), "</HintPath>\n",
+            "      <Private>true</Private>\n",
+            "    </Reference>\n"
+        ])
+    ;
+        MaybeHintPath = no,
+        Item = string.append_list([
+            "    <Reference Include=""", xml_escape(Name), """ />\n"
+        ])
+    ).
+
+:- func xml_escape(string) = string.
+
+xml_escape(S) =
+    string.replace_all(
+        string.replace_all(
+            string.replace_all(
+                string.replace_all(
+                    string.replace_all(S, "&", "&amp;"),
+                "<", "&lt;"),
+            ">", "&gt;"),
+        """", "&quot;"),
+    "'", "&apos;").
 
 %---------------------------------------------------------------------------%
 %
