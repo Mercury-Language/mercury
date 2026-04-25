@@ -382,13 +382,13 @@ time(Result, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     target_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ret = System.DateTime.UtcNow;
 ").
 :- pragma foreign_proc("Java",
     target_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Ret = java.time.Instant.now();
 ").
@@ -670,7 +670,7 @@ localtime(Time, TM, !IO) :-
     target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
          _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX t will be clamped to MinValue / MaxValue if the converted
     // time cannot be represented by a DateTime object.
@@ -703,7 +703,7 @@ localtime(Time, TM, !IO) :-
     target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         java.time.ZoneId tz = java.time.ZoneId.systemDefault();
