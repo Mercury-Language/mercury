@@ -1418,8 +1418,11 @@ extract_csharp_ref_name(Token0, Name) :-
     string.remove_prefix("-r:", Token, AfterPrefix0),
     AfterPrefix = csharp_strip_quotes(AfterPrefix0),
     AfterPrefix \= "",
-    BareName = ( if string.remove_suffix(AfterPrefix, ".dll", X) then X
-                 else AfterPrefix ),
+    ( if string.remove_suffix(AfterPrefix, ".dll", Bare) then
+        BareName = Bare
+    else
+        BareName = AfterPrefix
+    ),
     % Strip any leading directory portion: csc accepts paths in -r:, but
     % csproj <Reference Include=...> expects bare assembly names.
     Name = dir.det_basename(BareName).
@@ -1428,6 +1431,9 @@ extract_csharp_ref_name(Token0, Name) :-
 
 csharp_strip_quotes(S) =
     string.replace_all(string.replace_all(S, "'", ""), """", "").
+
+:- type csharp_ref_entry
+    --->    csharp_ref_entry(string, maybe(string)).
 
     % Resolve each reference name against the list of -lib: search dirs.
     % For names we cannot find on disk, the entry is emitted without a
@@ -1442,9 +1448,6 @@ resolve_csharp_refs(SearchDirs, [Name | Names],
         [csharp_ref_entry(Name, MaybePath) | Rest], !IO) :-
     find_csharp_ref_dll(SearchDirs, Name ++ ".dll", MaybePath, !IO),
     resolve_csharp_refs(SearchDirs, Names, Rest, !IO).
-
-:- type csharp_ref_entry
-    --->    csharp_ref_entry(string, maybe(string)).
 
 :- pred find_csharp_ref_dll(list(string)::in, string::in,
     maybe(string)::out, io::di, io::uo) is det.
@@ -1552,10 +1555,14 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
 :- pred parse_define_constant(string::in, string::out) is semidet.
 
 parse_define_constant(Flag, Symbol) :-
-    ( string.remove_prefix("-define:", Flag, Symbol)
-    ; string.remove_prefix("/define:", Flag, Symbol)
-    ; string.remove_prefix("-d:", Flag, Symbol)
-    ; string.remove_prefix("/d:", Flag, Symbol)
+    ( if string.remove_prefix("-define:", Flag, Sym1) then
+        Symbol = Sym1
+    else if string.remove_prefix("/define:", Flag, Sym2) then
+        Symbol = Sym2
+    else if string.remove_prefix("-d:", Flag, Sym3) then
+        Symbol = Sym3
+    else
+        string.remove_prefix("/d:", Flag, Symbol)
     ).
 
 :- pred format_compile_item(string::in, string::out) is det.
