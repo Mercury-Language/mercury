@@ -77,6 +77,16 @@
 :- pred ml_generate_const_structs(module_info::in, mlds_target_lang::in,
     ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
+    % Extend an existing const_struct_map with any entries that are
+    % present in the module's const_struct_db but missing from the map,
+    % updating !GlobalData with their MLDS definitions. Used after MLDS-time
+    % calls (e.g. via ml_accurate_gc.m) that may insert new const_struct
+    % entries into the module_info after the initial ConstStructMap was built.
+    %
+:- pred ml_extend_const_struct_map(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1577,6 +1587,29 @@ ml_generate_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
     list.foldl2(ml_gen_const_struct(Info), ConstStructs,
         map.init, ConstStructMap, !GlobalData).
+
+ml_extend_const_struct_map(ModuleInfo, Target, !ConstStructMap, !GlobalData) :-
+    HighLevelData = mlds_target_high_level_data(Target),
+    Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
+
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    list.foldl2(ml_gen_const_struct_if_new(Info), ConstStructs,
+        !ConstStructMap, !GlobalData).
+
+:- pred ml_gen_const_struct_if_new(ml_const_struct_info::in,
+    pair(int, const_struct)::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct_if_new(Info, ConstNum - ConstStruct,
+        !ConstStructMap, !GlobalData) :-
+    ( if map.contains(!.ConstStructMap, ConstNum) then
+        true
+    else
+        ml_gen_const_struct(Info, ConstNum - ConstStruct,
+            !ConstStructMap, !GlobalData)
+    ).
 
 :- type ml_const_struct_info
     --->    ml_const_struct_info(
