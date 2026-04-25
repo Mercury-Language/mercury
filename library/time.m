@@ -505,7 +505,7 @@ times(Tms, Result, !IO) :-
             jmercury.time.THREAD_MX_BEAN.getCurrentThreadUserTime();
         long cpu_nsecs =
             jmercury.time.THREAD_MX_BEAN.getCurrentThreadCpuTime();
-        if (user_nsecs == -1 || cpu_nsecs == -1) {
+        if (user_nsecs == -1L || cpu_nsecs == -1L) {
             Ut = -1L;
             St = -1L;
         } else {
