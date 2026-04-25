@@ -1963,6 +1963,44 @@ Portability improvements
 * We have updated the script `tools/configure_cross` to support
   cross-compiling using clang.
 
+* The `csharp` grade now targets .NET 10 (or later) and C# 14.
+  The previous Mono and .NET Framework code paths have been removed.
+  When configure detects a `dotnet` command and a .NET 10+ SDK with
+  Roslyn (`<sdk>/Roslyn/bincore/csc.dll`), it is preferred over a
+  stand-alone `csc` or `mcs`; users may force this selection with
+  `--with-csharp-compiler=dotnet`.
+
+* `mmc --grade csharp --make` now produces its output by generating
+  a `<MainModule>.csproj` next to the linked target and invoking
+  `dotnet build` once.  MSBuild emits the managed `<MainModule>.dll`,
+  the apphost binary (`<MainModule>.exe` on Windows; renamed to
+  `<MainModule>.exe` on Linux and macOS to match Mercury's existing
+  csharp_executable file-name convention), and the runtimeconfig.json.
+  As a result, the wrapper shell script and the `MONO_PATH`
+  environment-variable threading have been removed.
+
+* Library targets in `csharp` grade now carry
+  `<IsTrimmable>true</IsTrimmable>` so consumers may publish trimmed
+  binaries with `<PublishTrimmed>true</PublishTrimmed>` from their
+  own `.csproj`.
+
+* The C# implementation of `library/io.file.m` has been modernised:
+  the obsolete `Directory.CreateDirectory(string, DirectorySecurity)`
+  overload (removed in .NET 5) is gone, the Code Access Security
+  `SecurityPermission.Demand()` calls have been replaced with
+  no-ops (CAS is no longer enforced under modern .NET), and the
+  `__MonoCS__` preprocessor guards around the libc `mkdir` P/Invoke
+  have been removed in favour of `RuntimeInformation.IsOSPlatform`.
+
+* The C# backend has gained real implementations for several
+  previously-stubbed standard library predicates: `math.fma/3` and
+  `math.have_fma/0` now use `System.Math.FusedMultiplyAdd`,
+  `benchmarking.report_stats/3` and `benchmarking.report_full_memory_stats/2`
+  now report real GC and process memory information, and
+  `builtin.tuple_arity/2`, `builtin.tuple_arg/3`, and
+  `builtin.compare_representation_3_p_0/3` no longer throw a
+  `Sorry, not implemented' exception.
+
 Changes to the extras distribution
 ----------------------------------
 
