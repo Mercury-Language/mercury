@@ -94,7 +94,7 @@
     % clock(Result, !IO):
     %
     % Returns the elapsed processor time (number of clock ticks). The base time
-    % is arbitrary but doesn't change within a single process. If the time
+    % is arbitrary but does not change within a single process. If the time
     % cannot be obtained, this procedure will throw a time_error exception.
     % To obtain a time in seconds, divide Result by `clocks_per_sec'.
     %
@@ -301,17 +301,35 @@ clock(Result, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     target_clock(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
-    java.lang.management.ThreadMXBean bean =
-        java.lang.management.ManagementFactory.getThreadMXBean();
-    long nsecs = bean.getCurrentThreadCpuTime();
-    if (nsecs == -1) {
+    if (
+        !jmercury.time.THREAD_CPU_TIME_SUPPORTED ||
+        !jmercury.time.THREAD_MX_BEAN.isThreadCpuTimeEnabled()
+    ) {
         Ret = -1L;
     } else {
-        // This must match the definition of clocks_per_sec.
-        Ret = nsecs / 1000L;
+        long nsecs = jmercury.time.THREAD_MX_BEAN.getCurrentThreadCpuTime();
+        if (nsecs == -1L) {
+            Ret = -1L;
+        } else {
+            // This must match the definition of clocks_per_sec.
+            Ret = nsecs / 1000L;
+        }
     }
+").
+
+:- pragma foreign_code("Java", "
+
+    // ThreadMXBean is the management interface to the JVM's thread system.
+    // The JVM has a single instance of this. We cache a reference to it
+    // in this field to avoid having to look it up at every call.
+    private static final java.lang.management.ThreadMXBean THREAD_MX_BEAN =
+        java.lang.management.ManagementFactory.getThreadMXBean();
+
+    // This field is true if CPU time accounting is supported by the JVM.
+    private static final boolean THREAD_CPU_TIME_SUPPORTED =
+        jmercury.time.THREAD_MX_BEAN.isThreadCpuTimeSupported();
 ").
 
 %---------------------------------------------------------------------------%
@@ -472,26 +490,29 @@ times(Tms, Result, !IO) :-
 :- pragma foreign_proc("Java",
     target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Ret = System.currentTimeMillis();
 
-    try {
-        java.lang.management.ThreadMXBean bean =
-            java.lang.management.ManagementFactory.getThreadMXBean();
-        long user_nsecs = bean.getCurrentThreadUserTime();
-        long cpu_nsecs = bean.getCurrentThreadCpuTime();
+    if (
+        !jmercury.time.THREAD_CPU_TIME_SUPPORTED ||
+        !jmercury.time.THREAD_MX_BEAN.isThreadCpuTimeEnabled()
+    ) {
+        Ut = -1L;
+        St = -1L;
+    } else {
+        long user_nsecs =
+            jmercury.time.THREAD_MX_BEAN.getCurrentThreadUserTime();
+        long cpu_nsecs =
+            jmercury.time.THREAD_MX_BEAN.getCurrentThreadCpuTime();
         if (user_nsecs == -1 || cpu_nsecs == -1) {
-            Ut = -1;
-            St = -1;
+            Ut = -1L;
+            St = -1L;
         } else {
             // These units must match the definition of clk_tck.
             Ut = user_nsecs / 1000000L;
             St = (cpu_nsecs - user_nsecs) / 1000000L;
         }
-    } catch (java.lang.UnsupportedOperationException e) {
-        Ut = -1L;
-        St = -1L;
     }
 
     CUt = 0L;
