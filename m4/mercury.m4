@@ -294,11 +294,59 @@ GACUTIL=`basename "$GACUTIL"`
 # Check for an implementation of the Common Language Infrastructure.
 AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 
+# Check for the dotnet SDK (.NET 10 or later).  The dotnet-bundled
+# C# compiler is Roslyn (i.e. Microsoft's), invoked through
+# `dotnet exec csc.dll'.  When found, it is preferred over a stand-alone
+# csc.exe or Mono mcs.
+AC_PATH_PROG([DOTNET], [dotnet])
+DOTNET_SDK_DIR=
+DOTNET_CSC_DLL=
+if test -n "$DOTNET"; then
+    AC_MSG_CHECKING([for a usable dotnet SDK (10.0 or later)])
+    # `dotnet --list-sdks' prints lines like: `10.0.200 [/path/to/sdk]'.
+    # Walk every line, pick the highest-numbered SDK whose major version
+    # is >= 10.  Avoid bracket-using regexes here because the `[' and `]'
+    # characters collide with m4's quoting.
+    "$DOTNET" --list-sdks > conftest.sdks 2>/dev/null || :
+    DOTNET_SDK_LINE=
+    while IFS= read -r DOTNET_SDK_TRY_LINE; do
+        DOTNET_SDK_TRY_VER=`echo "$DOTNET_SDK_TRY_LINE" | cut -d' ' -f1`
+        DOTNET_SDK_TRY_MAJOR=`echo "$DOTNET_SDK_TRY_VER" | cut -d. -f1`
+        if test -z "$DOTNET_SDK_TRY_MAJOR"; then continue; fi
+        if test "$DOTNET_SDK_TRY_MAJOR" -ge 10 2>/dev/null; then
+            DOTNET_SDK_LINE="$DOTNET_SDK_TRY_LINE"
+        fi
+    done < conftest.sdks
+    rm -f conftest.sdks
+    if test -n "$DOTNET_SDK_LINE"; then
+        DOTNET_SDK_VERSION=`echo "$DOTNET_SDK_LINE" | cut -d' ' -f1`
+        # Everything after the first space is `[/path/to/sdk]'.
+        # Strip the leading `[' and trailing `]' character-by-character.
+        DOTNET_SDK_BASE=`echo "$DOTNET_SDK_LINE" \
+            | cut -d' ' -f2- \
+            | sed -e 's/^.//' -e 's/.$//'`
+        # Convert backslashes to forward slashes so the path survives
+        # subsequent shell quoting on MSYS, Cygwin and POSIX shells.
+        DOTNET_SDK_BASE=`echo "$DOTNET_SDK_BASE" | tr '\\\\' '/'`
+        DOTNET_SDK_DIR="$DOTNET_SDK_BASE/$DOTNET_SDK_VERSION"
+        if test -f "$DOTNET_SDK_DIR/Roslyn/bincore/csc.dll"; then
+            DOTNET_CSC_DLL="$DOTNET_SDK_DIR/Roslyn/bincore/csc.dll"
+            AC_MSG_RESULT([yes (version $DOTNET_SDK_VERSION)])
+        else
+            AC_MSG_RESULT([no (csc.dll not found under $DOTNET_SDK_DIR)])
+            DOTNET_SDK_DIR=
+        fi
+    else
+        AC_MSG_RESULT([no (no SDK >= 10.0 found)])
+    fi
+fi
+
 # Check for the C# (C sharp) compiler.
 # csc is the Microsoft C# compiler.
 # mcs is the Mono C# compiler targetting all runtime versions.
 # (dmcs and gmcs are older aliases for the Mono C# compiler
 # which we do not use.)
+# `dotnet' selects the SDK-bundled Roslyn csc.dll located above.
 
 AC_CACHE_SAVE
 case "$mercury_cv_with_csharp_compiler" in
@@ -311,7 +359,20 @@ case "$mercury_cv_with_csharp_compiler" in
         exit 1
         ;;
     "")
-        CSC_COMPILERS="csc mcs"
+        # Prefer the dotnet-bundled Roslyn compiler when available;
+        # fall back to a stand-alone csc.exe or Mono mcs.
+        if test -n "$DOTNET_CSC_DLL"; then
+            CSC_COMPILERS="dotnet csc mcs"
+        else
+            CSC_COMPILERS="csc mcs"
+        fi
+        ;;
+    dotnet)
+        if test -z "$DOTNET_CSC_DLL"; then
+            AC_MSG_ERROR([--with-csharp-compiler=dotnet specified, but no .NET 10+ SDK was found])
+            exit 1
+        fi
+        CSC_COMPILERS="dotnet"
         ;;
     *)
         CSC_COMPILERS="$mercury_cv_with_csharp_compiler"
@@ -321,6 +382,18 @@ esac
 AC_MSG_CHECKING([for a C sharp compiler])
 AC_MSG_RESULT()
 for CANDIDATE_CSC0 in $CSC_COMPILERS; do
+    if test "$CANDIDATE_CSC0" = "dotnet"; then
+        # Use the dotnet SDK Roslyn csc.dll located earlier.
+        if test -z "$DOTNET_CSC_DLL"; then
+            continue;
+        fi
+        AC_MSG_NOTICE([using dotnet SDK Roslyn compiler at $DOTNET_CSC_DLL])
+        # Quote both paths so that install locations containing spaces
+        # (e.g. `C:/Program Files/dotnet/...') survive expansion in
+        # scripts/Mmake.vars and on the command line.
+        CSC="\"$DOTNET\" exec \"$DOTNET_CSC_DLL\""
+        break;
+    fi
     unset CANDIDATE_CSC
     unset ac_cv_path_CANDIDATE_CSC
     AC_CACHE_LOAD
@@ -414,6 +487,12 @@ if test "$mercury_cv_with_csharp_compiler" != "" -a "$CSC" = ""; then
 fi
 
 case "$CSC" in
+    *exec*csc.dll*)
+        # The dotnet-bundled Roslyn compiler IS the Microsoft compiler;
+        # match it before the stand-alone csc.exe pattern below.
+        CSHARP_COMPILER_TYPE=microsoft
+    ;;
+
     csc*)
         CSHARP_COMPILER_TYPE=microsoft
     ;;
@@ -432,6 +511,9 @@ AC_SUBST([GACUTIL])
 AC_SUBST([CSC])
 AC_SUBST([CSHARP_COMPILER_TYPE])
 AC_SUBST([CLI_INTERPRETER])
+AC_SUBST([DOTNET])
+AC_SUBST([DOTNET_SDK_DIR])
+AC_SUBST([DOTNET_CSC_DLL])
 ])
 
 #-----------------------------------------------------------------------------#
