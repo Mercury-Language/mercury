@@ -1466,7 +1466,8 @@ find_csharp_ref_dll([Dir | Dirs], DllName, MaybePath, !IO) :-
 
     % Build the .csproj content as a single string.
     %
-:- pred csproj_content(linked_target_type::in, string::in, list(string)::in,
+:- pred csproj_content(linked_target_type::in(csharp_linked_target_type),
+    string::in, list(string)::in,
     list(csharp_ref_entry)::in, bool::in, list(string)::in, string::in,
     string::out) is det.
 
