@@ -563,6 +563,16 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     Arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY((MR_TypeInfo) TypeInfo_for_T);
 ").
 
+:- pragma foreign_proc("C#",
+    tuple_arity(_Term::in, Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // For variable-arity types like tuples the C# RTTI representation
+    // stores each argument's type info in TypeInfo_for_T.args, so the
+    // length of that vector is the tuple arity.
+    Arity = TypeInfo_for_T.args.Length;
+").
+
 tuple_arity(_, _) :-
     private_builtin.sorry("tuple_arity/2").
 
@@ -579,6 +589,18 @@ tuple_arity(_, _) :-
     TypeInfo_for_ArgT =
         (MR_Word) MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[1 + Index];
     Arg = arg_vector[Index];
+").
+
+:- pragma foreign_proc("C#",
+    tuple_arg(Term::in, Index::in, Arg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // The C# backend emits tuples as object[]; the type info vector
+    // for a tuple is parallel to that array (no leading-arity slot
+    // unlike the C representation).
+    TypeInfo_for_ArgT =
+        (runtime.TypeInfo_Struct) TypeInfo_for_T.args[Index];
+    Arg = ((object[]) Term)[Index];
 ").
 
 tuple_arg(_, _, -1) :-
@@ -630,10 +652,14 @@ tuple_arg(_, _, -1) :-
     compare_representation_3_p_0(runtime.TypeInfo_Struct ti,
         object x, object y)
     {
-        // stub only
-        runtime.Errors.SORRY(
-            ""compare_representation_3_p_0/3 not implemented"");
-        return Comparison_result_0.f_equal;
+        // For types without user-defined equality this is identical to
+        // the structural compare; for types with user-defined equality
+        // the C backend would expose the underlying representation
+        // ordering.  The C# backend does not yet distinguish those
+        // cases, so we delegate to the structural compare too -- this
+        // is a faithful approximation for every Mercury type that does
+        // not override unification/comparison.
+        return rtti_implementation.generic_compare_3_p_0(ti, x, y);
     }
 ").
 
