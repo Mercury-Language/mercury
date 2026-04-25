@@ -808,7 +808,7 @@ gmtime(Time) = TM :-
 :- pragma foreign_proc("C#",
     target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     System.DateTime t = Time;
 
@@ -830,7 +830,7 @@ gmtime(Time) = TM :-
 :- pragma foreign_proc("Java",
     target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
         java.time.OffsetDateTime utcTime =
