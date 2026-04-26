@@ -2619,7 +2619,32 @@ elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo) :-
 
 elim_info_finish(ElimInfo, NestedFuncs, LocalVars) :-
     NestedFuncs = cord.to_list(ElimInfo ^ ei_nested_funcs),
-    LocalVars = cord.to_list(ElimInfo ^ ei_local_vars).
+    LocalVarsRaw = cord.to_list(ElimInfo ^ ei_local_vars),
+    % Multiple disjoint MLDS scopes (e.g. arms of an if-then-else, or
+    % branches of a switch) can declare a local variable with the same
+    % name; flatten_nested_local_var_defn snocs each occurrence onto
+    % ei_local_vars without checking for duplicates. When the resulting
+    % list is converted into the per-procedure environment struct used
+    % by accurate-GC stack chaining, those duplicate names produce
+    % `duplicate member' errors from the C compiler. Keep only the
+    % first occurrence of each name; both occurrences refer to the same
+    % logical variable, the scopes are disjoint at run time, and the
+    % env struct is just a per-procedure home for it.
+    keep_first_local_var_per_name(LocalVarsRaw, set.init, LocalVars).
+
+:- pred keep_first_local_var_per_name(list(mlds_local_var_defn)::in,
+    set(mlds_local_var_name)::in, list(mlds_local_var_defn)::out) is det.
+
+keep_first_local_var_per_name([], _, []).
+keep_first_local_var_per_name([Defn | Defns], !.Seen, Uniq) :-
+    Defn = mlds_local_var_defn(Name, _, _, _, _),
+    ( if set.contains(!.Seen, Name) then
+        keep_first_local_var_per_name(Defns, !.Seen, Uniq)
+    else
+        set.insert(Name, !Seen),
+        keep_first_local_var_per_name(Defns, !.Seen, TailUniq),
+        Uniq = [Defn | TailUniq]
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_elim_nested.
