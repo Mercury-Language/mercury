@@ -3569,7 +3569,9 @@ builtin_state(ModuleInfo, CallerPredId, PredId, _ProcId) = BuiltinState :-
             (
                 OptTuple ^ ot_inline_builtins = inline_builtins
             ;
-                PredName = "store_at_ref_impure",
+                ( PredName = "store_at_ref_impure"
+                ; PredName = "store_at_field_offset_impure"
+                ),
                 ModuleName = mercury_private_builtin_module
             )
         ;
