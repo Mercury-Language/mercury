@@ -384,10 +384,22 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
         mlds_code_addr(QualFuncLabel, Signature))),
 
     % Generate the call
-    % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
+    % `private_builtin.gc_trace((MR_C_Pointer) TypeInfo,
+    %                            (MR_C_Pointer) &Var);'.
+    %
+    % The cast on TypeInfoRval is needed because TypeInfoRval may have
+    % an MLDS type that prints as a C pointer in some cases — most
+    % notably when the typeinfo source is itself a pointer-typed local
+    % (an existentially-typed output parameter, where TypeInfo_for_ArgT
+    % is passed as MR_Word *). gc_trace's first parameter is declared
+    % as MR_Word, so without the cast gcc rejects the call with
+    % `-Werror=int-conversion'. CPointerType prints as `MR_Word' under
+    % the C backend, so the cast is also a no-op for the common case
+    % where TypeInfoRval already has MR_Word-equivalent type.
+    CastTypeInfoRval = ml_cast(CPointerType, TypeInfoRval),
     CastVarAddr = ml_cast(CPointerType, ml_mem_addr(VarLval)),
     TraceStmt = ml_stmt_call(Signature, FuncAddr,
-        [TypeInfoRval, CastVarAddr], [], ordinary_call, Context).
+        [CastTypeInfoRval, CastVarAddr], [], ordinary_call, Context).
 
     % Generate HLDS code to construct the type_info for this type.
     %
