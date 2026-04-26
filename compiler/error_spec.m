@@ -63,11 +63,6 @@
 % (and equivalent in every respect to) error_spec(Id, Severity, Phase,
 % error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
 %
-% conditional_spec(Id, Option, MatchValue, Severity, Phase, Msgs) is intended
-% to represent the error specification given by its last three fields
-% *iff* Option has the value MatchValue. If Option is *not* MatchValue,
-% it asks for nothing to be printed, and for the exit status to be left alone.
-%
 % The Id field, which is present in all these alternatives, is totally
 % ignored when printing error_specs. Its job is something completely different:
 % helping developers track down where in the source code each error_spec
@@ -107,17 +102,6 @@
                 es_phase                :: spec_phase,
                 es_msgs                 :: list(error_msg)
             ).
-% If we ever want to both
-% - print an error_spec just after it is generated, and
-% - also return it to inform decisions about the presence of errors,
-% we can print the actual message and return it wrapped up in this
-% new function symbol, which preserves its severity (for decisions)
-% and its text (which may be helpful when debugging the code that
-% makes those decision).
-%
-%   ;       already_printed_spec(
-%               ap_spec                 :: std_error_spec
-%           ).
 
     % An error_spec that is *intended* to contain a warning,
     % XXX We can now enforce that intention using subtypes.
@@ -136,9 +120,11 @@
     % When they succeed, they return some result(s); when they don't,
     % they return one or more errors.
     %
-:- type maybe_error_specs(T)
-    --->    ok_no_spec(T)
-    ;       error_specs(error_spec, list(error_spec)).
+    % This type is not (yet) used.
+    %
+% :- type maybe_error_specs(T)
+%   --->    ok_no_spec(T)
+%   ;       error_specs(error_spec, list(error_spec)).
 
 %---------------------------------------------------------------------------%
 
@@ -146,10 +132,6 @@
     --->    severity_error
             % Always print the spec, and
             % always set the exit status to indicate an error.
-
-    ;       severity_error(option)
-            % Print the spec and set the exit status to indicate an error
-            % only if this option is enabled.
 
     ;       severity_warning(option)
             % Print the spec only if this option is enabled.

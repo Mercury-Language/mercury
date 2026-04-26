@@ -109,8 +109,6 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_class.
 :- import_module parse_tree.parse_dcg_goal.
@@ -861,8 +859,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                     words("was created by an obsolete compiler,")] ++
                     color_as_incorrect([words("so it must be rebuilt.")]) ++
                     [nl],
-                Severity = severity_error(warn_smart_recompilation),
-                Spec = spec($pred, Severity, phase_t2pt, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    Context, Pieces),
                 MaybeIOM = ok1(iom_handled_error([Spec]))
             )
         else
