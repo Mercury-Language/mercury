@@ -580,16 +580,26 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         use_envptr_in_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
-        (
+        ( if
             NestedFuncs0 = [],
             % When hoisting nested functions, if there were no nested
             % functions, we have nothing to do.
             % Likewise, when doing accurate GC, if there were no local
-            % variables (or arguments) that contained pointers, then we don't
-            % need to chain a stack frame for this function.
+            % variables (or arguments) that contained pointers (i.e.
+            % nothing was promoted into the per-frame environment by
+            % flatten_statement), then we don't need to chain a stack
+            % frame for this function. flatten_statement still rewrites
+            % accesses to pointer-typed locals into env-field references
+            % under chain_gc_stack_frames, so when Locals is non-empty
+            % we MUST fall through to ml_create_env even though there
+            % are no nested functions, otherwise the rewritten body
+            % refers to a frame_ptr that was never declared.
+            ( Action = hoist_nested_funcs
+            ; Action = chain_gc_stack_frames, Locals = []
+            )
+        then
             FuncBodyStmt = FuncBodyStmt1
-        ;
-            NestedFuncs0 = [_ | _],
+        else
             % Create a struct to hold the local variables, and initialize
             % the environment pointers for both the containing function
             % and the nested functions. Also generate the GC tracing function,
