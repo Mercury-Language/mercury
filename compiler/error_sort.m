@@ -74,74 +74,89 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module maybe.
+:- import_module require.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
 standardize_error_specs(Specs, StdSpecs) :-
-    list.filter_map(standardize_error_spec, Specs, StdSpecs).
+    list.map(standardize_error_spec, Specs, StdSpecs).
 
-:- pred standardize_error_spec(error_spec::in, std_error_spec::out) is semidet.
+:- pred standardize_error_spec(error_spec::in, std_error_spec::out) is det.
 
 standardize_error_spec(Spec0, StdSpec) :-
-    require_det (
-        (
-            Spec0 = error_spec(Id, Severity, Phase, Msgs0),
-            list.filter_map(standardize_error_msg, Msgs0, StdMsgs)
-        ;
-            Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
-            StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
-                [always(Pieces0)])]
-        ;
-            Spec0 = no_ctxt_spec(Id, Severity, Phase, Pieces0),
-            StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
-                [always(Pieces0)])]
-        )
+    (
+        Spec0 = error_spec(Id, Severity, Phase, Msgs0),
+        list.map(standardize_error_msg, Msgs0, StdMsgs)
+    ;
+        Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
+        StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
+            [always(Pieces0)])]
+    ;
+        Spec0 = no_ctxt_spec(Id, Severity, Phase, Pieces0),
+        StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
+            [always(Pieces0)])]
     ),
     (
+        StdMsgs = [],
+        unexpected($pred, "StdMsgs = []")
+    ;
         StdMsgs = [_ | _],
         StdSpec = error_spec(Id, Severity, Phase, StdMsgs)
-    ;
-        StdMsgs = [],
-        % Spec0 would result in nothing being printed.
-        fail
     ).
 
-:- pred standardize_error_msg(error_msg::in, std_error_msg::out) is semidet.
+:- pred standardize_error_msg(error_msg::in, std_error_msg::out) is det.
 
 standardize_error_msg(Msg0, StdMsg) :-
-    require_det (
-        (
-            Msg0 = msg(Context, Pieces0),
-            MaybeContext = yes(Context),
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u,
-            StdComponents = [always(Pieces0)]
-        ;
-            Msg0 = no_ctxt_msg(Pieces0),
-            MaybeContext = no,
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u,
-            StdComponents = [always(Pieces0)]
-        ;
-            Msg0 = simple_msg(Context, StdComponents),
-            MaybeContext = yes(Context),
-            TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0u
-        ;
-            Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
-                StdComponents)
-        ;
-            Msg0 = blank_msg(MaybeContext),
-            TreatAsFirst = always_treat_as_first,
-            ExtraIndent = 0u,
-            StdComponents = [always([blank_line])]
-        ),
+    (
+        Msg0 = msg(Context, Pieces0),
+        MaybeContext = yes(Context),
+        TreatAsFirst = treat_based_on_posn,
+        ExtraIndent = 0u,
+        StdComponents = [always(Pieces0)]
+    ;
+        Msg0 = no_ctxt_msg(Pieces0),
+        MaybeContext = no,
+        TreatAsFirst = treat_based_on_posn,
+        ExtraIndent = 0u,
+        StdComponents = [always(Pieces0)]
+    ;
+        Msg0 = simple_msg(Context, StdComponents),
+        MaybeContext = yes(Context),
+        TreatAsFirst = treat_based_on_posn,
+        ExtraIndent = 0u
+    ;
+        Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
+            StdComponents)
+    ;
+        Msg0 = blank_msg(MaybeContext),
+        TreatAsFirst = always_treat_as_first,
+        ExtraIndent = 0u,
+        StdComponents = [always([blank_line])]
+    ),
+    (
+        StdComponents = [],
+        % In this situation, we used to just fail, making both this predicate,
+        % and its caller standardize_error_spec, semidet.
+        %
+        % This was when we still had error_msgs that were conditional on
+        % the value of an option. Ever since we moved all such conditionality
+        % to the top level (to the severity of the error_spec), we never delete
+        % any error_msgs from an error_spec. The only way that execution can
+        % *now* get here is if the error_spec was *constructed* with zero
+        % components. That would be a bug, which we catch here.
+        %
+        % We *could* use the type system to enforce the "no empty list of
+        % components" rule, but the type analysis system cannot handle
+        % any subtype of the list type with acceptable performance, and
+        % using the one_or_more type instead in error_specs would be
+        % inconvenient.
+        unexpected($pred, "StdComponents = []")
+    ;
+        StdComponents = [_ | _],
         StdMsg = error_msg(MaybeContext, TreatAsFirst,
             ExtraIndent, StdComponents)
-    ),
-    % Don't return StdMsg if StdComponents is empty.
-    StdComponents = [_ | _].
+    ).
 
 %---------------------------------------------------------------------------%
 

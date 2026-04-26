@@ -1,6 +1,7 @@
 record_syntax_errors.m:027: Error: `:- mode' declaration for function
 record_syntax_errors.m:027:   [38;5;87m`field8'/1[39;49m [38;5;203mwithout[39;49m a corresponding `:- func'
 record_syntax_errors.m:027:   declaration.
+record_syntax_errors.m:027:   (Use `--infer-types' to enable type inference.)
 record_syntax_errors.m:027: Inferred :- func field8(record_syntax_errors.cons2)
 record_syntax_errors.m:027:   = int.
 record_syntax_errors.m:033: In DCG field update goal:

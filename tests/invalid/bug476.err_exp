@@ -4,3 +4,4 @@ bug476.m:068: Error: the predicate [38;5;87m`bug476.mark'/4[39;49m is [38;5;2
 bug476.m:034:   Here is its previous definition.
 bug476.m:070: Error: clause for predicate [38;5;87m`input_stream_mark'/3[39;49m [38;5;203mwithout[39;49m a
 bug476.m:070:   corresponding `:- pred' declaration.
+bug476.m:070:   (Use `--infer-types' to enable type inference.)

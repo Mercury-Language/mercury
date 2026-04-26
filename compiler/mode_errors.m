@@ -665,8 +665,8 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
         [words("variable")] ++
         color_as_subject([quote(mercury_var_to_name_only(VarTable, Y))]) ++
         has_instantiatedness(ModeInfo, yes(color_inconsistent), InstY, "."),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -691,8 +691,8 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words("be ground (or have inst"), quote("any"), suffix(")."),
         words("Unifications of polymorphically-typed variables with"),
         words("partially instantiated modes are not allowed.")],
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -729,8 +729,8 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
         [words("term")] ++
         color_as_subject([words_quote(FunctorConsIdStr)]) ++
         has_instantiatedness(ModeInfo, InstColor, FakeTermInst, "."),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -750,8 +750,8 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
         has_instantiatedness(ModeInfo, InstColor, InstX, ",") ++
         color_as_subject([words("lambda expression")]) ++
         has_instantiatedness(ModeInfo, InstColor, InstY, "."),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -821,8 +821,9 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
             p_or_f(PredOrFunc), suffix("'s"), words("modes")] ++
             EndPieces ++ [nl]
     ),
-    Spec = spec($pred, severity_error, phase_mode_check(report_in_any_mode),
-        Context, Preamble ++ StartPieces ++ DetailPieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context,
+        Preamble ++ StartPieces ++ DetailPieces).
 
 :- func named_and_unnamed_vars_to_pieces(var_table, color_name,
     list(prog_var)) = list(format_piece).
@@ -868,8 +869,8 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
         words("of lambda goals is")] ++
         color_as_correct([quote("ground"), suffix(".")]) ++
         [nl],
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -919,8 +920,8 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         words("writing an explicit universal quantification, e.g."),
         quote("all [X] call(PredA, X) <=> call(PredB, X)"), suffix(","),
         words("instead of"), quote("PredA = PredB"), suffix("."), nl],
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -1028,8 +1029,8 @@ mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
         [words("is")] ++
         color_as_incorrect([words("still live.")]) ++
         [nl],
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1046,8 +1047,8 @@ mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo, PredId) = Spec :-
     Pieces = [words("error: there is")] ++
         color_as_incorrect([words("no mode declaration")]) ++
         [words("for")] ++ PredDotPieces ++ [nl],
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1770,8 +1771,8 @@ mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
         merge_error_to_msgs(ModeInfo, Context, is_not_disjunctive),
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 %---------------------------------------------------------------------------%
@@ -1790,8 +1791,8 @@ mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
         merge_error_to_msgs(ModeInfo, Context, is_disjunctive),
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 :- func merge_context_to_string(merge_context) = string.
@@ -1946,8 +1947,8 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
             [words("is not a subtype of"), quote(ToTypeStr), suffix("."), nl]
     ),
     Pieces = [words("mode error:")] ++ TermPathPieces ++ ReasonPieces,
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 :- func make_term_path_piece(coerce_error_term_path_step) =
     list(format_piece).
@@ -2027,8 +2028,8 @@ mode_error_nonground_trace_goal_to_spec(ModeInfo, HeadNGVar, TailNGVars)
         words("expects to get from the surrounding code,"),
         words(IsOrAre)] ++ color_as_incorrect([words("not ground")]) ++
         [words("at entry to the trace goal."), nl],
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -2119,8 +2120,8 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
             color_as_incorrect([words("two or more conjuncts.")]) ++
             [nl]
     ),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_always, VerbosePieces)])]).
@@ -2184,8 +2185,8 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
             report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
                 [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
                 ExpectedInst)),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -2280,8 +2281,8 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             ),
             LaterMsgs = start_each_msg_with_blank_line([LaterHead | LaterTail])
         ),
-        Spec = error_spec($pred, severity_error,
-            phase_mode_check(report_in_any_mode), [InitMsg | LaterMsgs])
+        Phase = phase_mode_check(report_in_any_mode),
+        Spec = error_spec($pred, severity_error, Phase, [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
         unexpected($pred, "no error")
@@ -2351,8 +2352,8 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
             [words("has inst")] ++ color_as_incorrect([quote("any")]) ++
             [words("and appears in the body."), nl]
     ),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -2390,8 +2391,8 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
         words("Function expressions with inst"), quote("any"),
         words("can be written"),
         quote("any_func(Args) = Result is det :- ..."), suffix("."), nl]),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode),
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase,
         [simple_msg(Context, [Always, VerboseOnly])]).
 
 %---------------------------------------------------------------------------%
@@ -2705,8 +2706,8 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
         has_instantiatedness(ModeInfo, MaybeColor, InstX, ",") ++
         color_as_subject([quote(NameY)]) ++
         has_instantiatedness(ModeInfo, MaybeColor, InstY, "."),
-    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
-        phase_mode_check(report_only_if_in_all_modes),
+    Phase = phase_mode_check(report_only_if_in_all_modes),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code), Phase,
         Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -2739,8 +2740,8 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         [words("cannot succeed."), nl] ++
         color_as_subject([quote(NameX)]) ++
         has_instantiatedness(ModeInfo, yes(color_incorrect), InstX, "."),
-    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
-        phase_mode_check(report_only_if_in_all_modes),
+    Phase = phase_mode_check(report_only_if_in_all_modes),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code), Phase,
         Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -2762,8 +2763,9 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
         color_as_incorrect([quote(NameX), words("cannot be equal"),
             words("to a term containing itself.")]) ++
         [nl],
-    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code), Phase,
+        Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

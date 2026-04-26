@@ -28,6 +28,7 @@ invalid_octal_literal.m:033: Syntax error: an octal literal cannot end with an
 invalid_octal_literal.m:033:   underscore.
 invalid_octal_literal.m:035: Error: clause for predicate [38;5;87m`o77'/0[39;49m [38;5;203mwithout[39;49m a
 invalid_octal_literal.m:035:   corresponding `:- pred' declaration.
+invalid_octal_literal.m:035:   (Use `--infer-types' to enable type inference.)
 invalid_octal_literal.m:035: Inferred :- pred o77.
 invalid_octal_literal.m:035: Syntax error: a decimal literal cannot end with an
 invalid_octal_literal.m:035:   underscore.

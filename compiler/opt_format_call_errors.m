@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2024-2025 The Mercury team.
+% Copyright (C) 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -148,8 +148,8 @@ report_format_mismatch(ModuleInfo, PredId, MaybePos, HeadError, TailErrors,
             words("in call to")] ++ PredNameDotPieces ++ [nl] ++
             ErrorPieces,
         Phase = phase_simplify(report_in_any_mode),
-        Spec = spec($pred, severity_warning(warn_known_bad_format_calls),
-            Phase, Context, Pieces),
+        Severity = severity_warning(warn_known_bad_format_calls),
+        Spec = spec($pred, Severity, Phase, Context, Pieces),
         Specs = [Spec]
     ).
 

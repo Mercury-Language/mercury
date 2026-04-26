@@ -606,6 +606,8 @@
 
 :- pred extract_spec_phase(error_spec::in, spec_phase::out) is det.
 
+:- pred extract_spec_severity(error_spec::in, spec_severity::out) is det.
+
 :- pred accumulate_contexts(error_spec::in,
     set(prog_context)::in, set(prog_context)::out) is det.
 
@@ -997,6 +999,15 @@ extract_spec_phase(Spec, Phase) :-
         Spec = spec(_, _, Phase, _, _)
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
+    ).
+
+extract_spec_severity(Spec, Severity) :-
+    (
+        Spec = error_spec(_, Severity, _, _)
+    ;
+        Spec = spec(_, Severity, _, _, _)
+    ;
+        Spec = no_ctxt_spec(_, Severity, _, _)
     ).
 
 accumulate_contexts(Spec, !Contexts) :-

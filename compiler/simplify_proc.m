@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -467,7 +467,7 @@ simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
         ImplicitStreamWarnings, !.ModuleInfo, PredInfo0, !.ProcInfo,
         Goal0, MaybeGoal1, FormatSpecs1, VarTable0, VarTable1),
     ( if
-        had_some_unknown_format_calls(FormatSpecs1),
+        had_some_unknown_format_calls(FormatSpecs1) = yes,
         % We found some format calls that we couldn't optimize because
         % we don't know either the format string or the list of values
         % to be printed. Try to fix this by moving copies of the format call
@@ -545,24 +545,15 @@ simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
         % of the goal that we will not be using.
     ).
 
-:- pred had_some_unknown_format_calls(list(error_spec)::in) is semidet.
+:- func had_some_unknown_format_calls(list(error_spec)) = bool.
 
-had_some_unknown_format_calls([]) :-
-    fail.
-had_some_unknown_format_calls([Spec | Specs]) :-
-    require_complete_switch [Spec]
-    (
-        Spec = spec(_, Severity, _, _, _),
-        ( if Severity = severity_warning(warn_unknown_format_calls) then
-            true
-        else
-            had_some_unknown_format_calls(Specs)
-        )
-    ;
-        ( Spec = no_ctxt_spec(_, _, _, _)
-        ; Spec = error_spec(_, _, _, _)
-        ),
-        unexpected($pred, "unexpected form of error_spec")
+had_some_unknown_format_calls([]) = no.
+had_some_unknown_format_calls([Spec | Specs]) = SomeUnknown :-
+    extract_spec_severity(Spec, Severity),
+    ( if Severity = severity_warning(warn_unknown_format_calls) then
+        SomeUnknown = yes
+    else
+        SomeUnknown = had_some_unknown_format_calls(Specs)
     ).
 
 :- pred push_format_calls_into_branches_in_goal(module_info::in,

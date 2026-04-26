@@ -2,4 +2,7 @@ typeclass_mode_2.m:009: Error: mode declaration for type class method predicate
 typeclass_mode_2.m:009:   [38;5;87m`p'/1[39;49m [38;5;203mwithout[39;49m a corresponding predicate declaration.
 typeclass_mode_2.m:014: Error: clause for predicate [38;5;87m`p'/1[39;49m [38;5;203mwithout[39;49m a
 typeclass_mode_2.m:014:   corresponding `:- pred' declaration.
+typeclass_mode_2.m:014:   (Use `--infer-types' to enable type inference.)
 typeclass_mode_2.m:014: Inferred :- pred p(T1).
+typeclass_mode_2.m:014: Error: predicate [38;5;87m`p'/1[39;49m [38;5;203mhas no mode declaration.[39;49m
+typeclass_mode_2.m:014:   (Use `--infer-modes' to enable mode inference.)

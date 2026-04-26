@@ -32,6 +32,7 @@ invalid_binary_literal.m:033: Syntax error: a binary literal cannot end with an
 invalid_binary_literal.m:033:   underscore.
 invalid_binary_literal.m:035: Error: clause for predicate [38;5;87m`b11'/0[39;49m [38;5;203mwithout[39;49m a
 invalid_binary_literal.m:035:   corresponding `:- pred' declaration.
+invalid_binary_literal.m:035:   (Use `--infer-types' to enable type inference.)
 invalid_binary_literal.m:035: Inferred :- pred b11.
 invalid_binary_literal.m:035: Syntax error: a decimal literal cannot end with
 invalid_binary_literal.m:035:   an underscore.

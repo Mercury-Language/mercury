@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008, 2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -306,7 +306,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym(PredicateTable,
             is_fully_qualified, PredOrFunc, SymName, AllArityPredIds),
-        gather_porf_arities(ModuleInfo, AllArityPredIds, PredOrFunc,
+        gather_porf_arities(ModuleInfo, PredOrFunc, AllArityPredIds,
             PorFArities),
         set.delete(PredFormArity, PorFArities, OtherPredFormArities),
         % The sorting is to make the error message easier to read.
@@ -316,7 +316,21 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         FullPredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
         (
             OtherPredFormAritiesList = [],
-            Spec = error_spec($pred, severity_error, phase_pt2h, [MainMsg])
+            (
+                InferTypes = no,
+                VerbosePieces = [words("(Use"), quote("--infer-types"),
+                    words("to enable type inference.)"), nl],
+                InferMsg = simple_msg(Context,
+                    [always(MainPieces),
+                    verbose_only(verbose_once, VerbosePieces)]),
+                Spec = error_spec($pred, severity_error, phase_pt2h,
+                    [InferMsg])
+            ;
+                InferTypes = yes,
+                % Any reminder about type inference would be redundant.
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, MainPieces)
+            )
         ;
             (
                 OtherPredFormAritiesList = [OtherPredFormArity],
@@ -350,13 +364,13 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
     % procedures which have the right pred_or_func field (WantedPorF),
     % and return their original arities.
     %
-:- pred gather_porf_arities(module_info::in, list(pred_id)::in,
-    pred_or_func::in, set(pred_form_arity)::out) is det.
+:- pred gather_porf_arities(module_info::in, pred_or_func::in,
+    list(pred_id)::in, set(pred_form_arity)::out) is det.
 
-gather_porf_arities(_ModuleInfo, [], _WantedPorF, set.init).
-gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
+gather_porf_arities(_ModuleInfo, _WantedPorF, [], set.init).
+gather_porf_arities(ModuleInfo, WantedPorF, [PredId | PredIds],
         !:PorFArities) :-
-    gather_porf_arities(ModuleInfo, PredIds, WantedPorF, !:PorFArities),
+    gather_porf_arities(ModuleInfo, WantedPorF, PredIds, !:PorFArities),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PorF = pred_info_is_pred_or_func(PredInfo),
     ( if PorF = WantedPorF then

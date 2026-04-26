@@ -1,5 +1,6 @@
 null_char.m:017: Error: clause for predicate [38;5;87m`int'/0[39;49m [38;5;203mwithout[39;49m a corresponding
 null_char.m:017:   `:- pred' declaration.
+null_char.m:017:   (Use `--infer-types' to enable type inference.)
 null_char.m:017: Inferred :- pred int.
 null_char.m:017: Syntax error: the null character is illegal in strings and
 null_char.m:017:   names.

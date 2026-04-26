@@ -558,8 +558,8 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
         words("option to increase the limit."),
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
-    Spec = no_ctxt_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces).
 
     % copy_pred_bodies(OldPredIdTable, ProcId, !ModuleInfo):
     %
@@ -759,33 +759,17 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
             Specs = []
         ;
             InferModesOpt = no,
-            pred_info_get_markers(PredInfo, Markers),
-            ( if marker_is_present(Markers, marker_no_pred_decl) then
-                % Generate an error_spec that prints nothing.
-                % While we don't want the user to see the error message,
-                % we need the severity_error to stop the compiler
-                % from proceeding to process this predicate further.
-                % For example, to determinism analysis, where it could
-                % generate misleading errors about the determinism declaration
-                % (added implicitly by the compiler) being wrong.
-                % There is no risk of the compilation failing without
-                % *any* error indication, since we generated an error message
-                % when we added the marker.
-                Msgs = []
-            else
-                PredDescPieces = describe_one_pred_name(ModuleInfo,
-                    yes(color_subject), should_not_module_qualify, [], PredId),
-                MainPieces = [words("Error:")] ++ PredDescPieces ++
-                    color_as_incorrect([words("has no mode declaration.")]) ++
-                    [nl],
-                VerbosePieces =
-                    [words("(Use"), quote("--infer-modes"),
-                    words("to enable mode inference.)"), nl],
-                Msgs =
-                    [simple_msg(Context,
-                        [always(MainPieces),
-                        verbose_only(verbose_once, VerbosePieces)])]
-            ),
+            PredDescPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_not_module_qualify, [], PredId),
+            MainPieces = [words("Error:")] ++ PredDescPieces ++
+                color_as_incorrect([words("has no mode declaration.")]) ++
+                [nl],
+            VerbosePieces = [words("(Use"), quote("--infer-modes"),
+                words("to enable mode inference.)"), nl],
+            Msgs =
+                [simple_msg(Context,
+                    [always(MainPieces),
+                    verbose_only(verbose_once, VerbosePieces)])],
             pred_info_get_context(PredInfo, Context),
             Phase = phase_mode_check(report_in_any_mode),
             Spec = error_spec($pred, severity_error, Phase, Msgs),
@@ -1853,8 +1837,8 @@ report_eval_method_requires_ground_args(ProcInfo, TabledMethod) = Spec :-
         words("is not currently implemented."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), [Msg]).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase, [Msg]).
 
 :- func report_eval_method_destroys_uniqueness(proc_info, tabled_eval_method)
     = error_spec.
@@ -1874,8 +1858,8 @@ report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod) = Spec :-
         words("which would destroy their uniqueness."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), [Msg]).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase, [Msg]).
 
 :- func report_wrong_mode_for_main(proc_info) = error_spec.
 
@@ -1887,8 +1871,8 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
         color_as_incorrect([words("must have mode"), quote("(di, uo)"),
             suffix(".")]) ++
         [nl],
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = spec($pred, severity_error, Phase, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
@@ -2029,8 +2013,8 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo,
         ),
         Pieces = [words(Verb), words(Detail), nl],
         Severity = severity_informational(inform_inferred_modes),
-        Spec = spec($pred, Severity, phase_mode_check(report_in_any_mode),
-            Context, Pieces)
+        Phase = phase_mode_check(report_in_any_mode),
+        Spec = spec($pred, Severity, Phase, Context, Pieces)
     ).
 
 %-----------------------------------------------------------------------------%

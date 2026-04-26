@@ -23,12 +23,14 @@ MCFLAGS-bad_ambiguity_msg       += -E
 MCFLAGS-bad_exported_mode       += --infer-all --no-intermodule-optimization
 MCFLAGS-bug150_partial_color    += --ignore-color-scheme-envvar
 MCFLAGS-bug150_partial_color    += --color-scheme specified@incorrect=203
+MCFLAGS-bug113                  += -E
 # Intermodule optimization changes the number of an unnamed variable
 # whose automatically-constructed "name" shows up in the .err file.
 MCFLAGS-bug214                  += --allow-stubs --no-warn-stubs
 MCFLAGS-bug214                  += --no-intermodule-optimization
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238                  += --constraint-propagation
+MCFLAGS-bug476                  += -E
 MCFLAGS-children                += --no-intermodule-optimization
 MCFLAGS-coerce_implied_mode     += --halt-at-warn
 MCFLAGS-coerce_infer            += --infer-all
@@ -70,6 +72,7 @@ MCFLAGS-method_impl             += --warn-too-private-instances
 MCFLAGS-missing_det_decls       += --no-infer-det -E
 MCFLAGS-missing_interface_import2 += --no-intermodule-optimization
 MCFLAGS-mode_inf                += --infer-all -E
+MCFLAGS-mode_without_pred       += -E
 MCFLAGS-mpj_1                   += --infer-all -E
 MCFLAGS-mpj_3                   += --warn-too-private-instances
 MCFLAGS-mpj_4                   += --warn-too-private-instances
@@ -80,6 +83,7 @@ MCFLAGS-overloading             += --no-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det    += --warn-inferred-erroneous
 MCFLAGS-range_restrict          += --warn-too-private-instances
 MCFLAGS-record_syntax_errors    += -E
+MCFLAGS-ref_to_implicit_pred    += -E
 MCFLAGS-string_format_bad       += --halt-at-warn
 MCFLAGS-string_format_bad       += --warn-known-bad-format-calls
 MCFLAGS-string_format_bad       += --warn-unknown-format-calls
@@ -125,6 +129,7 @@ MCFLAGS-one_member              += -E
 MCFLAGS-oisu_check_add_pragma_errors += --no-halt-at-invalid-interface
 MCFLAGS-polymorphic_unification += -E
 MCFLAGS-test_type_spec          += -E
+MCFLAGS-typeclass_mode_2        += -E
 
 MCFLAGS-require_tailrec_1       += -O0 --optimise-tailcalls
 MCFLAGS-require_tailrec_1       += --no-warn-non-tail-recursion
