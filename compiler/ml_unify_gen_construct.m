@@ -708,8 +708,17 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybePtag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, _ConsArgType, FieldType),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
-    (
+    ml_gen_info_get_gc(Info, GC),
+    ( if
         HighLevelData = no,
+        GC \= gc_accurate
+    then
+        AssignKind = lco_interior_pointer
+    else
+        AssignKind = lco_cell_value
+    ),
+    (
+        AssignKind = lco_interior_pointer,
         % XXX I am not sure that the types specified here are always the right
         % ones, particularly in cases where the field whose address we are
         % taking has a non-du type such as int or float. However, I can't think
@@ -729,15 +738,26 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CastSourceRval = ml_cast(MLDS_AddrVarType, SourceRval),
         Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
     ;
-        HighLevelData = yes,
+        AssignKind = lco_cell_value,
         % For high-level data lco.m uses a different transformation where we
         % simply pass the base address of the cell. The transformation does not
         % generate unifications.
+        %
+        % Under low-level data with accurate GC, lco.m takes the same shape
+        % (lci_use_field_path = yes): the AddrVar holds the parent cell
+        % pointer rather than an interior pointer, so that the collector
+        % can relocate it through the existing tagged-pointer machinery.
+        % The actual field write is emitted later, as a
+        % store_at_field_offset_impure call.
         ml_gen_var_direct(Info, AddrVar, AddrLval),
         Assign = ml_gen_assign(AddrLval, ml_lval(CellLval), Context)
     ),
     ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
         MaybePtag, Context, Info, Assigns).
+
+:- type ml_lco_assign_kind
+    --->    lco_interior_pointer
+    ;       lco_cell_value.
 
 %---------------------------------------------------------------------------%
 

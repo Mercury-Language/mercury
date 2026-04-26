@@ -945,6 +945,24 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 unexpected($pred, "malformed ref_assign")
             )
         ;
+            SimpleCode = field_assign(CellLval, OffsetLval, ValueLval),
+            % Lower field_assign(Cell, Offset, Value) as
+            %   *(Cell + Offset words) = Value
+            % stripping Cell's primary tag at runtime. We pass the
+            % offset as a runtime rval so that any future LCMC pattern
+            % that picks the offset dynamically still works; today the
+            % offset is always a compile-time literal that the C
+            % compiler folds into a constant displacement.
+            ( if CellLval = ml_local_var(_CellVarName, CellType) then
+                FieldId = ml_field_offset(ml_lval(OffsetLval)),
+                FieldLval = ml_field(no, ml_lval(CellLval), CellType,
+                    FieldId, mlds_generic_type),
+                Stmt = ml_gen_assign(FieldLval, ml_lval(ValueLval), Context),
+                Stmts = [Stmt]
+            else
+                unexpected($pred, "malformed field_assign")
+            )
+        ;
             SimpleCode = test(_),
             unexpected($pred, "malformed model_det builtin predicate")
         ;
@@ -961,6 +979,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
             Stmts = [Stmt]
         ;
             ( SimpleCode = ref_assign(_, _)
+            ; SimpleCode = field_assign(_, _, _)
             ; SimpleCode = assign(_, _)
             ; SimpleCode = noop(_)
             ),

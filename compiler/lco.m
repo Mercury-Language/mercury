@@ -183,6 +183,7 @@
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_test.
 :- import_module hlds.instmap.
+:- import_module hlds.make_goal.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
@@ -298,7 +299,22 @@
                 lci_cur_proc_outputs    :: list(prog_var),
                 lci_cur_proc_detism     :: determinism,
                 lci_allow_float_addr    :: allow_float_addr,
-                lci_highlevel_data      :: bool
+                lci_highlevel_data      :: bool,
+
+                % lci_use_field_path is yes in LLD-data MLDS grades that use
+                % accurate GC. In those grades we cannot capture the address
+                % of a heap-cell field as a Mercury value, because the
+                % collector has no representation for interior pointers and
+                % cannot relocate them when the parent cell moves. Instead,
+                % the address-of-field "AddrVar" carries the parent cell
+                % itself, and the variant's would-be-store-through-pointer
+                % calls are emitted as private_builtin.store_at_field_offset_impure(
+                % CellVar, OffsetIntLiteral, Value) so that the cell can be
+                % relocated normally by the collector. This mirrors the
+                % HLD path's pass-the-cell shape, but uses an explicit
+                % field-write builtin instead of a partial-inst unification,
+                % since LLD does not track per-field insts.
+                lci_use_field_path      :: bool
             ).
 
 :- type var_to_target == assoc_list(prog_var, store_target).
@@ -428,9 +444,28 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         UnboxedFloat = yes,
         AllowFloatAddr = allow_float_addr
     ),
+    % The LLD address-of-field path is unsafe under accurate GC because the
+    % captured interior pointer cannot be relocated when its parent cell
+    % moves during a Cheney copy. In MLDS grades we have a cell-passing
+    % alternative: capture the parent cell instead of an interior pointer,
+    % and emit a per-store private_builtin.store_at_field_offset_impure
+    % call that walks from the cell pointer to the field at a static
+    % offset. This mirrors the HLD path's shape and lets the collector
+    % trace the cell normally. Switch to that path under LLD MLDS + AGC.
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.get_gc_method(Globals, GC_Method),
+    ( if
+        HighLevelData = no,
+        HighLevelCode = yes,
+        GC_Method = gc_accurate
+    then
+        UseFieldPath = yes
+    else
+        UseFieldPath = no
+    ),
     ConstInfo = lco_const_info(LowerSCCVariants, SCC,
         CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism,
-        AllowFloatAddr, HighLevelData),
+        AllowFloatAddr, HighLevelData, UseFieldPath),
     Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants, VarTable0,
         lco_is_permitted_on_scc, proc_not_changed),
     proc_info_get_goal(ProcInfo0, Goal0),
@@ -949,7 +984,9 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             io.write_line(DebugStream, AddrFieldIdsAL, !IO)
         ),
         HighLevelData = ConstInfo ^ lci_highlevel_data,
-        make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
+        UseFieldPath = ConstInfo ^ lci_use_field_path,
+        bool.or(HighLevelData, UseFieldPath, PassCell),
+        make_variant_args(PassCell, AddrFieldIds, Mismatches,
             VariantArgs),
         ensure_variant_exists(PredId, ProcId, VariantArgs,
             VariantPredProcId, VariantSymName, !Info)
@@ -1152,12 +1189,18 @@ make_address_var(ConstInfo, Var, AddrVar, !Info) :-
     Name = var_entry_name_default(Var, VarEntry, "SCCcallarg"),
     VarEntry = vte(_, VarType, _VarTypeIsDummy),
     HighLevelData = ConstInfo ^ lci_highlevel_data,
+    UseFieldPath = ConstInfo ^ lci_use_field_path,
+    bool.or(HighLevelData, UseFieldPath, PassCell),
     (
-        HighLevelData = no,
+        PassCell = no,
         AddrVarType = make_ref_type(VarType)
     ;
-        HighLevelData = yes,
-        % We set the actual type later when it is more convenient.
+        PassCell = yes,
+        % AddrVar will hold the parent cell, not an interior pointer.
+        % We do not yet know the parent type at this point, so leave
+        % the type as void_type; update_construct_args will rewrite
+        % the entry with the real cell type once the construction
+        % goal containing this field is processed.
         AddrVarType = void_type
     ),
     AddrName = "Addr" ++ Name,
@@ -1177,12 +1220,16 @@ make_ref_type(FieldType) = PtrType :-
 :- pred make_variant_args(bool::in, map(prog_var, field_id)::in,
     assoc_list(int, prog_var)::in, list(variant_arg)::out) is det.
 
-make_variant_args(HighLevelData, AddrVarFieldIds, Mismatches, VariantArgs) :-
+    % PassCell = yes whenever the variant should take the parent cell as
+    % an input argument (with field-id metadata) rather than receiving an
+    % interior pointer through store_at_ref_type. That covers HLD always,
+    % and LLD MLDS+AGC where capturing a field address is unsafe.
+make_variant_args(PassCell, AddrVarFieldIds, Mismatches, VariantArgs) :-
     (
-        HighLevelData = no,
+        PassCell = no,
         MakeArg = (func(Pos - _Var) = variant_arg(Pos, no))
     ;
-        HighLevelData = yes,
+        PassCell = yes,
         MakeArg =
             ( func(Pos - Var) = variant_arg(Pos, yes(FieldId)) :-
                 map.lookup(AddrVarFieldIds, Var, FieldId)
@@ -1303,11 +1350,13 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         % partial instantiation is incomplete, instmaps for the assignments are
         % likely to be recomputed incorrectly.
         HighLevelData = ConstInfo ^ lci_highlevel_data,
+        UseFieldPath = ConstInfo ^ lci_use_field_path,
+        bool.or(HighLevelData, UseFieldPath, PassCell),
         VarTable0 = !.Info ^ lco_var_table,
         lookup_var_entry(VarTable0, Var, VarEntry),
         VarEntry = vte(_, VarType, IsDummy),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-        update_construct_args(Subst, HighLevelData, VarType, IsDummy,
+        update_construct_args(Subst, HighLevelData, PassCell, VarType, IsDummy,
             ConsId, 1, ArgVars, UpdatedArgVars, AddrFields,
             InstMapDelta0, InstMapDelta, !AddrVarFieldIds,
             VarTable0, VarTable),
@@ -1346,30 +1395,45 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         unexpected($pred, "not construct")
     ).
 
-:- pred update_construct_args(map(prog_var, prog_var)::in, bool::in,
+:- pred update_construct_args(map(prog_var, prog_var)::in,
+    bool::in, bool::in,
     mer_type::in, is_dummy_type::in, cons_id::in, int::in, list(prog_var)::in,
     list(prog_var)::out, list(int)::out, instmap_delta::in, instmap_delta::out,
     map(prog_var, field_id)::in, map(prog_var, field_id)::out,
     var_table::in, var_table::out) is det.
 
-update_construct_args(_, _, _, _, _, _, [], [], [],
+update_construct_args(_, _, _, _, _, _, _, [], [], [],
         !InstMapDelta, !AddrFieldIds, !VarTable).
-update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
+update_construct_args(Subst, HighLevelData, PassCell, VarType, IsDummyType,
         ConsId, ArgNum, [OrigVar | OrigVars], [UpdatedVar | UpdatedVars],
         AddrArgs, !InstMapDelta, !AddrFieldIds, !VarTable) :-
-    update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
+    update_construct_args(Subst, HighLevelData, PassCell, VarType, IsDummyType,
         ConsId, ArgNum + 1, OrigVars, UpdatedVars, AddrArgsTail,
         !InstMapDelta, !AddrFieldIds, !VarTable),
     ( if map.search(Subst, OrigVar, AddrVar) then
         UpdatedVar = AddrVar,
         (
-            HighLevelData = no,
+            PassCell = no,
             FinalInst = ground_inst
         ;
-            HighLevelData = yes,
-            BoundFunctor = bound_functor_with_free_arg(ConsId, ArgNum),
-            FinalInst = bound(shared, inst_test_no_results, [BoundFunctor]),
+            PassCell = yes,
+            (
+                HighLevelData = yes,
+                BoundFunctor = bound_functor_with_free_arg(ConsId, ArgNum),
+                FinalInst =
+                    bound(shared, inst_test_no_results, [BoundFunctor])
+            ;
+                HighLevelData = no,
+                % LLD does not track per-field insts at the mode-checker
+                % level. The cell is treated as ground from the moment it
+                % is allocated, even though one of its fields is
+                % temporarily set to NULL until the variant fills it in.
+                FinalInst = ground_inst
+            ),
             % We didn't do this when we initially created the variable.
+            % Update the placeholder void_type entry from make_address_var
+            % to the parent cell type so downstream passes see AddrVar
+            % as a regular cell pointer.
             lookup_var_entry(!.VarTable, AddrVar, AddrVarEntry0),
             AddrVarEntry0 = vte(AddrVarName, _, _),
             % XXX Why is it that VarType, and its IsDummyType companion,
@@ -1481,7 +1545,12 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, PredInfo, ProcInfo,
     proc_info_get_var_table(ProcInfo, VarTable0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
-    make_addr_vars(!.ModuleInfo, 1, HeadVars0, HeadVars, ArgModes0, ArgModes,
+    module_info_get_globals(!.ModuleInfo, Globals0),
+    globals.get_target(Globals0, TargetForVariant),
+    HighLevelDataForVariant =
+        compilation_target_high_level_data(TargetForVariant),
+    make_addr_vars(!.ModuleInfo, HighLevelDataForVariant, 1,
+        HeadVars0, HeadVars, ArgModes0, ArgModes,
         AddrOutArgs, VarToAddr, VarTable0, VarTable),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
@@ -1528,19 +1597,19 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, PredInfo, ProcInfo,
             !VariantProcInfo, !ModuleInfo)
     ).
 
-:- pred make_addr_vars(module_info::in, int::in,
+:- pred make_addr_vars(module_info::in, bool::in, int::in,
     list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out,
     list(variant_arg)::in, var_to_target::out,
     var_table::in, var_table::out) is det.
 
-make_addr_vars(_, _, [], [], [], [], AddrOutArgs, [], !VarTable) :-
+make_addr_vars(_, _, _, [], [], [], [], AddrOutArgs, [], !VarTable) :-
     expect(unify(AddrOutArgs, []), $pred, "AddrOutArgs != []").
-make_addr_vars(_, _, [], _, [_ | _], _, _, _, !VarTable) :-
+make_addr_vars(_, _, _, [], _, [_ | _], _, _, _, !VarTable) :-
     unexpected($pred, "mismatched lists").
-make_addr_vars(_, _, [_ | _], _, [], _, _, _, !VarTable) :-
+make_addr_vars(_, _, _, [_ | _], _, [], _, _, _, !VarTable) :-
     unexpected($pred, "mismatched lists").
-make_addr_vars(ModuleInfo, NextOutArgNum,
+make_addr_vars(ModuleInfo, HighLevelData, NextOutArgNum,
         [HeadVar0 | HeadVars0], [HeadVar | HeadVars],
         [Mode0 | Modes0], [Mode | Modes],
         !.AddrOutArgs, VarToAddr, !VarTable) :-
@@ -1551,7 +1620,7 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
         TopFunctorMode = top_in,
         HeadVar = HeadVar0,
         Mode = Mode0,
-        make_addr_vars(ModuleInfo, NextOutArgNum,
+        make_addr_vars(ModuleInfo, HighLevelData, NextOutArgNum,
             HeadVars0, HeadVars, Modes0, Modes,
             !.AddrOutArgs, VarToAddr, !VarTable)
     ;
@@ -1564,26 +1633,43 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
             AddrVarName = "AddrOf" ++ HeadVarName,
             (
                 MaybeFieldId = no,
-                % For low-level data we replace the output argument with a
-                % store_at_ref_type(T) input argument.
+                % For low-level data without accurate GC we replace the
+                % output argument with a store_at_ref_type(T) interior
+                % pointer.
                 AddrVarType = make_ref_type(HeadVarType),
                 AddrVarTypeIsDummy = is_not_dummy_type,
                 Mode = in_mode
             ;
                 MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
-                % For high-level data we replace the output argument with a
-                % partially instantiated structure. The structure has one
-                % argument left unfilled.
                 AddrVarTypeIsDummy = is_type_a_dummy(ModuleInfo, AddrVarType),
-                BoundFunctor = bound_functor_with_free_arg(ConsId, ArgNum),
-                InitialInst =
-                    bound(shared, inst_test_no_results, [BoundFunctor]),
-                Mode = from_to_mode(InitialInst, ground_inst)
+                (
+                    HighLevelData = yes,
+                    % For high-level data we replace the output argument
+                    % with a partially instantiated structure. The
+                    % structure has one argument left unfilled.
+                    BoundFunctor =
+                        bound_functor_with_free_arg(ConsId, ArgNum),
+                    InitialInst =
+                        bound(shared, inst_test_no_results, [BoundFunctor]),
+                    Mode = from_to_mode(InitialInst, ground_inst)
+                ;
+                    HighLevelData = no,
+                    % LLD MLDS+AGC path: AddrVar is the parent cell pointer
+                    % itself, not an interior pointer. The cell appears
+                    % ground to mode-checking even though one field is
+                    % temporarily NULL until store_at_field_offset_impure
+                    % fills it; LLD does not track per-field insts so this
+                    % is consistent with how partially-built cells behave
+                    % in non-LCMC code. Mode is in_mode, not the HLD
+                    % from_to_mode, because the inst does not change at
+                    % the variant boundary.
+                    Mode = in_mode
+                )
             ),
             AddrVarEntry = vte(AddrVarName, AddrVarType, AddrVarTypeIsDummy),
             add_var_entry(AddrVarEntry, AddrVar, !VarTable),
             HeadVar = AddrVar,
-            make_addr_vars(ModuleInfo, NextOutArgNum + 1,
+            make_addr_vars(ModuleInfo, HighLevelData, NextOutArgNum + 1,
                 HeadVars0, HeadVars, Modes0, Modes,
                 !.AddrOutArgs, VarToAddrTail, !VarTable),
             VarToAddrHead = HeadVar0 - store_target(AddrVar, MaybeFieldId),
@@ -1591,7 +1677,7 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
         else
             HeadVar = HeadVar0,
             Mode = Mode0,
-            make_addr_vars(ModuleInfo, NextOutArgNum + 1,
+            make_addr_vars(ModuleInfo, HighLevelData, NextOutArgNum + 1,
                 HeadVars0, HeadVars, Modes0, Modes,
                 !.AddrOutArgs, VarToAddr, !VarTable)
         )
@@ -1988,39 +2074,115 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         !ProcInfo) :-
     StoreTarget = store_target(AddrVar, MaybeFieldId),
     (
-        % Low-level data.
+        % Low-level data without accurate GC: the address-of-field
+        % captured by lco.m is a raw interior pointer; we just
+        % dereference and store.
         MaybeFieldId = no,
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_private_builtin_module, "store_at_ref_impure",
             [], [AddrVar, GroundVar], instmap_delta_bind_vars([]), only_mode,
             detism_det, purity_impure, [], dummy_context, Goal)
     ;
-        % High-level data.
         MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
-        get_cons_id_arg_types(ModuleInfo, AddrVarType, ConsId, ArgTypes),
-        make_unification_args(ModuleInfo, GroundVar, ArgNum, 1, ArgTypes,
-            ArgVars, ArgModes, !ProcInfo),
-
-        RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-
-        instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
-        inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),
-        UnifyMode = unify_modes_li_lf_ri_rf(AddrVarInst, ground_inst,
-            ground_inst, ground_inst),
-
-        Unification = deconstruct(AddrVar, ConsId, ArgVars, ArgModes,
-            cannot_fail, cannot_cgc),
-        UnifyContext = unify_context(umc_implicit("lcmc"), []),
-
-        GoalExpr = unify(AddrVar, RHS, UnifyMode, Unification, UnifyContext),
-
-        goal_info_init(GoalInfo0),
-        goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
-        goal_info_set_instmap_delta(instmap_delta_bind_var(AddrVar),
-            GoalInfo1, GoalInfo),
-
-        Goal = hlds_goal(GoalExpr, GoalInfo)
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        HighLevelData = compilation_target_high_level_data(Target),
+        (
+            HighLevelData = yes,
+            % High-level data: build the missing argument value and let
+            % the partial-inst deconstruction unification fill in the
+            % hole. The MLDS code generator lowers this to a regular
+            % field write on the cell whose tail was free.
+            make_store_goal_hld_unify(ModuleInfo, InstMap, AddrVar,
+                AddrVarType, ConsId, ArgNum, GroundVar, Goal, !ProcInfo)
+        ;
+            HighLevelData = no,
+            % Low-level data with accurate GC (the lci_use_field_path
+            % regime). AddrVar holds the parent cell pointer rather
+            % than an interior pointer. Compute the cell offset of the
+            % hole at compile time, then emit a
+            % store_at_field_offset_impure call so the lowering walks
+            % the cell pointer at runtime. AddrVarType, recorded in
+            % the field_id, is not needed in this branch: the offset
+            % alone determines the field address.
+            make_store_goal_lld_field(ModuleInfo, AddrVar,
+                ConsId, ArgNum, GroundVar, Goal, !ProcInfo)
+        )
     ).
+
+:- pred make_store_goal_hld_unify(module_info::in, instmap::in,
+    prog_var::in, mer_type::in, cons_id::in, int::in, prog_var::in,
+    hlds_goal::out, proc_info::in, proc_info::out) is det.
+
+make_store_goal_hld_unify(ModuleInfo, InstMap, AddrVar, AddrVarType,
+        ConsId, ArgNum, GroundVar, Goal, !ProcInfo) :-
+    get_cons_id_arg_types(ModuleInfo, AddrVarType, ConsId, ArgTypes),
+    make_unification_args(ModuleInfo, GroundVar, ArgNum, 1, ArgTypes,
+        ArgVars, ArgModes, !ProcInfo),
+
+    RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
+
+    instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
+    inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(AddrVarInst, ground_inst,
+        ground_inst, ground_inst),
+
+    Unification = deconstruct(AddrVar, ConsId, ArgVars, ArgModes,
+        cannot_fail, cannot_cgc),
+    UnifyContext = unify_context(umc_implicit("lcmc"), []),
+
+    GoalExpr = unify(AddrVar, RHS, UnifyMode, Unification, UnifyContext),
+
+    goal_info_init(GoalInfo0),
+    goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
+    goal_info_set_instmap_delta(instmap_delta_bind_var(AddrVar),
+        GoalInfo1, GoalInfo),
+
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred make_store_goal_lld_field(module_info::in, prog_var::in,
+    cons_id::in, int::in, prog_var::in, hlds_goal::out,
+    proc_info::in, proc_info::out) is det.
+
+make_store_goal_lld_field(ModuleInfo, AddrVar, ConsId, ArgNum,
+        GroundVar, Goal, !ProcInfo) :-
+    % Look up the cell offset of the field. car_pos_width carries the
+    % cell_offset baked in by du_type_layout, including any sectag-word
+    % adjustment. apw_full is the only argument width that lco.m
+    % currently captures the address of (apw_partial_first / packed
+    % args fail the take-address pre-check earlier).
+    ( if ConsId = du_data_ctor(DuCtor) then
+        get_cons_repn_defn_det(ModuleInfo, DuCtor, ConsRepnDefn),
+        ConsArgRepns = ConsRepnDefn ^ cr_args,
+        list.det_index1(ConsArgRepns, ArgNum, ArgRepn),
+        ArgPosWidth = ArgRepn ^ car_pos_width
+    else
+        unexpected($pred, "non-DU cons_id in lcmc field path")
+    ),
+    ( if ArgPosWidth = apw_full(_, cell_offset(OffsetInt0)) then
+        OffsetInt = OffsetInt0
+    else
+        unexpected($pred, "non-apw_full arg in lcmc field path")
+    ),
+
+    % Materialise the offset as an int constant in a fresh local.
+    make_int_const_construction_alloc_in_proc(OffsetInt,
+        "AddrFieldOffset", OffsetGoal, OffsetVar, !ProcInfo),
+
+    generate_plain_call(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, "store_at_field_offset_impure",
+        [], [AddrVar, OffsetVar, GroundVar], instmap_delta_bind_vars([]),
+        only_mode, detism_det, purity_impure, [], dummy_context, CallGoal),
+
+    % Conjoin so the offset constant exists in scope when the call uses
+    % it. AddrVar's HLDS type is the parent cell type already, so
+    % type-checking is satisfied without any cast.
+    ConjGoalExpr = conj(plain_conj, [OffsetGoal, CallGoal]),
+    goal_info_init(ConjGoalInfo0),
+    goal_info_set_determinism(detism_det, ConjGoalInfo0, ConjGoalInfo1),
+    goal_info_set_instmap_delta(instmap_delta_bind_vars([OffsetVar]),
+        ConjGoalInfo1, ConjGoalInfo),
+    Goal = hlds_goal(ConjGoalExpr, ConjGoalInfo).
 
 :- pred make_unification_args(module_info::in, prog_var::in, int::in, int::in,
     list(mer_type)::in, list(prog_var)::out, list(unify_mode)::out,
