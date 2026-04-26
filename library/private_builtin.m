@@ -1433,7 +1433,6 @@ __Compare__private_builtin__ref_1_0(
     % practice.
     %
 :- impure pred store_at_field_offset_impure(T::in, int::in, U::in) is det.
-:- pragma external_pred(store_at_field_offset_impure/3).
 
     % This type should be used only by the program transformation that
     % introduces calls to store_at_ref_impure. Any other use will cause
@@ -1567,6 +1566,17 @@ __Compare__private_builtin__ref_1_0(
 :- mode partial_inst_copy(I >> clobbered, free >> I) is det.
 
 :- implementation.
+
+% store_at_field_offset_impure has no Mercury body: the new compiler
+% recognises it as an inline builtin (see compiler/builtin_ops.m,
+% compiler/ml_call_gen.m, compiler/call_gen.m) and lowers calls
+% directly to a heap field write at every call site, so the foreign
+% body that pragma external_pred would normally point to is never
+% linked. The pragma is placed here solely to satisfy the bootstrap
+% compiler's "no clauses" check; it lives in the implementation
+% section because pragma external_pred is not permitted in module
+% interfaces.
+:- pragma external_pred(store_at_field_offset_impure/3).
 
 unused :-
     ( if semidet_succeed then
