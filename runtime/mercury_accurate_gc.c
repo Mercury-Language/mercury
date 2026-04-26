@@ -29,8 +29,7 @@
 //  - add code to support tracing the stack frames left by builtin__catch;
 //  - fix issue with tight loops via tail calls (see XXX above);
 //  - fix issue with tight loops via retries (see XXX above);
-//  - handle semidet existentially typed procedures properly (see XXX below);
-//  - use write() rather than fprintf() in signal handler (see XXX below).
+//  - handle semidet existentially typed procedures properly (see XXX below).
 
 #include "mercury_imp.h"
 
@@ -219,6 +218,91 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 
 #else // !MR_HIGHLEVEL_CODE
 
+// Async-signal-safe stderr helpers.
+//
+// MR_schedule_agc below is invoked from the SIGSEGV redzone signal handler.
+// Per POSIX async-signal-safety rules, stdio functions like fprintf are not
+// safe to call in that context, so we use write(2) directly with stack
+// buffers and avoid stdio, malloc, locale, and other unsafe primitives.
+
+#ifdef MR_HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
+#ifndef STDERR_FILENO
+  #define STDERR_FILENO 2
+#endif
+
+static void
+agc_safe_write_str(const char *s)
+{
+    size_t len = 0;
+    while (s[len] != '\0') {
+        len++;
+    }
+    if (len > 0) {
+        // Diagnostic output: best-effort; ignore short writes / EINTR.
+        // Assigning into a local to silence -Wunused-result on glibc, which
+        // marks write(2) with warn_unused_result.
+        ssize_t written = write(STDERR_FILENO, s, len);
+        (void) written;
+    }
+}
+
+static void
+agc_safe_write_uhex(uintptr_t x)
+{
+    char buf[sizeof(uintptr_t) * 2 + 1];
+    char *p = buf + sizeof(buf);
+    *--p = '\0';
+    if (x == 0) {
+        *--p = '0';
+    } else {
+        while (x != 0) {
+            unsigned d = (unsigned) (x & 0xf);
+            *--p = (d < 10) ? (char) ('0' + d) : (char) ('a' + d - 10);
+            x >>= 4;
+        }
+    }
+    agc_safe_write_str(p);
+}
+
+static void
+agc_safe_write_ptr(const void *p)
+{
+    agc_safe_write_str("0x");
+    agc_safe_write_uhex((uintptr_t) p);
+}
+
+static void
+agc_safe_write_udec(uintptr_t x)
+{
+    char buf[sizeof(uintptr_t) * 3 + 2];
+    char *p = buf + sizeof(buf);
+    *--p = '\0';
+    if (x == 0) {
+        *--p = '0';
+    } else {
+        while (x != 0) {
+            *--p = (char) ('0' + (unsigned) (x % 10));
+            x /= 10;
+        }
+    }
+    agc_safe_write_str(p);
+}
+
+static void
+agc_safe_write_sdec(intptr_t x)
+{
+    if (x < 0) {
+        // Avoid undefined behavior on INTPTR_MIN negation.
+        agc_safe_write_str("-");
+        agc_safe_write_udec((uintptr_t) (- (x + 1)) + 1);
+    } else {
+        agc_safe_write_udec((uintptr_t) x);
+    }
+}
+
 // MR_schedule_agc:
 //
 // Schedule garbage collection.
@@ -230,10 +314,10 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 // (We go to this trouble because then the stacks will be in a known state
 // -- each stack frame is described by information associated with the
 // continuation label that the code will return to).
-
-// XXX We should use write() rather than fprintf() here, since this code
-// is called from a signal handler, and stdio is not guaranteed
-// to be reentrant.
+//
+// This function is called from a signal handler, so it must restrict itself
+// to async-signal-safe primitives -- no stdio, no malloc, no locale.
+// Diagnostic output uses the agc_safe_write_* helpers above.
 
 void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
@@ -255,19 +339,26 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
         // in the destination heap (but only when the large problem of
         // handling collections with little garbage has been solved).
 
-        fprintf(stderr, "Mercury runtime: Garbage collection scheduled"
+        agc_safe_write_str("Mercury runtime: Garbage collection scheduled"
             " while collector is already running\n");
-        fprintf(stderr, "Mercury_runtime: Trying to continue...\n");
+        agc_safe_write_str("Mercury runtime: Trying to continue...\n");
         return;
     }
 #ifdef MR_DEBUG_AGC_SCHEDULING
-    fprintf(stderr, "PC at signal: %ld (%lx)\n",
-        (long) pc_at_signal, (long) pc_at_signal);
-    fprintf(stderr, "SP at signal: %ld (%lx)\n",
-        (long) sp_at_signal, (long) sp_at_signal);
-    fprintf(stderr, "curfr at signal: %ld (%lx)\n",
-        (long) curfr_at_signal, (long) curfr_at_signal);
-    fflush(NULL);
+    agc_safe_write_str("PC at signal: ");
+    agc_safe_write_sdec((intptr_t) pc_at_signal);
+    agc_safe_write_str(" (");
+    agc_safe_write_uhex((uintptr_t) pc_at_signal);
+    agc_safe_write_str(")\nSP at signal: ");
+    agc_safe_write_sdec((intptr_t) sp_at_signal);
+    agc_safe_write_str(" (");
+    agc_safe_write_uhex((uintptr_t) sp_at_signal);
+    agc_safe_write_str(")\ncurfr at signal: ");
+    agc_safe_write_sdec((intptr_t) curfr_at_signal);
+    agc_safe_write_str(" (");
+    agc_safe_write_uhex((uintptr_t) curfr_at_signal);
+    agc_safe_write_str(")\n");
+    // No fflush needed: write() is unbuffered.
 #endif
 
     // Search for the entry label.
@@ -281,40 +372,51 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
         // This means we have reached some handwritten code that has
         // no further information about the stack frame.
 
-        fprintf(stderr, "Mercury runtime: "
+        agc_safe_write_str("Mercury runtime: "
             "attempt to schedule garbage collection failed\n");
         if (entry_label != NULL) {
-            fprintf(stderr, "Mercury runtime: the label ");
+            agc_safe_write_str("Mercury runtime: the label ");
             if (entry_label->MR_entry_name != NULL) {
-                fprintf(stderr, "%s has no stack layout info\n",
-                        entry_label->MR_entry_name);
+                agc_safe_write_str(entry_label->MR_entry_name);
+                agc_safe_write_str(" has no stack layout info\n");
             } else {
-                fprintf(stderr, "at address %p "
-                    "has no stack layout info\n", entry_label->MR_entry_addr);
+                agc_safe_write_str("at address ");
+                agc_safe_write_ptr(entry_label->MR_entry_addr);
+                agc_safe_write_str(" has no stack layout info\n");
             }
-            fprintf(stderr, "Mercury runtime: PC address = %p\n", pc_at_signal);
-            fprintf(stderr, "Mercury runtime: PC = label + 0x%zx\n",
+            agc_safe_write_str("Mercury runtime: PC address = ");
+            agc_safe_write_ptr(pc_at_signal);
+            agc_safe_write_str("\nMercury runtime: PC = label + 0x");
+            agc_safe_write_uhex((uintptr_t)
                 ((char *) pc_at_signal - (char *) entry_label->MR_entry_addr));
+            agc_safe_write_str("\n");
         } else {
-            fprintf(stderr, "Mercury runtime: no entry label ");
-            fprintf(stderr, "for PC address %p\n", pc_at_signal);
+            agc_safe_write_str("Mercury runtime: no entry label "
+                "for PC address ");
+            agc_safe_write_ptr(pc_at_signal);
+            agc_safe_write_str("\n");
         }
 
-        fprintf(stderr, "Mercury runtime: Trying to continue...\n");
+        agc_safe_write_str("Mercury runtime: Trying to continue...\n");
         return;
     }
 #ifdef MR_DEBUG_AGC_SCHEDULING
     if (entry_label->MR_entry_name != NULL) {
-        fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
-            entry_label->MR_entry_name,
-            (long) entry_label->MR_entry_addr,
-            (long) entry_label->MR_entry_addr);
+        agc_safe_write_str("scheduling called at: ");
+        agc_safe_write_str(entry_label->MR_entry_name);
+        agc_safe_write_str(" (");
+        agc_safe_write_sdec((intptr_t) entry_label->MR_entry_addr);
+        agc_safe_write_str(" ");
+        agc_safe_write_uhex((uintptr_t) entry_label->MR_entry_addr);
+        agc_safe_write_str(")\n");
     } else {
-        fprintf(stderr, "scheduling called at: (%ld %lx)\n",
-            (long) entry_label->MR_entry_addr,
-            (long) entry_label->MR_entry_addr);
+        agc_safe_write_str("scheduling called at: (");
+        agc_safe_write_sdec((intptr_t) entry_label->MR_entry_addr);
+        agc_safe_write_str(" ");
+        agc_safe_write_uhex((uintptr_t) entry_label->MR_entry_addr);
+        agc_safe_write_str(")\n");
     }
-    fflush(NULL);
+    // No fflush needed: write() is unbuffered.
 #endif
 
     // If we have already scheduled a garbage collection, undo the last change,
@@ -322,7 +424,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 
     if (gc_scheduled) {
 #ifdef MR_DEBUG_AGC_SCHEDULING
-        fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
+        agc_safe_write_str("GC scheduled again. Replacing old scheduling,"
             " and trying to schedule again.\n");
 #endif
         *saved_success_location = saved_success;
@@ -362,10 +464,15 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     }
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-    fprintf(stderr, "old succip: %ld (%lx) new: %ld (%lx)\n",
-        (long) saved_success, (long) saved_success,
-        (long) MR_ENTRY(mercury__garbage_collect_0_0),
-        (long) MR_ENTRY(mercury__garbage_collect_0_0));
+    agc_safe_write_str("old succip: ");
+    agc_safe_write_sdec((intptr_t) saved_success);
+    agc_safe_write_str(" (");
+    agc_safe_write_uhex((uintptr_t) saved_success);
+    agc_safe_write_str(") new: ");
+    agc_safe_write_sdec((intptr_t) MR_ENTRY(mercury__garbage_collect_0_0));
+    agc_safe_write_str(" (");
+    agc_safe_write_uhex((uintptr_t) MR_ENTRY(mercury__garbage_collect_0_0));
+    agc_safe_write_str(")\n");
 #endif
 
     // Replace the old succip with the address of the garbage collector.
@@ -373,7 +480,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     *saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-    fprintf(stderr, "Accurate GC scheduled.\n");
+    agc_safe_write_str("Accurate GC scheduled.\n");
 #endif
 }
 
