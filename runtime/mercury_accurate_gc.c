@@ -132,6 +132,42 @@ MR_garbage_collect(void)
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
     old_hp = MR_virtual_hp;
 
+    // Ensure the to-space is at least as large as the live data we are
+    // about to copy out of the from-space. Without this, programs whose
+    // working set grows past the initial --heap-size hit the to-space's
+    // hardmax mid-copy and abort with "memory zone heap2#... overflowed",
+    // even though the runtime has the machinery (MR_extend_zone) to grow
+    // a zone. The Cheney copy is bounded above by from-space usage, so
+    // sizing to-space to match from-space's used range guarantees the
+    // copy completes; the post-GC resize_and_reset_gc_threshold step then
+    // sets a sensible threshold for the next cycle.
+    {
+        // Cheney copy can allocate more in to-space than the from-space's
+        // used size, because deep_copy materialises new type-info cells on
+        // the fly when a slot's static pseudo type-info has free vars
+        // (see MR_make_type_info_maybe_existq calls in
+        // mercury_deep_copy_body.h). Each per-element type-info round-trip
+        // adds a small overhead. To keep the copy from hitting the
+        // to-space hardmax mid-pass, ensure to-space capacity is at least
+        // 2 * old_used. This matches the post-GC resize policy
+        // (MR_heap_expansion_factor defaults to 2) so steady-state we
+        // don't bounce extending and shrinking.
+        size_t old_used =
+            (char *) old_hp - (char *) old_heap->MR_zone_min;
+        size_t new_capacity =
+            (char *) new_heap->MR_zone_hardmax -
+            (char *) new_heap->MR_zone_min;
+        size_t needed = old_used * 2;
+        if (needed < old_used) {
+            // Overflow guard: cap at SIZE_MAX/2 worth of bytes.
+            needed = old_used;
+        }
+        if (needed > new_capacity) {
+            size_t target = MR_round_up(needed + MR_unit, MR_unit);
+            (void) MR_extend_zone(new_heap, target);
+        }
+    }
+
     // Print some debugging messages.
 
     notify_gc_start(old_heap, new_heap);
