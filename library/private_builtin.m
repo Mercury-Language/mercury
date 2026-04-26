@@ -1425,13 +1425,6 @@ __Compare__private_builtin__ref_1_0(
     % no representation for. Bad things will happen if this is used
     % outside the LCMC pass.
     %
-    % The pragma external_pred declaration tells the bootstrap compiler
-    % not to expect a Mercury body. The new compiler recognises this
-    % predicate as an inline builtin (see compiler/builtin_ops.m and
-    % compiler/ml_call_gen.m) and lowers every call site directly to
-    % a field write, so no link-time foreign body is ever needed in
-    % practice.
-    %
 :- impure pred store_at_field_offset_impure(T::in, int::in, U::in) is det.
 
     % This type should be used only by the program transformation that
@@ -1566,17 +1559,6 @@ __Compare__private_builtin__ref_1_0(
 :- mode partial_inst_copy(I >> clobbered, free >> I) is det.
 
 :- implementation.
-
-% store_at_field_offset_impure has no Mercury body: the new compiler
-% recognises it as an inline builtin (see compiler/builtin_ops.m,
-% compiler/ml_call_gen.m, compiler/call_gen.m) and lowers calls
-% directly to a heap field write at every call site, so the foreign
-% body that pragma external_pred would normally point to is never
-% linked. The pragma is placed here solely to satisfy the bootstrap
-% compiler's "no clauses" check; it lives in the implementation
-% section because pragma external_pred is not permitted in module
-% interfaces.
-:- pragma external_pred(store_at_field_offset_impure/3).
 
 unused :-
     ( if semidet_succeed then
