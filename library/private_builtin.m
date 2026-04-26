@@ -2063,6 +2063,18 @@ sorry(PredName) :-
     error("sorry, " ++ PredName ++ " not implemented\n" ++
         "for this target language (or compiler back-end).").
 
+% store_at_field_offset_impure has no real Mercury body: the compiler
+% recognises it as an inline builtin and lowers it directly to a heap
+% field write at the call site (see ml_call_gen.m and call_gen.m).
+% The body below exists only to keep the bootstrap compiler happy when
+% building private_builtin.m itself, since that compiler does not yet
+% know about the new builtin and would otherwise reject the
+% no-clauses-for-impure-pred declaration. The body is dead code in any
+% binary produced by the new compiler.
+store_at_field_offset_impure(_Cell, _Offset, _Value) :-
+    impure imp,
+    sorry("store_at_field_offset_impure/3").
+
 :- pragma foreign_proc("C",
     imp,
     [will_not_call_mercury, thread_safe, will_not_modify_trail],
