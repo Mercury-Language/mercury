@@ -117,6 +117,125 @@ try_again:
         ptag = MR_tag(data);
         MR_index_or_search_ptag_layout(ptag, ptag_layout);
 
+        // Right-spine tail-call elimination fast path.
+        //
+        // For DU values whose layout is MR_SECTAG_NONE with arity 2, no
+        // packed argument locations, and no existential info, and whose
+        // second argument's resolved type matches the parent's type ctor,
+        // iterate the spine instead of recursing through copy(). Without
+        // this path the right-leaning recursion `copy([X|Xs])` would use
+        // one C stack frame per cons cell, which overflows the default
+        // 8 MB stack for lists past ~80k elements. Under accurate GC,
+        // copy() runs from inside the collector itself, and a stack
+        // overflow there is unrecoverable. The TCO drops spine depth to
+        // O(1) frames; off-spine recursion (the head argument) still
+        // recurses normally, but is bounded by element type complexity.
+        if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+            const MR_DuFunctorDesc  *fdesc;
+
+            fdesc = ptag_layout->MR_sectag_alternatives[0];
+            if (fdesc->MR_du_functor_orig_arity == 2 &&
+                fdesc->MR_du_functor_arg_locns == NULL &&
+                fdesc->MR_du_functor_exist_info == NULL)
+            {
+                MR_PseudoTypeInfo   last_pseudo;
+                MR_TypeInfo         last_ti;
+                MR_MemoryList       allocated_for_ti = NULL;
+
+                last_pseudo = fdesc->MR_du_functor_arg_types[1];
+                if (MR_arg_type_may_contain_var(fdesc, 1)) {
+                    last_ti = MR_make_type_info_maybe_existq(
+                        MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
+                        last_pseudo, NULL, fdesc, &allocated_for_ti);
+                } else {
+                    last_ti = (MR_TypeInfo)
+                        MR_pseudo_type_info_is_ground(last_pseudo);
+                }
+
+                if (MR_TYPEINFO_GET_TYPE_CTOR_INFO(last_ti) == type_ctor_info)
+                {
+                    MR_Word                  root_result = 0;
+                    MR_Word                 *spine_dest = &root_result;
+                    MR_Word                  cur_data = data;
+                    int                      cur_ptag = ptag;
+                    const MR_DuPtagLayout   *cur_ptag_layout = ptag_layout;
+                    const MR_DuFunctorDesc  *cur_fdesc = fdesc;
+
+                    while (1) {
+                        MR_Word             *cur_data_value;
+                        MR_AllocSiteInfoPtr attrib;
+                        int                 cell_size;
+                        MR_PseudoTypeInfo   head_pseudo;
+                        MR_Word             tagged_new;
+
+                        cur_data_value =
+                            (MR_Word *) MR_body(cur_data, cur_ptag);
+                        if (!in_range(cur_data_value)) {
+                            found_out_of_range_pointer(cur_data_value);
+                            *spine_dest = cur_data;
+                            MR_deallocate(allocated_for_ti);
+                            return root_result;
+                        }
+                        if_forwarding_pointer(cur_data_value, {
+                            *spine_dest = cur_data_value[0];
+                            MR_deallocate(allocated_for_ti);
+                            return root_result;
+                        });
+
+                        attrib = maybe_attrib(cur_data_value);
+                        cell_size = MR_SIZE_SLOT_SIZE + 2;
+                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,
+                            cell_size, attrib, NULL);
+                        MR_copy_size_slot(0, new_data, cur_ptag, cur_data);
+
+                        head_pseudo = cur_fdesc->MR_du_functor_arg_types[0];
+                        if (MR_arg_type_may_contain_var(cur_fdesc, 0)) {
+                            MR_field(0, new_data, 0) = copy_arg(
+                                cur_data_value, cur_data_value[0], cur_fdesc,
+                                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
+                                    type_info),
+                                head_pseudo, lower_limit, upper_limit);
+                        } else {
+                            MR_field(0, new_data, 0) = copy(cur_data_value[0],
+                                (MR_TypeInfo) MR_pseudo_type_info_is_ground(
+                                    head_pseudo),
+                                lower_limit, upper_limit);
+                        }
+
+                        tagged_new = (MR_Word) MR_mkword(cur_ptag, new_data);
+                        *spine_dest = tagged_new;
+                        spine_dest = &MR_field(0, new_data, 1);
+                        leave_forwarding_pointer(cur_data_value, 0,
+                            tagged_new);
+
+                        cur_data = cur_data_value[1];
+                        cur_ptag = MR_tag(cur_data);
+                        MR_index_or_search_ptag_layout(cur_ptag,
+                            cur_ptag_layout);
+                        if (cur_ptag_layout->MR_sectag_locn !=
+                                MR_SECTAG_NONE) {
+                            break;
+                        }
+                        cur_fdesc = cur_ptag_layout->MR_sectag_alternatives[0];
+                        if (cur_fdesc != fdesc) {
+                            // Different functor (different cell shape);
+                            // fall back to a full copy() for this tail.
+                            break;
+                        }
+                    }
+
+                    // Spine ended at a cell with a different shape (e.g.
+                    // list nil with sectag_local). Recurse on the
+                    // remaining tail using the resolved tail type info.
+                    *spine_dest = copy(cur_data, last_ti,
+                        lower_limit, upper_limit);
+                    MR_deallocate(allocated_for_ti);
+                    return root_result;
+                }
+                MR_deallocate(allocated_for_ti);
+            }
+        }
+
         switch (ptag_layout->MR_sectag_locn) {
 
         case MR_SECTAG_LOCAL_REST_OF_WORD:      // fall-through
