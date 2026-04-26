@@ -49,16 +49,6 @@ MCFLAGS-io                      += --no-warn-obsolete
 
 MCFLAGS-mer_std                 += --no-warn-nothing-exported
 
-# private_builtin contains a stub Mercury body for
-# store_at_field_offset_impure/3 to keep older bootstrap compilers
-# happy while the new builtin is being introduced. The current
-# compiler (which knows about the builtin) would otherwise reject
-# the body. --allow-defn-of-builtins is the documented bootstrapping
-# escape hatch for exactly this situation. Once the new builtin
-# stabilises and old bootstrap compilers no longer need to compile
-# this file, the body and this flag can be removed together.
-MCFLAGS-private_builtin         += --allow-defn-of-builtins
-
 # Avoid warnings about insts with non-existent function symbols in their
 # bound lists. The non-existent function symbols are used here to represent
 # insts for foreign types.

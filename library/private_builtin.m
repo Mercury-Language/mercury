@@ -486,17 +486,6 @@ typed_compare(R, X, Y) :-
         R = R0
     ).
 
-% store_at_field_offset_impure has no real Mercury body: the compiler
-% recognises it as an inline builtin and lowers calls directly to a
-% heap field write at the call site (see ml_call_gen.m and call_gen.m).
-% The body below exists only to keep the bootstrap compiler happy when
-% building private_builtin.m itself, since that compiler does not yet
-% know about the new builtin and would otherwise reject the
-% no-clauses-for-impure-pred declaration. It is dead code in any
-% binary produced by the new compiler.
-store_at_field_offset_impure(_Cell, _Offset, _Value) :-
-    impure imp.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
@@ -1436,7 +1425,15 @@ __Compare__private_builtin__ref_1_0(
     % no representation for. Bad things will happen if this is used
     % outside the LCMC pass.
     %
+    % The pragma external_pred declaration tells the bootstrap compiler
+    % not to expect a Mercury body. The new compiler recognises this
+    % predicate as an inline builtin (see compiler/builtin_ops.m and
+    % compiler/ml_call_gen.m) and lowers every call site directly to
+    % a field write, so no link-time foreign body is ever needed in
+    % practice.
+    %
 :- impure pred store_at_field_offset_impure(T::in, int::in, U::in) is det.
+:- pragma external_pred(store_at_field_offset_impure/3).
 
     % This type should be used only by the program transformation that
     % introduces calls to store_at_ref_impure. Any other use will cause
