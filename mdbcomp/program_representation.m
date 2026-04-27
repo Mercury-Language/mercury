@@ -2080,6 +2080,7 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
         ; PredName = "instance_constraint_from_typeclass_info", Arity = 3
         ; PredName = "partial_inst_copy", Arity = 2
         ; PredName = "store_at_ref_impure", Arity = 2
+        ; PredName = "store_at_field_offset_impure", Arity = 3
         ; PredName = "superclass_from_typeclass_info", Arity = 3
         ; PredName = "type_info_from_typeclass_info", Arity = 3
         ; PredName = "unconstrained_type_info_from_typeclass_info", Arity = 3
