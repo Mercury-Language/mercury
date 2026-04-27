@@ -1954,8 +1954,9 @@ Changes to the Mercury implementation
 Portability improvements
 ------------------------
 
-* We now support using the 64-bit (i.e. x64) version of Microsoft Visual C++
-  as a C compiler with Mercury.
+* We now support using the 64-bit (x64) and ARM64 versions of Microsoft Visual
+  C++ as a C compiler with Mercury, including building Mercury installations
+  targeting Windows on ARM64.
   See [README.MS-VisualC.md](Documentation/README.MS-VisualC.md) for further
   details.
 

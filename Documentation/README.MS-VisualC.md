@@ -4,10 +4,10 @@ Mercury with Microsoft Visual C++
 This file documents the port of Mercury to Windows that uses Microsoft Visual
 C++ (MSVC) as a C compiler.
 
-With MSVC, you can install a Mercury compiler that generates either x86
-(32-bit) or x64 (64-bit) Windows native code in C grades, but not both.
-(You can, of course, have multiple Mercury installations that use MSVC,
-and have one that targets x86 and another that targets x64.)
+With MSVC, you can install a Mercury compiler that generates x86 (32-bit),
+x64 (64-bit), or ARM64 Windows native code in C grades, but only one per
+installation. (You can, of course, have multiple Mercury installations that
+use MSVC, each targeting a different architecture.)
 
 Contents
 --------
@@ -47,13 +47,20 @@ following:
        Start Menu
        └── Visual Studio 2022
            ├── x64 Native Tools Command Prompt for VS 2022
-           └── x86 Native Tools Command Prompt for VS 2022
+           ├── x86 Native Tools Command Prompt for VS 2022
+           └── ARM64 Native Tools Command Prompt for VS 2022
 
-   Select x64 to target 64-bit Windows or x86 to target 32-bit Windows.
+   Select x64 to target 64-bit Windows, x86 to target 32-bit Windows, or
+   ARM64 to target Windows on ARM64.
 
    If you prefer not to use the Start Menu shortcuts, then you can manually set
    up the environment variables by running one of the batch files supplied with
-   Visual Studio (e.g. `vcvars32.bat` for x86, `vcvars64.bat` for x64).
+   Visual Studio (e.g. `vcvars32.bat` for x86, `vcvars64.bat` for x64,
+   `vcvarsarm64.bat` for ARM64).
+
+   To install the ARM64 port, your Visual Studio installation needs the
+   "MSVC v143 - VS 2022 C++ ARM64/ARM64EC build tools" individual component
+   (in addition to "Desktop development with C++").
 
 2. Start the MSYS2 shell using this command:
 

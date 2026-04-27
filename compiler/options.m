@@ -4573,7 +4573,7 @@ optdb(oc_target_c,  cc,                                string("gcc"),
         w("Specify which C compiler to use.")])).
 optdb(oc_target_c,  c_compiler_type,                   string("gcc"),
     priv_arg_help("c-compiler-type",
-        "{gcc,clang,msvc_x86,msvc_x64,unknown}", [])).
+        "{gcc,clang,msvc_x86,msvc_x64,msvc_arm64,unknown}", [])).
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
     % XXX That argues for this option being oc_config.

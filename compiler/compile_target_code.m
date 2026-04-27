@@ -360,6 +360,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
             % XXX Check whether we need to do anything for these C compilers?
             ( C_CompilerType = cc_cl_x86(_)
             ; C_CompilerType = cc_cl_x64(_)
+            ; C_CompilerType = cc_cl_arm64(_)
             ),
             C_FnAlignOpt = ""
         ;
@@ -496,6 +497,7 @@ gather_specific_c_compiler_flags(Globals, Flags) :-
     ;
         ( C_CompilerType = cc_cl_x86(_)
         ; C_CompilerType = cc_cl_x64(_)
+        ; C_CompilerType = cc_cl_arm64(_)
         ),
         globals.lookup_accumulating_option(Globals, msvc_flags, FlagsList)
     ;

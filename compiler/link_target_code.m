@@ -619,6 +619,7 @@ get_reserve_stack_size_flags_for_c(Globals) = Flags :-
         ;
             ( C_CompilerType = cc_cl_x86(_)
             ; C_CompilerType = cc_cl_x64(_)
+            ; C_CompilerType = cc_cl_arm64(_)
             ),
             string.format("-stack:%d", [i(ReserveStackSize)], Flags)
         )
@@ -960,6 +961,18 @@ get_restricted_command_line_link_opts_for_c(Globals, LinkedTargetType,
                 join_string_list(RestrictedCmdLinkFlags, "", "", " ",
                     RestrictedCmdLinkOpts)
             ;
+                C_CompilerType = cc_cl_arm64(_),
+                RestrictedCmdLinkFlags = [
+                    "-nologo",
+                    "-ignore:4001",
+                    "-subsystem:console",
+                    "-machine:arm64",
+                    "-entry:wmainCRTStartup",
+                    "-defaultlib:libcmt"
+                ],
+                join_string_list(RestrictedCmdLinkFlags, "", "", " ",
+                    RestrictedCmdLinkOpts)
+            ;
                 ( C_CompilerType = cc_gcc(_, _, _)
                 ; C_CompilerType = cc_clang(_)
                 ; C_CompilerType = cc_unknown
@@ -1076,6 +1089,7 @@ get_linker_output_option_for_c(Globals, LinkedTargetType, OutputOpt) :-
     (
         ( C_CompilerType = cc_cl_x86(_)
         ; C_CompilerType = cc_cl_x64(_)
+        ; C_CompilerType = cc_cl_arm64(_)
         ),
         ( if LinkedTargetType = executable then
             % NOTE: -Fe _must not_ be separated from its argument by any
@@ -1211,6 +1225,7 @@ create_archive_for_c(Globals, ProgressStream, FullLibFileName, Quote,
         % lib tool.
         ( C_CompilerType = cc_cl_x86(_)
         ; C_CompilerType = cc_cl_x64(_)
+        ; C_CompilerType = cc_cl_arm64(_)
         ),
         ArOutputSpace = ""
     ;
@@ -1674,6 +1689,7 @@ get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
         ;
             ( CCompilerType = cc_cl_x86(_)
             ; CCompilerType = cc_cl_x64(_)
+            ; CCompilerType = cc_cl_arm64(_)
             ),
             LinkOpt = "",
             LibSuffix = ".lib"
