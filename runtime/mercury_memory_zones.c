@@ -694,7 +694,19 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     }
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
-    new_base = MR_realloc_zone_memory(old_base, copy_size, new_size);
+    // Reallocate the entire zone footprint, including the trailing
+    // page reserved for the hardzone (and an extra page on systems with
+    // MR_PROTECTPAGE). The zone struct claims [bottom, top) where top =
+    // bottom + new_total_size; passing only new_size used to leave the
+    // last page or two of that claimed range outside the actual
+    // allocation. MR_setup_redzones then mprotect()s a hardmax page
+    // that, by sheer virtual-memory layout, may overlap a neighbouring
+    // live allocation (e.g. the partner heap zone). Writes from the
+    // collector to those addresses then SIGSEGV with a fault address
+    // equal to our hardmax even though MR_virtual_hp is nowhere near
+    // it. Allocate new_total_size so every byte of [bottom, top) is
+    // actually ours.
+    new_base = MR_realloc_zone_memory(old_base, copy_size, new_total_size);
     if (new_base == NULL) {
         MR_fatal_error("unable reallocate memory zone: %s#%"
                 MR_INTEGER_LENGTH_MODIFIER "d",
