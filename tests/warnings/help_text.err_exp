@@ -2650,7 +2650,7 @@ Options for target language compilation
         Specify which C compiler to use.
 
     PRIVATE OPTION
-    --c-compiler-type {gcc,clang,msvc_x86,msvc_x64,unknown}
+    --c-compiler-type {gcc,clang,msvc_x86,msvc_x64,msvc_arm64,unknown}
         There is no help text available.
 
     --c-optimize

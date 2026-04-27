@@ -351,6 +351,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
             "clang",
             "msvc_x86",
             "msvc_x64",
+            "msvc_arm64",
             "unknown"
         ],
         CCTpec =

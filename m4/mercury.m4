@@ -642,6 +642,8 @@ int main(int argc, char **argv)
           printf("msvc_x86");
        #elif defined(_M_X64)
           printf("msvc_x64");
+       #elif defined(_M_ARM64)
+          printf("msvc_arm64");
        #else
           printf("unknown");
        #endif

@@ -1,0 +1,17 @@
+# Mercury repository line-ending policy.
+#
+# Default: treat all detected text files as text, normalize to LF in the
+# index, and check out with LF in the working tree. This prevents Windows
+# checkouts (with core.autocrlf=true) from injecting CRLF into shell
+# scripts, .mgnuc_opts files, configure scripts, Mercury sources, etc.
+# Shell-script-style consumers (e.g. scripts/mgnuc reading .mgnuc_opts)
+# break when CRLF leaks in, so LF-everywhere is the safe default.
+* text=auto eol=lf
+
+# Binary files: skip all normalization.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary

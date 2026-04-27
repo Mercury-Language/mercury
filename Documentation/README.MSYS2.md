@@ -168,6 +168,26 @@ all other MSYS2 environments. A common problem is accidentally using the `MSYS`
 compilers. This happens if you forgot to install the compiler package for your
 specific environment (e.g. `UCRT64`).
 
+### Readline Library
+
+The Mercury debugger (`mdb`) links to GNU readline if `configure` detects it.
+Because the `readline` package shipped in the `MSYS` environment is visible
+on the `PATH` of every other MSYS2 environment, `configure` will detect a
+copy that is not usable for linking from `UCRT64`, `MINGW64`, `MINGW32`,
+`CLANG64` or `CLANGARM64`, and the build will then fail in
+`mercury_trace_readline.c`. To avoid this, either install the readline
+package matching your chosen environment via `pacman`, or pass
+`--without-readline` to `configure`. For example, for `CLANGARM64`:
+
+    pacman -S mingw-w64-clang-aarch64-readline
+
+The corresponding packages for the other environments are
+`mingw-w64-clang-x86_64-readline` (`CLANG64`),
+`mingw-w64-ucrt-x86_64-readline` (`UCRT64`),
+`mingw-w64-x86_64-readline` (`MINGW64`),
+`mingw-w64-i686-readline` (`MINGW32`),
+and `readline` (`MSYS`).
+
 ### Documentation Packages
 
 To build the Mercury documentation, you need the following packages:

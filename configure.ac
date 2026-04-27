@@ -189,7 +189,7 @@ case "$mercury_cv_cc_type" in
         C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
         ;;
 
-    msvc_x86|msvc_x64)
+    msvc_x86|msvc_x64|msvc_arm64)
         MERCURY_HAVE_MSVC=yes
         MERCURY_MSVC_VERSION
         C_COMPILER_TYPE="${mercury_cv_cc_type}_${mercury_cv_msvc_version}"
@@ -206,6 +206,7 @@ esac
 
 case "$mercury_cv_cc_type" in
     msvc_x64) BOEHM_WINDOWS_CPU_TYPE="x64" ;;
+    msvc_arm64) BOEHM_WINDOWS_CPU_TYPE="ARM64" ;;
     *) BOEHM_WINDOWS_CPU_TYPE="x86" ;;
 esac
 
