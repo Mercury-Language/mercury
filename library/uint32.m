@@ -684,7 +684,7 @@ det_from_uint(U) = U32 :-
 #else
     uint32_t    mask_for_int;
 
-    mask_for_int = (1UL << 31) - 1;
+    mask_for_int = (UINT32_C(1) << 31) - 1;
     if ((U32 & (~mask_for_int)) == 0UL) {
         // Every bit in U32 means the same in I.
         I = (MR_Integer) U32;
