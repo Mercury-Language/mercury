@@ -1,14 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % File: typecheck_error_arg_vector.m.
 %
-% This modules reports type errors in argument vectors.
+% This module reports type errors in argument vectors.
 %
 %---------------------------------------------------------------------------%
 
