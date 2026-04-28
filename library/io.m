@@ -1867,7 +1867,7 @@
     %      by TMPDIR if it is set.
     % 2. For the Java back-end, the system-dependent default
     %    temporary-file directory will be used, specified by the Java
-    %    system property java.io.tmpdir. On UNIX systems the default
+    %    system property java.io.tmpdir. On Unix systems the default
     %    value of this property is typically "/tmp" or "/var/tmp";
     %    on Microsoft Windows systems it is typically "c:\\temp".
     %

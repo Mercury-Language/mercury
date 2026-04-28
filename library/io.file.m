@@ -34,7 +34,7 @@
     % if this succeeds, or error/1 if it fails. If FileName names a file
     % that is currently open, the behaviour is implementation-dependent.
     %
-    % If FileName names a directory, the behavior is currently
+    % If FileName names a directory, the behaviour is currently
     % implementation-dependent. On most platforms, an empty directory
     % will be deleted.
     %
@@ -152,7 +152,7 @@
 
     % make_temp_file(Dir, Prefix, Suffix, Result, !IO):
     %
-    % Create an empty file whose name is differs from the name
+    % Create an empty file whose name differs from the name
     % of any existing file.
     %
     % The file will reside in the directory specified by Dir, and
@@ -208,7 +208,7 @@
     %   - Suffix is ignored.
     %
     % The Java backend has the following limitation:
-    %  - Suffix is ignored.
+    %   - Suffix is ignored.
     %
     % NOTE_TO_IMPLEMENTORS: If all backends ignore Suffix, then delete it.
 :- pred make_temp_directory(string::in, string::in, string::in,
@@ -246,7 +246,7 @@
     %    - On Microsoft Windows systems, the default value of this property
     %      is typically "c:\\temp".
     %
-    %    - On UNIX systems, the default value of this property
+    %    - On Unix systems, the default value of this property
     %      is typically "/tmp" or "/var/tmp".
     %
 :- pred get_temp_directory(string::out, io::di, io::uo) is det.
@@ -1473,7 +1473,7 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 
 :- pragma foreign_decl("C", "
 #ifdef MR_WIN32
-    #include ""mercury_string.h"" // For MR_ut8_to_wide.
+    #include ""mercury_string.h"" // For MR_utf8_to_wide.
 #endif
 #ifdef MR_HAVE_UNISTD_H
     #include <unistd.h>
