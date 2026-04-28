@@ -671,57 +671,32 @@ public static object deep_copy(object o)
     }
 
     System.Type t = o.GetType();
-    System.Array arr;
 
     if (t.IsValueType) {
+        // Primitive value types (int, char, bool, ...) are immutable.
         return o;
     } else if (t == typeof(string)) {
-        // XXX For some reason we need to handle strings specially.
-        // It is probably something to do with the fact that they
-        // are a builtin type.
-        string s;
-        s = (string) o;
-        return s;
-    } else if ((arr = o as System.Array) != null) {
+        // Strings are immutable in .NET.
+        return (string) o;
+    } else if (o is System.Array arr) {
+        // Mercury arrays (object[] tuples and array.array values).
+        // Element references are shared; this matches the behaviour
+        // of the original reflection-based deep_copy.
         return arr.Clone();
+    } else if (o is mercury.runtime.MR_DuTerm du) {
+        // Every C# class generated from a Mercury DU type ctor
+        // implements MR_DuTerm. The MR_DeepCopy method calls
+        // MemberwiseClone, then recurses on each positional field
+        // through this very deep_copy fn.
+        return du.MR_DeepCopy(deep_copy);
     } else {
-        object n;
-
-        // This will do a bitwise shallow copy of the object.
-        n = t.InvokeMember(""MemberwiseClone"",
-            System.Reflection.BindingFlags.Instance |
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.InvokeMethod,
-            null, o, new object[] {});
-
-        // Set each of the fields to point to a deep copy of the
-        // field.
-        deep_copy_fields(t.GetFields(
-            System.Reflection.BindingFlags.Public |
-            System.Reflection.BindingFlags.Instance),
-            n, o);
-
-        // XXX This requires that mercury.dll have
-        // System.Security.Permissions.ReflectionPermission
-        // so that the non-public fields are accessible.
-        deep_copy_fields(t.GetFields(
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.Instance),
-            n, o);
-
-        return n;
-    }
-}
-
-public static void deep_copy_fields(System.Reflection.FieldInfo[] fields,
-    object dest, object src)
-{
-    // XXX We don't handle init-only fields, but I can't think of a way.
-    foreach (System.Reflection.FieldInfo f in fields)
-    {
-        if (!f.IsNotSerialized) {
-            f.SetValue(dest, deep_copy(f.GetValue(src)));
-        }
+        // Closures, type infos, type class infos and other runtime
+        // structures are treated as immutable from Mercury's point
+        // of view, so a shallow alias is sufficient. (The previous
+        // reflection-based path walked their fields too, but doing
+        // so was redundant in practice and required full
+        // System.Reflection access incompatible with .NET trim/AOT.)
+        return o;
     }
 }
 ").

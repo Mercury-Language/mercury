@@ -128,6 +128,16 @@
     %
 :- func ml_java_mercury_enum_class = mlds_class_id.
 
+    % Return the interface id corresponding to the
+    % `mercury.runtime.MR_DuTerm' interface. Implemented by every
+    % MLDS-generated C# class for a Mercury type ctor, so that
+    % library/rtti_implementation.m and library/builtin.m can walk
+    % a term's positional fields and read its secondary tag without
+    % using System.Reflection (which the .NET trim/AOT toolchain
+    % cannot statically prove safe).
+    %
+:- func ml_csharp_mr_du_term_interface = mlds_interface_id.
+
 %---------------------------------------------------------------------------%
 %
 % Routines for generating labels and entity names.
@@ -725,6 +735,11 @@ ml_java_mercury_enum_class = EnumClassId :-
     EnumClass =
         qual_class_name(InterfaceModuleName, module_qual, "MercuryEnum"),
     EnumClassId = mlds_class_id(EnumClass, 0).
+
+ml_csharp_mr_du_term_interface = TypeInterfaceDefn :-
+    InterfaceModuleName =
+        mercury_module_name_to_mlds(csharp_mercury_runtime_package_name),
+    TypeInterfaceDefn = mlds_interface_id(InterfaceModuleName, "MR_DuTerm").
 
 %---------------------------------------------------------------------------%
 %
