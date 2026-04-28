@@ -1637,7 +1637,15 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         LinkedTargetType = csharp_library,
         OutputType = "Library",
         UseAppHost = "false",
-        IsTrimmableLine = "    <IsTrimmable>true</IsTrimmable>\n"
+        % `<IsAotCompatible>true</...>' implies `<IsTrimmable>true</...>',
+        % so when AotRequest = aot_library_marker we skip the redundant
+        % IsTrimmable line below; the AotPropertyLines block emits the
+        % stronger marker instead.
+        ( if AotRequest = aot_library_marker then
+            IsTrimmableLine = ""
+        else
+            IsTrimmableLine = "    <IsTrimmable>true</IsTrimmable>\n"
+        )
     ),
     % Native AOT properties.  For executables, switch on PublishAot,
     % nail the runtime identifier, force globalization-invariant data
