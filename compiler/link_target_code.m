@@ -1315,7 +1315,24 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
         LinkedTargetType = csharp_executable,
         KeyFile = ""
     ),
-    csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
+    % SourceList paths are relative to the compiler's cwd, but MSBuild
+    % resolves <Compile Include="..."> entries relative to the csproj
+    % file location.  With --use-subdirs/--use-grade-subdirs the csproj
+    % sits several directories deep, so a cwd-relative source path would
+    % be doubly-nested.  Anchor each entry to an absolute path before
+    % handing it to the csproj generator.  If we cannot determine the
+    % cwd we fall back to the unmodified list, which still works in the
+    % common no-subdirs case.
+    dir.current_directory(CwdResult, !IO),
+    (
+        CwdResult = ok(Cwd),
+        AbsSourceList = list.map(make_csproj_source_path_absolute(Cwd),
+            SourceList)
+    ;
+        CwdResult = error(_),
+        AbsSourceList = SourceList
+    ),
+    csproj_content(LinkedTargetType, AssemblyName, AbsSourceList, RefEntries,
         Debug, ExtraCSCFlags, KeyFile, CsprojContent),
 
     io.open_output(CsprojPath, OpenRes, !IO),
@@ -1327,11 +1344,16 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
         % Invoke `dotnet build' once on the generated csproj.  MSBuild
         % handles framework references, runtimeconfig.json emission and
         % apphost generation; we no longer need a wrapper shell script.
-        DotnetCmd = "dotnet",
-        DotnetArgs = "build " ++ quote_shell_cmd_arg(CsprojPath) ++
+        % Use invoke_system_command rather than invoke_long_system_command:
+        % the dotnet CLI does not tokenize @file response files like csc
+        % and msbuild do (it reads the entire file as a single argument),
+        % so the @file machinery would route us to a non-existent
+        % `dotnet-build path/to/csproj ...' tool.  The dotnet build
+        % command line stays well under the Windows length limit anyway.
+        DotnetCmd = "dotnet build " ++ quote_shell_cmd_arg(CsprojPath) ++
             " -c Release -v:quiet --nologo",
-        invoke_long_system_command(Globals, ProgressStream, ProgressStream,
-            cmd_verbose_commands, DotnetCmd, DotnetArgs, Succeeded0, !IO),
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose_commands, DotnetCmd, Succeeded0, !IO),
 
         % On non-Windows hosts the apphost has no `.exe' suffix, but
         % Mercury's `csharp_executable' linked-target convention always
@@ -1357,6 +1379,19 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
 %
 % Helpers for csproj-based linking.
 %
+
+    % Return Path unchanged if it is already absolute; otherwise prepend Cwd
+    % so the result is an absolute path safe to embed in <Compile Include>
+    % entries regardless of where the csproj file ends up.
+    %
+:- func make_csproj_source_path_absolute(string, string) = string.
+
+make_csproj_source_path_absolute(Cwd, Path) =
+    ( if dir.path_name_is_absolute(Path) then
+        Path
+    else
+        Cwd / Path
+    ).
 
     % If the apphost was emitted without the `.exe' suffix (the default on
     % non-Windows hosts) and FullOutputFileName does not yet exist, rename
@@ -1704,10 +1739,31 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
             MadeSymlinkOrCopy = yes
         ),
 
+        % C# executables on .NET are self-contained apphosts that
+        % delegate to a managed assembly co-located with the apphost
+        % (`<name>.dll' plus `<name>.runtimeconfig.json' and optionally
+        % `<name>.deps.json').  When FullFileName lives several
+        % directories deep -- e.g. under
+        % `Mercury/csharp/<arch>/Mercury/bin/' with --use-subdirs and
+        % --use-grade-subdirs -- the apphost copied to CurDirFileName
+        % has none of those companions next to it and aborts at run
+        % time with `The application to execute does not exist'.  Copy
+        % each companion alongside the user-visible apphost too.
+        ( if
+            Succeeded0 = succeeded,
+            LinkedTargetType = csharp_executable,
+            MadeSymlinkOrCopy = yes
+        then
+            copy_csharp_apphost_companions(Globals, ProgressStream,
+                FullFileName, CurDirFileName, Succeeded0, Succeeded1, !IO)
+        else
+            Succeeded1 = Succeeded0
+        ),
+
         % For the Java and C# grades we also need to symlink or copy the
         % launcher scripts or batch files.
         ( if
-            Succeeded0 = succeeded,
+            Succeeded1 = succeeded,
             (
                 LinkedTargetType = csharp_executable,
                 % NOTE: we don't generate a launcher script for C# executables
@@ -1739,8 +1795,60 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
                     FullLauncherName, CurDirLauncherName, Succeeded, !IO)
             )
         else
-            Succeeded = Succeeded0
+            Succeeded = Succeeded1
         )
+    ).
+
+%---------------------%
+
+    % Copy the .dll, .runtimeconfig.json and .deps.json that an apphost
+    % needs from the build dir of FullFileName to the directory that
+    % contains CurDirFileName, preserving the assembly base name.  Files
+    % that the build did not emit are skipped silently.
+    %
+:- pred copy_csharp_apphost_companions(globals::in, io.text_output_stream::in,
+    file_name::in, file_name::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+copy_csharp_apphost_companions(Globals, ProgressStream,
+        FullFileName, CurDirFileName, !Succeeded, !IO) :-
+    AssemblyBase = strip_csharp_exec_ext(dir.det_basename(FullFileName)),
+    ( if dir.split_name(FullFileName, FullDir0, _) then
+        FullDir = FullDir0
+    else
+        FullDir = "."
+    ),
+    ( if dir.split_name(CurDirFileName, CurDir0, _) then
+        CurDir = CurDir0
+    else
+        CurDir = "."
+    ),
+    Companions = ["dll", "runtimeconfig.json", "deps.json"],
+    list.foldl2(
+        copy_one_apphost_companion(Globals, ProgressStream,
+            FullDir, CurDir, AssemblyBase),
+        Companions, !Succeeded, !IO).
+
+:- pred copy_one_apphost_companion(globals::in, io.text_output_stream::in,
+    string::in, string::in, string::in, string::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+copy_one_apphost_companion(Globals, ProgressStream,
+        FullDir, CurDir, AssemblyBase, Ext, !Succeeded, !IO) :-
+    Filename = AssemblyBase ++ "." ++ Ext,
+    Src = FullDir / Filename,
+    Dst = CurDir / Filename,
+    io.file.check_file_accessibility(Src, [read], CheckRes, !IO),
+    (
+        CheckRes = ok,
+        io.file.remove_file_recursively(Dst, _, !IO),
+        make_symlink_or_copy_file(Globals, ProgressStream, Src, Dst,
+            CopyOk, !IO),
+        !:Succeeded = !.Succeeded `and` CopyOk
+    ;
+        CheckRes = error(_)
+        % Companion was not emitted (e.g. .deps.json may be omitted for
+        % trivial builds); skip silently.
     ).
 
 %---------------------%
