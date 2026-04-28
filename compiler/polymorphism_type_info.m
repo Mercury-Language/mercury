@@ -19,42 +19,48 @@
 %
 % Representation of type information:
 %
-% IMPORTANT: ANY CHANGES TO THE DOCUMENTATION HERE MUST BE REFLECTED BY
-% SIMILAR CHANGES TO THE #defines IN "runtime/mercury_type_info.h" AND
-% TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
+% IMPORTANT: ANY MATERIAL CHANGES TO THE DOCUMENTATION HERE
+% MUST BE REFLECTED BY SIMILAR CHANGES
 %
-% Type information is represented using one or two cells. The cell which
+% - to the #defines in mercury_type_info.h in the runtime directory, and
+% - to the type specialization code in higher_order.specialize_unify_compare.m
+%   in the compiler directory.
+%
+% We represent type information using one or two cells. The cell which
 % is always present is the type_ctor_info structure, whose structure is
 % defined in runtime/mercury_type_info.h. The other cell is the type_info
-% structure, laid out like this:
+% structure, which is laid out like this:
 %
 %   word 0      <pointer to the type_ctor_info structure>
 %   word 1+     <the type_infos for the type params, at least one>
 %
-%   (but see note below for how variable arity types differ)
+%   (but see note below for how variable arity types differ).
 %
 %---------------------------------------------------------------------------%
 %
-% Optimization of common case (zero arity types):
+% Optimization of common case (zero arity type constructors):
 %
 % The type_info structure itself is redundant if the type has no type
 % parameters (i.e. its arity is zero). Therefore if the arity is zero,
 % we pass the address of the type_ctor_info structure directly, instead of
 % wrapping it up in another cell. The runtime system will look at the first
-% field of the cell it is passed. If this field is zero, the cell is a
-% type_ctor_info structure for an arity zero type. If this field is not zero,
-% the cell is a new type_info structure, with the first field being the
-% pointer to the type_ctor_info structure.
+% field of the cell it is passed.
+%
+% - If this field is zero, the cell is a type_ctor_info structure
+%   for an arity zero type constructor.
+%
+% - If this field is not zero, the cell is a type_info structure,
+%   with the first field being the pointer to the type_ctor_info structure.
 %
 %---------------------------------------------------------------------------%
 %
-% Variable arity types:
+% Variable arity type constructors:
 %
-% There is a slight variation on this for variable-arity type constructors, of
-% which there are exactly three: pred, func and tuple. Typeinfos of these types
-% always have a pointer to the pred/0, func/0 or tuple/0 type_ctor_info,
-% regardless of their true arity, so we store the real arity in the type_info
-% as well.
+% There is a slight variation on this for variable-arity type constructors,
+% of which there are exactly three: pred, func and tuple. Typeinfos of
+% these types always have a pointer to the pred/0, func/0 or tuple/0
+% type_ctor_info, regardless of their true arity, so we store the real arity
+% in the type_info as well, resulting in this layout:
 %
 %   word 0      <pointer to the arity 0 type_ctor_info structure>
 %   word 1      <arity of predicate>
@@ -68,10 +74,10 @@
 % we can arrange to create one copy of the type_ctor_info structure statically,
 % avoiding the need to create other copies at runtime. For compilation models
 % that cannot put code addresses in static ground terms, there are two
-% approaches we could take:
+% approaches we could take.
 %
-%   1. allocate all cells at runtime.
-%   2. use a shared static type_ctor_info, but initialize its code addresses
+%   1. Allocate all cells at runtime.
+%   2. Use a shared static type_ctor_info, but initialize its code addresses
 %      during startup (that is, during the module initialization code).
 %
 % We take approach 2.
