@@ -1500,8 +1500,7 @@ find_matching_version(Info, CalleePredProcId, Args0, HigherOrderArgs,
     ( if
         map.search(NewPredMap, CalleePredProcId, VersionSet),
         set.to_sorted_list(VersionSet, Versions),
-        search_for_version(Info, Params, ModuleInfo, Request, Versions,
-            no, Match)
+        search_for_version(Info, Params, ModuleInfo, Request, Versions, Match)
     then
         Result = find_result_match(Match)
     else if
@@ -1620,25 +1619,29 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
 
 %---------------------%
 
-    % search_for_version(Info, Params, ModuleInfo, Request, Versions,
-    %   MaybeBestPartialSoFar0, Match):
+    % search_for_version(Info, Params, ModuleInfo, Request, Versions, Match):
     %
     % Search for a match for Request among Versions, returning either
     %
     % - the first complete match, if one exists, and
     % - the best partial match, if no complete match exists.
     %
-    % MaybeBestPartialSoFar0 should hold the best partial match (if any)
-    % that we have so far. The top-level caller should pass "no"
-    % in this arg position.
-    % 
 :- pred search_for_version(higher_order_info::in, ho_params::in,
+    module_info::in, ho_request::in, list(new_pred)::in,
+    match::out) is semidet.
+
+search_for_version(Info, Params, ModuleInfo, Request, Versions, Match) :-
+    MaybeBestPartialSoFar0 = maybe.no,
+    search_for_version_loop(Info, Params, ModuleInfo, Request, Versions,
+        MaybeBestPartialSoFar0, Match).
+
+:- pred search_for_version_loop(higher_order_info::in, ho_params::in,
     module_info::in, ho_request::in, list(new_pred)::in,
     maybe(match)::in, match::out) is semidet.
 
-search_for_version(_, _, _, _, [], yes(Match), Match).
-search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
-        MaybeBestPartialSoFar0, Match) :-
+search_for_version_loop(_, _, _, _, [], yes(Match), Match).
+search_for_version_loop(Info, Params, ModuleInfo, Request,
+        [Version | Versions], MaybeBestPartialSoFar0, Match) :-
     ( if version_matches(Params, ModuleInfo, Request, Version, Match1) then
         Match1 = match(_, MatchCompleteness1, _, _),
         (
@@ -1667,12 +1670,12 @@ search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
                     unexpected($pred, "complete_match")
                 )
             ),
-            search_for_version(Info, Params, ModuleInfo, Request, Versions,
-                MaybeBestPartialSoFar1, Match)
+            search_for_version_loop(Info, Params, ModuleInfo, Request,
+                Versions, MaybeBestPartialSoFar1, Match)
         )
     else
-        search_for_version(Info, Params, ModuleInfo, Request, Versions,
-            MaybeBestPartialSoFar0, Match)
+        search_for_version_loop(Info, Params, ModuleInfo, Request,
+            Versions, MaybeBestPartialSoFar0, Match)
     ).
 
 %---------------------%
