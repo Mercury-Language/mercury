@@ -1275,7 +1275,7 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
     % used to consume, then resolving each name to a HintPath via the
     % `-lib:' search dirs.
     get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
-        Specs, !IO),
+        LinkSpecs, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList),
         LinkLibrariesStr = string.join_list(" ", LinkLibrariesList)
@@ -1332,8 +1332,41 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
         CwdResult = error(_),
         AbsSourceList = SourceList
     ),
+    % Decide whether `--csharp-aot' applies.  For executables, derive a
+    % .NET RID from the target triple so we can switch `dotnet build' to
+    % `dotnet publish -p:PublishAot=true -r <rid>'.  For libraries, only
+    % emit an `<IsAotCompatible>true</IsAotCompatible>' marker; the build
+    % flow itself is unchanged.  If RID derivation fails, write a notice
+    % to the progress stream and fall back to a regular `dotnet build'
+    % so the user is not silently denied their opt-in.
+    globals.lookup_bool_option(Globals, csharp_aot, AotOption),
+    (
+        AotOption = no,
+        AotRequest = aot_off
+    ;
+        AotOption = yes,
+        (
+            LinkedTargetType = csharp_executable,
+            compute_dotnet_rid(Globals, RidResult),
+            (
+                RidResult = ok(Rid),
+                AotRequest = aot_publish(Rid)
+            ;
+                RidResult = error(RidMsg),
+                AotRequest = aot_off,
+                io.format(ProgressStream,
+                    "%% --csharp-aot: %s.  Falling back to `dotnet build'.\n",
+                    [s(RidMsg)], !IO)
+            )
+        ;
+            LinkedTargetType = csharp_library,
+            AotRequest = aot_library_marker
+        )
+    ),
+    Specs = LinkSpecs,
+
     csproj_content(LinkedTargetType, AssemblyName, AbsSourceList, RefEntries,
-        Debug, ExtraCSCFlags, KeyFile, CsprojContent),
+        Debug, ExtraCSCFlags, KeyFile, AotRequest, CsprojContent),
 
     io.open_output(CsprojPath, OpenRes, !IO),
     (
@@ -1341,17 +1374,29 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
         io.write_string(Stream, CsprojContent, !IO),
         io.close_output(Stream, !IO),
 
-        % Invoke `dotnet build' once on the generated csproj.  MSBuild
-        % handles framework references, runtimeconfig.json emission and
-        % apphost generation; we no longer need a wrapper shell script.
+        % Invoke `dotnet build' (or `dotnet publish' under --csharp-aot)
+        % once on the generated csproj.  MSBuild handles framework
+        % references, runtimeconfig.json emission and apphost generation;
+        % we no longer need a wrapper shell script.
         % Use invoke_system_command rather than invoke_long_system_command:
         % the dotnet CLI does not tokenize @file response files like csc
         % and msbuild do (it reads the entire file as a single argument),
         % so the @file machinery would route us to a non-existent
-        % `dotnet-build path/to/csproj ...' tool.  The dotnet build
-        % command line stays well under the Windows length limit anyway.
-        DotnetCmd = "dotnet build " ++ quote_shell_cmd_arg(CsprojPath) ++
-            " -c Release -v:quiet --nologo",
+        % `dotnet-build path/to/csproj ...' tool.  The dotnet command
+        % line stays well under the Windows length limit anyway.
+        (
+            AotRequest = aot_publish(PublishRid),
+            DotnetCmd = "dotnet publish " ++
+                quote_shell_cmd_arg(CsprojPath) ++
+                " -c Release -r " ++ PublishRid ++ " -v:quiet --nologo"
+        ;
+            ( AotRequest = aot_off
+            ; AotRequest = aot_library_marker
+            ),
+            DotnetCmd = "dotnet build " ++
+                quote_shell_cmd_arg(CsprojPath) ++
+                " -c Release -v:quiet --nologo"
+        ),
         invoke_system_command(Globals, ProgressStream, ProgressStream,
             cmd_verbose_commands, DotnetCmd, Succeeded0, !IO),
 
@@ -1499,15 +1544,90 @@ find_csharp_ref_dll([Dir | Dirs], DllName, MaybePath, !IO) :-
         find_csharp_ref_dll(Dirs, DllName, MaybePath, !IO)
     ).
 
+    % How `--csharp-aot' should affect this csproj invocation, computed
+    % once in create_exe_or_lib_for_csharp/9 and threaded through.
+    %
+:- type csharp_aot_request
+    --->    aot_off
+            % `--csharp-aot' was not requested (or could not be honoured).
+    ;       aot_publish(string)
+            % `--csharp-aot' on a csharp_executable target.  The string is
+            % the .NET runtime identifier (RID) we will pass to
+            % `dotnet publish -r ...'.
+    ;       aot_library_marker.
+            % `--csharp-aot' on a csharp_library target: emit
+            % `<IsAotCompatible>true</IsAotCompatible>' as a marker for
+            % downstream consumers but keep the regular `dotnet build'
+            % flow.
+
+    % Map Mercury's target architecture (typically a GNU triple such as
+    % `aarch64-w64-mingw32') to a .NET runtime identifier such as
+    % `win-arm64'.  Returns error/1 with a short reason when the host
+    % cannot be expressed as a RID; callers should treat that as
+    % "fall back to a regular build and warn".
+    %
+:- pred compute_dotnet_rid(globals::in, maybe_error(string)::out) is det.
+
+compute_dotnet_rid(Globals, MaybeRid) :-
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    ( if
+        ( string.sub_string_search(TargetArch, "aarch64", _)
+        ; string.sub_string_search(TargetArch, "arm64", _)
+        )
+    then
+        Arch = "arm64"
+    else if
+        ( string.sub_string_search(TargetArch, "x86_64", _)
+        ; string.sub_string_search(TargetArch, "amd64", _)
+        )
+    then
+        Arch = "x64"
+    else if
+        ( string.sub_string_search(TargetArch, "i686", _)
+        ; string.sub_string_search(TargetArch, "i386", _)
+        )
+    then
+        Arch = "x86"
+    else
+        Arch = ""
+    ),
+    ( if
+        ( string.sub_string_search(TargetArch, "darwin", _)
+        ; string.sub_string_search(TargetArch, "apple", _)
+        )
+    then
+        Os = "osx"
+    else if
+        ( string.sub_string_search(TargetArch, "mingw", _)
+        ; string.sub_string_search(TargetArch, "windows", _)
+        ; string.sub_string_search(TargetArch, "msvc", _)
+        )
+    then
+        Os = "win"
+    else if string.sub_string_search(TargetArch, "linux", _) then
+        Os = "linux"
+    else
+        Os = ""
+    ),
+    ( if Arch = "" then
+        MaybeRid = error("could not derive a .NET RID architecture " ++
+            "from target_arch `" ++ TargetArch ++ "'")
+    else if Os = "" then
+        MaybeRid = error("could not derive a .NET RID OS " ++
+            "from target_arch `" ++ TargetArch ++ "'")
+    else
+        MaybeRid = ok(Os ++ "-" ++ Arch)
+    ).
+
     % Build the .csproj content as a single string.
     %
 :- pred csproj_content(linked_target_type::in(csharp_linked_target_type),
     string::in, list(string)::in,
     list(csharp_ref_entry)::in, bool::in, list(string)::in, string::in,
-    string::out) is det.
+    csharp_aot_request::in, string::out) is det.
 
 csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
-        Debug, ExtraCSCFlags, KeyFile, Content) :-
+        Debug, ExtraCSCFlags, KeyFile, AotRequest, Content) :-
     (
         LinkedTargetType = csharp_executable,
         OutputType = "Exe",
@@ -1518,6 +1638,29 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         OutputType = "Library",
         UseAppHost = "false",
         IsTrimmableLine = "    <IsTrimmable>true</IsTrimmable>\n"
+    ),
+    % Native AOT properties.  For executables, switch on PublishAot,
+    % nail the runtime identifier, force globalization-invariant data
+    % (the only mode AOT supports without a sidecar ICU package), and
+    % redirect the publish output to the csproj directory so the binary
+    % lands where Mercury expects it.  For libraries, just announce
+    % AOT compatibility; consumers may then opt into AOT publishing.
+    (
+        AotRequest = aot_off,
+        AotPropertyLines = ""
+    ;
+        AotRequest = aot_publish(Rid),
+        AotPropertyLines = string.append_list([
+            "    <PublishAot>true</PublishAot>\n",
+            "    <SelfContained>true</SelfContained>\n",
+            "    <InvariantGlobalization>true</InvariantGlobalization>\n",
+            "    <RuntimeIdentifier>", xml_escape(Rid),
+            "</RuntimeIdentifier>\n",
+            "    <PublishDir>./</PublishDir>\n"
+        ])
+    ;
+        AotRequest = aot_library_marker,
+        AotPropertyLines = "    <IsAotCompatible>true</IsAotCompatible>\n"
     ),
     (
         Debug = yes,
@@ -1577,6 +1720,7 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         "</CopyLocalLockFileAssemblies>\n",
         "    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n",
         IsTrimmableLine,
+        AotPropertyLines,
         SignLines,
         DefineLine,
         "  </PropertyGroup>\n",
@@ -1748,11 +1892,15 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
         % --use-grade-subdirs -- the apphost copied to CurDirFileName
         % has none of those companions next to it and aborts at run
         % time with `The application to execute does not exist'.  Copy
-        % each companion alongside the user-visible apphost too.
+        % each companion alongside the user-visible apphost too.  Skip
+        % under --csharp-aot: native AOT publish produces a single
+        % self-contained binary, so there are no companions to find.
+        globals.lookup_bool_option(Globals, csharp_aot, AotEnabled),
         ( if
             Succeeded0 = succeeded,
             LinkedTargetType = csharp_executable,
-            MadeSymlinkOrCopy = yes
+            MadeSymlinkOrCopy = yes,
+            AotEnabled = no
         then
             copy_csharp_apphost_companions(Globals, ProgressStream,
                 FullFileName, CurDirFileName, Succeeded0, Succeeded1, !IO)

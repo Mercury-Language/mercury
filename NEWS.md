@@ -1984,6 +1984,21 @@ Portability improvements
   binaries with `<PublishTrimmed>true</PublishTrimmed>` from their
   own `.csproj`.
 
+* The new `--csharp-aot` option opts a `csharp_executable` build into
+  Native AOT publishing: `mmc` switches the link step from
+  `dotnet build` to `dotnet publish -p:PublishAot=true -r <rid>`, and
+  the generated csproj sets `<PublishAot>`, `<SelfContained>`,
+  `<InvariantGlobalization>` and a `<RuntimeIdentifier>` derived from
+  the target architecture.  The result is a single self-contained
+  native binary with no managed `.dll`, `runtimeconfig.json` or
+  `deps.json` companions.  The user is responsible for ensuring no
+  module reachable from main consumes dynamic RTTI (`type_desc`,
+  `construct`, `deconstruct`, `term_to_xml`, generic `io.write` or
+  `compare_representation`) and that every linked Mercury library was
+  built AOT-compatible.  For library targets the option only adds an
+  `<IsAotCompatible>true</IsAotCompatible>` marker to the csproj;
+  the build flow is unchanged.
+
 * The C# implementation of `library/io.file.m` has been modernised:
   the obsolete `Directory.CreateDirectory(string, DirectorySecurity)`
   overload (removed in .NET 5) is gone, the Code Access Security

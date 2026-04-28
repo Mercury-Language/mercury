@@ -94,6 +94,41 @@ the IL-linker.  Downstream consumers can therefore add their own
 applications without losing functionality.  `mmc` itself does not
 invoke `dotnet publish`.
 
+Native AOT publishing
+---------------------
+
+The `--csharp-aot` option flips a `csharp_executable` build from
+`dotnet build` to `dotnet publish -p:PublishAot=true -r <rid>`.  The
+generated csproj adds `<PublishAot>true</PublishAot>`,
+`<SelfContained>true</SelfContained>`, `<InvariantGlobalization>true
+</InvariantGlobalization>` and a `<RuntimeIdentifier>` derived from
+Mercury's target architecture (e.g. `aarch64-w64-mingw32` -> `win-arm64`,
+`x86_64-pc-linux-gnu` -> `linux-x64`).  `<PublishDir>` is forced to `./`
+so the produced native binary lands next to the csproj where Mercury
+expects it, identical to the regular build flow.  No `<MainModule>.dll`,
+`runtimeconfig.json` or `deps.json` companions are emitted; the apphost
+is the entire program.
+
+The option is opt-in and the user owns the AOT-cleanliness contract:
+
+* No module reachable from the program's `main/2` may import
+  `type_desc`, `construct`, `deconstruct` or `term_to_xml`, nor call
+  the generic forms of `io.write/3` or `compare_representation/3`.
+  Such uses require runtime reflection, which the AOT compiler trims.
+* Every linked Mercury library (the standard library and any `-l`
+  reference) must have been built AOT-compatible.
+
+If the target architecture cannot be mapped to a .NET RID, the build
+falls back to a regular `dotnet build` and prints a notice to the
+progress stream.  Trim or AOT warnings from `dotnet publish` surface
+as a non-zero exit and abort the link step exactly like a normal C#
+compilation error.
+
+For `csharp_library` targets, `--csharp-aot` only adds
+`<IsAotCompatible>true</IsAotCompatible>` to the generated csproj as
+a marker for downstream consumers; the build itself is still a regular
+`dotnet build`, and `mmc` does not run `dotnet publish` on libraries.
+
 Limitations
 -----------
 
