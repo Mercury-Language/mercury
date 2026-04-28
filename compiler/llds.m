@@ -369,7 +369,7 @@
             % will branch to label C. A label that isn't there implicitly means
             % "not reached".
             %
-            % The code that constructs this instructions should set the
+            % The code that constructs this instruction should set the
             % second argument to contain
             %
             % - either yes(MaxIndex), if the maximum possible value of
@@ -413,13 +413,13 @@
             % identified by RegionId (i.e. in the region whose header RegionId
             % points to). If MaybeReuse = llds_reuse(ReuseRval,
             % MaybeFlagLval), then we should try to reuse the cell ReuseRval
-            % for the block. If MaybeFlagLval = yes(FlagLval) then FlagLval
-            % needs to be set to true or false indicate whether reuse was
+            % for the block. If MaybeFlagLval = yes(FlagLval), then FlagLval
+            % needs to be set to true or false to indicate whether reuse was
             % really possible.
 
     ;       mark_hp(lval)
             % Tell the heap sub-system to store a marker (for later use in
-            % restore_hp/1 instructions) in the specified lval
+            % restore_hp/1 instructions) in the specified lval.
 
     ;       restore_hp(rval)
             % The rval must be a marker as returned by mark_hp/1. The effect
