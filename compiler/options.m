@@ -891,6 +891,7 @@
     ;       csharp_compiler_type
     ;       csharp_flags
     ;       quoted_csharp_flag
+    ;       csharp_aot
     ;       mono_path_directories
 
 % Link options.
@@ -4718,6 +4719,20 @@ optdb(oc_target_csharp, quoted_csharp_flag,                string_special,
     alt_arg_help("quoted-csharp-flag", ["csharp-flag"], "option", [
         w("Specify a single word option to be passed to the C# compiler."),
         w("The word will be quoted when passed to the shell.")])).
+optdb(oc_target_csharp, csharp_aot,                        bool(no),
+    help("csharp-aot", [
+        cindex("Native AOT (C# backend)"),
+        w("Build C# executables as native AOT binaries via"),
+        samp("dotnet publish -p:PublishAot=true"), w("instead of the default"),
+        samp("dotnet build", "."),
+        w("This is opt-in: the user is responsible for ensuring no module"),
+        w("reachable from main consumes dynamic RTTI"),
+        w("(such as type_desc, construct, deconstruct, term_to_xml,"),
+        w("generic io.write or compare_representation),"),
+        w("and that every linked Mercury library was built AOT-compatible."),
+        w("For library targets, this option only adds an"),
+        samp("<IsAotCompatible>true</IsAotCompatible>"),
+        w("marker to the generated csproj; the build flow is unchanged.")])).
 optdb(oc_target_csharp, mono_path_directories,           accumulating([]),
     alt_arg_help("mono-path-directory",
         ["mono-path-dir"], "directory", [
