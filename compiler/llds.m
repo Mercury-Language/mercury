@@ -1293,13 +1293,13 @@
             % proc_label.
 
     ;       scalar_common_data_id(type_num, int)
-            % scalar_common_ref(TypeNum, CellNum) is the slot at index CellNum
-            % in the array of scalar cells of type TypeNum.
+            % scalar_common_data_id(TypeNum, CellNum) is the slot at index
+            % CellNum in the array of scalar cells of type TypeNum.
 
     ;       vector_common_data_id(type_num, int)
-            % vector_common_ref(TypeNum, CellNum) is the sequence of slots
-            % starting at index CellNum in the array of vector cells of
-            % type TypeNum.
+            % vector_common_data_id(TypeNum, CellNum) is the sequence of slots
+            % starting at index CellNum in the array of vector cells of type
+            % TypeNum.
 
     ;       layout_id(layout_name)
             % The global variable holding the layout structure identified
