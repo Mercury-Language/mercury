@@ -46,6 +46,50 @@
 
 %---------------------------------------------------------------------------%
 
+    % maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO):
+    %
+    % Every possible path of execution in mercury_compile.m should call
+    % write_error_specs on the accumulated but not-yet-printed error_specs
+    % exactly once, just after the compiler has finished doing all the things
+    % that can generate error reports. This predicate is intended to manage
+    % the printing of error_specs before that point.
+    %
+    % If Verbose = no, then that call to write_error_specs should write out
+    % all at once all the error specifications accumulated until then.
+    % Being written out all at once, write_error_specs can sort them
+    % by context.
+    %
+    % If Verbose = yes, then keeping all the error messages until the end would
+    % be confusing, since we would be reporting that e.g. the program had type
+    % errors *before* printing the type error messages. In that case,
+    % we want to print (using maybe_write_out_errors) all the accumulated
+    % errors before each message to the user.
+    %
+    % This applies to *all* messages.
+    %
+    % - The calls to maybe_write_out_errors before a message that announces
+    %   the completion (and success or failure) of a phase should obviously
+    %   report the errors (if any) discovered by the phase.
+    %
+    % - The calls to maybe_write_out_errors before a message that announces
+    %   the phase the compiler is about to enter serve to write out any
+    %   messages from previous phases that have not yet been written out.
+    %
+    %   We could require each phase to write out the errors it discovers
+    %   when it finishes (if Verbose = yes, that is), but that would eliminate
+    %   any opportunity to group and sort together the error messages
+    %   of two or more adjacent phases that are *not* separated by a message
+    %   to the user even with Verbose = yes. Since the cost of calling
+    %   maybe_write_out_errors when there is nothing to print is so low
+    %   (a few dozen instructions), we can easily afford to incur it
+    %   unnecessarily once per compiler phase.
+    %
+:- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
+    globals::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % write_not_yet_written_specs(Stream, Globals, !MaybeWrittenSpecs, !IO):
     %
     % Write out any to_be_written specs in !.MaybeWrittenSpecs, and
@@ -172,51 +216,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO):
-    %
-    % Every possible path of execution in mercury_compile.m should call
-    % write_error_specs on the accumulated but not-yet-printed error_specs
-    % exactly once, just after the compiler has finished doing all the things
-    % that can generate error reports. This predicate is intended to manage
-    % the printing of error_specs before that point.
-    %
-    % If Verbose = no, then that call to write_error_specs should write out
-    % all at once all the error specifications accumulated until then.
-    % Being written out all at once, write_error_specs can sort them
-    % by context.
-    %
-    % If Verbose = yes, then keeping all the error messages until the end would
-    % be confusing, since we would be reporting that e.g. the program had type
-    % errors *before* printing the type error messages. In that case,
-    % we want to print (using maybe_write_out_errors) all the accumulated
-    % errors before each message to the user.
-    %
-    % This applies to *all* messages.
-    %
-    % - The calls to maybe_write_out_errors before a message that announces
-    %   the completion (and success or failure) of a phase should obviously
-    %   report the errors (if any) discovered by the phase.
-    %
-    % - The calls to maybe_write_out_errors before a message that announces
-    %   the phase the compiler is about to enter serve to write out any
-    %   messages from previous phases that have not yet been written out.
-    %
-    %   We could require each phase to write out the errors it discovers
-    %   when it finishes (if Verbose = yes, that is), but that would eliminate
-    %   any opportunity to group and sort together the error messages
-    %   of two or more adjacent phases that are *not* separated by a message
-    %   to the user even with Verbose = yes. Since the cost of calling
-    %   maybe_write_out_errors when there is nothing to print is so low
-    %   (a few dozen instructions), we can easily afford to incur it
-    %   unnecessarily once per compiler phase.
-    %
-:- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
-    globals::in, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
 :- pred record_bad_color_scheme(error_spec::in, io::di, io::uo) is det.
 
     % If we withheld some error information from the user (at the users'
@@ -255,6 +254,18 @@
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
+    (
+        Verbose = no
+    ;
+        Verbose = yes,
+        write_error_specs(Stream, Globals, !.Specs, !IO),
+        !:Specs = []
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -2484,18 +2495,6 @@ pop_stack_ignore_empty(Stack0, Stack) :-
         Stack = StackPrime
     else
         Stack = Stack0
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
-    (
-        Verbose = no
-    ;
-        Verbose = yes,
-        write_error_specs(Stream, Globals, !.Specs, !IO),
-        !:Specs = []
     ).
 
 %---------------------------------------------------------------------------%
