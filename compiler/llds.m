@@ -377,7 +377,7 @@
             % - or no, if this maximum value is not known at compile time.
             %
             % The info in this field is used to check the validity of an
-            % optimization performed on computed_gotos by peeohole.m.
+            % optimization performed on computed_gotos by peephole.m.
 
     ;       arbitrary_c_code(proc_affects_liveness, c_code_live_lvals, string)
             % Do whatever is specified by the string, which can be any piece
@@ -460,7 +460,7 @@
             % (a) increment NumLval by one, and
             % (b) store the aspects of the region relevant to FillOp
             %     in one or more consecutive memory locations starting at
-            %     AddrRval,  after which it will increment AddrRval
+            %     AddrRval, after which it will increment AddrRval
             %     by the number of words this uses.
             %
             % If the condition is false, the instruction will do nothing.
@@ -588,7 +588,7 @@
                 fproc_stack_slot_ref    :: maybe_refers_to_llds_stack,
                 fproc_maybe_dupl        :: proc_may_duplicate
             )
-            % foreign_proc_code(Decls, Components. MayCallMercury,
+            % foreign_proc_code(Decls, Components, MayCallMercury,
             %   FixNoLayout, FixLayout, FixOnlyLayout, NoFix, HashDef,
             %   StackSlotRef, MayBeDupl)
             %
@@ -612,12 +612,12 @@
             % fields.
             %
             % FixNoLayout may give the name of a label whose name is fixed
-            % because it embedded in raw C code, and which does not have
+            % because it is embedded in raw C code, and which does not have
             % a layout structure. FixLayout and FixOnlyLayout may give
             % the names of labels whose names are fixed because they *do*
             % have an associated label layout structure. The label in FixLayout
             % may appear in C code; the label in FixOnlyLayout argument may not
-            % (such a label may therefore may be deleted from the LLDS code
+            % (such a label may therefore be deleted from the LLDS code
             % if it is not referred to from anywhere else). The NoFix field
             % may give the name of a label that can be changed (because it is
             % not mentioned in C code and has no associated layout structure,
@@ -636,35 +636,35 @@
             % HashDef will always be no.
             %
             % StackSlotRef says whether the contents of the foreign_proc
-            % C code can refer to stack slots. User-written shouldn't refer
-            % to stack slots, the question is whether any compiler-generated
-            % C code does.
+            % C code can refer to stack slots. User-written code shouldn't
+            % refer to stack slots, the question is whether any
+            % compiler-generated C code does.
             %
             % MayBeDupl says whether this instruction may be duplicated
             % by jump optimization.
 
     ;       init_sync_term(lval, int, int)
             % Initialize a synchronization term, which is a continuous number
-            % of slots on the detstack.  The first argument contains the base
-            % address of the synchronization term.  The second argument
+            % of slots on the detstack. The first argument contains the base
+            % address of the synchronization term. The second argument
             % indicates how many branches we expect to join at the end of the
-            % parallel conjunction.  The third argument is an index into the
-            % threadscope string table.  The string that it refers to
+            % parallel conjunction. The third argument is an index into the
+            % threadscope string table. The string that it refers to
             % identifies this parallel conjunction within the source code.
             % (See the documentation in par_conj_gen.m and
             % runtime/mercury_context.{c,h} for further information about
             % synchronisation terms.)
 
     ;       fork_new_child(lval, label)
-            % Create a new spark. fork(SyncTerm, Child) creates spark, to begin
-            % execution at Child, where SyncTerm contains the base address of
-            % the synchronisation term. Control continues at the next
-            % instruction.
+            % Create a new spark. fork_new_child(SyncTerm, Child) creates a
+            % spark, to begin execution at Child, where SyncTerm contains the
+            % base address of the synchronisation term. Control continues at
+            % the next instruction.
 
     ;       join_and_continue(lval, label)
             % Signal that this thread of execution has finished in the current
             % parallel conjunct. For details of how we at the end of a parallel
-            % conjunct see runtime/mercury_context.{c,h}.
+            % conjunct, see runtime/mercury_context.{c,h}.
             % The synchronisation term is specified by the given lval.
             % The label gives the address of the code following the parallel
             % conjunction.
@@ -684,7 +684,7 @@
     ;       lc_spawn_off(rval, rval, label)
             % Spawn off an independent computation whose execution starts
             % at the given label and which will terminate by executing
-            % a join_and_terminate_lc instruction. The first rval should
+            % a lc_join_and_terminate instruction. The first rval should
             % hold the address of the loop control structure that controls
             % the spawned-off computation, and the second should hold
             % the index of the slot occupied by that computation.
@@ -694,7 +694,7 @@
 
     ;       lc_join_and_terminate(rval, rval).
             % Terminate the current context, which was spawned off by a
-            % spawn_off instruction. The first rval gives the address of
+            % lc_spawn_off instruction. The first rval gives the address of
             % the loop control structure, and the second is the index of
             % this goal's slot in it. These two rvals should be exactly
             % the same as the two rval arguments in the original lc_spawn_off
@@ -823,7 +823,7 @@
             ).
 
     % A foreign_proc_output represents the code that stores one of
-    % of the outputs for a foreign_proc_code instruction.
+    % the outputs for a foreign_proc_code instruction.
     %
 :- type foreign_proc_output
     --->    foreign_proc_output(
@@ -942,7 +942,7 @@
     %
 :- type liveinfo
     --->    live_lvalue(
-                % What location does this lifeinfo structure refer to?
+                % What location does this liveinfo structure refer to?
                 layout_locn,
 
                 % What is the type of this live value?
@@ -954,9 +954,9 @@
                 % may be found.
                 %
                 % We record all the locations of the typeinfo, in case
-                % different paths of arriving a this program point leave
+                % different paths of arriving at this program point leave
                 % the typeinfo in different sets of locations. However,
-                % there must be at least type_info location that is valid
+                % there must be at least one type_info location that is valid
                 % along all paths leading to this point.
                 map(tvar, set(layout_locn))
             ).
@@ -1039,7 +1039,7 @@
     %
 :- func stack_slot_num_to_lval(main_stack, int) = lval.
 
-    % stack_slot_num_to_lval(StackId, N):
+    % stack_slot_num_to_lval_ref(StackId, N):
     %
     % Return an rval for the address of slot N in a stack frame on StackId.
     %
@@ -1126,7 +1126,7 @@
 
     ;       succfr_slot(rval)
             % The succfr slot of the specified nondet stack frame; holds the
-            % address of caller's nondet stack frame.  On successful exit
+            % address of the caller's nondet stack frame. On successful exit
             % from this nondet procedure, we will set curfr to this value.
 
     ;       redoip_slot(rval)
@@ -1275,7 +1275,7 @@
             % the start of the given data_id.
 
     % A data_id is an lval representing the given variable or array slot.
-    % Most references to the data_ref will want to take the address of this
+    % Most references to the data_id will want to take the address of this
     % lval (by sticking a & in front of it), but in a few situations we need
     % to be able to refer to the lval itself. One of those situations is when
     % we are defining the variable. Another is when the variable is an array,
