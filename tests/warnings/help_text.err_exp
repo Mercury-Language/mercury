@@ -829,7 +829,7 @@ Diagnostics options
         number is in one of the specified ranges. The minimum or maximum line
         number in each range may be omitted, in which case the range has no
         lower or upper bound respectively. Multiple `--limit-error-context'
-        options accumulate. If more than one `--limit-error-context' option is
+        options accumulate. If more than one `--limit-error-contexts' option is
         given for the same file, only the last one will have an effect. If the
         file name and colon are missing, the limit will apply to all files.
 
@@ -1376,7 +1376,7 @@ Warning options
 
     --no-halt-at-invalid-interface
         This option operates when the compiler is invoked with the
-        `--make--interface' option to generate `.int' and `.int2' files for one
+        `--make-interface' option to generate `.int' and `.int2' files for one
         or more modules. In its default setting, `--halt-at-invalid-interface',
         it causes the compiler to check the consistency of those parts of each
         of those modules that are intended to end up in the `.int' and `.int2'
@@ -1579,7 +1579,7 @@ Preparing code for mdb debugging
         deduce it from the values of the other annotations.
 
     PRIVATE OPTION
-    --suppress-trace suppress-items,
+    --suppress-trace suppress-items
         Suppress the named aspects of the execution tracing system.
 
     --no-delay-death
@@ -4213,12 +4213,12 @@ Options for developers only
     PRIVATE OPTION
     --no-type-ctor-layout
         Do not generate type_ctor_layout structures. For measurement only; if
-        you turn this off, then you will not to be able to link.
+        you turn this off, then you will not be able to link.
 
     PRIVATE OPTION
     --no-type-ctor-functors
         Do not generate type_ctor_functors structures. For measurement only; if
-        you turn this off, then you will not to be able to link.
+        you turn this off, then you will not be able to link.
 
     PRIVATE OPTION
     --no-rtti-line-numbers

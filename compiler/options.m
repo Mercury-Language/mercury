@@ -10,11 +10,11 @@
 % File: options.m.
 % Main author: zs.
 %
-% This modules defines the set of options accepted by the Mercury compiler.
+% This module defines the set of options accepted by the Mercury compiler.
 %
 % NOTE: any changes to the options should be reflected in two places,
 %
-% = the option type, and
+% - the option type, and
 % - the optdb predicate.
 %
 % The order of the options must be the same in both places, and this is
@@ -38,8 +38,8 @@
 % The list of long names (of the form "--option-name") as well as any
 % short names (of the form "-x") of each option are listed in its optdb clause.
 %
-% For options whose long names include words that whose spelling differs
-% in American vs British English, there should normally be one long name
+% For options whose long names include words whose spelling differs in
+% American vs British English, there should normally be one long name
 % for each spelling.
 %
 % If the full option name is long enough that typing it is burdensome,
@@ -50,7 +50,7 @@
 %
 % - the non-abbreviated names should come before the abbreviated ones, and
 % - the versions using American spelling should come before the British ones.
-
+%
 % We have standardized on "directory" over "dir" as argument name.
 % We have standardized on "filename" over "file" as argument name.
 % We have standardized on "N" over "n" as argument name.
@@ -2388,7 +2388,7 @@ optdb(oc_diag_gen,  limit_error_contexts,              accumulating([]),
         w("The minimum or maximum line number in each range may be omitted,"),
         w("in which case the range has no lower or upper bound respectively."),
         w("Multiple"), opt("--limit-error-context"), w("options accumulate."),
-        w("If more than one"), opt("--limit-error-context"),
+        w("If more than one"), opt("--limit-error-contexts"),
         w("option is given for the same file,"),
         w("only the last one will have an effect."),
         w("If the file name and colon are missing, the limit will apply"),
@@ -3070,7 +3070,7 @@ optdb(oc_warn_halt, halt_at_invalid_interface,         bool(yes),
     % --halt-at-invalid-interface is a temporary developer-only option.
     help("halt-at-invalid-interface", [
         w("This option operates when the compiler is invoked with the"),
-        opt("--make--interface"), w("option to generate"),
+        opt("--make-interface"), w("option to generate"),
         file(".int"), w("and"), file(".int2"), w("files"),
         w("for one or more modules. In its default setting,"),
         opt("--halt-at-invalid-interface", ","),
@@ -3334,7 +3334,7 @@ optdb(oc_mdb_dev,   suppress_trace,                    string(""),
     % Force no tracing, even in .debug grades. This is used to turn off
     % tracing in the browser directory while still allowing the browser
     % library to be linked in with an executable compiled in a .debug grade.
-    priv_arg_help("suppress-trace", "suppress-items,", [
+    priv_arg_help("suppress-trace", "suppress-items", [
         w("Suppress the named aspects of the execution tracing system.")])).
 optdb(oc_mdb,       delay_death,                       bool(yes),
     help("delay-death", [
@@ -3404,7 +3404,7 @@ optdb(oc_opt_ctrl,  opt_level,                         int_special,
         cindex("Optimization levels"),
         cindex("Compilation speed"),
         cindex("Intermodule optimization"),
-        cindex("Cross-mrmodule optimization"),
+        cindex("Cross-module optimization"),
         w("Set optimization level to"), arg("N", "."),
         w("Optimization level -1 means no optimization"),
         w("while optimization level 6 means full optimization."),
@@ -5301,7 +5301,7 @@ optdb(oc_config,    have_delay_slot,                   bool(no),
 optdb(oc_config,    num_real_r_regs,                   int(5),
     arg_help("num-real-r-regs", "N", [
         w("Assume registers"), bare_arg("r1"), w("up to"), bare_arg("rN"),
-        w("are real (i.e. not virtual)  general purpose registers."),
+        w("are real (i.e. not virtual) general purpose registers."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_config,    num_real_f_regs,                   int(0),
@@ -5336,7 +5336,7 @@ optdb(oc_config,    max_jump_table_size,               int(0),
 
 %---------------------------------------------------------------------------%
 
-    % Options reserved form Mercury.config files.
+    % Options reserved for Mercury.config files.
 
 optdb(oc_mconfig,   mkinit_command,                    string("mkinit"),
     priv_arg_help("mkinit-command", "command", [])).
@@ -6165,12 +6165,12 @@ optdb(oc_internal,  type_ctor_layout,                  bool(yes),
     priv_help("type-ctor-layout", [
         w("Do not generate type_ctor_layout structures."),
         w("For measurement only;"),
-        w("if you turn this off, then you will not to be able to link.")])).
+        w("if you turn this off, then you will not be able to link.")])).
 optdb(oc_internal,  type_ctor_functors,                bool(yes),
     priv_help("type-ctor-functors", [
         w("Do not generate type_ctor_functors structures."),
         w("For measurement only;"),
-        w("if you turn this off, then you will not to be able to link.")])).
+        w("if you turn this off, then you will not be able to link.")])).
 optdb(oc_internal,  rtti_line_numbers,                 bool(yes),
     priv_help("rtti-line-numbers", [
         w("Generate line number information in the RTTI when debugging is"),

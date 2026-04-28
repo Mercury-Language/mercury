@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2025 The Mercury team.
+% Copyright (C) 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 % Variable arity types:
 %
 % There is a slight variation on this for variable-arity type constructors, of
-% there are exactly three: pred, func and tuple. Typeinfos of these types
+% which there are exactly three: pred, func and tuple. Typeinfos of these types
 % always have a pointer to the pred/0, func/0 or tuple/0 type_ctor_info,
 % regardless of their true arity, so we store the real arity in the type_info
 % as well.

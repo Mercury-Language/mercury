@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% File: polymorphism_clause.m.
+% File: polymorphism_goal.m.
 % Main authors: fjh and zs.
 %
 % This module handles the part of the polymorphism transformation
@@ -144,7 +144,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 % *may* rely on the changes to the varmaps made by the
                 % last conjunct. (In fact, it could rely on the changes
                 % made by any conjunct, but we throw away the changes
-                % made by all conjuncts except the last.
+                % made by all conjuncts except the last.)
             ),
             GoalExpr = conj(ConjType, Goals)
         ;
@@ -684,7 +684,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
     % for arguments which are not in the nonlocals set of the lambda goal,
     % i.e. unused arguments, is necessary only if typeinfo_liveness is set,
     % but we do it always, since we don't have the options available here,
-    % and the since cost is pretty minimal.
+    % and since the cost is pretty minimal.
     %
     % We also need to include in the nonlocals set of the lambda expression
     % any type_info and/or typeclass_info variables we have added to the
