@@ -471,9 +471,14 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
         % interface.
         Implements = [ml_java_mercury_type_interface]
     ;
-        ( Target = ml_target_c
-        ; Target = ml_target_csharp
-        ),
+        Target = ml_target_csharp,
+        % All C# classes corresponding to discriminated-union types
+        % implement the MR_DuTerm interface, so library/rtti_implementation.m
+        % can walk their fields without System.Reflection (mer_std must
+        % stay AOT/trim compatible).
+        Implements = [ml_csharp_mr_du_term_interface]
+    ;
+        Target = ml_target_c,
         Implements = []
     ),
 
@@ -522,7 +527,15 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
         EmptyBaseClasses = no,
         Inherits = inherits_nothing
     ),
-    Implements = [],
+    (
+        Target = ml_target_csharp,
+        Implements = [ml_csharp_mr_du_term_interface]
+    ;
+        ( Target = ml_target_c
+        ; Target = ml_target_java
+        ),
+        Implements = []
+    ),
     Ctors = [],
 
     % Type parameters are only used by the Java backend, which doesn't use
@@ -692,7 +705,15 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
             )
         ),
         Imports = [],
-        Implements = [],
+        (
+            Target = ml_target_csharp,
+            Implements = [ml_csharp_mr_du_term_interface]
+        ;
+            ( Target = ml_target_c
+            ; Target = ml_target_java
+            ),
+            Implements = []
+        ),
         get_type_defn_tparams(TypeDefn, TypeParams),
 
         % Put it all together.

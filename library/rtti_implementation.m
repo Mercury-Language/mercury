@@ -3786,67 +3786,16 @@ get_subterm(_, _, _, _, _, _, -1) :-
         DuFunctorDesc functor_desc,
         int index, int num_extra_args)
     {
-        TypeCtorInfo_Struct base_tc = type_info.type_ctor.type_ctor_base;
-        string field_name;
-
-        if (base_tc != null) {
-            // For subtypes, we need to get the corresponding DuFunctorDesc
-            // from the base type ctor.
-            DuFunctorDesc base_functor_desc =
-                ML_get_functor_desc_by_tags(base_tc,
-                    functor_desc.du_functor_primary,
-                    functor_desc.du_functor_secondary);
-            field_name =
-                ML_get_field_name_by_index(base_functor_desc,
-                    index, num_extra_args);
-        } else {
-            field_name =
-                ML_get_field_name_by_index(functor_desc,
-                    index, num_extra_args);
-        }
-
-        return ML_get_subterm_by_field_name(term, field_name);
-    }
-
-    private static DuFunctorDesc
-    ML_get_functor_desc_by_tags(TypeCtorInfo_Struct base_tc,
-        byte ptag, int sectag)
-    {
-        DuPtagLayout ptag_layout = base_tc.index_or_search_ptag_layout(ptag);
-        if (sectag == -1) {
-            sectag = 0;
-        }
-        return ptag_layout.index_or_search_sectag_functor(sectag);
-    }
-
-    private static string
-    ML_get_field_name_by_index(DuFunctorDesc functor_desc,
-        int index, int num_extra_args)
-    {
-        // Look up the field name if it exists, otherwise recreate the field
-        // name that would have been used.
-        string field_name = null;
-        if (functor_desc.du_functor_arg_names != null) {
-            field_name = functor_desc.du_functor_arg_names[index];
-        }
-        if (field_name != null) {
-            field_name = ML_name_mangle(field_name);
-        } else {
-            // The F<i> field variables are numbered from 1.
-            int i = 1 + index + num_extra_args;
-            field_name = ""F"" + i;
-        }
-        return field_name;
-    }
-
-    private static object
-    ML_get_subterm_by_field_name(object term, string field_name)
-    {
-        System.Reflection.FieldInfo f = term.GetType().GetField(field_name);
-        if (f == null) {
-            throw new System.Exception(""no such field: "" + field_name);
-        }
-        return f.GetValue(term);
+        // The MR_DuTerm interface (implemented by every C# class
+        // generated from a Mercury DU type ctor) gives us indexed
+        // positional-field access without System.Reflection. The
+        // term's runtime type carries its own MR_GetField switch,
+        // so we no longer need to reconstruct the field name from
+        // the functor descriptor (and so the subtype redirection
+        // through type_ctor_base is also unnecessary -- subtypes
+        // share the same C# class as their base type).
+        return ((mercury.runtime.MR_DuTerm) term).MR_GetField(
+            num_extra_args + index);
     }
 ").
 
@@ -4136,7 +4085,7 @@ get_primary_tag(_) = 0u8 :-
     get_remote_secondary_tag(X::in) = (Tag::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Tag = (int) X.GetType().GetField(""data_tag"").GetValue(X);
+    Tag = ((mercury.runtime.MR_DuTerm) X).MR_GetSecondaryTag();
 ").
 :- pragma foreign_proc("Java",
     get_remote_secondary_tag(X::in) = (Tag::out),
@@ -4440,13 +4389,8 @@ get_type_info_from_term(_, _) = _ :-
     if (Term is object[]) {
         TypeInfo = (runtime.TypeInfo_Struct) ((object[]) Term)[Index];
     } else {
-        // The F<i> field variables are numbered from 1.
-        string fieldName = ""F"" + (1 + Index);
-        System.Reflection.FieldInfo f = Term.GetType().GetField(fieldName);
-        if (f == null) {
-            throw new System.Exception(""no such field: "" + fieldName);
-        }
-        TypeInfo = (runtime.TypeInfo_Struct) f.GetValue(Term);
+        TypeInfo = (runtime.TypeInfo_Struct)
+            ((mercury.runtime.MR_DuTerm) Term).MR_GetField(Index);
     }
 ").
 
@@ -4485,13 +4429,8 @@ get_typeclass_info_from_term(_, _) = _ :-
     if (Term is object[]) {
         TypeClassInfo = /*typeclass_info*/ (object[]) ((object[]) Term)[Index];
     } else {
-        // The F<i> field variables are numbered from 1.
-        string fieldName = ""F"" + (1 + Index);
-        System.Reflection.FieldInfo f = Term.GetType().GetField(fieldName);
-        if (f == null) {
-            throw new System.Exception(""no such field: "" + fieldName);
-        }
-        TypeClassInfo = /*typeclass_info*/ (object[]) f.GetValue(Term);
+        TypeClassInfo = /*typeclass_info*/ (object[])
+            ((mercury.runtime.MR_DuTerm) Term).MR_GetField(Index);
     }
 ").
 

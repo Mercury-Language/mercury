@@ -351,6 +351,35 @@ public enum TypeCtorRep {
     MR_TYPECTOR_REP_MAX                     = 56
 }
 
+// Interface implemented by every C# class generated from a Mercury
+// discriminated-union type ctor (and its functor sub-classes). It lets
+// the standard library walk a term's positional fields and read its
+// secondary tag without resorting to System.Reflection, so mer_std
+// stays compatible with the .NET trim/AOT toolchain (no IL2075).
+//
+// See csharp-aot-rtti-plan.md at the repo root for the design.
+public interface MR_DuTerm {
+    // Get the i-th positional field of this term.
+    //   F1 is index 0, F2 is index 1, ...
+    // Boxed for primitive-typed fields. Out-of-range index throws.
+    object MR_GetField(int index);
+
+    // Number of positional F1..Fn fields on this term, *including* any
+    // leading typeinfo / typeclassinfo poly-arg fields.
+    int    MR_GetFieldCount();
+
+    // Secondary tag value on this term, or -1 if the term carries
+    // no secondary tag.
+    int    MR_GetSecondaryTag();
+
+    // Deep-copy this term: clone the object (preserving its runtime
+    // type) and replace every positional field with the result of
+    // applying deepCopyFn to it. The fn is the recursive deep-copy
+    // entry point in library/builtin.m so that nested DU terms,
+    // tuples, arrays, and primitives are all copied consistently.
+    object MR_DeepCopy(System.Func<object, object> deepCopyFn);
+}
+
 public class PseudoTypeInfo {
     public readonly int variable_number;
 
