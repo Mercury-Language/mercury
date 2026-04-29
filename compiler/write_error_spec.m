@@ -96,8 +96,7 @@
     % add them back to !:MaybeWrittenSpecs as already_written specs.
     %
 :- pred write_not_yet_written_specs(io.text_output_stream::in, globals::in,
-    list(maybe_written_spec)::in, list(maybe_written_spec)::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -270,44 +269,17 @@ maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
 %---------------------------------------------------------------------------%
 
 write_not_yet_written_specs(Stream, Globals, !MaybeWrittenSpecs, !IO) :-
-    categorize_maybe_written_specs(!.MaybeWrittenSpecs,
-        [], AlreadyWritten0, [], ToBeWritten0),
-    write_error_specs_return_std(Stream, Globals,
-        ToBeWritten0, NowWrittenStd, !IO),
-    NowWritten = list.map((func(S) = already_written_spec(S)), NowWrittenStd),
-    !:MaybeWrittenSpecs = AlreadyWritten0 ++ NowWritten.
-
-:- pred categorize_maybe_written_specs(list(maybe_written_spec)::in,
-    list(maybe_written_spec)::in, list(maybe_written_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-categorize_maybe_written_specs([], !AlreadyWritten, !ToBeWritten).
-categorize_maybe_written_specs([MaybeWritten | MaybeWrittens],
-        !AlreadyWritten, !ToBeWritten) :-
-    (
-        MaybeWritten = already_written_spec(_StdSpec),
-        !:AlreadyWritten = [MaybeWritten | !.AlreadyWritten]
-    ;
-        MaybeWritten = to_be_written_spec(Spec),
-        !:ToBeWritten = [Spec | !.ToBeWritten]
-    ),
-    categorize_maybe_written_specs(MaybeWrittens,
-        !AlreadyWritten, !ToBeWritten).
+    !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten0),
+    write_error_specs(Stream, Globals, ToBeWritten0, !IO),
+    AlreadyWritten = ToBeWritten0 ++ AlreadyWritten0,
+    !:MaybeWrittenSpecs = maybe_written_specs([], AlreadyWritten).
 
 %---------------------------------------------------------------------------%
 
 write_error_spec(Stream, Globals, Spec, !IO) :-
-    write_error_specs_return_std(Stream, Globals, [Spec], _StdSpecs, !IO).
+    write_error_specs(Stream, Globals, [Spec], !IO).
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
-    write_error_specs_return_std(Stream, Globals, Specs0, _StdSpecs, !IO).
-
-%---------------------%
-
-:- pred write_error_specs_return_std(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, list(std_error_spec)::out, io::di, io::uo) is det.
-
-write_error_specs_return_std(Stream, Globals, Specs0, StdSpecs, !IO) :-
     standardize_error_specs(Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),

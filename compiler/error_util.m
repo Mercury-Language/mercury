@@ -93,36 +93,31 @@
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_written_spec
-    --->    to_be_written_spec(error_spec)
-    ;       already_written_spec(std_error_spec).
-            % Sometimes we want to both
-            %
-            % - print an error_spec just after it is generated, and
-            % - also return it to inform decisions about the presence
-            %   of errors.
-            %
-            % To prevent the caller from writing out a duplicate copy
-            % of the error_spec, we can return it wrapped up
-            % in this function symbol, which
-            %
-            % - preserves its severity (for decisions),
-            % - preserves its text (which may be helpful when debugging
-            %   the code that makes those decision),
-            % - but which write_error_spec.m knows to ignore.
-            %
-            % An alternative design would create a new type, called maybe
-            % gen_error_spec, which contains error_spec's three function
-            % symbols *and* already_printed_spec, and make error_spec
-            % a subtype of this new type. This design works (I, zs, have
-            % tested it), but it makes references to error_spec's three
-            % function symbols ambiguous, since their type can be either
-            % error_spec or gen_error_spec. In most cases, the surrounding
-            % context resolves the ambiguity, but in some cases, it does not.
+    % Sometimes we want to both
+    %
+    % - print an error_spec just after it is generated, and
+    % - also return it to inform decisions about the presence of errors.
+    %
+    % To prevent the caller from writing out a duplicate copy of an
+    % error_spec, we can move it to the already_written field. This
+    %
+    % - preserves its severity (for decisions),
+    % - preserves its text (which may be helpful when debugging
+    %   the code that makes those decision),
+    % - but which write_error_spec.m knows to ignore.
+    %
+:- type maybe_written_specs
+    --->    maybe_written_specs(
+                to_be_written       :: list(error_spec),
+                already_written     :: list(error_spec)
+            ).
 
-:- func maybe_written_spec_to_spec(maybe_written_spec) = error_spec.
-:- func maybe_written_specs_to_specs(list(maybe_written_spec))
-    = list(error_spec).
+:- func init_maybe_written_specs = maybe_written_specs.
+
+:- pred add_to_be_written_specs(list(error_spec)::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
+
+:- func maybe_written_specs_to_specs(maybe_written_specs) = list(error_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -436,16 +431,16 @@ contains_errors_or_warnings_treated_as_errors_opt_table(OptionTable, Specs)
 
 %---------------------------------------------------------------------------%
 
-maybe_written_spec_to_spec(MaybeWrittenSpec) = Spec :-
-    (
-        MaybeWrittenSpec = to_be_written_spec(Spec)
-    ;
-        MaybeWrittenSpec = already_written_spec(StdSpec),
-        Spec = coerce(StdSpec)
-    ).
+init_maybe_written_specs = maybe_written_specs([], []).
+
+add_to_be_written_specs(Specs, !MaybeWrittenSpecs) :-
+    !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten),
+    ToBeWritten = Specs ++ ToBeWritten0,
+    !:MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten).
 
 maybe_written_specs_to_specs(MaybeWrittenSpecs) = Specs :-
-    Specs = list.map(maybe_written_spec_to_spec, MaybeWrittenSpecs).
+    MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten),
+    Specs = ToBeWritten ++ AlreadyWritten.
 
 %---------------------------------------------------------------------------%
 
