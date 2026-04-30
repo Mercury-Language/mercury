@@ -103,7 +103,7 @@
     %
     % - preserves its severity (for decisions),
     % - preserves its text (which may be helpful when debugging
-    %   the code that makes those decision),
+    %   the code that makes one of those decisions),
     % - but which write_error_spec.m knows to ignore.
     %
 :- type maybe_written_specs
