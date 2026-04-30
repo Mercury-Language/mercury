@@ -404,7 +404,7 @@ to give modules that import a type
 information about the representation of that type.
 <li>
 parse_class.m parses typeclass and instance declarations,
-as well as typeclass and inst constraints on other declaration
+as well as typeclass and inst constraints on other declarations
 (such as predicate declarations).
 <li>
 parse_pragma.m parses pragma declarations.
@@ -422,7 +422,7 @@ parse_mutable.m parses initialize, finalize and mutable declarations.
 <li>
 parse_sym_name.m parses symbol names.
 <li>
-parse_error.m defines the types that represents the possible outcomes
+parse_error.m defines the types that represent the possible outcomes
 of parsing a source file.
 <li>
 parse_goal_util.m, parse_util.m and parse_types.m
@@ -461,7 +461,7 @@ parts of the parse tree.
 parse_tree_out_info.m defines the structure
 that stores the options used by all of the above modules.
 <li>
-parse_tree_output defines the pt_output typeclass and its instances,
+parse_tree_output.m defines the pt_output typeclass and its instances,
 also for use by all of the above modules.
 </ul>
 
@@ -648,7 +648,7 @@ We do most, though not all, forms of module qualification
 on programs when they are represented as parse trees.
 This means that we add module qualifiers to all types, insts and modes,
 check that every referred-to type, inst and mode actually exists,
-and that there is only possible match.
+and that there is only one possible match.
 This is done in the parse_tree package because it must be done
 before the `.int' and `.int2' interface files are written.
 This code also checks whether imports are really needed in the interface.
@@ -698,7 +698,7 @@ are module qualified during mode analysis.
 </ul>
 
 <p>
-The parse tree module also contains equiv_type_parse_tree.m,
+The parse_tree package also contains equiv_type_parse_tree.m,
 which orchestrates
 the expansion of equivalence types in all parse tree components,
 and also propagates the information
@@ -868,7 +868,7 @@ about the properties of predicates and functions.
 hlds_module.m defines the top-level parts of the HLDS,
 including the type module_info.
 <li>
-status.m defines the type that record the import/export status
+status.m defines the type that records the import/export status
 of entities such as types, insts, modes, and predicates.
 <li>
 vartypes.m defines the data structure that maps each variable to its type.
@@ -876,7 +876,7 @@ New code should use var_table.m in all passes after typechecking.
 <li>
 var_table.m defines the data structure that maps each variable
 to its name, type, and an indication of whether that type is a dummy type.
-var_table.m itself is part of the parse_tree module
+var_table.m itself is part of the parse_tree package
 (because some of its uses occur before the construction of the HLDS),
 so the operations on var_tables that need access to the HLDS
 are in var_table_hlds.m.
@@ -916,7 +916,7 @@ The submodules of the hlds_out.m package
 contain predicates to dump the HLDS to a file.
 These predicates print all the information the compiler has
 about each part of the HLDS.
-The module hlds_desc.m, by contrast contains predicates
+The module hlds_desc.m, by contrast, contains predicates
 that describe some parts of the HLDS (e.g. goals) with brief strings,
 suitable for use in progress messages used for debugging.
 <p>
@@ -1075,7 +1075,7 @@ and checks that each abstract instance has a corresponding typeclass instance.
 inst_check.m checks that all user defined bound insts are consistent
 with at least one type in scope
 (i.e. that the set of function symbols in the bound list for the inst
-are a subset of the allowed function symbols for at least one type in scope).
+is a subset of the allowed function symbols for at least one type in scope).
 The compiler generates a warning if it finds any user defined bound inst
 that is not consistent with any of the types in scope.
 <li>
@@ -1089,7 +1089,7 @@ headvar_names.m tries to replace
 compiler-generated names of the form HeadVar__n
 with actual names given by the programmer.
 <p>
-For efficiency, this phase not a standalone pass,
+For efficiency, this phase is not a standalone pass,
 but is instead invoked by pre_typecheck.m.
 <li>
 The type checker consists of several modules.
@@ -1200,7 +1200,7 @@ purity.m is responsible for purity checking,
 as well as defining the <code>purity</code> type
 and a few public operations on it.
 It also does some tasks that are logically part of typechecking
-but which cannot be done until after the main part typechecking is complete.
+but which cannot be done until after the main part of typechecking is complete.
 (This is separate from the work done by post_typecheck.m.)
 purity.m also does two other miscellaneous tasks.
 The first is the elimination of double negations;
@@ -1276,7 +1276,7 @@ and a whole bunch of service modules.
     the changes in instantiatedness of each variable over that goal,
     and does the analysis of several kinds of goals.
     <li>
-    modecheck_conj.m is the submodule which analyses conjunctions
+    modecheck_conj.m is the submodule which analyses conjunctions.
     It reorders code as necessary.
     <li>
     modecheck_unify.m is the submodule which analyses unifications.
@@ -1443,7 +1443,7 @@ The indexing and determinism analysis system also consists of several modules.
     find_bind_var.m looks for deconstructions
     of a specific variable in a specific disjunct.
     (It is used, at least for now,
-    by cse_detection.m as well as switch_detection.m)
+    by cse_detection.m as well as switch_detection.m.)
     <li>
     switch_candidates.m tests whether
     a disjunction can be considered a switch on a given variable,
@@ -1529,7 +1529,7 @@ simplify.m is a package of submodules.
     <li>
     simplify_goal_disj.m handles disjunctions (and atomic goals).
     It eliminates unnecessary disjunction wrappers,
-    and transforms semidet disjunctions into if-then-elses if this possible.
+    and transforms semidet disjunctions into if-then-elses if this is possible.
     <li>
     simplify_goal_ite.m handles if-then-elses (and negations).
     It warns about if-then-elses in which
@@ -1538,16 +1538,16 @@ simplify.m is a package of submodules.
     <li>
     simplify_goal_switch.m handles switches.
     It eliminates switch arms that do nothing but fail,
-    as well switch arms that cannot be reached
+    as well as switch arms that cannot be reached
     (due to the arm being for function symbols that,
     according to its initial instantiation state,
-    the variable being switched on cannot be bound to),
+    the variable being switched on cannot be bound to).
     It also eliminates switches that have no arms left.
     <li>
     simplify_goal_scope.m handles scope goals.
     It eliminates unnecessary nested scopes,
     replaces from_ground_term_construct scopes
-    with a single assignment unifications referencing
+    with a single assignment unification referencing
     a constant structure in a constant structure database
     (to eliminate the need for any later passes to traverse the scope),
     and evaluates compile-time conditions on trace goals,
@@ -1617,7 +1617,7 @@ the exported or nonexported predicates and functions
 have one order for their declarations
 and a different order for their definitions.
 <li>
-xml_documentation.m outputs a XML representation
+xml_documentation.m outputs an XML representation
 of all the declarations in the module.
 This XML representation is designed to be transformed via XSL
 into more human readable documentation.
@@ -1744,7 +1744,7 @@ The modules involved in the second system are:
     term_constr_errors.m generates error messages for termination problems.
     </ul>
 <li>
-trailing_analysis.m pass annotates each module with information
+Trailing analysis (trailing_analysis.mi) annotates each module with information
 about whether the procedures in the module modify the trail or not.
 This information can be used to avoid redundant trailing operations.
 <li>
@@ -1792,7 +1792,7 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 The modules in the higher_order package
 (which is a subpackage of the transform_hlds package)
 specialize higher-order and polymorphic predicates
-in contexts where the value of the relevant
+in contexts where the values of the relevant
 higher-order, type_info, and/or typeclass_info arguments are known.
     <ul>
     <li>
@@ -1969,7 +1969,7 @@ that
     analyses programs looking for memory allocations with similar lifetimes,
     with each such set of memory allocations being grouped into a region,
     <li>
-    puts annotates on those allocations that tell the code generator
+    puts annotations on those allocations that tell the code generator
     to get the new memory from the allocation's region, and
     <li>
     adds operations to allocate the regions themselves
@@ -2434,7 +2434,7 @@ ml_lookup_switch.m, ml_string_switch.m, ml_tag_switch.m,
 and ml_simplify_switch.m
 (which do the same jobs as their LLDS equivalents)
 and switch_util.m in the backend_libs.m package
-(since it is also used by LLDS back-end).
+(since it is also used by the LLDS back-end).
 <li>
 ml_accurate_gc.m handles provisions for accurate garbage collection.
 </ul>
