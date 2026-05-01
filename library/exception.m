@@ -814,7 +814,7 @@ catch_impl(Pred, Handler, T) :-
         exception.ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
-        ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
+        exception.invoke_cont(cont, T, cont_env_ptr);
     }
 
     // Not really used.
@@ -835,7 +835,7 @@ catch_impl(Pred, Handler, T) :-
         exception.ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
-        ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
+        exception.invoke_cont(cont, T, cont_env_ptr);
     }
 
     // Not really used.
@@ -1448,6 +1448,26 @@ public class SsdbHooks {
 }
 
 public static SsdbHooks ssdb_hooks = new SsdbHooks();
+
+// Invoke a multi/nondet continuation without a generic-delegate cast.
+//
+// The compiler generates continuations as MethodPtr2_r0<ConcreteT, object>
+// where ConcreteT is the instantiated output type (e.g. Exception_result_1).
+// The catch_impl foreign_proc only knows the continuation as 'object', and
+// MethodPtr2_r0 delegates are invariant, so a direct cast to
+// MethodPtr2_r0<object, object> throws InvalidCastException.
+//
+// Unsafe.As<T>(object) is a JIT intrinsic (zero-overhead, AOT-safe) that
+// reinterprets the reference without a runtime type check.  This is sound
+// because (a) all Mercury type parameters are boxed reference types, so the
+// calling convention is identical, and (b) the value passed as the first
+// argument always has the correct runtime type.
+[System.Runtime.CompilerServices.MethodImpl(
+    System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+private static void invoke_cont(object cont, object arg, object env) {
+    System.Runtime.CompilerServices.Unsafe
+        .As<runtime.MethodPtr2_r0<object, object>>(cont)(arg, env);
+}
 ").
 
 %---------------------------------------------------------------------------%
