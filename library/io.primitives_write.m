@@ -1035,22 +1035,35 @@ do_write_float(Stream, Float, Error, !IO) :-
 "
     mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     try {
-        // See mercury_print_string().
-        System.IO.TextWriter w = mf.writer;
-        if (Character == '\\n') {
-            switch (mf.line_ending) {
-            case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
-            case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
+        if (mf.writer == null) {
+            // Binary stream: write UTF-8 bytes directly.
+            if (Character == '\\n') {
+                mf.stream.WriteByte(0x0A);
+                mf.line_number++;
+            } else {
+                mercury.io__primitives_write
+                    .mercury_write_codepoint_to_stream(
+                        mf.stream, Character);
+            }
+        } else {
+            // See mercury_print_string().
+            System.IO.TextWriter w = mf.writer;
+            if (Character == '\\n') {
+                switch (mf.line_ending) {
+                case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
+                case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
+                    mercury.io__primitives_write.mercury_write_codepoint(w,
+                        Character);
+                    break;
+                case mercury.io__stream_ops.ML_line_ending_kind.ML_OS_line_ending:
+                    w.WriteLine("""");
+                    break;
+                }
+                mf.line_number++;
+            } else {
                 mercury.io__primitives_write.mercury_write_codepoint(w,
                     Character);
-                break;
-            case mercury.io__stream_ops.ML_line_ending_kind.ML_OS_line_ending:
-                w.WriteLine("""");
-                break;
             }
-            mf.line_number++;
-        } else {
-            mercury.io__primitives_write.mercury_write_codepoint(w, Character);
         }
         Error = null;
     } catch (System.SystemException e) {
@@ -1201,8 +1214,18 @@ mercury_write_codepoint(System.IO.TextWriter w, int c)
     if (c <= 0xffff) {
         w.Write((char) c);
     } else {
-        w.Write(System.Char.ConvertFromUtf32(c));
+        w.Write(new System.Text.Rune(c).ToString());
     }
+}
+
+// Write a single Unicode code point as UTF-8 bytes to a binary stream.
+public static void
+mercury_write_codepoint_to_stream(System.IO.Stream s, int c)
+{
+    System.Text.Rune rune = new System.Text.Rune(c);
+    System.Span<byte> buf = stackalloc byte[4];
+    int written = rune.EncodeToUtf8(buf);
+    s.Write(buf.Slice(0, written));
 }
 
 // Any changes here should also be reflected in the code for io.write_char,
@@ -1211,6 +1234,20 @@ mercury_write_codepoint(System.IO.TextWriter w, int c)
 public static void
 mercury_print_string(mercury.io__stream_ops.MR_MercuryFileStruct mf, string s)
 {
+    if (mf.writer == null) {
+        // Binary stream: encode to UTF-8 and write directly to mf.stream.
+        // This avoids dual-buffering between StreamWriter and
+        // BufferedStream which causes position desync.
+        byte[] bytes = mercury.io__stream_ops.text_encoding.GetBytes(s);
+        mf.stream.Write(bytes, 0, bytes.Length);
+        for (int i = 0; i < s.Length; i++) {
+            if (s[i] == '\\n') {
+                mf.line_number++;
+            }
+        }
+        return;
+    }
+
     switch (mf.line_ending) {
     case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
     case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:

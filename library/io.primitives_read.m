@@ -874,6 +874,36 @@ mercury_get_byte(MercuryFilePtr mf)
 
 private static readonly string NewLine = System.Environment.NewLine;
 
+// Read a single UTF-8 encoded code point directly from a binary stream.
+// Returns -1 on EOF; throws on truncated or invalid UTF-8.
+private static int
+mercury_read_utf8_codepoint(System.IO.Stream s)
+{
+    int b0 = s.ReadByte();
+    if (b0 == -1) return -1;
+    if (b0 <= 0x7F) return b0;
+
+    int seqLen;
+    int acc;
+    if (b0 < 0xE0)      { seqLen = 2; acc = b0 & 0x1F; }
+    else if (b0 < 0xF0) { seqLen = 3; acc = b0 & 0x0F; }
+    else                 { seqLen = 4; acc = b0 & 0x07; }
+
+    for (int i = 1; i < seqLen; i++) {
+        int bn = s.ReadByte();
+        if (bn == -1) {
+            throw new System.IO.IOException(
+                ""truncated UTF-8 sequence in binary stream"");
+        }
+        if ((bn & 0xC0) != 0x80) {
+            throw new System.IO.IOException(
+                ""invalid UTF-8 continuation byte in binary stream"");
+        }
+        acc = (acc << 6) | (bn & 0x3F);
+    }
+    return acc;
+}
+
 public static int
 mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
 {
@@ -888,7 +918,15 @@ mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
         return c;
     }
 
-    c = mf.reader.Read();
+    if (mf.reader != null) {
+        c = mf.reader.Read();
+    } else {
+        // Binary stream: decode UTF-8 directly from mf.stream.
+        // This avoids dual-buffering between StreamReader and
+        // BufferedStream which causes position desync.
+        c = mercury_read_utf8_codepoint(mf.stream);
+    }
+
     switch (mf.line_ending) {
     case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
     case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
@@ -908,10 +946,13 @@ mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
                 // If not, we still need to treat this as a newline, and thus
                 // increment the line counter.
                 mf.line_number++;
-            } else if (System.Char.IsSurrogate((char) c)) {
+            } else if (mf.reader != null && System.Char.IsSurrogate((char) c)) {
                 int c2 = mf.reader.Read();
                 c = System.Char.ConvertToUtf32((char) c, (char) c2);
             }
+            // Note: surrogate pairs cannot arise when reading UTF-8
+            // byte-by-byte (the binary stream path), since UTF-8 decodes
+            // directly to full code points.
         } else /* c == NewLine[0] */ {
             switch (mercury.io__primitives_read.NewLine.Length) {
             case 1:
@@ -919,13 +960,33 @@ mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
                 c = '\\n';
                 break;
             case 2:
-                if (mf.reader.Peek() ==
-                    mercury.io__primitives_read.NewLine[1])
-                {
-                    mf.reader.Read();
-                    mf.line_number++;
-                    c = '\\n';
-                } else if (c == '\\n') {
+                if (mf.reader != null) {
+                    if (mf.reader.Peek() ==
+                        mercury.io__primitives_read.NewLine[1])
+                    {
+                        mf.reader.Read();
+                        mf.line_number++;
+                        c = '\\n';
+                    }
+                } else {
+                    // Binary stream: peek at next byte.
+                    int nb = mf.stream.ReadByte();
+                    if (nb == mercury.io__primitives_read.NewLine[1]) {
+                        mf.line_number++;
+                        c = '\\n';
+                    } else if (nb != -1) {
+                        // Put the byte back by seeking.
+                        if (mf.stream.CanSeek) {
+                            mf.stream.Seek(-1,
+                                System.IO.SeekOrigin.Current);
+                        } else {
+                            // Non-seekable stream (e.g. pipe):
+                            // store in putback.
+                            mf.putback = nb;
+                        }
+                    }
+                }
+                if (c == '\\n') {
                     // the input file was ill-formed, e.g. it contained only
                     // raw CRs rather than CR-LF. Perhaps we should throw an
                     // exception? If not, we still need to treat this
