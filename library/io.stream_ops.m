@@ -294,7 +294,38 @@ whence_to_int(end, 2).
         Error = EINVAL;
     }
 ").
-% MISSING C# seek_binary_2
+:- pragma foreign_proc("C#",
+    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    try {
+        System.IO.SeekOrigin origin;
+        switch (Flag) {
+            case 0: origin = System.IO.SeekOrigin.Begin; break;
+            case 1: origin = System.IO.SeekOrigin.Current; break;
+            case 2: origin = System.IO.SeekOrigin.End; break;
+            default:
+                throw new System.ArgumentException(
+                    ""invalid seek flag: "" + Flag);
+        }
+        if (Stream.putback != -1) {
+            // A putback byte is buffered. If seeking from current position,
+            // the real stream position is one ahead of the logical position,
+            // so adjust.
+            if (Flag == 1) {
+                // Seeking relative: the logical position is one behind
+                // the stream position because of the putback.
+                Off--;
+            }
+            Stream.putback = -1;
+        }
+        Stream.stream.Seek(Off, origin);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
 :- pragma foreign_proc("Java",
     seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
         _IO0::di, _IO::uo),
@@ -329,7 +360,24 @@ whence_to_int(end, 2).
         Error = EINVAL;
     }
 ").
-% MISSING C# binary_stream_offset_2
+:- pragma foreign_proc("C#",
+    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    try {
+        Offset = Stream.stream.Position;
+        if (Stream.putback != -1) {
+            // A byte has been put back but not yet consumed; the logical
+            // position is one behind the physical stream position.
+            Offset--;
+        }
+        Error = null;
+    } catch (System.Exception e) {
+        Offset = -1;
+        Error = e;
+    }
+").
 :- pragma foreign_proc("Java",
     binary_stream_offset_2(Stream::in, Offset::out, Error::out,
         _IO0::di, _IO::uo),
@@ -1794,33 +1842,59 @@ mercury_open(string filename, string openmode, ML_line_ending_kind line_ending)
     // by multiple processes simultaneously. XXX Is this a good idea?
     share = System.IO.FileShare.ReadWrite;
 
-    if (openmode == ""r"" || openmode == ""rb"") {
+    if (openmode == ""r"") {
         // Like '<' in Bourne shell.
-        // Read a file. The file must exist already.
+        // Read a text file. The file must exist already.
         mode   = System.IO.FileMode.Open;
         access = System.IO.FileAccess.Read;
         stream = System.IO.File.Open(filename, mode, access, share);
         reader = new System.IO.StreamReader(stream,
             mercury.io__stream_ops.text_encoding);
         writer = null;
-    } else if (openmode == ""w"" || openmode == ""wb"") {
+    } else if (openmode == ""rb"") {
+        // Read a binary file. The file must exist already.
+        // No StreamReader — binary streams use mf.stream directly
+        // for both byte-level and text (via UTF-8) operations, avoiding
+        // dual-buffering issues that break io.read_binary.
+        mode   = System.IO.FileMode.Open;
+        access = System.IO.FileAccess.Read;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = null;
+        writer = null;
+    } else if (openmode == ""w"") {
         // Like '>' in Bourne shell.
-        // Overwrite an existing file, or create a new file.
+        // Overwrite an existing text file, or create a new file.
         mode   = System.IO.FileMode.Create;
         access = System.IO.FileAccess.Write;
         stream = System.IO.File.Open(filename, mode, access, share);
         reader = null;
         writer = new System.IO.StreamWriter(stream,
             mercury.io__stream_ops.text_encoding);
-    } else if (openmode == ""a"" || openmode == ""ab"") {
+    } else if (openmode == ""wb"") {
+        // Overwrite an existing binary file, or create a new file.
+        // No StreamWriter — see ""rb"" comment above.
+        mode   = System.IO.FileMode.Create;
+        access = System.IO.FileAccess.Write;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = null;
+        writer = null;
+    } else if (openmode == ""a"") {
         // Like '>>' in Bourne shell.
-        // Append to an existing file, or create a new file.
+        // Append to an existing text file, or create a new file.
         mode   = System.IO.FileMode.Append;
         access = System.IO.FileAccess.Write;
         stream = System.IO.File.Open(filename, mode, access, share);
         reader = null;
         writer = new System.IO.StreamWriter(stream,
             mercury.io__stream_ops.text_encoding);
+    } else if (openmode == ""ab"") {
+        // Append to an existing binary file, or create a new file.
+        // No StreamWriter — see ""rb"" comment above.
+        mode   = System.IO.FileMode.Append;
+        access = System.IO.FileAccess.Write;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = null;
+        writer = null;
     } else {
         runtime.Errors.SORRY(System.String.Concat(
             ""foreign code for this function, open mode:"",
@@ -1871,10 +1945,10 @@ public static MR_MercuryFileStruct mercury_stderr =
 // XXX should we use BufferedStreams here?
 public static MR_MercuryFileStruct mercury_stdin_binary =
     mercury_file_init(System.Console.OpenStandardInput(),
-        System.Console.In, null, ML_line_ending_kind.ML_raw_binary);
+        null, null, ML_line_ending_kind.ML_raw_binary);
 public static MR_MercuryFileStruct mercury_stdout_binary =
     mercury_file_init(System.Console.OpenStandardOutput(),
-        null, System.Console.Out, ML_line_ending_kind.ML_raw_binary);
+        null, null, ML_line_ending_kind.ML_raw_binary);
 
 // Note: these are set again in io.init_state.
 public static MR_MercuryFileStruct mercury_current_text_input =
