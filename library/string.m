@@ -6888,12 +6888,12 @@ float_to_string(Float) = S2 :-
     } else if (System.Double.IsNegativeInfinity(Flt)) {
         Str = ""-infinity"";
     } else {
-        Str = Flt.ToString(""R"");
+        Str = Flt.ToString(""r"");
 
         // Append '.0' if there is no 'e' or '.' in the string.
         bool contains = false;
         foreach (char c in Str) {
-            if (c == 'e' || c == 'E' || c == '.') {
+            if (c == 'e' || c == '.') {
                 contains = true;
                 break;
             }
