@@ -322,6 +322,20 @@ output_cast_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
         io.write_string(Stream, "runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
+    else if
+        Type = mlds_mercury_array_type(ElementType),
+        csharp_builtin_type(ElementType, ElementTypeStr)
+    then
+        % When casting to a typed primitive array (e.g. int[]), the source
+        % may be an object[] returned by Array.Empty<object>(). Use
+        % `as T[] ?? System.Array.Empty<T>()` to handle both the correctly
+        % typed case and the empty object[] case without throwing
+        % InvalidCastException.
+        TypeStr = type_to_string_for_csharp(Info, Type),
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_csharp(Info, Expr, Stream, !IO),
+        io.format(Stream, " as %s ?? System.Array.Empty<%s>())",
+            [s(TypeStr), s(ElementTypeStr)], !IO)
     else
         % While the Java backend represents Mercury enums as Java classes
         % with a value field, the C# backend represents them as C# enums.
