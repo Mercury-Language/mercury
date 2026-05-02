@@ -1058,18 +1058,24 @@ public class SystemException : System.Exception
 
 public class Errors
 {
+    // SORRY and fatal_error match the behaviour of C's MR_fatal_error():
+    // flush stdout, print the message on stderr, then exit. This avoids
+    // the stack-trace noise of an unhandled exception and keeps test
+    // output consistent across backends.
+
     public static void SORRY(string s)
     {
-        string msg;
-        msg = System.String.Concat("Sorry, unimplemented: ", s);
-        throw new mercury.runtime.SystemException(msg);
+        System.Console.Out.Flush();
+        System.Console.Error.Write(
+            "Mercury runtime: not yet implemented: " + s + "\n");
+        System.Environment.Exit(1);
     }
 
     public static void fatal_error(string s)
     {
-        string msg;
-        msg = System.String.Concat("Fatal error: ", s);
-        throw new mercury.runtime.SystemException(msg);
+        System.Console.Out.Flush();
+        System.Console.Error.Write("Mercury runtime: " + s + "\n");
+        System.Environment.Exit(1);
     }
 }
 
