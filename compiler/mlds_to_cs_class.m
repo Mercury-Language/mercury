@@ -93,10 +93,18 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
         GenericTypeParamsStr = ""
     ),
     io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO),
-    io.format(Stream, "%s%s%s%sclass %s%s\n",
+    % DU representation classes (those implementing MR_DuTerm) are emitted
+    % as record classes so that C# auto-generates structural Equals,
+    % GetHashCode, and ToString for them.
+    ( if list.member(ml_csharp_mr_du_term_interface, Implements) then
+        ClassKind = "record class"
+    else
+        ClassKind = "class"
+    ),
+    io.format(Stream, "%s%s%s%s%s %s%s\n",
         [s(IndentStr), s(AccessPrefix),
         s(OverridePrefix), s(ConstnessPrefix),
-        s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
+        s(ClassKind), s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
     SuperClassNames = get_superclass_names(Info, Inherits, Implements),
     (
         SuperClassNames = []
