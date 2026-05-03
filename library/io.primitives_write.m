@@ -1215,18 +1215,19 @@ mercury_write_codepoint(System.IO.TextWriter w, int c)
     if (c <= 0xffff) {
         w.Write((char) c);
     } else {
-        w.Write(new System.Text.Rune(c).ToString());
+        w.Write(System.Char.ConvertFromUtf32(c));
     }
 }
 
 // Write a single Unicode code point as UTF-8 bytes to a binary stream.
+// We materialize the codepoint as a string so the same path works on
+// every TFM we target (System.Text.Rune.EncodeToUtf8 is net5.0+ only).
 public static void
 mercury_write_codepoint_to_stream(System.IO.Stream s, int c)
 {
-    System.Text.Rune rune = new System.Text.Rune(c);
-    System.Span<byte> buf = stackalloc byte[4];
-    int written = rune.EncodeToUtf8(buf);
-    s.Write(buf.Slice(0, written));
+    byte[] bytes = System.Text.Encoding.UTF8.GetBytes(
+        System.Char.ConvertFromUtf32(c));
+    s.Write(bytes, 0, bytes.Length);
 }
 
 // Any changes here should also be reflected in the code for io.write_char,

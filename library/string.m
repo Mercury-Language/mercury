@@ -2418,7 +2418,7 @@ from_char_list(Chars, Str) :-
         } else if (cp <= 0xffff) {
             sb.Append((char) cp);
         } else {
-            sb.Append(new System.Text.Rune(cp).ToString());
+            sb.Append(System.Char.ConvertFromUtf32(cp));
         }
         CharList = list.det_tail(CharList);
     }
@@ -2561,7 +2561,7 @@ from_rev_char_list(Chars, Str) :-
         } else if (c <= 0xffff) {
             arr[--size] = (char) c;
         } else {
-            string s = new System.Text.Rune(c).ToString();
+            string s = System.Char.ConvertFromUtf32(c);
             arr[--size] = s[1];
             arr[--size] = s[0];
         }
@@ -3346,7 +3346,7 @@ unsafe_set_char(Char, Index, Str0, Str) :-
         oldwidth = 1;
     }
     Str = Str0.Substring(0, Index)
-        + new System.Text.Rune(Ch).ToString()
+        + System.Char.ConvertFromUtf32(Ch)
         + Str0.Substring(Index + oldwidth);
 ").
 :- pragma foreign_proc("Java",
@@ -4176,7 +4176,7 @@ find_first_char_start(Str, Char, BeginAt, Index) :-
     if (Ch <= 0xffff) {
         Index = Str.IndexOf((char) Ch, BeginAt);
     } else {
-        string s = new System.Text.Rune(Ch).ToString();
+        string s = System.Char.ConvertFromUtf32(Ch);
         Index = Str.IndexOf(s, BeginAt, System.StringComparison.Ordinal);
     }
     SUCCESS_INDICATOR = (Index >= 0);
@@ -4232,7 +4232,7 @@ find_last_char(Str, Char, Index) :-
     if (Ch <= 0xffff) {
         Index = Str.LastIndexOf((char) Ch);
     } else {
-        string s = new System.Text.Rune(Ch).ToString();
+        string s = System.Char.ConvertFromUtf32(Ch);
         Index = Str.LastIndexOf(s, System.StringComparison.Ordinal);
     }
     SUCCESS_INDICATOR = (Index >= 0);
