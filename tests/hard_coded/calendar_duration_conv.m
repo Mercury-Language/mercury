@@ -189,6 +189,7 @@ valid_durations = [
 
     % Zero durations.
     duration_test("zero seconds", "PT0S"),
+    duration_test("zero seconds with explicit fraction", "PT0.0S"),
     duration_test("zero minutes", "PT0M"),
     duration_test("zero hours", "PT0H"),
     duration_test("zero months", "P0M"),
@@ -256,8 +257,10 @@ invalid_durations = [
     % Leading, trailing, and embedded whitespace.
     duration_test("trailing space", "P1D "),
     duration_test("leading space", " P1D"),
+    duration_test("whitespace between P and components", "P 1Y"),
     duration_test("trailing text", "P1DT1H30M extra"),
     duration_test("invalid character after component", "P1DX"),
+    duration_test("T followed by whitespace", "P1DT   "),
 
     % Non-digit where digit expected.
     duration_test("letter where number expected", "PxY"),

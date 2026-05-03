@@ -102,10 +102,15 @@ Year 2000 is a leap year.
 Year 1900 is a common year.
 Year 2024 is a leap year.
 Year 2023 is a common year.
+Year 1 is a common year.
 Year 0 is a leap year.
 Year -1 is a common year.
+Year -3 is a common year.
 Year -4 is a leap year.
 Year -100 is a common year.
+Year -1900 is a common year.
+Year -2000 is a leap year.
+Year -2023 is a common year.
 
 === Test unix_epoch/0 ===
 

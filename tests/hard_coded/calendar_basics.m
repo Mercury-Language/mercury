@@ -154,10 +154,15 @@ test_years = [
     1900,   % Divisible by 100, but not by 400: common year.
     2024,   % Divisible by 4, but not by 100: leap year.
     2023,   % Not divisible by 4: common year.
+       1,   % Not divisible by 4: common year.
        0,   % Divisible by 400: leap year.
       -1,   % Not divisible by 4: common year.
+      -3,   % Not disvisble by 4: common yar.
       -4,   % Divisible by 4: leap year.
-    -100    % Divisible by 100, but not 400: common year.
+    -100,   % Divisible by 100: but not 400: common year.
+    -1900,  % Divisible by 100: but not by 400: common year.
+    -2000,  % Divisible by 400: leap year.
+    -2023   % Not divisible by 4: common year.
 ].
 
 %---------------------------------------------------------------------------%
@@ -366,13 +371,16 @@ test_local_time_offset(!IO) :-
         local_time_offset(Offset, !IO)
     then
         % UTC offsets range from -12:00 to +14:00, check that we are within
-        % these.
+        % these. UTC offsets are given in whole numbers of minutes.
+        % Components other than hours and minutes should be zero.
         ( if
             Offset ^ years = 0,
             Offset ^ months = 0,
             Offset ^ days = 0,
             Offset ^ hours > -13,
-            Offset ^ hours < 15
+            Offset ^ hours < 15,
+            Offset ^ seconds = 0,
+            Offset ^ microseconds = 0
         then
             io.write_string("PASSED\n", !IO)
         else

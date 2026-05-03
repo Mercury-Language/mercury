@@ -204,6 +204,7 @@ valid_date_times = [
     dt_conv_test("midnight", "2024-01-01 00:00:00"),
     dt_conv_test("last second of the day", "2024-01-01 23:59:59"),
     dt_conv_test("leap second", "2024-01-01 00:00:60"),
+    dt_conv_test("leap second on leap day", "2024-02-29 23:59:60"),
 
     dt_conv_test("one fractional digit", "2024-01-01 00:00:00.1"),
     dt_conv_test("two fractional digits", "2024-01-01 00:00:00.12"),
@@ -243,6 +244,8 @@ valid_no_roundtrip_date_times =[
     dt_conv_test("trailing zeros after five fractional digits",
         "2024-01-01 00:00:00.123450"),
 
+    dt_conv_test("single zero fractional digit",
+        "2024-01-01 00:00:00.0"),
     dt_conv_test("all zero fractional digits",
         "2024-01-01 00:00:00.000000"),
 
