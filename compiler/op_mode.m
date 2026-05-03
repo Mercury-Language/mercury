@@ -53,9 +53,6 @@
     ;       opmq_output_c_include_directory_flags
     ;       opmq_output_grade_defines
 
-    ;       opmq_output_csharp_compiler             % C# compiler properties.
-    ;       opmq_output_csharp_compiler_type
-
     ;       opmq_output_java_class_dir              % Java properties.
 
     ;       opmq_output_link_command                % Linker properties.
@@ -342,11 +339,6 @@ bool_op_modes(InvokedByMMCMake, MaybeListOptOptsUpto) = [
     only_opmode_output_grade_defines -
         opm_top_query(opmq_output_grade_defines),
 
-    only_opmode_output_csharp_compiler -
-        opm_top_query(opmq_output_csharp_compiler),
-    only_opmode_output_csharp_compiler_type -
-        opm_top_query(opmq_output_csharp_compiler_type),
-
     only_opmode_output_link_command -
         opm_top_query(opmq_output_link_command),
     only_opmode_output_shared_lib_link_command -
@@ -458,12 +450,6 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
         ;
             MOPQ = opmq_output_grade_defines,
             Str = "--output-grade-defines"
-        ;
-            MOPQ = opmq_output_csharp_compiler,
-            Str = "--output-csharp-compiler"
-        ;
-            MOPQ = opmq_output_csharp_compiler_type,
-            Str = "--output-csharp-compiler-type"
         ;
             MOPQ = opmq_output_link_command,
             Str = "--output-link-command"

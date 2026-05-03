@@ -82,6 +82,13 @@ Changes that may break compatibility
 * We have dropped support for versions of MSVC before version 19.3
   (Visual Studio 2022).
 
+* The `csharp` grade now requires the .NET 10 SDK and uses `dotnet build`
+  to link assemblies. The compiler no longer invokes `csc` or `mcs`
+  directly. The following options and configure flags have been removed:
+  `--csharp-compiler`, `--csharp-compiler-type`, `--output-csharp-compiler`,
+  `--output-csharp-compiler-type`, and `--with-csharp-compiler`. Mono and
+  the .NET Framework runtime are no longer supported.
+
 * The `--use-subdirs` and `--use-grade-subdirs` options now cause `.mh` files
   to be placed in a `Mercury/mhs` subdirectory instead of the current
   directory. This reduces clutter in the current directory, but may require

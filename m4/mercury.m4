@@ -297,12 +297,8 @@ AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 # Check for the dotnet SDK (.NET 10 or later).  The dotnet binary
 # itself is required at link time: link_target_code.m drives the
 # csharp grade by generating a csproj and invoking `dotnet build'.
-# The Roslyn csc.dll path (DOTNET_CSC_DLL) is recorded for diagnostics
-# and possible future use; the per-module C# compiler is still chosen
-# below from stand-alone csc.exe or Mono mcs.
 AC_PATH_PROG([DOTNET], [dotnet])
 DOTNET_SDK_DIR=
-DOTNET_CSC_DLL=
 if test -n "$DOTNET"; then
     AC_MSG_CHECKING([for a usable dotnet SDK (10.0 or later)])
     # `dotnet --list-sdks' prints lines like: `10.0.200 [/path/to/sdk]',
@@ -332,159 +328,17 @@ if test -n "$DOTNET"; then
         # subsequent shell quoting on MSYS, Cygwin and POSIX shells.
         DOTNET_SDK_BASE=`echo "$DOTNET_SDK_BASE" | tr '\\\\' '/'`
         DOTNET_SDK_DIR="$DOTNET_SDK_BASE/$DOTNET_SDK_VERSION"
-        if test -f "$DOTNET_SDK_DIR/Roslyn/bincore/csc.dll"; then
-            DOTNET_CSC_DLL="$DOTNET_SDK_DIR/Roslyn/bincore/csc.dll"
-            AC_MSG_RESULT([yes (version $DOTNET_SDK_VERSION)])
-        else
-            AC_MSG_RESULT([no (csc.dll not found under $DOTNET_SDK_DIR)])
-            DOTNET_SDK_DIR=
-        fi
+        AC_MSG_RESULT([yes (version $DOTNET_SDK_VERSION)])
     else
         AC_MSG_RESULT([no (no SDK >= 10.0 found)])
     fi
 fi
 
-# Check for the C# (C sharp) compiler.
-# csc is the Microsoft C# compiler.
-# mcs is the Mono C# compiler targetting all runtime versions.
-# (dmcs and gmcs are older aliases for the Mono C# compiler
-# which we do not use.)
-
-AC_CACHE_SAVE
-case "$mercury_cv_with_csharp_compiler" in
-    no)
-        AC_MSG_ERROR(invalid option --without-csharp-compiler)
-        exit 1
-        ;;
-    yes)
-        AC_MSG_ERROR(missing argument to --with-csharp-compiler=... option)
-        exit 1
-        ;;
-    "")
-        CSC_COMPILERS="csc mcs"
-        ;;
-    *)
-        CSC_COMPILERS="$mercury_cv_with_csharp_compiler"
-        ;;
-esac
-
-AC_MSG_CHECKING([for a C sharp compiler])
-AC_MSG_RESULT()
-for CANDIDATE_CSC0 in $CSC_COMPILERS; do
-    unset CANDIDATE_CSC
-    unset ac_cv_path_CANDIDATE_CSC
-    AC_CACHE_LOAD
-    AC_PATH_PROG([CANDIDATE_CSC], [$CANDIDATE_CSC0])
-
-    if test -z "$CANDIDATE_CSC"; then
-        continue;
-    fi
-    CANDIDATE_CSC=`basename "$CANDIDATE_CSC"`
-
-# Check that the compiler is suitable.
-    case "$CANDIDATE_CSC" in
-         csc*)
-             # The Microsoft C# compiler and the Chicken Scheme compiler share
-             # the same executable name, so if we find an executable named csc
-             # above, check that it is actually the Microsoft C# compiler,
-             # and if it is not, then try to use one of the other instead.
-             $CANDIDATE_CSC 2>&1 | grep "^Microsoft" >/dev/null
-             if test $? -ne 0
-             then
-                 AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
-                 continue;
-             else
-                 CSC="$CANDIDATE_CSC"
-                 break;
-             fi
-        ;;
-
-        *mcs)
-            # We want to check that the 'mcs' compiler supports generics.
-            # We test all the mono C sharp compilers in order to be more
-            # defensive.
-            AC_MSG_CHECKING([whether $CANDIDATE_CSC supports C sharp generics])
-
-            cat > conftest.cs << EOF
-    using System;
-    using System.Collections.Generic;
-
-    class Hello
-    {
-        private class ExampleClass { }
-
-        static void Main()
-        {
-            Console.WriteLine("Hello world!");
-
-            // Declare a list of type int.
-            List<int> list1 = new List<int>();
-
-            // Declare a list of type string.
-            List<string> list2 = new List<string>();
-
-            // Declare a list of type ExampleClass.
-            List<ExampleClass> list3 = new List<ExampleClass>();
-        }
-    }
-EOF
-            echo $CANDIDATE_CSC conftest.cs >&AS_MESSAGE_LOG_FD 2>&1
-            OUTPUT=$($CANDIDATE_CSC conftest.cs 2>&1)
-            RESULT=$?
-            rm -f conftest.cs conftest.exe
-            echo $OUTPUT >&AS_MESSAGE_LOG_FD
-            echo returned $RESULT >&AS_MESSAGE_LOG_FD
-            if echo $OUTPUT | grep CS1644 > /dev/null; then
-                # This compiler does not support generics.
-                AC_MSG_RESULT(no)
-                continue;
-            elif test $RESULT -ne 0; then
-                AC_MSG_RESULT(no)
-                AC_MSG_WARN([$CANDIDATE_CSC returned exit code $RESULT])
-                continue;
-            else
-                AC_MSG_RESULT(yes)
-                CSC="$CANDIDATE_CSC"
-                break;
-            fi
-        ;;
-
-        *)
-            CSC="$CANDIDATE_CSC"
-            break;
-        ;;
-    esac
-done
-
-# If the user specified one or more compilers and we couldn't find any,
-# then abort configuration.
-if test "$mercury_cv_with_csharp_compiler" != "" -a "$CSC" = ""; then
-    AC_MSG_ERROR([No suitable C sharp compiler could be found.])
-    exit 1
-fi
-
-case "$CSC" in
-    csc*)
-        CSHARP_COMPILER_TYPE=microsoft
-    ;;
-
-    mcs*)
-        CSHARP_COMPILER_TYPE=mono
-    ;;
-
-    *)
-        CSHARP_COMPILER_TYPE=unknown
-    ;;
-esac
-
 AC_SUBST([ILASM])
 AC_SUBST([GACUTIL])
-AC_SUBST([CSC])
-AC_SUBST([CSHARP_COMPILER_TYPE])
 AC_SUBST([CLI_INTERPRETER])
 AC_SUBST([DOTNET])
 AC_SUBST([DOTNET_SDK_DIR])
-AC_SUBST([DOTNET_CSC_DLL])
 ])
 
 #-----------------------------------------------------------------------------#

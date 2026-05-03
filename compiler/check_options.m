@@ -34,7 +34,7 @@
     compilation_target::out, word_size::out, gc_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, ssdb_trace_level::out, may_be_thread_safe::out,
-    c_compiler_type::out, csharp_compiler_type::out,
+    c_compiler_type::out,
     reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
     limit_error_contexts_map::out, linked_target_ext_info_map::out,
@@ -73,7 +73,7 @@
 
 check_option_values(!OptionTable, Target, WordSize, GC_Method,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        MaybeThreadSafe, C_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType,
         LimitErrorContextsMap, LinkExtMap, !:Specs, !IO) :-
@@ -85,7 +85,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     check_debug_options(!.OptionTable,
         TraceLevel, TraceSuppress, SSTraceLevel, !Specs),
     check_system_env_options(!.OptionTable,
-        C_CompilerType, CSharp_CompilerType,
+        C_CompilerType,
         HostEnvType, SystemEnvType, TargetEnvType, !Specs),
     check_hlds_dump_options(!OptionTable, !Specs),
     check_diagnostics_options(!.OptionTable, LimitErrorContextsMap, !Specs),
@@ -335,11 +335,11 @@ check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
     ).
 
 :- pred check_system_env_options(option_table::in,
-    c_compiler_type::out, csharp_compiler_type::out,
+    c_compiler_type::out,
     env_type::out, env_type::out, env_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
+check_system_env_options(OptionTable, C_CompilerType,
         HostEnvType, SystemEnvType, TargetEnvType, !Specs) :-
     lookup_string_option(OptionTable, c_compiler_type, C_CompilerTypeStr),
     ( if convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime) then
@@ -361,24 +361,6 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
             quote_list_to_pieces("or", ValidC_CompilerTypes) ++
             [suffix("."), nl],
         add_error(phase_options, CCTpec, !Specs)
-    ),
-
-    lookup_string_option(OptionTable, csharp_compiler_type,
-        CSharp_CompilerTypeStr),
-    ( if
-        convert_csharp_compiler_type(CSharp_CompilerTypeStr,
-            CSharp_CompilerTypePrime)
-    then
-        CSharp_CompilerType = CSharp_CompilerTypePrime
-    else
-        CSharp_CompilerType = csharp_unknown,   % dummy
-        CSCSpec =
-            [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
-            words("to the"), quote("--csharp-compiler-type"), words("option;"),
-            words("must be")] ++
-            quote_list_to_pieces("or", ["microsoft", "mono", "unknown"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, CSCSpec, !Specs)
     ),
 
     lookup_string_option(OptionTable, host_env_type, HostEnvTypeStr),

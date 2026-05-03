@@ -300,14 +300,6 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         get_c_include_dir_flags(Globals, CInclFlags),
         io.print_line(StdOutStream, CInclFlags, !IO)
     ;
-        OpModeQuery = opmq_output_csharp_compiler,
-        globals.lookup_string_option(Globals, csharp_compiler, CSC),
-        io.print_line(StdOutStream, CSC, !IO)
-    ;
-        OpModeQuery = opmq_output_csharp_compiler_type,
-        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
-        io.print_line(StdOutStream, CSC_Type, !IO)
-    ;
         OpModeQuery = opmq_output_java_class_dir,
         % XXX LEGACY
         get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
