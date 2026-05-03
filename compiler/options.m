@@ -240,8 +240,6 @@
     ;       only_opmode_output_link_command
     ;       only_opmode_output_shared_lib_link_command
     ;       only_opmode_output_library_link_flags
-    ;       only_opmode_output_csharp_compiler
-    ;       only_opmode_output_csharp_compiler_type
     ;       only_opmode_output_java_class_dir
 
     ;       only_opmode_output_optimization_options
@@ -886,9 +884,7 @@
     ;       quoted_java_runtime_flag
 
     % C#
-    ;       csharp_compiler
     ;       cli_interpreter
-    ;       csharp_compiler_type
     ;       csharp_flags
     ;       quoted_csharp_flag
     ;       csharp_aot
@@ -1525,13 +1521,6 @@ optdb(oc_opmode,    only_opmode_output_library_link_flags, bool(no),
         w("This includes the Mercury standard library, as well as any other"),
         w("libraries specified via either the"), opt("--ml"),
         w("or"), opt("-l"), w("option.")])).
-optdb(oc_opmode,    only_opmode_output_csharp_compiler, bool(no),
-    help("output-csharp-compiler", [
-        w("Print to standard output the command for invoking"),
-        w("the C# compiler.")])).
-optdb(oc_opmode,    only_opmode_output_csharp_compiler_type, bool(no),
-    help("output-csharp-compiler-type", [
-        w("Print to standard output the C# compiler's type.")])).
 optdb(oc_opmode,    only_opmode_output_java_class_dir, bool(no),
     alt_help("output-java-class-directory",
             ["output-class-directory", "output-java-class-dir",
@@ -4695,21 +4684,12 @@ optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
 
     % C#
 
-optdb(oc_target_csharp, csharp_compiler,                   string("csc"),
-    arg_help("csharp-compiler", "csc", [
-        cindex("C# compiler"),
-        w("Specify the name of the C# Compiler. The default is"),
-        samp("csc", ".")])).
 optdb(oc_target_csharp, cli_interpreter,                   string(""),
     arg_help("cli-interpreter", "prog", [
         cindex("CIL interpreter"),
         w("Specify the program that implements the Common Language"),
         w("Infrastructure (CLI) execution environment, e.g."),
         samp("mono", ".")])).
-optdb(oc_target_csharp, csharp_compiler_type,              string("mono"),
-    % The `mmc' script will override the default with a value
-    % determined at configuration time for the above two options.
-    priv_arg_help("csharp-compiler-type", "{microsoft,mono,unknown}", [])).
 optdb(oc_target_csharp, csharp_flags,                      accumulating([]),
     arg_help("csharp-flags", "options", [
         cindex("C# compiler options"),

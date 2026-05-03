@@ -175,13 +175,6 @@
 :- type clang_version
     --->    clang_version(int, int, int).
 
-    % For the csharp backend, which csharp compiler are we using?
-    %
-:- type csharp_compiler_type
-    --->    csharp_microsoft
-    ;       csharp_mono
-    ;       csharp_unknown.
-
 :- type static_or_shared
     --->    sos_static
     ;       sos_shared.
@@ -359,8 +352,6 @@
     is semidet.
 :- pred convert_c_compiler_type(string::in, c_compiler_type::out)
     is semidet.
-:- pred convert_csharp_compiler_type(string::in, csharp_compiler_type::out)
-    is semidet.
 :- pred convert_static_or_shared(string::in, static_or_shared::out)
     is semidet.
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
@@ -404,7 +395,7 @@
     op_mode::in, maybe(feedback_info)::in, file_install_cmd::in,
     trace_suppress_items::in, reuse_strategy::in,
     limit_error_contexts_map::in, linked_target_ext_info_map::in,
-    c_compiler_type::in, csharp_compiler_type::in,
+    c_compiler_type::in,
     static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     maybe_stdlib_grades::in, compilation_target::in, subdir_setting::in,
     word_size::in, gc_method::in, termination_norm::in, termination_norm::in,
@@ -429,8 +420,6 @@
     linked_target_ext_info_map::out) is det.
 :- pred get_grade_dir(globals::in, string::out) is det.
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
-:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
-    is det.
 :- pred get_linkage(globals::in, static_or_shared::out) is det.
 :- pred get_mercury_linkage(globals::in, static_or_shared::out) is det.
 :- pred get_library_install_linkages(globals::in, set(static_or_shared)::out)
@@ -809,10 +798,6 @@ convert_msvc_arm64_version(VersionStr, C_CompilerType) :-
     Version > 0,
     C_CompilerType = cc_cl_arm64(yes(Version)).
 
-convert_csharp_compiler_type("microsoft", csharp_microsoft).
-convert_csharp_compiler_type("mono", csharp_mono).
-convert_csharp_compiler_type("unknown", csharp_unknown).
-
 convert_static_or_shared("static", sos_static).
 convert_static_or_shared("shared", sos_shared).
 
@@ -934,7 +919,6 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 
                 % The sub-word-sized arguments, clustered together
                 % to allow them to be packed together.
-                g_csharp_compiler_type      :: csharp_compiler_type,
                 % g_linkage holds the value of the --linkage option, while
                 % g_mercury_linkage does the same for --mercury-linkage.
                 g_linkage                   :: static_or_shared,
@@ -958,7 +942,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
         MaybeFeedback, FileInstallCmd, TraceSuppress, ReuseStrategy,
         LimitErrorContextsMap, LinkedTargetExtInfoMap,
-        C_CompilerType, CSharp_CompilerType,
+        C_CompilerType,
         Linkage, MercuryLinkage, LibLinkages,
         MaybeStdLibGradeSet, Target, SubdirSetting, WordSize, GC_Method,
         TerminationNorm, Termination2Norm,
@@ -970,7 +954,7 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,
         MaybeFeedback, FileInstallCmd, ExtDirsMaps0, MaybeStdLibGradeSet,
-        ReadOnlyGlobals0, CSharp_CompilerType,
+        ReadOnlyGlobals0,
         Linkage, MercuryLinkage, LibLinkages,
         Target, SubdirSetting, WordSize, GC_Method,
         TerminationNorm, Termination2Norm,
@@ -1011,8 +995,6 @@ get_grade_dir(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_grade_dir.
 get_c_compiler_type(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_c_compiler_type.
-get_csharp_compiler_type(Globals, X) :-
-    X = Globals ^ g_csharp_compiler_type.
 get_linkage(Globals, X) :-
     X = Globals ^ g_linkage.
 get_mercury_linkage(Globals, X) :-

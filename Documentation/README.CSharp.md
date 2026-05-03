@@ -27,8 +27,7 @@ Prerequisites
 -------------
 
 To use Mercury's C# backend you need a working .NET SDK at version 10.0
-or above.  The `dotnet` command must be on your `PATH`; the SDK install
-must contain the Roslyn compiler at `<sdk>/Roslyn/bincore/csc.dll`.
+or above.  The `dotnet` command must be on your `PATH`.
 
 There is no longer any support for Mono or for the .NET Framework
 runtime.
@@ -41,9 +40,8 @@ that is then compiled by the .NET SDK.
 
 Mercury's autoconfiguration script will install the `csharp` grade when
 it detects `dotnet` on your `PATH` along with a usable >= 10.0 SDK.
-You can force this by passing `--with-csharp-compiler=dotnet` to
-`./configure`, and you can check the result by running
-`mmc --output-stdlib-grades` and looking for `csharp` in the list.
+You can check the result by running `mmc --output-stdlib-grades` and
+looking for `csharp` in the list.
 
 Compiling programs with the `csharp` grade
 ------------------------------------------

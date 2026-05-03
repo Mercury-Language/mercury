@@ -178,8 +178,6 @@ type option
     ;       only_opmode_output_libgrades
     ;       only_opmode_output_cc
     ;       only_opmode_output_c_compiler_type
-    ;       only_opmode_output_csharp_compiler
-    ;       only_opmode_output_csharp_compiler_type
     ;       only_opmode_output_cflags
     ;       only_opmode_output_library_link_flags
     ;       only_opmode_output_grade_defines
@@ -666,7 +664,6 @@ type option
     ;       object_file_extension
     ;       pic_object_file_extension
     ;       c_compiler_type
-    ;       csharp_compiler_type
 
     ;       java_compiler
     ;       java_interpreter
@@ -677,7 +674,6 @@ type option
     ;       java_runtime_flags
     ;       quoted_java_runtime_flag
 
-    ;       csharp_compiler
     ;       csharp_flags
     ;       quoted_csharp_flag
     ;       cli_interpreter
@@ -1035,8 +1031,6 @@ optdef(oc_opmode, only_opmode_output_stdlib_grades,     bool(no)),
 optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)),
 optdef(oc_opmode, only_opmode_output_cc,                bool(no)),
 optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)),
-optdef(oc_opmode, only_opmode_output_csharp_compiler,   bool(no)),
-optdef(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no)),
 optdef(oc_opmode, only_opmode_output_cflags,            bool(no)),
 optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)),
 optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)),
@@ -1493,7 +1487,6 @@ optdef(oc_target_comp, c_flag_to_name_object_file,      string("-o ")),
 optdef(oc_target_comp, object_file_extension,           string(".o")),
 optdef(oc_target_comp, pic_object_file_extension,       string(".o")),
 optdef(oc_target_comp, c_compiler_type,                 string("gcc")),
-optdef(oc_target_comp, csharp_compiler_type,            string("mono")),
 
 optdef(oc_target_comp, java_compiler,                   string("javac")),
 optdef(oc_target_comp, java_interpreter,                string("java")),
@@ -1504,7 +1497,6 @@ optdef(oc_target_comp, java_object_file_extension,      string(".class")),
 optdef(oc_target_comp, java_runtime_flags,              accumulating([])),
 optdef(oc_target_comp, quoted_java_runtime_flag,        string_special),
 
-optdef(oc_target_comp, csharp_compiler,                 string("csc")),
 optdef(oc_target_comp, csharp_flags,                    accumulating([])),
 optdef(oc_target_comp, quoted_csharp_flag,              string_special),
 optdef(oc_target_comp, cli_interpreter,                 string("")),
@@ -1896,9 +1888,6 @@ long_option("output-libgrades",         only_opmode_output_libgrades),
 long_option("output-cc",                only_opmode_output_cc),
 long_option("output-cc-type",           only_opmode_output_c_compiler_type),
 long_option("output-c-compiler-type",   only_opmode_output_c_compiler_type),
-long_option("output-csharp-compiler",   only_opmode_output_csharp_compiler),
-long_option("output-csharp-compiler-type",
-    only_opmode_output_csharp_compiler_type),
 long_option("output-cflags",            only_opmode_output_cflags),
 long_option("output-library-link-flags",
     only_opmode_output_library_link_flags),
@@ -2496,7 +2485,6 @@ long_option("c-flag-to-name-object-file", c_flag_to_name_object_file),
 long_option("object-file-extension",    object_file_extension),
 long_option("pic-object-file-extension", pic_object_file_extension),
 long_option("c-compiler-type",      c_compiler_type),
-long_option("csharp-compiler-type", csharp_compiler_type),
 
 long_option("java-compiler",        java_compiler),
 long_option("javac",                java_compiler),
@@ -2512,7 +2500,6 @@ long_option("java-object-file-extension", java_object_file_extension),
 long_option("java-runtime-flags",   java_runtime_flags),
 long_option("java-runtime-flag",    quoted_java_runtime_flag),
 
-long_option("csharp-compiler",      csharp_compiler),
 long_option("csharp-flags",         csharp_flags),
 long_option("csharp-flag",          quoted_csharp_flag),
 long_option("cli-interpreter",      cli_interpreter),
