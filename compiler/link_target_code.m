@@ -1628,23 +1628,100 @@ compute_dotnet_rid(Globals, MaybeRid) :-
 
 csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         Debug, ExtraCSCFlags, KeyFile, AotRequest, Content) :-
+    % Executables target a single runtime (apphost ships against one TFM);
+    % libraries multi-target net10.0 + netstandard2.0 so downstream
+    % consumers can pick either modern .NET or .NET Framework / Mono /
+    % Unity hosts that only understand netstandard2.0.
     (
         LinkedTargetType = csharp_executable,
         OutputType = "Exe",
         UseAppHost = "true",
-        IsTrimmableLine = ""
+        TargetFrameworkLine =
+            "    <TargetFramework>net10.0</TargetFramework>\n",
+        % Single-target: `<OutputPath>` lives in the common PropertyGroup
+        % so the DLL/apphost lands beside the csproj.
+        MainOutputPathLines = string.append_list([
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <OutputPath>./</OutputPath>\n"
+        ]),
+        ExtraPropertyGroups = "",
+        ExtraItemGroups = "",
+        % `<IsTrimmable>` / `<IsAotCompatible>` are net5.0+ only, but the
+        % single-target executable case never picks netstandard2.0, so an
+        % unconditional emission stays safe.
+        IsTrimmableLine = "",
+        IsTrimmableTfmCondition = ""
     ;
         LinkedTargetType = csharp_library,
         OutputType = "Library",
         UseAppHost = "false",
+        TargetFrameworkLine = "    <TargetFrameworks>" ++
+            "net10.0;netstandard2.0</TargetFrameworks>\n",
+        MainOutputPathLines = "",
+        % For multi-targeted libraries, lay out the netstandard2.0 DLL at
+        % the csproj root (preserving the prior single-target convention
+        % so existing `<HintPath>` references and Mercury's internal
+        % library lookups keep working) and route the net10.0 DLL into a
+        % per-TFM subdirectory.  Both `<OutputPath>` and
+        % `<AppendTargetFrameworkToOutputPath>false</...>` need the per-TFM
+        % condition, because `<TargetFrameworks>` flips the latter's
+        % default to `true`.
+        % `<IntermediateOutputPath>` must also be per-TFM, otherwise the
+        % two builds share `obj/<config>/` and the second silently
+        % overwrites or skips the first.
+        ExtraPropertyGroups = string.append_list([
+            "  <PropertyGroup ",
+            "Condition=""'$(TargetFramework)'=='netstandard2.0'"">\n",
+            "    <OutputPath>./</OutputPath>\n",
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <IntermediateOutputPath>",
+            "obj/$(Configuration)/netstandard2.0/",
+            "</IntermediateOutputPath>\n",
+            "  </PropertyGroup>\n",
+            "  <PropertyGroup ",
+            "Condition=""'$(TargetFramework)'=='net10.0'"">\n",
+            "    <OutputPath>./net10.0/</OutputPath>\n",
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <IntermediateOutputPath>",
+            "obj/$(Configuration)/net10.0/",
+            "</IntermediateOutputPath>\n",
+            "  </PropertyGroup>\n"
+        ]),
+        % `System.Runtime.CompilerServices.Unsafe` is intrinsic on net5.0+
+        % but lives in a standalone NuGet package on netstandard2.0.  The
+        % compiler's MLDS-to-C# backend emits `Unsafe.As<T>(...)` in
+        % delegate-pointer call sites (mlds_to_cs_stmt.m), so the package
+        % reference is mandatory for the netstandard2.0 build to compile.
+        % Pinned to 4.5.3 -- the version paired with netstandard2.0
+        % itself.  We only use Unsafe.As<T>(object) which has been in the
+        % package since 4.4.0; bumping to 6.0.0 only changes signing
+        % metadata, not behaviour.
+        ExtraItemGroups = string.append_list([
+            "  <ItemGroup ",
+            "Condition=""'$(TargetFramework)'=='netstandard2.0'"">\n",
+            "    <PackageReference ",
+            "Include=""System.Runtime.CompilerServices.Unsafe"" ",
+            "Version=""4.5.3"" />\n",
+            "  </ItemGroup>\n"
+        ]),
         % `<IsAotCompatible>true</...>' implies `<IsTrimmable>true</...>',
         % so when AotRequest = aot_library_marker we skip the redundant
         % IsTrimmable line below; the AotPropertyLines block emits the
-        % stronger marker instead.
+        % stronger marker instead.  Both properties are net5.0+ only, so
+        % they must be scoped to non-netstandard2.0 TFMs to avoid MSBuild
+        % warnings on the netstandard2.0 half of the multi-target build.
+        IsTrimmableTfmCondition =
+            " Condition=""'$(TargetFramework)'!='netstandard2.0'""",
         ( if AotRequest = aot_library_marker then
             IsTrimmableLine = ""
         else
-            IsTrimmableLine = "    <IsTrimmable>true</IsTrimmable>\n"
+            IsTrimmableLine = string.append_list([
+                "    <IsTrimmable", IsTrimmableTfmCondition,
+                ">true</IsTrimmable>\n"
+            ])
         )
     ),
     % Native AOT properties.  For executables, switch on PublishAot,
@@ -1668,7 +1745,13 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         ])
     ;
         AotRequest = aot_library_marker,
-        AotPropertyLines = "    <IsAotCompatible>true</IsAotCompatible>\n"
+        % `<IsAotCompatible>` is net5.0+ only.  In the multi-target
+        % library case, scope it to non-netstandard2.0 TFMs so MSBuild
+        % does not warn during the netstandard2.0 build.
+        AotPropertyLines = string.append_list([
+            "    <IsAotCompatible", IsTrimmableTfmCondition,
+            ">true</IsAotCompatible>\n"
+        ])
     ),
     (
         Debug = yes,
@@ -1707,18 +1790,16 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         "<!-- Generated by Mercury mmc; do not edit. -->\n",
         "<Project Sdk=""Microsoft.NET.Sdk"">\n",
         "  <PropertyGroup>\n",
-        "    <TargetFramework>net10.0</TargetFramework>\n",
+        TargetFrameworkLine,
         "    <LangVersion>14</LangVersion>\n",
         "    <Nullable>disable</Nullable>\n",
         "    <OutputType>", OutputType, "</OutputType>\n",
         "    <AssemblyName>", xml_escape(AssemblyName), "</AssemblyName>\n",
         "    <RootNamespace>mercury</RootNamespace>\n",
         "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n",
-        "    <AppendTargetFrameworkToOutputPath>false",
-        "</AppendTargetFrameworkToOutputPath>\n",
+        MainOutputPathLines,
         "    <AppendRuntimeIdentifierToOutputPath>false",
         "</AppendRuntimeIdentifierToOutputPath>\n",
-        "    <OutputPath>./</OutputPath>\n",
         "    <UseAppHost>", UseAppHost, "</UseAppHost>\n",
         "    <DebugType>", DebugType, "</DebugType>\n",
         OptimizeLine,
@@ -1732,12 +1813,14 @@ csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
         SignLines,
         DefineLine,
         "  </PropertyGroup>\n",
+        ExtraPropertyGroups,
         "  <ItemGroup>\n"]),
     Middle = string.append_list([
         "  </ItemGroup>\n",
         "  <ItemGroup>\n"]),
     Footer = string.append_list([
         "  </ItemGroup>\n",
+        ExtraItemGroups,
         "</Project>\n"]),
     Content = string.append_list([Header] ++ CompileItems ++ [Middle] ++
         RefItems ++ [Footer]).
