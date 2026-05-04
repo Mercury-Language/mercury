@@ -545,6 +545,7 @@ tar: 	$(GENERATED_DOCS)
 	-rm -rf extras/quickcheck
 	-rm -rf .git
 	-rm -f .gitignore
+	-rm -f .gitattributes
 	-rm -f boehm_gc/.git boehm_gc/.gitignore boehm_gc/.gitattributes
 	-rm -f boehm_gc/.gitmodules
 	-rm -f boehm_gc/libatomic_ops/.git
