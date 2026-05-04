@@ -157,7 +157,7 @@ test_years = [
        1,   % Not divisible by 4: common year.
        0,   % Divisible by 400: leap year.
       -1,   % Not divisible by 4: common year.
-      -3,   % Not disvisble by 4: common yar.
+      -3,   % Not disvisble by 4: common year.
       -4,   % Divisible by 4: leap year.
     -100,   % Divisible by 100: but not 400: common year.
     -1900,  % Divisible by 100: but not by 400: common year.
