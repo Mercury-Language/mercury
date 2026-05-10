@@ -580,16 +580,26 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         use_envptr_in_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
-        (
+        ( if
             NestedFuncs0 = [],
             % When hoisting nested functions, if there were no nested
             % functions, we have nothing to do.
             % Likewise, when doing accurate GC, if there were no local
-            % variables (or arguments) that contained pointers, then we don't
-            % need to chain a stack frame for this function.
+            % variables (or arguments) that contained pointers (i.e.
+            % nothing was promoted into the per-frame environment by
+            % flatten_statement), then we don't need to chain a stack
+            % frame for this function. flatten_statement still rewrites
+            % accesses to pointer-typed locals into env-field references
+            % under chain_gc_stack_frames, so when Locals is non-empty
+            % we MUST fall through to ml_create_env even though there
+            % are no nested functions, otherwise the rewritten body
+            % refers to a frame_ptr that was never declared.
+            ( Action = hoist_nested_funcs
+            ; Action = chain_gc_stack_frames, Locals = []
+            )
+        then
             FuncBodyStmt = FuncBodyStmt1
-        ;
-            NestedFuncs0 = [_ | _],
+        else
             % Create a struct to hold the local variables, and initialize
             % the environment pointers for both the containing function
             % and the nested functions. Also generate the GC tracing function,
@@ -2609,7 +2619,32 @@ elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo) :-
 
 elim_info_finish(ElimInfo, NestedFuncs, LocalVars) :-
     NestedFuncs = cord.to_list(ElimInfo ^ ei_nested_funcs),
-    LocalVars = cord.to_list(ElimInfo ^ ei_local_vars).
+    LocalVarsRaw = cord.to_list(ElimInfo ^ ei_local_vars),
+    % Multiple disjoint MLDS scopes (e.g. arms of an if-then-else, or
+    % branches of a switch) can declare a local variable with the same
+    % name; flatten_nested_local_var_defn snocs each occurrence onto
+    % ei_local_vars without checking for duplicates. When the resulting
+    % list is converted into the per-procedure environment struct used
+    % by accurate-GC stack chaining, those duplicate names produce
+    % `duplicate member' errors from the C compiler. Keep only the
+    % first occurrence of each name; both occurrences refer to the same
+    % logical variable, the scopes are disjoint at run time, and the
+    % env struct is just a per-procedure home for it.
+    keep_first_local_var_per_name(LocalVarsRaw, set.init, LocalVars).
+
+:- pred keep_first_local_var_per_name(list(mlds_local_var_defn)::in,
+    set(mlds_local_var_name)::in, list(mlds_local_var_defn)::out) is det.
+
+keep_first_local_var_per_name([], _, []).
+keep_first_local_var_per_name([Defn | Defns], !.Seen, Uniq) :-
+    Defn = mlds_local_var_defn(Name, _, _, _, _),
+    ( if set.contains(!.Seen, Name) then
+        keep_first_local_var_per_name(Defns, !.Seen, Uniq)
+    else
+        set.insert(Name, !Seen),
+        keep_first_local_var_per_name(Defns, !.Seen, TailUniq),
+        Uniq = [Defn | TailUniq]
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_elim_nested.

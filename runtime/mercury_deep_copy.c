@@ -87,12 +87,23 @@
 
 MR_Word *MR_has_forwarding_pointer;
 
+// The bitmap shift uses ((MR_Word) 1) (not the literal 1, which is `int`)
+// because fwdptr_bit can be up to MR_WORDBITS-1 = 63 on 64-bit platforms,
+// and shifting an `int` by >= 32 is undefined behaviour in C. The aarch64
+// gcc lowering wraps the shift count modulo 32 for 32-bit operands, which
+// causes bit 32 to alias bit 0, bit 33 to alias bit 1, etc. The result is
+// false positives in if_forwarding_pointer: half of the cells in any
+// 64-word region see another cell's forwarding mark and mistakenly treat
+// the cell's first word as a forwarding pointer. For DU cells whose first
+// word is the head value (e.g. an int), this returns the int as if it
+// were a tagged pointer, which then gets dereferenced and segfaults.
 #define mark_as_forwarding_pointer(Data)                                      \
     do {                                                                      \
         size_t fwdptr_offset = (MR_Word *)(Data) - (MR_Word *) lower_limit;   \
         size_t fwdptr_word = fwdptr_offset / MR_WORDBITS;                     \
         size_t fwdptr_bit = fwdptr_offset % MR_WORDBITS;                      \
-        MR_has_forwarding_pointer[fwdptr_word] |= (1 << fwdptr_bit);          \
+        MR_has_forwarding_pointer[fwdptr_word] |=                             \
+            (((MR_Word) 1) << fwdptr_bit);                                    \
     } while (0)
 
 #undef  if_forwarding_pointer
@@ -101,7 +112,9 @@ MR_Word *MR_has_forwarding_pointer;
         size_t fwdptr_offset = (MR_Word *)(Data) - (MR_Word *) lower_limit;   \
         size_t fwdptr_word = fwdptr_offset / MR_WORDBITS;                     \
         size_t fwdptr_bit = fwdptr_offset % MR_WORDBITS;                      \
-        if (MR_has_forwarding_pointer[fwdptr_word] & (1 << fwdptr_bit)) {     \
+        if (MR_has_forwarding_pointer[fwdptr_word] &                          \
+                (((MR_Word) 1) << fwdptr_bit))                                \
+        {                                                                     \
             ACTION;                                                           \
         }                                                                     \
     } while (0)

@@ -620,8 +620,10 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     ( if
         ModuleName = mercury_private_builtin_module,
-        % This predicate is incompatible with some backends.
-        Name = "store_at_ref_impure",
+        % These predicates are incompatible with some backends.
+        ( Name = "store_at_ref_impure"
+        ; Name = "store_at_field_offset_impure"
+        ),
         require_complete_switch [CompilationTarget]
         (
             ( CompilationTarget = target_java

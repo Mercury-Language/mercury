@@ -714,6 +714,15 @@ generate_builtin(CodeModel, PredId, ProcId, Args, GoalInfo, Code, !CI, !CLD) :-
             StoreCode = singleton(StoreInstr),
             Code = AddrVarCode ++ ValueVarCode ++ StoreCode
         ;
+            SimpleCode = field_assign(CellVar, OffsetVar, ValueVar),
+            produce_variable(CellVar, CellVarCode, CellRval, !CLD),
+            produce_variable(OffsetVar, OffsetVarCode, OffsetRval, !CLD),
+            produce_variable(ValueVar, ValueVarCode, ValueRval, !CLD),
+            FieldLval = field(no, CellRval, OffsetRval),
+            StoreInstr = llds_instr(assign(FieldLval, ValueRval), ""),
+            StoreCode = singleton(StoreInstr),
+            Code = CellVarCode ++ OffsetVarCode ++ ValueVarCode ++ StoreCode
+        ;
             SimpleCode = test(_),
             unexpected($pred, "malformed model_det builtin predicate")
         ;
@@ -736,6 +745,9 @@ generate_builtin(CodeModel, PredId, ProcId, Args, GoalInfo, Code, !CI, !CLD) :-
             unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = ref_assign(_, _),
+            unexpected($pred, "malformed model_semi builtin predicate")
+        ;
+            SimpleCode = field_assign(_, _, _),
             unexpected($pred, "malformed model_semi builtin predicate")
         ;
             SimpleCode = noop(_),

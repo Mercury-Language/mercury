@@ -3303,7 +3303,12 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             Str = "this_frame"
         ;
             CompVar = lvnc_stack_chain,
-            Str = "stack_chain"
+            % Match the C name of the runtime global declared in
+            % runtime/mercury.h. The MLDS-level identifier is kept as
+            % `stack_chain' (see the design discussion in
+            % compiler/ml_elim_nested.m), but the C output must refer
+            % to the actual fully-qualified extern.
+            Str = "mercury__private_builtin__stack_chain"
         ;
             CompVar = lvnc_saved_stack_chain(Id),
             Str = string.format("saved_stack_chain_%d", [i(Id)])

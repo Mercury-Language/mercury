@@ -253,6 +253,14 @@
 :- type simple_code(T)
     --->    assign(T, simple_assigned_expr(T))
     ;       ref_assign(T, T)
+    ;       field_assign(T, T, T)
+            % field_assign(Cell, Offset, Value).
+            % Write Value into the heap cell pointed to by Cell, at the
+            % word offset given by Offset. The primary tag of Cell is
+            % stripped at the lowering site. Used by the LCMC pass under
+            % accurate GC, where capturing the address of a field would
+            % create an interior pointer that the collector cannot
+            % relocate.
     ;       test(simple_test_expr(T))
     ;       noop(list(T)).
 
@@ -412,6 +420,10 @@ builtin_translation_private_builtin(PredName, ProcNum, Args, Code) :-
         PredName = "store_at_ref_impure",
         ProcNum = 0, Args = [X, Y],
         Code = ref_assign(X, Y)
+    ;
+        PredName = "store_at_field_offset_impure",
+        ProcNum = 0, Args = [Cell, Offset, Value],
+        Code = field_assign(Cell, Offset, Value)
     ;
         PredName = "unsafe_type_cast", ProcNum = 0, Args = [X, Y],
         % Note that the code we generate for unsafe_type_cast
