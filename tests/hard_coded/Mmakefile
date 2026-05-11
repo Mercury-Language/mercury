@@ -795,6 +795,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		calendar_date_time_conv \
 		calendar_duration_conv \
 		calendar_init_date \
+		calendar_init_duration \
 		char_to_string \
 		clamp_int \
 		clamp_int16 \
