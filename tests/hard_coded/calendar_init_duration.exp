@@ -36,11 +36,23 @@ PASS: microseconds carry into minute
 PASS: 31 days stay as days
 PASS: 365 days stay as days
 PASS: 1 day + 24 hours -> 2 days
+PASS: cascading carry: 23H 59M 59S 1_000_000us -> 1 day
 PASS: negative doc example: -1Y -18M -> -2Y -6M
 PASS: negative doc example: -25H -> -1D -1H
 PASS: negative 12 months -> -1 year
 PASS: negative 60 seconds -> -1 minute
 PASS: negative 1_000_000 us -> -1 second
+PASS: negative 1_500_000 us -> -1 second -500_000 us
+PASS: negative microseconds carry into minute
+PASS: negative 60 minutes -> -1 hour
+PASS: negative 3600 seconds -> -1 hour
+PASS: negative 24 hours -> -1 day
+PASS: negative 86400 seconds -> -1 day
+PASS: negative 1 day + -24 hours -> -2 days
+PASS: negative 13 months -> -1 year -1 month
+PASS: negative years and months combine and overflow
+PASS: negative cascading carry: -23H -59M -59S -1_000_000us -> -1 day
+PASS: doc example: P1Y18M100DT10H15M90.0003S -> P2Y6M100DT10H16M30.0003S
 
 === Test zero_duration/0 ===
 

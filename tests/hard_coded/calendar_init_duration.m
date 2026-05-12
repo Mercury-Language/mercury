@@ -254,6 +254,11 @@ normalisation_cases = [
         0, 0, 1, 24, 0, 0, 0,
         0, 0, 2, 0, 0, 0, 0),
 
+    % Cascading carry across every time boundary.
+    norm_case("cascading carry: 23H 59M 59S 1_000_000us -> 1 day",
+        0, 0, 0, 23, 59, 59, 1_000_000,
+        0, 0, 1, 0, 0, 0, 0),
+
     % Negative-duration versions of the above.
     norm_case("negative doc example: -1Y -18M -> -2Y -6M",
         -1, -18, 0, 0, 0, 0, 0,
@@ -269,7 +274,46 @@ normalisation_cases = [
         0, 0, 0, 0, -1, 0, 0),
     norm_case("negative 1_000_000 us -> -1 second",
         0, 0, 0, 0, 0, 0, -1_000_000,
-        0, 0, 0, 0, 0, -1, 0)
+        0, 0, 0, 0, 0, -1, 0),
+
+    % Overflow for negative durations.
+    norm_case("negative 1_500_000 us -> -1 second -500_000 us",
+        0, 0, 0, 0, 0, 0, -1_500_000,
+        0, 0, 0, 0, 0, -1, -500_000),
+    norm_case("negative microseconds carry into minute",
+        0, 0, 0, 0, 0, -59, -1_000_000,
+        0, 0, 0, 0, -1, 0, 0),
+    norm_case("negative 60 minutes -> -1 hour",
+        0, 0, 0, 0, -60, 0, 0,
+        0, 0, 0, -1, 0, 0, 0),
+    norm_case("negative 3600 seconds -> -1 hour",
+        0, 0, 0, 0, 0, -3600, 0,
+        0, 0, 0, -1, 0, 0, 0),
+    norm_case("negative 24 hours -> -1 day",
+        0, 0, 0, -24, 0, 0, 0,
+        0, 0, -1, 0, 0, 0, 0),
+    norm_case("negative 86400 seconds -> -1 day",
+        0, 0, 0, 0, 0, -86_400, 0,
+        0, 0, -1, 0, 0, 0, 0),
+    norm_case("negative 1 day + -24 hours -> -2 days",
+        0, 0, -1, -24, 0, 0, 0,
+        0, 0, -2, 0, 0, 0, 0),
+    norm_case("negative 13 months -> -1 year -1 month",
+        0, -13, 0, 0, 0, 0, 0,
+        -1, -1, 0, 0, 0, 0, 0),
+    norm_case("negative years and months combine and overflow",
+        -2, -18, 0, 0, 0, 0, 0,
+        -3, -6, 0, 0, 0, 0, 0),
+
+    norm_case("negative cascading carry: -23H -59M -59S -1_000_000us -> -1 day",
+        0, 0, 0, -23, -59, -59, -1_000_000,
+        0, 0, -1, 0, 0, 0, 0),
+
+    % Example from documentation for duration_from_string/2.
+    norm_case(
+        "doc example: P1Y18M100DT10H15M90.0003S -> P2Y6M100DT10H16M30.0003S",
+        1, 18, 100, 10, 15, 90, 300,
+        2, 6, 100, 10, 16, 30, 300)
 ].
 
 %---------------------------------------------------------------------------%

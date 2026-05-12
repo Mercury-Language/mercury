@@ -19,6 +19,7 @@
 
 :- implementation.
 
+:- import_module bool.
 :- import_module calendar.
 :- import_module list.
 :- import_module string.
@@ -39,17 +40,32 @@ test_valid_durations(!IO) :-
     io.write_string(
         "=== Testing duration_from_string/2 with valid inputs ===\n\n",
         !IO),
-    list.foldl(do_test_valid_duration, valid_durations, !IO),
+    list.foldl(do_test_valid_duration(yes), valid_durations, !IO),
+    list.foldl(do_test_valid_duration(no), valid_no_roundtrip_durations, !IO),
     io.nl(!IO).
 
-:- pred do_test_valid_duration(duration_test::in, io::di, io::uo) is det.
+:- pred do_test_valid_duration(bool::in, duration_test::in,
+    io::di, io::uo) is det.
 
-do_test_valid_duration(Test, !IO) :-
+do_test_valid_duration(CheckRoundTrip, Test, !IO) :-
     Test = duration_test(Desc, TestString),
     io.format("duration_from_string(\"%s\") ===> ", [s(TestString)], !IO),
     ( if duration_from_string(TestString, Duration) then
-        io.format("TEST PASSED (accepted: %s)\n",
-            [s(string(Duration))], !IO)
+        RoundTripString = duration_to_string(Duration),
+        (
+            CheckRoundTrip = yes,
+            ( if TestString = RoundTripString then
+                io.format("TEST PASSED (accepted: %s)\n",
+                    [s(string(Duration))], !IO)
+            else
+                io.format("TEST FAILED (roundtrip failed: \"%s\")\n",
+                    [s(RoundTripString)], !IO)
+            )
+        ;
+            CheckRoundTrip = no,
+            io.format("TEST PASSED (accepted: %s; to-string: \"%s\")\n",
+                [s(string(Duration)), s(RoundTripString)], !IO)
+        )
     else
         io.format("TEST FAILED (rejected: %s)\n", [s(Desc)], !IO)
     ).
@@ -86,6 +102,8 @@ test_exception_valid_durations(!IO) :-
     io.write_string(
         "=== Testing det_duration_from_string/1 with valid inputs ===\n\n", !IO),
     list.foldl(do_test_exception_valid_duration, valid_durations, !IO),
+    list.foldl(do_test_exception_valid_duration,
+        valid_no_roundtrip_durations, !IO),
     io.nl(!IO).
 
 :- pred do_test_exception_valid_duration(duration_test::in, io::di, io::uo)
@@ -138,6 +156,13 @@ do_test_exception_invalid_duration(Test, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+% Valid durations created from strings are mostly round-trippable through
+% duration_to_string/1. The exceptions are durations that are not already
+% in normal form (whose components overflow their unit) and zero durations
+% in any spelling other than "P0D".
+
+    % These can be round-tripped through duration_to_string/1.
+    %
 :- func valid_durations = list(duration_test).
 
 valid_durations = [
@@ -168,13 +193,6 @@ valid_durations = [
     duration_test("negative days", "-P1D"),
     duration_test("negative all components", "-P1Y2M3DT4H5M6S"),
 
-    % Large values that normalise.
-    duration_test("large months", "P18M"),
-    duration_test("large hours", "PT25H"),
-    duration_test("large seconds", "PT90S"),
-    duration_test("large all components",
-        "P1Y18M100DT10H15M90.0003S"),
-
     % Fractional seconds.
     duration_test("one fractional digit", "PT1.1S"),
     duration_test("two fractional digits", "PT1.12S"),
@@ -187,13 +205,39 @@ valid_durations = [
     duration_test("fractional seconds only", "PT0.5S"),
     duration_test("zero seconds with fraction", "PT0.0003S"),
 
-    % Zero durations.
+    % Canonical zero form.
+    duration_test("zero days (canonical zero form)", "P0D")
+].
+
+    % These cannot be round-tripped through duration_to_string/1.
+    %
+    % There are two reasons a duration will not round-trip:
+    %
+    % - The duration is not in normal form (a component overflows its unit).
+    %   duration_from_string/2 normalises before constructing the duration,
+    %   so the output uses the normalised representation.
+    %
+    % - The duration is zero. All zero durations are emitted as "P0D",
+    %   regardless of which spelling was parsed.
+    %
+:- func valid_no_roundtrip_durations = list(duration_test).
+
+valid_no_roundtrip_durations = [
+    % Large values that normalise.
+    duration_test("large months -> 1Y 6M", "P18M"),
+    duration_test("large hours -> 1D 1H", "PT25H"),
+    duration_test("large seconds -> 1M 30S", "PT90S"),
+    duration_test(
+        "doc example: P1Y18M100DT10H15M90.0003S "
+            ++ "-> P2Y6M100DT10H16M30.0003S",
+        "P1Y18M100DT10H15M90.0003S"),
+
+    % Zero durations in non-canonical form.
     duration_test("zero seconds", "PT0S"),
     duration_test("zero seconds with explicit fraction", "PT0.0S"),
     duration_test("zero minutes", "PT0M"),
     duration_test("zero hours", "PT0H"),
     duration_test("zero months", "P0M"),
-    duration_test("zero days", "P0D"),
     duration_test("all explicit zeros", "P0Y0M0DT0H0M0S")
 ].
 
