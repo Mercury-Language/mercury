@@ -270,7 +270,7 @@ MR_trace_record_label_exec_counts(void *dummy)
     unsigned    name_len;
     MR_bool     summarize;
     MR_bool     keep;
-    char        *slash;
+    const char  *slash;
     const char  *program_name;
     char        errbuf[MR_STRERROR_BUF_SIZE];
 
