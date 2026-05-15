@@ -331,8 +331,8 @@
                 ctor_result_type    :: mer_type
             ).
 
-    % Given a type and a cons_id, look up the definition of that constructor;
-    % if it is existentially typed, return its definition, otherwise fail.
+    % Given a du_ctor and its type, look up the du_ctor's definition.
+    % If it is existentially typed, return its definition; otherwise fail.
     % Note that this will NOT bind type variables in the functor's argument
     % types; they will be left unbound, so the caller can find out the
     % original types from the constructor definition. The caller must do
@@ -1664,23 +1664,18 @@ get_cons_id_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn) :-
     ).
 
 get_existq_cons_defn(ModuleInfo, Type, ConsId, CtorDefn) :-
-    cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, ConsDefn),
+    type_to_ctor(Type, TypeCtor),
+    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(_TypeCtor, TypeVarSet, TypeParams, KindMap,
         MaybeExistConstraints, Args, _Context),
+    MaybeExistConstraints = exist_constraints(_),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
-    type_to_ctor(Type, TypeCtor),
     construct_type(TypeCtor, TypeCtorArgs, RetType),
     CtorDefn = ctor_defn(TypeVarSet, KindMap, MaybeExistConstraints,
         ArgTypes, RetType).
 
 cons_id_is_existq_cons(ModuleInfo, Type, ConsId) :-
-    cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, _).
-
-:- pred cons_id_is_existq_cons_return_defn(module_info::in, mer_type::in,
-    du_ctor::in, hlds_cons_defn::out) is semidet.
-
-cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, ConsDefn) :-
     type_to_ctor(Type, TypeCtor),
     get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
     ConsDefn ^ cons_maybe_exist = exist_constraints(_).
