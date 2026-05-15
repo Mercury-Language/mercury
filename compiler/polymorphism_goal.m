@@ -91,9 +91,8 @@
 polymorphism_process_goal(Goal0, Goal, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        GoalExpr0 = unify(LHSVar, RHS, Mode, Unification, UnifyContext),
-        polymorphism_process_unify(LHSVar, RHS, Mode, Unification,
-            UnifyContext, GoalInfo0, Goal, !Info)
+        GoalExpr0 = unify(_, _, _, _, _),
+        polymorphism_process_unify(GoalExpr0, GoalInfo0, Goal, !Info)
     ;
         GoalExpr0 = plain_call(PredId, _, ArgVars0, _, _, _),
         polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
@@ -305,12 +304,11 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
 % Process unifications.
 %
 
-:- pred polymorphism_process_unify(prog_var::in, unify_rhs::in,
-    unify_mode::in, unification::in, unify_context::in, hlds_goal_info::in,
-    hlds_goal::out, poly_info::in, poly_info::out) is det.
+:- pred polymorphism_process_unify(hlds_goal_expr::in(goal_expr_unify),
+    hlds_goal_info::in, hlds_goal::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
-        GoalInfo0, Goal, !Info) :-
+polymorphism_process_unify(GoalExpr0, GoalInfo0, Goal, !Info) :-
+    GoalExpr0 = unify(LHSVar, RHS0, Mode, Unification0, UnifyContext),
     (
         RHS0 = rhs_var(_RHSVar),
         % Var-var unifications (simple_test, assign, or complicated_unify)
@@ -328,12 +326,12 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
         lookup_var_type(VarTable, LHSVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
             GoalInfo0, GoalInfo, _Changed, !Info),
-        Goal = hlds_goal(unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
-            GoalInfo)
+        GoalExpr = unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         RHS0 = rhs_functor(ConsId, _, Args),
-        polymorphism_process_unify_functor(LHSVar, ConsId, Args, Mode,
-            Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
+        polymorphism_process_unify_functor(GoalExpr0, ConsId, Args, GoalInfo0,
+            Goal, _Changed, !Info)
     ;
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals0, ArgVarsModes, Det, LambdaGoal0),
@@ -438,13 +436,14 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
 
 %---------------------%
 
-:- pred polymorphism_process_unify_functor(prog_var::in, cons_id::in,
-    list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
-    hlds_goal_info::in, hlds_goal::out, bool::out,
-    poly_info::in, poly_info::out) is det.
+:- pred polymorphism_process_unify_functor(hlds_goal_expr::in(goal_expr_unify),
+    cons_id::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal::out,
+    bool::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
-        UnifyContext, GoalInfo0, Goal, Changed, !Info) :-
+polymorphism_process_unify_functor(GoalExpr0, ConsId0, ArgVars0, GoalInfo0,
+        Goal, Changed, !Info) :-
+    GoalExpr0 = unify(X0, _RHS0, Mode0, Unification0, UnifyContext),
+
     poly_info_get_module_info(!.Info, ModuleInfo0),
     poly_info_get_var_table(!.Info, VarTable0),
     lookup_var_type(VarTable0, X0, TypeOfX),
@@ -457,22 +456,28 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
     %
     % with
     %
-    %   X = (
-    %       pred(A1::in, A2::out) is ... :- list.append(Y, A1, A2)
-    %   )
+    %   X =
+    %       ( pred(A1::in, A2::out) is ... :-
+    %           list.append(Y, A1, A2)
+    %       )
     %
-    % We do this because it makes two things easier. First, mode analysis
-    % needs to check that the lambda goal doesn't bind any nonlocal variables
-    % (e.g. `Y' in above example). This would require a bit of moderately
-    % tricky special case code if we didn't expand them here. Second, this pass
-    % (polymorphism.m) is a lot easier if we don't have to handle higher order
-    % constants. If it turns out that the predicate was nonpolymorphic,
-    % lambda.m will turn the lambda expression back into a higher order
-    % constant again.
+    % We do this because it makes two things easier.
     %
-    % Note that this transformation is also done by modecheck_unify.m, in case
-    % we are rerunning mode analysis after lambda.m has already been run;
-    % any changes to the code here will also need to be duplicated there.
+    % First, mode analysis must check that the lambda goal does not bind
+    % any nonlocal variables (such as `Y' in above example). This would
+    % require a bit of moderately tricky special case code if we didn't
+    % make the lambda goal explicit here.
+    %
+    % Second, not having have to handle higher order constants simplifies
+    % this pass (polymorphism) as well.
+    %
+    % Note that if the predicate turns out to be nonpolymorphic, lambda.m
+    % will turn the lambda expression back into a higher order constant again.
+    %
+    % Note also that this transformation is also done by modecheck_unify.m,
+    % just in case we are rerunning mode analysis after lambda.m has
+    % already been run. Any changes to the code here will therefore
+    % also need to be duplicated there.
 
     ( if
         % Check if variable has a higher order type.
@@ -504,22 +509,22 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         Context = goal_info_get_context(GoalInfo0),
         convert_pred_to_lambda_goal(ModuleInfo0, Purity, X0, PredId, ProcId,
             ArgVars0, CalleeArgTypes, UnifyContext,
-            GoalInfo1, Context, MaybeRHS0, VarTable0, VarTable),
+            GoalInfo1, Context, MaybeRHS1, VarTable0, VarTable),
         poly_info_set_var_table(VarTable, !Info),
         (
-            MaybeRHS0 = ok1(RHS0),
+            MaybeRHS1 = ok1(RHS1),
             % Process the unification in its new form.
-            polymorphism_process_unify(X0, RHS0, Mode0, Unification0,
-                UnifyContext, GoalInfo1, Goal, !Info)
+            GoalExpr1 = unify(X0, RHS1, Mode0, Unification0, UnifyContext),
+            polymorphism_process_unify(GoalExpr1, GoalInfo1, Goal, !Info)
         ;
-            MaybeRHS0 = error1(Specs),
+            MaybeRHS1 = error1(Specs),
             poly_info_get_errors(!.Info, Specs0),
             poly_info_set_errors(Specs ++ Specs0, !Info),
-            % It doesn't matter what Goal we return, since it won't be used.
-            RHS = rhs_functor(some_int_const(int_const(42)),
+            % It does not matter what Goal we return, since it won't be used.
+            RHS1 = rhs_functor(some_int_const(int_const(42)),
                 is_not_exist_constr, []),
-            polymorphism_process_unify(X0, RHS, Mode0, Unification0,
-                UnifyContext, GoalInfo1, Goal, !Info)
+            GoalExpr1 = unify(X0, RHS1, Mode0, Unification0, UnifyContext),
+            polymorphism_process_unify(GoalExpr1, GoalInfo1, Goal, !Info)
         ),
         Changed = yes
     else if
@@ -530,9 +535,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % If so, assume it is a construction, and strip off the prefix.
         % Otherwise, assume it is a deconstruction.
         ConsId0 = du_data_ctor(DuCtor0),
-        DuCtor0 = du_ctor(Functor0, Arity, ConsTypeCtor),
-        ( if remove_new_prefix(Functor0, OrigFunctor) then
-            DuCtor = du_ctor(OrigFunctor, Arity, ConsTypeCtor),
+        DuCtor0 = du_ctor(FunctorName0, Arity, ConsTypeCtor),
+        ( if remove_new_prefix(FunctorName0, OrigFunctorName) then
+            DuCtor = du_ctor(OrigFunctorName, Arity, ConsTypeCtor),
             ConsId = du_data_ctor(DuCtor),
             IsExistConstr = is_exist_constr
         else
@@ -541,10 +546,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
             IsExistConstr = is_not_exist_constr
         ),
 
-        % Check whether the functor (with the "new " prefix removed)
+        % Check whether the functor (with any "new " prefix removed)
         % is an existentially typed functor.
-        type_util.get_existq_cons_defn(ModuleInfo0, TypeOfX,
-            DuCtor, ConsDefn)
+        type_util.get_existq_cons_defn(ModuleInfo0, TypeOfX, DuCtor, ConsDefn)
     then
         % Add extra arguments to the unification for the
         % type_info and/or type_class_info variables.
@@ -1200,22 +1204,19 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
     OldInfo = !.Info,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
-        GoalExpr0 = unify(LHSVarPrime, RHS, ModePrime, UnificationPrime,
-            UnifyContextPrime),
+        GoalExpr0 = unify(LHSVarPrime, RHS, _, _, _),
         RHS = rhs_functor(ConsIdPrime, _, RHSVarsPrime)
     then
+        GoalExpr1 = GoalExpr0,
         LHSVar = LHSVarPrime,
-        Mode = ModePrime,
-        Unification = UnificationPrime,
-        UnifyContext = UnifyContextPrime,
         ConsId = ConsIdPrime,
         RHSVars = RHSVarsPrime
     else
         unexpected($pred,
             "from_ground_term_initial conjunct is not functor unify")
     ),
-    polymorphism_process_unify_functor(LHSVar, ConsId, RHSVars, Mode,
-        Unification, UnifyContext, GoalInfo0, Goal, Changed, !Info),
+    polymorphism_process_unify_functor(GoalExpr1, ConsId, RHSVars, GoalInfo0,
+        Goal, Changed, !Info),
     (
         Changed = no,
         trace [compiletime(flag("polymorphism_fgt_sanity_tests"))] (
