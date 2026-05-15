@@ -546,12 +546,11 @@ MR_ThreadLocalMuts *
 MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
 {
     MR_ThreadLocalMuts  *new_muts;
-    MR_Unsigned         i;
 
     new_muts = MR_create_thread_local_mutables(MR_num_thread_local_mutables);
 
     MR_LOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
-    for (i = 0; i < MR_num_thread_local_mutables; i++) {
+    for (MR_Unsigned i = 0; i < MR_num_thread_local_mutables; i++) {
         new_muts->MR_tlm_values[i] = old_muts->MR_tlm_values[i];
     }
     MR_UNLOCK(&new_muts->MR_tlm_lock, "MR_clone_thread_local_mutables");
@@ -563,8 +562,6 @@ MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
 void
 MR_init_thread_stuff(void)
 {
-    int i;
-
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
@@ -579,7 +576,7 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&MR_all_engine_bases_lock, MR_MUTEX_ATTR);
     MR_all_engine_bases =
         MR_GC_malloc(sizeof(MercuryEngine *) * MR_max_engines);
-    for (i = 0; i < MR_max_engines; i++) {
+    for (int i = 0; i < MR_max_engines; i++) {
         MR_all_engine_bases[i] = NULL;
     }
   #endif

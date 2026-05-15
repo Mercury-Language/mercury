@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997, 1999-2001, 2006, 2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // File: mercury_heap_profile.c.
@@ -263,7 +263,6 @@ MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites, int size)
 {
     size_t      bytes;
     unsigned    id;
-    int         i;
 
     if (attrib_count_table == NULL) {
         // We must not use GC allocation here.
@@ -276,7 +275,7 @@ MR_register_alloc_sites(const MR_AllocSiteInfo *alloc_sites, int size)
             MR_NUM_BUILTIN_ALLOC_SITES);
     }
 
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         // Enlarge the hash table if necessary.
         if (attrib_count_table_size > 0 &&
             2 * attrib_count_table_used >= attrib_count_table_size)
@@ -320,14 +319,13 @@ rehash_attrib_count_table(void)
     MR_AttribCount    *new_table;
     size_t     new_size;
     size_t     new_used;
-    size_t     i;
 
     new_size = attrib_count_table_size * 2;
     new_table = MR_malloc(new_size * sizeof(MR_AttribCount));
     memset(new_table, 0, new_size * sizeof(MR_AttribCount));
 
     new_used = 0;
-    for (i = 0; i < attrib_count_table_size; i++) {
+    for (int i = 0; i < attrib_count_table_size; i++) {
         if (attrib_count_table[i].MR_atc_alloc_site != NULL) {
             add_attrib_count_entry(new_table, new_size, &new_used,
                 attrib_count_table[i].MR_atc_id,
@@ -480,9 +478,7 @@ finish_reachable_report(const char *label)
 static void
 write_attrib_counts(FILE *fp, MR_AttribCount *table, size_t table_size)
 {
-    size_t i;
-
-    for (i = 0; i < table_size; i++) {
+    for (size_t i = 0; i < table_size; i++) {
         if (table[i].MR_atc_alloc_site != NULL &&
             table[i].MR_atc_num_cells != 0)
         {
@@ -524,7 +520,6 @@ MR_finish_prof_snapshots_file(void)
 {
     FILE                    *fp;
     const MR_AllocSiteInfo  *site;
-    size_t                  i;
 
     if (!(fp = snapshot_file)) {
         return;
@@ -534,7 +529,7 @@ MR_finish_prof_snapshots_file(void)
     GC_mercury_write_size_map(fp);
     fprintf(fp, "\n");
 
-    for (i = 0; i < attrib_count_table_size; i++) {
+    for (size_t i = 0; i < attrib_count_table_size; i++) {
         site = attrib_count_table[i].MR_atc_alloc_site;
         if (site != NULL) {
             fprintf(fp, "%u\t", attrib_count_table[i].MR_atc_id);

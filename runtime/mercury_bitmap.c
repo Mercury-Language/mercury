@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_bitmap.c - bitmap handling
@@ -51,7 +51,6 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     MR_bool quote, MR_bool use_saved_hp, MR_AllocSiteInfoPtr alloc_id)
 {
     MR_String   result;
-    size_t      i;
     size_t      len;
     size_t      num_bytes;
     size_t      num_bits_len;
@@ -86,7 +85,7 @@ MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     strcpy(result + start, num_bits_str);
     start += num_bits_len;
     result[start++] = ':';
-    for (i = 0; i < num_bytes; i++) {
+    for (size_t i = 0; i < num_bytes; i++) {
         result[start++] = hex_digits[(b->elements[i] >> 4) & 0xf];
         result[start++] = hex_digits[b->elements[i] & 0xf];
     }

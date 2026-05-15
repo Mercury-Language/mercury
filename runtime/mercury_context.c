@@ -348,10 +348,6 @@ static void     MR_make_cpu_unavailable(int cpu);
 void
 MR_init_context_stuff(void)
 {
-#ifdef MR_LL_PARALLEL_CONJ
-    unsigned i;
-#endif
-
 #ifdef  MR_THREAD_SAFE
 
     pthread_mutex_init(&MR_runqueue_lock, MR_MUTEX_ATTR);
@@ -366,7 +362,7 @@ MR_init_context_stuff(void)
 
   #ifdef MR_HIGHLEVEL_CODE
     MR_KEY_CREATE(&MR_backjump_handler_key, NULL);
-    MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
+    MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *) 0);
   #endif
 
   #ifdef MR_LL_PARALLEL_CONJ
@@ -386,13 +382,13 @@ MR_init_context_stuff(void)
 
     MR_spark_deques = MR_GC_NEW_ARRAY_ATTRIB(MR_SparkDeque*,
         MR_max_engines, MR_ALLOC_SITE_RUNTIME);
-    for (i = 0; i < MR_max_engines; i++) {
+    for (unsigned i = 0; i < MR_max_engines; i++) {
         MR_spark_deques[i] = NULL;
     }
 
     engine_sleep_sync_data = MR_GC_NEW_ARRAY_ATTRIB(engine_sleep_sync,
         MR_max_engines, MR_ALLOC_SITE_RUNTIME);
-    for (i = 0; i < MR_max_engines; i++) {
+    for (unsigned i = 0; i < MR_max_engines; i++) {
         engine_sleep_sync *esync = get_engine_sleep_sync(i);
         MR_sem_init(&esync->d.es_sleep_semaphore, 0);
         pthread_mutex_init(&esync->d.es_wake_lock, MR_MUTEX_ATTR);
@@ -615,7 +611,6 @@ MR_pin_thread_no_locking(void)
 {
     int     initial_cpu;
     int     max;
-    int     i;
 
     initial_cpu = MR_current_cpu();
   #ifdef MR_DEBUG_THREAD_PINNING
@@ -631,7 +626,7 @@ MR_pin_thread_no_locking(void)
     #error Should be unreachable
   #endif
 
-    for (i = 0; (i < max) && MR_thread_pinning; i++) {
+    for (int i = 0; (i < max) && MR_thread_pinning; i++) {
         int target_cpu = (initial_cpu + i) % max;
 
         if (MR_do_pin_thread(target_cpu)) {
@@ -802,7 +797,6 @@ static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu)
 {
     hwloc_obj_t core;
     static int  siblings_to_make_unavailable;
-    int         i;
 
 #ifdef MR_DEBUG_THREAD_PINNING
     char        *cpusetstr;
@@ -835,7 +829,7 @@ static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu)
             return MR_FALSE;
         }
 
-        for (i = 0;
+        for (int i = 0;
              (i < core->arity && siblings_to_make_unavailable > 0);
              i++) {
             if (core->children[i] == pu) {
@@ -1480,7 +1474,6 @@ MR_find_ready_context(void)
 static MR_bool
 MR_attempt_steal_spark(MR_Spark *spark)
 {
-    int             i;
     int             offset;
     int             victim_id;
     int             max_victim_id;
@@ -1497,7 +1490,7 @@ MR_attempt_steal_spark(MR_Spark *spark)
 
     max_victim_id = MR_num_ws_engines;
 
-    for (i = 0; i < max_victim_id; i++) {
+    for (int i = 0; i < max_victim_id; i++) {
         victim_id = (i + offset) % max_victim_id;
         if (victim_id == MR_ENGINE(MR_eng_id)) {
             // There is no point in stealing from ourselves.
@@ -1898,7 +1891,6 @@ MR_try_wake_ws_engine(MR_EngineId preferred_engine, int action,
     union MR_engine_wake_action_data *action_data, MR_EngineId *target_eng)
 {
     MR_EngineId current_engine;
-    int i = 0;
     int state;
     MR_bool result;
     MR_Unsigned valid_states;
@@ -1924,7 +1916,7 @@ MR_try_wake_ws_engine(MR_EngineId preferred_engine, int action,
     // Right now this algorithm is naive, it searches from the preferred engine
     // around the loop until it finds an engine.
 
-    for (i = 0; i < MR_num_ws_engines; i++) {
+    for (int i = 0; i < MR_num_ws_engines; i++) {
         current_engine = (i + preferred_engine) % MR_num_ws_engines;
         if (current_engine == MR_ENGINE(MR_eng_id)) {
             // Don't post superfluous events to ourself.
@@ -2089,10 +2081,9 @@ try_notify_engine(MR_EngineId engine_id, int action,
 void
 MR_shutdown_ws_engines(void)
 {
-    int i;
     MR_bool result;
 
-    for (i = 0; i < MR_num_ws_engines; i++) {
+    for (int i = 0; i < MR_num_ws_engines; i++) {
         if (i == MR_ENGINE(MR_eng_id)) {
             continue;
         }

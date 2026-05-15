@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002-2007, 2011 The University of Melbourne.
-// Copyright (C) 2013-2018 The Mercury team.
+// Copyright (C) 2013-2018, 2021, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_deconstruct.c
@@ -134,7 +134,6 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     int                         ptag;
     MR_Word                     sectag;
     MR_TypeInfo                 eqv_type_info;
-    int                         i;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
@@ -182,7 +181,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                 return MR_FALSE;
             }
 
-            for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+            for (int i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
                 if (functor_desc->MR_du_functor_arg_names[i] != NULL
                 && MR_streq(arg_name,
                     functor_desc->MR_du_functor_arg_names[i]))

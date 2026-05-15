@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002-2004, 2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module exists to handle user-visible descriptions of types and type
@@ -150,7 +150,6 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
     MR_Word         *new_type_info_arena;
     MR_Word         new_type_info_arena_word;
     MR_TypeInfo     *new_type_info_args;
-    int             i;
 
     // We need to treat variable-arity types as a special case here.
 
@@ -184,7 +183,7 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
             new_type_info_args);
     }
 
-    for (i = 1; i <= arity; i++) {
+    for (int i = 1; i <= arity; i++) {
         new_type_info_args[i] = (MR_TypeInfo) MR_list_head(arg_types_list);
         arg_types_list = MR_list_tail(arg_types_list);
     }

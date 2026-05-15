@@ -12,7 +12,7 @@
 #endif
 
 // The function `MR_hash_float()' is used by the library predicate
-// `float__hash' and also for hashing floats for `pragma fact_table' indexing.
+// `float.hash' and also for hashing floats for `pragma fact_table' indexing.
 // It computes a non-negative MR_Integer hash value for a MR_Float.
 // The exact hash function used depend on the relative sizes of MR_Float and
 // MR_Integer.
@@ -29,7 +29,6 @@ MR_Integer
 MR_hash_float(MR_Float f)
 {
     union MR_Float_Integer  fi;
-    size_t                  i;
     MR_Integer              h = 0;
 
     fi.i = 0;
@@ -38,11 +37,11 @@ MR_hash_float(MR_Float f)
     if (sizeof(MR_Float) <= sizeof(MR_Integer)) {
         h = fi.i;
     } else if (sizeof(MR_Float) % sizeof(MR_Integer) == 0) {
-        for (i = 0; i < sizeof(MR_Float)/sizeof(MR_Integer); i++) {
+        for (size_t i = 0; i < sizeof(MR_Float) / sizeof(MR_Integer); i++) {
             h ^= fi.j[i];
         }
     } else {
-        for (i = 0; i < sizeof(MR_Float)/sizeof(char); i++) {
+        for (size_t i = 0; i < sizeof(MR_Float) / sizeof(char); i++) {
             h ^= (h << 5);
             h ^= fi.c[i];
         }

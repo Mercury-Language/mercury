@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-2001, 2003-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2022-2023, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 /*
@@ -626,7 +626,6 @@ static int      prev_fp_index = 0;
 void
 MR_dump_prev_locations(void)
 {
-    int i;
     int pos;
 
 #if !defined(MR_DEBUG_GOTOS)
@@ -634,7 +633,7 @@ MR_dump_prev_locations(void)
 #endif
     {
         printf("previous %d locations:\n", NUM_PREV_FPS);
-        for (i = 0; i < NUM_PREV_FPS; i++) {
+        for (int i = 0; i < NUM_PREV_FPS; i++) {
             pos = (i + prev_fp_index) % NUM_PREV_FPS;
             MR_printlabel(stdout, prev_fps[pos]);
         }

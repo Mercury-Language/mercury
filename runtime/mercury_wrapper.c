@@ -644,19 +644,17 @@ mercury_runtime_init(int argc, char **argv)
     // The current thread will be running the first engine.
   #ifdef MR_LL_PARALLEL_CONJ
     {
-        int i;
-
         MR_ws_engine_threads = MR_GC_NEW_ARRAY(MercuryThread,
             MR_num_ws_engines - 1);
 
-        for (i = 0; i < MR_num_ws_engines - 1; i++) {
+        for (int i = 0; i < MR_num_ws_engines - 1; i++) {
             MR_ws_engine_threads[i] = MR_create_worksteal_thread();
         }
 
     #ifdef MR_THREADSCOPE
         // TSC Synchronization is not used, support is commented out.
         // See runtime/mercury_threadscope.h for an explanation.
-        for (i = 1; i < MR_num_threads; i++) {
+        for (int i = 1; i < MR_num_threads; i++) {
             MR_threadscope_sync_tsc_master();
         }
     #endif
@@ -828,7 +826,6 @@ MR_init_conservative_GC(void)
     // to the second MR_Word.
 
     {
-        int i;
         int limit;
 
         limit = (1 << MR_LOW_TAG_BITS);
@@ -838,7 +835,7 @@ MR_init_conservative_GC(void)
         limit += sizeof(MR_Word);
     #endif
 
-        for (i = 1; i < limit; i++) {
+        for (int i = 1; i < limit; i++) {
             GC_REGISTER_DISPLACEMENT(i);
         }
     }
@@ -932,7 +929,6 @@ MR_make_argv(const char *string,
     char        *d;
     int         args_len = 0;
     int         argc = 0;
-    int         i;
 
     // First do a pass over the string to count how much space we need to
     // allocate.
@@ -989,7 +985,7 @@ MR_make_argv(const char *string,
 
     s = string;
     d = args;
-    for (i = 0; i < argc; i++) {
+    for (int i = 0; i < argc; i++) {
         // Skip leading whitespace.
         while (MR_isspace(*s)) {
             s++;
@@ -2506,12 +2502,8 @@ mercury_runtime_main(void)
 #endif
 
 #if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_DEBUG_THE_RUNTIME)
-    {
-        int i;
-
-        for (i = 0; i < SAFETY_BUFFER_SIZE; i++) {
-            MR_assert(safety_buffer[i] == MAGIC_MARKER_2);
-        }
+    for (int i = 0; i < SAFETY_BUFFER_SIZE; i++) {
+        MR_assert(safety_buffer[i] == MAGIC_MARKER_2);
     }
 #endif
 
@@ -2650,16 +2642,14 @@ MR_print_type_ctor_stats(void)
 static void
 MR_print_one_type_ctor_stat(FILE *fp, const char *op, MR_TypeStat *type_stat)
 {
-    int i;
-
-    for (i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
+    for (int i = 0; i < (int) MR_TYPECTOR_REP_UNKNOWN; i++) {
         if (type_stat->type_ctor_reps[i] > 0) {
             fprintf(fp, "%s %s %ld\n", op,
                 MR_ctor_rep_name[i], type_stat->type_ctor_reps[i]);
         }
     }
 
-    for (i = 0; i < type_stat->type_ctor_name_next; i++) {
+    for (int i = 0; i < type_stat->type_ctor_name_next; i++) {
         fprintf(fp, "%s %s %s %s %ld\n", op,
             type_stat->type_ctor_names[i].type_stat_module,
             type_stat->type_ctor_names[i].type_stat_name,
@@ -3009,13 +2999,9 @@ mercury_runtime_terminate(void)
     // Each work-stealing engine has been notified to shut down.
     // Wait for the threads that they are running on to terminate before
     // continuing.
-    {
-        int i;
-
-        for (i = 0; i < MR_num_ws_engines - 1; i++) {
-            pthread_join(MR_ws_engine_threads[i], NULL);
-            MR_ws_engine_threads[i] = MR_null_thread();
-        }
+    for (int i = 0; i < MR_num_ws_engines - 1; i++) {
+        pthread_join(MR_ws_engine_threads[i], NULL);
+        MR_ws_engine_threads[i] = MR_null_thread();
     }
 
 #ifdef MR_THREADSCOPE
@@ -3036,9 +3022,8 @@ mercury_runtime_terminate(void)
         struct stat statbuf;
         char        *filename;
         char        *cmd;
-        int         i;
 
-        for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
+        for (int i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
             filename = MR_make_string(MR_ALLOC_SITE_RUNTIME,
                 "%s%02d", MR_mem_usage_report_prefix, i);
             if (stat(filename, &statbuf) == 0) {

@@ -539,8 +539,7 @@ MR_ExceptionName MR_exception_names[] =
 static const char *
 MR_find_exception_name(DWORD exception_code)
 {
-    int i;
-    for (i = 0; i < sizeof(MR_exception_names)
+    for (int i = 0; i < sizeof(MR_exception_names)
             / sizeof(MR_ExceptionName); i++)
     {
         if (MR_exception_names[i].exception_code == exception_code) {
@@ -644,8 +643,6 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
 static void
 MR_dump_exception_record(EXCEPTION_RECORD *rec)
 {
-    int i;
-
     if (rec == NULL) {
         return;
     }
@@ -664,7 +661,7 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
         MR_INTEGER_LENGTH_MODIFIER "x",
         (MR_Word) rec->ExceptionAddress);
 
-    for (i = 0; i < rec->NumberParameters; i++) {
+    for (int i = 0; i < rec->NumberParameters; i++) {
         fprintf(stderr, "\n***    Parameter %d : 0x%08lx", i,
             (unsigned long) rec->ExceptionInformation[i]);
     }
@@ -889,8 +886,7 @@ leave_signal_handler(int sig)
     fprintf(stderr, "exiting from signal handler\n");
 #if defined(MR_THREAD_SAFE) && defined(MR_THREADSCOPE)
     if (MR_all_engine_bases) {
-        int i;
-        for (i = 0; i < MR_max_engines; i++) {
+        for (int i = 0; i < MR_max_engines; i++) {
             if (MR_all_engine_bases[i] &&
                 MR_all_engine_bases[i]->MR_eng_ts_buffer)
             {

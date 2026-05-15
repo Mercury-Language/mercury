@@ -41,11 +41,10 @@ MR_get_enum_functor_ordinal(MR_TypeCtorInfo type_ctor_info,
     } else {
         MR_EnumTypeLayout   enum_layout;
         int                 num_functors;
-        int                 i;
 
         enum_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_enum;
         num_functors = MR_type_ctor_num_functors(type_ctor_info);
-        for (i = 0; i < num_functors; i++) {
+        for (int i = 0; i < num_functors; i++) {
             if (enum_layout[i]->MR_enum_functor_value == value) {
                 return i;
             }
@@ -270,11 +269,10 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
     MR_TypeInfo     arg_type_info;
     MR_TypeInfo     list_arg_type_info;
     int             comp;
-    int             i;
 
     // Type check the list of arguments.
 
-    for (i = 0; i < arity; i++) {
+    for (int i = 0; i < arity; i++) {
         if (MR_list_is_empty(arg_list)) {
             return MR_FALSE;
         }

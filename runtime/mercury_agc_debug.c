@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007, 2009, 2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Debugging support for the accurate garbage collector.
@@ -227,7 +227,6 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
 {
     int                 short_var_count;
     int                 long_var_count;
-    int                 i;
     MR_TypeInfo         type_info;
     MR_Word             value;
     MR_TypeInfoParams   type_params;
@@ -257,7 +256,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     type_params = MR_materialize_type_params_base(label_layout,
         current_regs, stack_pointer, current_frame);
 
-    for (i = 0; i < long_var_count; i++) {
+    for (int i = 0; i < long_var_count; i++) {
         fprintf(stderr, "%-12s\t", "");
         if (MR_PROC_LAYOUT_HAS_PROC_ID(label_layout->MR_sll_entry)) {
             MR_print_proc_id(stderr, label_layout->MR_sll_entry);
@@ -286,7 +285,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         }
     }
 
-    for (i = 0; i < short_var_count; i++) {
+    for (int i = 0; i < short_var_count; i++) {
         fprintf(stderr, "%-12s\t", "");
         if (MR_PROC_LAYOUT_HAS_PROC_ID(label_layout->MR_sll_entry)) {
             MR_print_proc_id(stderr, label_layout->MR_sll_entry);

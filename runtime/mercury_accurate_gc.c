@@ -620,7 +620,6 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
 {
     int                             short_var_count;
     int                             long_var_count;
-    int                             i;
     MR_MemoryList                   allocated_memory_cells;
     MR_TypeInfoParams               type_params;
     MR_ShortLval                    locn;
@@ -659,7 +658,7 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
 
     // Copy each live variable.
 
-    for (i = 0; i < long_var_count; i++) {
+    for (int i = 0; i < long_var_count; i++) {
         locn = MR_long_desc_var_locn(label_layout, i);
         pseudo_type_info = MR_var_pti(label_layout, i);
 
@@ -671,7 +670,7 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
         allocated_memory_cells = NULL;
     }
 
-    for (i = 0; i < short_var_count; i++) {
+    for (int i = 0; i < short_var_count; i++) {
         locn = MR_short_desc_var_locn(label_layout, i);
         pseudo_type_info = MR_var_pti(label_layout, i);
 

@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1996-2007, 2010 The University of Melbourne.
-// Copyright (C) 2013-2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2013-2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #include    "mercury_imp.h"
@@ -473,14 +473,13 @@ MR_goto_msg(FILE *fp, const MR_Code *addr)
 void
 MR_reg_msg(FILE *fp)
 {
-    int         i;
     MR_Integer  x;
 
     if (!MR_lld_print_enabled) {
         return;
     }
 
-    for (i=1; i<=8; i++) {
+    for (int i = 1; i <= 8; i++) {
         x = (MR_Integer) MR_get_reg(i);
 #ifndef MR_CONSERVATIVE_GC
         if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->MR_zone_min <= x
@@ -589,8 +588,6 @@ MR_printheap(FILE *fp, const MR_Word *h)
 void
 MR_dumpframe(FILE *fp, const MR_Word *fr)
 {
-    int i;
-
     fprintf(fp, "frame at ");
     MR_printnondetstack(fp, fr),
     fprintf(fp, "\n");
@@ -603,7 +600,7 @@ MR_dumpframe(FILE *fp, const MR_Word *fr)
     fprintf(fp, "\t prevfr    ");
     MR_printnondetstack(fp, MR_prevfr_slot(fr));
 
-    for (i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
+    for (int i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
         fprintf(fp, "\t framevar(%d)  %ld 0x%lx\n",
             i, (long) (MR_Integer) MR_based_framevar(fr,i),
             (unsigned long) MR_based_framevar(fr,i));
@@ -660,10 +657,9 @@ MR_printregs(FILE *fp, const char *msg)
 static void
 MR_print_ordinary_regs(FILE *fp)
 {
-    int         i;
     MR_Integer  value;
 
-    for (i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++) {
         fprintf(fp, "r%d:      ", i + 1);
         value = (MR_Integer) MR_get_reg(i+1);
 

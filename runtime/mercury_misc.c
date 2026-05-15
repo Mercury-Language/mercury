@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1996-2000,2002, 2006, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #include    "mercury_conf.h"
@@ -145,9 +145,7 @@ MR_register_exception_cleanup(void (*func)(void *), void *data)
 void
 MR_perform_registered_exception_cleanups(void)
 {
-    int i;
-
-    for (i = 0; i < MR_cleanup_record_next; i++) {
+    for (int i = 0; i < MR_cleanup_record_next; i++) {
         MR_cleanup_records[i].func(MR_cleanup_records[i].data);
     }
 }

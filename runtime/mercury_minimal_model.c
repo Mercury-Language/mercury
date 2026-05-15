@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003-2006 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2025-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains the functions related specifically to the stack copy
@@ -176,9 +176,7 @@ MR_enter_consumer_debug(MR_Consumer *consumer)
 MR_ConsumerDebug *
 MR_lookup_consumer_debug_addr(MR_Consumer *consumer)
 {
-    int i;
-
-    for (i = 0; i < MR_consumer_debug_info_next; i++) {
+    for (int i = 0; i < MR_consumer_debug_info_next; i++) {
         if (MR_consumer_debug_infos[i].MR_cod_consumer == consumer) {
             return &MR_consumer_debug_infos[i];
         }
@@ -190,9 +188,7 @@ MR_lookup_consumer_debug_addr(MR_Consumer *consumer)
 MR_ConsumerDebug *
 MR_lookup_consumer_debug_num(MR_Unsigned consumer_index)
 {
-    MR_Unsigned i;
-
-    for (i = 0; i < MR_consumer_debug_info_next; i++) {
+    for (MR_Unsigned i = 0; i < MR_consumer_debug_info_next; i++) {
         if (MR_consumer_debug_infos[i].MR_cod_sequence_num == consumer_index) {
             return &MR_consumer_debug_infos[i];
         }
@@ -277,9 +273,7 @@ MR_enter_subgoal_debug(MR_Subgoal *subgoal)
 MR_SubgoalDebug *
 MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal)
 {
-    int i;
-
-    for (i = 0; i < MR_subgoal_debug_info_next; i++) {
+    for (int i = 0; i < MR_subgoal_debug_info_next; i++) {
         if (MR_subgoal_debug_infos[i].MR_sgd_subgoal == subgoal) {
             return &MR_subgoal_debug_infos[i];
         }
@@ -291,9 +285,7 @@ MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal)
 MR_SubgoalDebug *
 MR_lookup_subgoal_debug_num(MR_Unsigned subgoal_index)
 {
-    MR_Unsigned i;
-
-    for (i = 0; i < MR_subgoal_debug_info_next; i++) {
+    for (MR_Unsigned i = 0; i < MR_subgoal_debug_info_next; i++) {
         if (MR_subgoal_debug_infos[i].MR_sgd_sequence_num == subgoal_index) {
             return &MR_subgoal_debug_infos[i];
         }
@@ -1355,7 +1347,6 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
                 int num_frame_vars;
-                int i;
 
                 printf("thrashing non-main-branch frame\n");
 
@@ -1364,7 +1355,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
                 // restored. The vandalism below is intended to test this.
 
                 num_frame_vars = frame_size - MR_NONDET_FIXED_SIZE;
-                for (i = 1; i <= num_frame_vars; i++) {
+                for (int i = 1; i <= num_frame_vars; i++) {
                     *MR_based_framevar_addr(saved_fr, i) = -1;
                 }
             }
@@ -1613,9 +1604,7 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
 static void
 print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
 {
-    int i;
-
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         fprintf(fp, "%2d %p: %ld (%lx)\n", i, &segment[i],
             (long) segment[i], (long) segment[i]);
     }

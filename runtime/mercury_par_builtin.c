@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2009, 2011 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #include "mercury_types.h"
@@ -41,12 +41,11 @@ MR_LoopControl *
 MR_lc_create(unsigned num_workers)
 {
     MR_LoopControl  *lc;
-    unsigned        i;
 
     lc = MR_GC_malloc(sizeof(MR_LoopControl) +
         (num_workers-1) * sizeof(MR_LoopControlSlot));
     lc->MR_lc_num_slots = num_workers;
-    for (i = 0; i < num_workers; i++) {
+    for (unsigned i = 0; i < num_workers; i++) {
         // We allocate contexts as necessary, so that we never allocate a
         // context we don't use. Also, by allocating the contexts in
         // MR_lc_spawn_off, already spawned off computations can run in
@@ -77,7 +76,7 @@ MR_lc_try_get_free_slot(MR_LoopControl *lc, MR_Unsigned *lcs_idx)
     if (lc->MR_lc_outstanding_workers == lc->MR_lc_num_slots) {
         return MR_FALSE;
     } else {
-        unsigned hint, offset, i;
+        unsigned hint, i;
 
         // We start indexing into the array starting at this hint, it is either
         // set to a known free slot or the next unchecked slot after finding a
@@ -85,7 +84,7 @@ MR_lc_try_get_free_slot(MR_LoopControl *lc, MR_Unsigned *lcs_idx)
 
         hint = lc->MR_lc_free_slot_hint;
 
-        for (offset = 0; offset < lc->MR_lc_num_slots; offset++) {
+        for (unsigned offset = 0; offset < lc->MR_lc_num_slots; offset++) {
             i = (hint + offset) % lc->MR_lc_num_slots;
             if (lc->MR_lc_slots[i].MR_lcs_is_free) {
                 lc->MR_lc_slots[i].MR_lcs_is_free = MR_FALSE;

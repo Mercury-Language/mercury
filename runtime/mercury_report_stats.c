@@ -1,6 +1,6 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
-// Copyright (C) 2021, 2024 The Mercury team.
+// Copyright (C) 2021, 2024, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains code for implementing the predicates in the
@@ -515,7 +515,6 @@ static int
 MR_memory_profile_report(FILE *fp, int *line_number,
     const MR_memprof_report_entry *table, int num_entries, MR_bool complete)
 {
-    int         i;
     const char  *name;
     int         result;
 
@@ -547,7 +546,7 @@ MR_memory_profile_report(FILE *fp, int *line_number,
         num_entries = MAX_REPORT_LINES;
     }
 
-    for (i = 0; i < num_entries; i++) {
+    for (int i = 0; i < num_entries; i++) {
         if (complete) {
             result =  fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
                 table[i].counter.cells_at_period_end,

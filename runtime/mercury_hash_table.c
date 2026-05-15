@@ -21,12 +21,10 @@
 void
 MR_ht_init_table(MR_Hash_Table *table)
 {
-    int i;
-
     table->MR_ht_store = MR_GC_NEW_ARRAY_ATTRIB(MR_Dlist *, table->MR_ht_size,
         MR_ALLOC_SITE_RUNTIME);
 
-    for (i = 0; i < table->MR_ht_size; i++) {
+    for (int i = 0; i < table->MR_ht_size; i++) {
         table->MR_ht_store[i] = NULL;
     }
 }
@@ -90,10 +88,9 @@ MR_Dlist *
 MR_ht_get_all_entries(const MR_Hash_Table *table)
 {
     MR_Dlist    *list;
-    int         i;
 
     list = MR_dlist_makelist0();
-    for (i = 0; i < table->MR_ht_size; i++) {
+    for (int i = 0; i < table->MR_ht_size; i++) {
         MR_dlist_addndlist(list, table->MR_ht_store[i]);
     }
 
@@ -104,9 +101,8 @@ void
 MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 {
     MR_Dlist    *ptr;
-    int         i;
 
-    for (i = 0; i < table->MR_ht_size; i++) {
+    for (int i = 0; i < table->MR_ht_size; i++) {
         MR_for_dlist (ptr, table->MR_ht_store[i]) {
             f(MR_dlist_data(ptr));
         }

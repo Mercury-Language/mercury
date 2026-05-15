@@ -867,7 +867,6 @@ MR_hgc_init(void)
     hgc_int initial_big_heap_size;      // In words.
     hgc_int initial_heap_size;          // In words.
     hgc_ptr heap_midpoint;
-    int i;
     char *envvar;
 
     // Just return if we have already been initialised.
@@ -930,14 +929,14 @@ MR_hgc_init(void)
     small_bot = page(heap_bot + page_size - 1);
     small_top = small_bot;
     small_high_water = small_bot + initial_small_heap_size;
-    for (i = 0; i <= max_small_payload; i++) {
+    for (int i = 0; i <= max_small_payload; i++) {
         small_cell_free_list[i] = NULL;
     }
 
     // Set up the big heap (this grows downwards). We have to create the
     // initial empty cell and add it to the right free list.
 
-    for (i = 0; i <= max_big_cell_size_index; i++) {
+    for (int i = 0; i <= max_big_cell_size_index; i++) {
         big_cell_free_list[i] = NULL;
     }
     big_size_index = min_big_cell_size_index;

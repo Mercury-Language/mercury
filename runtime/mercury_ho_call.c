@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018, 2021 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2021-2022, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module provides much of the functionality for doing higher order
@@ -341,30 +341,28 @@ static unsigned int    MR_hidden_method_arg_histogram[MR_MAX_STATS_ARG];
 void
 MR_print_hidden_arg_stats(FILE *fp)
 {
-    int i;
-
-    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+    for (int i = 0; i < MR_MAX_STATS_ARG; i++) {
         if (MR_explicit_closure_arg_histogram[i] > 0) {
             fprintf(fp, "closure invocations with %d explicit args: %d\n",
                 i, MR_explicit_closure_arg_histogram[i]);
         }
     }
 
-    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+    for (int i = 0; i < MR_MAX_STATS_ARG; i++) {
         if (MR_explicit_method_arg_histogram[i] > 0) {
             fprintf(fp, "method invocations with %d explicit args: %d\n",
                 i, MR_explicit_method_arg_histogram[i]);
         }
     }
 
-    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+    for (int i = 0; i < MR_MAX_STATS_ARG; i++) {
         if (MR_hidden_closure_arg_histogram[i] > 0) {
             fprintf(fp, "closure invocations with %d hidden args: %d\n",
                 i, MR_hidden_closure_arg_histogram[i]);
         }
     }
 
-    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+    for (int i = 0; i < MR_MAX_STATS_ARG; i++) {
         if (MR_hidden_method_arg_histogram[i] > 0) {
             fprintf(fp, "method invocations with %d hidden args: %d\n",
                 i, MR_hidden_method_arg_histogram[i]);
@@ -776,7 +774,6 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
     int                 num_args;
     int                 r_offset;
     int                 f_offset;
-    int                 i;
     int                 result;
 
     // Optimize the simple case.
@@ -839,7 +836,7 @@ MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
     r_offset = 0;
     f_offset = MR_closure_num_hidden_r_args(x);
 
-    for (i = 0; i < num_args; i++) {
+    for (int i = 0; i < num_args; i++) {
         MR_TypeInfo x_arg_type_info;
         MR_TypeInfo y_arg_type_info;
         MR_TypeInfo arg_type_info;

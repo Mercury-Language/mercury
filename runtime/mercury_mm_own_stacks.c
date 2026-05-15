@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2004-2007, 2011 The University of Melbourne.
-// Copyright (C) 2013-2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2013-2014, 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains the functions related specifically to the own stack
@@ -110,9 +110,7 @@ MR_enter_cons_debug(MR_Consumer *consumer)
 MR_ConsDebug *
 MR_lookup_cons_debug_addr(MR_Consumer *consumer)
 {
-    int i;
-
-    for (i = 0; i < MR_cons_debug_info_next; i++) {
+    for (int i = 0; i < MR_cons_debug_info_next; i++) {
         if (MR_cons_debug_infos[i].MR_cod_consumer == consumer) {
             return &MR_cons_debug_infos[i];
         }
@@ -124,9 +122,7 @@ MR_lookup_cons_debug_addr(MR_Consumer *consumer)
 MR_ConsDebug *
 MR_lookup_cons_debug_num(int cons_index)
 {
-    int i;
-
-    for (i = 0; i < MR_cons_debug_info_next; i++) {
+    for (int i = 0; i < MR_cons_debug_info_next; i++) {
         if (MR_cons_debug_infos[i].MR_cod_sequence_num == cons_index) {
             return &MR_cons_debug_infos[i];
         }
@@ -232,9 +228,7 @@ MR_enter_gen_debug(MR_Generator *generator)
 MR_GenDebug *
 MR_lookup_gen_debug_addr(MR_Generator *generator)
 {
-    int i;
-
-    for (i = 0; i < MR_gen_debug_info_next; i++) {
+    for (int i = 0; i < MR_gen_debug_info_next; i++) {
         if (MR_gen_debug_infos[i].MR_gd_generator == generator) {
             return &MR_gen_debug_infos[i];
         }
@@ -246,9 +240,7 @@ MR_lookup_gen_debug_addr(MR_Generator *generator)
 MR_GenDebug *
 MR_lookup_gen_debug_num(int gen_index)
 {
-    int i;
-
-    for (i = 0; i < MR_gen_debug_info_next; i++) {
+    for (int i = 0; i < MR_gen_debug_info_next; i++) {
         if (MR_gen_debug_infos[i].MR_gd_sequence_num == gen_index) {
             return &MR_gen_debug_infos[i];
         }
@@ -613,7 +605,6 @@ MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
 {
     MR_GeneratorPtr generator;
     MR_Context      *context;
-    int             i;
 
     generator = MR_TABLE_NEW(MR_Generator);
     context = MR_get_context_for_gen(generator);
@@ -636,7 +627,7 @@ MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
     generator->MR_gen_num_input_args = num_input_args;
     generator->MR_gen_input_args = MR_TABLE_NEW_ARRAY(MR_Word, num_input_args);
 
-    for (i = 0; i < num_input_args; i++) {
+    for (int i = 0; i < num_input_args; i++) {
         generator->MR_gen_input_args[i] = MR_mmos_arg_regs[i];
     }
 

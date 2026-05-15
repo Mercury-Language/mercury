@@ -25,10 +25,8 @@ unsigned long   MR_num_uses[MR_MAX_REAL_R_REG + MR_NUM_SPECIAL_REG];
 void
 MR_print_register_usage_counts(void)
 {
-    int i;
-
     printf("register usage counts:\n");
-    for (i = 1; i <= MR_MAX_REAL_R_REG; i++) {
+    for(int i = 1; i <= MR_MAX_REAL_R_REG; i++) {
         printf("r%d", i);
         printf(MR_COUNT_FORMAT, MR_num_uses[MR_R_SLOT(i)]);
     }
@@ -81,10 +79,8 @@ MR_print_register_usage_counts(void)
 void
 MR_verify_fake_registers(void)
 {
-    int i;
-
     printf("register slots:\n");
-    for (i = 1; i <= MR_MAX_REAL_R_REG; i++) {
+    for (int i = 1; i <= MR_MAX_REAL_R_REG; i++) {
         printf("r%d", i);
         printf(MR_VERIFY_FORMAT, MR_R_SLOT(i));
     }

@@ -279,7 +279,6 @@ MR_trace_record_label_exec_counts(void *dummy)
     keep = MR_FALSE;
     if (MR_trace_count_summary_file != NULL) {
         if (MR_FILE_EXISTS(MR_trace_count_summary_file)) {
-            int     i;
 
             // 30 bytes must be enough for the dot, the value of i, and '\0'.
             name_len = strlen(MR_trace_count_summary_file) + 30;
@@ -287,7 +286,7 @@ MR_trace_record_label_exec_counts(void *dummy)
 
             fp = NULL;
             // Search for a suffix that doesn't exist yet.
-            for (i = 1; i <= MR_trace_count_summary_max; i++) {
+            for (int i = 1; i <= MR_trace_count_summary_max; i++) {
                 MR_snprintf(name, name_len, "%s.%d",
                     MR_trace_count_summary_file, i);
                 if (! MR_FILE_EXISTS(name)) {
@@ -364,7 +363,6 @@ MR_trace_record_label_exec_counts(void *dummy)
         int         summary_status;
         int         mv_status;
         int         unlink_status;
-        int         i;
         const char  *old_options;
 
         // 30 bytes must be enough for the dot, the value of i, and space.
@@ -386,7 +384,7 @@ MR_trace_record_label_exec_counts(void *dummy)
         strcat(cmd, " ");
         strcat(cmd, MR_trace_count_summary_file);
 
-        for (i = 1; i <= MR_trace_count_summary_max; i++) {
+        for (int i = 1; i <= MR_trace_count_summary_max; i++) {
             MR_snprintf(name, name_len, "%s.%d",
                 MR_trace_count_summary_file, i);
             strcat(cmd, " ");
@@ -414,7 +412,7 @@ MR_trace_record_label_exec_counts(void *dummy)
 
             if (mv_status == 0) {
                 // Delete all files whose data is now in the summary file.
-                for (i = 1; i <= MR_trace_count_summary_max; i++) {
+                for (int i = 1; i <= MR_trace_count_summary_max; i++) {
                     MR_snprintf(name, name_len, "%s.%d",
                         MR_trace_count_summary_file, i);
                     unlink_status = unlink(name);
@@ -443,8 +441,6 @@ MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
     const MR_ModuleFileLayout   *file;
     int                         num_modules;
     int                         num_files;
-    int                         module_num;
-    int                         file_num;
     unsigned                    num_written;
 
     MR_trace_name_count_port_ensure_init();
@@ -461,7 +457,7 @@ MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
 
     num_modules = MR_module_info_next;
     num_written = 0;
-    for (module_num = 0; module_num < num_modules; module_num++) {
+    for (int module_num = 0; module_num < num_modules; module_num++) {
         module = MR_module_infos[module_num];
         num_files = module->MR_ml_filename_count;
 
@@ -469,7 +465,7 @@ MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
         MR_trace_write_quoted_atom(fp, module->MR_ml_name);
         fputc('\n', fp);
 
-        for (file_num = 0; file_num < num_files; file_num++) {
+        for (int file_num = 0; file_num < num_files; file_num++) {
             file = module->MR_ml_module_file_layout[file_num];
             num_written += MR_trace_write_label_exec_counts_for_file(fp,
                 module, file, module->MR_ml_name, coverage_test);
@@ -1076,15 +1072,13 @@ void
 MR_turn_off_debug(MR_SavedDebugState *saved_state,
     MR_bool include_counter_vars)
 {
-    int i;
-
     saved_state->MR_sds_debug_enabled = MR_debug_enabled;
     saved_state->MR_sds_io_tabling_enabled = MR_io_tabling_enabled;
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
     MR_io_tabling_enabled = MR_FALSE;
 
-    for (i = 0; i < MR_MAXFLAG ; i++) {
+    for (int i = 0; i < MR_MAXFLAG ; i++) {
         saved_state->MR_sds_debugflags[i] = MR_debugflag[i];
         MR_debugflag[i] = MR_FALSE;
     }
@@ -1102,13 +1096,11 @@ MR_turn_off_debug(MR_SavedDebugState *saved_state,
 void
 MR_turn_debug_back_on(const MR_SavedDebugState *saved_state)
 {
-    int i;
-
     MR_debug_enabled = saved_state->MR_sds_debug_enabled;
     MR_update_trace_func_enabled();
     MR_io_tabling_enabled = saved_state->MR_sds_io_tabling_enabled;
 
-    for (i = 0; i < MR_MAXFLAG; i++) {
+    for (int i = 0; i < MR_MAXFLAG; i++) {
         MR_debugflag[i] = saved_state->MR_sds_debugflags[i];
     }
 
@@ -1149,10 +1141,8 @@ MR_trace_get_exception_value(void)
 void
 MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 {
-    int i;
-
     fprintf(fp, "%s histogram\n", which);
-    for (i = 1; i <= max; i++) {
+    for (int i = 1; i <= max; i++) {
         fprintf(fp, "depth %4d: %10d", i, histogram[i]);
         if (i + 1 <= max && histogram[i] != 0) {
             fprintf(fp, ", branching factor %7.2f\n",
@@ -1248,7 +1238,6 @@ MR_io_tabling_stats(FILE *fp)
     MR_IO_Table_Stats_Hash_Record   *record;
     int                             num_entries;
     int                             count;
-    int                             i;
 
     // Create a fresh new hash table, separate from the table created by
     // any previous call to this function. We can't use structure assignment,
@@ -1262,7 +1251,7 @@ MR_io_tabling_stats(FILE *fp)
     MR_init_hash_table(hash_table);
     num_entries = 0;
 
-    for (i = MR_io_tabling_start; i < MR_io_tabling_counter_hwm; i++) {
+    for (int i = MR_io_tabling_start; i < MR_io_tabling_counter_hwm; i++) {
         MR_TABLE_START_INT(NULL, MR_FALSE, MR_FALSE, answer_block_trie,
             (MR_TrieNode) &MR_io_tabling_pointer, MR_io_tabling_start, i);
         answer_block = answer_block_trie->MR_answerblock;
@@ -1298,7 +1287,7 @@ MR_io_tabling_stats(FILE *fp)
     qsort(MR_io_tabling_stats_sort_arena, num_entries,
         sizeof(MR_IO_Table_Stats_Hash_Record), MR_compare_in_sort_arena);
 
-    for (i = 0; i < num_entries; i++) {
+    for (int i = 0; i < num_entries; i++) {
         record = &MR_io_tabling_stats_sort_arena[i];
         proc_layout = record->MR_io_tabling_stats_proc;
         count = record->MR_io_tabling_stats_count;

@@ -361,7 +361,6 @@ MR_init_zones(void)
 static void
 MR_init_offsets(void)
 {
-    int     i;
     size_t  fake_reg_offset;
 
     offset_counter = 0;
@@ -371,7 +370,7 @@ MR_init_offsets(void)
 
     fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size;
 
-    for (i = 0; i < CACHE_SLICES - 1; i++) {
+    for (int i = 0; i < CACHE_SLICES - 1; i++) {
         offset_vector[i] =
             (fake_reg_offset + MR_pcache_size * i / CACHE_SLICES)
             % MR_pcache_size;
@@ -958,7 +957,7 @@ static MR_bool          MR_should_stop_gc_memory_zones(void);
 static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE free_memory_zones = NULL;
 
 // This value is used to maintain a position within the list of free zones.
-// If it is null then no position is maintained. Otherwise it points to a
+// If it is null, then no position is maintained. Otherwise it points to a
 // position within the list, in this case it represents a sub-list of free
 // zones. This sub list always contains the least-recently-used zones.
 //
@@ -975,7 +974,7 @@ static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE
 
 static MR_THREADSAFE_VOLATILE MR_Unsigned free_memory_zones_num = 0;
 
-// The number pages used bo the cached free zones.
+// The number of pages used by the cached free zones.
 
 static MR_THREADSAFE_VOLATILE MR_Unsigned free_memory_zones_pages = 0;
 

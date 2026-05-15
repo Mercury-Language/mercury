@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007, 2010-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_wsdeque.c
@@ -119,12 +119,11 @@ MR_grow_spark_array(const MR_SparkArray *old_arr, MR_Integer bot,
 {
     MR_Integer      new_size;
     MR_SparkArray    *new_arr;
-    MR_Integer      i;
 
     new_size = 2 * (old_arr->MR_sa_max + 1);
     new_arr = MR_alloc_spark_array(new_size);
 
-    for (i = top; i < bot; i++) {
+    for (MR_Integer i = top; i < bot; i++) {
         MR_sa_element(new_arr, i) = MR_sa_element(old_arr, i);
     }
 

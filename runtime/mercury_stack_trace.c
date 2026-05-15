@@ -772,7 +772,6 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
     int                     ancestor_level;
     MR_bool                 in_clique;
     int                     last_filled;
-    int                     i;
 
     MR_do_init_modules();
 
@@ -835,7 +834,7 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
         // linear search is likely to be faster for searching small arrays.
 
         in_clique = MR_FALSE;
-        for (i = 0; i < num_procs_in_clique; i++) {
+        for (int i = 0; i < num_procs_in_clique; i++) {
             if (cur_proc_layout == procs_table[i]) {
                 in_clique = MR_TRUE;
                 break;
@@ -875,7 +874,7 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
 
 #ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
                 printf("\n");
-                for (i = 0; i < procs_table_next; i++) {
+                for (int i = 0; i < procs_table_next; i++) {
                     printf("SORTED %d %x\n", i, procs_table[i]);
                 }
 #endif
@@ -883,7 +882,7 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
                 // guaranteed to be consecutive.
 
                 last_filled = 0;
-                for (i = 1; i < procs_table_next; i++) {
+                for (int i = 1; i < procs_table_next; i++) {
                     if (procs_table[i] != procs_table[last_filled]) {
                         last_filled++;
                         procs_table[last_filled] = procs_table[i];
@@ -895,7 +894,7 @@ MR_find_clique_entry(const MR_LabelLayout *label_layout,
 
 #ifdef  MR_DEBUG_FIND_CLIQUE_ENTRY
                 printf("\n");
-                for (i = 0; i < procs_table_next; i++) {
+                for (int i = 0; i < procs_table_next; i++) {
                     printf("UNIQ %d %x\n", i, procs_table[i]);
                 }
                 printf("\n");
@@ -1638,9 +1637,7 @@ MR_step_over_nondet_frame(MR_DumpOrTraverseNondetFrameFunc *func,
 static MR_bool
 MR_find_matching_branch(MR_Word *fr, int *branch_ptr)
 {
-    int     branch;
-
-    for (branch = 0; branch < MR_nondet_branch_info_next; branch++) {
+    for (int branch = 0; branch < MR_nondet_branch_info_next; branch++) {
         if (MR_nondet_branch_infos[branch].branch_curfr == fr) {
             *branch_ptr = branch;
             return MR_TRUE;
@@ -1720,9 +1717,7 @@ MR_nofail_ip(MR_Code *ip)
 static MR_Code *
 MR_find_nofail_temp_redoip(MR_Word *fr)
 {
-    int     slot;
-
-    for (slot = 0; slot < MR_temp_frame_info_next; slot++) {
+    for (int slot = 0; slot < MR_temp_frame_info_next; slot++) {
         if (fr == MR_temp_frame_infos[slot].temp_redofr &&
             MR_nofail_ip(MR_temp_frame_infos[slot].temp_redoip))
         {
@@ -1913,7 +1908,6 @@ MR_find_context(const MR_LabelLayout *label, const char **fileptr,
     const MR_ProcLayout             *proc;
     const MR_ModuleLayout           *module;
     const MR_ModuleFileLayout       *file_layout;
-    int                             i, j;
 
     proc = label->MR_sll_entry;
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc)) {
@@ -1921,9 +1915,9 @@ MR_find_context(const MR_LabelLayout *label, const char **fileptr,
     }
 
     module = proc->MR_sle_module_layout;
-    for (i = 0; i < module->MR_ml_filename_count; i++) {
+    for (int i = 0; i < module->MR_ml_filename_count; i++) {
         file_layout = module->MR_ml_module_file_layout[i];
-        for (j = 0; j < file_layout->MR_mfl_label_count; j++) {
+        for (int j = 0; j < file_layout->MR_mfl_label_count; j++) {
             if (file_layout->MR_mfl_label_layout[j] == label) {
                 *fileptr = file_layout->MR_mfl_filename;
                 *lineptr = file_layout->MR_mfl_label_lineno[j];

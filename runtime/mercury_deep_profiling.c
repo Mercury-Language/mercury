@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018-2019, 2022, 2024-2025 The Mercury team.
+// Copyright (C) 2016, 2018-2019, 2022, 2024-2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Deep profiling module
@@ -412,10 +412,6 @@ MR_write_out_profiling_tree(void)
     time_t                  seconds_since_epoch;
     struct tm               *tm;
 
-#ifdef MR_DEEP_PROFILING_STATISTICS
-    int                     i;
-#endif
-
     if (MR_deep_prof_std_name_flag) {
         strncpy(data_filename, "Deep.data", MR_FILENAME_BUF_LEN);
         strncpy(procrep_filename, "Deep.procrep", MR_FILENAME_BUF_LEN);
@@ -706,7 +702,7 @@ MR_write_out_profiling_tree(void)
         MR_deep_num_dynlist_nodes * sizeof(MR_CallSiteDynList));
 
     fprintf(stderr, "\nTypeInfo search length histogram:\n");
-    for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
+    for (int i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
         if (MR_dictionary_search_lengths[i] > 0) {
             fprintf(stderr, "\t%3d: %12d\n", i,
                 MR_dictionary_search_lengths[i]);
@@ -714,14 +710,14 @@ MR_write_out_profiling_tree(void)
     }
 
     fprintf(stderr, "\nClosure search length histogram:\n");
-    for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
+    for (int i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
         if (MR_closure_search_lengths[i] > 0) {
             fprintf(stderr, "\t%3d: %12d\n", i, MR_closure_search_lengths[i]);
         }
     }
 
     fprintf(stderr, "\nMethod search length histogram:\n");
-    for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
+    for (int i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
         if (MR_method_search_lengths[i] > 0) {
             fprintf(stderr, "\t%3d: %12d\n", i, MR_method_search_lengths[i]);
         }
@@ -890,14 +886,13 @@ MR_write_out_module_proc_reps_start(FILE *procrep_fp,
     const MR_uint_least8_t  *oisu_bytecode;
     const MR_uint_least8_t  *type_bytecode;
     int                     size;
-    int                     bytenum;
 
     putc(MR_next_module, procrep_fp);
     MR_write_string(procrep_fp, module_layout->MR_ml_name);
 
     MR_write_num(procrep_fp, module_layout->MR_ml_string_table_size);
     size = module_layout->MR_ml_string_table_size;
-    for (bytenum = 0; bytenum < size; bytenum++) {
+    for (int bytenum = 0; bytenum < size; bytenum++) {
         putc(module_layout->MR_ml_string_table[bytenum], procrep_fp);
     }
 
@@ -914,7 +909,7 @@ MR_write_out_module_proc_reps_start(FILE *procrep_fp,
 
         size = (oisu_bytecode[0] << 24) + (oisu_bytecode[1] << 16) +
             (oisu_bytecode[2] << 8) + oisu_bytecode[3];
-        for (bytenum = 0; bytenum < size; bytenum++) {
+        for (int bytenum = 0; bytenum < size; bytenum++) {
             putc(oisu_bytecode[bytenum], procrep_fp);
         }
     }
@@ -932,7 +927,7 @@ MR_write_out_module_proc_reps_start(FILE *procrep_fp,
 
         size = (type_bytecode[0] << 24) + (type_bytecode[1] << 16) +
             (type_bytecode[2] << 8) + type_bytecode[3];
-        for (bytenum = 0; bytenum < size; bytenum++) {
+        for (int bytenum = 0; bytenum < size; bytenum++) {
             putc(type_bytecode[bytenum], procrep_fp);
         }
     }
@@ -953,7 +948,6 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     int                 ps_id;
     int                 css_id;
     MR_bool             already_written;
-    int                 i;
 
     if (proc_layout == NULL) {
         MR_fatal_error("MR_write_out_proc_static: null proc_layout");
@@ -991,7 +985,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
                 procid->MR_proc_user.MR_user_mode);
         }
 
-        for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+        for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
             if (i == 0) {
                 fputs("\n\t", deep_fp);
             } else {
@@ -1094,7 +1088,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     // Write out pointers to Call Site Statics. These are read in with the
     // proc static.
 
-    for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+    for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
         (void) MR_insert_call_site_static(&ps->MR_ps_call_sites[i], &css_id,
             NULL, MR_FALSE);
 
@@ -1118,7 +1112,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     // Write out the actual call site statics,  These are read in after the
     // proc static, not as part of it.
 
-    for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+    for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
 #ifdef MR_DEEP_PROFILING_DEBUG
         if (debug_fp != NULL) {
             fprintf(debug_fp, "in proc_static %p/%p/%d, call site %d\n",
@@ -1148,14 +1142,13 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     bytecode = proc_layout->MR_sle_body_bytes;
     if (bytecode != NULL) {
         int size;
-        int bytenum;
 
         putc(MR_next_proc, procrep_fp);
         MR_write_out_str_proc_label(procrep_fp, procid);
 
         size = (bytecode[0] << 24) + (bytecode[1] << 16) +
             (bytecode[2] << 8) + bytecode[3];
-        for (bytenum = 0; bytenum < size; bytenum++) {
+        for (int bytenum = 0; bytenum < size; bytenum++) {
             putc(bytecode[bytenum], procrep_fp);
         }
     }
@@ -1401,7 +1394,6 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
     int                     pd_id;
     int                     ps_id;
     MR_bool                 already_written;
-    int                     i;
 
     if (pd == NULL) {
         // This shouldn't really happen except that we don't have
@@ -1445,7 +1437,7 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
     MR_write_out_coverage_points_dynamic(fp, pd);
 #endif
 
-    for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+    for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
         MR_write_kind(fp, ps->MR_ps_call_sites[i].MR_css_kind);
         switch (ps->MR_ps_call_sites[i].MR_css_kind)
         {
@@ -1470,7 +1462,7 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
         }
     }
 
-    for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+    for (int i = 0; i < ps->MR_ps_num_call_sites; i++) {
         switch (ps->MR_ps_call_sites[i].MR_css_kind)
         {
             case MR_callsite_normal_call:
@@ -1540,7 +1532,6 @@ MR_write_out_coverage_points_static(FILE *fp, const MR_ProcStatic *ps)
 #ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
     const MR_Unsigned *cps;
 #endif
-    unsigned int i;
 
     cps_static = ps->MR_ps_coverage_points_static;
 #ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
@@ -1548,7 +1539,7 @@ MR_write_out_coverage_points_static(FILE *fp, const MR_ProcStatic *ps)
 #endif
 
     MR_write_num(fp, ps->MR_ps_num_coverage_points);
-    for (i = 0; i < ps->MR_ps_num_coverage_points; i++) {
+    for (unsigned int i = 0; i < ps->MR_ps_num_coverage_points; i++) {
 
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
         if (debug_fp != NULL) {
@@ -1575,7 +1566,6 @@ MR_write_out_coverage_points_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 {
 #ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
     const MR_Unsigned *cps;
-    unsigned int i;
     unsigned int ncps;
 
     cps = pd->MR_pd_coverage_points;
@@ -1583,7 +1573,7 @@ MR_write_out_coverage_points_dynamic(FILE *fp, const MR_ProcDynamic *pd)
         MR_ps_num_coverage_points;
 
     MR_write_num(fp, ncps);
-    for (i = 0; i < ncps; i++) {
+    for (unsigned int i = 0; i < ncps; i++) {
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
         if (debug_fp != NULL) {
             fprintf(debug_fp, "coverage point: %d",
@@ -1670,15 +1660,13 @@ MR_write_num(FILE *fp, unsigned long num)
 static void
 MR_write_fixed_size_int(FILE *fp, MR_uint_least64_t num)
 {
-    int i;
-
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
     if (debug_fp != NULL) {
         fprintf(debug_fp, "fixed_size_int: %ld\n", num);
     }
 #endif
 
-    for (i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
+    for (int i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
         putc(num & ((1 << 8) - 1), fp);
         num = num >> 8;
     }
@@ -1687,7 +1675,6 @@ MR_write_fixed_size_int(FILE *fp, MR_uint_least64_t num)
 static void
 MR_write_string(FILE *fp, const char *ptr)
 {
-    int i;
     int len;
 
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
@@ -1698,7 +1685,7 @@ MR_write_string(FILE *fp, const char *ptr)
 
     len = strlen(ptr);
     MR_write_num(fp, len);
-    for (i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         putc(ptr[i], fp);
     }
 }
@@ -1719,14 +1706,13 @@ static MR_ProfilingHashTable *
 MR_create_hash_table(int size)
 {
     MR_ProfilingHashTable *ptr;
-    int i;
 
     ptr = MR_NEW(MR_ProfilingHashTable);
     ptr->length = size;
     ptr->last_id = 0;
     ptr->nodes = MR_NEW_ARRAY(MR_ProfilingHashNode *, size);
 
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         ptr->nodes[i] = NULL;
     }
 
@@ -1982,12 +1968,11 @@ static int
 MR_hash_table_check_all_written_INTERNAL(FILE *fp, const char *type,
     MR_ProfilingHashTable *table, void write_func(FILE *, const void *))
 {
-    int                     i;
     int                     errors;
     MR_ProfilingHashNode    *node;
 
     errors = 0;
-    for (i = 0; i < table->length ; i++) {
+    for (int i = 0; i < table->length ; i++) {
         for (node = table->nodes[i]; node != NULL; node = node->next) {
             if (! node->written) {
                 errors++;

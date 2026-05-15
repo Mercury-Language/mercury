@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-1998, 2000-2002, 2006 The University of Melbourne.
-// Copyright (C) 2013-2016, 2018 The Mercury team.
+// Copyright (C) 2013-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Profiling module
@@ -234,11 +234,10 @@ static void
 prof_output_addr_pair_table(void)
 {
     FILE    *fptr;
-    int     i;
 
     fptr = MR_checked_fopen("Prof.CallPair", "create", "w");
 
-    for (i = 0; i < CALL_TABLE_SIZE ; i++) {
+    for (int i = 0; i < CALL_TABLE_SIZE ; i++) {
         print_addr_pair_node(fptr, addr_pair_table[i]);
     }
 
@@ -293,7 +292,6 @@ static void
 prof_output_addr_table(void)
 {
     FILE    *fptr;
-    int     i;
     double  scale;
     double  rate;
 
@@ -314,7 +312,7 @@ prof_output_addr_table(void)
 
     // Write out the time profiling data: one one-line entry per node.
 
-    for (i = 0; i < TIME_TABLE_SIZE ; i++) {
+    for (int i = 0; i < TIME_TABLE_SIZE ; i++) {
         print_time_node(fptr, addr_table[i]);
     }
 

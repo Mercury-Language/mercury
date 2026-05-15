@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2011 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018 The Mercury team.
+// Copyright (C) 2014, 2016-2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains the functions related to tabling that are not
@@ -1398,7 +1398,6 @@ MR_print_answerblock(FILE *fp, const MR_ProcLayout *proc,
     MR_TypeCtorInfo         tci;
     int                     num_inputs;
     int                     num_outputs;
-    int                     i;
 
     num_inputs = proc->MR_sle_table_info.MR_table_proc->MR_pt_num_inputs;
     num_outputs = proc->MR_sle_table_info.MR_table_proc->MR_pt_num_outputs;
@@ -1406,7 +1405,7 @@ MR_print_answerblock(FILE *fp, const MR_ProcLayout *proc,
     ptis = proc->MR_sle_table_info.MR_table_proc->MR_pt_ptis;
     ptis += num_inputs;
 
-    for (i = 0; i < num_outputs; i++) {
+    for (int i = 0; i < num_outputs; i++) {
         if (i > 0) {
             fprintf(fp, ", ");
         }

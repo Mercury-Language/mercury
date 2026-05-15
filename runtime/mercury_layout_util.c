@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007, 2009, 2012 The University of Melbourne.
-// Copyright (C) 2013, 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2013, 2015-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file implements utilities that can be useful
@@ -41,17 +41,15 @@ MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs,
     // We never use real machine registers for floats so we just have
     // to copy them from the MR_float_reg array.
 
-    int i;
-
     MR_restore_transient_registers();
     MR_save_registers();
 
-    for (i = 0; i <= max_mr_num; i++) {
+    for (int i = 0; i <= max_mr_num; i++) {
         saved_regs[i] = MR_fake_reg[i];
     }
 
 #ifdef MR_BOXED_FLOAT
-    for (i = 0; i <= max_f_num; i++) {
+    for (int i = 0; i <= max_f_num; i++) {
         saved_f_regs[i] = MR_float_reg[i];
     }
 #else
@@ -69,14 +67,12 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs,
     // MR_restore_transient_registers macro after MR_trace will do the
     // right thing.
 
-    int i;
-
-    for (i = 0; i <= max_mr_num; i++) {
+    for (int i = 0; i <= max_mr_num; i++) {
         MR_fake_reg[i] = saved_regs[i];
     }
 
 #ifdef MR_BOXED_FLOAT
-    for (i = 0; i <= max_f_num; i++) {
+    for (int i = 0; i <= max_f_num; i++) {
         MR_float_reg[i] = saved_f_regs[i];
     }
 #else
@@ -107,12 +103,11 @@ MR_materialize_type_params_base(const MR_LabelLayout *label_layout,
         MR_TypeInfoParams   type_params;
         MR_bool             succeeded;
         MR_Integer          count;
-        int                 i;
 
         count = tvar_locns->MR_tp_param_count;
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_long_lval_base(tvar_locns->MR_tp_param_locns[i],
@@ -141,12 +136,11 @@ MR_materialize_closure_type_params(MR_Closure *closure)
         MR_TypeInfoParams   type_params;
         MR_bool             succeeded;
         MR_Integer          count;
-        int                 i;
 
         count = tvar_locns->MR_tp_param_count;
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_closure_long_lval(
@@ -175,12 +169,11 @@ MR_materialize_typeclass_info_type_params(MR_Word typeclass_info,
         MR_TypeInfoParams   type_params;
         MR_bool             succeeded;
         MR_Integer          count;
-        int                 i;
 
         count = tvar_locns->MR_tp_param_count;
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0)
             {
                 type_params[i + 1] = (MR_TypeInfo)
@@ -208,12 +201,11 @@ MR_materialize_answer_block_type_params(const MR_TypeParamLocns *tvar_locns,
         MR_TypeInfoParams   type_params;
         MR_bool             succeeded;
         MR_Integer          count;
-        int                 i;
 
         count = tvar_locns->MR_tp_param_count;
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_answer_block_long_lval(

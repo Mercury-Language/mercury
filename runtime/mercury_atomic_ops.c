@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2026 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_atomic_ops.c
@@ -318,8 +318,6 @@ MR_do_cpu_feature_detection(void)
 
 #define CPUID_BRAND_STRING_SIZE (3*4*4 + 1)
         char buff[CPUID_BRAND_STRING_SIZE];
-        unsigned int page;
-        unsigned int byte;
         unsigned int shift;
 
         // This processor supports the brand string from which we can
@@ -329,13 +327,13 @@ MR_do_cpu_feature_detection(void)
         // This does not work on AMD processors since they don't include
         // the clock speed in the brand string.
 
-        for (page = 0; page < 3; page++) {
+        for (unsigned int page = 0; page < 3; page++) {
             MR_cpuid(page + 0x80000002, 0, &a, &b, &c, &d);
 #if MR_DEBUG_CPU_FEATURE_DETECTION
             fprintf(stderr, "CPUID page: 0x%.8x, eax: 0x%.8x, ebx: 0x%.8x, ecx: 0x%.8x, edx: 0x%.8x\n",
                 page + 0x80000002, a, b, c, d);
 #endif
-            for (byte = 0; byte < 4; byte++) {
+            for (unsigned int byte = 0; byte < 4; byte++) {
                 shift = byte * 8;
                 buff[page*4*4 + 0 + byte] = (char)(0xFF & (a >> shift));
                 buff[page*4*4 + 4 + byte] = (char)(0xFF & (b >> shift));
@@ -367,7 +365,6 @@ static MR_uint_least64_t
 parse_freq_from_x86_brand_string(char *string)
 {
     unsigned int brand_string_len;
-    unsigned int i;
     double       multiplier;
     int          freq_index = -1;
 
@@ -404,9 +401,9 @@ parse_freq_from_x86_brand_string(char *string)
     }
 
     // Search for the beginning of the digits.
-    for (i = brand_string_len - 4; i >= 0; i--) {
+    for (unsigned int i = brand_string_len - 4; i >= 0; i--) {
         if (string[i] == ' ') {
-            freq_index = i+1;
+            freq_index = i + 1;
             break;
         }
     }

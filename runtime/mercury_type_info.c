@@ -232,7 +232,6 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     MR_PseudoTypeInfo   *arg_vector_2;
     int                 num_arg_types_1;
     int                 num_arg_types_2;
-    int                 i;
     int                 comp;
 
     // Try to optimize a common case:
@@ -312,7 +311,7 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     }
 
     // Compare the argument types.
-    for (i = 1; i <= num_arg_types_1; i++) {
+    for (int i = 1; i <= num_arg_types_1; i++) {
         comp = MR_compare_pseudo_type_info(arg_vector_1[i], arg_vector_2[i]);
         if (comp != MR_COMPARE_EQUAL) {
             return comp;
@@ -331,7 +330,6 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     MR_PseudoTypeInfo   *arg_vector_2;
     int                 num_arg_types_1;
     int                 num_arg_types_2;
-    int                 i;
 
     // Try to optimize a common case:
     // If type_info addresses are equal, they must represent the same type.
@@ -405,7 +403,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     }
 
     // Compare the argument types.
-    for (i = 1; i <= num_arg_types_1; i++) {
+    for (int i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_pseudo_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
         }
@@ -438,7 +436,6 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     MR_TypeInfo     *arg_vector_2;
     int             num_arg_types_1;
     int             num_arg_types_2;
-    int             i;
     int             comp;
 
     // Try to optimize a common case:
@@ -495,7 +492,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     }
 
     // Compare the argument types.
-    for (i = 1; i <= num_arg_types_1; i++) {
+    for (int i = 1; i <= num_arg_types_1; i++) {
         comp = MR_compare_type_info(arg_vector_1[i], arg_vector_2[i]);
         if (comp != MR_COMPARE_EQUAL) {
             return comp;
@@ -514,7 +511,6 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     MR_TypeInfo     *arg_vector_2;
     int             num_arg_types_1;
     int             num_arg_types_2;
-    int             i;
 
     // Try to optimize a common case:
     // If type_info addresses are equal, they must represent the same type.
@@ -567,7 +563,7 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     }
 
     // Compare the argument types.
-    for (i = 1; i <= num_arg_types_1; i++) {
+    for (int i = 1; i <= num_arg_types_1; i++) {
         if (! MR_unify_type_info(arg_vector_1[i], arg_vector_2[i])) {
             return MR_FALSE;
         }
@@ -920,7 +916,6 @@ MR_print_type(FILE *fp, MR_TypeInfo type_info)
     MR_TypeCtorInfo tci;
     MR_TypeInfo     *arg_vector;
     int             arity;
-    int             i;
 
     tci = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     if (MR_type_ctor_has_variable_arity(tci)) {
@@ -936,7 +931,7 @@ MR_print_type(FILE *fp, MR_TypeInfo type_info)
     if (arity > 0) {
         fprintf(fp, "(");
 
-        for (i = 1; i <= arity; i++) {
+        for (int i = 1; i <= arity; i++) {
             MR_print_type(fp, arg_vector[i]);
             if (i < arity) {
                 fprintf(fp, ", ");
