@@ -1,178 +1,188 @@
 === Testing duration_from_string/2 with valid inputs ===
 
-duration_from_string("P1Y") ===> TEST PASSED (accepted: duration(12, 0, 0, 0))
-duration_from_string("P1M") ===> TEST PASSED (accepted: duration(1, 0, 0, 0))
-duration_from_string("P1D") ===> TEST PASSED (accepted: duration(0, 1, 0, 0))
-duration_from_string("P1Y2M") ===> TEST PASSED (accepted: duration(14, 0, 0, 0))
-duration_from_string("P1Y2D") ===> TEST PASSED (accepted: duration(12, 2, 0, 0))
-duration_from_string("P1M2D") ===> TEST PASSED (accepted: duration(1, 2, 0, 0))
-duration_from_string("P1Y2M3D") ===> TEST PASSED (accepted: duration(14, 3, 0, 0))
-duration_from_string("PT1H") ===> TEST PASSED (accepted: duration(0, 0, 3600, 0))
-duration_from_string("PT1M") ===> TEST PASSED (accepted: duration(0, 0, 60, 0))
-duration_from_string("PT1S") ===> TEST PASSED (accepted: duration(0, 0, 1, 0))
-duration_from_string("PT1H2M") ===> TEST PASSED (accepted: duration(0, 0, 3720, 0))
-duration_from_string("PT1H2S") ===> TEST PASSED (accepted: duration(0, 0, 3602, 0))
-duration_from_string("PT1M2S") ===> TEST PASSED (accepted: duration(0, 0, 62, 0))
-duration_from_string("PT1H2M3S") ===> TEST PASSED (accepted: duration(0, 0, 3723, 0))
-duration_from_string("P1DT1H") ===> TEST PASSED (accepted: duration(0, 1, 3600, 0))
-duration_from_string("P1Y2M3DT4H5M6S") ===> TEST PASSED (accepted: duration(14, 3, 14706, 0))
-duration_from_string("-P1D") ===> TEST PASSED (accepted: duration(0, -1, 0, 0))
-duration_from_string("-P1Y2M3DT4H5M6S") ===> TEST PASSED (accepted: duration(-14, -3, -14706, 0))
-duration_from_string("PT1.1S") ===> TEST PASSED (accepted: duration(0, 0, 1, 100000))
-duration_from_string("PT1.12S") ===> TEST PASSED (accepted: duration(0, 0, 1, 120000))
-duration_from_string("PT1.123S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123000))
-duration_from_string("PT1.1234S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123400))
-duration_from_string("PT1.12345S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123450))
-duration_from_string("PT1.123456S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123456))
-duration_from_string("PT0.000001S") ===> TEST PASSED (accepted: duration(0, 0, 0, 1))
-duration_from_string("PT0.999999S") ===> TEST PASSED (accepted: duration(0, 0, 0, 999999))
-duration_from_string("PT0.5S") ===> TEST PASSED (accepted: duration(0, 0, 0, 500000))
-duration_from_string("PT0.0003S") ===> TEST PASSED (accepted: duration(0, 0, 0, 300))
-duration_from_string("P0D") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-duration_from_string("P18M") ===> TEST PASSED (accepted: duration(18, 0, 0, 0); to-string: "P1Y6M")
-duration_from_string("PT25H") ===> TEST PASSED (accepted: duration(0, 1, 3600, 0); to-string: "P1DT1H")
-duration_from_string("PT90S") ===> TEST PASSED (accepted: duration(0, 0, 90, 0); to-string: "PT1M30S")
-duration_from_string("P1Y18M100DT10H15M90.0003S") ===> TEST PASSED (accepted: duration(30, 100, 36990, 300); to-string: "P2Y6M100DT10H16M30.0003S")
-duration_from_string("PT0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
-duration_from_string("PT0.0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
-duration_from_string("PT0M") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
-duration_from_string("PT0H") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
-duration_from_string("P0M") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
-duration_from_string("P0Y0M0DT0H0M0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0); to-string: "P0D")
+"P1Y":                       PASS accepted duration(12, 0, 0, 0)
+"P1M":                       PASS accepted duration(1, 0, 0, 0)
+"P1D":                       PASS accepted duration(0, 1, 0, 0)
+"P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
+"P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
+"P1M2D":                     PASS accepted duration(1, 2, 0, 0)
+"P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
+"PT1H":                      PASS accepted duration(0, 0, 3600, 0)
+"PT1M":                      PASS accepted duration(0, 0, 60, 0)
+"PT1S":                      PASS accepted duration(0, 0, 1, 0)
+"PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
+"PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
+"PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
+"PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
+"P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
+"P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
+"-P1D":                      PASS accepted duration(0, -1, 0, 0)
+"-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
+"PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
+"PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
+"PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
+"PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
+"PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
+"PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
+"PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
+"PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
+"PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
+"PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
+"P0D":                       PASS accepted duration(0, 0, 0, 0)
+"P18M":                      PASS accepted duration(18, 0, 0, 0)
+                             to-string "P1Y6M"
+"PT25H":                     PASS accepted duration(0, 1, 3600, 0)
+                             to-string "P1DT1H"
+"PT90S":                     PASS accepted duration(0, 0, 90, 0)
+                             to-string "PT1M30S"
+"P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
+                             to-string "P2Y6M100DT10H16M30.0003S"
+"PT0S":                      PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
+"PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
+"PT0M":                      PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
+"PT0H":                      PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
+"P0M":                       PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
+"P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
+                             to-string "P0D"
 
 === Testing duration_from_string/2 with invalid inputs ===
 
-duration_from_string("") ===> TEST PASSED (rejected: empty string)
-duration_from_string("    ") ===> TEST PASSED (rejected: blank string)
-duration_from_string("not a duration") ===> TEST PASSED (rejected: not a duration)
-duration_from_string("1Y2M3D") ===> TEST PASSED (rejected: missing P prefix)
-duration_from_string("P") ===> TEST PASSED (rejected: P with no components)
-duration_from_string("   P") ===> TEST PASSED (rejected: P with no components and leading whitespace)
-duration_from_string("P   ") ===> TEST PASSED (rejected: P with no components and trailing whitespace)
-duration_from_string("T1H") ===> TEST PASSED (rejected: missing P prefix, starts with T)
-duration_from_string("PT") ===> TEST PASSED (rejected: P and T but no time components)
-duration_from_string("-P") ===> TEST PASSED (rejected: negative P with no components)
-duration_from_string("p1Y") ===> TEST PASSED (rejected: lowercase p)
-duration_from_string("P1y") ===> TEST PASSED (rejected: lowercase unit designator)
-duration_from_string("P1DT1H30MS") ===> TEST PASSED (rejected: bare S with no digits)
-duration_from_string("P1H") ===> TEST PASSED (rejected: hours without T separator)
-duration_from_string("P1S") ===> TEST PASSED (rejected: seconds without T separator)
-duration_from_string("P1DT1H2M3Y") ===> TEST PASSED (rejected: years after time components)
-duration_from_string("P1M1Y") ===> TEST PASSED (rejected: years after months)
-duration_from_string("PT1S1H") ===> TEST PASSED (rejected: hours after seconds)
-duration_from_string("PT1S1M") ===> TEST PASSED (rejected: minutes after seconds)
-duration_from_string("PT1M1H") ===> TEST PASSED (rejected: hours after minutes)
-duration_from_string("P1Y1Y") ===> TEST PASSED (rejected: years specified twice)
-duration_from_string("P1D1D") ===> TEST PASSED (rejected: days specified twice)
-duration_from_string("PT1H1H") ===> TEST PASSED (rejected: hours specified twice)
-duration_from_string("P-1Y") ===> TEST PASSED (rejected: negative number after P)
-duration_from_string("PT-1H") ===> TEST PASSED (rejected: negative number after T)
-duration_from_string("--P1D") ===> TEST PASSED (rejected: double negative prefix)
-duration_from_string("-P-1D") ===> TEST PASSED (rejected: negative prefix and negative component)
-duration_from_string("P1.5Y") ===> TEST PASSED (rejected: fractional years)
-duration_from_string("P1.5M") ===> TEST PASSED (rejected: fractional months)
-duration_from_string("P1.5D") ===> TEST PASSED (rejected: fractional days)
-duration_from_string("PT1.5H") ===> TEST PASSED (rejected: fractional hours)
-duration_from_string("PT1.5M") ===> TEST PASSED (rejected: fractional minutes)
-duration_from_string("PT1.1234567S") ===> TEST PASSED (rejected: seven fractional digits on seconds)
-duration_from_string("PT1.S") ===> TEST PASSED (rejected: decimal point with no fraction digits)
-duration_from_string("PT.5S") ===> TEST PASSED (rejected: no integer part before decimal point)
-duration_from_string("P1D ") ===> TEST PASSED (rejected: trailing space)
-duration_from_string(" P1D") ===> TEST PASSED (rejected: leading space)
-duration_from_string("P 1Y") ===> TEST PASSED (rejected: whitespace between P and components)
-duration_from_string("P1DT1H30M extra") ===> TEST PASSED (rejected: trailing text)
-duration_from_string("P1DX") ===> TEST PASSED (rejected: invalid character after component)
-duration_from_string("P1DT   ") ===> TEST PASSED (rejected: T followed by whitespace)
-duration_from_string("PxY") ===> TEST PASSED (rejected: letter where number expected)
-duration_from_string("PT1HxM") ===> TEST PASSED (rejected: letter in time component)
-duration_from_string("P1DT") ===> TEST PASSED (rejected: T with no time components)
+"":                          PASS rejected empty string
+"    ":                      PASS rejected blank string
+"not a duration":            PASS rejected not a duration
+"1Y2M3D":                    PASS rejected missing P prefix
+"P":                         PASS rejected P with no components
+"   P":                      PASS rejected P with no components and leading whitespace
+"P   ":                      PASS rejected P with no components and trailing whitespace
+"T1H":                       PASS rejected missing P prefix, starts with T
+"PT":                        PASS rejected P and T but no time components
+"-P":                        PASS rejected negative P with no components
+"p1Y":                       PASS rejected lowercase p
+"P1y":                       PASS rejected lowercase unit designator
+"P1DT1H30MS":                PASS rejected bare S with no digits
+"P1H":                       PASS rejected hours without T separator
+"P1S":                       PASS rejected seconds without T separator
+"P1DT1H2M3Y":                PASS rejected years after time components
+"P1M1Y":                     PASS rejected years after months
+"PT1S1H":                    PASS rejected hours after seconds
+"PT1S1M":                    PASS rejected minutes after seconds
+"PT1M1H":                    PASS rejected hours after minutes
+"P1Y1Y":                     PASS rejected years specified twice
+"P1D1D":                     PASS rejected days specified twice
+"PT1H1H":                    PASS rejected hours specified twice
+"P-1Y":                      PASS rejected negative number after P
+"PT-1H":                     PASS rejected negative number after T
+"--P1D":                     PASS rejected double negative prefix
+"-P-1D":                     PASS rejected negative prefix and negative component
+"P1.5Y":                     PASS rejected fractional years
+"P1.5M":                     PASS rejected fractional months
+"P1.5D":                     PASS rejected fractional days
+"PT1.5H":                    PASS rejected fractional hours
+"PT1.5M":                    PASS rejected fractional minutes
+"PT1.1234567S":              PASS rejected seven fractional digits on seconds
+"PT1.S":                     PASS rejected decimal point with no fraction digits
+"PT.5S":                     PASS rejected no integer part before decimal point
+"P1D ":                      PASS rejected trailing space
+" P1D":                      PASS rejected leading space
+"P 1Y":                      PASS rejected whitespace between P and components
+"P1DT1H30M extra":           PASS rejected trailing text
+"P1DX":                      PASS rejected invalid character after component
+"P1DT   ":                   PASS rejected T followed by whitespace
+"PxY":                       PASS rejected letter where number expected
+"PT1HxM":                    PASS rejected letter in time component
+"P1DT":                      PASS rejected T with no time components
 
 === Testing det_duration_from_string/1 with valid inputs ===
 
-det_duration_from_string("P1Y") ===> TEST PASSED (accepted: duration(12, 0, 0, 0))
-det_duration_from_string("P1M") ===> TEST PASSED (accepted: duration(1, 0, 0, 0))
-det_duration_from_string("P1D") ===> TEST PASSED (accepted: duration(0, 1, 0, 0))
-det_duration_from_string("P1Y2M") ===> TEST PASSED (accepted: duration(14, 0, 0, 0))
-det_duration_from_string("P1Y2D") ===> TEST PASSED (accepted: duration(12, 2, 0, 0))
-det_duration_from_string("P1M2D") ===> TEST PASSED (accepted: duration(1, 2, 0, 0))
-det_duration_from_string("P1Y2M3D") ===> TEST PASSED (accepted: duration(14, 3, 0, 0))
-det_duration_from_string("PT1H") ===> TEST PASSED (accepted: duration(0, 0, 3600, 0))
-det_duration_from_string("PT1M") ===> TEST PASSED (accepted: duration(0, 0, 60, 0))
-det_duration_from_string("PT1S") ===> TEST PASSED (accepted: duration(0, 0, 1, 0))
-det_duration_from_string("PT1H2M") ===> TEST PASSED (accepted: duration(0, 0, 3720, 0))
-det_duration_from_string("PT1H2S") ===> TEST PASSED (accepted: duration(0, 0, 3602, 0))
-det_duration_from_string("PT1M2S") ===> TEST PASSED (accepted: duration(0, 0, 62, 0))
-det_duration_from_string("PT1H2M3S") ===> TEST PASSED (accepted: duration(0, 0, 3723, 0))
-det_duration_from_string("P1DT1H") ===> TEST PASSED (accepted: duration(0, 1, 3600, 0))
-det_duration_from_string("P1Y2M3DT4H5M6S") ===> TEST PASSED (accepted: duration(14, 3, 14706, 0))
-det_duration_from_string("-P1D") ===> TEST PASSED (accepted: duration(0, -1, 0, 0))
-det_duration_from_string("-P1Y2M3DT4H5M6S") ===> TEST PASSED (accepted: duration(-14, -3, -14706, 0))
-det_duration_from_string("PT1.1S") ===> TEST PASSED (accepted: duration(0, 0, 1, 100000))
-det_duration_from_string("PT1.12S") ===> TEST PASSED (accepted: duration(0, 0, 1, 120000))
-det_duration_from_string("PT1.123S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123000))
-det_duration_from_string("PT1.1234S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123400))
-det_duration_from_string("PT1.12345S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123450))
-det_duration_from_string("PT1.123456S") ===> TEST PASSED (accepted: duration(0, 0, 1, 123456))
-det_duration_from_string("PT0.000001S") ===> TEST PASSED (accepted: duration(0, 0, 0, 1))
-det_duration_from_string("PT0.999999S") ===> TEST PASSED (accepted: duration(0, 0, 0, 999999))
-det_duration_from_string("PT0.5S") ===> TEST PASSED (accepted: duration(0, 0, 0, 500000))
-det_duration_from_string("PT0.0003S") ===> TEST PASSED (accepted: duration(0, 0, 0, 300))
-det_duration_from_string("P0D") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("P18M") ===> TEST PASSED (accepted: duration(18, 0, 0, 0))
-det_duration_from_string("PT25H") ===> TEST PASSED (accepted: duration(0, 1, 3600, 0))
-det_duration_from_string("PT90S") ===> TEST PASSED (accepted: duration(0, 0, 90, 0))
-det_duration_from_string("P1Y18M100DT10H15M90.0003S") ===> TEST PASSED (accepted: duration(30, 100, 36990, 300))
-det_duration_from_string("PT0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("PT0.0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("PT0M") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("PT0H") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("P0M") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
-det_duration_from_string("P0Y0M0DT0H0M0S") ===> TEST PASSED (accepted: duration(0, 0, 0, 0))
+"P1Y":                       PASS accepted duration(12, 0, 0, 0)
+"P1M":                       PASS accepted duration(1, 0, 0, 0)
+"P1D":                       PASS accepted duration(0, 1, 0, 0)
+"P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
+"P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
+"P1M2D":                     PASS accepted duration(1, 2, 0, 0)
+"P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
+"PT1H":                      PASS accepted duration(0, 0, 3600, 0)
+"PT1M":                      PASS accepted duration(0, 0, 60, 0)
+"PT1S":                      PASS accepted duration(0, 0, 1, 0)
+"PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
+"PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
+"PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
+"PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
+"P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
+"P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
+"-P1D":                      PASS accepted duration(0, -1, 0, 0)
+"-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
+"PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
+"PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
+"PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
+"PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
+"PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
+"PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
+"PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
+"PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
+"PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
+"PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
+"P0D":                       PASS accepted duration(0, 0, 0, 0)
+"P18M":                      PASS accepted duration(18, 0, 0, 0)
+"PT25H":                     PASS accepted duration(0, 1, 3600, 0)
+"PT90S":                     PASS accepted duration(0, 0, 90, 0)
+"P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
+"PT0S":                      PASS accepted duration(0, 0, 0, 0)
+"PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
+"PT0M":                      PASS accepted duration(0, 0, 0, 0)
+"PT0H":                      PASS accepted duration(0, 0, 0, 0)
+"P0M":                       PASS accepted duration(0, 0, 0, 0)
+"P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
 
 === Testing det_duration_from_string/1 with invalid inputs ===
 
-det_duration_from_string("") ===> TEST PASSED (exception: empty string)
-det_duration_from_string("    ") ===> TEST PASSED (exception: blank string)
-det_duration_from_string("not a duration") ===> TEST PASSED (exception: not a duration)
-det_duration_from_string("1Y2M3D") ===> TEST PASSED (exception: missing P prefix)
-det_duration_from_string("P") ===> TEST PASSED (exception: P with no components)
-det_duration_from_string("   P") ===> TEST PASSED (exception: P with no components and leading whitespace)
-det_duration_from_string("P   ") ===> TEST PASSED (exception: P with no components and trailing whitespace)
-det_duration_from_string("T1H") ===> TEST PASSED (exception: missing P prefix, starts with T)
-det_duration_from_string("PT") ===> TEST PASSED (exception: P and T but no time components)
-det_duration_from_string("-P") ===> TEST PASSED (exception: negative P with no components)
-det_duration_from_string("p1Y") ===> TEST PASSED (exception: lowercase p)
-det_duration_from_string("P1y") ===> TEST PASSED (exception: lowercase unit designator)
-det_duration_from_string("P1DT1H30MS") ===> TEST PASSED (exception: bare S with no digits)
-det_duration_from_string("P1H") ===> TEST PASSED (exception: hours without T separator)
-det_duration_from_string("P1S") ===> TEST PASSED (exception: seconds without T separator)
-det_duration_from_string("P1DT1H2M3Y") ===> TEST PASSED (exception: years after time components)
-det_duration_from_string("P1M1Y") ===> TEST PASSED (exception: years after months)
-det_duration_from_string("PT1S1H") ===> TEST PASSED (exception: hours after seconds)
-det_duration_from_string("PT1S1M") ===> TEST PASSED (exception: minutes after seconds)
-det_duration_from_string("PT1M1H") ===> TEST PASSED (exception: hours after minutes)
-det_duration_from_string("P1Y1Y") ===> TEST PASSED (exception: years specified twice)
-det_duration_from_string("P1D1D") ===> TEST PASSED (exception: days specified twice)
-det_duration_from_string("PT1H1H") ===> TEST PASSED (exception: hours specified twice)
-det_duration_from_string("P-1Y") ===> TEST PASSED (exception: negative number after P)
-det_duration_from_string("PT-1H") ===> TEST PASSED (exception: negative number after T)
-det_duration_from_string("--P1D") ===> TEST PASSED (exception: double negative prefix)
-det_duration_from_string("-P-1D") ===> TEST PASSED (exception: negative prefix and negative component)
-det_duration_from_string("P1.5Y") ===> TEST PASSED (exception: fractional years)
-det_duration_from_string("P1.5M") ===> TEST PASSED (exception: fractional months)
-det_duration_from_string("P1.5D") ===> TEST PASSED (exception: fractional days)
-det_duration_from_string("PT1.5H") ===> TEST PASSED (exception: fractional hours)
-det_duration_from_string("PT1.5M") ===> TEST PASSED (exception: fractional minutes)
-det_duration_from_string("PT1.1234567S") ===> TEST PASSED (exception: seven fractional digits on seconds)
-det_duration_from_string("PT1.S") ===> TEST PASSED (exception: decimal point with no fraction digits)
-det_duration_from_string("PT.5S") ===> TEST PASSED (exception: no integer part before decimal point)
-det_duration_from_string("P1D ") ===> TEST PASSED (exception: trailing space)
-det_duration_from_string(" P1D") ===> TEST PASSED (exception: leading space)
-det_duration_from_string("P 1Y") ===> TEST PASSED (exception: whitespace between P and components)
-det_duration_from_string("P1DT1H30M extra") ===> TEST PASSED (exception: trailing text)
-det_duration_from_string("P1DX") ===> TEST PASSED (exception: invalid character after component)
-det_duration_from_string("P1DT   ") ===> TEST PASSED (exception: T followed by whitespace)
-det_duration_from_string("PxY") ===> TEST PASSED (exception: letter where number expected)
-det_duration_from_string("PT1HxM") ===> TEST PASSED (exception: letter in time component)
-det_duration_from_string("P1DT") ===> TEST PASSED (exception: T with no time components)
+"":                          PASS exception empty string
+"    ":                      PASS exception blank string
+"not a duration":            PASS exception not a duration
+"1Y2M3D":                    PASS exception missing P prefix
+"P":                         PASS exception P with no components
+"   P":                      PASS exception P with no components and leading whitespace
+"P   ":                      PASS exception P with no components and trailing whitespace
+"T1H":                       PASS exception missing P prefix, starts with T
+"PT":                        PASS exception P and T but no time components
+"-P":                        PASS exception negative P with no components
+"p1Y":                       PASS exception lowercase p
+"P1y":                       PASS exception lowercase unit designator
+"P1DT1H30MS":                PASS exception bare S with no digits
+"P1H":                       PASS exception hours without T separator
+"P1S":                       PASS exception seconds without T separator
+"P1DT1H2M3Y":                PASS exception years after time components
+"P1M1Y":                     PASS exception years after months
+"PT1S1H":                    PASS exception hours after seconds
+"PT1S1M":                    PASS exception minutes after seconds
+"PT1M1H":                    PASS exception hours after minutes
+"P1Y1Y":                     PASS exception years specified twice
+"P1D1D":                     PASS exception days specified twice
+"PT1H1H":                    PASS exception hours specified twice
+"P-1Y":                      PASS exception negative number after P
+"PT-1H":                     PASS exception negative number after T
+"--P1D":                     PASS exception double negative prefix
+"-P-1D":                     PASS exception negative prefix and negative component
+"P1.5Y":                     PASS exception fractional years
+"P1.5M":                     PASS exception fractional months
+"P1.5D":                     PASS exception fractional days
+"PT1.5H":                    PASS exception fractional hours
+"PT1.5M":                    PASS exception fractional minutes
+"PT1.1234567S":              PASS exception seven fractional digits on seconds
+"PT1.S":                     PASS exception decimal point with no fraction digits
+"PT.5S":                     PASS exception no integer part before decimal point
+"P1D ":                      PASS exception trailing space
+" P1D":                      PASS exception leading space
+"P 1Y":                      PASS exception whitespace between P and components
+"P1DT1H30M extra":           PASS exception trailing text
+"P1DX":                      PASS exception invalid character after component
+"P1DT   ":                   PASS exception T followed by whitespace
+"PxY":                       PASS exception letter where number expected
+"PT1HxM":                    PASS exception letter in time component
+"P1DT":                      PASS exception T with no time components
 
