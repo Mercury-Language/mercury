@@ -27,113 +27,71 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    test_valid_durations(!IO),
-    test_invalid_durations(!IO),
-    test_exception_valid_durations(!IO),
-    test_exception_invalid_durations(!IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred test_valid_durations(io::di, io::uo) is det.
-
-test_valid_durations(!IO) :-
-    write_heading("duration_from_string/2", "valid", !IO),
+    io.write_string("=== Testing valid test data ===\n\n", !IO),
     list.foldl(do_test_valid_duration(yes), valid_durations, !IO),
     list.foldl(do_test_valid_duration(no), valid_no_roundtrip_durations, !IO),
+    io.nl(!IO),
+
+    io.write_string("=== Testing invalid test data ===\n\n", !IO),
+    list.foldl(do_test_invalid_duration, invalid_durations, !IO),
     io.nl(!IO).
 
 :- pred do_test_valid_duration(bool::in, duration_test::in,
-    io::di, io::uo) is det.
+    io::di, io::uo) is cc_multi.
 
 do_test_valid_duration(CheckRoundTrip, Test, !IO) :-
     Test = duration_test(Desc, TestString),
-    write_test_call(TestString, !IO),
-    ( if duration_from_string(TestString, Duration) then
-        RoundTripString = duration_to_string(Duration),
+    write_test_call("pred", TestString, !IO),
+    ( if duration_from_string(TestString, DurationP) then
+        RoundTripString = duration_to_string(DurationP),
         (
             CheckRoundTrip = yes,
             ( if TestString = RoundTripString then
                 io.format("PASS accepted %s\n",
-                    [s(string(Duration))], !IO)
+                    [s(string(DurationP))], !IO)
             else
                 io.format("FAIL roundtrip \"%s\"\n",
                     [s(RoundTripString)], !IO)
             )
         ;
             CheckRoundTrip = no,
-            io.format("PASS accepted %s\n%28s to-string \"%s\"\n",
-                [s(string(Duration)), s(""), s(RoundTripString)], !IO)
+            io.format("PASS accepted %s\n%33s to-string \"%s\"\n",
+                [s(string(DurationP)), s(""), s(RoundTripString)], !IO)
         )
     else
         io.format("FAIL reject %s\n", [s(Desc)], !IO)
-    ).
+    ),
 
-%---------------------------------------------------------------------------%
-
-:- pred test_invalid_durations(io::di, io::uo) is det.
-
-test_invalid_durations(!IO) :-
-    write_heading("duration_from_string/2", "invalid", !IO),
-    list.foldl(do_test_invalid_duration, invalid_durations, !IO),
-    io.nl(!IO).
-
-:- pred do_test_invalid_duration(duration_test::in, io::di, io::uo) is det.
-
-do_test_invalid_duration(Test, !IO) :-
-    Test = duration_test(Desc, TestString),
-    write_test_call(TestString, !IO),
-    ( if duration_from_string(TestString, Duration) then
-        DurationString = duration_to_string(Duration),
-        io.format("FAIL accepted %s\n", [s(DurationString)], !IO)
-    else
-        io.format("PASS rejected %s\n", [s(Desc)], !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred test_exception_valid_durations(io::di, io::uo) is cc_multi.
-
-test_exception_valid_durations(!IO) :-
-    write_heading("det_duration_from_string/1", "valid", !IO),
-    list.foldl(do_test_exception_valid_duration, valid_durations, !IO),
-    list.foldl(do_test_exception_valid_duration,
-        valid_no_roundtrip_durations, !IO),
-    io.nl(!IO).
-
-:- pred do_test_exception_valid_duration(duration_test::in, io::di, io::uo)
-    is cc_multi.
-
-do_test_exception_valid_duration(Test, !IO) :-
-    Test = duration_test(Desc, TestString),
-    write_test_call(TestString, !IO),
+    write_test_call("func", TestString, !IO),
     ( try []
-        Duration = det_duration_from_string(TestString)
+        DurationF = det_duration_from_string(TestString)
     then
-        io.format("PASS accepted %s\n", [s(string(Duration))], !IO)
+        io.format("PASS accepted %s\n", [s(string(DurationF))], !IO)
     catch_any _ ->
         io.format("FAIL exception %s\n", [s(Desc)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred test_exception_invalid_durations(io::di, io::uo) is cc_multi.
-
-test_exception_invalid_durations(!IO) :-
-    write_heading("det_duration_from_string/1", "invalid", !IO),
-    list.foldl(do_test_exception_invalid_duration, invalid_durations, !IO),
-    io.nl(!IO).
-
-:- pred do_test_exception_invalid_duration(duration_test::in, io::di, io::uo)
+:- pred do_test_invalid_duration(duration_test::in, io::di, io::uo)
     is cc_multi.
 
-do_test_exception_invalid_duration(Test, !IO) :-
+do_test_invalid_duration(Test, !IO) :-
     Test = duration_test(Desc, TestString),
-    write_test_call(TestString, !IO),
+    write_test_call("pred", TestString, !IO),
+    ( if duration_from_string(TestString, DurationP) then
+        DurationStringP = duration_to_string(DurationP),
+        io.format("FAIL accepted %s\n", [s(DurationStringP)], !IO)
+    else
+        io.format("PASS rejected %s\n", [s(Desc)], !IO)
+    ),
+
+    write_test_call("func", TestString, !IO),
     ( try []
-        Duration = det_duration_from_string(TestString)
+        DurationF = det_duration_from_string(TestString)
     then
         io.format("FAIL accepted %s\n",
-            [s(string(Duration))], !IO)
+            [s(string(DurationF))], !IO)
     catch_any _ ->
         io.format("PASS exception %s\n", [s(Desc)], !IO)
     ).
@@ -307,17 +265,11 @@ invalid_durations = [
 
 %---------------------------------------------------------------------------%
 
-:- pred write_heading(string::in, string::in, io::di, io::uo) is det.
+:- pred write_test_call(string::in, string::in, io::di, io::uo) is det.
 
-write_heading(PredOrFuncNameArity, ValidOrInvalid, !IO) :-
-    io.format("=== Testing %s with %s inputs ===\n\n",
-        [s(PredOrFuncNameArity), s(ValidOrInvalid)], !IO).
-
-:- pred write_test_call(string::in, io::di, io::uo) is det.
-
-write_test_call(TestStr, !IO) :-
-    string.format("%s\"%s\":", [s(""), s(TestStr)], TestId),
-    io.format("%-28s ", [s(TestId)], !IO).
+write_test_call(Prefix, TestStr, !IO) :-
+    string.format("%s \"%s\":", [s(Prefix), s(TestStr)], TestId),
+    io.format("%-33s ", [s(TestId)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar_duration_conv.

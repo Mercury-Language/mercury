@@ -50,6 +50,48 @@
 "P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
                              to-string "P0D"
 
+=== Testing det_duration_from_string/1 with valid inputs ===
+
+"P1Y":                       PASS accepted duration(12, 0, 0, 0)
+"P1M":                       PASS accepted duration(1, 0, 0, 0)
+"P1D":                       PASS accepted duration(0, 1, 0, 0)
+"P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
+"P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
+"P1M2D":                     PASS accepted duration(1, 2, 0, 0)
+"P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
+"PT1H":                      PASS accepted duration(0, 0, 3600, 0)
+"PT1M":                      PASS accepted duration(0, 0, 60, 0)
+"PT1S":                      PASS accepted duration(0, 0, 1, 0)
+"PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
+"PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
+"PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
+"PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
+"P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
+"P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
+"-P1D":                      PASS accepted duration(0, -1, 0, 0)
+"-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
+"PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
+"PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
+"PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
+"PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
+"PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
+"PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
+"PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
+"PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
+"PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
+"PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
+"P0D":                       PASS accepted duration(0, 0, 0, 0)
+"P18M":                      PASS accepted duration(18, 0, 0, 0)
+"PT25H":                     PASS accepted duration(0, 1, 3600, 0)
+"PT90S":                     PASS accepted duration(0, 0, 90, 0)
+"P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
+"PT0S":                      PASS accepted duration(0, 0, 0, 0)
+"PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
+"PT0M":                      PASS accepted duration(0, 0, 0, 0)
+"PT0H":                      PASS accepted duration(0, 0, 0, 0)
+"P0M":                       PASS accepted duration(0, 0, 0, 0)
+"P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
+
 === Testing duration_from_string/2 with invalid inputs ===
 
 "":                          PASS rejected empty string
@@ -96,48 +138,6 @@
 "PxY":                       PASS rejected letter where number expected
 "PT1HxM":                    PASS rejected letter in time component
 "P1DT":                      PASS rejected T with no time components
-
-=== Testing det_duration_from_string/1 with valid inputs ===
-
-"P1Y":                       PASS accepted duration(12, 0, 0, 0)
-"P1M":                       PASS accepted duration(1, 0, 0, 0)
-"P1D":                       PASS accepted duration(0, 1, 0, 0)
-"P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
-"P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
-"P1M2D":                     PASS accepted duration(1, 2, 0, 0)
-"P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
-"PT1H":                      PASS accepted duration(0, 0, 3600, 0)
-"PT1M":                      PASS accepted duration(0, 0, 60, 0)
-"PT1S":                      PASS accepted duration(0, 0, 1, 0)
-"PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
-"PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
-"PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
-"PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
-"P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
-"P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
-"-P1D":                      PASS accepted duration(0, -1, 0, 0)
-"-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
-"PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
-"PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
-"PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
-"PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
-"PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
-"PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
-"PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
-"PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
-"PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
-"PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
-"P0D":                       PASS accepted duration(0, 0, 0, 0)
-"P18M":                      PASS accepted duration(18, 0, 0, 0)
-"PT25H":                     PASS accepted duration(0, 1, 3600, 0)
-"PT90S":                     PASS accepted duration(0, 0, 90, 0)
-"P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
-"PT0S":                      PASS accepted duration(0, 0, 0, 0)
-"PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
-"PT0M":                      PASS accepted duration(0, 0, 0, 0)
-"PT0H":                      PASS accepted duration(0, 0, 0, 0)
-"P0M":                       PASS accepted duration(0, 0, 0, 0)
-"P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
 
 === Testing det_duration_from_string/1 with invalid inputs ===
 
