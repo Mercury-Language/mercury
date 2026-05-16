@@ -288,7 +288,6 @@ MR_trace_source_attach(MR_TraceSourceServer *server, int timeout,
 {
     const char  *real_server_cmd;
     const char  *msg;
-    int         i;
 
     if (server->server_cmd != NULL) {
         real_server_cmd = server->server_cmd;
@@ -302,7 +301,7 @@ MR_trace_source_attach(MR_TraceSourceServer *server, int timeout,
         return NULL;
     }
 
-    for (i = 0; i < timeout; i++) {
+    for (int i = 0; i < timeout; i++) {
         // XXX This is an inaccurate way of keeping time.
 
 #ifdef MR_HAVE_SLEEP
@@ -314,7 +313,7 @@ MR_trace_source_attach(MR_TraceSourceServer *server, int timeout,
         // take a second or more.
 
         volatile long i;
-        for (i = 0; i < 100000000; i++) {
+        for (int i = 0; i < 100000000; i++) {
             /* empty */
             ;
         }

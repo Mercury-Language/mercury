@@ -686,7 +686,6 @@ MR_trace_retry(MR_EventInfo *event_info,
     MR_Word                 arg_value;
     MR_bool                 reg_f;
     MR_TypeInfoParams       type_params;
-    int                     i;
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
     MR_Float                *saved_f_regs;
@@ -784,7 +783,7 @@ MR_trace_retry(MR_EventInfo *event_info,
 
     call_all_var_count = MR_all_desc_var_count(call_label);
     call_long_var_count = MR_long_desc_var_count(call_label);
-    for (i = 0; i < call_all_var_count; i++) {
+    for (int i = 0; i < call_all_var_count; i++) {
         // Check if the argument is of type io.state. We check this before
         // calling MR_trace_find_input_arg, since MR_trace_find_input_arg may
         // or may not find the value of the io.state argument. We don't care
@@ -1071,10 +1070,10 @@ MR_trace_retry(MR_EventInfo *event_info,
 #endif
     }
 
-    for (i = 1; i < r_arg_max; i++) {
+    for (int i = 1; i < r_arg_max; i++) {
         MR_saved_reg_assign(saved_regs, i, r_args[i]);
     }
-    for (i = 1; i < f_arg_max; i++) {
+    for (int i = 1; i < f_arg_max; i++) {
         MR_saved_reg_assign(saved_f_regs, i, MR_word_to_float(f_args[i]));
     }
 
@@ -1371,7 +1370,6 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
     MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
     MR_Float *saved_f_regs, MR_uint_least16_t var_num, MR_bool *succeeded)
 {
-    int         i;
     MR_Integer  all_var_count;
     MR_Integer  long_var_count;
 
@@ -1382,7 +1380,7 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
 
     all_var_count = MR_all_desc_var_count(label_layout);
     long_var_count = MR_long_desc_var_count(label_layout);
-    for (i = 0; i < all_var_count; i++) {
+    for (int i = 0; i < all_var_count; i++) {
         if (var_num == label_layout->MR_sll_var_nums[i]) {
             if (i < long_var_count) {
                 MR_LongLval     long_locn;
@@ -1449,7 +1447,6 @@ MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
     int                     frame_size;
     int                     cur_gen;
     MR_Internal             *internal;
-    int                     i;
     MR_bool                 any_missing_generators;
 
     top_maxfr = MR_saved_maxfr(event_info->MR_saved_regs);
@@ -1534,7 +1531,7 @@ MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
         record_ptr_next++;
 
         if (cur_maxfr == MR_gen_stack[cur_gen].MR_gen_frame) {
-            for (i = 0; i < record_ptr_next; i++) {
+            for (int i = 0; i < record_ptr_next; i++) {
                 if (record_ptrs[i].record_leader == subgoal) {
                     record_ptrs[i].found_leader_generator = MR_TRUE;
                 }
@@ -1545,7 +1542,7 @@ MR_check_minimal_model_calls(MR_EventInfo *event_info, int ancestor_level,
     }
 
     any_missing_generators = MR_FALSE;
-    for (i = 0; i < record_ptr_next; i++) {
+    for (int i = 0; i < record_ptr_next; i++) {
         if (! record_ptrs[i].found_leader_generator) {
             any_missing_generators = MR_TRUE;
         }
@@ -1714,9 +1711,7 @@ MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
 static void
 MR_reset_call_table_array(void)
 {
-    int i;
-
-    for (i = 0; i < MR_call_table_ptr_next; i++) {
+    for (int i = 0; i < MR_call_table_ptr_next; i++) {
 #ifdef  MR_DEBUG_RETRY
         printf("resetting call table ptr %d (%x)\n",
             (MR_Integer) MR_call_table_ptrs[i],

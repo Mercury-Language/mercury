@@ -83,11 +83,10 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     size_t len;
-    size_t i;
 
     // Allocate the right amount of space.
     len = 0;
-    for (i = 1; i < word_count; i++) {
+    for (size_t i = 1; i < word_count; i++) {
         len += strlen(words[i]) + 1;
     }
     len++;
@@ -95,7 +94,7 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     // Copy the arguments to MR_mmc_options.
     MR_mmc_options[0] = '\0';
-    for (i = 1; i < word_count; i++) {
+    for (size_t i = 1; i < word_count; i++) {
         strcat(MR_mmc_options, words[i]);
         strcat(MR_mmc_options, " ");
     }
@@ -513,12 +512,11 @@ MR_trace_cmd_list_path(char **words, int word_count, MR_TraceCmdInfo *cmd,
             fprintf(MR_mdb_out, "\n");
         }
     } else {
-        int       i;
         MR_String aligned_word;
 
         MR_TRACE_CALL_MERCURY(
             ML_LISTING_clear_list_path(MR_listing_path, &MR_listing_path);
-            for(i = word_count - 1; i >= 1; i--) {
+            for (int i = word_count - 1; i >= 1; i--) {
                 MR_TRACE_USE_HP(
                     MR_make_aligned_string(aligned_word, (MR_String) words[i]);
                 );
@@ -539,7 +537,6 @@ MR_Next
 MR_trace_cmd_push_list_dir(char **words, int word_count,
     MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int       i;
     MR_String aligned_word;
 
     if (word_count < 2) {
@@ -548,7 +545,7 @@ MR_trace_cmd_push_list_dir(char **words, int word_count,
     }
 
     MR_TRACE_CALL_MERCURY(
-        for(i = word_count - 1; i >= 1; i--) {
+        for (int i = word_count - 1; i >= 1; i--) {
             MR_TRACE_USE_HP(
                 MR_make_aligned_string(aligned_word, (MR_String) words[i]);
             );

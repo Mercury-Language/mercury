@@ -161,7 +161,6 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
 {
     char    *line = NULL;
     size_t  line_length;
-    int     line_index;
     size_t  expanded_line_length;
     char    *expanded_line;
     int     expanded_line_index;
@@ -187,7 +186,7 @@ MR_trace_readline_from_script(FILE *fp, char **args, int num_args)
     expanded_line[0] = '\0';
     expanded_line_index = 0;
 
-    for (line_index = 0; line_index < line_length; line_index++) {
+    for (int line_index = 0; line_index < line_length; line_index++) {
         if ((line[line_index] == '$') &&
             (line_index < (line_length - 1)) &&
             (line[line_index + 1] >= '1') &&

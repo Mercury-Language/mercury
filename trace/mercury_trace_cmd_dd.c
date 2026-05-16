@@ -200,7 +200,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_TraceCmdInfo *cmd,
                             matches.match_procs[i]);
                     }
                     MR_free(line2);
-                } else if(MR_trace_is_natural_number(line2, &i)) {
+                } else if (MR_trace_is_natural_number(line2, &i)) {
                     if (0 <= i && i < matches.match_proc_next) {
                         MR_decl_add_trusted_pred_or_func(
                             matches.match_procs[i]);

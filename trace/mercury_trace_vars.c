@@ -287,7 +287,6 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
     MR_TypeCtorInfo type_ctor_info;
     int             always_ignore_type_ctor_count;
     int             maybe_ignore_type_ctor_count;
-    int             i;
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
         return MR_FALSE;
@@ -298,7 +297,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
     always_ignore_type_ctor_count =
         sizeof(MR_trace_always_ignored_type_ctors) / sizeof(MR_Word *);
 
-    for (i = 0; i < always_ignore_type_ctor_count; i++) {
+    for (int i = 0; i < always_ignore_type_ctor_count; i++) {
         if (type_ctor_info == MR_trace_always_ignored_type_ctors[i]) {
             return MR_TRUE;
         }
@@ -311,7 +310,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
     maybe_ignore_type_ctor_count =
         sizeof(MR_trace_maybe_ignored_type_ctors) / sizeof(MR_Word *);
 
-    for (i = 0; i < maybe_ignore_type_ctor_count; i++) {
+    for (int i = 0; i < maybe_ignore_type_ctor_count; i++) {
         if (type_ctor_info == MR_trace_maybe_ignored_type_ctors[i]) {
             return MR_TRUE;
         }
@@ -895,13 +894,11 @@ MR_trace_var_count(void)
 const char *
 MR_trace_list_vars(FILE *out)
 {
-    int i;
-
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
-    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+    for (int i = 0; i < MR_point.MR_point_var_count; i++) {
         fprintf(out, "%9d ", i + 1);
         MR_trace_print_var_name(out, MR_point.MR_point_level_entry,
             &MR_point.MR_point_vars[i]);
@@ -918,15 +915,12 @@ MR_trace_list_var_details(FILE *out)
     MR_AttributeDetails *attr;
     MR_ProgVarDetails   *var;
     MR_SynthAttr        *synth;
-    int                 i;
-    int                 j;
-    int                 arg;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
-    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+    for (int i = 0; i < MR_point.MR_point_var_count; i++) {
         value = &MR_point.MR_point_vars[i];
         switch (MR_point.MR_point_vars[i].MR_value_kind) {
             case MR_VALUE_ATTRIBUTE:
@@ -942,7 +936,7 @@ MR_trace_list_var_details(FILE *out)
 
                     fprintf(out, "synthesized by attr %d(",
                         synth->MR_sa_func_attr);
-                    for (arg = 0; arg < synth->MR_sa_num_arg_attrs; arg++) {
+                    for (int arg = 0; arg < synth->MR_sa_num_arg_attrs; arg++) {
                         if (arg > 0) {
                             fprintf(out, ", ");
                         }
@@ -951,7 +945,7 @@ MR_trace_list_var_details(FILE *out)
                     fprintf(out, ")\n");
 
                     fprintf(out, "synthesis order:");
-                    for (j = 0; synth->MR_sa_depend_attrs[j] >= 0; j++) {
+                    for (int j = 0; synth->MR_sa_depend_attrs[j] >= 0; j++) {
                         fprintf(out, " %d", synth->MR_sa_depend_attrs[j]);
                     }
                     fprintf(out, "\n");
@@ -990,13 +984,12 @@ MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr)
 {
     MR_ValueDetails     *value;
-    int                 i;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
-    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+    for (int i = 0; i < MR_point.MR_point_var_count; i++) {
         value = &MR_point.MR_point_vars[i];
 
         if (value->MR_value_kind == MR_VALUE_PROG_VAR &&

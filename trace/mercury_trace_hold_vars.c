@@ -71,9 +71,7 @@ MR_lookup_hold_var(const char *name, MR_TypeInfo *typeinfo,
 void
 MR_trace_list_held_vars(FILE *fp)
 {
-    int i;
-
-    for (i = 0; i < MR_held_var_next; i++) {
+    for (int i = 0; i < MR_held_var_next; i++) {
         fprintf(fp, "$%s\n", MR_held_vars[i].MR_held_name);
     }
 }

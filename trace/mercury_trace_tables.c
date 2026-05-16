@@ -164,7 +164,6 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
         MR_insert_module_info(module);
 
         if (module->MR_ml_user_event_set_desc != NULL) {
-            int                 i;
             MR_bool             found;
             const char          *event_set_name;
             MR_TraceEventSet    *trace_event_set;
@@ -172,7 +171,7 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
             event_set_name = module->MR_ml_user_event_set_name;
 
             found = MR_FALSE;
-            for (i = 0; i < MR_trace_event_set_next; i++) {
+            for (int i = 0; i < MR_trace_event_set_next; i++) {
                 if (MR_streq(MR_trace_event_sets[i].MR_tes_name,
                     event_set_name))
                 {
@@ -332,8 +331,6 @@ MR_process_file_line_layouts(const char *file, int line,
     int *next_lower, int *next_higher)
 {
     const MR_ModuleFileLayout   *file_layout;
-    size_t                      i;
-    int                         j;
 
     *num_file_matches_ptr = 0;
     *num_line_matches_ptr = 0;
@@ -341,8 +338,8 @@ MR_process_file_line_layouts(const char *file, int line,
     *next_higher = INT_MAX;
     // The next_higher sentinel, INT_MAX must match the corresponding value
     // in mercury_trace_spy.c.
-    for (i = 0; i < MR_module_info_next; i++) {
-        for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++) {
+    for (size_t i = 0; i < MR_module_info_next; i++) {
+        for (int j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++) {
             file_layout = MR_module_infos[i]->MR_ml_module_file_layout[j];
             if (MR_streq(file_layout->MR_mfl_filename, file)) {
                 *num_file_matches_ptr = *num_file_matches_ptr + 1;
@@ -427,8 +424,6 @@ MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
 {
     const MR_ModuleLayout   *module;
     const MR_ProcLayout     *proc;
-    size_t                  i;
-    int                     j;
 
     if (module_name != NULL) {
         module = MR_search_module_info_by_unique_name(fp, module_name);
@@ -440,9 +435,9 @@ MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
         module = NULL;
     }
 
-    for (i = 0; i < MR_module_info_next; i++) {
+    for (size_t i = 0; i < MR_module_info_next; i++) {
         if (module == NULL || module == MR_module_infos[i]) {
-            for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
+            for (int j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
                 proc = MR_module_infos[i]->MR_ml_procs[j];
                 if (uci || !MR_PROC_LAYOUT_IS_UCI(proc)) {
                     if (separate) {
@@ -461,10 +456,8 @@ MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
 void
 MR_dump_module_list(FILE *fp)
 {
-    size_t     i;
-
     fprintf(fp, "List of debuggable modules\n\n");
-    for (i = 0; i < MR_module_info_next; i++) {
+    for (size_t i = 0; i < MR_module_info_next; i++) {
         fprintf(fp, "%s\n", MR_module_infos[i]->MR_ml_name);
     }
 }
@@ -474,7 +467,6 @@ MR_dump_module_procs(FILE *fp, const char *name)
 {
     const MR_ModuleLayout   *module;
     MR_ConstString          decl_module;
-    int                     i;
 
     module = MR_search_module_info_by_unique_name(fp, name);
     if (module == NULL) {
@@ -483,7 +475,7 @@ MR_dump_module_procs(FILE *fp, const char *name)
     }
 
     fprintf(fp, "List of procedures in module `%s'\n\n", name);
-    for (i = 0; i < module->MR_ml_proc_count; i++) {
+    for (int i = 0; i < module->MR_ml_proc_count; i++) {
         decl_module = MR_get_proc_decl_module(module->MR_ml_procs[i]);
         // Only show procs which are declared in the module.
         if (MR_streq(decl_module, module->MR_ml_name)) {
@@ -495,13 +487,11 @@ MR_dump_module_procs(FILE *fp, const char *name)
 static MR_bool
 MR_module_in_arena(const char *name, char **names, int num_names)
 {
-    int i;
-
     if (num_names == 0) {
         return MR_TRUE;
     }
 
-    for (i = 0; i < num_names; i++) {
+    for (int i = 0; i < num_names; i++) {
         if (MR_streq(name, names[i])) {
             return MR_TRUE;
         }
@@ -1391,9 +1381,8 @@ MR_process_matching_procedures(MR_ProcSpec *spec,
             }
         }
     } else {
-        unsigned    i;
 
-        for (i = 0; i < MR_module_info_next; i++) {
+        for (unsigned i = 0; i < MR_module_info_next; i++) {
             MR_process_matching_procedures_in_module(MR_module_infos[i], spec,
                 f, data);
         }
@@ -1447,9 +1436,8 @@ MR_process_matching_procedures_in_module(const MR_ModuleLayout *module,
     MR_ProcSpec *spec, void f(void *, const MR_ProcLayout *), void *data)
 {
     const MR_ProcLayout     *proc;
-    int                     j;
 
-    for (j = 0; j < module->MR_ml_proc_count; j++) {
+    for (int j = 0; j < module->MR_ml_proc_count; j++) {
         proc = module->MR_ml_procs[j];
         if (MR_PROC_LAYOUT_IS_UCI(proc)) {
             if (match_uci_type_name(spec, proc) &&
@@ -1476,10 +1464,9 @@ MR_filter_user_preds(MR_MatchesInfo *matches)
 {
     const MR_ProcLayout     *entry;
     int                     filter_pos;
-    size_t                  i;
 
     filter_pos = 0;
-    for(i = 0; i < matches->match_proc_next; i++) {
+    for (size_t i = 0; i < matches->match_proc_next; i++) {
         entry = matches->match_procs[i];
         if (!MR_PROC_LAYOUT_IS_UCI(entry) &&
             (entry->MR_sle_user).MR_user_mode == 0)

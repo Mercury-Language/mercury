@@ -1700,9 +1700,7 @@ MR_trace_command_completion_info(const char *word,
 const MR_TraceCmdTableEntry *
 MR_trace_valid_command(const char *word)
 {
-    int i;
-
-    for (i = 0; MR_trace_command_table[i].MR_cmd_name != NULL; i++) {
+    for (int i = 0; MR_trace_command_table[i].MR_cmd_name != NULL; i++) {
         if (MR_streq(MR_trace_command_table[i].MR_cmd_name, word)) {
             return &MR_trace_command_table[i];
         }

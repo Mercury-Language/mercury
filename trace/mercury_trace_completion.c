@@ -532,7 +532,6 @@ MR_trace_break_completer(const char *word, size_t word_len)
     if (! MR_source_file_lines_initialized) {
         int module_num;
         int last;
-        int i;
 
         for (module_num = 0; module_num < MR_module_info_next; module_num++) {
             MR_insert_module_into_source_file_line_table(
@@ -546,7 +545,7 @@ MR_trace_break_completer(const char *word, size_t word_len)
         // to be adjacent to each other.
 
         last = 0;
-        for (i = 1; i < MR_source_file_line_next; i++) {
+        for (int i = 1; i < MR_source_file_line_next; i++) {
             if (MR_streq(MR_source_file_lines[i], MR_source_file_lines[last])) {
                 free((void *) MR_source_file_lines[i]);
             } else {

@@ -710,11 +710,10 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
-        int i;
         int count;
 
         count = 0;
-        for (i = 0; i < MR_spy_point_next; i++) {
+        for (int i = 0; i < MR_spy_point_next; i++) {
             if (MR_spy_points[i]->MR_spy_exists) {
                 problem = MR_ignore_spy_point(n, ignore_when, ignore_count);
                 MR_maybe_print_spy_point(n, problem);
@@ -749,7 +748,6 @@ MR_trace_cmd_break_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     int                 break_num;
-    int                 i;
     MR_BrowseFormat     format;
     MR_bool             at_start;
     MR_bool             warn;
@@ -780,7 +778,7 @@ MR_trace_cmd_break_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
             } else {
                 print_list = NULL;
                 any_problem = MR_FALSE;
-                for (i = 1; i < word_count; i++) {
+                for (int i = 1; i < word_count; i++) {
                     problem = MR_parse_spy_print(format, warn, words[i], &sp);
                     if (problem != NULL) {
                         fflush(MR_mdb_out);
@@ -832,11 +830,10 @@ MR_trace_cmd_enable(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
-        int i;
         int count;
 
         count = 0;
-        for (i = 0; i < MR_spy_point_next; i++) {
+        for (int i = 0; i < MR_spy_point_next; i++) {
             if (MR_spy_points[i]->MR_spy_exists) {
                 MR_spy_points[i]->MR_spy_enabled = MR_TRUE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
@@ -884,11 +881,10 @@ MR_trace_cmd_disable(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
-        int i;
         int count;
 
         count = 0;
-        for (i = 0; i < MR_spy_point_next; i++) {
+        for (int i = 0; i < MR_spy_point_next; i++) {
             if (MR_spy_points[i]->MR_spy_exists) {
                 MR_spy_points[i]->MR_spy_enabled = MR_FALSE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
@@ -939,11 +935,10 @@ MR_trace_cmd_delete(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_INTEGER_LENGTH_MODIFIER "u does not exist.\n", n);
         }
     } else if (word_count == 2 && MR_streq(words[1], "*")) {
-        int i;
         int count;
 
         count = 0;
-        for (i = 0; i < MR_spy_point_next; i++) {
+        for (int i = 0; i < MR_spy_point_next; i++) {
             if (MR_spy_points[i]->MR_spy_exists) {
                 MR_spy_points[i]->MR_spy_exists = MR_FALSE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
@@ -1033,9 +1028,7 @@ MR_trace_cmd_procedures(char **words, int word_count, MR_TraceCmdInfo *cmd,
 static MR_bool
 MR_matches_port_name(const char *word)
 {
-    int i;
-
-    for (i = 0; i < MR_PORT_NUM_PORTS; i++) {
+    for (int i = 0; i < MR_PORT_NUM_PORTS; i++) {
         if (MR_streq(word, MR_simplified_port_names[i])) {
             return MR_TRUE;
         }

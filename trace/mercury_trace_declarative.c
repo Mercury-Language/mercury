@@ -2116,12 +2116,10 @@ MR_trace_reset_implicit_subtree_counters(void)
 static void
 MR_trace_init_implicit_subtree_counters(MR_Unsigned size)
 {
-    size_t  i;
-
     MR_edt_implicit_subtree_counters = (MR_Unsigned *)
         malloc(size * sizeof(MR_Unsigned));
 
-    for (i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         MR_edt_implicit_subtree_counters[i] = 0;
     }
 

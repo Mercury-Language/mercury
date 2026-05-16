@@ -117,7 +117,6 @@ MR_trace_read_help_text(void)
     int     doc_char_max = 0;
     int     next_char_slot;
     size_t  line_len;
-    int     i;
 
     next_char_slot = 0;
     while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out)) != NULL) {
@@ -129,7 +128,7 @@ MR_trace_read_help_text(void)
         line_len = strlen(text);
         MR_ensure_big_enough(next_char_slot + line_len + 2, doc_char, char,
             MR_INIT_DOC_CHARS);
-        for (i = 0; i < line_len; i++) {
+        for (int i = 0; i < line_len; i++) {
             doc_chars[next_char_slot + i] = text[i];
         }
 

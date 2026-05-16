@@ -36,14 +36,13 @@ MR_trace_add_alias(char *name, char **words, int word_count)
 {
     MR_bool found;
     int slot;
-    int i;
     int count;
 
     MR_bsearch(MR_alias_record_next, slot, found,
         strcmp(MR_alias_records[slot].MR_alias_name, name));
     if (found) {
         count = MR_alias_records[slot].MR_alias_word_count;
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             MR_free(MR_alias_records[slot].MR_alias_words[i]);
         }
 
@@ -58,7 +57,7 @@ MR_trace_add_alias(char *name, char **words, int word_count)
     MR_alias_records[slot].MR_alias_name = MR_copy_string(name);
     MR_alias_records[slot].MR_alias_word_count = word_count;
     MR_alias_records[slot].MR_alias_words = MR_NEW_ARRAY(char *, word_count);
-    for (i = 0; i < word_count; i++) {
+    for (int i = 0; i < word_count; i++) {
         MR_alias_records[slot].MR_alias_words[i] = MR_copy_string(words[i]);
     }
 }
@@ -68,7 +67,6 @@ MR_trace_remove_alias(const char *name)
 {
     MR_bool found;
     int     slot;
-    int     i;
     int     count;
 
     MR_bsearch(MR_alias_record_next, slot, found,
@@ -77,14 +75,14 @@ MR_trace_remove_alias(const char *name)
         return MR_FALSE;
     } else {
         count = MR_alias_records[slot].MR_alias_word_count;
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             MR_free(MR_alias_records[slot].MR_alias_words[i]);
         }
 
         MR_free(MR_alias_records[slot].MR_alias_name);
         MR_free(MR_alias_records[slot].MR_alias_words);
 
-        for (i = slot; i < MR_alias_record_next - 1; i++) {
+        for (int i = slot; i < MR_alias_record_next - 1; i++) {
             MR_assign_structure(MR_alias_records[slot],
                 MR_alias_records[slot + 1]);
         }
@@ -131,9 +129,7 @@ MR_trace_print_alias(FILE *fp, const char *name)
 void
 MR_trace_print_all_aliases(FILE *fp, MR_bool mdb_command_format)
 {
-    int slot;
-
-    for (slot = 0; slot < MR_alias_record_next; slot++) {
+    for (int slot = 0; slot < MR_alias_record_next; slot++) {
         MR_trace_print_alias_num(fp, slot, mdb_command_format);
     }
 }
@@ -141,15 +137,13 @@ MR_trace_print_all_aliases(FILE *fp, MR_bool mdb_command_format)
 static void
 MR_trace_print_alias_num(FILE *fp, int slot, MR_bool mdb_command_format)
 {
-    int i;
-
     if (mdb_command_format) {
         fprintf(fp, "alias %s", MR_alias_records[slot].MR_alias_name);
     } else {
         fprintf(fp, "%-6s =>   ", MR_alias_records[slot].MR_alias_name);
     }
 
-    for (i = 0; i < MR_alias_records[slot].MR_alias_word_count; i++) {
+    for (int i = 0; i < MR_alias_records[slot].MR_alias_word_count; i++) {
         fprintf(fp, " %s", MR_alias_records[slot].MR_alias_words[i]);
     }
 
@@ -186,7 +180,6 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
     char        **alias_words;
     int         alias_word_count;
     int         alias_copy_start;
-    int         i;
     MR_Unsigned n;
 
     if (*word_count == 0) {
@@ -205,12 +198,12 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
             MR_INIT_WORD_COUNT);
 
         // Move the original words (except the alias key) up.
-        for (i = *word_count - 1; i >= alias_copy_start; i--) {
+        for (int i = *word_count - 1; i >= alias_copy_start; i--) {
             (*words)[i + alias_word_count - alias_copy_start] = (*words)[i];
         }
 
         // Move the alias body to the words array.
-        for (i = 0; i < alias_word_count; i++) {
+        for (int i = 0; i < alias_word_count; i++) {
             (*words)[i] = alias_words[i];
         }
 

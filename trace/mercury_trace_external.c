@@ -1021,7 +1021,6 @@ MR_trace_make_var_list(void)
 {
     const char  *problem;
     int         var_count;
-    int         i;
     MR_TypeInfo type_info;
     MR_Word     value;
     MR_Word     univ;
@@ -1033,7 +1032,7 @@ MR_trace_make_var_list(void)
         var_list = MR_list_empty();
     );
 
-    for (i = var_count; i > 0; i--) {
+    for (int i = var_count; i > 0; i--) {
         problem = MR_trace_return_var_info(i, NULL, &type_info, &value);
         if (problem != NULL) {
             MR_fatal_error("%s", problem);
@@ -1063,7 +1062,6 @@ MR_trace_make_var_names_list(void)
 {
     const char  *problem;
     int         var_count;
-    int         i;
     const char  *name;
     MR_Word     var_names_list;
 
@@ -1073,7 +1071,7 @@ MR_trace_make_var_names_list(void)
         var_names_list = MR_list_empty();
     );
 
-    for (i = var_count; i > 0; i--) {
+    for (int i = var_count; i > 0; i--) {
         problem = MR_trace_return_var_info(i, &name, NULL, NULL);
         if (problem != NULL) {
             MR_fatal_error("%s", problem);
@@ -1099,7 +1097,6 @@ MR_trace_make_type_list(void)
 {
     const char  *problem;
     int         var_count;
-    int         i;
     MR_TypeInfo type_info;
     MR_String   type_info_string;
     MR_Word     type_list;
@@ -1110,7 +1107,7 @@ MR_trace_make_type_list(void)
         type_list = MR_list_empty();
     );
 
-    for (i = var_count; i > 0; i--) {
+    for (int i = var_count; i > 0; i--) {
         problem = MR_trace_return_var_info(i, NULL, &type_info, NULL);
         if (problem != NULL) {
             MR_fatal_error("%s", problem);

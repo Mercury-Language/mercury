@@ -616,12 +616,11 @@ static const char *incompatible =
 static int
 MR_add_spy_point(MR_bool reuse, MR_SpyPoint *point)
 {
-    int i;
     int point_slot;
 
     if (reuse) {
         // Try to reuse an existing slot in the MR_spy_points array.
-        for (i = 0; i < MR_spy_point_next; i++) {
+        for (int i = 0; i < MR_spy_point_next; i++) {
             if (! MR_spy_points[i]->MR_spy_exists) {
                 MR_most_recent_spy_point = i;
                 MR_spy_points[i] = point;
@@ -1003,7 +1002,6 @@ MR_delete_spy_point(int point_table_slot)
     MR_SpyPoint     **cur_addr;
     MR_SpyPoint     *cur;
     int             proc_table_slot;
-    int             i;
     int             label_slot;
 
     point = MR_spy_points[point_table_slot];
@@ -1037,7 +1035,7 @@ MR_delete_spy_point(int point_table_slot)
 
         // Remove the spy point from the spied label table list.
         label_slot = 0;
-        for (i = 0; i < MR_spied_label_next; i++) {
+        for (int i = 0; i < MR_spied_label_next; i++) {
             if (MR_spied_labels[i].MR_sl_point_num != point_table_slot) {
                 MR_spied_labels[label_slot].MR_sl_label =
                     MR_spied_labels[i].MR_sl_label;
@@ -1282,11 +1280,10 @@ MR_bool
 MR_save_spy_points(FILE *fp, FILE *err_fp)
 {
     MR_SpyPoint *point;
-    int         i;
     int         spy_point_num;
 
     spy_point_num = 0;
-    for (i = 0; i < MR_spy_point_next; i++) {
+    for (int i = 0; i < MR_spy_point_next; i++) {
         if (! MR_spy_points[i]->MR_spy_exists) {
             continue;
         }

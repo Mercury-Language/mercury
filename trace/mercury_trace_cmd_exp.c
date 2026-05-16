@@ -129,9 +129,7 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 #ifdef  MR_TRACE_HISTOGRAM
 
     if (word_count == 1) {
-        int i;
-
-        for (i = 0; i <= MR_trace_histogram_hwm; i++) {
+        for (int i = 0; i <= MR_trace_histogram_hwm; i++) {
             MR_trace_histogram_exp[i] = 0;
         }
     } else {

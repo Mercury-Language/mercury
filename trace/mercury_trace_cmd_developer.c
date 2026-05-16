@@ -289,7 +289,6 @@ MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
 {
     const char  *name;
     MR_bool     *flagptr;
-    int         i;
     MR_bool     found;
     const char  *set_word;
 
@@ -297,7 +296,7 @@ MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
     flagptr = NULL;
 
     if (word_count == 1) {
-        for (i = 0; i < MR_MAXFLAG; i++) {
+        for (int i = 0; i < MR_MAXFLAG; i++) {
             // The true values of the debugging flags are stored in
             // MR_saved_debug_state inside the call tree of MR_trace_event.
 
@@ -324,7 +323,7 @@ MR_trace_cmd_flag(char **words, int word_count, MR_TraceCmdInfo *cmd,
     }
 
     found = MR_FALSE;
-    for (i = 0; i < MR_MAXFLAG; i++) {
+    for (int i = 0; i < MR_MAXFLAG; i++) {
         if (MR_streq(MR_debug_flag_info[i].MR_debug_flag_name, name)) {
             // The true values of the debugging flags are stored in
             // MR_saved_debug_state inside the call tree of MR_trace_event.
@@ -1397,7 +1396,6 @@ MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
 {
     MR_MatchesInfo      matches;
     MR_Unsigned         n;
-    int                 i;
 
     MR_register_all_modules_and_procs(MR_mdb_out, verbose);
     matches = MR_search_for_matching_procedures(spec);
@@ -1414,7 +1412,7 @@ MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
         fflush(MR_mdb_out);
         fprintf(MR_mdb_err, "Ambiguous procedure specification. "
             "The matches are:\n");
-        for (i = 0; i < matches.match_proc_next; i++) {
+        for (int i = 0; i < matches.match_proc_next; i++) {
             fprintf(MR_mdb_out, "%d: ", i);
             MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
         }
@@ -1692,11 +1690,10 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
     int num_filtered_inputs, MR_CallTableArg *call_table_args,
     MR_TrieNode table)
 {
-    int             i;
     MR_EvalMethod   eval_method;
 
     fprintf(MR_mdb_out, "<");
-    for (i = 0; i < num_filtered_inputs; i++) {
+    for (int i = 0; i < num_filtered_inputs; i++) {
         if (i > 0) {
             fprintf(MR_mdb_out, ", ");
         }
@@ -1860,7 +1857,6 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
     MR_DuFunctorDesc            *du_functor;
     MR_NotagFunctorDesc         *notag_functor;
     int                         num_functors;
-    int                         i;
 
     fprintf(fp, "type constructor %s.%s/%d",
         type_ctor_info->MR_type_ctor_module_name,
@@ -1879,7 +1875,7 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
         switch (rep) {
             case MR_TYPECTOR_REP_ENUM:
             case MR_TYPECTOR_REP_ENUM_USEREQ:
-                for (i = 0; i < num_functors; i++) {
+                for (int i = 0; i < num_functors; i++) {
                     enum_functor = type_ctor_info->MR_type_ctor_functors.
                         MR_functors_enum[i];
                     if (i > 0) {
@@ -1892,7 +1888,7 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
 
             case MR_TYPECTOR_REP_DU:
             case MR_TYPECTOR_REP_DU_USEREQ:
-                for (i = 0; i < num_functors; i++) {
+                for (int i = 0; i < num_functors; i++) {
                     du_functor = type_ctor_info->MR_type_ctor_functors.
                         MR_functors_du[i];
                     if (i > 0) {
@@ -1930,7 +1926,6 @@ MR_print_class_decl_info(FILE *fp, MR_TypeClassDeclInfo *type_class_decl_info,
     MR_Dlist                    *list;
     MR_Dlist                    *element_ptr;
     int                         num_methods;
-    int                         i;
 
     type_class_decl = type_class_decl_info->MR_tcd_info_decl;
     type_class_id = type_class_decl->MR_tc_decl_id;
@@ -1943,7 +1938,7 @@ MR_print_class_decl_info(FILE *fp, MR_TypeClassDeclInfo *type_class_decl_info,
         num_methods = type_class_id->MR_tc_id_num_methods;
         fprintf(fp, "methods: ");
 
-        for (i = 0; i < num_methods; i++) {
+        for (int i = 0; i < num_methods; i++) {
             if (i > 0) {
                 fprintf(fp, ", ");
             }
@@ -1973,7 +1968,7 @@ MR_print_class_decl_info(FILE *fp, MR_TypeClassDeclInfo *type_class_decl_info,
 
             fprintf(fp, "instance ");
 
-            for (i = 0; i < type_class_id->MR_tc_id_arity; i++) {
+            for (int i = 0; i < type_class_id->MR_tc_id_arity; i++) {
                 if (i > 0) {
                     fprintf(fp, ", ");
                 }
@@ -1994,7 +1989,6 @@ MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo)
     MR_PseudoTypeInfo   *pseudo_args;
     MR_Integer          tvar_num;
     int                 arity;
-    int                 i;
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo)) {
         tvar_num = (MR_Integer) pseudo;
@@ -2015,7 +2009,7 @@ MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo)
 
         if (type_ctor_info->MR_type_ctor_arity > 0) {
             fprintf(fp, "(");
-            for (i = 1; i <= arity; i++) {
+            for (int i = 1; i <= arity; i++) {
                 if (i > 1) {
                     fprintf(fp, ", ");
                 }
