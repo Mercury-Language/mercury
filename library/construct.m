@@ -306,13 +306,11 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
             MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
-            int i;
-
             MR_save_transient_registers();
             PseudoTypeInfoList = MR_type_params_vector_to_list(Arity,
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
             ArgNameList = MR_list_empty();
-            for (i = 0; i < Arity; i++) {
+            for (int i = 0; i < Arity; i++) {
                 ArgNameList = MR_string_list_cons_msg((MR_Word) NULL,
                     ArgNameList, MR_ALLOC_ID);
             }
@@ -501,7 +499,6 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
     int                 args_size = MR_cell_size_for_args(arity, arg_locns);
     int                 alloc_size = MR_SIZE_SLOT_SIZE + sectag01 + args_size;
     int                 size;
-    MR_Unsigned         i;
 
     MR_tag_offset_incr_hp_msg(new_data, ptag, MR_SIZE_SLOT_SIZE, alloc_size,
         alloc_id, ""<created by construct.construct/3>"");
@@ -519,7 +516,7 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
         MR_field(ptag, new_data, 0) = functor_desc->MR_du_functor_secondary;
     }
 
-    for (i = 0; i < arity; i++) {
+    for (MR_Unsigned i = 0; i < arity; i++) {
         MR_Word         arg_data;
         MR_TypeInfo     arg_type_info;
         MR_Unsigned     bits_to_or;
@@ -680,11 +677,10 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
     MR_Unsigned         new_data;
     const MR_Word       arity = functor_desc->MR_du_functor_orig_arity;
     const MR_DuArgLocn  *arg_locns = functor_desc->MR_du_functor_arg_locns;
-    MR_Unsigned         i;
 
     new_data = ptag | (functor_desc->MR_du_functor_secondary << MR_TAGBITS);
 
-    for (i = 0; i < arity; i++) {
+    for (MR_Unsigned i = 0; i < arity; i++) {
         MR_Word         arg_data;
         MR_TypeInfo     arg_type_info;
 
@@ -938,7 +934,6 @@ construct(TypeDesc, Index, Args, Term) :-
         case MR_TYPECTOR_REP_TUPLE:
             {
                 int         arity;
-                int         i;
                 int         size;
                 MR_Word     arg_list;
                 MR_Word     arg_data;
@@ -955,7 +950,7 @@ construct(TypeDesc, Index, Args, Term) :-
 
                     size = MR_cell_size(arity);
                     arg_list = ArgList;
-                    for (i = 0; i < arity; i++) {
+                    for (int i = 0; i < arity; i++) {
                         arg_data = MR_field(MR_UNIV_TAG,
                             MR_list_head(arg_list),
                             MR_UNIV_OFFSET_FOR_DATA);
@@ -1230,7 +1225,6 @@ construct_tuple(Args) = Univ :-
 "{
     MR_TypeInfo type_info;
     MR_Word     new_data;
-    int         i;
     MR_Word     arg_data;
     MR_TypeInfo arg_type_info;
     int         size;
@@ -1250,7 +1244,7 @@ construct_tuple(Args) = Univ :-
             ""<created by construct.construct_tuple/1>"");
 
         size = MR_cell_size(Arity);
-        for (i = 0; i < Arity; i++) {
+        for (int i = 0; i < Arity; i++) {
             arg_data = MR_field(MR_UNIV_TAG, MR_list_head(Args),
                 MR_UNIV_OFFSET_FOR_DATA);
             arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,

@@ -435,7 +435,6 @@
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
-    MR_Integer  i;
     MR_Word     array;
 
     MR_incr_hp_type_msg(VA, struct ML_va,
@@ -448,7 +447,7 @@
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
-    for (i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
 
@@ -478,7 +477,6 @@
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
-    MR_Integer  i;
     MR_Word     array;
 
     MR_incr_hp_type_msg(VA, struct ML_va,
@@ -491,7 +489,7 @@
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
 
-    for (i = 0; i < N; i++) {
+    for (MR_Integer i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
 
@@ -1308,7 +1306,6 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
     ML_va_ptr   VA;
     MR_Word     array;
     MR_Integer  N;
-    MR_Integer  i;
 
     latest = ML_va_get_latest(VA0);
     N = latest->rest.array->size;
@@ -1323,7 +1320,7 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
     VA->rest.array          = (MR_ArrayPtr) array;
     VA->rest.array->size    = N;
 
-    for (i = 0; i < N; i++) {
+    for (MR_Integer i = 0; i < N; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
     }
 
@@ -1451,7 +1448,6 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
 {
     ML_va_ptr   latest;
     ML_va_ptr   VA;
-    MR_Integer  i;
     MR_Integer  size_VA0;
     MR_Integer  min;
     MR_Word     array;
@@ -1470,7 +1466,7 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
     VA->rest.array          = (MR_ArrayPtr) array;
     VA->rest.array->size    = N;
 
-    for (i = 0; i < min; i++) {
+    for (MR_Integer i = 0; i < min; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
     }
 
@@ -1485,7 +1481,7 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
 
     ML_va_rewind_into(VA, VA0, alloc_id);
 
-    for (i = min; i < N; i++) {
+    for (MR_Integer i = min; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
 

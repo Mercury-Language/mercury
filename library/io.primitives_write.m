@@ -1019,10 +1019,9 @@ do_write_float(Stream, Float, Error, !IO) :-
     } else {
         char    buf[5];
         size_t  len;
-        size_t  i;
         len = MR_utf8_encode(buf, Character);
         // XXX ILSEQ Error if len==0
-        for (i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {
                 Error = errno;
                 break;

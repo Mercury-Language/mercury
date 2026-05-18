@@ -485,12 +485,11 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
 "
     MR_TableStepStats   *cur;
     MR_TableStepStats   *prev;
-    int                 i;
 
     PrevPtr->MR_ts_num_lookups = CurPtr->MR_ts_num_lookups;
     PrevPtr->MR_ts_num_lookups_is_dupl = CurPtr->MR_ts_num_lookups_is_dupl;
 
-    for (i = 0; i < NumSteps; i++) {
+    for (int i = 0; i < NumSteps; i++) {
         cur = &(CurPtr->MR_ts_steps[i]);
         prev = &(PrevPtr->MR_ts_steps[i]);
 

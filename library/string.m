@@ -5222,11 +5222,9 @@ to_upper(X::in, Y::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    MR_Integer  i;
-
     MR_make_aligned_string_copy_msg(StrOut, StrIn, MR_ALLOC_ID);
 
-    for (i = 0; StrOut[i] != '\\0'; i++) {
+    for (MR_Integer i = 0; StrOut[i] != '\\0'; i++) {
         if (StrOut[i] >= 'a' && StrOut[i] <= 'z') {
             StrOut[i] = StrOut[i] - 'a' + 'A';
         }
@@ -5315,11 +5313,9 @@ to_lower(X::in, Y::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    MR_Integer  i;
-
     MR_make_aligned_string_copy_msg(StrOut, StrIn, MR_ALLOC_ID);
 
-    for (i = 0; StrOut[i] != '\\0'; i++) {
+    for (MR_Integer i = 0; StrOut[i] != '\\0'; i++) {
         if (StrOut[i] >= 'A' && StrOut[i] <= 'Z') {
             StrOut[i] = StrOut[i] - 'A' + 'a';
         }

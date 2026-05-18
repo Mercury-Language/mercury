@@ -1161,10 +1161,8 @@ void ML_init_array(MR_ArrayPtr, MR_Integer size, MR_Word item);
 void
 ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 {
-    MR_Integer i;
-
     array->size = size;
-    for (i = 0; i < size; i++) {
+    for (MR_Integer i = 0; i < size; i++) {
         array->elements[i] = item;
     }
 }
@@ -2442,12 +2440,11 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
     // - array.append below, and
     // - MR_deep_copy() in runtime/mercury_deep_copy.[ch].
 
-    MR_Integer i;
     MR_Integer array_size;
 
     array_size = old_array->size;
     array->size = array_size;
-    for (i = 0; i < array_size; i++) {
+    for (MR_Integer i = 0; i < array_size; i++) {
         array->elements[i] = old_array->elements[i];
     }
 }
@@ -2548,19 +2545,18 @@ append(A, B) = C :-
     ],
 "
     MR_Integer sizeC;
-    MR_Integer i;
     MR_Integer offset;
 
     sizeC = ArrayA->size + ArrayB->size;
     ML_alloc_array(ArrayC, sizeC + 1, MR_ALLOC_ID);
 
     ArrayC->size = sizeC;
-    for (i = 0; i < ArrayA->size; i++) {
+    for (MR_Integer i = 0; i < ArrayA->size; i++) {
         ArrayC->elements[i] = ArrayA->elements[i];
     }
 
     offset = ArrayA->size;
-    for (i = 0; i < ArrayB->size; i++) {
+    for (MR_Integer i = 0; i < ArrayB->size; i++) {
         ArrayC->elements[offset + i] = ArrayB->elements[i];
     }
 ").
@@ -2718,10 +2714,8 @@ void
 ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     MR_Integer array_size)
 {
-    MR_Integer i;
-
     array->size = array_size;
-    for (i = 0; i < array_size; i++) {
+    for (MR_Integer i = 0; i < array_size; i++) {
         array->elements[i] = old_array->elements[i];
     }
 

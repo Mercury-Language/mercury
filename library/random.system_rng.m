@@ -704,11 +704,10 @@ static MR_Bool
 ML_random_generate_bytes(ML_SystemRandomHandle handle,
     unsigned char *buffer, size_t len, MR_String *err_msg)
 {
-    int i;
     char errbuf[MR_STRERROR_BUF_SIZE];
     const char *errno_msg;
 
-    for (i = 0; i < len; ) {
+    for (int i = 0; i < len; ) {
         size_t to_read = len - i;
         ssize_t bytes_read = read(handle->ML_srh_fd, buffer, to_read);
         if (bytes_read == -1) {

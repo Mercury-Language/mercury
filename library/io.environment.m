@@ -155,7 +155,6 @@ get_environment_var_map(EnvVarMap, !IO) :-
 "
     MR_Word cur_env = EnvVarAL0;
     MR_Word next_env;
-    int     i;
     char    **environ_vars;
 
     // See the comments about the environ global below
@@ -166,7 +165,7 @@ get_environment_var_map(EnvVarMap, !IO) :-
         environ_vars = environ;
     #endif
 
-    for (i = 0; environ_vars[i] != NULL; i++) {
+    for (int i = 0; environ_vars[i] != NULL; i++) {
         ML_record_env_var_equal_value(environ_vars[i], cur_env, &next_env);
         cur_env = next_env;
     }
