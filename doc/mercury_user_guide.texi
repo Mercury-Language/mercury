@@ -118,7 +118,7 @@ During that time, we advise you to look at
 
 @menu
 * Introduction::        General overview.
-* Introduction to mmc:: Introduction to compiling Mercury program
+* Introduction to mmc:: Introduction to compiling Mercury programs
 * Mercury grades::      Mercury grades
 * Running::             Running Mercury programs
 * Compilation details:: The Mercury compilation process in detail
@@ -228,21 +228,22 @@ what code it should operate on.
 
 The Mercury compiler follows the usual Unix conventions around options.
 Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
-have a similar meaning to that in compilers for other languages, 
+have a similar meaning to that in compilers for other languages,
 though of course most are specific to Mercury.
 
 Like many other programs, the Mercury compiler supports both
 short (single-character) and long (multi-character) option names.
 
 On command lines, an option argument that starts with @samp{--}
-specifies a single long option.
+specifies a single long option,
 while an option argument that starts with only a single @samp{-}
 specifies one or more short options.
 For example, @samp{-v} asks the compiler to be verbose,
 printing a message each time it starts a new phase of the compilation process,
 while @samp{-w} asks it not to print any warnings.
 
-Some options do not take arguments (we call such @dfn{flags}), while some do.
+Some options do not take arguments (we call such options @dfn{flags}),
+while some do.
 Single-letter flags may be grouped with a single @samp{-},
 so that e.g.@: users can ask for both verbose output and no warnings
 either by giving each short option in separate arguments, as in @samp{-v -w},
@@ -281,7 +282,7 @@ following it immediately (if the option name is a short name),
 or separated from it by an equal sign (if the option name is a long name).
 Or it can be in the next argument.
 For example, the requested optimization level, which is an integer,
-can be specified as either as @samp{-O3} or as @samp{-O 3},
+can be specified as either @samp{-O3} or as @samp{-O 3},
 using the short name of that option,
 or as @samp{--optimization-level=3} or as @samp{--optimization-level 3}
 using the long name of that option.
@@ -378,7 +379,7 @@ by looking up the module name in this file.
 @node Compiling single-module programs
 @section Compiling single-module programs
 
-Given a Mercury program that consists of single module,
+Given a Mercury program that consists of a single module,
 which is stored in a file named e.g.@: @file{prog.m},
 you can compile it using the command
 
@@ -441,7 +442,7 @@ which only ever needs to be updated when @var{B}'s source module changes,
 and does so in a way that @emph{affects its interface}.
 
 @c In programming languages which do not have an explicit module system,
-@c the role of module interfaces is taken by hand writen files,
+@c the role of module interfaces is taken by hand written files,
 @c with the most frequently-seen example being @emph{header files} in C.
 
 In C and in some programming languages based on it,
@@ -483,7 +484,7 @@ that it does not define.
 If module @var{A}'s interface imports two modules, @var{B} and @var{C},
 the compiler needs to know for each of those modules
 whether they define a type named @var{foo},
-so it can put either @var{B.foo} @var{C.foo} as the type of that argument
+so it can put either @var{B.foo} or @var{C.foo} as the type of that argument
 into e.g.@: @file{A.int} if just one of them defines it,
 and so that it can generate an error if either neither or both define it.
 @item
@@ -547,7 +548,7 @@ but in general, you should do this only if you have to.
 
 The Mercury build tool that was implemented first is @command{mmake},
 whose name is short for ``Mercury make''.
-If you have Mercury program containing three modules,
+If you have a Mercury program containing three modules,
 maybe called @file{main_module.m}, @file{module_a.m} and @file{module_b.m},
 with the @code{main} predicate being in @file{main_module.m},
 you can use these commands to compile a program:
@@ -577,7 +578,7 @@ or with the required extension (such as @file{.exe} on Windows).
 
 The second step will also create one file with the suffix @file{.d}
 for each module in the program,
-with e.g.@: @file{module_a.d} recording which other modules 
+with e.g.@: @file{module_a.d} recording which other modules
 @file{module_a.m} imports.
 
 One important aspect of @file{.d} files is that
@@ -603,7 +604,7 @@ and the file named @file{Mmakefile} if it exists,
 @c the fact that you can name this file "Mmake" instead, 
 @c since this would introduce an ambiguity.
 and invoking @command{gmake} on it,
-passing it the targets or targets that it itself was given.
+passing it the target or targets that it itself was given.
 (@command{gmake} is the GNU version
 of the standard Unix @command{make} program,
 though on many platforms it is installed as just plain @command{make}.)
@@ -713,7 +714,7 @@ is not the name of a file to be @emph{compiled};
 it is the name of a file to be @emph{built}.
 In general, non-option arguments to @code{mmc --make}
 should be the names of @emph{targets},
-in the same sense of @command{make} targets.
+in the same sense as @command{make} targets.
 Most targets are files to be built, but some are not,
 the same way as @code{PHONY} targets in @command{make} do not represent files.
 For example, @command{mmc --make @var{main_module}.realclean}
@@ -741,11 +742,11 @@ because deleting an @code{:- import_module} or @code{:- use_module}
 declaration cannot lead to obsolete versions of interface files being read
 (since they lead to @emph{fewer} interface files being read);
 @item
-because when an @code{:- import_module} and @code{:- use_module}
+because an @code{:- import_module} and @code{:- use_module}
 declaration is added,
 which @emph{can} lead to obsolete versions of the interface files
 of the newly-imported modules being read,
-those interface files have a reasonably probability
+those interface files have a reasonable probability
 of being brought up to date
 before being needed by the module that added the new import,
 due to some @emph{other} module already depending on them; and
@@ -760,7 +761,7 @@ However, sometimes none of them do.
 In such cases, using @command{mmake} to build the selected target will fail,
 with the failure being caused by @command{mmake}'s reliance
 on out-of-date dependency information.
-(This could mean e.g. @command{mmake} not knowing that
+(This could mean e.g.@: @command{mmake} not knowing that
 it must update the @file{.int} file of a newly-imported module
 before generating target language code for the importing module.)
 In pretty much all of the usual scenarios, the attempt to build the target
@@ -895,7 +896,7 @@ The @command{mmc} option @option{--target} controls
 which of its target languages the Mercury compiler will generate code for.
 With @option{--target c}, Mercury will generate C code;
 with @option{--target java}, Mercury will generate Java code; and
-with @option{--target c#}, Mercury will generate C# code.
+with @option{--target csharp}, Mercury will generate C# code.
 When generating C, the option @option{--high-level-code} controls
 whether code generation will use the LLDS or the MLDS backend,
 generating assembly code in C syntax or idiomatic C code respectively.
@@ -906,7 +907,7 @@ What the previous paragraph is saying is that
 if you compile all the modules of a program,
 an attempt to link the resulting files together can succeed
 @emph{only if} all the modules were compiled
-using the exact same values of 
+using the exact same values of
 @option{--target} and @option{--high-level-code} options.
 
 These are not the only options that have this property.
@@ -1007,7 +1008,7 @@ within a single C function.
 @item @option{--asm-labels}
 specifies the use of a GNU extension
 that allows the address of a label to be made global,
-i.e. accessible from even outside the C function in which it occurs.
+i.e.@: accessible from even outside the C function in which it occurs.
 With the appropriate precautions,
 which the Mercury system of course takes,
 this speeds up transfers of control
@@ -1106,15 +1107,15 @@ Invoking @command{mdb} on such executables lets users do
 the kinds of things that people do with C debuggers such as @command{gdb}
 (set breakpoints, step forward e.g. one call at a time,
 and print the values of variables, amongst others),
-as well as the kinds of things that people do with debug mode in Prolog:
-(such as jump back from the end of a call to its beginning).
+as well as the kinds of things that people do with debug mode in Prolog.
+(such as jumping back from the end of a call to its beginning).
 The difference between them is that
 the declarative debugging aspects of @samp{mdb}
 will work only with @samp{.decldebug}.
 While both @code{.debug} and @code{.decldebug}
 increase the size of the executable and reduce its speed,
 both the size increase and the speed reduction
-is larger with @code{.decldebug} than with @code{.debug}.
+are larger with @code{.decldebug} than with @code{.debug}.
 @sp 1
 Both of these grade modifiers are compatible only with LLDS base grades.
 @end table
@@ -1222,7 +1223,7 @@ the update to the constraint store must be undone.
 This is why in the right grades, Mercury can support a trail.
 @c XXX CHECKME
 (@pxref{Trailing, , ,
-mercury_reference_manual,The Mercury language Reference Manual}).
+mercury_reference_manual,The Mercury Language Reference Manual}).
 The trail is a stack-like data structure
 that consists of a sequence of entries,
 each of which effectively describes how to undo an update to a data structure.
@@ -1419,7 +1420,7 @@ the values of their input arguments and local variables when they succeed,
 while for predicates that cannot succeed more than once,
 we can throw them away, and for good performance, we @emph{must} do so.)
 
-By default, Mercury reserves a fixed size block of memory for each stack,
+By default, Mercury reserves a fixed-size block of memory for each stack,
 and never increases their size during execution.
 To make this work even for programs that use relatively deep recursion,
 the default size of the det stack is
@@ -1582,7 +1583,7 @@ avoids this overhead, improving both memory consumption and speed.
 This made this grade modifier useful for programs
 that did not require the extra precision (or range) offered using 64-bits.
 
-@code{.spf} grades provide no performance advantage at all 64-bit platforms,
+@code{.spf} grades provide no performance advantage at all on 64-bit platforms,
 because on those platforms, 64-bit values do not require boxing.
 On the other hand, they may simplify the use of C APIs
 that exclusively use single precision floats.
@@ -1638,7 +1639,7 @@ that they will probably never need to use themselves.
 This is the grade modifier that the Mercury team itself
 uses only for a single purpose: making source distributions.
 Such distributions include not just the code of the Mercury system,
-which is mostly written in Mercury itself.
+which is mostly written in Mercury itself,
 but also the C code generated for each Mercury module.
 This allows people
 who do not have a working Mercury installation on their machine to create one.
@@ -1713,14 +1714,14 @@ for a new chapter on grades.
     only in low-level C grades with the @samp{.par} grade modifier,
     in every other situation, the compiler silently converts
     every occurrence of @samp{&} to a comma,
-    the usual @emph{sequential} conjunctions operator.
+    the usual @emph{sequential} conjunction operator.
 
     @item thread profiling
     In low-level C grades with the grade modifier @samp{.par},
     users can enable support for ThreadScope-style thread profiling
-    by also specifying the grade module @samp{.threadscope}.
+    by also specifying the grade modifier @samp{.threadscope}.
     The default is no support for thread profiling.
-    Note that form of profiling is experimental,
+    Note that this form of profiling is experimental,
     and it is not currently supported.
 
     @end table
@@ -1968,7 +1969,7 @@ There are constraints on the order in which these interface files can be built.
 
 @item
 Each @file{.int3} file depends only on the source code of the module it is for.
-Since 
+Since
 @file{.int0}, @file{.int} and @file{.int2} files
 all depend on @file{.int3} files,
 the building process must start off by building @file{.int3} files.
@@ -2079,7 +2080,7 @@ Beside such code, @file{.opt} files also contain
 definitions and declarations needed to make sense of that code,
 such as the definitions of the types, insts and modes they involve,
 and the declarations of both
-the predicates and functions they define.
+the predicates and functions they define,
 and the predicates and functions they call.
 
 After @file{.opt} files have been created,
@@ -2304,7 +2305,7 @@ with different SCCs separated by blank lines,
 and with the different modules in each SCC being listed
 one per line with no blank lines between them.
 The order of the modules of the program
-is exactly the order in which appear in this file.
+is exactly the order in which they appear in this file.
 
 @c JUNK
 @c The compiler does this when making dependencies for 
@@ -2418,7 +2419,7 @@ tells the compiler to stop after compiling the Mercury code into object code.
 
 If the source file contains nested modules,
 then both the main module in the file,
-and all the submodules nested inside it, directly or indirectly, 
+and all the submodules nested inside it, directly or indirectly,
 will all get compiled
 first to separate @file{.c} files,
 and then to separate @file{.o} files.
@@ -2445,7 +2446,7 @@ since @file{.class} files are the Java equivalents of object files for C.
 
 If the source file contains nested modules,
 then both the main module in the file,
-and all the submodules nested inside it, directly or indirectly, 
+and all the submodules nested inside it, directly or indirectly,
 will all get compiled
 first to separate @file{.java} files,
 and then to separate @file{.class} files.
@@ -2461,7 +2462,7 @@ mmc --grade csharp -C @var{module_name}.m
 @end example
 
 Since C# does not really have any equivalent of object files,
-@command{-c} and @command{-C} are equivalent to C# grades.
+@command{-c} and @command{-C} are equivalent in C# grades.
 @c NOTE This statement is based on the logic of the predicate named
 @c choose_and_execute_backend_passes in mercury_compile_augment.m.
 
@@ -2523,7 +2524,7 @@ When targeting C,
 using @samp{mmc -c},
 @findex -c
 and then link the resulting object files together.
-The linking is a two stage process.
+The linking is a two-stage process.
 
 First, you must create and compile an @emph{initialization file},
 which is a C source file
@@ -2616,7 +2617,7 @@ is trapped by the virtual memory system.
 
 With conservative garbage collection (the default),
 the heap will start out with a zero size,
-and will be dynamically expanded as needed,
+and will be dynamically expanded as needed.
 When not using conservative garbage collection,
 the heap has a fixed size like the stacks.
 The default size is 8Mb times the word size (in bytes),
@@ -2632,7 +2633,7 @@ but this can be overridden with the @samp{--heap-size} option.
 @cindex File names
 
 Mercury source files must have a name that ends with the @file{.m} extension.
-Each other kind of files (documented below) is identified by its own extension.
+Each other kind of file (documented below) is identified by its own extension.
 
 For source files,
 the part of the filename before the @file{.m} extension can be anything.
@@ -2841,8 +2842,8 @@ that are generated automatically by the Mercury compiler.
 @item @file{.jar} files are Java archives.
 @end itemize
 
-@node Files generated when targeting c#
-@section Files generated when targeting c#
+@node Files generated when targeting C#
+@section Files generated when targeting C#
 
 @c when we support shared libraries on Windows .dll will also be used for them.
 @itemize
@@ -3232,10 +3233,10 @@ set an @samp{EXTRA_} variable.  This is particularly intended for
 use where a shell script needs to call mmake and add an extra parameter,
 without interfering with the flag settings in the @samp{Mmakefile}.
 
-For each of the variables for which there is version with an @samp{EXTRA_}
+For each of the variables for which there is a version with an @samp{EXTRA_}
 prefix, there is also a version with an @samp{ALL_} prefix that
 is defined to include both the ordinary and the @samp{EXTRA_} version.
-If you wish to @emph{use} the values any of these variables
+If you wish to @emph{use} the values of any of these variables
 in your Mmakefile (as opposed to @emph{setting} the values),
 then you should use the @samp{ALL_} version.
 
@@ -4129,7 +4130,7 @@ which disjunct of which disjunction this is.
 A switch event occurs when execution reaches
 the start of one arm of a switch
 (a disjunction in which each disjunct unifies a bound variable
-with different function symbol).
+with a different function symbol).
 The path associated with the event specifies
 which arm of which switch this is.
 @item neg_enter
@@ -4185,7 +4186,7 @@ then the goal path @samp{d2;c3;} denotes
 the third conjunct within the second disjunct.
 If the third conjunct within the second disjunct is an atomic goal
 such as a call or a unification,
-then this will be the only goal with whose path has @samp{d2;c3;} as a prefix.
+then this will be the only goal whose path has @samp{d2;c3;} as a prefix.
 If it is a compound goal,
 then its components will all have paths that have @samp{d2;c3;} as a prefix,
 e.g.@: if it is an if-then-else,
@@ -4456,7 +4457,7 @@ when @samp{mdb} is invoked, it will leave its value unchanged.
 You can use this override ability to provide alternate documentation.
 If the file named by @env{MERCURY_DEBUGGER_INIT} cannot be read,
 @samp{mdb} will print a warning,
-since in that case, that usual online documentation will not be available.
+since in that case, the usual online documentation will not be available.
 @item
 @cindex mdbrc
 @cindex .mdbrc
@@ -4563,12 +4564,12 @@ Every time execution stops at an event that matches the breakpoint,
 mdb implicitly executes a print command for each element
 in the breakpoint's print list.
 A print list element can be the word @samp{goal},
-which causes the goal to the printed as if by @samp{print goal};
+which causes the goal to be printed as if by @samp{print goal};
 it can be the word @samp{*},
-which causes all the variables to the printed as if by @samp{print *};
+which causes all the variables to be printed as if by @samp{print *};
 or it can be the name or number of a variable,
 possibly followed (without white space) by a term path,
-which causes the specified variable or part thereof to the printed
+which causes the specified variable or part thereof to be printed
 as if the element were given as an argument to the @samp{print} command.
 @sp 1
 @item strict commands
@@ -4644,7 +4645,7 @@ For example, when applied to a list,
 (the second argument of the list constructor),
 "^2^2" refers to the tail of the tail of the list,
 and "^2^2^1" refers to the head of the tail of the tail,
-i.e. to the third element of the list.
+i.e.@: to the third element of the list.
 You can think of terms as Unix directories,
 with constants (function symbols of arity zero) being plain files
 and function symbols of arity greater than zero being directories themselves.
@@ -4895,7 +4896,7 @@ This means that they will generate their desired effect
 when they are first executed,
 but reexecuting them after a retry won't have any further effect.
 The Mercury implementation achieves this
-by looking up the action (which is identified by a I/O action number)
+by looking up the action (which is identified by an I/O action number)
 in the table and returning the output arguments stored in the table
 for the given action @emph{without} executing the code of the primitive.
 
@@ -5555,7 +5556,7 @@ specifies that for each ancestor call,
 the call's event number, sequence number and depth should also be printed
 if the call is to a procedure that is being execution traced.
 @sp 1
-If the @samp{-f} option, if present, specifies that
+If the @samp{-f} option is present, it specifies that
 only the topmost @var{numframes} stack frames should be printed.
 @sp 1
 The optional number @var{numlines}, if present,
@@ -5883,7 +5884,7 @@ in the breakpoint's print list.
 Normally, if a variable with the given name or number doesn't exist
 when execution reaches the breakpoint, mdb will issue a warning.
 The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
-This can be useful if e.g. the name is the name of an output variable,
+This can be useful if e.g.@: the name is the name of an output variable,
 which of course won't be present at call events.
 @sp 1
 By default, the action of the break point is @samp{stop},
