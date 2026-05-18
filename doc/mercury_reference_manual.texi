@@ -1510,7 +1510,7 @@ of which there should be at least one.
 @var{Vars} and @var{ArbVars} must be lists of variables,
 and @var{Goal} and @var{ArbGoal} must be goals.
 @var{Vars} must be the set of variables bound by @var{Goal},
-and @var{ArbVars} must be the set of variables bound by @var{ArbGoal},
+and @var{ArbVars} must be the set of variables bound by @var{ArbGoal}.
 It is an error for @var{Vars} to include a variable not bound by @var{Goal}
 or for @var{Goal} to bind a non-local variable
 that is not listed in @var{Vars},
@@ -1987,7 +1987,7 @@ replaced with @var{FieldExpr}.
 A field update is transformed using the following rules:
 @example
 transform(Expr ^ @var{field}(Arg1, @dots{}) := FieldExpr) =
-                '@var{field}:='(Arg1, @dots{}, Expr, FieldExpr)).
+                '@var{field} :='(Arg1, @dots{}, Expr, FieldExpr).
 
 transform(Expr0 ^ @var{field}(Arg1, @dots{}) ^ Rest := FieldExpr) = Expr :-
         OldFieldValue = @var{field}(Arg1, @dots{}, Expr0),
@@ -2663,7 +2663,7 @@ and @var{DCG_Body} is a DCG-goal.
 It is an abbreviation for the rule
 
 @example
-Head --> Body.
+Head :- Body.
 @end example
 
 @noindent
@@ -3317,7 +3317,7 @@ applied to zero or more distinct type variables
 and @var{body} is a sequence of constructor definitions
 separated by semicolons.
 All universally quantified type variables that occur in @var{body}
-must be among @var{type}'s  parameters.
+must be among @var{type}'s parameters.
 
 The syntax for subtypes is similar but slightly different:
 @example
@@ -3666,7 +3666,7 @@ is equivalent to
 
 @example
 :- pred p(int, T, U, U).
-:- pred f(int, T, U) = U.
+:- func f(int, T, U) = U.
 @end example
 
 Type variables in predicate and function declarations
@@ -8438,7 +8438,7 @@ analogous to @samp{univ}, and use that:
 :- some [T] pred harder_example(string, T) => showable(T).
 
 harder_example(Name, Showable) :-
-    ( Name = "bar", Univ = 'new mkshowable'(42)
+    ( Name = "foo", Univ = 'new mkshowable'(42)
     ; Name = "bar", Univ = 'new mkshowable'("blah")
     ),
     Univ = mkshowable(Showable).
@@ -9443,7 +9443,7 @@ through optimizations such as inlining.
 The @samp{may_duplicate} attribute says that it may;
 the @samp{may_not_duplicate} attribute says that it may not.
 In the absence of either attribute,
-the compiler is allowed make its own judgement in the matter,
+the compiler is allowed to make its own judgement in the matter,
 based on factors such as the size of the code fragment.
 
 @item @samp{may_export_body/may_not_export_body}
@@ -10642,6 +10642,7 @@ For example:
     --->    complicated_c_structure(c_pointer).
 
 :- pragma foreign_decl("C",
+"
    extern struct foo *init_struct(void);
    extern struct foo *perform_calculation(int, struct foo *);
 ");
@@ -10950,7 +10951,7 @@ by not storing pointers to Boehm-allocated memory in malloc-allocated blocks,
 or by storing them e.g.@: on the stack as well.
 
 Boehm gc recognizes pointers to the blocks it has allocated
-only if they point either to the start to the block,
+only if they point either to the start of the block,
 or to a byte in the first word of the block;
 pointers into the middle of a block beyond the first word
 won't keep the block alive.
@@ -12868,9 +12869,9 @@ In general, this pragma may take these four forms.
 :- pragma format_call(func(@var{Name}/@var{Arity}),
     format_string_values(@var{FormatStringArgNum}, @var{ValuesArgNum})).
 :- pragma format_call(pred(@var{Name}/@var{Arity}),
-    [format_string_values(@var{FS1}, @var{V1}), ...).
+    [format_string_values(@var{FS1}, @var{V1}), ...]).
 :- pragma format_call(func(@var{Name}/@var{Arity}),
-    [format_string_values(@var{FS1}, @var{V1}), ...).
+    [format_string_values(@var{FS1}, @var{V1}), ...]).
 @end example
 
 The first form is the one in the example above,
@@ -12889,7 +12890,7 @@ whose format strings and values come from the caller,
 like this:
 
 @example
-:- maybe_quad_log_message(LogInfo,
+maybe_quad_log_message(LogInfo,
         FmtA, ValuesA1, ValuesA2,
         FmtB, ValuesB1, ValuesB2, !IO) :-
     ...
@@ -13075,11 +13076,11 @@ for procedures with determinism @code{nondet} or @code{multi}.
 @c @section Software Transactional Memory
 @c
 @c (Note: Software Transactional Memory is still in development and many
-@c aspects c documented here might change without notice.
+@c aspects documented here might change without notice.
 @c Please use with caution.)
 @c
 @c Software Transactional Memory or STM
-@c is an method of synchronising access to shared data
+@c is a method of synchronising access to shared data
 @c between concurrently running threads.
 @c It is an alternative to the use of explicit locking.
 @c
@@ -13151,7 +13152,7 @@ for procedures with determinism @code{nondet} or @code{multi}.
 @c @end example
 @c
 @c The @samp{new_stm_var} creates a new transaction variable
-@c whose the type and initial value are given by the first argument,
+@c whose type and initial value are given by the first argument,
 @c and returns a reference to it.
 @c Only one copy of the transaction variable exists in memory,
 @c but references to it can be duplicated.
@@ -13360,7 +13361,7 @@ In other grades, the compiler normally generates a warning
 for each tabling pragma that it is forced to ignore.
 The @samp{disable_warning_if_ignored} attribute tells the compiler
 not to generate such a warning for the pragma it is attached to.
-Since the @samp{loopcheck} and @samp{minimal_model} pragmas
+Since the @samp{loop_check} and @samp{minimal_model} pragmas
 affect the semantics of the program,
 and such changes should not be made silently,
 this attribute may not be specified for them.
@@ -13483,7 +13484,7 @@ It is described in
 @c XXX this citation may not come out properly in DVI format
 @cite{Tabling in Mercury: design and implementation}
 by Z. Somogyi and K. Sagonas,
-Proceedings of the Eight International Symposium
+Proceedings of the Eighth International Symposium
 on Practical Aspects of Declarative Languages.
 
 @cartouche
@@ -13756,7 +13757,7 @@ must use single precision floats.
 This feature cannot be specified
 together with the @samp{double_prec_float} feature.
 
-@item @samp{double_prec_float},
+@item @samp{double_prec_float}
 This feature specifies that
 the compilation model must use double precision floats.
 This feature cannot be specified
@@ -14021,7 +14022,7 @@ and putting the appropriate check for floundering
 in the @samp{MR_commit} and @samp{MR_solve} cases of your function.
 The Mercury extras distribution includes an example of this:
 see the @samp{ML_var_untrail_func()} function
-in the file @file{extras/trailed_update/var.m}.)
+in the file @file{extras/trailed_update/var.m}.
 If your function does detect floundering,
 then it should print an error message and then abort execution.
 
@@ -14092,7 +14093,7 @@ iff the choice point indicated by @var{x}
 is newer than (i.e.@: was created more recently than)
 the choice point indicated by @var{y}.
 The null ChoicepointId is considered older than any non-null ChoicepointId.
-If either of the choice points have been backtracked over,
+If either of the choice points has been backtracked over,
 the behaviour is undefined.
 
 @end table
