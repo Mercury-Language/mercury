@@ -489,7 +489,7 @@
 %   to `d' with the first range removed.
 %   Return false if `d' is the empty set.
 %
-% ML_Ranges ML_ranges_insert(MR_Integer i, ML_ranges r)
+% ML_Ranges ML_ranges_insert(MR_Integer i, ML_Ranges r)
 %   Return the ranges value that is the result of inserting
 %   the integer `i' into the ranges value `r'.
 %
