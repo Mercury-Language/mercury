@@ -640,7 +640,7 @@ intermod_do_add_pred(PredId, MayOptExportPred, !IntermodInfo) :-
             marker_is_present(Markers, marker_infer_modes)
         ;
             pred_info_get_proc_table(PredInfo, Procs),
-            ProcIds = pred_info_all_procids(PredInfo),
+            ProcIds = pred_info_all_proc_ids(PredInfo),
             list.member(ProcId, ProcIds),
             map.lookup(Procs, ProcId, ProcInfo),
             proc_info_get_declared_determinism(ProcInfo, no)

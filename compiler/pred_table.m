@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1482,7 +1482,7 @@ get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
 
 get_single_proc_id(ModuleInfo, PredId, ProcId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     ( if ProcIds = [ProcId0] then
         ProcId = ProcId0
     else
@@ -1536,7 +1536,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
                 i(UserArityInt)]))
     ),
     module_info_pred_info(Module, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     (
         ModeNo = only_mode,
         ( if ProcIds = [ProcId0] then

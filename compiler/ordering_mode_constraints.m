@@ -227,7 +227,7 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
 
         map.lookup(PredConstraintsMap, PredId,
             {ContainingGoalMap, PredConstraints}),
-        ProcIds = pred_info_all_procids(PredInfo1),
+        ProcIds = pred_info_all_proc_ids(PredInfo1),
         list.foldl2(
             proc_reordering(ContainingGoalMap, PredConstraints, VarMap,
                 PredId),

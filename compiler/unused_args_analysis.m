@@ -107,7 +107,7 @@ record_analysis_unused_args(ProcToUnusedArgsMap, FixpointPredProcIds,
 maybe_record_intermod_unused_args(ModuleInfo, ProcToUnusedArgsMap, PredId,
         !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     list.foldl(
         maybe_record_intermod_unused_args_for_proc(ModuleInfo,
             ProcToUnusedArgsMap, PredId, PredInfo),

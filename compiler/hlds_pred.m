@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -558,21 +558,24 @@
 
     % Return a list of the proc_ids for all the modes of this predicate,
     %
-:- func pred_info_all_procids(pred_info) = list(proc_id).
+:- func pred_info_all_proc_ids(pred_info) = list(proc_id).
 
     % Return a list of the proc_ids for all the modes of this predicate
-    % that are not imported.
+    % for which this module will generate code. This includes both
     %
-:- func pred_info_all_non_imported_procids(pred_info) = list(proc_id).
+    % - procedures defined in this module, and
+    % - procedures opt-imported into this module.
+    %
+:- func pred_info_will_codegen_proc_ids(pred_info) = list(proc_id).
 
     % Return a list of the proc_ids for all the modes of this predicate
     % that are exported.
     %
-:- func pred_info_all_exported_procids(pred_info) = list(proc_id).
+:- func pred_info_all_exported_proc_ids(pred_info) = list(proc_id).
 
     % Remove a procedure from the pred_info.
     %
-:- pred pred_info_remove_procid(proc_id::in, pred_info::in, pred_info::out)
+:- pred pred_info_remove_proc_id(proc_id::in, pred_info::in, pred_info::out)
     is det.
 
 :- pred pred_info_get_arg_types(pred_info::in, tvarset::out, existq_tvars::out,
@@ -1414,11 +1417,11 @@ pred_info_set_proc_table(X, !PI) :-
 
 % The non-trivial access predicates.
 
-pred_info_all_procids(PredInfo) = ProcIds :-
+pred_info_all_proc_ids(PredInfo) = ProcIds :-
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.keys(ProcTable, ProcIds).
 
-pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
+pred_info_will_codegen_proc_ids(PredInfo) = ProcIds :-
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_imported(_)
@@ -1427,12 +1430,13 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
         ProcIds = []
     ;
         OldImportStatus = status_pseudo_imported,
-        ProcIds0 = pred_info_all_procids(PredInfo),
-        % For pseudo_imported preds, procid 0 is imported
+        ProcIds0 = pred_info_all_proc_ids(PredInfo),
+        % For pseudo_imported preds, proc 0 is imported, but
+        % the code generated for all other procs will be included
+        % in the code generated for the current module.
         list.delete_all(ProcIds0, 0, ProcIds)
     ;
         ( OldImportStatus = status_opt_imported
-        ; OldImportStatus = status_abstract_imported
         ; OldImportStatus = status_exported
         ; OldImportStatus = status_opt_exported
         ; OldImportStatus = status_abstract_exported
@@ -1440,17 +1444,21 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
         ; OldImportStatus = status_exported_to_submodules
         ; OldImportStatus = status_local
         ),
-        ProcIds = pred_info_all_procids(PredInfo)
+        ProcIds = pred_info_all_proc_ids(PredInfo)
+    ;
+        OldImportStatus = status_abstract_imported,
+        % This status is not applicable to predicates.
+        unexpected($pred, "status_abstract_imported")
     ).
 
-pred_info_all_exported_procids(PredInfo) = ProcIds :-
+pred_info_all_exported_proc_ids(PredInfo) = ProcIds :-
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_exported
         ; OldImportStatus = status_opt_exported
         ; OldImportStatus = status_exported_to_submodules
         ),
-        ProcIds = pred_info_all_procids(PredInfo)
+        ProcIds = pred_info_all_proc_ids(PredInfo)
     ;
         OldImportStatus = status_pseudo_exported,
         ProcIds = [0]
@@ -1466,7 +1474,7 @@ pred_info_all_exported_procids(PredInfo) = ProcIds :-
         ProcIds = []
     ).
 
-pred_info_remove_procid(ProcId, !PredInfo) :-
+pred_info_remove_proc_id(ProcId, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     map.delete(ProcId, Procs0, Procs),
     pred_info_set_proc_table(Procs, !PredInfo).

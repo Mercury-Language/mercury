@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -161,9 +161,9 @@ ml_find_and_requantify_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         % is imported, but any other procedures are not.
 
         ( if PredStatus = pred_status(status_external(_)) then
-            ProcIds = pred_info_all_procids(PredInfo0)
+            ProcIds = pred_info_all_proc_ids(PredInfo0)
         else
-            ProcIds = pred_info_all_non_imported_procids(PredInfo0)
+            ProcIds = pred_info_will_codegen_proc_ids(PredInfo0)
         ),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl(requantify_codegen_proc, ProcIds, ProcTable0, ProcTable),

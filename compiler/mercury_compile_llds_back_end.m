@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury Team.
+% Copyright (C) 2014-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -296,7 +296,7 @@ llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
 llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
         SCCMap, PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
     module_info_pred_info(!.HLDS, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     (
         ProcIds = []
     ;

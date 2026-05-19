@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -590,7 +590,7 @@ format_clause(Info, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
             [s(IndentStr), s(foreign_language_string(ForeignLang))], !State)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    AllProcIds = pred_info_all_procids(PredInfo),
+    AllProcIds = pred_info_all_proc_ids(PredInfo),
     ( if
         ApplicableModes = selected_modes(SelectedProcIds),
         SelectedProcIds \= AllProcIds

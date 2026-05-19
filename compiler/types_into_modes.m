@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
 propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
         !:Specs, !Cache, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
-    ProcIds = pred_info_all_procids(!.PredInfo),
+    ProcIds = pred_info_all_proc_ids(!.PredInfo),
     !:Specs = [],
     propagate_checked_types_into_procs_modes(ModuleInfo, !.PredInfo, ProcIds,
         [], RevErrorProcs, !Cache, !Specs, Procs0, Procs),

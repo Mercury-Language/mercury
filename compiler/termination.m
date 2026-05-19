@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022-2025 The Mercury Team.
+% Copyright (C) 2014-2020, 2022-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -616,7 +616,7 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     pred_info_get_context(PredInfo0, Context),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
-    ProcIds = pred_info_all_procids(PredInfo0),
+    ProcIds = pred_info_all_proc_ids(PredInfo0),
     ( if
         % It is possible for compiler generated/mercury builtin predicates
         % to be imported or locally defined, so they must be covered here,

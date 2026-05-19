@@ -736,7 +736,7 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         DeclSpecs = []
     ),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    ProcIds = pred_info_all_procids(PredInfo0),
+    ProcIds = pred_info_all_proc_ids(PredInfo0),
     maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
         ProcIds, !ModuleInfo, !ProcModeErrorMap, !Changed,
         init_error_spec_accumulator, SpecsAcc),
@@ -1700,7 +1700,7 @@ pred_check_eval_methods_and_main(_, _, [], !Specs).
 pred_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
         [PredId | PredIds], !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
         PredId, PredInfo, ProcIds, !Specs),
     pred_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap, PredIds,
@@ -1895,7 +1895,7 @@ report_mode_inference_messages_for_preds(ModuleInfo, ProcModeErrorMap,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if marker_is_present(Markers, marker_infer_modes) then
-        ProcIds = pred_info_all_procids(PredInfo),
+        ProcIds = pred_info_all_proc_ids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
         report_mode_inference_messages_for_procs(ModuleInfo, ProcModeErrorMap,
             OutputDetism, PredId, PredInfo, Procs, ProcIds, !Specs)

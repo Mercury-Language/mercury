@@ -492,7 +492,7 @@ polymorphism_process_unify_functor(GoalExpr0, ConsId0, ArgVars0, GoalInfo0,
         % checking knows to fix it up later.
         ( if ProcId0 = invalid_proc_id then
             module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-            ProcIds = pred_info_all_procids(PredInfo),
+            ProcIds = pred_info_all_proc_ids(PredInfo),
             (
                 ProcIds = [ProcId | _],
                 goal_info_add_feature(feature_lambda_undetermined_mode,

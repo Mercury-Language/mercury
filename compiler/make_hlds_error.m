@@ -218,7 +218,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
         color_as_incorrect([words("undeclared mode"), quote(SubDeclStr),
             suffix(".")]) ++
         [nl],
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     (
         ProcIds = [],
         VerbosePieces = [words("(There are no declared modes for this"),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -274,7 +274,7 @@ add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 % if so, set the `infer_modes' marker for that predicate.
                 % Predicates representing promises do not need mode inference.
 
-                ProcIds = pred_info_all_procids(!.PredInfo),
+                ProcIds = pred_info_all_proc_ids(!.PredInfo),
                 ( if
                     ProcIds = [],
                     ClauseType = clause_not_for_promise
@@ -401,7 +401,7 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
 select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
         PredStatus, Context, PredId, PredInfo, ArgTerms,
         ApplProcIds, AllProcIds, !QualInfo, !Specs) :-
-    AllProcIds = pred_info_all_procids(PredInfo),
+    AllProcIds = pred_info_all_proc_ids(PredInfo),
     PredIdStr = pred_id_to_user_string(ModuleInfo, PredId),
     ContextPieces = cord.from_list([words("In the head of a clause for"),
         fixed(PredIdStr), suffix(":"), nl]),

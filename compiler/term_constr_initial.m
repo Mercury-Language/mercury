@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ process_imported_pred(PredId, !ModuleInfo) :-
 process_imported_procs(!PredInfo) :-
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_all_procids(!.PredInfo),
+        ProcIds = pred_info_all_proc_ids(!.PredInfo),
         list.foldl(process_imported_proc, ProcIds, !ProcTable),
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
@@ -283,7 +283,7 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
     pred_info_get_context(!.PredInfo, Context),
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_all_procids(!.PredInfo),
+        ProcIds = pred_info_all_proc_ids(!.PredInfo),
         ( if
             set_compiler_gen_terminates(ModuleInfo, !.PredInfo, PredId,
                 ProcIds, !ProcTable)

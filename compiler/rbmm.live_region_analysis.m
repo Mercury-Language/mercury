@@ -108,7 +108,7 @@ live_region_analysis_pred(ModuleInfo, RptaInfoTable, LVBeforeTable,
         !VoidVarRegionTable, !InputRTable, !OutputRTable, !BornRTable,
         !DeadRTable, !LocalRTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
 
     foldl8(
         live_region_analysis_proc(ModuleInfo, RptaInfoTable,

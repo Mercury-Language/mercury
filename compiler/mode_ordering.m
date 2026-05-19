@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ mode_ordering_pred(PredConstraintMap, _SCC, PredId, !ModuleInfo) :-
             PredInfo = PredInfo0
         )
     else
-        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+        ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
         list.foldl(
             mode_ordering_check_proc(!.ModuleInfo, PredConstraintMap,
                 PredId, MCI, ModeConstraint0),

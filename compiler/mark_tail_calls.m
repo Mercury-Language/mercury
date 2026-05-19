@@ -328,7 +328,7 @@ mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId,
     % back into ModuleInfo.
     module_info_get_globals(ModuleInfo, Globals),
     get_params_for_llds_code_gen(Globals, Params),
-    ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(!.PredInfo),
     mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
         PredId, ProcIds, !PredInfo, !Specs).
 

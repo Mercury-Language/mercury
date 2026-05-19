@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,7 +152,7 @@ maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
             % from this one will get the rename map as well).
 
             pred_info_set_var_name_remap(ConsensusMap, !PredInfo),
-            ProcIds = pred_info_all_procids(!.PredInfo),
+            ProcIds = pred_info_all_proc_ids(!.PredInfo),
             pred_info_get_proc_table(!.PredInfo, ProcTable0),
             list.foldl(set_var_name_remap_in_proc(ConsensusMap), ProcIds,
                 ProcTable0, ProcTable),

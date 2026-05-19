@@ -96,13 +96,13 @@
 acc_specialization_requests(PredId, !Requests, !GlobalInfo) :-
     ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
-    NonImportedProcs = pred_info_all_non_imported_procids(PredInfo0),
+    CodegenProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
     (
-        NonImportedProcs = []
+        CodegenProcIds = []
     ;
-        NonImportedProcs = [FirstProcId | _],
+        CodegenProcIds = [FirstProcId | _],
         list.map_foldl(ho_traverse_proc(need_not_recompute, PredId),
-            NonImportedProcs, NewRequestSets, !GlobalInfo),
+            CodegenProcIds, NewRequestSets, !GlobalInfo),
         NewRequests = set.union_list(NewRequestSets),
         set.union(NewRequests, !Requests),
 

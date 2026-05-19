@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -216,7 +216,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
                 ExternalTypeParams, ModuleInfo, Context, PredId, SpecsPrime)
         then
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            ProcIds = pred_info_all_procids(PredInfo),
+            ProcIds = pred_info_all_proc_ids(PredInfo),
             (
                 ProcIds = [ProcId0],
                 MaybeProcId = yes(ProcId0)

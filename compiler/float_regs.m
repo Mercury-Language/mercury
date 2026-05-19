@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -216,7 +216,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
 
 add_arg_regs_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    ProcIds = pred_info_all_procids(PredInfo0),
+    ProcIds = pred_info_all_proc_ids(PredInfo0),
     list.foldl(add_arg_regs_in_proc(!.ModuleInfo), ProcIds,
         PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
@@ -500,7 +500,7 @@ ho_arg_reg_for_type(Type, RegType) :-
 
 insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     list.foldl2(insert_reg_wrappers_proc(PredId), ProcIds,
         !ModuleInfo, !Specs).
 

@@ -78,7 +78,7 @@ live_variable_analysis(ModuleInfo, ExecPathTable, LVBeforeTable,
 live_variable_analysis_pred(ModuleInfo, ExecPathTable, PredId,
         !LVBeforeTable, !LVAfterTable, !VoidVarTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     list.foldl3(
         live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId),
         ProcIds, !LVBeforeTable, !LVAfterTable, !VoidVarTable).

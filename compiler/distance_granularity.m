@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -193,7 +193,7 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     make_transformed_pred_name(PredName0, Transform, ClonePredName),
     ClonePredSymName = qualified(ModuleName, ClonePredName),
 
-    ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
     some [!ClonePredInfo] (
         !:ClonePredInfo = PredInfo0,
         apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId,

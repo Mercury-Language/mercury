@@ -341,7 +341,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
     ;
         Types = [_ | _],
         init_fact_arg_infos(PredInfo, Types, FactArgInfos0, [], TypeSpecs),
-        ProcIds = pred_info_all_procids(PredInfo),
+        ProcIds = pred_info_all_proc_ids(PredInfo),
         (
             ProcIds = [],
             ModePieces = [words("Error:"), pragma_decl("fact_table"),
@@ -808,7 +808,7 @@ compile_fact_table_in_file(MaybeProgressStream, FileStream, FileName,
 infer_determinism_pass_1(GenInfo,
         WriteHashTables, WriteDataTable, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
-    ProcIds = pred_info_all_procids(!.PredInfo),
+    ProcIds = pred_info_all_proc_ids(!.PredInfo),
     infer_procs_determinism_pass_1(GenInfo, ProcIds,
         ProcTable0, ProcTable,
         do_not_write_hash_tables, WriteHashTables,

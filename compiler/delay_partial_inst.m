@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -211,7 +211,7 @@ delay_partial_inst_preds_acc(ProgressStream, [PredId | PredIds],
         !RevChangedPredIds, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
     list.foldl(
         delay_partial_inst_proc(ProgressStream, !.ModuleInfo, PredId,
             ProcTable0),

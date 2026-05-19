@@ -874,7 +874,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
     then
         true
     else
-        ProcIds = pred_info_all_procids(!.PredInfo),
+        ProcIds = pred_info_all_proc_ids(!.PredInfo),
         check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
             ProcIds, [], !PredInfo, !Specs)
     ).
@@ -940,12 +940,12 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         else
             true
         ),
-        % XXX Calling pred_info_remove_procid here can leave
+        % XXX Calling pred_info_remove_proc_id here can leave
         % dangling references to ProcId1 in method definitions in the
         % class table if the predicate being processed is one of those
         % introduced for type class methods. See the comment in
         % expand_class_method_body/5 in polymorphism_post_copy.m.
-        pred_info_remove_procid(ProcId1, !PredInfo),
+        pred_info_remove_proc_id(ProcId1, !PredInfo),
         Removed = yes
     else
         check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,

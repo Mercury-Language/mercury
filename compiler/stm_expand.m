@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -266,7 +266,7 @@ stm_process_module(!ModuleInfo) :-
 
 stm_process_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     list.foldl(stm_process_proc(PredId), ProcIds, !ModuleInfo).
 
 :- pred stm_process_proc(pred_id::in, proc_id::in,

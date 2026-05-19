@@ -82,7 +82,7 @@ maybe_introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         should_copy_clauses_to_procs(PredInfo0)
     then
         pred_info_get_proc_table(PredInfo0, Procs0),
-        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+        ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
         pred_info_set_proc_table(Procs, PredInfo0, PredInfo),

@@ -290,7 +290,7 @@ expand_try_goals_in_module(ProgressStream, !ModuleInfo, !Specs) :-
 
 expand_try_goals_in_pred(ProgressStream, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     list.foldl2(expand_try_goals_in_proc(ProgressStream, PredId), ProcIds,
         !ModuleInfo, !Specs).
 

@@ -174,7 +174,7 @@ process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
 process_imported_sharing_in_procs(!PredInfo) :-
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_all_procids(!.PredInfo),
+        ProcIds = pred_info_all_proc_ids(!.PredInfo),
         list.foldl(process_imported_sharing_in_proc(!.PredInfo),
             ProcIds, !ProcTable),
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
@@ -252,7 +252,7 @@ process_intermod_analysis_imported_sharing_in_procs(ModuleInfo, AnalysisInfo,
         PredId, !PredInfo) :-
     some [!ProcTable] (
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
-        ProcIds = pred_info_all_procids(!.PredInfo),
+        ProcIds = pred_info_all_proc_ids(!.PredInfo),
         list.foldl(
             process_intermod_analysis_imported_sharing_in_proc(ModuleInfo,
                 AnalysisInfo, PredId, !.PredInfo),
@@ -1090,7 +1090,7 @@ sharing_answer_from_term(Term, Answer) :-
 maybe_record_sharing_analysis_result(ModuleInfo, SharingAsTable, PredId,
         !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
     list.foldl(
         maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable,
             PredId, PredInfo),

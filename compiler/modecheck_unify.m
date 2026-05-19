@@ -1705,7 +1705,7 @@ match_modes_by_higher_order_insts(ModuleInfo, ProcModeErrorMap, VarTable,
     else
         map.init(CalleeErrorMap)
     ),
-    CalleeProcIds = pred_info_all_procids(CalleePredInfo),
+    CalleeProcIds = pred_info_all_proc_ids(CalleePredInfo),
     match_modes_by_higher_order_insts_loop_over_procs(ModuleInfo, VarTable,
         InstMap, ArgVars, CalleePredInfo, CalleeErrorMap, CalleeProcIds,
         [], RevMatchedProcIds, [], NonGroundNonLocals),

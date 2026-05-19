@@ -106,11 +106,11 @@ direct_reuse_process_pred(ProgressStream, SharingTable, PredId,
         % We can't analyse `:- pragma external_{pred/func}' procedures,
         % but we add an extry to the reuse table so something will be written
         % out to optimisation interface files.
-        ProcIds = pred_info_all_procids(PredInfo0),
+        ProcIds = pred_info_all_proc_ids(PredInfo0),
         list.foldl(set_external_pred_reuse_as(PredId, reuse_as_init, optimal),
             ProcIds, !ReuseTable)
     else
-        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+        ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
         list.foldl2(
             direct_reuse_process_proc(ProgressStream, SharingTable, PredId),
             ProcIds, !ModuleInfo, !ReuseTable)

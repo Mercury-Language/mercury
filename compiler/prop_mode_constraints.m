@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2020, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -203,7 +203,7 @@ do_prop_mode_constraints_in_pred(ModuleInfo, PredId, !PredInfo, !VarInfo,
 
 prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
         !VarInfo, FullConstraints) :-
-    ProcIds = pred_info_all_procids(PredInfo),
+    ProcIds = pred_info_all_proc_ids(PredInfo),
 
     add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         init_pred_p_c_constraints, BodyConstr),
@@ -549,7 +549,7 @@ pretty_print_pred_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
     list.foldl(
         pretty_print_proc_constraints(OutputStream, ModuleInfo,
             ConstraintVarSet, PredConstraints, PredId),
-        pred_info_all_procids(PredInfo), !IO).
+        pred_info_all_proc_ids(PredInfo), !IO).
 
     % Puts the constraints specific to the procedure indicated from
     % the pred_p_c_constraints to the current output stream in human

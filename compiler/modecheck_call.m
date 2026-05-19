@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2015, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -104,7 +104,7 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
     ;
         MayChangeCalledProc = may_change_called_proc,
         % Get the list of different possible modes for the called predicate.
-        ProcIds = pred_info_all_procids(PredInfo)
+        ProcIds = pred_info_all_proc_ids(PredInfo)
     ),
 
     ArgOffset = compute_pred_modecheck_arg_offset(PredInfo),

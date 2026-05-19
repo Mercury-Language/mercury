@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -599,7 +599,7 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 
 deep_prof_transform_pred(ProgressStream, ModuleInfo, PredId, !PredMap) :-
     map.lookup(!.PredMap, PredId, PredInfo0),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl(
         deep_prof_maybe_transform_proc(ProgressStream, ModuleInfo, PredId),
@@ -1886,7 +1886,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
         PredIds = [PredId],
         predicate_table_get_pred_id_table(PredTable, PredIdTable),
         map.lookup(PredIdTable, PredId, PredInfo),
-        ProcIds = pred_info_all_procids(PredInfo),
+        ProcIds = pred_info_all_proc_ids(PredInfo),
         (
             ProcIds = [],
             unexpected($pred, "no proc_id")

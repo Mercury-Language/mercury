@@ -257,7 +257,7 @@ interleave_loop([H | T], RevAs0, RevAs, RevBs0, RevBs) :-
 generate_code_for_pred(ProgressStream, VeryVerbose, Statistics, ModuleInfo,
         ConstStructMap, PredId, !CProcsCord, !GlobalData) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     (
         ProcIds = []
     ;

@@ -421,7 +421,7 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
                 PredInfo1, PredInfo),
             module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
             pred_info_get_proc_table(PredInfo, ProcTable),
-            ProcIds = pred_info_all_procids(PredInfo),
+            ProcIds = pred_info_all_proc_ids(PredInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
             % Create foreign_decls to declare extern variables.

@@ -158,16 +158,16 @@ detect_cse_in_preds(ProgressStream, [PredId | PredIds], !ModuleInfo) :-
     pred_id::in, pred_info::in, module_info::in, module_info::out) is det.
 
 detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo) :-
+    ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        NonImportedProcIds = pred_info_all_non_imported_procids(PredInfo),
         trace [io(!IO)] (
             (
-                NonImportedProcIds = []
+                ProcIds = []
             ;
-                NonImportedProcIds = [_ | _],
+                ProcIds = [_ | _],
                 io.format(ProgressStream,
                     "%% Detecting common deconstructions for %s\n",
                     [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
@@ -176,7 +176,6 @@ detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo) :-
     ;
         VeryVerbose = no
     ),
-    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     detect_cse_in_procs(ProgressStream, PredId, ProcIds, !ModuleInfo).
 
 :- pred detect_cse_in_procs(io.text_output_stream::in,
