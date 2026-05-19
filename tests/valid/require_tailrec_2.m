@@ -1,7 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Test the require tail recursion pragma with the
-% --no-warn-non-tail-recursion option.  These tests do not raise an error,
-% the tests that do raise errors are in invalid/
+% --no-warn-non-tail-recursion option.
 %
 
 :- module require_tailrec_2.
@@ -212,4 +214,3 @@ partition(Pivot, [H | T], Left0, Left, Right0, Right) :-
     else
         partition(Pivot, T, Left0, Left, [H | Right0], Right)
     ).
-

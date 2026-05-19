@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Test the require tail recursion pragma with the
-% --warn-non-tail-recursion-self option.  These tests do not raise an error,
-% the tests that do raise errors are in invalid/
+% --warn-non-tail-recursion-self option, and with pred()/func() wrappers
+% around all name/arity pairs.
 %
 
 :- module require_tailrec_1.
@@ -40,7 +43,7 @@ foldl1(P, [X | Xs], !Acc) :-
     foldl1(P, Xs, !Acc).
 
 % self non-tail recursive code with none pragma.
-:- pragma require_tail_recursion(map1/3, [none]).
+:- pragma require_tail_recursion(pred(map1/3), [none]).
 map1(_, [], []).
 map1(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
@@ -62,7 +65,7 @@ odd1(N) =
     ).
 
 % mutual non-tail recursion with none pragma.
-:- pragma require_tail_recursion(odd2/1, [none]).
+:- pragma require_tail_recursion(func(odd2/1), [none]).
 even2(N) =
     ( if N = 0 then
         yes
@@ -70,7 +73,7 @@ even2(N) =
         odd2(N - 1)
     ).
 
-:- pragma require_tail_recursion(odd3/1, [self_recursion_only]).
+:- pragma require_tail_recursion(func(odd3/1), [self_recursion_only]).
 odd2(N) =
     ( if N = 0 then
         no
@@ -94,7 +97,7 @@ odd3(N) =
 
 %---------------------------------------------------------------------------%
 
-:- pragma require_tail_recursion(qsortapp/2, [none]).
+:- pragma require_tail_recursion(pred(qsortapp/2), [none]).
 
 qsortapp([], []).
 qsortapp([Pivot | T], List) :-
@@ -105,7 +108,7 @@ qsortapp([Pivot | T], List) :-
 
 :- pred partition(int::in, list(int)::in, list(int)::in, list(int)::out,
     list(int)::in, list(int)::out) is det.
-:- pragma require_tail_recursion(partition/6).
+:- pragma require_tail_recursion(pred(partition/6)).
 
 partition(_Pivot, [], Left, Left, Right, Right).
 partition(Pivot, [H | T], Left0, Left, Right0, Right) :-
@@ -114,4 +117,3 @@ partition(Pivot, [H | T], Left0, Left, Right0, Right) :-
     else
         partition(Pivot, T, Left0, Left, [H | Right0], Right)
     ).
-

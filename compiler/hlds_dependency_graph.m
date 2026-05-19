@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2017-2021, 2023-2025 The Mercury Team.
+% Copyright (C) 2017-2021, 2023-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -47,20 +47,20 @@
 
     % Ensure that the module_info contains a version of the dependency_info
     % which only contains arcs between procedures for which there are clauses
-    % defined (everything that is not imported, plus opt_imported).
+    % defined (everything that is not imported or external).
     % Return this dependency_info.
     %
-    % There is no guarantee that the dependency_info is current.
+    % There is no guarantee that the returned hlds_dependency_info is current.
     %
 :- pred module_info_ensure_dependency_info(module_info::in, module_info::out,
     hlds_dependency_info::out) is det.
 
     % Ensure that the module_info contains a version of the dependency_info
     % which only contains arcs between procedures for which there are clauses
-    % defined (everything that is not imported, plus opt_imported).
+    % defined (everything that is not import or external).
     % Return this dependency_info.
     %
-    % The dependency_info will be up-to-date.
+    % The returned hlds_dependency_info will be up-to-date.
     %
 :- pred module_info_rebuild_dependency_info(module_info::in, module_info::out,
     hlds_dependency_info::out) is det.
@@ -189,6 +189,8 @@ module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
     pred_id::in, list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 gather_pred_proc_ids(ModuleInfo, Imported, PredId, !PredProcIds) :-
+    % XXX The only call to this predicate always sets Imported to
+    % do_not_include_imported.
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     (
         % Don't bother to add imported procedures, since we don't have

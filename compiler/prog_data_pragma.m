@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2022, 2024 The Mercury team.
+% Copyright (C) 2016-2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -509,8 +509,16 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     ;       enable_tailrec_warnings(
                 rtre_warn_or_error      :: warning_or_error,
                 rtre_recursion_type     :: require_tail_recursion_type,
+                rtre_grades             :: report_in_which_grades,
                 rtre_context            :: prog_context
             ).
+
+    % Should we report violations of the required level of tail recursion ...
+:- type report_in_which_grades
+    --->    in_tailrec_grades_only
+            % ... only in grades that support tail recursion, or ...
+    ;       in_all_grades.
+            % ... in all grades.
 
 :- type require_tail_recursion_type
     --->    only_self_recursion_must_be_tail
@@ -520,12 +528,21 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- mode require_tailrec_type_string(in, out) is det.
 :- mode require_tailrec_type_string(out, in) is semidet.
 
+:- pred require_tailrec_grades_string(report_in_which_grades, string).
+:- mode require_tailrec_grades_string(in, out) is det.
+:- mode require_tailrec_grades_string(out, in) is semidet.
+
 :- implementation.
 
 require_tailrec_type_string(only_self_recursion_must_be_tail,
     "self_recursion_only").
 require_tailrec_type_string(both_self_and_mutual_recursion_must_be_tail,
     "self_or_mutual_recursion").
+
+require_tailrec_grades_string(in_tailrec_grades_only,
+    "in_tailrec_grades_only").
+require_tailrec_grades_string(in_all_grades,
+    "in_all_grades").
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data_pragma.

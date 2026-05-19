@@ -1,7 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Test the require tail recursion pragma with the
-% --warn-non-tail-recursion option.  These tests do not raise an error,
-% the tests that do raise errors are in invalid/
+% --warn-non-tail-recursion option.
 %
 
 :- module require_tailrec_3.
@@ -102,4 +104,3 @@ odd4(N) =
     else
         bool.not(even4(N))
     ).
-

@@ -613,7 +613,7 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
             [nl],
         OrigPieces = [words("The earlier pragma is here."), nl],
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
-        ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)
+        ; RequireTailrecOrig = enable_tailrec_warnings(_, _, _, ContextOrig)
         ),
         Spec = error_spec($pred, severity_error, phase_pt2h,
             [msg(Context, MainPieces),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2016-2025 The Mercury team.
+% Copyright (C) 2016-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -983,13 +983,13 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
             pragma_decl(PragmaName), words("declaration:"), nl]),
         parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces,
             VarSet, PredOrProcSpecTerm, MaybePredOrProcSpec),
-        % Parse the options.
+        % Parse the options, if any.
         (
             MaybeOptionsTerm = yes(OptionsTerm),
             ( if list_term_to_term_list(OptionsTerm, OptionsTerms) then
-                parse_pragma_require_tail_recursion_options(VarSet,
-                    OptionsTerms, have_not_seen_none, no, no, [],
-                    Context, MaybeOptions)
+                parse_pragma_require_tail_recursion_options(VarSet, Context,
+                    OptionsTerms, have_not_seen_none, no, no, no,
+                    [], MaybeOptions)
             else
                 OptionsContext = get_term_context(OptionsTerm),
                 OptionsTermStr = describe_error_term(VarSet, OptionsTerm),
@@ -1007,8 +1007,11 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
             )
         ;
             MaybeOptionsTerm = no,
-            MaybeOptions = ok1(enable_tailrec_warnings(we_warning,
-                both_self_and_mutual_recursion_must_be_tail, Context))
+            Severity = we_warning,
+            Kind = both_self_and_mutual_recursion_must_be_tail,
+            Grades = in_tailrec_grades_only,
+            Enable = enable_tailrec_warnings(Severity, Kind, Grades, Context),
+            MaybeOptions = ok1(Enable)
         ),
         ( if
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
@@ -1036,36 +1039,47 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
     --->    seen_none
     ;       have_not_seen_none.
 
-:- pred parse_pragma_require_tail_recursion_options(varset::in, list(term)::in,
-    seen_none::in, maybe(warning_or_error)::in,
-    maybe(require_tail_recursion_type)::in, list(error_spec)::in,
-    prog_context::in, maybe1(require_tail_recursion)::out) is det.
+:- pred parse_pragma_require_tail_recursion_options(varset::in,
+    prog_context::in, list(term)::in, seen_none::in,
+    maybe(warning_or_error)::in, maybe(require_tail_recursion_type)::in,
+    maybe(report_in_which_grades)::in, list(error_spec)::in,
+    maybe1(require_tail_recursion)::out) is det.
 
-parse_pragma_require_tail_recursion_options(_VarSet, [], SeenNone,
-        MaybeWarnOrError, MaybeType, !.Specs, Context, MaybeRTR) :-
+parse_pragma_require_tail_recursion_options(_VarSet, PragmaContext, [],
+        !.SeenNone, !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades,
+        !.Specs, MaybeRTR) :-
     (
-        SeenNone = seen_none,
+        !.SeenNone = seen_none,
         % Check for conflicts with "none" option.
         (
-            MaybeWarnOrError = yes(WarnOrError0),
+            !.MaybeWarnOrError = yes(WarnOrError0),
             warning_or_error_string(WarnOrError0, WarnOrErrorString),
             SpecA = conflicting_attributes_error("none", WarnOrErrorString,
-                Context),
+                PragmaContext),
             !:Specs = [SpecA | !.Specs]
         ;
-            MaybeWarnOrError = no
+            !.MaybeWarnOrError = no
         ),
         (
-            MaybeType = yes(Type0),
+            !.MaybeType = yes(Type0),
             require_tailrec_type_string(Type0, TypeString),
             SpecB = conflicting_attributes_error("none", TypeString,
-                Context),
+                PragmaContext),
             !:Specs = [SpecB | !.Specs]
         ;
-            MaybeType = no
+            !.MaybeType = no
+        ),
+        (
+            !.MaybeGrades = yes(Grades0),
+            require_tailrec_grades_string(Grades0, GradesString),
+            SpecC = conflicting_attributes_error("none", GradesString,
+                PragmaContext),
+            !:Specs = [SpecC | !.Specs]
+        ;
+            !.MaybeGrades = no
         )
     ;
-        SeenNone = have_not_seen_none
+        !.SeenNone = have_not_seen_none
     ),
     (
         !.Specs = [_ | _],
@@ -1073,29 +1087,37 @@ parse_pragma_require_tail_recursion_options(_VarSet, [], SeenNone,
     ;
         !.Specs = [],
         (
-            SeenNone = seen_none,
-            MaybeRTR = ok1(suppress_tailrec_warnings(Context))
+            !.SeenNone = seen_none,
+            MaybeRTR = ok1(suppress_tailrec_warnings(PragmaContext))
         ;
-            SeenNone = have_not_seen_none,
-            % If these values were not set then use the defaults.
+            !.SeenNone = have_not_seen_none,
+            % If these values were not set, then use the defaults.
             (
-                MaybeWarnOrError = yes(WarnOrError)
+                !.MaybeWarnOrError = yes(WarnOrError)
             ;
-                MaybeWarnOrError = no,
+                !.MaybeWarnOrError = no,
                 WarnOrError = we_warning
             ),
             (
-                MaybeType = yes(Type)
+                !.MaybeType = yes(Type)
             ;
-                MaybeType = no,
+                !.MaybeType = no,
                 Type = both_self_and_mutual_recursion_must_be_tail
             ),
-            RTR = enable_tailrec_warnings(WarnOrError, Type, Context),
+            (
+                !.MaybeGrades = yes(Grades)
+            ;
+                !.MaybeGrades = no,
+                Grades = in_tailrec_grades_only
+            ),
+            RTR = enable_tailrec_warnings(WarnOrError, Type, Grades,
+                PragmaContext),
             MaybeRTR = ok1(RTR)
         )
     ).
-parse_pragma_require_tail_recursion_options(VarSet, [Term | Terms], SeenNone0,
-        MaybeWarnOrError0, MaybeType0, !.Specs, PragmaContext, MaybeRTR) :-
+parse_pragma_require_tail_recursion_options(VarSet, PragmaContext,
+        [Term | Terms], !.SeenNone, !.MaybeWarnOrError, !.MaybeType,
+        !.MaybeGrades, !.Specs, MaybeRTR) :-
     (
         Term = functor(Functor, _Args, Context),
         ( if
@@ -1103,61 +1125,61 @@ parse_pragma_require_tail_recursion_options(VarSet, [Term | Terms], SeenNone0,
             warning_or_error_string(WarnOrError, Name)
         then
             (
-                MaybeWarnOrError0 = no,
-                MaybeWarnOrError = yes(WarnOrError)
+                !.MaybeWarnOrError = no,
+                !:MaybeWarnOrError = yes(WarnOrError)
             ;
-                MaybeWarnOrError0 = yes(WarnOrErrorFirst),
-                warning_or_error_string(WarnOrErrorFirst,
-                    WarnOrErrorFirstString),
+                !.MaybeWarnOrError = yes(OldWarnOrError),
+                warning_or_error_string(OldWarnOrError, OldWarnOrErrorString),
                 Spec = conflicting_attributes_error(Name,
-                    WarnOrErrorFirstString, Context),
-                MaybeWarnOrError = MaybeWarnOrError0,
+                    OldWarnOrErrorString, Context),
                 !:Specs = [Spec | !.Specs]
-            ),
-            MaybeType = MaybeType0,
-            SeenNone = SeenNone0
+            )
         else if
             Functor = atom(Name),
             require_tailrec_type_string(Type, Name)
         then
             (
-                MaybeType0 = no,
-                MaybeType = yes(Type)
+                !.MaybeType = no,
+                !:MaybeType = yes(Type)
             ;
-                MaybeType0 = yes(TypeFirst),
-                require_tailrec_type_string(TypeFirst, TypeFirstString),
+                !.MaybeType = yes(OldType),
+                require_tailrec_type_string(OldType, OldTypeString),
                 Spec = conflicting_attributes_error(Name,
-                    TypeFirstString, Context),
-                MaybeType = MaybeType0,
+                    OldTypeString, Context),
                 !:Specs = [Spec | !.Specs]
-            ),
-            MaybeWarnOrError = MaybeWarnOrError0,
-            SeenNone = SeenNone0
+            )
+        else if
+            Functor = atom(Name),
+            require_tailrec_grades_string(Grades, Name)
+        then
+            (
+                !.MaybeGrades = no,
+                !:MaybeGrades = yes(Grades)
+            ;
+                !.MaybeGrades = yes(OldGrades),
+                require_tailrec_grades_string(OldGrades, OldGradesString),
+                Spec = conflicting_attributes_error(Name,
+                    OldGradesString, Context),
+                !:Specs = [Spec | !.Specs]
+            )
         else if
             Functor = atom("none")
         then
-            SeenNone = seen_none,
-            MaybeWarnOrError = MaybeWarnOrError0,
-            MaybeType = MaybeType0
+            !:SeenNone = seen_none
         else
             Spec = pragma_require_tailrec_unknown_term_error(VarSet,
                 Term, Context),
-            !:Specs = [Spec | !.Specs],
-            SeenNone = SeenNone0,
-            MaybeType = MaybeType0,
-            MaybeWarnOrError = MaybeWarnOrError0
+            !:Specs = [Spec | !.Specs]
         )
     ;
         Term = variable(_, Context),
         Spec = pragma_require_tailrec_unknown_term_error(VarSet,
             Term, Context),
-        !:Specs = [Spec | !.Specs],
-        SeenNone = SeenNone0,
-        MaybeType = MaybeType0,
-        MaybeWarnOrError = MaybeWarnOrError0
+        !:Specs = [Spec | !.Specs]
     ),
-    parse_pragma_require_tail_recursion_options(VarSet, Terms, SeenNone,
-        MaybeWarnOrError, MaybeType, !.Specs, PragmaContext, MaybeRTR).
+    parse_pragma_require_tail_recursion_options(VarSet, PragmaContext, Terms,
+        !.SeenNone, !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades,
+        !.Specs, MaybeRTR).
 
 :- func conflicting_attributes_error(string, string, prog_context) =
     error_spec.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2018-2025 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1268,11 +1268,13 @@ mercury_format_pragma_require_tail_rec(Lang, RequireTR, S, !U) :-
         string.format(":- pragma warn_tail_recursion(%s, [none]).\n",
             [s(ProcSpecStr)], DeclStr)
     ;
-        Warn = enable_tailrec_warnings(WarnOrError, Type, _),
+        Warn = enable_tailrec_warnings(WarnOrError, Type, Grades, _),
         warning_or_error_string(WarnOrError, WarnOrErrorStr),
         require_tailrec_type_string(Type, TypeStr),
-        string.format(":- pragma warn_tail_recursion(%s, [%s, %s]).\n",
-            [s(ProcSpecStr), s(WarnOrErrorStr), s(TypeStr)], DeclStr)
+        require_tailrec_grades_string(Grades, GradesStr),
+        string.format(":- pragma warn_tail_recursion(%s, [%s, %s, %s]).\n",
+            [s(ProcSpecStr), s(WarnOrErrorStr), s(TypeStr), s(GradesStr)],
+            DeclStr)
     ),
     add_string(DeclStr, S, !U).
 

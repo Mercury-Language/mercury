@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury Team.
+% Copyright (C) 2014-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -46,6 +46,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module list.
 
@@ -120,6 +121,7 @@
 :- type warn_non_tail_rec_params
     --->    warn_non_tail_rec_params(
                 warning_or_error,
+                report_in_which_grades,
                 maybe_warn_non_tail_self_rec,
                 maybe_warn_non_tail_mutual_rec
             ).
@@ -234,7 +236,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
 
@@ -374,12 +375,16 @@ mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
 :- func no_warnings_non_tail_rec_params = warn_non_tail_rec_params.
 
 no_warnings_non_tail_rec_params = Params :-
-    % Since neither SelfRec nor MutualRec is set, the value of
-    % WarnOrError does not matter.
-    Params = warn_non_tail_rec_params(we_warning,
+    % Since neither SelfRec nor MutualRec is set, the values of
+    % WarnOrError and Grades do not matter.
+    Params = warn_non_tail_rec_params(we_warning, in_tailrec_grades_only,
         do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec).
 
 get_default_warn_parms(Globals, WarnNonTailRecParams) :-
+    % XXX Should we add an option to control the setting of this default?
+    % I (zs) do not think so.
+    Grades = in_tailrec_grades_only,
+
     globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnNonTailSelfRecBool),
     (
@@ -398,7 +403,7 @@ get_default_warn_parms(Globals, WarnNonTailRecParams) :-
         WarnNonTailMutualRecBool = no,
         WarnNonTailMutualRecOpt = do_not_warn_non_tail_mutual_rec
     ),
-    WarnNonTailRecParams = warn_non_tail_rec_params(we_warning,
+    WarnNonTailRecParams = warn_non_tail_rec_params(we_warning, Grades,
         WarnNonTailSelfRecOpt, WarnNonTailMutualRecOpt).
 
 maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
@@ -412,7 +417,8 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
             Pragma = suppress_tailrec_warnings(_),
             ProcWarnParams = no_warnings_non_tail_rec_params
         ;
-            Pragma = enable_tailrec_warnings(WarnOrError, RecType, _Context),
+            Pragma = enable_tailrec_warnings(WarnOrError, RecType, Grades,
+                _Context),
             (
                 RecType = only_self_recursion_must_be_tail,
                 SelfRec = warn_non_tail_self_rec,
@@ -422,8 +428,8 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
                 SelfRec = warn_non_tail_self_rec,
                 MutualRec = warn_non_tail_mutual_rec
             ),
-            ProcWarnParams =
-                warn_non_tail_rec_params(WarnOrError, SelfRec, MutualRec)
+            ProcWarnParams = warn_non_tail_rec_params(WarnOrError, Grades,
+                SelfRec, MutualRec)
         )
     ).
 
@@ -529,7 +535,7 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
             MaybeSelfFeature = no,
             MaybeMutualFeature = no,
             MaybeRecordTailCalls = do_not_record_tail_recursion,
-            WarnNonTailRecParams = warn_non_tail_rec_params(_WarnOrError,
+            WarnNonTailRecParams = warn_non_tail_rec_params(_, _,
                 do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
         then
             WasProcChanged = proc_was_not_changed
@@ -1067,7 +1073,7 @@ not_at_tail(Before, After) :-
 maybe_report_nontail_recursive_call(ModuleInfo,
         CallerPredProcId, CalleePredProcId, Context, Reason, Obviousness,
         WarnParams, !Specs) :-
-    WarnParams = warn_non_tail_rec_params(WarnOrError,
+    WarnParams = warn_non_tail_rec_params(WarnOrError, Grades,
         WarnNonTailSelfRec, WarnNonTailMutualRec),
     ( if
         ( if CallerPredProcId = CalleePredProcId then
@@ -1082,6 +1088,12 @@ maybe_report_nontail_recursive_call(ModuleInfo,
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals,
                 warn_obvious_non_tail_recursion, yes)
+        ),
+        (
+            Grades = in_all_grades
+        ;
+            Grades = in_tailrec_grades_only,
+            grade_supports_tail_recursion(ModuleInfo)
         )
     then
         report_nontail_recursive_call(ModuleInfo,
@@ -1090,6 +1102,18 @@ maybe_report_nontail_recursive_call(ModuleInfo,
     else
         true
     ).
+
+:- pred grade_supports_tail_recursion(module_info::in) is semidet.
+
+grade_supports_tail_recursion(ModuleInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, profile_deep, no),
+    globals.lookup_bool_option(Globals, exec_trace, no),
+    globals.lookup_bool_option(Globals, source_to_source_debug, no),
+    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy, no),
+    globals.lookup_bool_option(Globals, use_minimal_model_own_stacks, no),
+    globals.get_gc_method(Globals, GC),
+    GC \= gc_accurate.
 
 :- pred report_nontail_recursive_call(module_info::in,
     pred_proc_id::in, pred_proc_id::in, prog_context::in,
@@ -1226,7 +1250,7 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
             MaybeRequireTailRec = no
         ;
             MaybeRequireTailRec = yes(RequireTailRecInfo),
-            ( RequireTailRecInfo = enable_tailrec_warnings(_, _, Context)
+            ( RequireTailRecInfo = enable_tailrec_warnings(_, _, _, Context)
             ; RequireTailRecInfo = suppress_tailrec_warnings(Context)
             ),
             pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
