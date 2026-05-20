@@ -3810,7 +3810,7 @@ then
     # We should also add $BEST_LLDS_BASE_GRADE.par.gc.stseg to LIBGRADES
     # here, but that is currently disabled until a bug in parallel low
     # level-C grades is fixed. (See check_for_incompatibilities/4 in
-    # in compiler/handel_options.m.)
+    # in compiler/handle_options.m.)
     LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
