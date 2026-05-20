@@ -404,9 +404,15 @@
             % error.
             % The argument is a string describing the error.
 
-    ;       requires_numeric_argument(string)
-            % The option requires a numeric argument but it occurred on the
-            % command line with a non-numeric argument.
+    ;       requires_int_argument(string)
+            % The option requires an integer argument but it occurred on the
+            % command line with a non-integer argument.
+            % The argument gives the contents of the argument position on the
+            % command line.
+
+    ;       int_argument_out_of_range(string)
+            % The option requires an integer argument but the provided argument
+            % is not within the range of a Mercury `int'.
             % The argument gives the contents of the argument position on the
             % command line.
 
@@ -1593,7 +1599,7 @@ record_unnegated_short_options(ShortOptionPred, OptionTable, [Opt | Opts0],
                     MaybeError = no_option_error
                 ;
                     MaybeOV = no,
-                    numeric_argument_error(Flag, OptName, OptArg, Error),
+                    int_argument_error(Flag, OptName, OptArg, Error),
                     MaybeError = found_option_error(Error)
                 )
             ;
@@ -1708,7 +1714,7 @@ record_option_int(Arg0, MaybeSepArg, Flag, OptName, OptionData, Arg, Result) :-
         Result = ror_long_option(Arg0, MaybeSepArg, OV)
     ;
         MaybeOV = no,
-        numeric_argument_error(Flag, OptName, Arg, Error),
+        int_argument_error(Flag, OptName, Arg, Error),
         Result = ror_error(Error)
     ).
 
@@ -2062,12 +2068,31 @@ process_special_option(SpecialHandler, Flag, OptName, OptionData,
 
 %---------------------------------------------------------------------------%
 
-:- pred numeric_argument_error(OptionType::in, string::in, string::in,
+:- pred int_argument_error(OptionType::in, string::in, string::in,
     option_error(OptionType)::out) is det.
 
-numeric_argument_error(Flag, OptName, Arg, Error) :-
-    Reason = requires_numeric_argument(Arg),
+int_argument_error(Flag, OptName, Arg, Error) :-
+    ( if valid_int_syntax(Arg) then
+        Reason = int_argument_out_of_range(Arg)
+    else
+        Reason = requires_int_argument(Arg)
+    ),
     Error = option_error(Flag, OptName, Reason).
+
+:- pred valid_int_syntax(string::in) is semidet.
+
+valid_int_syntax(Arg) :-
+    string.first_char(Arg, FirstChar, Suffix),
+    ( if
+        ( FirstChar = ('+')
+        ; FirstChar = ('-')
+        )
+    then
+        Suffix \= ""
+    else
+        char.is_digit(FirstChar)
+    ),
+    string.is_all_digits(Suffix).
 
 %---------------------------------------------------------------------------%
 
@@ -2179,10 +2204,15 @@ option_error_to_string(Error) = String :-
         ;
             Reason = special_handler_error(String)
         ;
-            Reason = requires_numeric_argument(Arg),
-            string.format(
-                "option `%s' requires a numeric argument; `%s' is not numeric",
+            Reason = requires_int_argument(Arg),
+            string.format("option `%s' requires an integer argument; " ++
+                "`%s' is not an integer",
                 [s(OptionName), s(Arg)], String)
+        ;
+            Reason = int_argument_out_of_range(_Arg),
+            string.format("option `%s' has an integer argument " ++
+                "that is out of range",
+                [s(OptionName)], String)
         ;
             Reason = file_special_but_no_io(FileName),
             Msg = "the option processing predicate has no access to I/O",
