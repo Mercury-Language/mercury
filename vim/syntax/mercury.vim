@@ -149,8 +149,8 @@ syn keyword mercuryOperator     div rem mod
 syn match   mercuryImplKeyword  "\v\$(file|grade|pred|module|line|\d+)>"
 syn match   mercuryOperator     "/"           " divide
 syn match   mercuryOperator     "//"          " (integer) divide
-syn match   mercuryDelimiter    ","           " list seperator or conjunction
-syn match   mercuryOperator     "-"           " substraction operator or unary minus
+syn match   mercuryDelimiter    ","           " list separator or conjunction
+syn match   mercuryOperator     "-"           " subtraction operator or unary minus
 syn match   mercuryOperator     "="           " unification
 syn match   mercuryDelimiter    "|"           " cons
 syn match   mercuryImplication  "->"          " 'then' arrow
@@ -162,7 +162,7 @@ syn match   mercuryOperator     "\\/"         " (binary) or
 syn match   mercuryLogical      "\\+"         " logical not
 syn match   mercuryOperator     "=\.\."       " Prolog univ
 syn match   mercuryOperator     "=<"          " greater equal or contravariant
-syn match   mercuryOperator     "=\\="        " not structual equal (for Prolog)
+syn match   mercuryOperator     "=\\="        " not structural equal (for Prolog)
 syn match   mercuryOperator     "@"
 syn match   mercuryOperator     "@<"
 syn match   mercuryOperator     "@=<"
@@ -186,8 +186,8 @@ syn match   mercuryOperator     "+"          " addition operator or unary plus
 syn match   mercuryOperator     "++"         " concatenation
 syn match   mercuryOperator     ":"
 syn match   mercuryDelimiter    "::"         " Type/Mode specifier
-syn match   mercuryOperator     "&"          " Parallel conjuction
-syn match   mercuryOperator     "?-"         " Prolog compatability
+syn match   mercuryOperator     "&"          " Parallel conjunction
+syn match   mercuryOperator     "?-"         " Prolog compatibility
 syn match   mercuryOperator     "*"          " multiply
 syn match   mercuryDelimiter    "\^"         " field access
 syn match   mercuryOperator     /\v`[^`']+`/ " inlined operator
