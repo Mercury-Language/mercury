@@ -66,7 +66,7 @@ components:
    https://www.mercurylang.org/information/doc-latest/mercury_user_guide/Grades-and-grade-components.html
 
 People wanting to simply experiment with Mercury would be best-served with
-using only the `asm_fast.gc` grade or `hlc.gc` on OS X.
+using only the `asm_fast.gc` grade or `hlc.gc` on macOS.
 
 Since building Mercury can take a long time, you may prefer to use multiple
 processors during the build process.  Adding "PARALLEL=-jN" without the
@@ -96,5 +96,5 @@ built once from the tarballs.  This is because the tarballs must be compatible
 with both 32- and 64-bit systems while a bootstrapped system can take advantage
 of 64-bit specific enhancements.
 
-We strongly recommend the use of the `hlc.gc` grade on OS X (See README.macOS.md).
+We strongly recommend the use of the `hlc.gc` grade on macOS (See README.macOS.md).
 
