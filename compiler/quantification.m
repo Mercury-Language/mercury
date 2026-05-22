@@ -2646,7 +2646,7 @@ set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo) :-
     %   OutsideVars will be [] and QuantifiedVars will be [X].
     % When processing `r(X)':
     %   OutsideVars will be [X] and QuantifiedVars will be [],
-    %   since now [X] has occured in a goal (`s(X)') outside of `r(X)'.
+    %   since now [X] has occurred in a goal (`s(X)') outside of `r(X)'.
     % When processing `not q(X)':
     %   OutsideVars will be [] and QuantifiedVars will be [X].
     % When processing `q(X)':

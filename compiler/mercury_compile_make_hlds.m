@@ -354,7 +354,7 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
         Pieces = Pieces0 ++
             [words("The Mercury standard library module in question"),
             words("is part of the Mercury implementation,"),
-            words("and is not publically documented."), nl]
+            words("and is not publicly documented."), nl]
     ).
 
 %---------------------%
