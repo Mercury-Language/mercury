@@ -262,6 +262,7 @@ make_valid_csharp_symbol_name(SymName) = ValidSymName :-
         ValidSymName = SymName
     ).
 
+% This list is the reserved keywords in C#.
 is_csharp_keyword("abstract").
 is_csharp_keyword("as").
 is_csharp_keyword("base").
@@ -339,6 +340,14 @@ is_csharp_keyword("virtual").
 is_csharp_keyword("volatile").
 is_csharp_keyword("void").
 is_csharp_keyword("while").
+
+% This is a partial list of contextual keywords in C# that we
+% may need to make safe.
+is_csharp_keyword("args").
+is_csharp_keyword("file").
+is_csharp_keyword("record").
+is_csharp_keyword("required").
+is_csharp_keyword("scoped").
 
 csharp_mercury_runtime_package_name =
     qualified(unqualified("mercury"), "runtime").
