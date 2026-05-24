@@ -1,3 +1,29 @@
+NEWS for Mercury 22.01.9
+========================
+
+This is a bug-fix release.
+
+* [Github issue #147]. We have fixed a const correctness issue in the C
+  runtime that was causing warnings to be emitted with recent versions of
+  GCC and the GNU C library.
+
+* [Mantis bug #566]. We have fixed issue that was causing GNU Make 4.4.0
+  and above to emit warnings about undefined variables.
+
+* We have improved the compatibility of the `configure` script with older
+  versions of `bash`.
+
+* We have fixed a bug in the C# implementation
+  `random.system_rng.generate_uint8/4`, that caused it to throw an exception
+  after successfully generating a random value.
+
+* We have add the missing lower-bound checks on the time components of the
+  predicate `calendar.init_date/8`.
+
+* We have fixed bugs in the C# and and Java implementations of
+  `math.unchecked_log2/1` that caused target language compilation errors
+  when compiling with `--intermodule-optimisation`.
+
 NEWS for Mercury 22.01.8
 ========================
 
