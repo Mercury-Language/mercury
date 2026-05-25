@@ -94,7 +94,7 @@
 :- pred set(bt_array(T)::in, int::in, T::in, bt_array(T)::out) is det.
 :- func set(bt_array(T), int, T) = bt_array(T).
 
-    % set sets the nth element of a bt_array, and returns the
+    % semidet_set sets the N'th element of a bt_array, and returns the
     % resulting bt_array (good opportunity for destructive update ;-).
     % It fails if the index is out of bounds.
     %
@@ -116,7 +116,7 @@
     bt_array(T)::out) is det.
 :- func resize(bt_array(T), int, int, T) = bt_array(T).
 
-    % shrink(BtArray0, Lo, Hi, Item, BtArray) is true if BtArray
+    % shrink(BtArray0, Lo, Hi, BtArray) is true if BtArray
     % is a bt_array created by shrinking BtArray0 to fit the bounds (Lo, Hi).
     % It is an error if the new bounds are not wholly within the bounds of
     % BtArray0.

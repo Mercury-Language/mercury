@@ -241,7 +241,7 @@
     % BagAlubB is the least upper bound of BagA and BagB.
     % It is the smallest bag that contains at least as many copies
     % of each element as BagA, and at least as many copies as BagB.
-    % If an element X is present AXN in BagA and BXN times in BagB,
+    % If an element X is present AXN times in BagA and BXN times in BagB,
     % X will be present int.max(AXN, BXN) times in BagAlubB.
     %
     % An example:
@@ -261,7 +261,7 @@
     % BagAuB is the union of BagA and BagB.
     %
     % An example:
-    % e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}.
+    % union({1, 1, 2, 2, {2, 2, 3, 3}) = {1, 1, 2, 2, 2, 2, 3, 3}.
     %
     % Use one of the union_small variants if BagB is expected to be
     % significantly smaller than BagA. (If BagA is expected to be

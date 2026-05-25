@@ -1043,7 +1043,7 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
 
         case MR_TYPECTOR_REP_TYPECTORDESC:
             MR_fatal_error(
-                ""cannot construct type_descs with construct.construct"");
+                ""cannot construct type_ctor_descs with construct.construct"");
             break;
 
         case MR_TYPECTOR_REP_PSEUDOTYPEDESC:

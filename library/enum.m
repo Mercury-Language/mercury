@@ -34,7 +34,7 @@
     % In mathematical notation, the following must hold:
     %
     %   all [X] (X = from_int(to_int(X)))
-    %   all [X, Y] (to_int(X) = to_int(Y)) => X = Y)
+    %   all [X, Y] (to_int(X) = to_int(Y) => X = Y)
     %   all [N] (some [X] N = to_int(X) => from_int(N) = X)
     %   all [N] (not (some [X] N = to_int(X))) => from_int(N) fails
     %
