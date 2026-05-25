@@ -1255,7 +1255,7 @@ from_list(List) = Set :-
 
 %---------------------%
 
-% The tree is created by first determining it's length. All lists of length
+% The tree is created by first determining its length. All lists of length
 % N have the same structure. The root of the tree is the N // 2 element
 % of the list. Elements 1 to N // 2 - 1 make up the left subtree and elements
 % N // 2 + 1 to N make up the right subtree. The structure, which is known

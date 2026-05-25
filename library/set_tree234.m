@@ -570,7 +570,6 @@
 :- pragma type_spec(pred(rev_sorted_list_to_set/2),     T = var(_)).
 :- pragma type_spec(pred(do_from_sorted_list/6),        T = var(_)).
 :- pragma type_spec(pred(do_from_rev_sorted_list/6),    T = var(_)).
-:- pragma type_spec(func(rev_sorted_list_to_set/1),     T = var(_)).
 :- pragma type_spec(contains(in, in),                   T = var(_)).
 :- pragma type_spec(pred(insert/3),                     T = var(_)).
 :- pragma type_spec(pred(insert_list/3),                T = var(_)).
