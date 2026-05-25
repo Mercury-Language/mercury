@@ -108,7 +108,7 @@ usage(OutputStream, !IO) :-
     io.write_strings(OutputStream, [
         "mprof - Mercury profiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n",
+        "Copyright (C) 2013-2026 The Mercury team\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "Use `", ProgName, " --help' for more information.\n"
     ], !IO).
@@ -122,7 +122,7 @@ long_usage(OutputStream, !IO) :-
         "Name: mprof - Mercury profiler, version ", Version, ", on ",
         Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n\n",
+        "Copyright (C) 2013-2026 The Mercury team\n\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
         "Description:\n",

@@ -3057,7 +3057,7 @@ display_compiler_version(Stream, !IO) :-
     io.write_strings(Stream, [
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n"
+        "Copyright (C) 2013-2026 The Mercury team\n"
     ], !IO).
 
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
@@ -3092,7 +3092,7 @@ long_usage(Stream, !IO) :-
     Template =
         "Name: mmc -- Melbourne Mercury Compiler, version %s on %s\n" ++
         "Copyright (C) 1993-2012 The University of Melbourne\n" ++
-        "Copyright (C) 2013-2023 The Mercury team\n" ++
+        "Copyright (C) 2013-2026 The Mercury team\n" ++
         "Usage: mmc [<options>] <arguments>\n" ++
         "Arguments:\n" ++
         "\tArguments ending in `.m' are assumed to be source file names.\n" ++
