@@ -106,7 +106,7 @@ into another language, under the above conditions for modified versions.
 * Semantics::         Declarative and operational semantics of Mercury
                       programs.
 * Foreign language interface:: Calling code written in other programming
-                      languages from Mercury code
+                      languages from Mercury code.
 * Impurity::          Users can write impure Mercury code.
 * Solver types::      Support for constraint logic programming
 * Trace goals::       Trace goals allow programmers to add debugging and
@@ -832,7 +832,7 @@ This is an abbreviation for @samp{not (@var{Goal2}, not @var{Goal1})}.
 @item @code{@var{Goal1} <=> @var{Goal2}}
 A logical equivalence.
 This is an abbreviation for
-@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}).
+@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2})}.
 
 @item @code{if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}}
 @itemx @code{@var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}}
@@ -957,7 +957,7 @@ of which there should be at least one.
 @var{Vars} and @var{ArbVars} must be lists of variables,
 and @var{Goal} and @var{ArbGoal} must be valid goals.
 @var{Vars} must be the set of variables bound by @var{Goal},
-and @var{ArbVars} must be the set of variables bound by @var{ArbGoal},
+and @var{ArbVars} must be the set of variables bound by @var{ArbGoal}.
 It is an error for @var{Vars} to include a variable not bound by @var{Goal}
 or for @var{Goal} to bind a non-local variable
 that is not listed in @var{Vars},
@@ -1072,7 +1072,7 @@ to have a det goal in a @code{require_semidet} scope.
 @item @code{disable_warnings [@var{Warning}] @var{Goal}}
 @itemx @code{disable_warning [@var{Warning}] @var{Goal}}
 The Mercury compiler can generate warnings
-about several kinds of constructs that whose legal Mercury semantics
+about several kinds of constructs whose legal Mercury semantics
 is likely to differ from the semantics intended by the programmer.
 While such warnings are useful most of the time,
 they are a distraction in cases where the programmer's intention
@@ -1291,7 +1291,7 @@ with two arguments: !.@var{X}, !:@var{X},
 where !.@var{X} represents the current version of the state of !@var{X},
 and !:@var{X} represents its next state.
 It then replaces all occurrences of !.@var{X} and !:@var{X}
-with ordinary variables in way that (in the general case)
+with ordinary variables in a way that (in the general case)
 represents a sequence of updates to the state of @var{X}
 from an initial state to a final state.
 
@@ -1345,13 +1345,13 @@ substitute(@var{Call}, [!.@var{X} -> @var{CurX}]),
 @end example
 @end itemize
 Note that !.@var{X} can occur in @var{Call} on its own
-(i.e. without !:@var{X}).
+(i.e.@: without !:@var{X}).
 Likewise, !:@var{X} can occur in @var{Call} without !.@var{X},
 but this does not need separate handling.
 
 Note that @var{PredVar} in a higher-order call
 may not be a reference to a state var,
-i.e it may not be !@var{X}, !.@var{X} or !:@var{X}.
+i.e.@: it may not be !@var{X}, !.@var{X} or !:@var{X}.
 
 @item Unifications
 In a unification @samp{@var{TermA} = @var{TermB}},
@@ -1368,7 +1368,7 @@ If @var{S} is @var{X},
 then @samp{transform_goal} replaces the term with @var{NextX}.
 @item
 The term may be a plain variable
-(i.e. variable that does not refer to any state variable).
+(i.e.@: a variable that does not refer to any state variable).
 @samp{transform_goal} leaves such terms unchanged.
 @item
 The term may be a non-variable term, which means that
@@ -1420,7 +1420,7 @@ updates the state of @var{X} from @var{CurX} to @var{MidX},
 and then @var{Goal2}
 updates the state of @var{X} from @var{MidX} to @var{NextX}.
 
-Given the empty conjunction, i.e. the goal @samp{true},
+Given the empty conjunction, i.e.@: the goal @samp{true},
 @samp{transform_goal} will replace it with
 @example
 @var{NextX} = @var{CurX}
@@ -1444,7 +1444,7 @@ and both end with @var{NextX}.
 If a disjunct has no update of !@var{X},
 then the value of @var{NextX} in that disjunct will be set to @var{CurX}.
 
-The empty disjunction, i.e. the goal @samp{fail}, cannot succeed,
+The empty disjunction, i.e.@: the goal @samp{fail}, cannot succeed,
 so what the value of !:@var{X} would be if it @emph{did} succeed is moot.
 Therefore @samp{transform_goal} returns empty disjunctions unchanged.
 
@@ -1465,7 +1465,7 @@ which means that any output they @emph{do} generate
 must be local to the negated goal.
 
 Negations that use @samp{\+ @var{NegatedGoal}} notation
-are handled exactly the same way,
+are handled exactly the same way.
 
 @item If-then-elses
 Given an if-then-else, whether it uses
@@ -1497,8 +1497,8 @@ since the else case is executed only if the condition has no solution.)
 
 @item Bidirectional implications
 @samp{transform_goal} treats a bidirectional implication goal,
-which has the form @var{GoalA} <=> @var{GoalB},
-as it were the conjunction of its two constituent unidirectional implications:
+which has the form @var{GoalA} <=> @var{GoalB}, as if it were the
+conjunction of its two constituent unidirectional implications:
 @var{GoalA} => @var{GoalB}, @var{GoalA} <= @var{GoalB}.
 
 @item Unidirectional implications
@@ -1514,14 +1514,14 @@ which have the form @samp{all @var{Vars} @var{SubGoal}}
 as if they were written as
 @samp{not (some @var{Vars} (not @var{SubGoal}))}.
 Note that in universal quantifications,
-@var{Vars} must a list of ordinary variables.
+@var{Vars} must be a list of ordinary variables.
 @c XXX the state var transformation does not enforce this.
 
 @item Existential quantifications
 In existential quantifications,
 which have the form @samp{some @var{Vars} @var{SubGoal}},
 @var{Vars} must be a list, in which every element
-must be either ordinary variable (such as @var{A}),
+must be either an ordinary variable (such as @var{A}),
 or a state variable (such as !@var{B}).
 (Note that @var{Vars} may not contain
 any element whose form is !.@var{B} or !:@var{B}.)
@@ -1777,7 +1777,7 @@ The terms must be valid data-terms.
 
 Semantics:
 @example
-transform(V_in, V_out, [Term1, @dots{}]) = (V_in = [Term, @dots{} | V_Out])
+transform(V_in, V_out, [Term1, @dots{}]) = (V_in = [Term, @dots{} | V_out])
 @end example
 
 @item []
@@ -2388,7 +2388,7 @@ or are defined in the standard library.
 
 There is a special syntax
 for constants of all primitive types except @code{char}.
-(For @code{char}, the standard syntax suffixes.)
+(For @code{char}, the standard syntax suffices.)
 
 @menu
 * Signed integer types::
@@ -2431,7 +2431,7 @@ to @math{9223372036854775807} (@math{2^{64 - 1} - 1}),
 both inclusive.
 
 Values of the type @code{int} must be in the range
-to @math{-(2^{N - 1})} to @math{2^{N - 1} - 1},
+@math{-(2^{N - 1})} to @math{2^{N - 1} - 1},
 both inclusive;
 @math{N} being the width of @code{int} in bits.
 
@@ -2452,7 +2452,7 @@ Values of the type @code{uint8} must be in the range
 both inclusive.
 
 Values of the type @code{uint16} must be in the range
-@math{0} (@math{2^0- 1}) to @math{65535} (@math{2^16 - 1}),
+@math{0} (@math{2^0 - 1}) to @math{65535} (@math{2^16 - 1}),
 both inclusive.
 
 Values of the type @code{uint32} must be in the range
@@ -2463,7 +2463,7 @@ Values of the type @code{uint64} must be in the range
 @math{0} (@math{2^0 - 1}) to @math{18446744073709551615} (@math{2^64 - 1}),
 both inclusive.
 
-Values of the type @math{uint} must be in the range
+Values of the type @code{uint} must be in the range
 @math{0} (@math{2^0 - 1}) to @math{2^N - 1},
 both inclusive;
 @math{N} being the width of @code{uint} in bits.
@@ -2544,7 +2544,7 @@ along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
 With those predicates,
 values of any type can be converted to the universal type, and back again.
 The conversion from @code{univ} to the original type
-will check that the value inside the @code{univ}  has the expected type.
+will check that the value inside the @code{univ} has the expected type.
 The universal type is useful for situations
 where you need heterogeneous collections.
 
@@ -2748,7 +2748,7 @@ impure
 
 Phantom type parameters are useful when you have
 two distinct concepts that you want to keep separate,
-but for which nevertheless you want to use the representation.
+but for which nevertheless you want to use the same representation.
 This is an example of their use, taken from the Mercury compiler:
 
 @example
@@ -2778,7 +2778,7 @@ This means that each type has only one value,
 which in turn means that values of these types contain no information at all.
 But containing information is not the purpose of these types.
 Their purpose is to ensure that
-if ever a computation that expects program variables
+if a computation that expects program variables
 is ever accidentally given type variables, or vice versa,
 this mismatch is detected and reported by the compiler.
 Two variables can be unified only if they have the same type.
@@ -2860,7 +2860,7 @@ applied to zero or more distinct type variables
 and @var{body} is a sequence of constructor definitions
 separated by semicolons.
 All universally quantified type variables that occur in @var{body}
-must be among @var{type}'s  parameters.
+must be among @var{type}'s parameters.
 
 The syntax for subtypes is similar but slightly different:
 @example
@@ -2899,7 +2899,7 @@ The ability to do this is the main motivation for the use of subtypes.
 
 Since the subtype cannot @emph{add} definitions of constructors,
 the set of constructor definitions in the subtype
-must be a subset of the constructors definitions in the supertype.
+must be a subset of the constructor definitions in the supertype.
 We recommend that they should appear in the same relative order
 as in the supertype definition.
 @item
@@ -3000,7 +3000,7 @@ and if @samp{S = f(S1, ..., Sn)}, @samp{S =< T} holds if
     @samp{U =< T}.
     @end itemize
 In other words, if all occurrences of @var{Ri} in @var{U}
-are replaced by the corresponding for @var{Si} to give @var{Usub},
+are replaced by the corresponding @var{Si} to give @var{Usub},
 then @samp{Usub =< T} must hold.
 @end itemize
 
@@ -3028,7 +3028,7 @@ if and only if all of the following conditions hold:
     if either of @var{P} and @var{Q} has higher-order inst information,
     then @var{P} and @var{Q} must have
     the @emph{same} higher order inst information,
-    i.e.@ their higher order inst information must specify
+    i.e.@: their higher-order inst information must specify
     the same argument modes, determinism, and purity.
     @end itemize
 @end itemize
@@ -3097,7 +3097,7 @@ In the case of a set of mutually recursive types,
 omitting some constructor definitions from a type may not be enough;
 it may be necessary to replace some argument types with their subtypes as well.
 Consider this pair of mutually recursive types representing a bipartite graph,
-i.e.@ a graph in which there are two kinds of nodes,
+i.e.@: a graph in which there are two kinds of nodes,
 and edges always connect two nodes of different kinds.
 In this bipartite graph,
 the two kinds of nodes are @var{or} nodes and @var{and} nodes,
@@ -3295,7 +3295,7 @@ If there is more than one valid type assignment,
 the compiler must choose the most general one.
 If there are two valid type assignments which are not identical up to renaming
 and neither of which is more general than the other,
-then there is a type ambiguity, and compiler must report an error.
+then there is a type ambiguity, and the compiler must report an error.
 A clause is @dfn{type-correct}
 if there is a unique (up to renaming) most general valid type assignment.
 Every clause in a Mercury program must be type-correct.
@@ -3929,7 +3929,7 @@ Likewise, if a predicate or function type declaration
 occurs in the implementation section of a module,
 then all mode declarations for that predicate or function
 must occur in the implementation section of the @emph{same} module.
-Therefore, is an error
+Therefore, it is an error
 for a predicate or function to have mode declarations
 in both the interface and implementation sections of a module.
 
@@ -4460,13 +4460,13 @@ For example:
 @end example
 
 An annotation of @code{det} or @code{multi} is an assertion
-that for every value each of the inputs,
+that for every value of each of the inputs,
 there exists at least one value of the outputs
 for which the predicate is true,
 or (in the case of functions)
 for which the function term is equal to the result term.
 Conversely, an annotation of @code{det} or @code{semidet} is an assertion
-that for every value each of the inputs,
+that for every value of each of the inputs,
 there exists at most one value of the outputs for which the predicate is true,
 or (in the case of functions)
 for which the function term is equal to the result term.
@@ -4719,7 +4719,7 @@ provided @code{X} is bound beforehand.
 @example
 @group
 (
-    X = f
+    X = f,
     p(Out)
 ;
     Y = X,
@@ -4877,7 +4877,7 @@ with no non-local output variables to be
 If you want to use the values of output variables,
 then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
-If you want all of them, you need to one of the predicates
+If you want all of them, then you need to one of the predicates
 in the standard library module @samp{solutions},
 such as @samp{solutions/2} itself,
 which collects all of the solutions to a goal into a list ---
@@ -4895,7 +4895,7 @@ In other words, the implementation should @emph{commit} to the first solution.
 The commit to the first solution means that
 a piece of @code{cc_nondet} or @code{cc_multi} code
 can never be asked to generate a second solution.
-If e.g. a @code{cc_nondet} call is in a conjunction,
+If e.g.@: a @code{cc_nondet} call is in a conjunction,
 then no later goal in that conjunction (after mode reordering) may fail,
 because that would ask the committed choice goal for a second solution.
 The compiler enforces this rule.
@@ -4932,7 +4932,7 @@ of committed choice logic programming languages such as GHC.
 
 One way to stop propagating committed choice nondeterminism
 is the one mentioned above: if a goal has no non-local output variables
-(i.e.@ none of the goal's outputs are visible from outside the goal),
+(i.e.@: none of the goal's outputs are visible from outside the goal),
 then the goal's solutions are indistinguishable from the outside,
 and the implementation will only attempt to satisfy the goal once,
 whether or not the goal is committed choice.
@@ -4952,7 +4952,7 @@ but no matter which order you iterate over them,
 the maximum value in the set should be the same.
 
 If this condition is satisfied,
-i.e.@ if you know that there will only ever be at most one distinct solution
+i.e.@: if you know that there will only ever be at most one distinct solution
 under your equality theory of the output variables,
 then you can use a @samp{promise_equivalent_solutions} determinism cast.
 If goal @samp{G} is a @code{cc_multi} goal
@@ -5382,7 +5382,7 @@ Y = sum
 @end example
 
 In the above example,
-the type of @code{X}, and @code{Y} is @samp{pred(list(int), int)},
+the type of @code{X} and @code{Y} is @samp{pred(list(int), int)},
 which means a predicate of two arguments
 of types @code{list(int)} and @code{int} respectively.
 
@@ -5410,7 +5410,7 @@ the type of @code{X}, @code{Y}, and @code{Z} is
 @samp{func(int, list(int)) = list(int)},
 which means a function of two arguments,
 whose types are @code{int} and @code{list(int)},
-with a return type of @code{int}.
+with a return type of @code{list(int)}.
 As with @samp{:- func} declarations,
 if the modes and determinism of the function
 are omitted in a higher-order function term,
@@ -5518,7 +5518,7 @@ where you have defined @samp{not_equal} using
 not_equal(X, Y) :- X \= Y.
 @end example
 
-Another case when this arises is when want to curry a higher-order term.
+Another case when this arises is when you want to curry a higher-order term.
 Suppose, for example, that you have
 a higher-order predicate term @samp{OldPred}
 of type @samp{pred(int, char, float)},
@@ -5602,7 +5602,7 @@ with all but one of the arguments supplied (a closure).
 The declarative semantics of @samp{solutions/2} can be defined as follows:
 
 @example
-solutions(Pred, List) is true iff
+solutions(Pred, List) is true if and only if
     all [X] (call(Pred, X) <=> list.member(X, List))
     and List is sorted.
 @end example
@@ -5625,7 +5625,7 @@ Here is an example: the standard library defines a predicate
 @end example
 
 @noindent
-which succeeds iff List is a permutation of List0.
+which succeeds if and only if List is a permutation of List0.
 Hence the following call to solutions
 
 @example
@@ -6009,7 +6009,7 @@ here is the definition of a simple module for managing queues:
 
 % Queues are implemented as lists. We need the `list' module
 % for the declaration of the type list(T), with its constructors
-% '[]'/0 % and '.'/2, and for the declaration of the predicate
+% '[]'/0 and '[|]'/2, and for the declaration of the predicate
 % list.append/3.
 
 :- import_module list.
@@ -6068,7 +6068,7 @@ If a submodule item sequence includes an interface section,
 then it is a declaration of that submodule;
 if it includes an implementation section,
 then it is a definition of that submodule;
-and if includes both, then it is both declaration and definition.
+and if it includes both, then it is both declaration and definition.
 
 It is an error to declare a submodule twice, or to define it twice.
 It is an error to define a submodule without declaring it.
@@ -6284,7 +6284,7 @@ with one of the following signatures:
 
 @example
 :- pred @var{finalpredname}(io::di, io::uo) is @var{Det}.
-:- impure pred @var{finalpredname} is @var{Det}
+:- impure pred @var{finalpredname} is @var{Det}.
 @end example
 
 @var{Det} must be either @code{det} or @code{cc_multi}.
@@ -7149,7 +7149,7 @@ For example, in this code
 :- pred q(Q, R) <= quux(P, Q, R).
 @end example
 the signature of @code{q/2} is acceptable
-since the superclass constraint on @code{quux/2}
+since the superclass constraint on @code{quux/3}
 induces the dependency @samp{R -> P} on the type variables,
 hence @var{P} is in the closure of @{@var{Q}, @var{R}@}.
 
@@ -7222,7 +7222,7 @@ where @var{Vars} is a list of variables.
 For example:
 
 @example
-% Here the type variables `T' is existentially quantified
+% Here the type variable `T' is existentially quantified
 :- some [T] pred foo(T).
 
 % Here the type variables `T1' and `T2' are existentially quantified.
@@ -7460,7 +7460,7 @@ For example:
     ;       f2(T)
     ;       some [T1] f3(T1)
     ;       some [T1, T2] f4(T1, T2, T) => (showable(T1), showable(T2))
-    ;       some [T1, T2] f5(list(T1), T2) => fooable(T1, T2).
+    ;       some [T1, T2] f5(list(T1), T2) => foo(T1, T2).
 @end example
 
 Construction and deconstruction of existentially quantified data types
@@ -7515,7 +7515,7 @@ to the values in such a list.
 
 @example
 :- func process_list(showable_list) = list(string).
-process_list(nil) = "".
+process_list(nil) = [].
 process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 @end example
 
@@ -7652,7 +7652,7 @@ analogous to @samp{univ}, and use that:
 
 harder_example(Name, Showable) :-
     ( Name = "bar", Univ = 'new mkshowable'(42)
-    ; Name = "bar", Univ = 'new mkshowable'("blah")
+    ; Name = "foo", Univ = 'new mkshowable'("blah")
     ),
     Univ = mkshowable(Showable).
 @end example
@@ -7704,7 +7704,7 @@ using a type conversion expression of the form:
 coerce(@var{Term})
 @end example
 
-The expression is type-correct iff
+The expression is type-correct if and only if
 @var{FromType} and @var{ToType} are both discriminated union types,
 and after replacing the principal type constructors with base types
 (@pxref{Subtypes})
@@ -7801,7 +7801,7 @@ For each node @var{InstX}:
 @itemize
 @item
 If @var{InstX} is a recursive node in the inst tree
-(i.e. it is its own ancestor),
+(i.e.@: it is its own ancestor),
 then we require @var{TypeX} =< @var{TypeY}.
 Let @var{InstY} = @var{InstX}.
 
@@ -7838,7 +7838,7 @@ from a @samp{ground} node @var{InstX}:
 @item
 If @var{TypeX} = @var{TypeY}
 or if @var{TypeX} is a recursive node in the type tree
-(i.e. it is its own ancestor),
+(i.e.@: it is its own ancestor),
 then let @var{InstY} be @code{ground}.
 
 @item
@@ -8406,8 +8406,8 @@ are as follows:
 @table @asis
 
 @item @samp{may_call_mercury}/@samp{will_not_call_mercury}
-This attribute declares whether or not
-execution inside this foreign language code may call back into Mercury or not.
+This attribute declares whether execution inside this foreign language code may
+call back into Mercury or not.
 The default, in case neither is specified, is @samp{may_call_mercury}.
 Specifying @samp{will_not_call_mercury}
 may allow the compiler to generate more efficient code.
@@ -8552,7 +8552,7 @@ through optimizations such as inlining.
 The @samp{may_duplicate} attribute says that it may;
 the @samp{may_not_duplicate} attribute says that it may not.
 In the absence of either attribute,
-the compiler is allowed make its own judgement in the matter,
+the compiler is allowed to make its own judgement in the matter,
 based on factors such as the size of the code fragment.
 
 @item @samp{may_export_body/may_not_export_body}
@@ -8816,12 +8816,12 @@ to the following Common Language Infrastructure (CLI) and C# types:
 @multitable {Mercury_type} {System_String} {double}
   @headitem Mercury type @tab CLI type @tab C# type
   @item @code{int}    @tab @code{System.Int32}  @tab @code{int}
-  @item @code{int8}   @tab @code{System.Int8}   @tab @code{sbyte}
+  @item @code{int8}   @tab @code{System.SByte}  @tab @code{sbyte}
   @item @code{int16}  @tab @code{System.Int16}  @tab @code{short}
   @item @code{int32}  @tab @code{System.Int32}  @tab @code{int}
   @item @code{int64}  @tab @code{System.Int64}  @tab @code{long}
   @item @code{uint}   @tab @code{System.UInt32} @tab @code{uint}
-  @item @code{uint8}  @tab @code{System.UInt8}  @tab @code{byte}
+  @item @code{uint8}  @tab @code{System.Byte}   @tab @code{byte}
   @item @code{uint16} @tab @code{System.UInt16} @tab @code{ushort}
   @item @code{uint32} @tab @code{System.UInt32} @tab @code{uint}
   @item @code{uint64} @tab @code{System.UInt64} @tab @code{ulong}
@@ -9576,7 +9576,7 @@ for the module containing the @samp{pragma foreign_import_module} declaration.
 Note that the Melbourne Mercury implementation often behaves
 as if @samp{pragma foreign_import_module} declarations
 were implicitly added to modules.
-However, programmers should @emph{not} should not depend on this behaviour;
+However, programmers should @emph{not} depend on this behaviour;
 they should always write explicit
 @samp{pragma foreign_import_module} declarations wherever they are needed.
 
@@ -9757,14 +9757,14 @@ For example:
 
 :- pragma foreign_proc("C",
     initialise_complicated_structure(Structure::uo),
-    [will_not_call_mercury, may_call_mercury],
+    [promise_pure, will_not_call_mercury],
 "
     Structure = init_struct();
 ").
 
 :- pragma foreign_proc("C",
     do_calculation(Value::in, Structure0::di, Structure::uo),
-    [will_not_call_mercury, may_call_mercury],
+    [promise_pure, will_not_call_mercury],
 "
     Structure = perform_calculation(Value, Structure0);
 ").
@@ -9992,8 +9992,8 @@ is subject to change.
 If a Mercury predicate or function exported
 using a @samp{pragma foreign_export} declaration
 is to be used within a @samp{:- pragma foreign_code}
-or @samp{:- pragma foreign_proc} declaration
-the header file for the module containing
+or @samp{:- pragma foreign_proc} declaration,
+then the header file for the module containing
 the @samp{pragma foreign_export} declaration
 should be included using a @samp{pragma foreign_import_module} declaration,
 for example
@@ -10605,7 +10605,7 @@ Mercury distinguishes three ``levels'' of purity:
 @item pure
 For pure procedures,
 the set of solutions depends only on the values of the input arguments.
-They do not interact with the ``real'' world (i.e., do any input/output)
+They do not interact with the ``real'' world (i.e.@: do any input/output)
 without taking an io.state (@pxref{Types}) as input
 and returning one as output,
 and do not change the value of any data structure
@@ -10756,7 +10756,7 @@ impure X = f(X1, X2, @dots{}, XN)
 
 Any call or unification goal containing a non-local variable
 with inst @code{any} that appears in a negated context
-(i.e., in a negation or in the condition of an if-then-else goal)
+(i.e.@: in a negation or in the condition of an if-then-else goal)
 must be given an @code{impure} annotation
 because it may violate referential transparency.
 
@@ -10986,9 +10986,9 @@ For example:
 :- func map(impure func(T1) = T2, list(T1)) = list(T2).
 
 map(_ImpureFunc, []) = [].
-map(ImpureFunc, [X|Xs]) = [Y|Ys] :-
+map(ImpureFunc, [X | Xs]) = [Y | Ys] :-
     impure Y = impure_apply(ImpureFunc, X),
-    impure Ys = map(ImpureFunc, Ys).
+    impure Ys = map(ImpureFunc, Xs).
 @end example
 
 @node Solver types
@@ -11172,7 +11172,7 @@ If a solver type has no equality predicate specified,
 then the compiler will generate an equality predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
-Likewise, if a solver type has no equality comparison specified,
+Likewise, if a solver type has no comparison predicate specified,
 then the compiler will generate a comparison predicate
 that throws an exception of type @samp{exception.software_error/0} when called.
 
@@ -11249,7 +11249,7 @@ provided that no non-local variable becomes further bound
 during the execution of a goal which may be negated.
 This includes negated goals themselves,
 as well as the conditions of if-then-elses,
-which are negated iff they fail without producing any solution,
+which are negated if and only if they fail without producing any solution,
 and the bodies of pred or func expressions,
 which may be called or applied in one of the other contexts,
 or indeed in another pred or func expression.
@@ -11363,7 +11363,7 @@ The second has the form @samp{tracelevel(shallow)}, or @samp{tracelevel(deep)};
 this condition is true (irrespective of grade)
 if the module is compiled with at least the specified trace level.
 The third has the form @samp{grade(GradeTest)}.
-The supported @samp{GradeTests}s and their meanings are as follows.
+The supported @samp{GradeTest}s and their meanings are as follows.
 
 @table @asis
 @item @samp{debug}
@@ -11397,7 +11397,7 @@ True if the target language of the compilation is Java.
 
 The @samp{run_time} parameter says under what circumstances the trace goal,
 if included in the executable program, should actually be executed.
-In this case, the environment variable @samp{VERBOSE} has be to set
+In this case, the environment variable @samp{VERBOSE} has to be set
 when the program starts execution.
 (It doesn't matter what value it is set to.)
 
@@ -11722,7 +11722,7 @@ One such situation is when a set of procedures are all possible values
 of the same higher-order variable,
 which requires them to have the same argument types, modes, and determinisms.
 If (say) most of the procedures are @code{det}
-but some are @code{erroneous} (that is, they always throws an exception),
+but some are @code{erroneous} (that is, they always throw an exception),
 the procedures that are declared @code{det}
 but whose bodies have determinism @code{erroneous}
 will get a warning saying their determinism declaration could be tighter,
@@ -11871,11 +11871,11 @@ for procedures with determinism @code{nondet} or @code{multi}.
 @c @section Software Transactional Memory
 @c
 @c (Note: Software Transactional Memory is still in development and many
-@c aspects c documented here might change without notice.
+@c aspects documented here might change without notice.
 @c Please use with caution.)
 @c
 @c Software Transactional Memory or STM
-@c is an method of synchronising access to shared data
+@c is a method of synchronising access to shared data
 @c between concurrently running threads.
 @c It is an alternative to the use of explicit locking.
 @c
@@ -11947,7 +11947,7 @@ for procedures with determinism @code{nondet} or @code{multi}.
 @c @end example
 @c
 @c The @samp{new_stm_var} creates a new transaction variable
-@c whose the type and initial value are given by the first argument,
+@c whose type and initial value are given by the first argument,
 @c and returns a reference to it.
 @c Only one copy of the transaction variable exists in memory,
 @c but references to it can be duplicated.
@@ -12025,7 +12025,7 @@ and then cuts away all later solutions
 (e.g.@: via a quantification
 that only asks whether a solution satisfying a particular test exists),
 then the cut-away call never gets a chance
-to record the fact that it is not longer active.
+to record the fact that it is no longer active.
 The next call to that predicate with the same arguments
 will therefore think that the previous call is still active,
 and will consider this call to be an infinite loop.
@@ -12145,7 +12145,7 @@ In other grades, the compiler normally generates a warning
 for each tabling pragma that it is forced to ignore.
 The @samp{disable_warning_if_ignored} attribute tells the compiler
 not to generate such a warning for the pragma it is attached to.
-Since the @samp{loopcheck} and @samp{minimal_model} pragmas
+Since the @samp{loop_check} and @samp{minimal_model} pragmas
 affect the semantics of the program,
 and such changes should not be made silently,
 this attribute may not be specified for them.
@@ -12267,7 +12267,7 @@ It is described in
 @c XXX this citation may not come out properly in DVI format
 @cite{Tabling in Mercury: design and implementation}
 by Z. Somogyi and K. Sagonas,
-Proceedings of the Eight International Symposium
+Proceedings of the Eighth International Symposium
 on Practical Aspects of Declarative Languages.
 
 @cartouche
@@ -12286,7 +12286,7 @@ high level code and the use of trailing.
 
 The compiler includes a termination analyser
 which can be used to prove termination of predicates and functions.
-Details of the analysis is available
+Details of the analysis are available
 in ``Termination Analysis for Mercury''
 by Chris Speirs, Zoltan Somogyi and Harald Sondergaard.
 @xref{[1]}.
@@ -12579,7 +12579,7 @@ must use single precision floats.
 This feature cannot be specified
 together with the @samp{double_prec_float} feature.
 
-@item @samp{double_prec_float},
+@item @samp{double_prec_float}
 This feature specifies tha
 the compilation model must use double precision floats.
 This feature cannot be specified
@@ -12725,7 +12725,7 @@ will be restored.
 
 Note that @var{address} must be word aligned
 for both @code{MR_trail_current_value()} and @code{MR_trail_value()}.
-(The address of Mercury data structures
+(The addresses of Mercury data structures
 that have been passed to C via the foreign language interface
 are guaranteed to be appropriately aligned.)
 
@@ -12767,8 +12767,8 @@ void MR_trail_function(
 A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
 adds an entry to the function trail.
 The Mercury implementation ensures that
-if future execution ever backtracks to the current choicepoint,
-or backtracks past the current choicepoint to some earlier choicepoint,
+if future execution ever backtracks to the current choice point,
+or backtracks past the current choice point to some earlier choice point,
 then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
 where @var{reason} will be @samp{MR_undo}
 if the backtracking was due to a goal failing,
@@ -12815,7 +12815,7 @@ Note that the address of the C function passed as the first argument of
 @node Delayed goals and floundering
 @subsection Delayed goals and floundering
 
-Another use for the function trail is check for floundering
+Another use for the function trail is to check for floundering
 in the presence of delayed goals.
 
 Often, when implementing certain kinds of constraint solvers,
@@ -12844,7 +12844,7 @@ and putting the appropriate check for floundering
 in the @samp{MR_commit} and @samp{MR_solve} cases of your function.
 The Mercury extras distribution includes an example of this:
 see the @samp{ML_var_untrail_func()} function
-in the file @file{extras/trailed_update/var.m}.)
+in the file @file{extras/trailed_update/var.m}.
 If your function does detect floundering,
 then it should print an error message and then abort execution.
 
@@ -12886,10 +12886,10 @@ MR_ChoicepointId MR_current_choicepoint_id(void);
 indicating the identity of the most recent choice point;
 that is, the point to which execution would backtrack
 if the current computation failed.
-The value remains meaningful if the choicepoint is pruned away by a commit,
+The value remains meaningful if the choice point is pruned away by a commit,
 but is not meaningful
-after backtracking past the point where the choicepoint was created
-(since choicepoint ids may be reused after backtracking).
+after backtracking past the point where the choice point was created
+(since choice point ids may be reused after backtracking).
 @sp 1
 @item @bullet{} @code{MR_null_choicepoint_id()}
 Prototype:
@@ -12907,15 +12907,15 @@ to provide the initial value of a C global variable.)
 @item @bullet{} @code{MR_choicepoint_newer()}
 Prototype:
 @example
-bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
+bool MR_choice point_newer(MR_ChoicepointId, MR_ChoicepointId);
 @end example
 
-@code{MR_choicepoint_newer(@var{x}, @var{y})} true
-iff the choicepoint indicated by @var{x}
+@code{MR_choice point_newer(@var{x}, @var{y})} true
+if and only if the choice point indicated by @var{x}
 is newer than (i.e.@: was created more recently than)
-the choicepoint indicated by @var{y}.
+the choice point indicated by @var{y}.
 The null ChoicepointId is considered older than any non-null ChoicepointId.
-If either of the choice points have been backtracked over,
+If either of the choice points has been backtracked over,
 the behaviour is undefined.
 
 @end table
@@ -12930,7 +12930,7 @@ you can then call @code{MR_current_choicepoint_id()} again
 and compare the result from that call
 with the value saved in the @samp{prev_choicepoint} field in the data structure
 using @code{MR_choicepoint_newer()}.
-If the current choicepoint is newer, then you must trail the update,
+If the current choice point is newer, then you must trail the update,
 and update the @samp{prev_choicepoint} field with the new value;
 furthermore, you must also take care that on backtracking the
 previous value of the @samp{prev_choicepoint} field in your data
@@ -13058,7 +13058,7 @@ typedef struct @{
                 @cite{Termination Analysis for Mercury}.
 * [2]::        	Groger and Plumer, @cite{Handling of mutual recursion in
                 automatic termination proofs for logic programs}.
-* [3]::         Spiers, @cite{Termination Analysis for logic programs}.
+* [3]::         Speirs, @cite{Termination Analysis for logic programs}.
 * [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
                 for Well-Founded Evaluation of Normal Logic Programs}.
 * [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
