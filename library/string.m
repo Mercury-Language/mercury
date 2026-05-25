@@ -1418,7 +1418,7 @@
     %
 :- pred to_uint(string::in, uint::out) is semidet.
 
-    % Convert a signed base 10 string to a uint. Throws an exception if the
+    % Convert an unsigned base 10 string to a uint. Throws an exception if the
     % string argument does not match the regexp [0-9]+ or the number is
     % not in the range [0, max_uint].
     %
@@ -1432,7 +1432,7 @@
     %
 :- pred base_string_to_uint(int::in, string::in, uint::out) is semidet.
 
-    % Convert a signed base N string to a uint. Throws an exception
+    % Convert an unsigned base N string to a uint. Throws an exception
     % if the string argument is not precisely a non-empty string of base N
     % digits, or if the number is not in the range [0, max_uint].
     %

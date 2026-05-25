@@ -207,7 +207,7 @@
 :- func det_decimal_digit_to_int(char) = int.
 
     % hex_digit_to_int(Char, Int):
-    % True iff Char is a hexadecimal digit (0-9, a-z or A-F) representing the
+    % True iff Char is a hexadecimal digit (0-9, a-f or A-F) representing the
     % value Int.
     %
 :- pred hex_digit_to_int(char::in, int::out) is semidet.
