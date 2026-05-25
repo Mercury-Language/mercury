@@ -6843,15 +6843,15 @@ above we can see that 3 passing tests were run.
 The number of times the goal was executed in the failing test run.
 @item @samp{Suspicion}:
 A number between 0 and 1 which gives an indication of how likely a
-particular goal is to be buggy.  The is calculated as
-Suspicion = F / (P + F) where F is the number of times the goal
-was executed in the failing test run and P is the number of times the goal
-was executed in passing test runs.
+particular goal is to be buggy.
+This is calculated as Suspicion = F / (P + F) where F is the number of times
+the goal was executed in the failing test run and P is the number of times the
+goal was executed in passing test runs.
 @end itemize
 @sp 1
 The name of the file containing the failing slice can be specified with the
 @samp{-f} or @samp{--fail-trace-counts} option or with a separate
-@samp{set fail_trace_count @var{filename}} command.
+@samp{set fail_trace_counts @var{filename}} command.
 @sp 1
 The name of the file containing the union of the passing slices
 can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
@@ -7775,10 +7775,10 @@ or (b) the user has not answered @samp{no} to any questions yet,
 in which case top-down search is used until @samp{no} is answered to at least
 one question.
 
-If no search mode is specified with the @samp{dd} command then
-the search mode depends on if the @samp{--resume} option is
+If no search mode is specified with the @samp{dd} command, then
+the search mode depends on whether the @samp{--resume} option is
 given.
-If it is then the previous search mode will be used,
+If it is, then the previous search mode will be used,
 otherwise top-down search will be used.
 
 You can check the search mode used to find a particular question by issuing
