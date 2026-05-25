@@ -22,8 +22,7 @@
 % This module provides predicates and functions that operate on either the
 % individual elements in a set or on the pairs of integers that define the
 % bounds of the blocks used in the representation. Predicates and functions
-% that do the latter have names containing "range" (e.g. range_foldr,
-% nondet_range_member).
+% that do the latter have names containing "range" (e.g. range_foldr).
 %
 %---------------------------------------------------------------------------%
 
