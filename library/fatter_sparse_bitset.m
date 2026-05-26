@@ -1081,7 +1081,7 @@ union_list([Set | Sets], Union) :-
     union_list_passes(Set, Sets, Union).
 
     % Union the full list of sets via a sequence of passes, where each pass
-    % replaces each group of (up to) four adjacent sets with one set.
+    % replaces each group of (up to) eight adjacent sets with one set.
     %
     % We keep invoking union_list_pass until it yields only one set.
     %
