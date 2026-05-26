@@ -53,8 +53,8 @@ MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
 
-DEPENDS = Mercury.modules $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
-DEPS = Mercury.modules $(patsubst %,%.dep,$(MERCURY_MAIN_MODULES))
+DEPENDS = $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPS = $(patsubst %,%.dep,$(MERCURY_MAIN_MODULES))
 
 # This directory contains source files for which the module name
 # doesn't match the file name, so smart recompilation won't work
@@ -66,11 +66,11 @@ Mercury.modules: GRADE_LIB_FLAGS
 all:	$(MERCURY_MAIN_MODULES)
 
 .PHONY: depend
-depend:	GRADE_LIB_FLAGS $(DEPENDS)
-$(DEPENDS): GRADE_LIB_FLAGS
+depend:        GRADE_LIB_FLAGS Mercury.modules $(DEPENDS)
+$(DEPENDS): GRADE_LIB_FLAGS Mercury.modules
 
 .PHONY: dep
-dep:	GRADE_LIB_FLAGS $(DEPS)
+dep:   GRADE_LIB_FLAGS Mercury.modules $(DEPS)
 
 #-----------------------------------------------------------------------------#
 
