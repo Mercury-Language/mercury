@@ -31,7 +31,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 
 	cd samples
-	mmc ---grade csharp --make hello
+	mmc --grade csharp --make hello
 
 Note that when building programs using the csharp grade you *must* use
 mmc --make.

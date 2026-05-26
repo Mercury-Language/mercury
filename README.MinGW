@@ -21,14 +21,14 @@ It is available at <https://www.msys2.org>.
 
 Using the MinGW or MinGW-w64 ports of GCC you can build a Mercury compiler that
 can generate executables that will run natively on Windows without the need for
-a support environments like Cygwin, MSYS or MSYS2.  Using the standard MinGW
+a support environment like Cygwin, MSYS or MSYS2.  Using the standard MinGW
 version of GCC will result in a Mercury compiler that generates 32-bit
 executables.  To build a Mercury compiler that generates 64-bit executables for
 Windows you will need to use the MinGW-w64 port of GCC.
 
-NOTE: a Unix like environment is required to build and install the Mercury
-compiler.  MSYS, MSYS2 or Cygwin can be used for this purpose.  A Unix like
-environment is only required for installing Mercury, you do *not* require one
+NOTE: a Unix-like environment is required to build and install the Mercury
+compiler.  MSYS, MSYS2 or Cygwin can be used for this purpose.  A Unix-like
+environment is only required for installing Mercury; you do *not* require one
 to use Mercury once it is installed.
 
 -----------------------------------------------------------------------------
@@ -54,7 +54,7 @@ To build the source distribution under MSYS follow these steps:
     MinGW-w64 version of GCC (available from <https://mingw-w64.org>) and
     ensure that it occurs in your PATH before the MinGW GCC.
 
-1b. Alternatively, download and install MSYS2 environment from
+1b. Alternatively, download and install the MSYS2 environment from
     <https://www.msys2.org>
 
     You can use the MinGW-w64 version of GCC to build a copy of Mercury that

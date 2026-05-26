@@ -50,7 +50,7 @@ BUILDING WITH IBM XL C COMPILER
 
 (Last tested in 2014.)
 
-To use the IBM C compiler, pass "--with-cc=xlc" when configuring Mercury
+To use the IBM C compiler, pass "--with-cc=xlc" when configuring the Mercury
 installation. Use high-level C grades for better performance.
 
 Large programs will overflow the TOC. You can try passing the option

@@ -80,7 +80,7 @@ to be linked with the MS Visual C runtime, instead of the standard libC
 runtime.
 
 On Cygwin, configure and mmake will do translation of Unix style paths, so you
-may specify the installation directory using either a Unix- or Window-style
+may specify the installation directory using either a Unix- or Windows-style
 path.  On MSYS, you must use a full Windows-style path with a drive letter,
 except that you must use '/' instead of `\' as a directory separator.
 For example, this is acceptable:
