@@ -111,7 +111,6 @@ report_eval_error(unknown_operator(Name, Arity), !IO) :-
 report_eval_error(unknown_variable(Name), !IO) :-
     io.format("unknown variable `%s'.\n", [s(Name)], !IO).
 report_eval_error(unexpected_const(Const), !IO) :-
-    io.write_string("unexpected ", !IO),
     (
         Const = term.float(Float),
         io.format("unexpected float `%f'\n", [f(Float)], !IO)

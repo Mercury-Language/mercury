@@ -61,7 +61,7 @@ main(!IO) :-
         process_args(Rest, Pattern, Template, !IO)
     else
         io.write_string(
-            "usage: ultra_sub template pattern [strings]\n", !IO)
+            "usage: ultra_sub pattern template [strings]\n", !IO)
     ).
 
 %------------------------------------------------------------------------------%
