@@ -128,7 +128,8 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
     io.nl(Stream, !IO),
 
     Indent1 = Indent + 1u,
-    output_inherits_list(Info, Stream, Indent1, Inherits, !IO),
+    output_inherits_list(Info, Stream, Indent1, Inherits,
+			 OutputGenerics, TypeParams, !IO),
     output_implements_list(Stream, Indent1, Implements, !IO),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
@@ -239,9 +240,11 @@ output_struct_defn_for_java(Info, Stream, Indent, StructDefn, !IO) :-
     % multiple inheritance, so more than one superclass is an error.
     %
 :- pred output_inherits_list(java_out_info::in, io.text_output_stream::in,
-    indent::in, mlds_class_inherits::in, io::di, io::uo) is det.
+    indent::in, mlds_class_inherits::in, output_generics::in,
+    list(tvar)::in, io::di, io::uo) is det.
 
-output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
+output_inherits_list(Info, Stream, Indent, Inherits,
+		     OutputGenerics, TypeParams, !IO) :-
     (
         Inherits = inherits_nothing
     ;
@@ -249,8 +252,15 @@ output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
         IndentStr = indent2_string(Indent),
         BaseType = mlds_class_type(BaseClassId),
         BaseTypeStr = type_to_string_for_java(Info, BaseType),
-        io.format(Stream, "%sextends %s\n",
-            [s(IndentStr), s(BaseTypeStr)], !IO)
+        io.format(Stream, "%sextends %s",
+            [s(IndentStr), s(BaseTypeStr)], !IO),
+       (
+           OutputGenerics = do_output_generics,
+           output_generic_tvars(Stream, TypeParams, !IO)
+       ;
+           OutputGenerics = do_not_output_generics
+       ),
+        io.nl(Stream, !IO)
     ).
 
 :- pred output_enum_inherits_list(java_out_info::in, io.text_output_stream::in,
