@@ -576,7 +576,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
             MR_MemoryZone *zone;
 
             // Display AV address and access mode.
-            fprintf(stderr, "\n***   An access violation occured"
+            fprintf(stderr, "\n***   An access violation occurred"
                     " at address 0x%08" MR_INTEGER_LENGTH_MODIFIER
                     "x, while attempting"
                     " to ", (MR_Word) address);
