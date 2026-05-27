@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -289,7 +289,7 @@ output_field_var_name_for_csharp(Stream, VarName, !IO) :-
 
 field_var_name_to_string_for_csharp(LocalVarName, String) :-
     RawString = ml_field_var_name_to_string(LocalVarName),
-    MangledString = name_mangle(RawString),
+    MangledString = name_mangle_no_leading_digit(RawString),
     String = make_valid_csharp_symbol_name(MangledString).
 
 %---------------------------------------------------------------------------%
