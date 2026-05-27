@@ -1684,7 +1684,7 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
             SharedLibsSupported = shared_libraries_not_supported,
             SharedLibsSucceeded = succeeded
         ),
-        % We can only build the .init file if we have succesfully built
+        % We can only build the .init file if we have successfully built
         % the .c files.
         (
             SharedLibsSucceeded = succeeded,

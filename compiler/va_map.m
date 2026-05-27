@@ -17,7 +17,7 @@
 % Like a plain version array, it provides O(1) indexing and update when
 % accessing the latest version of the data structure.
 %
-% Unlike a plain version array, the data structure will grow to accomodate keys
+% Unlike a plain version array, the data structure will grow to accommodate keys
 % outside of the existing bounds. This is more like a map.
 %
 % Unlike a map, keys that were not explicitly set are implicitly associated
