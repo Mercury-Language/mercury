@@ -56,7 +56,11 @@
     %
 :- pred read_slice(string::in, maybe_error(slice)::out, io::di, io::uo) is det.
 
-    % read_slice_to_string(File, SortStr, MaxRows, MaybeMaxPredColumns,
+:- type maybe_filter_zero
+    --->    do_not_filter_zero
+    ;       do_filter_zero.
+
+    % read_slice_to_string(File, Zero, SortStr, MaxRows, MaybeMaxPredColumns,
     %   MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
     %   Module, SliceStr, Problem, !IO):
     %
@@ -79,8 +83,8 @@
     % contain a string describing the problem encountered and SliceStr
     % will be the empty string, otherwise Problem will be the empty string.
     %
-:- pred read_slice_to_string(string::in, string::in, int::in,
-    maybe(int)::in, maybe(int)::in, maybe(int)::in,
+:- pred read_slice_to_string(string::in, maybe_filter_zero::in, string::in,
+    int::in, maybe(int)::in, maybe(int)::in, maybe(int)::in,
     string::in, string::out, string::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -156,25 +160,29 @@
     maybe(int)::in, maybe(int)::in, maybe(int)::in,
     string::in, string::out, string::out, io::di, io::uo) is det.
 
-    % suspicion_ratio(PassCount, FailCount) = Suspicion.
-    % suspicion_ratio gives an indication of how likely a label is to
-    % be buggy based on how many times it was executed in passing and
-    % failing test runs.
+    % suspicion_ratio(PassCount, FailCount) = Suspicion:
+    %
+    % This function gives an indication of how likely a label is to
+    % be buggy, by considering how many times it was executed in passing
+    % and in failing test runs.
     %
 :- func suspicion_ratio(int, int) = float.
 
     % suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests)
-    %   = Suspicion.
-    % suspicion_ratio_normalised gives an indication of how likely a label is
-    % to be buggy based on how many times it was executed in passing and
-    % failing test runs and on how many passing and failing test runs there
-    % were.
+    %   = Suspicion:
+    %
+    % This function returns an indication of how likely a label is
+    % to be buggy. It does this by considering how many times it was executed
+    % in passing and in failing test runs, and how many passing and failing
+    % test runs there were.
     %
 :- func suspicion_ratio_normalised(int, int, int, int) = float.
 
-    % suspicion_ratio_binary(PassCount, FailCount) = Suspicion.
-    % suspicion_ration_binary returns 1 if PassCount is 0 and FailCount is
-    % > 0 and 0 otherwise.
+    % suspicion_ratio_binary(PassCount, FailCount) = Suspicion:
+    %
+    % This function returns
+    % - 1 if PassCount is 0 and FailCount is > 0, and
+    % - 0 otherwise.
     %
 :- func suspicion_ratio_binary(int, int) = float.
 
@@ -187,13 +195,13 @@
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 
+:- import_module char.
 :- import_module cord.
 :- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -221,10 +229,10 @@ read_slice(File, Result, !IO) :-
 % to the mechanism for sorting and formatting dices below.
 %
 
-read_slice_to_string(File, SortStr0, MaxRows,
+read_slice_to_string(File, FilterZero, SortStr, MaxRows,
         MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
         Module, SliceStr, Problem, !IO) :-
-    ( if slice_sort_string_is_valid(SortStr0) then
+    ( if slice_sort_string_is_valid(SortStr, SliceCmp) then
         read_slice(File, ReadSliceResult, !IO),
         (
             ReadSliceResult = ok(Slice),
@@ -236,16 +244,16 @@ read_slice_to_string(File, SortStr0, MaxRows,
                 list.filter(slice_label_count_is_for_module(Module),
                     LabelCounts, ModuleFilteredLabelCounts)
             ),
-            ( if string.append("z", SortStrPrime, SortStr0) then
-                SortStr = SortStrPrime,
-                list.filter(slice_label_count_is_zero,
-                    ModuleFilteredLabelCounts, FilteredLabelCounts)
-            else
-                SortStr = SortStr0,
+            (
+                FilterZero = do_not_filter_zero,
                 FilteredLabelCounts = ModuleFilteredLabelCounts
+            ;
+                FilterZero = do_filter_zero,
+                list.filter(slice_label_count_is_nonzero,
+                    ModuleFilteredLabelCounts, FilteredLabelCounts)
             ),
-            list.sort(slice_label_count_compare(SortStr), FilteredLabelCounts,
-                SortedLabelCounts),
+            list.sort(slice_label_count_compare(SliceCmp),
+                FilteredLabelCounts, SortedLabelCounts),
             ( if list.take(MaxRows, SortedLabelCounts, Taken) then
                 TopNLabelCounts = Taken
             else
@@ -453,19 +461,20 @@ dice_add_trace_count(fail_slice, LineNoAndCount, ExecCounts0, ExecCounts) :-
 slice_label_count_is_for_module(Module, slice_label_count(Label, _, _)) :-
     proc_label_is_for_module(Module, Label).
 
-:- pred slice_label_count_is_zero(slice_label_count::in) is semidet.
+:- pred slice_label_count_is_nonzero(slice_label_count::in) is semidet.
 
-slice_label_count_is_zero(SliceLabelCount) :-
+slice_label_count_is_nonzero(SliceLabelCount) :-
     SliceLabelCount ^ slc_counts ^ slice_count > 0.
 
-:- pred slice_label_count_compare(string::in,
+:- pred slice_label_count_compare(slice_cmp::in,
     slice_label_count::in, slice_label_count::in,
     builtin.comparison_result::out) is det.
 
-slice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
-    ( if SortStr = "" then
-        LabelCountA = slice_label_count(ProcLabelA, PathPortA, CountsA),
-        LabelCountB = slice_label_count(ProcLabelB, PathPortB, CountsB),
+slice_label_count_compare(SliceCmp, LabelCountA, LabelCountB, Result) :-
+    LabelCountA = slice_label_count(ProcLabelA, PathPortA, ExecCountsA),
+    LabelCountB = slice_label_count(ProcLabelB, PathPortB, ExecCountsB),
+    (
+        SliceCmp = compare_slice_locns,
         builtin.compare(ProcLabelResult, ProcLabelA, ProcLabelB),
         (
             ProcLabelResult = (<),
@@ -478,7 +487,7 @@ slice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
                 Result = (<)
             ;
                 PathPortResult = (=),
-                builtin.compare(Result, CountsA, CountsB)
+                builtin.compare(Result, ExecCountsA, ExecCountsB)
             ;
                 PathPortResult = (>),
                 Result = (>)
@@ -487,9 +496,10 @@ slice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
             ProcLabelResult = (>),
             Result = (>)
         )
-    else
-        slice_exec_count_compare(SortStr,
-            LabelCountA ^ slc_counts, LabelCountB ^ slc_counts, Result)
+    ;
+        SliceCmp = compare_slice_counts(HeadCmp, TailCmps),
+        slice_exec_count_compare(HeadCmp, TailCmps, ExecCountsA, ExecCountsB,
+            Result)
     ).
 
 :- pred compare_path_ports(path_port::in, path_port::in,
@@ -539,59 +549,80 @@ compare_path_ports(PathPortA, PathPortB, Result) :-
         builtin.compare(Result, PathPortA, PathPortB)
     ).
 
-:- pred slice_exec_count_compare(string::in,
-    slice_exec_count::in, slice_exec_count::in,
+:- pred slice_exec_count_compare(slice_count_cmp::in,
+    list(slice_count_cmp)::in, slice_exec_count::in, slice_exec_count::in,
     builtin.comparison_result::out) is det.
 
-slice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
-    ( if string.first_char(SortStr, C, SortStrTail) then
-        ( if
-            (
-                C = 'c',
-                CntA = ExecCount1 ^ slice_count,
-                CntB = ExecCount2 ^ slice_count
-            ;
-                C = 'C',
-                CntA = ExecCount2 ^ slice_count,
-                CntB = ExecCount1 ^ slice_count
-            ;
-                C = 't',
-                CntA = ExecCount1 ^ slice_tests,
-                CntB = ExecCount2 ^ slice_tests
-            ;
-                C = 'T',
-                CntA = ExecCount2 ^ slice_tests,
-                CntB = ExecCount1 ^ slice_tests
-            )
-        then
-            builtin.compare(Result0, CntA, CntB)
-        else
-            unexpected($pred, "invalid sort string")
+slice_exec_count_compare(HeadCmp, TailCmps, ExecCountsA, ExecCountsB, Result) :-
+    (
+        (
+            HeadCmp = exec_ascend,
+            CountA = ExecCountsA ^ slice_count,
+            CountB = ExecCountsB ^ slice_count
+        ;
+            HeadCmp = tests_ascend,
+            CountA = ExecCountsA ^ slice_tests,
+            CountB = ExecCountsB ^ slice_tests
         ),
-        ( if
-            Result0 = (=),
-            string.length(SortStrTail) > 0
-        then
-            slice_exec_count_compare(SortStrTail,
-                ExecCount1, ExecCount2, Result)
-        else
-            Result = Result0
-        )
+        builtin.compare(HeadResult, CountA, CountB)
+    ;
+        (
+            HeadCmp = exec_descend,
+            CountA = ExecCountsA ^ slice_count,
+            CountB = ExecCountsB ^ slice_count
+        ;
+            HeadCmp = tests_descend,
+            CountA = ExecCountsA ^ slice_tests,
+            CountB = ExecCountsB ^ slice_tests
+        ),
+        builtin.compare(HeadResult, CountB, CountA)
+    ),
+    ( if
+        HeadResult = (=),
+        TailCmps = [HeadTailCmp | TailTailCmps]
+    then
+        slice_exec_count_compare(HeadTailCmp, TailTailCmps,
+            ExecCountsA, ExecCountsB, Result)
     else
-        unexpected($pred, "empty sort string")
+        Result = HeadResult
     ).
 
-:- pred slice_sort_string_is_valid(string::in) is semidet.
+%---------------------------------------------------------------------------%
 
-slice_sort_string_is_valid(Str0) :-
-    Chrs0 = string.to_char_list(Str0),
-    ( if Chrs0 = ['z' | ChrsPrime] then
-        Chrs = ChrsPrime
-    else
-        Chrs = Chrs0
-    ),
-    ChrSet = set.list_to_set(Chrs),
-    set.subset(ChrSet, set.list_to_set(['c', 'C', 't', 'T'])).
+:- type slice_cmp
+    --->    compare_slice_locns
+    ;       compare_slice_counts(slice_count_cmp, list(slice_count_cmp)).
+
+:- type slice_count_cmp
+    --->    exec_ascend
+    ;       exec_descend
+    ;       tests_ascend
+    ;       tests_descend.
+
+:- pred slice_sort_string_is_valid(string::in, slice_cmp::out) is semidet.
+
+slice_sort_string_is_valid(SortStr, SliceCmp) :-
+    SortChars = string.to_char_list(SortStr),
+    (
+        SortChars = [],
+        SliceCmp = compare_slice_locns
+    ;
+        SortChars = [HeadChar | TailChars],
+        slice_sort_char_is_valid(HeadChar, HeadCmp),
+        list.map(slice_sort_char_is_valid, TailChars, TailCmps),
+        SliceCmp = compare_slice_counts(HeadCmp, TailCmps)
+    ).
+
+:- pred slice_sort_char_is_valid(char::in, slice_count_cmp::out) is semidet.
+
+slice_sort_char_is_valid(Char, Cmp) :-
+    ( Char = 'c', Cmp = exec_ascend
+    ; Char = 'C', Cmp = exec_descend
+    ; Char = 't', Cmp = tests_ascend
+    ; Char = 'T', Cmp = tests_descend
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- func slice_to_label_counts(slice_proc_map) = list(slice_label_count).
 
@@ -677,7 +708,7 @@ read_dice_to_string_no_limit(PassFile, FailFile, SortStr, MaxRow,
 read_dice_to_string(PassFile, FailFile, SortStr, MaxRow,
         MaybeMaxPredColumns, MaybeMaxPathColumns, MaybeMaxFileColumns,
         Module, DiceStr, Problem, !IO) :-
-    ( if dice_sort_string_is_valid(SortStr) then
+    ( if dice_sort_string_is_valid(SortStr, DiceCmp) then
         read_dice(PassFile, FailFile, ReadDiceResult, !IO),
         (
             ReadDiceResult = ok(Dice),
@@ -689,8 +720,8 @@ read_dice_to_string(PassFile, FailFile, SortStr, MaxRow,
                 list.filter(dice_label_count_is_for_module(Module),
                     LabelCounts, FilteredLabelCounts)
             ),
-            list.sort(dice_label_count_compare(SortStr), FilteredLabelCounts,
-                SortedLabelCounts),
+            list.sort(dice_label_count_compare(DiceCmp),
+                FilteredLabelCounts, SortedLabelCounts),
             ( if list.take(MaxRow, SortedLabelCounts, Taken) then
                 TopNLabelCounts = Taken
             else
@@ -725,14 +756,15 @@ read_dice_to_string(PassFile, FailFile, SortStr, MaxRow,
 dice_label_count_is_for_module(Module, dice_label_count(Label, _, _)) :-
     proc_label_is_for_module(Module, Label).
 
-:- pred dice_label_count_compare(string::in,
+:- pred dice_label_count_compare(dice_cmp::in,
     dice_label_count::in, dice_label_count::in,
     builtin.comparison_result::out) is det.
 
-dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
-    ( if SortStr = "" then
-        LabelCountA = dice_label_count(ProcLabelA, PathPortA, CountsA),
-        LabelCountB = dice_label_count(ProcLabelB, PathPortB, CountsB),
+dice_label_count_compare(DiceCmp, LabelCountA, LabelCountB, Result) :-
+    LabelCountA = dice_label_count(ProcLabelA, PathPortA, ExecCountsA),
+    LabelCountB = dice_label_count(ProcLabelB, PathPortB, ExecCountsB),
+    (
+        DiceCmp = compare_dice_locns,
         builtin.compare(ProcLabelResult, ProcLabelA, ProcLabelB),
         (
             ProcLabelResult = (<),
@@ -745,7 +777,7 @@ dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
                 Result = (<)
             ;
                 PathPortResult = (=),
-                builtin.compare(Result, CountsA, CountsB)
+                builtin.compare(Result, ExecCountsA, ExecCountsB)
             ;
                 PathPortResult = (>),
                 Result = (>)
@@ -754,103 +786,140 @@ dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
             ProcLabelResult = (>),
             Result = (>)
         )
-    else
-        dice_exec_count_compare(SortStr,
-            LabelCountA ^ dlc_counts, LabelCountB ^ dlc_counts, Result)
+    ;
+        DiceCmp = compare_dice_counts(HeadCmp, TailCmps),
+        dice_exec_count_compare(HeadCmp, TailCmps, ExecCountsA, ExecCountsB,
+            Result)
     ).
 
-:- pred dice_exec_count_compare(string::in,
+:- pred dice_exec_count_compare(dice_count_cmp::in, list(dice_count_cmp)::in,
     dice_exec_count::in, dice_exec_count::in,
     builtin.comparison_result::out) is det.
 
-dice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
-    ( if string.first_char(SortStr, C, SortStrTail) then
-        ( if
-            (
-                C = 'p',
-                CntA = ExecCount1 ^ pass_count,
-                CntB = ExecCount2 ^ pass_count
-            ;
-                C = 'P',
-                CntA = ExecCount2 ^ pass_count,
-                CntB = ExecCount1 ^ pass_count
-            ;
-                C = 'f',
-                CntA = ExecCount1 ^ fail_count,
-                CntB = ExecCount2 ^ fail_count
-            ;
-                C = 'F',
-                CntA = ExecCount2 ^ fail_count,
-                CntB = ExecCount1 ^ fail_count
-            ;
-                C = 'd',
-                CntA = int.minus(ExecCount1 ^ pass_count,
-                    ExecCount1 ^ fail_count),
-                CntB = int.minus(ExecCount2 ^ pass_count,
-                    ExecCount2 ^ fail_count)
-            ;
-                C = 'D',
-                CntA = int.minus(ExecCount1 ^ pass_count,
-                    ExecCount1 ^ fail_count),
-                CntB = int.minus(ExecCount2 ^ pass_count,
-                    ExecCount2 ^ fail_count)
-            )
-        then
-            % This is a comparison of two integers.
-            builtin.compare(Result0, CntA, CntB)
-        else if
-            (
-                C = 's',
-                RatioA = suspicion_ratio(ExecCount1 ^ pass_count,
-                    ExecCount1 ^ fail_count),
-                RatioB = suspicion_ratio(ExecCount2 ^ pass_count,
-                    ExecCount2 ^ fail_count)
-            ;
-                C = 'S',
-                RatioA = suspicion_ratio(ExecCount2 ^ pass_count,
-                    ExecCount2 ^ fail_count),
-                RatioB = suspicion_ratio(ExecCount1 ^ pass_count,
-                    ExecCount1 ^ fail_count)
-            )
-        then
-            % This is a comparison of two floats.
-            builtin.compare(Result0, RatioA, RatioB)
-        else
-            unexpected($pred, "invalid sort string")
+dice_exec_count_compare(HeadCmp, TailCmps, ExecCountsA, ExecCountsB, Result) :-
+    % NOTE: counts compare as integers, while ratios compare as floats.
+    % Both the counts and ratios are compared in separate ascending and
+    % descending blocks, which are identical except for the direction
+    % of the comparison.
+    (
+        (
+            HeadCmp = pass_ascend,
+            CountA = ExecCountsA ^ pass_count,
+            CountB = ExecCountsB ^ pass_count
+        ;
+            HeadCmp = fail_ascend,
+            CountA = ExecCountsA ^ fail_count,
+            CountB = ExecCountsB ^ fail_count
+        ;
+            HeadCmp = pass_minus_fail_ascend,
+            CountA = int.minus(ExecCountsA ^ pass_count,
+                ExecCountsA ^ fail_count),
+            CountB = int.minus(ExecCountsB ^ pass_count,
+                ExecCountsB ^ fail_count)
         ),
-        ( if
-            Result0 = (=),
-            string.length(SortStrTail) > 0
-        then
-            dice_exec_count_compare(SortStrTail,
-                ExecCount1, ExecCount2, Result)
-        else
-            Result = Result0
-        )
+        builtin.compare(HeadResult, CountA, CountB)
+    ;
+        (
+            HeadCmp = pass_descend,
+            CountA = ExecCountsA ^ pass_count,
+            CountB = ExecCountsB ^ pass_count
+        ;
+            HeadCmp = fail_descend,
+            CountA = ExecCountsA ^ fail_count,
+            CountB = ExecCountsB ^ fail_count
+        ;
+            HeadCmp = pass_minus_fail_descend,
+            CountA = int.minus(ExecCountsA ^ pass_count,
+                ExecCountsA ^ fail_count),
+            CountB = int.minus(ExecCountsB ^ pass_count,
+                ExecCountsB ^ fail_count)
+        ),
+        builtin.compare(HeadResult, CountB, CountA)
+    ;
+        HeadCmp = suspicion_ascend,
+        RatioA = suspicion_ratio(ExecCountsA ^ pass_count,
+            ExecCountsA ^ fail_count),
+        RatioB = suspicion_ratio(ExecCountsB ^ pass_count,
+            ExecCountsB ^ fail_count),
+        builtin.compare(HeadResult, RatioA, RatioB)
+
+    ;
+        HeadCmp = suspicion_descend,
+        RatioA = suspicion_ratio(ExecCountsA ^ pass_count,
+            ExecCountsA ^ fail_count),
+        RatioB = suspicion_ratio(ExecCountsB ^ pass_count,
+            ExecCountsB ^ fail_count),
+        builtin.compare(HeadResult, RatioB, RatioA)
+    ),
+    ( if
+        HeadResult = (=),
+        TailCmps = [HeadTailCmp | TailTailCmps]
+    then
+        dice_exec_count_compare(HeadTailCmp, TailTailCmps,
+            ExecCountsA, ExecCountsB, Result)
     else
-        unexpected($pred, "empty sort string")
+        Result = HeadResult
     ).
 
-:- pred dice_sort_string_is_valid(string::in) is semidet.
+%---------------------------------------------------------------------------%
 
-dice_sort_string_is_valid(Str) :-
-    Chrs = string.to_char_list(Str),
-    ChrSet = set.list_to_set(Chrs),
-    set.subset(ChrSet,
-        set.list_to_set(['p', 'P', 'f', 'F', 's', 'S', 'd', 'D'])).
+:- type dice_cmp
+    --->    compare_dice_locns
+    ;       compare_dice_counts(dice_count_cmp, list(dice_count_cmp)).
+
+:- type dice_count_cmp
+    --->    pass_ascend
+    ;       pass_descend
+    ;       fail_ascend
+    ;       fail_descend
+    ;       pass_minus_fail_descend
+    ;       pass_minus_fail_ascend
+    ;       suspicion_ascend
+    ;       suspicion_descend.
+
+:- pred dice_sort_string_is_valid(string::in, dice_cmp::out) is semidet.
+
+dice_sort_string_is_valid(SortStr, DiceCmp) :-
+    SortChars = string.to_char_list(SortStr),
+    (
+        SortChars = [],
+        DiceCmp = compare_dice_locns
+    ;
+        SortChars = [HeadSortChar | TailSortChars],
+        dice_sort_char_is_valid(HeadSortChar, HeadCmp),
+        list.map(dice_sort_char_is_valid, TailSortChars, TailCmps),
+        DiceCmp = compare_dice_counts(HeadCmp, TailCmps)
+    ).
+
+:- pred dice_sort_char_is_valid(char::in, dice_count_cmp::out) is semidet.
+
+dice_sort_char_is_valid(Char, Cmp) :-
+    ( Char = 'p', Cmp = pass_ascend
+    ; Char = 'P', Cmp = pass_descend
+    ; Char = 'f', Cmp = fail_ascend
+    ; Char = 'F', Cmp = fail_descend
+    ; Char = 'd', Cmp = pass_minus_fail_ascend
+    ; Char = 'D', Cmp = pass_minus_fail_descend
+    ; Char = 's', Cmp = suspicion_ascend
+    ; Char = 'S', Cmp = suspicion_descend
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- func dice_to_label_counts(dice_proc_map) = list(dice_label_count).
 
 dice_to_label_counts(DiceProcMap) = LabelCounts :-
-    map.foldl(append_dice_label_counts, DiceProcMap, [], LabelCounts).
+    map.foldl(append_dice_label_counts, DiceProcMap,
+        cord.init, LabelCountsCord),
+    LabelCounts = cord.list(LabelCountsCord).
 
 :- pred append_dice_label_counts(proc_label::in, proc_dice::in,
-    list(dice_label_count)::in, list(dice_label_count)::out) is det.
+    cord(dice_label_count)::in, cord(dice_label_count)::out) is det.
 
-append_dice_label_counts(ProcLabel, ProcDice, !LabelCounts) :-
+append_dice_label_counts(ProcLabel, ProcDice, !LabelCountsCord) :-
     map.to_assoc_list(ProcDice, ProcExecCounts),
     list.map(make_dice_label_count(ProcLabel), ProcExecCounts, NewLabelCounts),
-    append(!.LabelCounts, NewLabelCounts, !:LabelCounts).
+    cord.snoc_list(NewLabelCounts, !LabelCountsCord).
 
 :- pred make_dice_label_count(proc_label::in,
     pair(path_port, dice_exec_count)::in, dice_label_count::out) is det.

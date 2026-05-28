@@ -6780,6 +6780,10 @@ i.e.@: sets the counts for all depths to zero.
 @sp 1
 @item dice [-p@var{filename}] [-f@var{filename}] [-n@var{num}] [-s[pPfFsS]+] [-o @var{filename}] [-m @var{module}]
 @kindex dice (mdb command)
+@c NOTE Much of the description of this command
+@c is included in the user guide TWICE,
+@c once here, and once in the description of the mdice command below.
+@c Changes here may require changes there, and vice versa.
 Display a program dice on the screen.
 @sp 1
 A dice is a comparison between
@@ -6826,69 +6830,91 @@ Six columns are displayed:
 @item @samp{Procedure}:
 The procedure in which the goal appears.
 @item @samp{Path/Port}:
-The goal path and/or port of the goal.  For atomic goals, statistics about the
-CALL event and the corresponding EXIT, FAIL or EXCP event are displayed on
-separate rows.  For other types of goals the goal path is displayed, except for
-NEGE, NEGS and NEGF events where the goal path and port are displayed.
+The goal path and/or port of the goal.
+For atomic goals, statistics about the CALL event
+and the corresponding EXIT, FAIL or EXCP event
+are displayed on separate rows.
+For other types of goals, the displayed text shows the goal path,
+except for NEGE, NEGS and NEGF events,
+where it contains both the goal path and the port.
 @item @samp{File:Line}:
-The file name and line number of the goal.  This can be used to set a
-breakpoint on the goal.
+The file name and line number of the goal.
+This can be used to set a breakpoint on the goal.
 @item @samp{Pass (total passing test runs)}:
 The total number of times the goal was executed in all the passing test runs.
-This is followed by a number in parentheses which indicates the number of test
-runs the goal was executed in.  The heading of this column also has a number in
-parentheses which is the total number of passing test cases.  In the example
-above we can see that 3 passing tests were run.
+This is followed by a number in parentheses,
+which indicates the number of test runs the goal was executed in.
+The heading of this column also has a number in parentheses,
+which is the total number of passing test cases.
+In the example above we can see that three passing tests were run.
 @item @samp{Fail}:
 The number of times the goal was executed in the failing test run.
 @item @samp{Suspicion}:
-A number between 0 and 1 which gives an indication of how likely a
-particular goal is to be buggy.
-This is calculated as Suspicion = F / (P + F) where F is the number of times
-the goal was executed in the failing test run and P is the number of times the
-goal was executed in passing test runs.
+A number between 0 and 1 which gives an indication
+of how likely a particular goal is to be buggy.
+This is calculated as Suspicion = Fail / (Pass + Fail), where
+Fail is the number of times the goal was executed in the failing test run,
+and Pass is the number of times the goal was executed in passing test runs.
 @end itemize
 @sp 1
-The name of the file containing the failing slice can be specified with the
-@samp{-f} or @samp{--fail-trace-counts} option or with a separate
-@samp{set fail_trace_counts @var{filename}} command.
+The name of the file containing the failing slice
+can be specified with the @samp{-f} or @samp{--fail-trace-counts} option
+or with a separate @samp{set fail_trace_counts @var{filename}} command.
 @sp 1
 The name of the file containing the union of the passing slices
 can be given with the @samp{-p} or @samp{--pass-trace-counts} option.
-Alternatively a separate @samp{set pass_trace_counts @var{filename}} command
-can be given.  See @ref{Trace counts} for more information about trace counts.
+Alternatively, users can give
+a separate @samp{set pass_trace_counts @var{filename}} command.
+See @ref{Trace counts} for more information about trace counts.
 @sp 1
-The table can be sorted on the Pass, Fail or Suspicion columns, or a
-combination of these.  This can be done with the @samp{-s} or @samp{--sort}
-option.  The argument of this option is a string made up of any combination of
-the letters @samp{pPfFsS}.  The letters in the string indicate how the table
-should be sorted:
+The table is normally sorted on the identification of the event,
+meaning it is sorted
+@itemize @bullet
+@item first on the identification of the procedure containing the event
+(consisting of a pred/func indication,
+the name of the predicate or function, its arity, and its mode number),
+@item then on the port (if any),
+@item then on the path (if any),
+@item then on the file name, and
+@item then on the line number.
+@end itemize
+@sp 1
+However, users can also ask for it to be sorted
+on the Pass, Fail and/or Suspicion columns, or on a combination of these.
+This can be done with the @samp{-s} or @samp{--sort} option.
+The argument of this option is a nonempty string
+consisting of any combination of the letters @samp{pPfFdDsS}.
+The letters in the string indicate how the table should be sorted:
 @sp 1
 @itemize @bullet
 @item @samp{p}: Pass ascending
 @item @samp{P}: Pass descending
 @item @samp{f}: Fail ascending
 @item @samp{F}: Fail descending
+@item @samp{d}: Difference (Pass minus Fail) ascending
+@item @samp{D}: Difference (Pass minus Fail) descending
 @item @samp{s}: Suspicion ascending
 @item @samp{S}: Suspicion descending
 @end itemize
 @sp 1
-For example, the string "SF" means sort the table by suspicion, descending, and
-if any two suspicions are the same, then by number of executions in the failing
-test case, descending.
+For example, the string "SF" means sort the table by suspicion, descending,
+and if any two suspicions are the same,
+then by number of executions in the failing test case, descending.
 @sp 1
-The option @samp{-n} or @samp{--top} can be used to limit the number lines
-displayed.  Only the top @var{num} lines, with respect to
-the ordering specified by the @samp{-s} option, will be displayed.
-By default the table is limited to 50 lines.
+To limit the number of sorted lines displayed,
+users can specify the @samp{-n} option or its @samp{--top} synonym,
+both of which take an integer argument;
+this will cause only the specified number
+of the top lines of the table to be displayed.
 @sp 1
-If the @samp{-o} or @samp{--output-to-file} option is given then the output
-will be written to the specified file instead of being displayed on the
-screen.  Note that the file will be overwritten without warning if it
-already exists.
+The @samp{-m} or @samp{--module} option, if specified,
+limits the output to the given module and (if they exist) its submodules.
 @sp 1
-The @samp{-m} or @samp{--module} option limits the output to the given module
-and its submodules, if any.
+If the user specifies the @samp{-o} or @samp{--output-to-file} option,
+then the output will be written to the specified file
+instead of being displayed on the screen.
+Note that if the file already exists,
+it will be overwritten without warning.
 @end table
 
 @sp 1
@@ -7826,7 +7852,7 @@ For example:
 mtc ./myprog arg1 arg2
 @end example
 @sp 1
-The program will run as usual, except that when it terminates
+The program will run as usual, except that when it terminates,
 it will write the number of times each debugger event was executed
 to a trace count file.
 @sp 1
@@ -7906,9 +7932,9 @@ the count of the test cases that contributed to its contents in any useful way.
 @node Slicing
 @subsection Slicing
 
-Once a slice has been generated
-it can be viewed in various ways using the mslice tool.
-The output of the mslice tool will look something like the following:
+Once a slice has been generated,
+it can be viewed in various ways using the @samp{mslice} tool.
+The output of this tool will look something like the following:
 @sp 1
 @example
 Procedure            Path/Port File:Line Count (1)
@@ -7919,7 +7945,7 @@ pred mrg.msort_n/4-0 EXIT      mrg.m:33     12 (1)
 pred mrg.msort_n/4-0 <?;>      mrg.m:35     12 (1)
 @end example
 @sp 1
-Each row corresponds to a label in the program.
+Each row corresponds to a debugger event in the program.
 The meanings of the columns are as follows:
 @itemize @bullet
 @item @samp{Procedure}:
@@ -7937,12 +7963,12 @@ The number in parentheses for each event row
 says in how many runs the event was executed.
 The number in parentheses in the heading row (after the word "Count")
 indicates how many runs were represented
-in the trace counts file analysed by the mslice tool.
+in the trace counts file analysed by the @samp{mslice} tool.
 @end itemize
 
 @sp 1
 
-The mslice tool is invoked using a command of the form:
+The @samp{mslice} tool is invoked using a command of the form:
 @example
 mslice [-s sortspec] [-l N] [-m module] [-n N] [-p N] [-f N] file
 @end example
@@ -7970,17 +7996,18 @@ then those events will be sorted by number of runs in descending order.
 @sp 1
 The default is to sort descending on the Count column.
 @sp 1
-The @samp{-l} or @samp{--limit} option limits the output to @samp{N} lines.
+The @samp{-l} or @samp{--limit} option
+limits the output to the first @samp{N} lines.
 @sp 1
-The @samp{-m} or @samp{--module} option limits the output
-to events only from the given module.
+The @samp{-m} or @samp{--module} option
+limits the output to events only from the given module.
 @sp 1
-The @samp{-n} or @samp{--max-name-column-width} option's argument gives the
-maximum width of the column containing predicate and function names.
+The @samp{-n} or @samp{--max-name-column-width} option's argument gives
+the maximum width of the column containing predicate and function names.
 If the argument is zero, there is no maximum width.
 @sp 1
-The @samp{-p} or @samp{--max-path-column-width} option's argument gives the
-maximum width of the column containing ports and goal paths.
+The @samp{-p} or @samp{--max-path-column-width} option's argument gives
+the maximum width of the column containing ports and goal paths.
 If the argument is zero, there is no maximum width.
 @sp 1
 The @samp{-f} or @samp{--max-file-column-width} option's argument gives the
@@ -7991,6 +8018,10 @@ If the argument is zero, there is no maximum width.
 @node Dicing
 @subsection Dicing
 
+@c NOTE Much of the description of this command
+@c is included in the user guide TWICE,
+@c once in the description of the dice command in mdb above, and here.
+@c Changes here may require changes there, and vice versa.
 A dice is a comparison between passing and failing runs of a program.
 @sp 1
 Dice are created using the @samp{mdice} tool.
@@ -7999,8 +8030,10 @@ one must first generate a set of trace count files for passing runs
 and a set of trace count files for failing runs
 using the @samp{mtc} tool (@ref{Generating trace counts}).
 Once this has been done,
-and the union of each set computed using @samp{mtc_union},
-@samp{mdice} can be used to display a table of statistics
+and the union of each set
+(the set of passing runs and the set of failing runs)
+has been computed using @samp{mtc_union},
+invoking @samp{mdice} will display a table of statistics
 that compares the passing runs to the failing runs.
 @sp 1
 Here is an example of the output of the @samp{mdice} tool:
@@ -8013,7 +8046,8 @@ pred s.mrg/3-0   CALL       s.m:64      18 (3)    7      0.28
 pred s.mrg/3-0   EXIT       s.m:64      18 (3)    7      0.28
 @end example
 @sp 1
-This example tells us that the @samp{else} in @samp{s.m} on line 74
+This example tells us that
+the @samp{else} event in @samp{s.m} on line 74
 was executed once in the failing test run,
 but never during the passing test runs,
 so this would be a good place to start looking for a bug.
@@ -8031,21 +8065,21 @@ for an explanation of interface and internal events.)
 @item @samp{File:Line}:
 This column displays the context of the event.
 @item @samp{Pass (total passing test runs)}:
-This columns displays the total number of times
+This column displays the total number of times
 the event was executed in all the passing test runs.
 This is followed by a number in parentheses
-which indicates the number of test runs the event was executed in.
+which indicates the number of passing test runs the event was executed in.
 The heading of this column also has a number in parentheses
 which is the total number of passing test cases.
 @item @samp{Fail}:
 This column displays the number of times
 the goal was executed in the failing test run(s).
 @item @samp{Suspicion}:
-This columns displays a number between 0 and 1
+This column displays a number between 0 and 1
 which gives an indication of how likely a particular goal is to contain a bug.
-The suspicion is calculated as Suspicion = F / (P + F)
-where F is the number of times the goal was executed in failing runs
-and P is the number of times the goal was executed in passing runs.
+This number is calculated as Suspicion = Fail / (Pass + Fail)
+where Fail is the number of times the goal was executed in failing runs
+and Pass is the number of times the goal was executed in passing runs.
 @end itemize
 @sp 1
 The @samp{mdice} tool is invoked with a command of the form:
@@ -8053,18 +8087,36 @@ The @samp{mdice} tool is invoked with a command of the form:
 @example
 mdice [-s sortspec] [-l N] [-m module] [-n N] [-p N] [-f N] passfile failfile
 @end example
-@samp{passfile} is a trace count file,
-generated either directly by a passing program run
-or as the union of the trace count files of passing program runs.
-@samp{failfile} is a trace count file,
-generated either directly by a failing program run
-or as the union of the trace count files of failing program runs.
 @sp 1
-The table can be sorted on the Pass, Fail or Suspicion columns,
-or a combination of these.
+where
+@itemize @bullet
+@item
+@samp{passfile} is a trace count file,
+generated either directly by a passing program run,
+or as the union of the trace count files of passing program runs, and
+@item
+@samp{failfile} is a trace count file,
+generated either directly by a failing program run,
+or as the union of the trace count files of failing program runs.
+@end itemize
+@sp 1
+The table is normally sorted on the identification of the event,
+meaning it is sorted
+@itemize @bullet
+@item first on the identification of the procedure containing the event
+(consisting of a pred/func indication,
+the name of the predicate or function, its arity, and its mode number),
+@item then on the port (if any),
+@item then on the path (if any),
+@item then on the file name, and
+@item then on the line number.
+@end itemize
+@sp 1
+However, users can also ask for it to be sorted
+on the Pass, Fail and/or Suspicion columns, or on a combination of these.
 This can be done with the @samp{-s} or @samp{--sort} option.
-The argument of this option is a string
-made up of any combination of the letters @samp{pPfFsS}.
+The argument of this option is a nonempty string
+consisting of any combination of the letters @samp{pPfFdDsS}.
 The letters in the string indicate how the table should be sorted:
 @sp 1
 @itemize @bullet
@@ -8072,6 +8124,8 @@ The letters in the string indicate how the table should be sorted:
 @item @samp{P}: Pass descending
 @item @samp{f}: Fail ascending
 @item @samp{F}: Fail descending
+@item @samp{d}: Difference (Pass minus Fail) ascending
+@item @samp{D}: Difference (Pass minus Fail) descending
 @item @samp{s}: Suspicion ascending
 @item @samp{S}: Suspicion descending
 @end itemize
@@ -8081,13 +8135,18 @@ sort the table by suspicion in descending order,
 and if any two suspicions are the same,
 then by number of executions in the failing run(s), also in descending order.
 @sp 1
-The default is to sort descending on the Suspicion column.
+The default is "S", meaning to only sort descending by suspicion.
+(Note that this is different from
+the default for the @samp{dice} command in @samp{mdb}.)
 @sp 1
-The option @samp{-l} or @samp{--limit}
-can be used to limit the number of lines displayed.
+To limit the number sorted lines displayed,
+users can specify the @samp{-n} option or its @samp{--top} synonym,
+which take an integer argument;
+this will cause only specified number
+of the top lines of the table to be displayed.
 @sp 1
-The @samp{-m} or @samp{--module} option
-limits the output to the given module and any submodules.
+The @samp{-m} or @samp{--module} option, if specified,
+limits the output to the given module and (if they exist) its submodules.
 @sp 1
 The @samp{-n} or @samp{--max-name-column-width} option's argument gives the
 maximum width of the column containing predicate and function names.

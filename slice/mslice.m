@@ -74,7 +74,7 @@ main(!IO) :-
     string::in, io::di, io::uo) is det.
 
 compute_and_output_slice(StdOutStream, OptionTable, FileName, !IO) :-
-    lookup_string_option(OptionTable, sort, SortStr),
+    lookup_string_option(OptionTable, sort, SortStr0),
     lookup_int_option(OptionTable, max_row, MaxRow),
     lookup_int_option(OptionTable, max_name_column_width, MaxNameColumnWidth),
     lookup_int_option(OptionTable, max_path_column_width, MaxPathColumnWidth),
@@ -95,7 +95,15 @@ compute_and_output_slice(StdOutStream, OptionTable, FileName, !IO) :-
     else
         MaybeMaxFileColumnWidth = yes(MaxFileColumnWidth)
     ),
-    read_slice_to_string(FileName, SortStr, MaxRow,
+    % XXX This should be a separate option.
+    ( if string.contains_char(SortStr0, 'z') then
+        string.replace_all(SortStr0, "z", "", SortStr),
+        Zero = do_filter_zero
+    else
+        SortStr = SortStr0,
+        Zero = do_not_filter_zero
+    ),
+    read_slice_to_string(FileName, Zero, SortStr, MaxRow,
         MaybeMaxNameColumnWidth, MaybeMaxPathColumnWidth,
         MaybeMaxFileColumnWidth, Module, SliceStr, Problem, !IO),
     ( if Problem = "" then
