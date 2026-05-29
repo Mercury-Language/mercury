@@ -351,6 +351,35 @@ public enum TypeCtorRep {
     MR_TYPECTOR_REP_MAX                     = 56
 }
 
+// Interface implemented by every C# class generated from a Mercury
+// discriminated-union type ctor (and its functor sub-classes). It lets
+// the standard library walk a term's positional fields and read its
+// secondary tag without resorting to System.Reflection, so mer_std
+// stays compatible with the .NET trim/AOT toolchain (no IL2075).
+//
+// See csharp-aot-rtti-plan.md at the repo root for the design.
+public interface MR_DuTerm {
+    // Get the i-th positional field of this term.
+    //   F1 is index 0, F2 is index 1, ...
+    // Boxed for primitive-typed fields. Out-of-range index throws.
+    object MR_GetField(int index);
+
+    // Number of positional F1..Fn fields on this term, *including* any
+    // leading typeinfo / typeclassinfo poly-arg fields.
+    int    MR_GetFieldCount();
+
+    // Secondary tag value on this term, or -1 if the term carries
+    // no secondary tag.
+    int    MR_GetSecondaryTag();
+
+    // Deep-copy this term: clone the object (preserving its runtime
+    // type) and replace every positional field with the result of
+    // applying deepCopyFn to it. The fn is the recursive deep-copy
+    // entry point in library/builtin.m so that nested DU terms,
+    // tuples, arrays, and primitives are all copied consistently.
+    object MR_DeepCopy(System.Func<object, object> deepCopyFn);
+}
+
 public class PseudoTypeInfo {
     public readonly int variable_number;
 
@@ -1029,18 +1058,24 @@ public class SystemException : System.Exception
 
 public class Errors
 {
+    // SORRY and fatal_error match the behaviour of C's MR_fatal_error():
+    // flush stdout, print the message on stderr, then exit. This avoids
+    // the stack-trace noise of an unhandled exception and keeps test
+    // output consistent across backends.
+
     public static void SORRY(string s)
     {
-        string msg;
-        msg = System.String.Concat("Sorry, unimplemented: ", s);
-        throw new mercury.runtime.SystemException(msg);
+        System.Console.Out.Flush();
+        System.Console.Error.Write(
+            "Mercury runtime: not yet implemented: " + s + "\n");
+        System.Environment.Exit(1);
     }
 
     public static void fatal_error(string s)
     {
-        string msg;
-        msg = System.String.Concat("Fatal error: ", s);
-        throw new mercury.runtime.SystemException(msg);
+        System.Console.Out.Flush();
+        System.Console.Error.Write("Mercury runtime: " + s + "\n");
+        System.Environment.Exit(1);
     }
 }
 
@@ -1252,3 +1287,19 @@ public class MercuryBitmap {
 }
 
 }
+
+// Polyfill for `init` accessors and the synthesised members of `record
+// class` types when targeting netstandard2.0.  The C# compiler emits
+// references to System.Runtime.CompilerServices.IsExternalInit even for
+// records that do not expose init-only properties, so the polyfill must
+// be present for any TFM older than net5.0.  The type is guarded by the
+// netstandard-only branch so we do not collide with the framework
+// definition on net5.0+.
+#if !NET5_0_OR_GREATER
+namespace System.Runtime.CompilerServices
+{
+    [System.ComponentModel.EditorBrowsable(
+        System.ComponentModel.EditorBrowsableState.Never)]
+    internal static class IsExternalInit { }
+}
+#endif

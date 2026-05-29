@@ -236,12 +236,6 @@ Options that give the compiler its overall task
         Mercury standard library, as well as any other libraries specified via
         either the `--ml' or `-l' option.
 
-    --output-csharp-compiler
-        Print to standard output the command for invoking the C# compiler.
-
-    --output-csharp-compiler-type
-        Print to standard output the C# compiler's type.
-
     --output-java-class-directory
     --output-class-directory
     --output-java-class-dir
@@ -2793,16 +2787,9 @@ Options for target language compilation
 
   Options for compiling C# code
 
-    --csharp-compiler <csc>
-        Specify the name of the C# Compiler. The default is `csc'.
-
     --cli-interpreter <prog>
         Specify the program that implements the Common Language Infrastructure
         (CLI) execution environment, e.g. `mono'.
-
-    PRIVATE OPTION
-    --csharp-compiler-type {microsoft,mono,unknown}
-        There is no help text available.
 
     --csharp-flags <options>
     --no-csharp-flags

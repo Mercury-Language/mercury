@@ -563,6 +563,16 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     Arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY((MR_TypeInfo) TypeInfo_for_T);
 ").
 
+:- pragma foreign_proc("C#",
+    tuple_arity(_Term::in, Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // For variable-arity types like tuples the C# RTTI representation
+    // stores each argument's type info in TypeInfo_for_T.args, so the
+    // length of that vector is the tuple arity.
+    Arity = TypeInfo_for_T.args.Length;
+").
+
 tuple_arity(_, _) :-
     private_builtin.sorry("tuple_arity/2").
 
@@ -579,6 +589,18 @@ tuple_arity(_, _) :-
     TypeInfo_for_ArgT =
         (MR_Word) MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[1 + Index];
     Arg = arg_vector[Index];
+").
+
+:- pragma foreign_proc("C#",
+    tuple_arg(Term::in, Index::in, Arg::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // The C# backend emits tuples as object[]; the type info vector
+    // for a tuple is parallel to that array (no leading-arity slot
+    // unlike the C representation).
+    TypeInfo_for_ArgT =
+        (runtime.TypeInfo_Struct) TypeInfo_for_T.args[Index];
+    Arg = ((object[]) Term)[Index];
 ").
 
 tuple_arg(_, _, -1) :-
@@ -630,10 +652,14 @@ tuple_arg(_, _, -1) :-
     compare_representation_3_p_0(runtime.TypeInfo_Struct ti,
         object x, object y)
     {
-        // stub only
-        runtime.Errors.SORRY(
-            ""compare_representation_3_p_0/3 not implemented"");
-        return Comparison_result_0.f_equal;
+        // For types without user-defined equality this is identical to
+        // the structural compare; for types with user-defined equality
+        // the C backend would expose the underlying representation
+        // ordering.  The C# backend does not yet distinguish those
+        // cases, so we delegate to the structural compare too -- this
+        // is a faithful approximation for every Mercury type that does
+        // not override unification/comparison.
+        return rtti_implementation.generic_compare_3_p_0(ti, x, y);
     }
 ").
 
@@ -645,57 +671,32 @@ public static object deep_copy(object o)
     }
 
     System.Type t = o.GetType();
-    System.Array arr;
 
     if (t.IsValueType) {
+        // Primitive value types (int, char, bool, ...) are immutable.
         return o;
     } else if (t == typeof(string)) {
-        // XXX For some reason we need to handle strings specially.
-        // It is probably something to do with the fact that they
-        // are a builtin type.
-        string s;
-        s = (string) o;
-        return s;
-    } else if ((arr = o as System.Array) != null) {
+        // Strings are immutable in .NET.
+        return (string) o;
+    } else if (o is System.Array arr) {
+        // Mercury arrays (object[] tuples and array.array values).
+        // Element references are shared; this matches the behaviour
+        // of the original reflection-based deep_copy.
         return arr.Clone();
+    } else if (o is mercury.runtime.MR_DuTerm du) {
+        // Every C# class generated from a Mercury DU type ctor
+        // implements MR_DuTerm. The MR_DeepCopy method calls
+        // MemberwiseClone, then recurses on each positional field
+        // through this very deep_copy fn.
+        return du.MR_DeepCopy(deep_copy);
     } else {
-        object n;
-
-        // This will do a bitwise shallow copy of the object.
-        n = t.InvokeMember(""MemberwiseClone"",
-            System.Reflection.BindingFlags.Instance |
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.InvokeMethod,
-            null, o, new object[] {});
-
-        // Set each of the fields to point to a deep copy of the
-        // field.
-        deep_copy_fields(t.GetFields(
-            System.Reflection.BindingFlags.Public |
-            System.Reflection.BindingFlags.Instance),
-            n, o);
-
-        // XXX This requires that mercury.dll have
-        // System.Security.Permissions.ReflectionPermission
-        // so that the non-public fields are accessible.
-        deep_copy_fields(t.GetFields(
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.Instance),
-            n, o);
-
-        return n;
-    }
-}
-
-public static void deep_copy_fields(System.Reflection.FieldInfo[] fields,
-    object dest, object src)
-{
-    // XXX We don't handle init-only fields, but I can't think of a way.
-    foreach (System.Reflection.FieldInfo f in fields)
-    {
-        if (!f.IsNotSerialized) {
-            f.SetValue(dest, deep_copy(f.GetValue(src)));
-        }
+        // Closures, type infos, type class infos and other runtime
+        // structures are treated as immutable from Mercury's point
+        // of view, so a shallow alias is sufficient. (The previous
+        // reflection-based path walked their fields too, but doing
+        // so was redundant in practice and required full
+        // System.Reflection access incompatible with .NET trim/AOT.)
+        return o;
     }
 }
 ").

@@ -1268,194 +1268,613 @@ create_archive_for_c(Globals, ProgressStream, FullLibFileName, Quote,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
-        MainModuleName, FullOutputFileName0, SourceList0,
+        _MainModuleName, FullOutputFileName, SourceList,
         Specs, Succeeded, !IO) :-
-    get_system_env_type(Globals, EnvType),
-    get_csharp_compiler_type(Globals, CSharpCompilerType),
-
-    FullOutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
-        FullOutputFileName0),
-    SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
-        SourceList0),
-
-    % Suppress the MS C# compiler's banner message.
-    (
-        CSharpCompilerType = csharp_microsoft,
-        NoLogoOpt = "-nologo "
-    ;
-        ( CSharpCompilerType = csharp_mono
-        ; CSharpCompilerType = csharp_unknown
-        ),
-        NoLogoOpt = ""
-    ),
-
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
-    (
-        % If we output line numbers, the mono C# compiler outputs lots of
-        % spurious warnings about unused variables and unreachable code,
-        % so disable these warnings. It also confuses #pragma warning,
-        % which is why we make the options global.
-        LineNumbers = yes,
-        NoWarnLineNumberOpt = "-nowarn:162,219 "
-    ;
-        LineNumbers = no,
-        NoWarnLineNumberOpt = ""
-    ),
-
-    % NOTE: we use the -option style options in preference to the /option
-    % style in order to avoid problems with POSIX style shells.
-    globals.lookup_bool_option(Globals, target_debug, Debug),
-    (
-        Debug = yes,
-        DebugOpt = "-debug "
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-    (
-        LinkedTargetType = csharp_executable,
-        TargetOption = "-target:exe",
-        SignAssemblyOpt = ""
-    ;
-        LinkedTargetType = csharp_library,
-        TargetOption = "-target:library",
-        globals.lookup_string_option(Globals, sign_assembly, KeyFile),
-        ( if KeyFile = "" then
-            SignAssemblyOpt = ""
-        else
-            SignAssemblyOpt = "-keyfile:" ++ KeyFile ++ " "
-        )
-    ),
-
-    globals.lookup_accumulating_option(Globals, link_library_directories,
-        LinkLibraryDirectoriesList0),
-    LinkLibraryDirectoriesList =
-        list.map(csharp_file_name(EnvType, CSharpCompilerType),
-        LinkLibraryDirectoriesList0),
-    LinkerPathFlag = "-lib:",
-    join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
-        " ", LinkLibraryDirectories),
-
+    % Build the list of references for the generated csproj by parsing
+    % the same `-r:Lib.dll' flag strings that the legacy csc invocation
+    % used to consume, then resolving each name to a HintPath via the
+    % `-lib:' search dirs.
     get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
-        Specs, !IO),
+        LinkSpecs, !IO),
     (
-        MaybeLinkLibraries = yes(LinkLibrariesList0),
-        LinkLibrariesList =
-            list.map(csharp_file_name(EnvType, CSharpCompilerType),
-            LinkLibrariesList0),
-        join_quoted_string_list(LinkLibrariesList, "", "", " ",
-            LinkLibraries)
+        MaybeLinkLibraries = yes(LinkLibrariesList),
+        LinkLibrariesStr = string.join_list(" ", LinkLibrariesList)
     ;
         MaybeLinkLibraries = no,
-        LinkLibraries = ""
+        LinkLibrariesStr = ""
     ),
-
-    globals.lookup_string_option(Globals, csharp_compiler, CSharpCompilerCmd),
     get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, MercuryStdLibs),
-    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
-    CmdArgs = string.join_list(" ", [
-        NoLogoOpt,
-        NoWarnLineNumberOpt,
-        DebugOpt,
-        TargetOption,
-        "-out:" ++ FullOutputFileName,
-        SignAssemblyOpt,
-        LinkLibraryDirectories,
-        LinkLibraries,
-        MercuryStdLibs] ++
-        CSCFlagsList ++
-        SourceList),
-    invoke_long_system_command(Globals, ProgressStream, ProgressStream,
-        cmd_verbose_commands, CSharpCompilerCmd, CmdArgs, Succeeded0, !IO),
+    parse_csharp_ref_flags(MercuryStdLibs ++ " " ++ LinkLibrariesStr,
+        RefNames),
 
-    % Also create a shell script to launch it if necessary.
-    globals.get_target_env_type(Globals, TargetEnvType),
-    globals.lookup_string_option(Globals, cli_interpreter, CLI),
-    ( if
-        Succeeded0 = succeeded,
-        LinkedTargetType = csharp_executable,
-        CLI \= "",
-        TargetEnvType = env_type_posix
-    then
-        construct_cli_shell_script_for_csharp(Globals, FullOutputFileName,
-            ContentStr),
-        create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            ContentStr, Succeeded, !IO)
-    else
-        Succeeded = Succeeded0
-    ).
-
-%---------------------%
-
-    % Converts the given filename into a format acceptable to the C# compiler.
-    %
-    % Older MS C# compilers only allowed \ as the path separator, so we convert
-    % all / into \ when using an MS C# compiler on Windows.
-    %
-    % XXX do current MS C# compilers still have this behaviour?
-    % - juliensf, 2025-08-17
-    %
-:- func csharp_file_name(env_type, csharp_compiler_type, file_name)
-    = file_name.
-
-csharp_file_name(EnvType, CSharpCompiler, FileName0) = FileName :-
-    (
-        EnvType = env_type_posix,
-        FileName = FileName0
-    ;
-        ( EnvType = env_type_cygwin
-        ; EnvType = env_type_win_cmd
-        ; EnvType = env_type_powershell
-        ),
-        (
-            ( CSharpCompiler = csharp_microsoft
-            ; CSharpCompiler = csharp_unknown
-            ),
-            FileName = convert_to_windows_path_format(FileName0)
-        ;
-            CSharpCompiler = csharp_mono,
-            FileName = FileName0
-        )
-    ;
-        EnvType = env_type_msys,
-        (
-            CSharpCompiler = csharp_microsoft,
-            FileName = convert_to_windows_path_format(FileName0)
-        ;
-            ( CSharpCompiler = csharp_mono
-            ; CSharpCompiler = csharp_unknown
-            ),
-            FileName = FileName0
-        )
-    ).
-
-:- func convert_to_windows_path_format(file_name) = file_name.
-
-convert_to_windows_path_format(FileName) =
-    string.replace_all(FileName, "/", "\\\\").
-
-%---------------------%
-
-:- pred construct_cli_shell_script_for_csharp(globals::in, string::in,
-    string::out) is det.
-
-construct_cli_shell_script_for_csharp(Globals, ExeFileName, ContentStr) :-
-    globals.lookup_string_option(Globals, cli_interpreter, CLI),
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
-    globals.lookup_accumulating_option(Globals, mono_path_directories,
-        MonoPathDirectoriesList),
-    AllSearchPaths = LinkLibraryDirectoriesList ++ MonoPathDirectoriesList,
-    join_quoted_string_list(AllSearchPaths, "", "",
-        ":", MonoPathDirectories),
-    ContentStr = string.append_list([
-        "#!/bin/sh\n",
-        "DIR=${0%/*}\n",
-        "MONO_PATH=$MONO_PATH:", MonoPathDirectories, "\n",
-        "export MONO_PATH\n",
-        "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
-        "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
+    resolve_csharp_refs(LinkLibraryDirectoriesList, RefNames,
+        RefEntries, !IO),
+
+    % The csproj sits next to FullOutputFileName.  MSBuild's <OutputPath>
+    % is set to `./' (relative to the csproj) so the produced .dll, apphost
+    % and runtimeconfig.json land where Mercury expects them - including
+    % under `Mercury/csharp/' when --use-subdir is enabled, since
+    % FullOutputFileName already carries the right prefix.
+    OutputBaseName = dir.det_basename(FullOutputFileName),
+    AssemblyName = strip_csharp_exec_ext(OutputBaseName),
+    ( if dir.split_name(FullOutputFileName, OutputDir0, _) then
+        OutputDir = OutputDir0
+    else
+        OutputDir = "."
+    ),
+    CsprojPath = OutputDir / (AssemblyName ++ ".csproj"),
+
+    globals.lookup_bool_option(Globals, target_debug, Debug),
+    globals.lookup_accumulating_option(Globals, csharp_flags, ExtraCSCFlags),
+    (
+        LinkedTargetType = csharp_library,
+        globals.lookup_string_option(Globals, sign_assembly, KeyFile)
+    ;
+        LinkedTargetType = csharp_executable,
+        KeyFile = ""
+    ),
+    % SourceList paths are relative to the compiler's cwd, but MSBuild
+    % resolves <Compile Include="..."> entries relative to the csproj
+    % file location.  With --use-subdirs/--use-grade-subdirs the csproj
+    % sits several directories deep, so a cwd-relative source path would
+    % be doubly-nested.  Anchor each entry to an absolute path before
+    % handing it to the csproj generator.  If we cannot determine the
+    % cwd we fall back to the unmodified list, which still works in the
+    % common no-subdirs case.
+    dir.current_directory(CwdResult, !IO),
+    (
+        CwdResult = ok(Cwd),
+        AbsSourceList = list.map(make_csproj_source_path_absolute(Cwd),
+            SourceList)
+    ;
+        CwdResult = error(_),
+        AbsSourceList = SourceList
+    ),
+    % Decide whether `--csharp-aot' applies.  For executables, derive a
+    % .NET RID from the target triple so we can switch `dotnet build' to
+    % `dotnet publish -p:PublishAot=true -r <rid>'.  For libraries, only
+    % emit an `<IsAotCompatible>true</IsAotCompatible>' marker; the build
+    % flow itself is unchanged.  If RID derivation fails, write a notice
+    % to the progress stream and fall back to a regular `dotnet build'
+    % so the user is not silently denied their opt-in.
+    globals.lookup_bool_option(Globals, csharp_aot, AotOption),
+    (
+        AotOption = no,
+        AotRequest = aot_off
+    ;
+        AotOption = yes,
+        (
+            LinkedTargetType = csharp_executable,
+            compute_dotnet_rid(Globals, RidResult),
+            (
+                RidResult = ok(Rid),
+                AotRequest = aot_publish(Rid)
+            ;
+                RidResult = error(RidMsg),
+                AotRequest = aot_off,
+                io.format(ProgressStream,
+                    "%% --csharp-aot: %s.  Falling back to `dotnet build'.\n",
+                    [s(RidMsg)], !IO)
+            )
+        ;
+            LinkedTargetType = csharp_library,
+            AotRequest = aot_library_marker
+        )
+    ),
+    Specs = LinkSpecs,
+
+    csproj_content(LinkedTargetType, AssemblyName, AbsSourceList, RefEntries,
+        Debug, ExtraCSCFlags, KeyFile, AotRequest, CsprojContent),
+
+    io.open_output(CsprojPath, OpenRes, !IO),
+    (
+        OpenRes = ok(Stream),
+        io.write_string(Stream, CsprojContent, !IO),
+        io.close_output(Stream, !IO),
+
+        % Invoke `dotnet build' (or `dotnet publish' under --csharp-aot)
+        % once on the generated csproj.  MSBuild handles framework
+        % references, runtimeconfig.json emission and apphost generation;
+        % we no longer need a wrapper shell script.
+        % Use invoke_system_command rather than invoke_long_system_command:
+        % the dotnet CLI does not tokenize @file response files like csc
+        % and msbuild do (it reads the entire file as a single argument),
+        % so the @file machinery would route us to a non-existent
+        % `dotnet-build path/to/csproj ...' tool.  The dotnet command
+        % line stays well under the Windows length limit anyway.
+        (
+            AotRequest = aot_publish(PublishRid),
+            DotnetCmd = "dotnet publish " ++
+                quote_shell_cmd_arg(CsprojPath) ++
+                " -c Release -r " ++ PublishRid ++ " -v:quiet --nologo"
+        ;
+            ( AotRequest = aot_off
+            ; AotRequest = aot_library_marker
+            ),
+            DotnetCmd = "dotnet build " ++
+                quote_shell_cmd_arg(CsprojPath) ++
+                " -c Release -v:quiet --nologo"
+        ),
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose_commands, DotnetCmd, Succeeded0, !IO),
+
+        % On non-Windows hosts the apphost has no `.exe' suffix, but
+        % Mercury's `csharp_executable' linked-target convention always
+        % uses `.exe'.  If the build succeeded but FullOutputFileName
+        % does not exist, while the apphost without the suffix does,
+        % rename it so post_link_maybe_make_symlink_or_copy finds it.
+        ( if
+            Succeeded0 = succeeded,
+            LinkedTargetType = csharp_executable
+        then
+            maybe_rename_apphost(FullOutputFileName, OutputDir, AssemblyName,
+                !IO)
+        else
+            true
+        ),
+        Succeeded = Succeeded0
+    ;
+        OpenRes = error(_),
+        Succeeded = did_not_succeed
+    ).
+
+%---------------------%
+%
+% Helpers for csproj-based linking.
+%
+
+    % Return Path unchanged if it is already absolute; otherwise prepend Cwd
+    % so the result is an absolute path safe to embed in <Compile Include>
+    % entries regardless of where the csproj file ends up.
+    %
+:- func make_csproj_source_path_absolute(string, string) = string.
+
+make_csproj_source_path_absolute(Cwd, Path) =
+    ( if dir.path_name_is_absolute(Path) then
+        Path
+    else
+        Cwd / Path
+    ).
+
+    % If the apphost was emitted without the `.exe' suffix (the default on
+    % non-Windows hosts) and FullOutputFileName does not yet exist, rename
+    % the bare apphost so callers can find it under its expected name.
+    %
+:- pred maybe_rename_apphost(string::in, string::in, string::in,
+    io::di, io::uo) is det.
+
+maybe_rename_apphost(FullOutputFileName, OutputDir, AssemblyName, !IO) :-
+    io.file.check_file_accessibility(FullOutputFileName, [read],
+        ExpectedRes, !IO),
+    (
+        ExpectedRes = ok
+        % File is already where Mercury expects it (apphost on Windows
+        % already includes `.exe'); nothing to do.
+    ;
+        ExpectedRes = error(_),
+        BareApphost = OutputDir / AssemblyName,
+        io.file.check_file_accessibility(BareApphost, [read],
+            BareRes, !IO),
+        (
+            BareRes = ok,
+            io.file.rename_file(BareApphost, FullOutputFileName,
+                _RenameRes, !IO)
+        ;
+            BareRes = error(_)
+            % Neither file exists; let the caller error out cleanly.
+        )
+    ).
+
+    % Strip the trailing .exe or .dll from a Mercury-emitted output basename.
+    %
+:- func strip_csharp_exec_ext(string) = string.
+
+strip_csharp_exec_ext(Name) = Stripped :-
+    ( if string.remove_suffix(Name, ".exe", Bare) then
+        Stripped = Bare
+    else if string.remove_suffix(Name, ".dll", Bare) then
+        Stripped = Bare
+    else
+        Stripped = Name
+    ).
+
+    % Parse a flag string of the form "-r:foo.dll -r:'bar.dll' ..." into
+    % a deduplicated list of bare assembly names ["foo", "bar", ...].
+    % Naive: assumes individual paths do not contain spaces.
+    %
+:- pred parse_csharp_ref_flags(string::in, list(string)::out) is det.
+
+parse_csharp_ref_flags(FlagsStr, Names) :-
+    Tokens = string.words(FlagsStr),
+    list.filter_map(extract_csharp_ref_name, Tokens, Names0),
+    list.remove_dups(Names0, Names).
+
+:- pred extract_csharp_ref_name(string::in, string::out) is semidet.
+
+extract_csharp_ref_name(Token0, Name) :-
+    Token = csharp_strip_quotes(Token0),
+    string.remove_prefix("-r:", Token, AfterPrefix0),
+    AfterPrefix = csharp_strip_quotes(AfterPrefix0),
+    AfterPrefix \= "",
+    ( if string.remove_suffix(AfterPrefix, ".dll", Bare) then
+        BareName = Bare
+    else
+        BareName = AfterPrefix
+    ),
+    % Strip any leading directory portion: csc accepts paths in -r:, but
+    % csproj <Reference Include=...> expects bare assembly names.
+    Name = dir.det_basename(BareName).
+
+:- func csharp_strip_quotes(string) = string.
+
+csharp_strip_quotes(S) =
+    string.replace_all(string.replace_all(S, "'", ""), """", "").
+
+:- type csharp_ref_entry
+    --->    csharp_ref_entry(string, maybe(string)).
+
+    % Resolve each reference name against the list of -lib: search dirs.
+    % For names we cannot find on disk, the entry is emitted without a
+    % HintPath; MSBuild will report a clear error if it cannot locate the
+    % assembly via its own resolution.
+    %
+:- pred resolve_csharp_refs(list(string)::in, list(string)::in,
+    list(csharp_ref_entry)::out, io::di, io::uo) is det.
+
+resolve_csharp_refs(_SearchDirs, [], [], !IO).
+resolve_csharp_refs(SearchDirs, [Name | Names],
+        [csharp_ref_entry(Name, MaybePath) | Rest], !IO) :-
+    find_csharp_ref_dll(SearchDirs, Name ++ ".dll", MaybePath, !IO),
+    resolve_csharp_refs(SearchDirs, Names, Rest, !IO).
+
+:- pred find_csharp_ref_dll(list(string)::in, string::in,
+    maybe(string)::out, io::di, io::uo) is det.
+
+find_csharp_ref_dll([], _DllName, no, !IO).
+find_csharp_ref_dll([Dir | Dirs], DllName, MaybePath, !IO) :-
+    Path = Dir / DllName,
+    io.file.check_file_accessibility(Path, [read], CheckRes, !IO),
+    (
+        CheckRes = ok,
+        MaybePath = yes(Path)
+    ;
+        CheckRes = error(_),
+        find_csharp_ref_dll(Dirs, DllName, MaybePath, !IO)
+    ).
+
+    % How `--csharp-aot' should affect this csproj invocation, computed
+    % once in create_exe_or_lib_for_csharp/9 and threaded through.
+    %
+:- type csharp_aot_request
+    --->    aot_off
+            % `--csharp-aot' was not requested (or could not be honoured).
+    ;       aot_publish(string)
+            % `--csharp-aot' on a csharp_executable target.  The string is
+            % the .NET runtime identifier (RID) we will pass to
+            % `dotnet publish -r ...'.
+    ;       aot_library_marker.
+            % `--csharp-aot' on a csharp_library target: emit
+            % `<IsAotCompatible>true</IsAotCompatible>' as a marker for
+            % downstream consumers but keep the regular `dotnet build'
+            % flow.
+
+    % Map Mercury's target architecture (typically a GNU triple such as
+    % `aarch64-w64-mingw32') to a .NET runtime identifier such as
+    % `win-arm64'.  Returns error/1 with a short reason when the host
+    % cannot be expressed as a RID; callers should treat that as
+    % "fall back to a regular build and warn".
+    %
+:- pred compute_dotnet_rid(globals::in, maybe_error(string)::out) is det.
+
+compute_dotnet_rid(Globals, MaybeRid) :-
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    ( if
+        ( string.sub_string_search(TargetArch, "aarch64", _)
+        ; string.sub_string_search(TargetArch, "arm64", _)
+        )
+    then
+        Arch = "arm64"
+    else if
+        ( string.sub_string_search(TargetArch, "x86_64", _)
+        ; string.sub_string_search(TargetArch, "amd64", _)
+        )
+    then
+        Arch = "x64"
+    else if
+        ( string.sub_string_search(TargetArch, "i686", _)
+        ; string.sub_string_search(TargetArch, "i386", _)
+        )
+    then
+        Arch = "x86"
+    else
+        Arch = ""
+    ),
+    ( if
+        ( string.sub_string_search(TargetArch, "darwin", _)
+        ; string.sub_string_search(TargetArch, "apple", _)
+        )
+    then
+        Os = "osx"
+    else if
+        ( string.sub_string_search(TargetArch, "mingw", _)
+        ; string.sub_string_search(TargetArch, "windows", _)
+        ; string.sub_string_search(TargetArch, "msvc", _)
+        )
+    then
+        Os = "win"
+    else if string.sub_string_search(TargetArch, "linux", _) then
+        Os = "linux"
+    else
+        Os = ""
+    ),
+    ( if Arch = "" then
+        MaybeRid = error("could not derive a .NET RID architecture " ++
+            "from target_arch `" ++ TargetArch ++ "'")
+    else if Os = "" then
+        MaybeRid = error("could not derive a .NET RID OS " ++
+            "from target_arch `" ++ TargetArch ++ "'")
+    else
+        MaybeRid = ok(Os ++ "-" ++ Arch)
+    ).
+
+    % Build the .csproj content as a single string.
+    %
+:- pred csproj_content(linked_target_type::in(csharp_linked_target_type),
+    string::in, list(string)::in,
+    list(csharp_ref_entry)::in, bool::in, list(string)::in, string::in,
+    csharp_aot_request::in, string::out) is det.
+
+csproj_content(LinkedTargetType, AssemblyName, SourceList, RefEntries,
+        Debug, ExtraCSCFlags, KeyFile, AotRequest, Content) :-
+    % Executables target a single runtime (apphost ships against one TFM);
+    % libraries multi-target net10.0 + netstandard2.0 so downstream
+    % consumers can pick either modern .NET or .NET Framework / Mono /
+    % Unity hosts that only understand netstandard2.0.
+    (
+        LinkedTargetType = csharp_executable,
+        OutputType = "Exe",
+        UseAppHost = "true",
+        TargetFrameworkLine =
+            "    <TargetFramework>net10.0</TargetFramework>\n",
+        % Single-target: `<OutputPath>` lives in the common PropertyGroup
+        % so the DLL/apphost lands beside the csproj.
+        MainOutputPathLines = string.append_list([
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <OutputPath>./</OutputPath>\n"
+        ]),
+        ExtraPropertyGroups = "",
+        ExtraItemGroups = "",
+        % `<IsTrimmable>` / `<IsAotCompatible>` are net5.0+ only, but the
+        % single-target executable case never picks netstandard2.0, so an
+        % unconditional emission stays safe.
+        IsTrimmableLine = "",
+        IsTrimmableTfmCondition = ""
+    ;
+        LinkedTargetType = csharp_library,
+        OutputType = "Library",
+        UseAppHost = "false",
+        TargetFrameworkLine = "    <TargetFrameworks>" ++
+            "net10.0;netstandard2.0</TargetFrameworks>\n",
+        MainOutputPathLines = "",
+        % For multi-targeted libraries, lay out the netstandard2.0 DLL at
+        % the csproj root (preserving the prior single-target convention
+        % so existing `<HintPath>` references and Mercury's internal
+        % library lookups keep working) and route the net10.0 DLL into a
+        % per-TFM subdirectory.  Both `<OutputPath>` and
+        % `<AppendTargetFrameworkToOutputPath>false</...>` need the per-TFM
+        % condition, because `<TargetFrameworks>` flips the latter's
+        % default to `true`.
+        % `<IntermediateOutputPath>` must also be per-TFM, otherwise the
+        % two builds share `obj/<config>/` and the second silently
+        % overwrites or skips the first.
+        ExtraPropertyGroups = string.append_list([
+            "  <PropertyGroup ",
+            "Condition=""'$(TargetFramework)'=='netstandard2.0'"">\n",
+            "    <OutputPath>./</OutputPath>\n",
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <IntermediateOutputPath>",
+            "obj/$(Configuration)/netstandard2.0/",
+            "</IntermediateOutputPath>\n",
+            "  </PropertyGroup>\n",
+            "  <PropertyGroup ",
+            "Condition=""'$(TargetFramework)'=='net10.0'"">\n",
+            "    <OutputPath>./net10.0/</OutputPath>\n",
+            "    <AppendTargetFrameworkToOutputPath>false",
+            "</AppendTargetFrameworkToOutputPath>\n",
+            "    <IntermediateOutputPath>",
+            "obj/$(Configuration)/net10.0/",
+            "</IntermediateOutputPath>\n",
+            "  </PropertyGroup>\n"
+        ]),
+        % `System.Runtime.CompilerServices.Unsafe` is intrinsic on net5.0+
+        % but lives in a standalone NuGet package on netstandard2.0.  The
+        % compiler's MLDS-to-C# backend emits `Unsafe.As<T>(...)` in
+        % delegate-pointer call sites (mlds_to_cs_stmt.m), so the package
+        % reference is mandatory for the netstandard2.0 build to compile.
+        % Pinned to 4.5.3 -- the version paired with netstandard2.0
+        % itself.  We only use Unsafe.As<T>(object) which has been in the
+        % package since 4.4.0; bumping to 6.0.0 only changes signing
+        % metadata, not behaviour.
+        ExtraItemGroups = string.append_list([
+            "  <ItemGroup ",
+            "Condition=""'$(TargetFramework)'=='netstandard2.0'"">\n",
+            "    <PackageReference ",
+            "Include=""System.Runtime.CompilerServices.Unsafe"" ",
+            "Version=""4.5.3"" />\n",
+            "  </ItemGroup>\n"
+        ]),
+        % `<IsAotCompatible>true</...>' implies `<IsTrimmable>true</...>',
+        % so when AotRequest = aot_library_marker we skip the redundant
+        % IsTrimmable line below; the AotPropertyLines block emits the
+        % stronger marker instead.  Both properties are net5.0+ only, so
+        % they must be scoped to non-netstandard2.0 TFMs to avoid MSBuild
+        % warnings on the netstandard2.0 half of the multi-target build.
+        IsTrimmableTfmCondition =
+            " Condition=""'$(TargetFramework)'!='netstandard2.0'""",
+        ( if AotRequest = aot_library_marker then
+            IsTrimmableLine = ""
+        else
+            IsTrimmableLine = string.append_list([
+                "    <IsTrimmable", IsTrimmableTfmCondition,
+                ">true</IsTrimmable>\n"
+            ])
+        )
+    ),
+    % Native AOT properties.  For executables, switch on PublishAot,
+    % nail the runtime identifier, force globalization-invariant data
+    % (the only mode AOT supports without a sidecar ICU package), and
+    % redirect the publish output to the csproj directory so the binary
+    % lands where Mercury expects it.  For libraries, just announce
+    % AOT compatibility; consumers may then opt into AOT publishing.
+    (
+        AotRequest = aot_off,
+        AotPropertyLines = ""
+    ;
+        AotRequest = aot_publish(Rid),
+        AotPropertyLines = string.append_list([
+            "    <PublishAot>true</PublishAot>\n",
+            "    <SelfContained>true</SelfContained>\n",
+            "    <InvariantGlobalization>true</InvariantGlobalization>\n",
+            "    <RuntimeIdentifier>", xml_escape(Rid),
+            "</RuntimeIdentifier>\n",
+            "    <PublishDir>./</PublishDir>\n"
+        ])
+    ;
+        AotRequest = aot_library_marker,
+        % `<IsAotCompatible>` is net5.0+ only.  In the multi-target
+        % library case, scope it to non-netstandard2.0 TFMs so MSBuild
+        % does not warn during the netstandard2.0 build.
+        AotPropertyLines = string.append_list([
+            "    <IsAotCompatible", IsTrimmableTfmCondition,
+            ">true</IsAotCompatible>\n"
+        ])
+    ),
+    (
+        Debug = yes,
+        DebugType = "portable",
+        OptimizeLine = "    <Optimize>false</Optimize>\n"
+    ;
+        Debug = no,
+        DebugType = "none",
+        OptimizeLine = "    <Optimize>true</Optimize>\n"
+    ),
+    ( if KeyFile = "" then
+        SignLines = ""
+    else
+        SignLines = string.append_list([
+            "    <SignAssembly>true</SignAssembly>\n",
+            "    <AssemblyOriginatorKeyFile>", xml_escape(KeyFile),
+            "</AssemblyOriginatorKeyFile>\n"
+        ])
+    ),
+    list.map(format_compile_item, SourceList, CompileItems),
+    list.map(format_reference_item, RefEntries, RefItems),
+    % Pass through any --csharp-flag values that look like /define:SYM via
+    % <DefineConstants>.  Other flags must be set on the csproj manually.
+    list.filter_map(parse_define_constant, ExtraCSCFlags, ExtraDefines),
+    ( if ExtraDefines = [] then
+        DefineLine = ""
+    else
+        DefineLine = string.append_list([
+            "    <DefineConstants>", string.join_list(";", ExtraDefines),
+            "</DefineConstants>\n"
+        ])
+    ),
+    % XML comments may not contain `--' (MSBuild flags this as MSB4025),
+    % so spell `mmc' bare and avoid the literal flag form `--grade csharp'.
+    Header = string.append_list([
+        "<!-- Generated by Mercury mmc; do not edit. -->\n",
+        "<Project Sdk=""Microsoft.NET.Sdk"">\n",
+        "  <PropertyGroup>\n",
+        TargetFrameworkLine,
+        "    <LangVersion>14</LangVersion>\n",
+        "    <Nullable>disable</Nullable>\n",
+        "    <OutputType>", OutputType, "</OutputType>\n",
+        "    <AssemblyName>", xml_escape(AssemblyName), "</AssemblyName>\n",
+        "    <RootNamespace>mercury</RootNamespace>\n",
+        "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n",
+        MainOutputPathLines,
+        "    <AppendRuntimeIdentifierToOutputPath>false",
+        "</AppendRuntimeIdentifierToOutputPath>\n",
+        "    <UseAppHost>", UseAppHost, "</UseAppHost>\n",
+        "    <DebugType>", DebugType, "</DebugType>\n",
+        OptimizeLine,
+        "    <NoWarn>0162;0219</NoWarn>\n",
+        "    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>\n",
+        "    <CopyLocalLockFileAssemblies>false",
+        "</CopyLocalLockFileAssemblies>\n",
+        "    <GenerateDocumentationFile>false</GenerateDocumentationFile>\n",
+        IsTrimmableLine,
+        AotPropertyLines,
+        SignLines,
+        DefineLine,
+        "  </PropertyGroup>\n",
+        ExtraPropertyGroups,
+        "  <ItemGroup>\n"]),
+    Middle = string.append_list([
+        "  </ItemGroup>\n",
+        "  <ItemGroup>\n"]),
+    Footer = string.append_list([
+        "  </ItemGroup>\n",
+        ExtraItemGroups,
+        "</Project>\n"]),
+    Content = string.append_list([Header] ++ CompileItems ++ [Middle] ++
+        RefItems ++ [Footer]).
+
+:- pred parse_define_constant(string::in, string::out) is semidet.
+
+parse_define_constant(Flag, Symbol) :-
+    ( if string.remove_prefix("-define:", Flag, Sym1) then
+        Symbol = Sym1
+    else if string.remove_prefix("/define:", Flag, Sym2) then
+        Symbol = Sym2
+    else if string.remove_prefix("-d:", Flag, Sym3) then
+        Symbol = Sym3
+    else
+        string.remove_prefix("/d:", Flag, Symbol)
+    ).
+
+:- pred format_compile_item(string::in, string::out) is det.
+
+format_compile_item(Path, Item) :-
+    Item = string.append_list([
+        "    <Compile Include=""", xml_escape(Path), """ />\n"
     ]).
+
+:- pred format_reference_item(csharp_ref_entry::in, string::out) is det.
+
+format_reference_item(csharp_ref_entry(Name, MaybeHintPath), Item) :-
+    (
+        MaybeHintPath = yes(HintPath),
+        Item = string.append_list([
+            "    <Reference Include=""", xml_escape(Name), """>\n",
+            "      <HintPath>", xml_escape(HintPath), "</HintPath>\n",
+            "      <Private>true</Private>\n",
+            "    </Reference>\n"
+        ])
+    ;
+        MaybeHintPath = no,
+        Item = string.append_list([
+            "    <Reference Include=""", xml_escape(Name), """ />\n"
+        ])
+    ).
+
+:- func xml_escape(string) = string.
+
+xml_escape(S) =
+    string.replace_all(
+        string.replace_all(
+            string.replace_all(
+                string.replace_all(
+                    string.replace_all(S, "&", "&amp;"),
+                "<", "&lt;"),
+            ">", "&gt;"),
+        """", "&quot;"),
+    "'", "&apos;").
 
 %---------------------------------------------------------------------------%
 %
@@ -1555,10 +1974,35 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
             MadeSymlinkOrCopy = yes
         ),
 
+        % C# executables on .NET are self-contained apphosts that
+        % delegate to a managed assembly co-located with the apphost
+        % (`<name>.dll' plus `<name>.runtimeconfig.json' and optionally
+        % `<name>.deps.json').  When FullFileName lives several
+        % directories deep -- e.g. under
+        % `Mercury/csharp/<arch>/Mercury/bin/' with --use-subdirs and
+        % --use-grade-subdirs -- the apphost copied to CurDirFileName
+        % has none of those companions next to it and aborts at run
+        % time with `The application to execute does not exist'.  Copy
+        % each companion alongside the user-visible apphost too.  Skip
+        % under --csharp-aot: native AOT publish produces a single
+        % self-contained binary, so there are no companions to find.
+        globals.lookup_bool_option(Globals, csharp_aot, AotEnabled),
+        ( if
+            Succeeded0 = succeeded,
+            LinkedTargetType = csharp_executable,
+            MadeSymlinkOrCopy = yes,
+            AotEnabled = no
+        then
+            copy_csharp_apphost_companions(Globals, ProgressStream,
+                FullFileName, CurDirFileName, Succeeded0, Succeeded1, !IO)
+        else
+            Succeeded1 = Succeeded0
+        ),
+
         % For the Java and C# grades we also need to symlink or copy the
         % launcher scripts or batch files.
         ( if
-            Succeeded0 = succeeded,
+            Succeeded1 = succeeded,
             (
                 LinkedTargetType = csharp_executable,
                 % NOTE: we don't generate a launcher script for C# executables
@@ -1590,8 +2034,60 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
                     FullLauncherName, CurDirLauncherName, Succeeded, !IO)
             )
         else
-            Succeeded = Succeeded0
+            Succeeded = Succeeded1
         )
+    ).
+
+%---------------------%
+
+    % Copy the .dll, .runtimeconfig.json and .deps.json that an apphost
+    % needs from the build dir of FullFileName to the directory that
+    % contains CurDirFileName, preserving the assembly base name.  Files
+    % that the build did not emit are skipped silently.
+    %
+:- pred copy_csharp_apphost_companions(globals::in, io.text_output_stream::in,
+    file_name::in, file_name::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+copy_csharp_apphost_companions(Globals, ProgressStream,
+        FullFileName, CurDirFileName, !Succeeded, !IO) :-
+    AssemblyBase = strip_csharp_exec_ext(dir.det_basename(FullFileName)),
+    ( if dir.split_name(FullFileName, FullDir0, _) then
+        FullDir = FullDir0
+    else
+        FullDir = "."
+    ),
+    ( if dir.split_name(CurDirFileName, CurDir0, _) then
+        CurDir = CurDir0
+    else
+        CurDir = "."
+    ),
+    Companions = ["dll", "runtimeconfig.json", "deps.json"],
+    list.foldl2(
+        copy_one_apphost_companion(Globals, ProgressStream,
+            FullDir, CurDir, AssemblyBase),
+        Companions, !Succeeded, !IO).
+
+:- pred copy_one_apphost_companion(globals::in, io.text_output_stream::in,
+    string::in, string::in, string::in, string::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+copy_one_apphost_companion(Globals, ProgressStream,
+        FullDir, CurDir, AssemblyBase, Ext, !Succeeded, !IO) :-
+    Filename = AssemblyBase ++ "." ++ Ext,
+    Src = FullDir / Filename,
+    Dst = CurDir / Filename,
+    io.file.check_file_accessibility(Src, [read], CheckRes, !IO),
+    (
+        CheckRes = ok,
+        io.file.remove_file_recursively(Dst, _, !IO),
+        make_symlink_or_copy_file(Globals, ProgressStream, Src, Dst,
+            CopyOk, !IO),
+        !:Succeeded = !.Succeeded `and` CopyOk
+    ;
+        CheckRes = error(_)
+        % Companion was not emitted (e.g. .deps.json may be omitted for
+        % trivial builds); skip silently.
     ).
 
 %---------------------%

@@ -947,6 +947,22 @@ tanh(X) = Tanh :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    have_fma,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if NET5_0_OR_GREATER
+    // System.Math.FusedMultiplyAdd is intrinsic on net5.0+.
+    SUCCESS_INDICATOR = true;
+#else
+    // netstandard2.0 has no single-rounded FMA primitive; signal absence
+    // so callers can choose a different algorithm rather than silently
+    // accepting a double-rounded `X*Y + Z`.
+    SUCCESS_INDICATOR = false;
+#endif
+").
+
 have_fma :-
     semidet_false.
 
@@ -964,11 +980,28 @@ have_fma :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    fma(X::in, Y::in, Z::in) = (FMA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if NET5_0_OR_GREATER
+    FMA = System.Math.FusedMultiplyAdd(X, Y, Z);
+#else
+    // netstandard2.0 has no FMA primitive; mirror the C backend, which
+    // calls MR_fatal_error when MR_HAVE_FMA is undefined.  Callers must
+    // gate this with `have_fma/0`.
+    FMA = 0.0;
+    throw new System.NotSupportedException(
+        ""math.fma not supported on this .NET target;"" +
+        "" check have_fma/0 before calling."");
+#endif
+").
+
 fma(_, _, _) = _ :-
     private_builtin.sorry("math.fma").
 
 % NOTE: Java 9 provides Math.fma.
-% NOTE: .NET core 3.0 provides System.Math.FusedMultiplyAdd.
 
 %---------------------------------------------------------------------------%
 :- end_module math.

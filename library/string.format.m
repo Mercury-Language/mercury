@@ -1752,7 +1752,7 @@ convert_float_to_string(Float) = String :-
     // XXX According to the documentation it tries 15 digits of precision,
     // then 17 digits skipping 16 digits of precision, unlike what we do
     // for the C backend.
-    FloatString = FloatVal.ToString(""R"");
+    FloatString = FloatVal.ToString(""r"");
 ").
 :- pragma foreign_proc("Java",
     float_to_string_first_pass(FloatVal::in, FloatString::uo),

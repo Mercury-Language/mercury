@@ -537,8 +537,20 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         output_call_rval_for_csharp(Info, FuncRval, Stream, !IO)
     else
         % This is a call using a method pointer.
+        % We use Unsafe.As<T>(object) rather than a C# cast because the
+        % compiler-generated continuations may have a more specific generic
+        % type instantiation than the call site expects (e.g.
+        % MethodPtr2_r0<Exception_result_1, object> vs
+        % MethodPtr2_r0<object, object>).  C# delegates are invariant on
+        % their type parameters, so a direct cast would throw
+        % InvalidCastException.  Unsafe.As is a JIT intrinsic (zero
+        % overhead, AOT-safe) that reinterprets the reference.  This is
+        % sound because all Mercury type parameters are boxed as object
+        % at runtime and the calling convention is identical.
         PtrTypeName = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-        io.format(Stream, "((%s) ", [s(PtrTypeName)], !IO),
+        io.format(Stream,
+            "System.Runtime.CompilerServices.Unsafe.As<%s>(",
+            [s(PtrTypeName)], !IO),
         output_call_rval_for_csharp(Info, FuncRval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ),

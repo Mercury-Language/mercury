@@ -265,7 +265,10 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 # Stuff for the C# back-end.
 #
 
-CSC		= @CSC@
+# mmc --make drives `dotnet build' directly for the csharp grade,
+# so there is no Mmake-side C# compiler invocation.  CSCFLAGS values
+# set in an Mmake file are still forwarded to mmc as --csharp-flag
+# arguments by options_file.m.
 ALL_CSCFLAGS	= $(CSCFLAGS) $(EXTRA_CSCFLAGS) $(TARGET_CSCFLAGS) \
 		$(LIB_CSCFLAGS)
 CSCFLAGS	=

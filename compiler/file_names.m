@@ -2058,7 +2058,12 @@ glue_dir_names_base_name(DirComponents, CurDirFileName) = FullFileName :-
     ;
         DirComponents = [_ | _],
         Components = DirComponents ++ [CurDirFileName],
-        FullFileName = dir.relative_path_name_from_components(Components)
+        % Always use "/" to glue the components together. The result is
+        % consumed by makefiles (which require "/" on every platform) and
+        % by the filesystem (Windows accepts "/" as a path separator).
+        % Using dir.relative_path_name_from_components/1 would emit "\"
+        % on Windows, which mmake's pattern rules fail to match.
+        FullFileName = string.join_list("/", Components)
     ).
 
 %---------------------------------------------------------------------------%
