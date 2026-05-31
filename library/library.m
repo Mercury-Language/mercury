@@ -111,16 +111,6 @@
 %   Whether fat_sparse_bitset is better than sparse_bitset itself depends
 %   on the machine architecture and on the workload.
 %
-% - fatter_sparse_bitset is a variant of fat_sparse_bitset. It is intended
-%   to make use of the otherwise-fallow fourth word in a four-word allocation,
-%   by storing two adjacent bitmaps between the value of N and the
-%   next pointer.
-%
-%   fatter_sparse_bitset can be faster than fat_sparse_bitset if the
-%   probability of some set members falling into each extra bitmap
-%   is high enough. If it is too low, then its higher constant factors
-%   will make it slower than fat_sparse_bitset.
-%
 % - tree_bitset is another variant of sparse_bitset. While sparse_bitset
 %   represents a set using a list of bitmaps of unlimited length, in which
 %   getting to a bitmap representing a large integer requires following
@@ -168,11 +158,6 @@
 %
 %   If you need to build up a long list piece by piece, represent the pieces
 %   using cords, and then convert the final cord to a list.
-%
-% - ra_list also uses trees (actually, a list of perfectly balanced
-%   binary trees) to represent ordered sequences, but its objective is
-%   to speed up random access to selected list elements (the "ra" part of
-%   the name stands for "random access"), instead of append operations.
 %
 % - assoc_list implements one popular use of lists, which is lists of
 %   key/value pairs.
@@ -241,7 +226,7 @@
 %
 % - bt_array solves the same problem as version_array (safe access
 %   to non-current versions of the array), but using a different
-%   data structure: random access lists, as in the ra_list module.
+%   data structure: random access lists.
 %   This has different performance characteristics: it has faster access
 %   to old versions, at the cost of logarithmic and not constant time access
 %   to the current version.
