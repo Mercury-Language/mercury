@@ -300,8 +300,7 @@
 :- func sorted_keys(map(K, _V)) = list(K).
 :- pred sorted_keys(map(K, _V)::in, list(K)::out) is det.
 
-    % Given a map, return a list of all the keys in the map,
-    % as a set.
+    % Given a map, return a set of all the keys in the map.
     %
 :- func keys_as_set(map(K, _V)) = set(K).
 :- pred keys_as_set(map(K, _V)::in, set(K)::out) is det.
@@ -334,7 +333,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Converting maps to lists.
+% Converting lists to maps.
 %
 
     % Convert an association list to a map.
@@ -362,7 +361,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Converting lists to maps.
+% Converting maps to lists.
 %
 
     % Convert a map to an association list.
@@ -707,7 +706,7 @@
 :- mode foldl5(pred(in, in, in, out, in, out, in, out, in, out, in, out)
     is semidet,
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode foldl5(pred(in, in,in, out,  in, out, in, out, in, out, mdi, muo)
+:- mode foldl5(pred(in, in, in, out, in, out, in, out, in, out, mdi, muo)
     is semidet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl5(pred(in, in, in, out, in, out, in, out, in, out, di, uo)
@@ -715,7 +714,7 @@
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % Perform an inorder traversal of the map, applying an accumulator
-    % predicate with five accumulators for each key-value pair.
+    % predicate with six accumulators for each key-value pair.
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
@@ -733,7 +732,7 @@
 :- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
     in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode foldl6(pred(in, in,in, out,  in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
     in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
@@ -845,14 +844,14 @@
 :- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, in, out)
     is semidet,
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode foldl5_values(pred(in,in, out,  in, out, in, out, in, out, mdi, muo)
+:- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is semidet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl5_values(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
-    % As above, but with five accumulators.
+    % As above, but with six accumulators.
     %
 :- pred foldl6_values(pred(V, A, A, B, B, C, C, D, D, E, E, F, F), map(K, V),
     A, A, B, B, C, C, D, D, E, E, F, F).
@@ -868,7 +867,7 @@
 :- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
     in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode foldl6_values(pred(in,in, out,  in, out, in, out, in, out,
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
     in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
