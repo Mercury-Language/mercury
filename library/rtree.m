@@ -1017,7 +1017,7 @@ maybe_limit(K, P, L, E) :-
     compare((<), E, L).
 
     % Algorithm: searches for the first element by traversing the tree in
-    % the order induced by KTest. If we find a solution, the we try to find
+    % the order induced by KTest. If we find a solution, then we try to find
     % a better solution by setting a tighter maximum.
     %
     % We avoid searching the entire tree by (1) not searching subtrees that
