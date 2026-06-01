@@ -6,8 +6,9 @@
 %---------------------------------------------------------------------------%
 %
 % File: one_or_more_map.m.
+% Stability: high.
 %
-% This file provides a version of the 'multi_map' ADT.
+% This file provides another version of the multi_map(K, V) abstract data type.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Value) pairs which allows you to look up any Value given the Key.
 % A multi_map is similar, but it allows more than one Value for each Key.
