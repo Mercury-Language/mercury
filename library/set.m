@@ -10,9 +10,34 @@
 % Main authors: conway, fjh, benyi.
 % Stability: high.
 %
-% This module provides a set ADT.
-% The implementation represents sets using ordered lists.
-% This file just calls the equivalent predicates in set_ordlist.
+% This module is one of several that implement the `set' abstract data type.
+% These modules offer roughly the same set of operations on sets, but
+% they differ in how they represent those sets. As a result, both the
+% asymptotic complexities and the constant factors of their operations
+% differ. None of these modules has better performance on all operations
+% than all other modules, so there is no module that is "always best".
+% Instead, different modules suit different workloads.
+%
+% Some modules are general purpose, in the sense that their sets
+% can store values of any type. These modules are
+%
+% - set_unordlist           unsorted lists with possible duplicates
+% - set_ordlist             sorted lists without any duplicates
+% - set_bbbtree             bounded-balance binary trees
+% - set_ctree234            234-trees with counts
+% - set_tree234             234-trees without counts
+%
+% Some modules are not general purpose, because they can store only
+% integers, or values that can be transformed into integers.
+% These modules are
+%
+% - diet                    discrete interval encoding trees
+% - ranges                  a list of arbitrary ranges
+% - sparse_bitset           a list of words, each word being a bitmap
+% - fat_sparse_bitset       a fat list of words, each word being a bitmap
+% - tree_bitset             a tree of words, each word being a bitmap
+%
+% This module just calls the equivalent predicates in set_ordlist.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
