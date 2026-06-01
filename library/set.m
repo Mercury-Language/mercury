@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2019, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -251,7 +251,7 @@
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of which are not in DivideBySet.
+    % OutPart consists of those elements of Set which are not in DivideBySet.
     %
 :- pred divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out) is det.
 
@@ -308,7 +308,7 @@
 %
 
     % `count(Set, Count)' is true iff `Set' has `Count' elements.
-    % i.e. `Count' is the cardinality (size) of the
+    % i.e. `Count' is the cardinality (size) of the set.
     %
 :- func count(set(T)) = int.
 :- pred count(set(T)::in, int::out) is det.

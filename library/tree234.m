@@ -3110,7 +3110,7 @@ remove_2(Tin, K, V, Tout, RH) :-
 
 %---------------------------------------------------------------------------%
 
-    % The algorithm we use similar to tree234.delete, except that we
+    % The algorithm we use is similar to tree234.delete, except that we
     % always go down the left subtree.
 
 remove_smallest(K, V, Tin, Tout) :-

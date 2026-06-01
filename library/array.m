@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -456,7 +456,7 @@
     % it returns its index I; otherwise, it fails.
     %
     % The array A must be sorted into ascending order with respect to the
-    % the builtin Mercury order on terms for binary_search/3, and with respect
+    % builtin Mercury order on terms for binary_search/3, and with respect
     % to supplied comparison predicate for binary_search/4.
     %
     % The array may contain duplicates. If it does, and a search looks for
@@ -478,8 +478,8 @@
     % no value smaller than X in the array.
     %
     % The array A must be sorted into ascending order with respect to the
-    % the builtin Mercury order on terms for approx_binary_search/3, and
-    % with respect to supplied comparison predicate for approx_binary_search/4.
+    % builtin Mercury order on terms for approx_binary_search/3, and with
+    % respect to supplied comparison predicate for approx_binary_search/4.
     %
     % The array may contain duplicates. If it does, and if either the
     % searched-for value or (if that does not exist) the highest value
@@ -2367,7 +2367,7 @@ fetch_items(Array, Low, High, List) :-
     ( if High < Low then
         % If High is less than Low, then there cannot be any array indexes
         % within the range Low -> High (inclusive). This can happen when
-        % calling to_list/2 on the empty array, or when iterative over
+        % calling to_list/2 on the empty array, or when iterating over
         % consecutive contiguous regions of an array. (For an example of
         % the latter, see ip_get_goals_{before,after} and their callers
         % in the deep_profiler directory.)

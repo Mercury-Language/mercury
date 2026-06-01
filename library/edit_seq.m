@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019 The Mercury team.
+% Copyright (C) 2019-2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -14,7 +14,7 @@
 % into the second.
 %
 % The code is a naive implementation of the Wagner-Fischer algorithm,
-% which is documented on its own wikipedia page.
+% which is documented on its own Wikipedia page.
 %
 % Given two lists of length M and N, its time complexity is O(MN),
 % so it is suitable for use only on reasonably short lists.
@@ -133,7 +133,7 @@
     % the part of the original sequence (sequence A) covered by this change
     % hunk contains six lines, starting at line 25. The "+25,7" part shows that
     % the part of the updated sequence (sequence B) contains seven lines,
-    % starting at line at 25 in that sequence as well. The first four fields
+    % starting at line 25 in that sequence as well. The first four fields
     % of the change_hunk type contain these two pairs of numbers.
     %
     % A change hunk consists of three parts, of which the first and/or last
@@ -271,7 +271,7 @@ process_entry(Params, RowNum, A, ColNum, B, !Table) :-
         ( if CostLeft =< CostUp, CostLeft =< CostDiag then
             % We can transform SeqA[1 .. RowNum] into SeqB[1 .. ColNum-1]
             % in CostLeft0 steps.
-            % We can thus transfrom SeqA[1 .. RowNum] into SeqB[1 .. ColNum]
+            % We can thus transform SeqA[1 .. RowNum] into SeqB[1 .. ColNum]
             % in CostLeft0 + ConstInsert steps by inserting B after #RowNum
             % in SeqA.
             Edits = cord.snoc(EditsLeft, insert(RowNum, B)),
@@ -284,9 +284,9 @@ process_entry(Params, RowNum, A, ColNum, B, !Table) :-
             Edits = cord.snoc(EditsUp, delete(RowNum)),
             Entry = entry(Edits, CostUp)
         else
-            % We can transfrom SeqA[1 .. RowNum-1] into SeqB[1 .. ColNum-1]
+            % We can transform SeqA[1 .. RowNum-1] into SeqB[1 .. ColNum-1]
             % in CostDiag0 steps.
-            % We can thus transfrom SeqA[1 .. RowNum] into SeqB[1 .. ColNum]
+            % We can thus transform SeqA[1 .. RowNum] into SeqB[1 .. ColNum]
             % in CostDiag0 + CostReplace steps by replacing item #RowNum
             % in SeqA by B.
             Edits = cord.snoc(EditsDiag, replace(RowNum, B)),

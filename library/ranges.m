@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -443,7 +443,7 @@
 % ranges.Ranges_0 universe()
 %   Return the set of integers from (min_int+1)..max_int.
 %
-% ranges.Ranges_0 range(int l, int, h)
+% ranges.Ranges_0 range(int l, int h)
 %   Return the set of integers from `l' to `h' inclusive.
 %
 % boolean is_empty(ranges.Ranges_0 r)

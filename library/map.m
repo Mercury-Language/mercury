@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2020 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -14,7 +14,7 @@
 %
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Value) pairs that allows you to look up any Value given its Key.
-% Each Key has exactly only one corresponding Value. (If you want the ability
+% Each Key has exactly one corresponding Value. (If you want the ability
 % to store more than one Value for a given Key, use either multi_map.m
 % or one_or_more_map.m.)
 %
@@ -506,7 +506,7 @@
     %
     % Take the non-empty list of maps [M | Ms], and intersect pairs of
     % those maps (using map.intersect above) until there is only one map left.
-    % Return this map as ResultM. The order of in which those intersect
+    % Return this map as ResultM. The order in which those intersect
     % operations are performed is not defined, so the caller should choose
     % a Pred for which the order does not matter.
     %
@@ -517,7 +517,7 @@
 %---------------------%
 
     % Given two maps MapA and MapB, create a third map, UnionMap, that
-    % contains all the keys that occur in either MapA and MapB. For keys
+    % contains all the keys that occur in either MapA or MapB. For keys
     % that occur in both MapA and MapB, compute the value in the final map
     % by applying the supplied closure to the values associated with the key
     % in MapA and MapB. Fail if and only if this closure fails on
@@ -582,7 +582,7 @@
     % of a number of lookups but few or no modifications.
     %
     % This operation is here only for "cultural compatibility"
-    % with the modules that operation on trees that may be unbalanced.
+    % with the modules that operate on trees that may be unbalanced.
     % 2-3-4 trees are always guaranteed to be balanced, so they do not need
     % any such optimization.
     %

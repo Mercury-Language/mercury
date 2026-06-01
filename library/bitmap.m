@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -17,7 +17,7 @@
 % currently recognise them, hence we are forced to use non-unique modes
 % until the situation is rectified; this places a small burden on programmers
 % to ensure the correctness of their code that would otherwise be assured
-% by the compiler.)
+% by the compiler).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 
     % Type `bitmap' is equivalent to `array(bool)', but is implemented
     % much more efficiently. Accessing bitmaps as if they were an array
-    % of eight bit bytes is especially efficient.
+    % of eight-bit bytes is especially efficient.
     %
     % See runtime/mercury_types.h for the definition of MR_BitmapPtr for
     % use in foreign code.

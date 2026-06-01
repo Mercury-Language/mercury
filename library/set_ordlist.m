@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -186,13 +186,13 @@
 :- pred union(set_ordlist(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
-    % `union_list(A, B)' is true iff `B' is the union of all the sets in `A'
+    % `union_list(A, B)' is true iff `B' is the union of all the sets in `A'.
     %
 :- func union_list(list(set_ordlist(T))) = set_ordlist(T).
 :- pred union_list(list(set_ordlist(T))::in, set_ordlist(T)::out) is det.
 
     % `power_union(A, B)' is true iff `B' is the union of
-    % all the sets in `A'
+    % all the sets in `A'.
     %
 :- func power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 :- pred power_union(set_ordlist(set_ordlist(T))::in,
@@ -732,7 +732,7 @@ sort_no_dups(List, sol(Set)) :-
     ).
 
     % no_dups(Elem, Set) is true iff Set does not contain Elem,
-    % and Set does not contains duplicates.
+    % and Set does not contain duplicates.
     %
 :- pred no_dups(T::in, list(T)::in) is semidet.
 
@@ -933,7 +933,7 @@ intersection_and_differences_loop(As, Bs, !InAandB, !OnlyInA, !OnlyInB) :-
 %---------------------------------------------------------------------------%
 
 divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
-    % The calls to reverse allow us to make divide_2 tail recursive.
+    % The calls to reverse allow us to make divide_loop tail recursive.
     % This costs us a higher constant factor, but allows divide to work
     % in constant stack space.
     divide_loop(Pred, Set, [], RevTruePart, [], RevFalsePart),

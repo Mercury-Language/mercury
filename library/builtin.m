@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -255,7 +255,7 @@
     % NOTE_TO_IMPLEMENTORS The modes must appear in this order:
     % NOTE_TO_IMPLEMENTORS compiler/higher_order.m depends on it, as does
     % NOTE_TO_IMPLEMENTORS compiler/simplify.m (for the inequality
-    % NOTE_TO_IMPLEMENTORS simplification.)
+    % NOTE_TO_IMPLEMENTORS simplification).
 :- mode compare(uo, in, in) is det.
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
@@ -1264,7 +1264,7 @@ semipure_true :-
 
 %---------------------------------------------------------------------------%
 
-% NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
+% NOTE: dynamic_cast/2 is handled specially in compiler/const_prop.m.
 % Any changes here may need to be reflected here.
 
 dynamic_cast(X, Y) :-

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -219,7 +219,7 @@
 % Folding over assoc_lists.
 %
 
-    % foldl(Pred, List, Start End) calls Pred
+    % foldl(Pred, List, Start, End) calls Pred
     % with each key-value pair in List, working left-to-right,
     % and an accumulator whose initial value is Start,
     % and returns the final value in End.
@@ -233,13 +233,13 @@
 :- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 :- mode foldl(pred(in, in, in, out) is nondet, in, in, out) is nondet.
 
-    % foldl_keys(Func List, Start) = End calls Func
+    % foldl_keys(Func, List, Start) = End calls Func
     % with each key in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
     %
 :- func foldl_keys(func(K, A) = A, assoc_list(K, V), A) = A.
 
-    % foldl_keys(Pred, List, Start End) calls Pred
+    % foldl_keys(Pred, List, Start, End) calls Pred
     % with each key in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
     %
@@ -253,7 +253,7 @@
 :- mode foldl_keys(pred(in, in, out) is multi, in, in, out) is multi.
 :- mode foldl_keys(pred(in, in, out) is nondet, in, in, out) is nondet.
 
-    % foldl_values(Func List, Start) = End calls Func
+    % foldl_values(Func, List, Start) = End calls Func
     % with each value in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
     %
@@ -292,7 +292,7 @@
     di, uo) is det.
 :- mode foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
     in, out) is semidet.
-:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet, in,in, out,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet, in, in, out,
     mdi, muo) is semidet.
 :- mode foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
     di, uo) is semidet.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1424,7 +1424,7 @@
 
     % foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
     %
-    % Does the same job as foldr, but with two accumulators.
+    % Does the same job as foldr, but with three accumulators.
     % Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient.
     % The last accumulator may be an I/O state, or some other
@@ -1558,7 +1558,7 @@
 
     % foldl_corresponding3(P, As, Bs, Cs, !Acc):
     %
-    % Does the same jobs as foldl_corresponding, but folds over
+    % Does the same job as foldl_corresponding, but folds over
     % three corresponding lists.
     %
 :- pred foldl_corresponding3(pred(A, B, C, D, D),
@@ -1578,7 +1578,7 @@
 
     % foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
     %
-    % Does the same jobs as foldl_corresponding3, but with two accumulators.
+    % Does the same job as foldl_corresponding3, but with two accumulators.
     %
 :- pred foldl2_corresponding3(pred(A, B, C, D, D, E, E),
     list(A), list(B), list(C), D, D, E, E).

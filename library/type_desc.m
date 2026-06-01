@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -157,18 +157,19 @@
     %
 :- func pseudo_type_args(pseudo_type_desc) = list(pseudo_type_desc) is semidet.
 
-    % type_ctor_name(TypeCtor) returns the name of specified type constructor.
+    % type_ctor_name(TypeCtor) returns the name of the specified type
+    % constructor.
     % (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
     %
 :- func type_ctor_name(type_ctor_desc) = string.
 
-    % type_ctor_module_name(TypeCtor) returns the module name of specified
+    % type_ctor_module_name(TypeCtor) returns the module name of the specified
     % type constructor.
     % (e.g. type_ctor_module_name(type_ctor(type_of(2))) = "builtin").
     %
 :- func type_ctor_module_name(type_ctor_desc) = string.
 
-    % type_ctor_arity(TypeCtor) returns the arity of specified
+    % type_ctor_arity(TypeCtor) returns the arity of the specified
     % type constructor.
     % (e.g. type_ctor_arity(type_ctor(type_of([2,3]))) = 1).
     %

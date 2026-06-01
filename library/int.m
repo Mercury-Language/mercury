@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -350,7 +350,7 @@
 
     % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
     %
-    % NOTE: fold_down/5 is undefined if Low min_int.
+    % NOTE: fold_down/5 is undefined if Low = min_int.
     %
 :- pred fold_down(pred(int, T, T), int, int, T, T).
 :- mode fold_down(pred(in, in, out) is det, in, in, in, out) is det.
@@ -374,7 +374,7 @@
     is cc_multi.
 
     % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
-    %   list.foldr2(F, Low .. High, !Acc1, Acc2).
+    %   list.foldr2(F, Low .. High, !Acc1, !Acc2).
     %
     % NOTE: fold_down2/7 is undefined if Low = min_int.
     %
@@ -398,7 +398,7 @@
 :- mode fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
 
-    % fold_up3(F, Low, High, !Acc1, !Acc2, !Acc3) <=>
+    % fold_down3(F, Low, High, !Acc1, !Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
     % NOTE: fold_down3/9 is undefined if Low = min_int.

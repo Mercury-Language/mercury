@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2022, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -4921,7 +4921,7 @@ word_wrap_separator(Str, N, WordSep0) = Wrapped :-
     % the linewrapped version of the original word stream.
     %
     % Words is the list of words to process. WordSep is the string to use
-    % as a separator of a word has to split between two lines, because it is
+    % as a separator if a word has to split between two lines, because it is
     % too long to fit on one line. SepLin is the length of WordSep.
     %
     % CurCol is the column where the next character should be written

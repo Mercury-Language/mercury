@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -3094,7 +3094,7 @@ get_zero(Stream, Token, !IO) :-
     % We need this to detect invalid uses of underscores in numeric literals.
     % Note that there may be other intervening characters in the token
     % between the last digit and the current one (e.g. the decimal point
-    % or beginning of an exponent a float literal.)
+    % or beginning of an exponent in a float literal.)
     %
 :- type last_digit_is_underscore
     --->    last_digit_is_underscore

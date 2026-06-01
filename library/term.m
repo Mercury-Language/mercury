@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2020 The Mercury team.
+% Copyright (C) 2014-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -464,7 +464,7 @@
     % generic_term(Term) is true iff `Term' is a term of type
     % `term' ie `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
-    % predicate will ground the type avoiding unbound type variable warnings.
+    % predicate will ground the type, avoiding unbound type variable warnings.
     % NOTE_TO_IMPLEMENTORS XXX This is not all that useful,
     % NOTE_TO_IMPLEMENTORS since we now have with_type.
     %

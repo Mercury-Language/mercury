@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011 The University
 % of Melbourne.
-% Copyright (C) 2014-2021 The Mercury Team.
+% Copyright (C) 2014-2021, 2026 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -113,7 +113,7 @@
 :- mode spawn_native(pred(in, di, uo) is cc_multi, in, out,
     di, uo) is cc_multi.
 
-    % yield(IO0, IO) is logically equivalent to (IO = IO0) but
+    % yield(IO0, IO) is logically equivalent to (IO = IO0), but
     % operationally, yields the Mercury engine to some other thread
     % if one exists.
     %

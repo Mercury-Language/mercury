@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2021, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -230,7 +230,7 @@
     % Remainder.
     % X rem Y = X - (X // Y) * Y.
     %
-    % Throws a `domain_error/` exception if the right operand is zero.
+    % Throws a `domain_error' exception if the right operand is zero.
     %
 :- func (int64::in) rem (int64::in) = (int64::uo) is det.
 
@@ -344,7 +344,7 @@
 
     % reverse_bits(A) = B:
     %
-    % B is the is value that results from reversing the bits
+    % B is the value that results from reversing the bits
     % in the binary representation of A.
     %
 :- func reverse_bits(int64) = int64.
