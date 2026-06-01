@@ -2387,52 +2387,25 @@ io_state_compare(_, _, _) :-
 :- instance stream.reader(input_stream, char, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_char(Stream, Result0, !IO),
-        Result = io.result1_to_stream_result1(Result0)
-    )
+    pred(get/4) is stream_read_char
 ].
 
 :- instance stream.unboxed_reader(input_stream, char, io, io.error)
     where
 [
-    ( unboxed_get(Stream, Result, Char, !IO) :-
-        read_char_unboxed(Stream, Result0, Char, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
+    pred(unboxed_get/5) is stream_read_char_unboxed
 ].
 
 :- instance stream.reader(input_stream, line, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_line_as_string(Stream, Result0, !IO),
-        (
-            Result0 = ok(String),
-            Result = ok(line(String))
-        ;
-            Result0 = eof,
-            Result = eof
-        ;
-            Result0 = error(Error),
-            Result = error(Error)
-        )
-    )
+    pred(get/4) is stream_read_line_as_string
 ].
 
 :- instance stream.reader(input_stream, text_file, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_file_as_string(Stream, Result0, !IO),
-        (
-            Result0 = ok(String),
-            Result = ok(text_file(String))
-        ;
-            Result0 = error(_PartialString, Error),
-            Result = error(Error)
-        )
-    )
+    pred(get/4) is stream_read_file_as_string
 ].
 
 :- instance stream.putback(input_stream, char, io, io.error) where
@@ -2457,6 +2430,11 @@ result1_to_stream_result1(error(Error)) = error(Error).
 result0_to_stream_result0(ok) = ok.
 result0_to_stream_result0(eof) = eof.
 result0_to_stream_result0(error(Error)) = error(Error).
+
+:- func res_to_stream_res(io.res) = stream.res(io.error).
+
+res_to_stream_res(ok) = ok.
+res_to_stream_res(error(E)) = error(E).
 
 %---------------------%
 %
@@ -2578,57 +2556,38 @@ result0_to_stream_result0(error(Error)) = error(Error).
 :- instance stream.reader(binary_input_stream, int, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_byte(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
+    pred(get/4) is stream_read_byte
 ].
 
 :- instance stream.reader(binary_input_stream, int8, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_binary_int8(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
+    pred(get/4) is stream_read_binary_int8
 ].
 
 :- instance stream.reader(binary_input_stream, uint8, io, io.error)
     where
 [
-    ( get(Stream, Result, !IO) :-
-        read_binary_uint8(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
+    pred(get/4) is stream_read_binary_uint8
 ].
 
 :- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error)
     where
 [
-    ( unboxed_get(Stream, Result, Int8, !IO) :-
-        read_binary_int8_unboxed(Stream, Result0, Int8, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
+    pred(unboxed_get/5) is stream_read_binary_int8_unboxed
 ].
 
 :- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error)
     where
 [
-    ( unboxed_get(Stream, Result, UInt8, !IO) :-
-        read_binary_uint8_unboxed(Stream, Result0, UInt8, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
+    pred(unboxed_get/5) is stream_read_binary_uint8_unboxed
 ].
 
 :- instance stream.bulk_reader(binary_input_stream, int,
         bitmap, io, io.error)
     where
 [
-    ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
-        read_bitmap(Stream, Index, Int, !Store, NumRead,
-            Result0, !State),
-        Result = res_to_stream_res(Result0)
-    )
+    pred(bulk_get/9) is stream_read_bitmap
 ].
 
 :- instance stream.putback(binary_input_stream, int, io, io.error)
@@ -2652,14 +2611,8 @@ result0_to_stream_result0(error(Error)) = error(Error).
 :- instance stream.seekable(binary_input_stream, io)
     where
 [
-    ( seek(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_input(Stream, Whence, OffSet, !IO)
-    ),
-    ( seek64(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_input64(Stream, Whence, OffSet, !IO)
-    )
+    pred(seek/5) is stream_seek_binary_input,
+    pred(seek64/5) is stream_seek_binary_input64
 ].
 
 :- func stream_whence_to_io_whence(stream.whence) = io.whence.
@@ -2667,11 +2620,6 @@ result0_to_stream_result0(error(Error)) = error(Error).
 stream_whence_to_io_whence(set) = set.
 stream_whence_to_io_whence(cur) = cur.
 stream_whence_to_io_whence(end) = end.
-
-:- func io.res_to_stream_res(io.res) = stream.res(io.error).
-
-res_to_stream_res(ok) = ok.
-res_to_stream_res(error(E)) = error(E).
 
 %---------------------%
 %
@@ -2717,23 +2665,14 @@ res_to_stream_res(error(E)) = error(E).
 :- instance stream.writer(binary_output_stream, bitmap.slice, io)
     where
 [
-    ( put(Stream, Slice, !IO) :-
-        write_bitmap(Stream, Slice ^ slice_bitmap,
-            Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
-    )
+    pred(put/4) is stream_write_bitmap_slice
 ].
 
 :- instance stream.seekable(binary_output_stream, io)
     where
 [
-    ( seek(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_output(Stream, Whence, OffSet, !IO)
-    ),
-    ( seek64(Stream, Whence0, Offset, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_output64(Stream, Whence, Offset, !IO)
-    )
+    pred(seek/5) is stream_seek_binary_output,
+    pred(seek64/5) is stream_seek_binary_output64
 ].
 
 %---------------------------------------------------------------------------%
@@ -4633,15 +4572,30 @@ told_binary(!IO) :-
 % Seeking on binary streams.
 %
 
+
 seek_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, int64.from_int(Offset), Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
+:- pred stream_seek_binary_input(binary_input_stream::in, stream.whence::in,
+    int::in, io::di, io::uo) is det.
+
+stream_seek_binary_input(Stream, Whence0, OffSet, !IO) :-
+    Whence = stream_whence_to_io_whence(Whence0),
+    seek_binary_input(Stream, Whence, OffSet, !IO).
+
 seek_binary_input64(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
+
+:- pred stream_seek_binary_input64(binary_input_stream::in, stream.whence::in,
+    int64::in, io::di, io::uo) is det.
+
+stream_seek_binary_input64(Stream, Whence0, OffSet, !IO) :-
+    Whence = stream_whence_to_io_whence(Whence0),
+    seek_binary_input64(Stream, Whence, OffSet, !IO).
 
 %---------------------%
 
@@ -4650,10 +4604,24 @@ seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     seek_binary_2(Stream, Flag, int64.from_int(Offset), Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
 
+:- pred stream_seek_binary_output(binary_output_stream::in, stream.whence::in,
+    int::in, io::di, io::uo) is det.
+
+stream_seek_binary_output(Stream, Whence0, OffSet, !IO) :-
+    Whence = stream_whence_to_io_whence(Whence0),
+    seek_binary_output(Stream, Whence, OffSet, !IO).
+
 seek_binary_output64(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
+
+:- pred stream_seek_binary_output64(binary_output_stream::in,
+    stream.whence::in, int64::in, io::di, io::uo) is det.
+
+stream_seek_binary_output64(Stream, Whence0, Offset, !IO) :-
+    Whence = stream_whence_to_io_whence(Whence0),
+    seek_binary_output64(Stream, Whence, Offset, !IO).
 
 %---------------------%
 
@@ -5458,6 +5426,13 @@ read_char(Result, !IO) :-
     input_stream(Stream, !IO),
     read_char(Stream, Result, !IO).
 
+:- pred stream_read_char(text_input_stream::in,
+    stream.result(char, io.error)::out, io::di, io::uo) is det.
+
+stream_read_char(Stream, Result, !IO) :-
+    read_char(Stream, Result0, !IO),
+    Result = io.result1_to_stream_result1(Result0).
+
 :- pragma inline(pred(read_char/4)).          % Inline to allow deforestation.
 read_char(Stream, Result, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
@@ -5487,6 +5462,13 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
         make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
+
+:- pred stream_read_char_unboxed(text_input_stream::in,
+    stream.result(io.error)::out, char::out, io::di, io::uo) is det.
+
+stream_read_char_unboxed(Stream, Result, Char, !IO) :-
+    read_char_unboxed(Stream, Result0, Char, !IO),
+    Result = io.result0_to_stream_result0(Result0).
 
 %---------------------%
 
@@ -5721,6 +5703,13 @@ read_byte(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
+:- pred stream_read_byte(io.binary_input_stream::in,
+    stream.result(int, io.error)::out, io::di, io::uo) is det.
+
+stream_read_byte(Stream, Result, !IO) :-
+    read_byte(Stream, Result0, !IO),
+    Result = result1_to_stream_result1(Result0).
+
 read_binary_int8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
     read_binary_int8(Stream, Result, !IO).
@@ -5740,6 +5729,13 @@ read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
+:- pred stream_read_binary_int8(binary_input_stream::in,
+    stream.result(int8, io.error)::out, io::di, io::uo) is det.
+
+stream_read_binary_int8(Stream, Result, !IO) :-
+    read_binary_int8(Stream, Result0, !IO),
+    Result = result1_to_stream_result1(Result0).
+
 read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     Int8 = cast_from_int(Int),
@@ -5754,6 +5750,13 @@ read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
         make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
+
+:- pred stream_read_binary_int8_unboxed(binary_input_stream::in,
+    stream.result(io.error)::out, int8::out, io::di, io::uo) is det.
+
+stream_read_binary_int8_unboxed(Stream, Result, Int8, !IO) :-
+    read_binary_int8_unboxed(Stream, Result0, Int8, !IO),
+    Result = io.result0_to_stream_result0(Result0).
 
 read_binary_uint8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
@@ -5774,6 +5777,13 @@ read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
+:- pred stream_read_binary_uint8(binary_input_stream::in,
+    stream.result(uint8, io.error)::out, io::di, io::uo) is det.
+
+stream_read_binary_uint8(Stream, Result, !IO) :-
+    read_binary_uint8(Stream, Result0, !IO),
+    Result = result1_to_stream_result1(Result0).
+
 read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     UInt8 = cast_from_int(Int),
@@ -5788,6 +5798,13 @@ read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
         make_err_msg(Error, "read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
+
+:- pred stream_read_binary_uint8_unboxed(binary_input_stream::in,
+    stream.result(io.error)::out, uint8::out, io::di, io::uo) is det.
+
+stream_read_binary_uint8_unboxed(Stream, Result, UInt8, !IO) :-
+    read_binary_uint8_unboxed(Stream, Result0, UInt8, !IO),
+    Result = io.result0_to_stream_result0(Result0).
 
 %---------------------%
 
@@ -8401,6 +8418,22 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
+:- pred stream_read_line_as_string(text_input_stream::in,
+    stream.result(line, io.error)::out, io::di, io::uo) is det.
+
+stream_read_line_as_string(Stream, Result, !IO) :-
+    read_line_as_string(Stream, Result0, !IO),
+    (
+        Result0 = ok(String),
+        Result = ok(line(String))
+    ;
+        Result0 = eof,
+        Result = eof
+    ;
+        Result0 = error(Error),
+        Result = error(Error)
+    ).
+
 :- type read_line_as_string_result
     --->    ok
     ;       eof
@@ -8704,6 +8737,15 @@ do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, Error, !IO) :-
         Error = no_error
     ).
 
+:- pred stream_read_bitmap(io.binary_input_stream::in, int::in, int::in,
+    bitmap::bulk_get_di, bitmap::bulk_get_uo, int::out,
+    stream.res(io.error)::out, io::di, io::uo) is det.
+
+stream_read_bitmap(Stream, Index, Int, !Store, NumRead, Result, !IO) :-
+    io.read_bitmap(Stream, Index, Int, !Store, NumRead,
+        Result0, !IO),
+    Result = io.res_to_stream_res(Result0).
+
 %---------------------%
 
 write_bitmap(Bitmap, !IO) :-
@@ -8783,6 +8825,13 @@ write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
         Error = e;
     }
 ").
+
+:- pred stream_write_bitmap_slice(io.binary_output_stream::in,
+    bitmap.slice::in, io::di, io::uo) is det.
+
+stream_write_bitmap_slice(Stream, Slice, !IO) :-
+    io.write_bitmap(Stream, Slice ^ slice_bitmap,
+        Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -9312,6 +9361,19 @@ read_file_as_string(input_stream(Stream), Result, !IO) :-
             NullCharError = no,
             Result = ok(String)
         )
+    ).
+
+:- pred stream_read_file_as_string(text_input_stream::in,
+    stream.result(text_file, io.error)::out, io::di, io::uo) is det.
+
+stream_read_file_as_string(Stream, Result, !IO) :-
+    read_file_as_string(Stream, Result0, !IO),
+    (
+        Result0 = ok(String),
+        Result = ok(text_file(String))
+    ;
+        Result0 = error(_PartialString, Error),
+        Result = error(Error)
     ).
 
 read_file_as_string_and_num_code_units(Result, !IO) :-
