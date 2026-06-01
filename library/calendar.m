@@ -8,17 +8,22 @@
 %
 % File: calendar.m.
 % Main authors: maclarty
-% Stability: low.
+% Stability: high.
 %
-% Proleptic Gregorian calendar utilities.
+% This module provides a representation of points in time,
+% a representation of durations (differences between two points in time),
+% and operations on those representations.
 %
-% The Gregorian calendar is the calendar that is currently used by most of
-% the world. In this calendar, a year is a leap year if it is divisible by
-% 4, but not divisible by 100. The only exception is if the year is divisible
-% by 400, in which case it is a leap year. For example 1900 is not leap year,
-% while 2000 is. The proleptic Gregorian calendar is an extension of the
-% Gregorian calendar backward in time to before it was first introduced in
-% 1582.
+% This module identifies points in time by a date specifying a day,
+% and a time within that day. It uses dates from the proleptic Gregorian
+% calendar, which is a version of the Gregorian calendar that has been
+% extended backward in time to dates before its introduction in 1582.
+% (https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar contains
+% a detailed description.) This is the calendar that is currently used
+% by most of the world.
+%
+% This module allows times to be represented at microsecond resolution,
+% though of course not all sources of time information are that precise.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -30,7 +35,11 @@
 
 %---------------------------------------------------------------------------%
 
-    % A point on the Proleptic Gregorian calendar, to the nearest microsecond.
+    % A point on the proleptic Gregorian calendar, to the nearest microsecond.
+    % A date carries no time zone information; it is the responsibility
+    % of code that creates and uses dates to ensure that any two
+    % dates passed to the same operation refer to the same time zone.
+    % To convert between local time and UTC, see local_time_offset/3.
     %
 :- type date.
 
@@ -120,7 +129,23 @@
 %---------------------%
 
     % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date):
-    % Initialize a new date. Fails if the given date is invalid.
+    %
+    % Initialise a new date from the given components. Fails if any of the
+    % following conditions are not met:
+    %
+    %   - Day is in the range 1 .. N,
+    %     where N is the number of days in Month of Year
+    %
+    %   - Hour is in the range 0 .. 23
+    %
+    %   - Minute is in the range 0 .. 59
+    %
+    %   - Second is in the range 0 .. 60
+    %     (to account for one positive leap second being added to a day)
+    %
+    %   - MicroSecond is in the range 0 .. 999,999
+    %
+    % This predicate accepts all values for Year.
     %
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
     minute::in, second::in, microsecond::in, date::out) is semidet.
@@ -138,8 +163,22 @@
 
 %---------------------%
 
-    % Convert a string of the form "YYYY-MM-DD HH:MM:SS.mmmmmm" to a date.
-    % The microseconds component (.mmmmmm) is optional.
+    % Convert a string of the form "[-]YYYY-MM-DD HH:MM:SS.mmmmmm" to a date.
+    %
+    % The year must have at least four digits. This requirement comes from
+    % the ISO standard 8601, and its main intention is to prevent repeats of
+    % the Y2K problem (see https://en.wikipedia.org/wiki/Year_2000_problem).
+    % It also prevents possible confusion between the year part of the
+    % date, and the month or the day parts.
+    %
+    % Since some simulation programs may want to handle dates in the far
+    % future, the predicate accepts years with more than four digits.
+    %
+    % The microseconds component (.mmmmmm) is optional. If present,
+    % it may have between one and six digits.
+    %
+    % This predicate fails if the string does not conform to the above format,
+    % or if any date or time component is outside its valid range.
     %
 :- pred date_from_string(string::in, date::out) is semidet.
 
@@ -148,32 +187,51 @@
 :- func det_date_from_string(string) = date.
 
     % Convert a date to a string of the form "YYYY-MM-DD HH:MM:SS.mmmmmm".
-    % If the microseconds component of the date is zero, then the
-    % ".mmmmmm" part is omitted.
+    % If the microseconds component of the date is zero, then omit the
+    % ".mmmmmm" part.
     %
 :- func date_to_string(date) = string.
 
 %---------------------%
 
-    % Get the current local time.
+    % current_local_time(Now, !IO):
+    %
+    % Return the current local time as a date. The microseconds component
+    % of the returned date is always zero, as the underlying system call
+    % has only second-level resolution. The time zone used is the system local
+    % time zone.
     %
 :- pred current_local_time(date::out, io::di, io::uo) is det.
 
-    % Get the current UTC time.
+    % current_utc_time(Now, !IO):
+    %
+    % Return the current UTC time as a date. The microseconds component of
+    % the returned date is always zero, as the underlying system call has
+    % only second-level resolution.
     %
 :- pred current_utc_time(date::out, io::di, io::uo) is det.
 
-    % Calculate the Julian day number for a date on the Gregorian calendar.
+    % julian_day_number(Date) = JDN:
+    %
+    % Return the Julian day number for Date on the proleptic Gregorian
+    % calendar. The Julian day number is the integer number of days since
+    % the start of the Julian period (noon on 1 January, 4713 BC in the
+    % proleptic Julian calendar). The time-of-day components of Date are
+    % ignored; the result is the Julian day number for the date at noon.
     %
 :- func julian_day_number(date) = int.
 
-    % Returns 1970/01/01 00:00:00.
+    % Return the Unix epoch, 1970-01-01 00:00:00.
     %
 :- func unix_epoch = date.
 
     % same_date(A, B):
-    % True iff A and B are equal with respect to only their date components.
-    % The time components are ignored.
+    %
+    % Succeed if-and-only-if A and B refer to the exact same day.
+    % Their time components are ignored. A and B should refer to
+    % the same time zone; comparing dates in different time zones
+    % may give incorrect results, because the same point in time can
+    % fall on different days in different time zones.
     %
 :- pred same_date(date::in, date::in) is semidet.
 
@@ -183,8 +241,53 @@
 %
 
     % A period of time measured in years, months, days, hours, minutes,
-    % seconds and microseconds. Internally a duration is represented
-    % using only months, days, seconds and microseconds components.
+    % seconds and microseconds.
+    %
+    % A duration may be positive (moving a date forward in time) or negative
+    % (moving a date backward in time). All non-zero components must share the
+    % same sign; a duration with a mix of positive and negative components
+    % cannot be constructed.
+    %
+    % Years and months are context-dependent units whose length in absolute
+    % time varies with the dates they are applied to. A year is treated as
+    % 12 months, and a month is 28-31 days depending on the calendar month
+    % and year. In contrast, days and smaller units are fixed-length:
+    % 1 day = 86,400 seconds (leap seconds are ignored; see below).
+    %
+    % When adding a year or month component causes the day to fall outside
+    % the target month, it is clamped to the last day of that month.
+    % This applies equally to positive and negative durations. For example:
+    %
+    %   - Adding  1 month  to January 31  gives February 28 (29 in a leap year)
+    %   - Adding  1 year   to February 29, 2020 gives February 28, 2021
+    %   - Adding -1 month  to March 31    gives February 28 (29 in a leap year)
+    %   - Adding -1 year   to February 29, 2020 gives February 28, 2019
+    %
+    % Note on leap seconds: although individual dates can represent times
+    % with leap seconds (second 60), durations ignore them. A day is
+    % always treated as exactly 86,400 seconds, even though UTC days
+    % containing leap seconds are 86,399 or 86,401 seconds long.
+    %
+    % Durations are stored internally using four components only: months, days,
+    % seconds and microseconds. When a duration is constructed by
+    % init_duration/7, the seven input components are normalised into these
+    % four.
+    %
+    %   - Years are converted to months and added to the months component.
+    %   - Microseconds are divided into whole seconds (which are carried over)
+    %     and a microseconds remainder.
+    %   - Hours, minutes, seconds, and any carried seconds are combined into a
+    %     total number of seconds.
+    %   - Whole days in that seconds total are carried into the days component,
+    %     and the remainder becomes the seconds component.
+    %
+    % Days are never folded into months (a month does not have a fixed number
+    % of days), and months are never folded into years during normalisation.
+    % As a result, the duration component access functions may return values
+    % that differ from the init_duration/7 arguments. For example:
+    %
+    %   - init_duration(1, 18, 0, 0, 0, 0, 0) => years = 2, months = 6
+    %   - init_duration(0, 0, 0, 25, 0, 0, 0) => days = 1, hours = 1
     %
 :- type duration.
 
@@ -198,7 +301,42 @@
 :- type seconds == int.
 :- type microseconds == int.
 
-    % Functions to retrieve duration components.
+    % Functions to retrieve the components of a duration.
+    %
+    % Years and months are derived from the single combined months total
+    % in the duration:
+    %
+    %   The years function returns total months // 12
+    %   The months function returns total months rem 12
+    %
+    % Hours, minutes and seconds are derived from the single combined seconds
+    % total in the duration:
+    %
+    %   The hours function returns total seconds // 3600
+    %   The minutes function returns total seconds rem 3600 // 60
+    %   The seconds function returns total seconds rem 60
+    %
+    % Days and microseconds are each derived from their own component
+    % and returned directly.
+    %
+    %   The days function returns total days
+    %   The microseconds function returns total microseconds
+    %
+    % For positive durations:
+    %   months/1 returns       a value in the range 0 .. 11
+    %   days/1 returns         a value in the range 0 .. max_int
+    %   hours/1 returns        a value in the range 0 .. 23
+    %   minutes/1 returns      a value in the range 0 .. 59
+    %   seconds/1 returns      a value in the range 0 .. 59
+    %   microseconds/1 returns a value in the range 0 .. 999,999
+    %
+    % For negative durations:
+    %   months/1 returns       a value in the range -11 .. 0
+    %   days/1 returns         a value in the range min_int .. 0
+    %   hours/1 returns        a value in the range -23 .. 0
+    %   minutes/1 returns      a value in the range -59 .. 0
+    %   seconds/1 returns      a value in the range -59 .. 0
+    %   microseconds/1 returns a value in the range -999,999 .. 0
     %
 :- func years(duration) = years.
 :- func months(duration) = months.
@@ -208,10 +346,29 @@
 :- func seconds(duration) = seconds.
 :- func microseconds(duration) = microseconds.
 
-    % init_duration(Years, Months, Days, Hours, Minutes,
-    %   Seconds, MicroSeconds) = Duration.
-    % Create a new duration. All of the components should either be
-    % non-negative or non-positive (they can all be zero).
+    % init_duration(Years, Months, Days, Hours, Minutes, Seconds,
+    %   MicroSeconds) = Duration:
+    %
+    % Create a new duration from the given components.
+    % All non-zero components must have the same sign (they must be entirely
+    % positive or entirely negative). This function throws an exception if
+    % two non-zero components have different signs.
+    %
+    % For example, all of the following are valid:
+    %
+    %  - init_duration(1, 2, 15, 0, 0, 0, 0)    (all positive or zero)
+    %  - init_duration(0, 0, -3, -12, 0, 0, 0)  (all negative or zero)
+    %  - init_duration(0, 0, 0, 0, 0, 0, 0)     (all zero)
+    %
+    % But the following contain non-zero components with mixed signs and will
+    % throw an exception:
+    %
+    %  - init_duration(0, 1, -5, 0, 0, 0, 0)
+    %  - init_duration(0, 0, 0, 2, -30, 0, 0)
+    %
+    % If you need a fixed absolute time period that is independent of calendar
+    % context, then use only the days, hours, minutes, seconds and microseconds
+    % components.
     %
 :- func init_duration(years, months, days, hours, minutes, seconds,
     microseconds) = duration.
@@ -234,30 +391,37 @@
 
     % Parse a duration string.
     %
-    % The string should be of the form "PnYnMnDTnHnMnS" where each "n" is a
+    % The string should have the form "[-]PnYnMnDTnHnMnS" where each "n" is a
     % non-negative integer representing the number of years (Y), months (M),
-    % days (D), hours (H), minutes (M) or seconds (S). The duration string
-    % always starts with 'P' and the 'T' separates the date and time components
-    % of the duration. A component may be omitted if it is zero, and the 'T'
-    % separator is not required if all the time components are zero.
-    % The second component may include a fraction component using a period.
-    % This fraction component should not have a resolution higher than a
-    % microsecond.
+    % days (D), hours (H), minutes (M) or seconds (S). The units must follow
+    % the numbers, not precede them. The duration string always starts with
+    % either 'P' or '-P', and the 'T' separates the date and time components
+    % of the duration. A component may be omitted if it is zero, and
+    % the 'T' separator is not required if all the time components are zero.
     %
-    % For example the duration 1 year, 18 months, 100 days, 10 hours, 15
-    % minutes 90 seconds and 300 microseconds can be written as:
+    % The seconds component may include a fraction component using a period.
+    % This fraction component cannot include more than six digits, since
+    % the maximum resolution of a duration is a microsecond.
+    %
+    % Fail if the string does not conform to the above format, or if the
+    % fractional part of the seconds component has more than six digits.
+    %
+    % For example, the duration 1 year, 18 months, 100 days, 10 hours, 15
+    % minutes, 90 seconds and 300 microseconds can be written as:
+    %
     %   P1Y18M100DT10H15M90.0003S
-    % while the duration 1 month and 2 days can be written as:
-    %   P1M2D
     %
-    % Note that internally the duration is represented using only months,
-    % days, seconds and microseconds, so that
+    % while a negative duration of 1 month and 2 days can be written as:
+    %
+    %   -P1M2D
+    %
+    % Note that this predicate normalises its input, so that (for example)
     % duration_to_string(det_duration_from_string("P1Y18M100DT10H15M90.0003S"))
-    % will result in the string "P2Y6M100DT10H16M30.0003S".
+    % will return "P2Y6M100DT10H16M30.0003S".
     %
 :- pred duration_from_string(string::in, duration::out) is semidet.
 
-    % Same as above, but throws an exception if the duration string is invalid.
+    % Same as above, but throw an exception if the duration string is invalid.
     %
 :- func det_duration_from_string(string) = duration.
 
@@ -268,78 +432,84 @@
 
 %---------------------%
 
-    % Add a duration to a date.
+    % add_duration(Duration, Date0, Date):
     %
-    % First the years and months are added to the date.
-    % If this causes the day to be out of range (e.g. April 31), then it is
-    % decreased until it is in range (e.g. April 30). Next the remaining
-    % days, hours, minutes and seconds components are added. These could
-    % in turn cause the month and year components of the date to change again.
+    % Add Duration to Date0 to yield Date, clamping the day to the end
+    % of the month if the month or year component of the duration causes it to
+    % fall out of range.
+    % (See the documentation of the type duration/0 for the clamping rules.)
     %
 :- pred add_duration(duration::in, date::in, date::out) is det.
 
-    % This predicate implements a partial order relation on durations.
-    % DurationA is less than or equal to DurationB iff for all of the
-    % dates list below, adding DurationA to the date results in a date
-    % less than or equal to the date obtained by adding DurationB.
+    % duration_leq(DurationA, DurationB):
+    %
+    % Succeed if-and-only-if DurationA is less than or equal to DurationB.
+    % This relation is a partial order: some pairs of durations are
+    % incomparable, because their relative size depends on the date they
+    % are applied to (e.g. 1 month vs. 30 days may compare differently
+    % in different months).
+    %
+    % DurationA is considered less than or equal to DurationB if adding
+    % DurationA to each of the following dates yields a result no later
+    % than adding DurationB to the same date. These dates are chosen to
+    % exercise all possible combinations of leap-year and variable
+    % month-length boundaries:
     %
     %    1696-09-01 00:00:00
     %    1697-02-01 00:00:00
     %    1903-03-01 00:00:00
     %    1903-07-01 00:00:00
     %
-    % There is only a partial order on durations, because some durations
-    % cannot be said to be less than, equal to or greater than another duration
-    % (e.g. 1 month vs. 30 days).
+    % The predicate fails if DurationA is greater than DurationB for any
+    % of the above dates, including the case where the two durations are
+    % incomparable (i.e. DurationA yields an earlier result for some test
+    % dates but a later result for others).
     %
 :- pred duration_leq(duration::in, duration::in) is semidet.
 
-    % Get the difference between local and UTC time as a duration.
+    % local_time_offset(Offset, !IO):
     %
-    % local_time_offset(TZ, !IO) is equivalent to:
-    %   current_local_time(Local, !IO),
-    %   current_utc_time(UTC, !IO),
-    %   TZ = duration(UTC, Local)
-    % except that it is as if the calls to current_utc_time and
-    % current_local_time occurred at the same instant.
+    % Offset is the difference between local and UTC time, that is, the
+    % value of duration_between(UTC, Local), where Local and UTC are the local
+    % and UTC representations of the same point in time. Offset reflects the
+    % system's current daylight saving state at the time of the call.
     %
-    % To convert UTC time to local time, add the result of local_time_offset/3
-    % to UTC (using add_duration/3). To compute UTC given the local time,
-    % first negate the result of local_time_offset/3 (using negate/1) and then
-    % add it to the local time.
+    % To convert UTC time to local time, add Offset to UTC using
+    % add_duration/3. To convert local time to UTC, negate Offset using
+    % negate/1, and add the result to the local time.
     %
 :- pred local_time_offset(duration::out, io::di, io::uo) is det.
 
-    % duration(DateA, DateB) = Duration.
-    % Find the duration between two dates using a "greedy" algorithm.
-    % The algorithm is greedy in the sense that it will try to maximise each
-    % component in the returned duration in the following order: years, months,
-    % days, hours, minutes, seconds, microseconds.
-    % The returned duration is positive if DateB is after DateA and negative
-    % if DateB is before DateA.
-    % Any leap seconds that occurred between the two dates are ignored.
-    % The dates should be in the same timezone and in the same daylight
-    % savings phase. To work out the duration between dates in different
-    % timezones or daylight savings phases, first convert the dates to UTC.
+    % duration(DateA, DateB) = Duration:
     %
-    % If the seconds components of DateA and DateB are < 60 then
-    % add_duration(DateA, duration(DateA, DateB), DateB) will hold, but
-    % add_duration(DateB, negate(duration(DateA, DateB)), DateA) may not hold.
-    % For example if:
-    %   DateA = 2001-01-31
-    %   DateB = 2001-02-28
-    %   Duration = 1 month
-    % then the following holds:
-    %   add_duration(duration(DateA, DateB), DateA, DateB)
-    % but the following does not:
-    %   add_duration(negate(duration(DateA, DateB), DateB, DateA)
-    % (Adding -1 month to 2001-02-28 will yield 2001-01-28).
+    % Return the duration from DateA to DateB using a greedy algorithm
+    % that maximises each component in this order: years, months, days, hours,
+    % minutes, seconds, microseconds. The result is positive if DateB is
+    % after DateA and negative if DateB is before DateA. Leap
+    % seconds are ignored.
+    %
+    % The dates should be in the same time zone and daylight saving phase;
+    % to find the duration between dates in different time zones or daylight
+    % saving phases, first convert them both to UTC.
+    %
+    % Note that due to month-end clamping, duration/2 is not always the
+    % inverse of add_duration/3. For example, the duration from 2001-01-31
+    % to 2001-02-28 is 1 month, but adding -1 month to 2001-02-28 yields
+    % 2001-01-28, not 2001-01-31.
     %
 :- func duration(date, date) = duration.
 
-    % Same as above, except that the year and month components of the
-    % returned duration will always be zero. The duration will be in terms
-    % of days, hours, minutes, seconds and microseconds only.
+    % day_duration(DateA, DateB) = Duration:
+    %
+    % Return the duration from DateA to DateB, expressed using only
+    % fixed-length units: days, hours, minutes, seconds and microseconds.
+    % The years and months components of the returned duration are always
+    % zero. The result is positive if DateB is after DateA and
+    % negative if DateB is before DateA. Leap seconds are ignored.
+    %
+    % The dates should be in the same time zone and daylight saving phase;
+    % to find the duration between dates in different time zones or daylight
+    % saving phases, first convert them both to UTC.
     %
 :- func day_duration(date, date) = duration.
 
@@ -349,13 +519,11 @@
 %
 
     % foldl_days(Pred, Start, End, !Acc):
-    % Calls Pred for each day in the range of dates from Start to End
-    % with an accumulator.
-    % Each date in the range is generated by adding a duration of one day
-    % to the previous date using the add_duration/3 predicate.
-    % Consequently, the time components of the dates in the range may
-    % differ if the time components of the given start and end times
-    % include leap seconds.
+    %
+    % Call Pred for each date in the range Start to End (inclusive),
+    % passing an accumulator. Each date in the range is generated by
+    % adding a duration of one day to the previous date using
+    % add_duration/3.
     %
 :- pred foldl_days(pred(date, A, A), date, date, A, A).
 :- mode foldl_days(pred(in, in, out) is det, in, in, in, out) is det.
@@ -366,6 +534,7 @@
 :- mode foldl_days(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
 
     % foldl2_days(Pred, Start, End, !Acc1, !Acc2):
+    %
     % As above, but with two accumulators.
     %
 :- pred foldl2_days(pred(date, A, A, B, B), date, date, A, A, B, B).
@@ -383,6 +552,7 @@
     di, uo) is semidet.
 
     % foldl3_days(Pred, Start, End, !Acc1, !Acc2, !Acc3):
+    %
     % As above, but with three accumulators.
     %
 :- pred foldl3_days(pred(date, A, A, B, B, C, C), date, date,
@@ -427,12 +597,6 @@
 
 :- type duration
     --->    duration(
-                % XXX I (zs) think that a duration should be expressed
-                % purely in terms of units that have fixed length.
-                % Seconds and microseconds qualify. Months do not,
-                % since obviously different months have different lengths.
-                % Even days do not have a fixed length in the presence of
-                % leap seconds, though this module ignores those.
                 dur_months          :: int,
                 dur_days            :: int,
                 dur_seconds         :: int,
