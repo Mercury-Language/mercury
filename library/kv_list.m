@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020 The Mercury team.
+% Copyright (C) 2020, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -87,13 +87,13 @@
 % Searching kv_lists.
 %
 
-    % Find the first element of the kv_list list that matches
+    % Find the first element of the kv_list that matches
     % the given key, and return the associated value.
     % Fail if there is no matching key.
     %
 :- pred search(kv_list(K, V)::in, K::in, V::out) is semidet.
 
-    % Find the first element of the kv_list list that matches
+    % Find the first element of the kv_list that matches
     % the given key, and return the associated value.
     % Throw an exception if there is no matching key.
     %
@@ -112,7 +112,7 @@
 % Updating elements in kv_lists.
 %
 
-    % Find the first element of the kv_list list that matches
+    % Find the first element of the kv_list that matches
     % the given key, and update the associated value.
     % Fail if there is no matching key.
     %
@@ -124,7 +124,7 @@
 % Removing elements from kv_lists.
 %
 
-    % Find the first element of the association list that matches the given
+    % Find the first element of the kv_list that matches the given
     % key. Return the associated value, and the original list with the selected
     % element removed.
     %
@@ -170,7 +170,7 @@
 
     % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument, and for each key-value pair in List, calls the closure
-    % on the key K. The key-value pair is included in TrueList iff Pred(K)
+    % on the key K. The key-value pair is included in FalseList iff Pred(K)
     % is false.
     %
 :- func negated_filter(pred(K)::in(pred(in) is semidet),
@@ -212,7 +212,7 @@
     %
 :- func foldl(func(K, V, A) = A, kv_list(K, V), A) = A.
 
-    % foldl(Pred, List, Start End) calls Pred
+    % foldl(Pred, List, Start, End) calls Pred
     % with each key-value pair in List, working left-to-right,
     % and an accumulator whose initial value is Start,
     % and returns the final value in End.
@@ -232,7 +232,7 @@
     %
 :- func foldl_keys(func(K, A) = A, kv_list(K, V), A) = A.
 
-    % foldl_keys(Pred, List, Start End) calls Pred
+    % foldl_keys(Pred, List, Start, End) calls Pred
     % with each key in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
     %
@@ -252,7 +252,7 @@
     %
 :- func foldl_values(func(V, A) = A, kv_list(K, V), A) = A.
 
-    % foldl_values(Pred, List, Start End) calls Pred
+    % foldl_values(Pred, List, Start, End) calls Pred
     % with each value in List, working left-to-right, and an accumulator
     % whose initial value is Start, and returns the final value in End.
     %

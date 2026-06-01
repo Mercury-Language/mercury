@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2013-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2019, 2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -324,7 +324,7 @@ zip(I, Fn, BMa, BMb) =
     %
 :- func num_ints_required(int) = int.
 
-    % We add the 1 on because version_arrays of size N are indexed 0 .. N - 1.
+    % We add 1 because version_arrays of size N are indexed 0 .. N - 1.
     %
 num_ints_required(N) = 1 + ( if N > 0 then int_offset(N) else 0 ).
 
@@ -334,7 +334,7 @@ num_ints_required(N) = 1 + ( if N > 0 then int_offset(N) else 0 ).
     %
 :- func int_offset(int) = int.
 
-    % We add the extra 1 on because elem(0) is used to store the
+    % We add the extra 1 because elem(0) is used to store the
     % number of bits in the version_bitmap; the data are stored
     % in the following elements.
     %

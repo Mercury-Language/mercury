@@ -1459,7 +1459,7 @@ __Compare__private_builtin__ref_1_0(
     %   Ptag, CellOffsetVar, ShiftVar, ResultVar):
     %
     % Set ResultVar to the result of the signed comparison between two
-    % {8,16,32} bit bitfields in the memory cells of TermVarX and TermVarY.
+    % {8,16,32}-bit bitfields in the memory cells of TermVarX and TermVarY.
     % The bitfields are in the word at offset CellOffsetVar, with the
     % LSBs of the bitfields being ShiftVar bits from the LSB of the word.
     %
@@ -1527,7 +1527,7 @@ __Compare__private_builtin__ref_1_0(
     % different from the call case.
     %
     % Arranging for all branches of a branched control structure to have
-    % a consistent view of the fill-in state of such an initially partially
+    % a consistent view of the fill-in state of such an initially partially-
     % instantiated term is significantly easier when distinct variables
     % represent distinct stages of filling-in, so we want to adopt that
     % consistently. This is why, immediately after a unification does

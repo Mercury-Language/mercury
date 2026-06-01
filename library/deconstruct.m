@@ -615,8 +615,8 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 
     % univ_arg_idcc(Term, N, DummyUniv, Argument, Success):
     %
-    % Attempt to extract the Nth field of (the current representation of) Term.
-    % If there is such a field, return Success=1 and return the field in
+    % Attempt to extract the N'th field of (the current representation of)
+    % Term. If there is such a field, return Success=1 and return the field in
     % Argument. If there is not, return Success=0 and Argument=DummyUniv.
     %
 :- pred univ_arg_idcc(T::in, int::in, univ::in, univ::out, int::out)

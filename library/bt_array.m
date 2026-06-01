@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997,1999-2000,2002-2003,2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -77,7 +77,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % lookup returns the Nth element of a bt_array.
+    % lookup returns the N'th element of a bt_array.
     % It is an error if the index is out of bounds.
     %
 :- pred lookup(bt_array(T)::in, int::in, T::out) is det.
@@ -88,7 +88,7 @@
     %
 :- pred semidet_lookup(bt_array(T)::in, int::in, T::out) is semidet.
 
-    % set sets the nth element of a bt_array, and returns the resulting
+    % set sets the N'th element of a bt_array, and returns the resulting
     % bt_array. It is an error if the index is out of bounds.
     %
 :- pred set(bt_array(T)::in, int::in, T::in, bt_array(T)::out) is det.
@@ -132,7 +132,7 @@
 :- func shrink(bt_array(T), int, int) = bt_array(T).
 
     % from_list(Low, List, BtArray) takes a list (of possibly zero
-    % length), and returns a bt_array containing % those elements in the same
+    % length), and returns a bt_array containing those elements in the same
     % order that they occurred in the list. The lower bound of the new array
     % is `Low'.
 :- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.

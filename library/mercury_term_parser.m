@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2020 The Mercury team.
+% Copyright (C) 2014-2023, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -16,7 +16,7 @@
 % than from the current input stream. The parse_tokens predicate is
 % similar, but it takes a list of tokens rather than a string.
 %
-% The parser is a relatively straight-forward top-down recursive descent
+% The parser is a relatively straightforward top-down recursive descent
 % parser, made somewhat complicated by the need to handle operator precedences.
 % It uses `mercury_term_lexer.get_token_list' to read a list of tokens.
 % It uses the routines from the module `ops' to look up operator precedences.

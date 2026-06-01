@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997-1999, 2005-2006, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -78,7 +78,7 @@
     % pop(Elem, Stack0, Stack):
     %
     % True iff Stack0 is a non-empty stack whose top element is Elem,
-    % and Stack the stack which results from popping Elem off Stack0.
+    % and Stack is the stack which results from popping Elem off Stack0.
     %
 :- pred pop(T::out, stack(T)::in, stack(T)::out) is semidet.
 

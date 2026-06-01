@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -218,7 +218,7 @@
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes somewhere between
     % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
-    % and O(min(card(SetA)), card(SetB)) space.
+    % and O(min(card(SetA), card(SetB)) space.
     %
 :- func intersect(tree_bitset(T), tree_bitset(T)) = tree_bitset(T).
 :- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
@@ -296,7 +296,7 @@
     %
 :- func from_set(set.set(T)) = tree_bitset(T) <= enum(T).
 
-    % `to_sorted_list(Set)' returns a set.set containing all the members
+    % `to_set(Set)' returns a set.set containing all the members
     % of `Set', in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_set(tree_bitset(T)) = set.set(T) <= enum(T).
@@ -1940,7 +1940,7 @@ union_list(Sets @ [_, _ | _], Set) :-
     % is often only slightly faster than unioning that large set with another
     % large set, yet it gets significantly less work done. This is because
     % the bitsets in a small set can be expected to be considerably sparser
-    % that bitsets in large sets.
+    % than bitsets in large sets.
     %
     % We expect that this approach should yield performance closer to NlogN
     % than to N^2 when unioning a list of N sets.
@@ -3413,7 +3413,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %         List) :-
 %     OffsetA = HeadA ^ init_offset,
 %     OffsetB = HeadB ^ init_offset,
-%     ( if OffsetA = OffsetB tnen
+%     ( if OffsetA = OffsetB then
 %         ComponentsA = HeadA ^ components,
 %         ComponentsB = HeadB ^ components,
 %         (

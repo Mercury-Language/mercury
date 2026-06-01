@@ -172,7 +172,7 @@
 
     % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument, and for each key-value pair in List, calls the closure
-    % on the key K. The key-value pair is included in TrueList iff
+    % on the key K. The key-value pair is included in FalseList iff
     % Pred(K) is false.
     %
 :- func negated_filter(pred(K)::in(pred(in) is semidet),

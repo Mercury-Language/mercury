@@ -243,7 +243,7 @@
     % vars(Term, Vars):
     %
     % Vars is the list of variables contained in Term, in the order
-    % obtained by traversing the term depth first, left-to-right.
+    % obtained by traversing the term depth-first, left-to-right.
     %
 :- func vars(term(T)) = list(var(T)).
 :- pred vars(term(T)::in, list(var(T))::out) is det.
@@ -406,7 +406,7 @@
 %---------------------------------------------------------------------------%
 %
 % Substitution predicates that specify the substitution by giving
-% an explicit variable to term map.
+% an explicit variable-to-term map.
 %
 
     % apply_substitution_in_term(Substitution, Term0, Term):

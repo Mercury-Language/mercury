@@ -5219,7 +5219,7 @@ maybe_delete_stream_info(Stream, !IO) :-
     ).
 
     % Return an integer that is nonzero if and only if we should delete
-    % the information we have about stream when that stream is closed.
+    % the information we have about a stream when that stream is closed.
     % The debugger may need this information in order to display the stream id
     % in a user-friendly manner even after the stream is closed (e.g. after
     % performing a retry after the close), so if debugging is enabled, we
@@ -5495,7 +5495,7 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
     % discriminated union data types. It also avoids memory allocation in
     % inner loops.
 
-    % Reads a character (code point) from specified stream. This may
+    % Reads a character (code point) from the specified stream. This may
     % involve converting external character encodings into Mercury's internal
     % character representation and (for text streams) converting OS line
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
@@ -5796,7 +5796,7 @@ read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
     % discriminated union data types. It also avoids memory allocation in
     % inner loops.
 
-    % Reads a byte from specified stream.
+    % Reads a byte from the specified stream.
     %
 :- pred read_byte_val(input_stream::in, result_code::out, int::out,
     system_error::out, io::di, io::uo) is det.
@@ -6846,7 +6846,7 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
 //
 // The result is returned as follows:
 //
-// 'result_code' is set the status code (maybe_incomplete_result_code/0)
+// 'result_code' is set to the status code (maybe_incomplete_result_code/0)
 // for the read.
 // 'result_value' is the value of the integer read on a successful read
 // and zero otherwise.
@@ -8504,7 +8504,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
 ").
 
 read_line_as_string_2(Stream, FirstCall, Res, String, Error, !IO) :-
-    % XXX This is terribly inefficient, a better approach would be
+    % XXX This is terribly inefficient; a better approach would be
     % to use a buffer like what is done for io.read_file_as_string.
     read_char_code(input_stream(Stream), ResultCode, Char, Error0, !IO),
     (
@@ -12897,7 +12897,7 @@ compare_file_id(Result, FileId1, FileId2) :-
     int inode_cmp;
 
     // For compilers other than GCC, glibc defines dev_t as struct (dev_t
-    // is 64 bits, and other compilers may not have a 64 bit arithmetic type).
+    // is 64 bits, and other compilers may not have a 64-bit arithmetic type).
     // XXX This code assumes that dev_t and ino_t do not include padding bits.
     // In practice, that should be OK.
     device_cmp = memcmp(&(FileId1.device), &(FileId2.device),
