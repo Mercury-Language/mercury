@@ -2772,7 +2772,7 @@ transform(V_in, V_out, some Vars DCG_goal) =
 transform(V_in, V_out, all Vars DCG_goal) =
     all Vars transform(V_in, V_out, DCG_goal)
 
-transform(V_in, V_out, (DCG-goal1, DCG-goal2)) =
+transform(V_in, V_out, (DCG_goal1, DCG_goal2)) =
     (transform(V_in, V_new, DCG_goal1), transform(V_new, V_out, DCG_goal2))
 
 transform(V_in, V_out, (DCG_goal1 ; DCG_goal2)) =
@@ -2862,7 +2862,7 @@ Except for @code{int},
 the width in bits of each of these is given by the numeric suffix in its name.
 
 The width in bits of @code{int} is implementation defined,
-but must be at least 32-bits.
+but must be at least 32 bits.
 
 All signed integer types use two's-complement representation.
 Their width must be equal to the width of the corresponding unsigned type.
@@ -2899,7 +2899,7 @@ Except for @code{uint},
 the width in bits of each of these is given by the numeric suffix in its name.
 
 The width in bits of @code{uint} is implementation defined,
-but must be at least 32-bits.
+but must be at least 32 bits.
 It must be equal to the width of the type @code{int}.
 
 Values of the type @code{uint8} must be in the range
@@ -2907,15 +2907,15 @@ Values of the type @code{uint8} must be in the range
 both inclusive.
 
 Values of the type @code{uint16} must be in the range
-@math{0} (@math{2^0 - 1}) to @math{65535} (@math{2^16 - 1}),
+@math{0} (@math{2^0 - 1}) to @math{65535} (@math{2^{16} - 1}),
 both inclusive.
 
 Values of the type @code{uint32} must be in the range
-@math{0} (@math{2^0 - 1}) to @math{4294967295} (@math{2^32 - 1}),
+@math{0} (@math{2^0 - 1}) to @math{4294967295} (@math{2^{32} - 1}),
 both inclusive.
 
 Values of the type @code{uint64} must be in the range
-@math{0} (@math{2^0 - 1}) to @math{18446744073709551615} (@math{2^64 - 1}),
+@math{0} (@math{2^0 - 1}) to @math{18446744073709551615} (@math{2^{64} - 1}),
 both inclusive.
 
 Values of the type @code{uint} must be in the range
@@ -4055,7 +4055,7 @@ will compare as less than the other value.
 There is one exception from this rule:
 in types that are subject to a @code{foreign_enum} pragma,
 the outcomes of comparisons are decided
-by user's chosen foreign language representations,
+by the user's chosen foreign language representations,
 using the rules of the foreign language.
 
 For subtypes, the two values compare as though
@@ -5231,7 +5231,7 @@ it can succeed more than once.
 @c hence @dfn{index} the disjunction.
 @c Precisely describing the rules for detecting switches is somewhat tricky,
 @c and I won't attempt to do so, but they are
-@c reasonable easy to understand in practice.
+@c reasonably easy to understand in practice.
 @c The compiler can index on any input variable to a disjunction
 @c (not just the first head variable).  It can also index on more than
 @c one variable, since after indexing on the first one, switch detection is
@@ -5345,7 +5345,7 @@ There are several alternative possibilities.
 
 If you just want to see if a nondeterministic goal is satisfiable or not,
 without needing to know what variable bindings it produces,
-then there is no problem -
+then there is no problem ---
 determinism analysis considers @code{nondet} and @code{multi} goals
 with no non-local output variables to be
 @code{semidet} and @code{det} respectively.
@@ -6813,7 +6813,7 @@ A module may not contain more than one submodule with the same name.
 
 Nested submodules within a module are delimited by
 matching @samp{:- module} and @samp{:- end_module} declarations.
-(Note that @samp{:- end_module} for nested submodules
+(Note that @samp{:- end_module} declarations for nested submodules
 are mandatory, not optional,
 even if the nested submodule is the last thing in the source file.
 The module name in a @samp{:- module} or @samp{:- end_module}
@@ -7537,7 +7537,7 @@ that contains the full instance declaration in its implementation section.
 Abstract typeclass declarations
 are typeclass declarations whose definitions are hidden.
 An abstract typeclass declaration has the same form as a typeclass declaration,
-but without the @samp{where[@dots{}]} part.
+but without the @samp{where [@dots{}]} part.
 An abstract typeclass declaration defines
 a name for a set of (sequences of) types,
 but does not define what methods must be implemented
@@ -7728,7 +7728,7 @@ The programmer could declare instances such as
 
 However, when it comes to writing the instance declaration
 for a type such as @code{list(T)},
-we want to be able print out the list elements
+we want to be able to print out the list elements
 using the @code{portray/3} for the particular type of the list elements.
 This can be achieved by
 placing a type class constraint on the @code{instance} declaration,
@@ -8601,7 +8601,7 @@ For each node @var{InstX}:
 @itemize
 @item
 If @var{InstX} is a recursive node in the inst tree
-(i.e. it is its own ancestor),
+(i.e.@: it is its own ancestor),
 then we require @var{TypeX} =< @var{TypeY}.
 Let @var{InstY} = @var{InstX}.
 
@@ -8651,7 +8651,7 @@ from a @samp{ground} node @var{InstX}:
 @item
 If @var{TypeX} = @var{TypeY}
 or if @var{TypeX} is a recursive node in the type tree
-(i.e. it is its own ancestor),
+(i.e.@: it is its own ancestor),
 then let @var{InstY} be @code{ground}.
 
 @item
@@ -9431,7 +9431,7 @@ uses and/or modifies any part of the Mercury virtual machine
 (registers, stack slots)
 through means other than its arguments.
 The @samp{affects_liveness} attribute says that it does;
-The @samp{does_not_affect_liveness} attribute says that it does not.
+the @samp{does_not_affect_liveness} attribute says that it does not.
 In the absence of either attribute,
 the compiler assumes @samp{affects_liveness},
 unless the code of the foreign_proc in question is empty.
@@ -11010,7 +11010,7 @@ For example, the following will link the object file @samp{my_function.o}
 from the current directory when compiling the program @samp{prog}:
 
 @example
-mmc --link-object my_functions.o prog
+mmc --link-object my_function.o prog
 @end example
 
 The command line option @samp{--library} (or @samp{-l} for short)
@@ -11497,7 +11497,7 @@ Mercury distinguishes three ``levels'' of purity:
 @item pure
 For pure procedures,
 the set of solutions depends only on the values of the input arguments.
-They do not interact with the ``real'' world (i.e., do any input/output)
+They do not interact with the ``real'' world (i.e.@: do any input/output)
 without taking an io.state (@pxref{Types}) as input
 and returning one as output,
 and do not change the value of any data structure
@@ -11647,7 +11647,7 @@ impure X = f(X1, X2, @dots{}, XN)
 
 Any call or unification goal containing a non-local variable
 with inst @code{any} that appears in a negated context
-(i.e., in a negation or in the condition of an if-then-else goal)
+(i.e.@: in a negation or in the condition of an if-then-else goal)
 must be given an @code{impure} annotation
 because it may violate referential transparency.
 
@@ -12654,7 +12654,7 @@ Declarations of the forms
 @end example
 
 @noindent
-tells the compiler to consider the predicate or function
+tell the compiler to consider the predicate or function
 with name @var{Name} and arity @var{Arity} to be used,
 and not generate any dead procedure/predicate/function warnings
 either for the named predicate or function,
@@ -12745,7 +12745,7 @@ whose definition in the @code{string} module of the standard library is
 @noindent
 As you can see, each function symbol in this type
 wraps up a value of a builtin type,
-and thus converts it to the same @code{poly_type} type. 
+and thus converts it to the same @code{poly_type} type.
 
 With one exception,
 every occurrence of a percent sign in the format string
