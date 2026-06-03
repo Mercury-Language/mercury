@@ -27,7 +27,7 @@
 % Most version data structures come with impure, unsafe means to "rewind"
 % to an earlier version, restoring that version's O(1) access times, but
 % leaving later versions undefined (i.e. only do this if you are discarding
-% all later versions of the structure.)
+% all later versions of the structure).
 %
 % The motivation for using version types is that they are ordinary ground
 % structures and do not depend upon uniqueness, while in many circumstances
@@ -38,7 +38,7 @@
 % versions of the array incur an O(k) penalty on accesses where k is
 % the number of updates that have been made since.
 %
-% The advantage of version arrays is that in the common, singly threaded,
+% The advantage of version arrays is that in the common, singly-threaded,
 % case, they are almost as fast as unique arrays, but can be treated as
 % ordinary ground values rather than unique values.
 %
@@ -80,7 +80,7 @@
 
     % Same as empty/0 except the resulting version_array is not thread safe.
     %
-    % That is your program can crash or behave strangely if you attempt to
+    % That is, your program can crash or behave strangely if you attempt to
     % concurrently access or update the array from different threads, or any
     % two arrays produced from operations on the same original array.
     % However this version is much quicker if you guarantee that you never
@@ -90,7 +90,7 @@
 
     % Same as init(N, X) except the resulting version_array is not thread safe.
     %
-    % That is your program can crash or behave strangely if you attempt to
+    % That is, your program can crash or behave strangely if you attempt to
     % concurrently access or update the array from different threads, or any
     % two arrays produced from operations on the same original array.
     % However this version is much quicker if you guarantee that you never
