@@ -8,7 +8,7 @@
 %
 % File: string.m.
 % Main authors: fjh, petdr, wangp.
-% Stability: medium to high.
+% Stability: high.
 %
 % This module provides basic string handling facilities.
 %
@@ -16,14 +16,14 @@
 % encoding, depending on the target language.
 %
 % When Mercury is compiled to C, strings are UTF-8 encoded, with a null
-% character as the string terminator. A single code point requires one to four
-% bytes (code units) to encode.
+% character as the string terminator. With UTF-8, each code unit is one byte,
+% and a single code point requires one to four of these code units to encode.
 %
 % When Mercury is compiled to Java, strings are represented using Java's
 % String type. When Mercury is compiled to C#, strings are represented using
 % C#'s `System.String' type. Both of these types use the UTF-16 encoding.
-% A single code point requires one or two 16-bit integers (code units)
-% to encode.
+% With UTF-16, each code unit is a 16 bit integer, and a single code point
+% requires one or two of these code units to encode.
 %
 % The Mercury compiler will only allow well-formed UTF-8 or UTF-16 string
 % constants. However, it is possible to produce strings containing invalid
@@ -38,8 +38,8 @@
 % detect such a null character. Programmers must not create strings that might
 % contain null characters using the foreign language interface.
 %
-% The builtin comparison operation on strings is also implementation
-% dependent. The current implementation performs string comparison using
+% The builtin comparison operation on strings is also dependent on the target
+% language. The current implementation performs string comparison using
 %
 % - C's strcmp() function, when compiling to C;
 % - Java's String.compareTo() method, when compiling to Java; and
@@ -87,7 +87,7 @@
 %
 % Wrapper types that associate particular semantics with raw strings.
 %
-% These types are used for defining stream typeclass instances
+% These types are useful for defining stream typeclass instances
 % where you want different instances for strings representing different
 % semantic entities. Using the string type itself, without a wrapper,
 % would be ambiguous in such situations.
@@ -168,8 +168,8 @@
 
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list contains a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
     % The reverse mode of from_char_list/2 is deprecated because the implied
     % ability to round trip convert a string to a list then back to the same
@@ -189,8 +189,8 @@
     % Same as from_char_list, except that it reverses the order
     % of the characters.
     % Throws an exception if the list contains a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
 :- func from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_rev_char_list(list(char)::in, string::uo) is det.
@@ -250,8 +250,8 @@
     % Construct a string consisting of Count occurrences of Char code points
     % in sequence, returning the empty string if Count is less than or equal
     % to zero. Throws an exception if Char is a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
 :- func duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred duplicate_char(char::in, int::in, string::uo) is det.
@@ -645,7 +645,7 @@
 
     % unsafe_compare_substrings(Res, X, StartX, Y, StartY, Length):
     %
-    % Same as compare_between/4 but without range checks.
+    % Same as compare_substrings/6 but without range checks.
     % WARNING: if any of `StartX', `StartY', `StartX + Length' or
     % `StartY + Length' are out of range, or if `Length' is negative,
     % then the behaviour is UNDEFINED. Use with care!
@@ -1384,13 +1384,13 @@
     % Convert a string to an int. The string must contain only digits [0-9],
     % optionally preceded by a plus or minus sign. If the string does
     % not match this syntax or the number is not in the range
-    % [min_int + 1, max_int], to_int fails.
+    % [min_int, max_int], to_int fails.
     %
 :- pred to_int(string::in, int::out) is semidet.
 
     % Convert a signed base 10 string to an int. Throws an exception if the
     % string argument does not match the regexp [+-]?[0-9]+ or the number is
-    % not in the range [min_int + 1, max_int].
+    % not in the range [min_int, max_int].
     %
 :- func det_to_int(string) = int.
 
@@ -1716,8 +1716,8 @@
 % from outside the string module, since they need to be visible to the
 % compiler (specifically, to format_call.m and its submodule
 % parse_format_string.m.). However, they should not be part of the
-% publically documented interface of the Mercury standard library,
-% since we don't want any user code to depend on the implementation
+% publicly documented interface of the Mercury standard library,
+% since we do not want any user code to depend on the implementation
 % details they contain.
 :- interface.
 :- include_module format.
