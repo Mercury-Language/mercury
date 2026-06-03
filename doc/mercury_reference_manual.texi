@@ -2467,7 +2467,7 @@ and then
 Actual application of this transformation would, in the general case,
 result in the generation of many different versions of each state variable,
 for which we need more names than just
-@samp{@var{CurX}}, @samp{@var{TmpX}} and @samp{@var{NextX}}.
+@samp{@var{CurX}}, @samp{@var{MidX}} and @samp{@var{NextX}}.
 The Mercury compiler therefore uses
 @itemize
 @item
