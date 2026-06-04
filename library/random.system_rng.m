@@ -22,7 +22,7 @@
 % we use the arc4random() family of functions.
 % For Windows, we use the rand_s() function.
 % For Linux, AIX, Solaris and versions of FreeBSD before 12, we read randomness
-% from /dev/urandom; on these system each open system RNG handle will require
+% from /dev/urandom; on these systems each open system RNG handle will require
 % an open file descriptor.
 % On other operating systems the system RNG is not available; on these systems
 % attempting to open a system RNG handle will throw an exception.
