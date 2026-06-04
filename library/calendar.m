@@ -875,6 +875,7 @@ duration_from_string(Str, Duration) :-
         !:Chars = string.to_char_list(Str),
         read_sign(Sign, !Chars),
         read_char('P', !Chars),
+        !.Chars \= [],
         read_years(Years, !Chars),
         read_months(Months, !Chars),
         read_days(Days, !Chars),
@@ -1400,7 +1401,8 @@ read_minutes(Minutes, !Chars) :-
 
 read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars) :-
     ( if
-        read_int(Seconds0, !.Chars, Chars1),
+        read_int_and_num_chars(Seconds0, NumChars, !.Chars, Chars1),
+        NumChars > 0,
         read_microseconds(MicroSeconds0, Chars1, Chars2),
         read_char('S', Chars2, Chars3)
     then
