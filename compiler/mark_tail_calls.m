@@ -52,17 +52,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Mark both self and mutual tail recursive calls in the module.
-    %
-    % Unlike the predicates below serving the LLDS code generator,
-    % this predicate never generates any error messages, and it never
-    % restricts its attention to only *self* tail recursive calls.
-    %
-:- pred mark_self_and_mutual_tail_rec_calls_in_module(hlds_dependency_info::in,
-    module_info::in, module_info::out) is det.
-
-%---------------------%
-
     % Mark both self and mutual tail recursive calls in the module,
     % and generate warnings about the absence of tail recursion where requested
     % by the values of the options and/or by pragmas.
@@ -249,18 +238,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-mark_self_and_mutual_tail_rec_calls_in_module(DepInfo, !ModuleInfo) :-
-    MaybeSelfRec = yes(feature_self_or_mutual_tail_rec_call),
-    MaybeMutualRec = yes(feature_self_or_mutual_tail_rec_call),
-    Params = tail_rec_params(MaybeSelfRec, MaybeMutualRec,
-        do_not_record_tail_recursion, no_warnings_non_tail_rec_params),
-    get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
-        BottomUpSCCsEntryPoints),
-    mark_tail_rec_calls_in_sccs(Params, BottomUpSCCsEntryPoints,
-        !ModuleInfo, [], _Specs).
-
-%---------------------------------------------------------------------------%
-
 mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(DepInfo,
         !ModuleInfo, !Specs) :-
     MaybeSelfRec = yes(feature_self_or_mutual_tail_rec_call),
@@ -271,42 +248,38 @@ mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(DepInfo,
         record_tail_recursion, WarnNonTailRecParams),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
-    mark_tail_rec_calls_in_sccs(Params, BottomUpSCCsEntryPoints,
+    mark_tail_rec_calls_in_sccs_for_mlds(Params, BottomUpSCCsEntryPoints,
         !ModuleInfo, !Specs).
 
-%---------------------------------------------------------------------------%
-
-:- pred mark_tail_rec_calls_in_sccs(tail_rec_params::in,
+:- pred mark_tail_rec_calls_in_sccs_for_mlds(tail_rec_params::in,
     list(scc_with_entry_points)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_tail_rec_calls_in_sccs(_Params, [], !ModuleInfo, !Specs).
-mark_tail_rec_calls_in_sccs(Params, [SCCEntry | SCCEntries],
+mark_tail_rec_calls_in_sccs_for_mlds(_Params, [], !ModuleInfo, !Specs).
+mark_tail_rec_calls_in_sccs_for_mlds(Params, [SCCEntry | SCCEntries],
         !ModuleInfo, !Specs) :-
     SCCEntry = scc_with_entry_points(SCC, _CalledFromHigherSCC, _Exported),
-    mark_tail_rec_calls_in_scc(Params, SCC, set.to_sorted_list(SCC),
+    mark_tail_rec_calls_in_scc_for_mlds(Params, SCC, set.to_sorted_list(SCC),
         !ModuleInfo, !Specs),
-    mark_tail_rec_calls_in_sccs(Params, SCCEntries, !ModuleInfo, !Specs).
+    mark_tail_rec_calls_in_sccs_for_mlds(Params, SCCEntries,
+        !ModuleInfo, !Specs).
 
-:- pred mark_tail_rec_calls_in_scc(tail_rec_params::in,
+:- pred mark_tail_rec_calls_in_scc_for_mlds(tail_rec_params::in,
     set(pred_proc_id)::in, list(pred_proc_id)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_tail_rec_calls_in_scc(_Params, _SCC, [], !ModuleInfo, !Specs).
-mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
+mark_tail_rec_calls_in_scc_for_mlds(_Params, _SCC, [], !ModuleInfo, !Specs).
+mark_tail_rec_calls_in_scc_for_mlds(Params, SCC, [PredProcId | PredProcIds],
         !ModuleInfo, !Specs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
-
     maybe_override_params_for_proc(ProcInfo0, Params, ProcParams),
-
     do_mark_tail_rec_calls_in_proc(ProcParams, !.ModuleInfo, SCC,
         PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo, WasProcChanged,
         [], ProcSpecs),
     !:Specs = ProcSpecs ++ !.Specs,
-
     (
         WasProcChanged = proc_was_not_changed
     ;
@@ -314,8 +287,8 @@ mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
         pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
-
-    mark_tail_rec_calls_in_scc(Params, SCC, PredProcIds, !ModuleInfo, !Specs).
+    mark_tail_rec_calls_in_scc_for_mlds(Params, SCC, PredProcIds,
+        !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -329,17 +302,17 @@ mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId,
     module_info_get_globals(ModuleInfo, Globals),
     get_params_for_llds_code_gen(Globals, Params),
     ProcIds = pred_info_will_codegen_proc_ids(!.PredInfo),
-    mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
+    mark_tail_rec_calls_in_procs_for_llds(Params, ModuleInfo, SCCMap,
         PredId, ProcIds, !PredInfo, !Specs).
 
-:- pred mark_tail_rec_calls_in_procs(tail_rec_params::in,
+:- pred mark_tail_rec_calls_in_procs_for_llds(tail_rec_params::in,
     module_info::in, scc_map(pred_proc_id)::in, pred_id::in, list(proc_id)::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-mark_tail_rec_calls_in_procs(_Params, _ModuleInfo, _SCCMap,
+mark_tail_rec_calls_in_procs_for_llds(_Params, _ModuleInfo, _SCCMap,
         _PredId, [], !PredInfo, !Specs).
-mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
+mark_tail_rec_calls_in_procs_for_llds(Params, ModuleInfo, SCCMap,
         PredId, [ProcId | ProcIds], !PredInfo, !Specs) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     maybe_override_params_for_proc(ProcInfo0, Params, ProcParams),
@@ -352,7 +325,7 @@ mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
         WasProcChanged = proc_may_have_been_changed,
         pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
     ),
-    mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
+    mark_tail_rec_calls_in_procs_for_llds(Params, ModuleInfo, SCCMap,
         PredId, ProcIds, !PredInfo, !Specs).
 
 %---------------------------------------------------------------------------%
