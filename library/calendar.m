@@ -140,8 +140,8 @@
     %
     %   - Minute is in the range 0 .. 59
     %
-    %   - Second is in the range 0 .. 60
-    %     (to account for one positive leap second being added to a day)
+    %   - Second is in the range 0 .. 61
+    %     (to account for two positive leap seconds being added to a day)
     %
     %   - MicroSecond is in the range 0 .. 999,999
     %
