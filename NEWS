@@ -7,22 +7,43 @@ This is a bug-fix release.
   runtime that was causing warnings to be emitted with recent versions of
   GCC and the GNU C library.
 
-* [Mantis bug #566]. We have fixed issue that was causing GNU Make 4.4.0
+* [Mantis bug #566]. We have fixed an issue that was causing GNU Make 4.4.0
   and above to emit warnings about undefined variables.
 
 * We have improved the compatibility of the `configure` script with older
   versions of `bash`.
 
-* We have fixed a bug in the C# implementation
-  `random.system_rng.generate_uint8/4`, that caused it to throw an exception
+* We have fixed a bug in the C# implementation of
+  `random.system_rng.generate_uint8/4` that caused it to throw an exception
   after successfully generating a random value.
 
-* We have add the missing lower-bound checks on the time components of the
+* We have added the missing lower-bound checks on the time components of the
   predicate `calendar.init_date/8`.
 
-* We have fixed bugs in the C# and and Java implementations of
+* We have fixed two bugs in `calendar.duration_from_string/2` that caused it
+  to accept invalid duration strings. The first was that the string "P" was
+  incorrectly being accepted as the zero duration; the second was that duration
+  strings containing a fractional second component with no whole number part
+  (e.g. "PT.5S") were incorrectly being accepted.
+
+* We have fixed bugs in the C# and Java implementations of
   `math.unchecked_log2/1` that caused target language compilation errors
   when compiling with `--intermodule-optimisation`.
+
+* We have fixed a bug where using C# contextual keywords as the names
+  of Mercury entities (e.g. module names) could cause invalid C# to be
+  generated.
+
+* We have fixed a bug where a Mercury type containing a data constructor whose
+  name begins with a digit could cause invalid C# code to be generated.
+
+* All remaining Java security manager dependencies have been replaced,
+  since the security manager is deprecated.
+
+* We have fixed an issue that caused the Microsoft linker to emit
+  warning `LNK4001`: "no object files specified; libraries used".
+
+* Many documentation fixes and improvements.
 
 NEWS for Mercury 22.01.8
 ========================
