@@ -2,7 +2,7 @@ max_error_line_width.m:056: In clause for predicate `ambig_overload1'/1:
 max_error_line_width.m:056:   error: excessively ambiguous overloading.
 max_error_line_width.m:056:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:056:   understand.
-max_error_line_width.m:056:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:056:   The following symbol was [38;5;203moverloaded[39;49m in the following contexts.
 max_error_line_width.m:054:
 max_error_line_width.m:054:   The function symbol [38;5;87m`f'/0.[39;49m
 max_error_line_width.m:054:   The possible matches are:
@@ -15,7 +15,7 @@ max_error_line_width.m:059: In clause for predicate `ambig_overload2'/1:
 max_error_line_width.m:059:   warning: highly ambiguous overloading.
 max_error_line_width.m:059:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:059:   understand.
-max_error_line_width.m:059:   The following symbols were overloaded in the following contexts.
+max_error_line_width.m:059:   The following symbols were [38;5;203moverloaded[39;49m in the following contexts.
 max_error_line_width.m:059:
 max_error_line_width.m:059:   The function symbol [38;5;87m`a1'/0.[39;49m
 max_error_line_width.m:059:   The possible matches are:
@@ -30,7 +30,7 @@ max_error_line_width.m:113: In clause for predicate `test_lt'/1:
 max_error_line_width.m:113:   error: excessively ambiguous overloading.
 max_error_line_width.m:113:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:113:   understand.
-max_error_line_width.m:113:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:113:   The following symbol was [38;5;203moverloaded[39;49m in the following contexts.
 max_error_line_width.m:064:
 max_error_line_width.m:064:   The function symbol [38;5;87m`unchecked_left_shift'/2.[39;49m
 max_error_line_width.m:064:   The possible matches are:
@@ -51,7 +51,7 @@ max_error_line_width.m:123: In clause for predicate `set_browser_param_from_opti
 max_error_line_width.m:123:   warning: highly ambiguous overloading.
 max_error_line_width.m:123:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:123:   understand.
-max_error_line_width.m:123:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:123:   The following symbol was [38;5;203moverloaded[39;49m in the following contexts.
 max_error_line_width.m:118:
 max_error_line_width.m:118:   The function symbol [38;5;87m`lookup_bool_option'/2.[39;49m
 max_error_line_width.m:118:   The possible matches are:

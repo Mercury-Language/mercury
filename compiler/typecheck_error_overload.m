@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -76,6 +76,7 @@
 :- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -337,88 +338,80 @@ add_qualifiers_reminder = [
 describe_overloaded_symbols(ClauseContext, Context, OverloadedSymbolMap)
         = Msgs :-
     map.to_assoc_list(OverloadedSymbolMap, OverloadedSymbols),
-    OverloadedSymbolsSortedContexts =
-        assoc_list.map_values_only(sort_and_remove_dups, OverloadedSymbols),
+    assoc_list.map_values_only(sort_and_remove_dups,
+        OverloadedSymbols, OverloadedSymbolsSortedContexts),
     (
         OverloadedSymbolsSortedContexts = [],
         Msgs = []
     ;
         (
-            OverloadedSymbolsSortedContexts = [_ - Contexts],
+            OverloadedSymbolsSortedContexts = [_ - OoMContexts],
+            WasOverloadedPieces = [words("The following symbol was")] ++
+                color_as_incorrect([words("overloaded")]),
+            OoMContexts = one_or_more(_HeadContext, TailContexts),
             (
-                Contexts = [],
-                unexpected($pred, "no contexts")
+                TailContexts = [],
+                FollowingContextPieces =
+                    [words("in the following context."), nl]
             ;
-                Contexts = [_],
-                WasOverloadedPieces =
-                    [words("The following symbol was overloaded"),
-                    words("in the following context."), nl]
-            ;
-                Contexts = [_, _ | _],
-                WasOverloadedPieces =
-                    [words("The following symbol was overloaded"),
-                    words("in the following contexts."), nl]
+                TailContexts = [_ | _],
+                FollowingContextPieces =
+                    [words("in the following contexts."), nl]
             )
         ;
             OverloadedSymbolsSortedContexts = [_, _ | _],
-            WasOverloadedPieces =
-                [words("The following symbols were overloaded"),
-                words("in the following contexts."), nl]
+            WasOverloadedPieces = [words("The following symbols were")] ++
+                color_as_incorrect([words("overloaded")]),
+            FollowingContextPieces =
+                [words("in the following contexts."), nl]
         ),
-        WasOverloadedMsg = msg(Context, WasOverloadedPieces),
+        IntroPieces = WasOverloadedPieces ++ FollowingContextPieces,
+        IntroMsg = msg(Context, IntroPieces),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
         list.condense(DetailMsgsList, DetailMsgs),
-        Msgs = [WasOverloadedMsg | DetailMsgs]
+        Msgs = [IntroMsg | DetailMsgs]
     ).
 
 :- func describe_overloaded_symbol(module_info,
-    pair(overloaded_symbol, list(prog_context))) = list(error_msg).
+    pair(overloaded_symbol, one_or_more(prog_context))) = list(error_msg).
 
-describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
+describe_overloaded_symbol(ModuleInfo, Symbol - OoMSortedContexts) = Msgs :-
+    OoMSortedContexts = one_or_more(FirstContext, LaterContexts),
+    % We print a detailed message for the first context, but omit
+    % repeating the list of possible matches for any later contexts.
     (
-        SortedContexts = [],
-        unexpected($pred, "no context")
+        Symbol = overloaded_pred(SymNamePredFormArity, PredIds),
+        SymNamePredFormArity =
+            sym_name_pred_form_arity(SymName, PredFormArity),
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        SNA = sym_name_arity(SymName, PredFormArityInt),
+        SNAPiece = qual_sym_name_arity(SNA),
+        StartPieces = [blank_line, words("The predicate symbol")] ++
+            color_as_subject([SNAPiece, suffix(".")]) ++ [nl,
+            words("The possible matches are:"), nl_indent_delta(1)],
+        MakeItemPiecesFunc = describe_one_pred_name(ModuleInfo,
+            yes(color_hint), should_module_qualify),
+        construct_sorted_line_pieces(MakeItemPiecesFunc,
+            PredIds, PredIdPieces),
+        FirstPieces = StartPieces ++ PredIdPieces
     ;
-        SortedContexts = [FirstContext | LaterContexts],
-        % We print a detailed message for the first context, but omit
-        % repeating the list of possible matches for any later contexts.
-        (
-            Symbol = overloaded_pred(SymNamePredFormArity, PredIds),
-            SymNamePredFormArity =
-                sym_name_pred_form_arity(SymName, PredFormArity),
-            PredFormArity = pred_form_arity(PredFormArityInt),
-            SNA = sym_name_arity(SymName, PredFormArityInt),
-            SNAPiece = qual_sym_name_arity(SNA),
-            StartPieces = [blank_line, words("The predicate symbol")] ++
-                color_as_subject([SNAPiece, suffix(".")]) ++ [nl,
-                words("The possible matches are:"), nl_indent_delta(1)],
-            MakeItemPiecesFunc = describe_one_pred_name(ModuleInfo,
-                yes(color_hint), should_module_qualify),
-            construct_sorted_line_pieces(MakeItemPiecesFunc,
-                PredIds, PredIdPieces),
-            FirstPieces = StartPieces ++ PredIdPieces,
-            LaterPieces = [words("That symbol"),
-                words("is also overloaded here."), nl]
-        ;
-            Symbol = overloaded_func(ConsId, Sources),
-            ConsIdPiece = qual_cons_id_and_maybe_arity(ConsId),
-            StartPieces = [blank_line, words("The function symbol")] ++
-                color_as_subject([ConsIdPiece, suffix(".")]) ++ [nl,
-                words("The possible matches are:"), nl_indent_delta(1)],
-            MakeItemPiecesFunc = describe_cons_type_info_source(ModuleInfo,
-                yes(color_hint)),
-            construct_sorted_line_pieces(MakeItemPiecesFunc,
-                Sources, SourcePieces),
-            FirstPieces = StartPieces ++ SourcePieces,
-            LaterPieces = [words("That symbol"),
-                words("is also overloaded here."), nl]
-        ),
-        FirstMsg = msg(FirstContext, FirstPieces),
-        LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
-        Msgs = [FirstMsg | LaterMsgs]
-    ).
+        Symbol = overloaded_func(ConsId, Sources),
+        ConsIdPiece = qual_cons_id_and_maybe_arity(ConsId),
+        StartPieces = [blank_line, words("The function symbol")] ++
+            color_as_subject([ConsIdPiece, suffix(".")]) ++ [nl,
+            words("The possible matches are:"), nl_indent_delta(1)],
+        MakeItemPiecesFunc = describe_cons_type_info_source(ModuleInfo,
+            yes(color_hint)),
+        construct_sorted_line_pieces(MakeItemPiecesFunc,
+            Sources, SourcePieces),
+        FirstPieces = StartPieces ++ SourcePieces
+    ),
+    LaterPieces = [words("That symbol is also overloaded here."), nl],
+    FirstMsg = msg(FirstContext, FirstPieces),
+    LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
+    Msgs = [FirstMsg | LaterMsgs].
 
 :- func context_to_error_msg(list(format_piece), prog_context) = error_msg.
 

@@ -5,7 +5,7 @@ ambiguous_overloading_error.m:054:   `:- import_module' declaration for module
 ambiguous_overloading_error.m:054:   `int'.
 ambiguous_overloading_error.m:059: In clause for predicate `ambig_overload1'/1:
 ambiguous_overloading_error.m:059:   error: excessively ambiguous overloading.
-ambiguous_overloading_error.m:059:   The following symbol was overloaded in the
+ambiguous_overloading_error.m:059:   The following symbol was [38;5;203moverloaded[39;49m in the
 ambiguous_overloading_error.m:059:   following contexts.
 ambiguous_overloading_error.m:057:
 ambiguous_overloading_error.m:057:   The function symbol [38;5;87m`f'/0.[39;49m
@@ -21,7 +21,7 @@ ambiguous_overloading_error.m:059: Warning: the [38;5;87mvariable `L'[39;49m i
 ambiguous_overloading_error.m:059:   [38;5;203mterm containing itself.[39;49m
 ambiguous_overloading_error.m:062: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading_error.m:062:   warning: highly ambiguous overloading.
-ambiguous_overloading_error.m:062:   The following symbols were overloaded in
+ambiguous_overloading_error.m:062:   The following symbols were [38;5;203moverloaded[39;49m in
 ambiguous_overloading_error.m:062:   the following contexts.
 ambiguous_overloading_error.m:062:
 ambiguous_overloading_error.m:062:   The function symbol [38;5;87m`a1'/0.[39;49m
@@ -39,7 +39,7 @@ ambiguous_overloading_error.m:062:     the type constructor
 ambiguous_overloading_error.m:062:     [38;5;226m`ambiguous_overloading_error.qux'/0.[39;49m
 ambiguous_overloading_error.m:116: In clause for predicate `test_lt'/1:
 ambiguous_overloading_error.m:116:   error: excessively ambiguous overloading.
-ambiguous_overloading_error.m:116:   The following symbol was overloaded in the
+ambiguous_overloading_error.m:116:   The following symbol was [38;5;203moverloaded[39;49m in the
 ambiguous_overloading_error.m:116:   following contexts.
 ambiguous_overloading_error.m:067:
 ambiguous_overloading_error.m:067:   The predicate symbol [38;5;87m`<'/2.[39;49m
@@ -60,7 +60,7 @@ ambiguous_overloading_error.m:078:   That symbol is also overloaded here.
 ambiguous_overloading_error.m:126: In clause for predicate
 ambiguous_overloading_error.m:126:   `set_browser_param_from_option_table'/3:
 ambiguous_overloading_error.m:126:   warning: highly ambiguous overloading.
-ambiguous_overloading_error.m:126:   The following symbol was overloaded in the
+ambiguous_overloading_error.m:126:   The following symbol was [38;5;203moverloaded[39;49m in the
 ambiguous_overloading_error.m:126:   following contexts.
 ambiguous_overloading_error.m:121:
 ambiguous_overloading_error.m:121:   The function symbol

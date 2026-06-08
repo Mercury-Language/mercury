@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,8 @@
 % The purpose-specific types of the values held in the typecheck_info.
 %
 
-:- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
+:- type overloaded_symbol_map ==
+    map(overloaded_symbol, one_or_more(prog_context)).
 
 :- type overloaded_symbol
     --->    overloaded_pred(
@@ -450,11 +451,11 @@ typecheck_info_get_cons_table(Info, Ctors) :-
 typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_get_overloaded_symbol_map(!.Info, OverloadedSymbolMap0),
     ( if map.search(OverloadedSymbolMap0, Symbol, OldContexts) then
-        Contexts = [Context | OldContexts],
+        one_or_more.cons(Context, OldContexts, Contexts),
         map.det_update(Symbol, Contexts,
             OverloadedSymbolMap0, OverloadedSymbolMap)
     else
-        Contexts = [Context],
+        Contexts = one_or_more(Context, []),
         map.det_insert(Symbol, Contexts,
             OverloadedSymbolMap0, OverloadedSymbolMap)
     ),

@@ -1,6 +1,6 @@
 bad_ambiguity_msg.m:035: In clause for predicate `main'/2:
 bad_ambiguity_msg.m:035:   error: unresolved type ambiguity.
-bad_ambiguity_msg.m:035:   The following symbol was overloaded in the following
+bad_ambiguity_msg.m:035:   The following symbol was [38;5;203moverloaded[39;49m in the following
 bad_ambiguity_msg.m:035:   context.
 bad_ambiguity_msg.m:038:
 bad_ambiguity_msg.m:038:   The predicate symbol [38;5;87m`append'/3.[39;49m
