@@ -707,7 +707,8 @@
     ;       optopt_allow_some_paths_only_waits
     ;       optopt_analyse_regions
 
-    % Stuff for the CTGC system (structure sharing / structure reuse).
+    % The compile-time garbage collection (CTGC) system,
+    % which in our case means structure sharing and reuse.
     ;       structure_sharing_analysis
     ;           structure_sharing_widening
     ;       structure_reuse_analysis

@@ -1082,7 +1082,7 @@ add_word_to_cord(Word, !CaseChange, !WordsCord) :-
     --->    paragraph(
                 % The list of words to print in the paragraph, together
                 % with any color changes, with spaces between them
-                % explicitly listed at all the appropriate points,
+                % explicitly listed at all the appropriate points.
                 %
                 % The list should contain at least one ssc_string element.
                 % However, it should not contain two *consecutive* ssc_str
@@ -1518,12 +1518,13 @@ find_word_end(String, Cur, WordEnd) :-
                 line_end_colors   :: color_stack,
 
                 % If this field is paren_none, this a normal line.
-                % If this field is paren_lp_end, this line ends a left
-                % parenthesis.
+                % If this field is paren_lp_end, this line ends
+                % with a left parenthesis.
                 % If this field is paren_end_rp, the *next* line *starts*
                 % with a right parenthesis.
                 %
-                % We use these fields to try to put everything
+                % The try_to_join_lp_to_rp_lines predicate will use these
+                % fields to try to put everything
                 %
                 % - in a paren_lp_end line,
                 % - in zero or more paren_none lines,
