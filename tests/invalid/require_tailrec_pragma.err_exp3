@@ -1,0 +1,7 @@
+require_tailrec_pragma.m:232: Error in predicate `qsort_7'/2:
+require_tailrec_pragma.m:232:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_pragma.m:256: Error in `:- pragma require_tail_recursion' for
+require_tailrec_pragma.m:256:   function `cons'/2:
+require_tailrec_pragma.m:256:   the code defining this function contains [38;5;203mno[39;49m
+require_tailrec_pragma.m:256:   [38;5;203mrecursive calls at all,[39;49m tail-recursive or
+require_tailrec_pragma.m:256:   otherwise.

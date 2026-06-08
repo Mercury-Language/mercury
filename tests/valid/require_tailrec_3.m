@@ -54,8 +54,8 @@ odd1(N) =
         even1(N)
     ).
 
-% mutual tail recursion with none pragma.
-:- pragma require_tail_recursion(even2/1, [none]).
+% mutual tail recursion with reports disabled.
+:- pragma disable_non_tail_recursion_reports(even2/1).
 even2(N) =
     ( if N = 0 then
         yes
@@ -80,8 +80,8 @@ even3(N) =
         odd3(N - 1)
     ).
 
-% mutual non-tail recursion with none pragma.
-:- pragma require_tail_recursion(odd3/1, [none]).
+% mutual non-tail recursion with reports disabled.
+:- pragma disable_non_tail_recursion_reports(odd3/1).
 odd3(N) =
     ( if N = 0 then
         no

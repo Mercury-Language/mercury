@@ -1,0 +1,26 @@
+require_tailrec_option.m:092: Warning in function `even1'/1:
+require_tailrec_option.m:092:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:092:   `odd1'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:119: Error in function `even2'/1:
+require_tailrec_option.m:119:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:119:   `odd2'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:142: Warning in function `even3'/1:
+require_tailrec_option.m:142:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:142:   `odd3'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:164: Warning in predicate `qsort_1'/2:
+require_tailrec_option.m:164:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:187: Warning in predicate `qsort_3'/2:
+require_tailrec_option.m:187:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:198: Error in predicate `qsort_4'/2:
+require_tailrec_option.m:198:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:209: Warning in predicate `qsort_5'/2:
+require_tailrec_option.m:209:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:220: Warning in predicate `qsort_6'/2:
+require_tailrec_option.m:220:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:232: Error in predicate `qsort_7'/2:
+require_tailrec_option.m:232:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:256: Error in `:- pragma require_tail_recursion' for
+require_tailrec_option.m:256:   function `cons'/2:
+require_tailrec_option.m:256:   the code defining this function contains [38;5;203mno[39;49m
+require_tailrec_option.m:256:   [38;5;203mrecursive calls at all,[39;49m tail-recursive or
+require_tailrec_option.m:256:   otherwise.

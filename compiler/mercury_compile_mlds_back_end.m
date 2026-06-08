@@ -112,7 +112,7 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     maybe_dump_hlds(ProgressStream, !.HLDS, 425, "args_to_regs",
         !DumpInfo, !IO),
 
-    maybe_mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
+    mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 430, "mark_tail_calls",
         !DumpInfo, !IO),
@@ -288,28 +288,20 @@ maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         SemidetReclaim = no
     ).
 
-:- pred maybe_mark_tail_rec_calls_hlds(io.text_output_stream::in,
+:- pred mark_tail_rec_calls_hlds(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
+mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.get_opt_tuple(Globals, OptTuple),
-    OptimizeTailCalls = OptTuple ^ ot_opt_mlds_tailcalls,
-    (
-        OptimizeTailCalls = opt_mlds_tailcalls,
-        maybe_write_string(ProgressStream, Verbose,
-            "% Marking tail recursive calls...", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        module_info_rebuild_dependency_info(!HLDS, DepInfo),
-        mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(
-            DepInfo, !HLDS, !Specs),
-        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
-        maybe_report_stats(ProgressStream, Stats, !IO)
-    ;
-        OptimizeTailCalls = do_not_opt_mlds_tailcalls
-    ).
+    maybe_write_string(ProgressStream, Verbose,
+        "% Marking tail recursive calls...", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
+    module_info_rebuild_dependency_info(!HLDS, DepInfo),
+    mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(DepInfo,
+        !HLDS, !Specs),
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,
     mlds::in, mlds::out) is det.

@@ -64,9 +64,9 @@
 :- pragma require_tail_recursion(length9/2, 23).
 :- pred length9(list(T)::in, int::out) is det.
 
-% Multiple problems, this tests that each problem is reported, not just the
-% first.  However the non-existent pred/proc is not checked until
-% add_pragma.m, but this predicate is rejected earlier (prog_io_pragma.m)
+% Multiple problems, this tests that each problem is reported, not just
+% the first. However the non-existent pred/proc is not checked until
+% add_pragma_impl.m, but this predicate is rejected earlier (parse_pragma.m)
 % due to the bad attribute list.
 :- pragma require_tail_recursion(length_nonexistent/3, [none, warn,
     self_recursion_only, grasshopper]).

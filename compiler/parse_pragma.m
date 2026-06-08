@@ -212,6 +212,10 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         parse_pragma_require_tail_recursion(ModuleName, PragmaName,
             PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeIOM)
     ;
+        PragmaName = "disable_non_tail_recursion_reports",
+        parse_pragma_disable_non_tail_recursion_reports(ModuleName, PragmaName,
+            PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeIOM)
+    ;
         PragmaName = "oisu",
         parse_oisu_pragma(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
@@ -988,8 +992,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
             MaybeOptionsTerm = yes(OptionsTerm),
             ( if list_term_to_term_list(OptionsTerm, OptionsTerms) then
                 parse_pragma_require_tail_recursion_options(VarSet, Context,
-                    OptionsTerms, have_not_seen_none, no, no, no,
-                    [], MaybeOptions)
+                    OptionsTerms, no, no, no, [], MaybeRTR)
             else
                 OptionsContext = get_term_context(OptionsTerm),
                 OptionsTermStr = describe_error_term(VarSet, OptionsTerm),
@@ -1003,27 +1006,28 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     OptionsContext, Pieces),
-                MaybeOptions = error1([Spec])
+                MaybeRTR = error1([Spec])
             )
         ;
             MaybeOptionsTerm = no,
             Severity = we_warning,
             Kind = both_self_and_mutual_recursion_must_be_tail,
             Grades = in_tailrec_grades_only,
-            Enable = enable_tailrec_warnings(Severity, Kind, Grades, Context),
-            MaybeOptions = ok1(Enable)
+            Enable = enable_nontailrec_reports(Severity, Kind, Grades,
+                Context),
+            MaybeRTR = ok1(Enable)
         ),
         ( if
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
-            MaybeOptions = ok1(Options)
+            MaybeRTR = ok1(RTR)
         then
-            TailRec = impl_pragma_req_tail_rec_info(PredOrProcSpec, Options,
+            TailRec = impl_pragma_req_tail_rec_info(PredOrProcSpec, RTR,
                 Context, SeqNum),
             Item = item_impl_pragma(impl_pragma_req_tail_rec(TailRec)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybePredOrProcSpec) ++
-                get_any_errors1(MaybeOptions),
+                get_any_errors1(MaybeRTR),
             MaybeIOM = error1(Specs)
         )
     ;
@@ -1035,89 +1039,45 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- type seen_none
-    --->    seen_none
-    ;       have_not_seen_none.
-
 :- pred parse_pragma_require_tail_recursion_options(varset::in,
-    prog_context::in, list(term)::in, seen_none::in,
+    prog_context::in, list(term)::in,
     maybe(warning_or_error)::in, maybe(require_tail_recursion_type)::in,
     maybe(report_in_which_grades)::in, list(error_spec)::in,
     maybe1(require_tail_recursion)::out) is det.
 
 parse_pragma_require_tail_recursion_options(_VarSet, PragmaContext, [],
-        !.SeenNone, !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades,
-        !.Specs, MaybeRTR) :-
+        !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades, Specs0, MaybeRTR) :-
     (
-        !.SeenNone = seen_none,
-        % Check for conflicts with "none" option.
+        Specs0 = [_ | _],
+        MaybeRTR = error1(Specs0)
+    ;
+        Specs0 = [],
+        % For any option whose value was not set, use the applicable default.
         (
-            !.MaybeWarnOrError = yes(WarnOrError0),
-            warning_or_error_string(WarnOrError0, WarnOrErrorString),
-            SpecA = conflicting_attributes_error("none", WarnOrErrorString,
-                PragmaContext),
-            !:Specs = [SpecA | !.Specs]
+            !.MaybeWarnOrError = yes(WarnOrError)
         ;
-            !.MaybeWarnOrError = no
+            !.MaybeWarnOrError = no,
+            WarnOrError = we_warning
         ),
         (
-            !.MaybeType = yes(Type0),
-            require_tailrec_type_string(Type0, TypeString),
-            SpecB = conflicting_attributes_error("none", TypeString,
-                PragmaContext),
-            !:Specs = [SpecB | !.Specs]
+            !.MaybeType = yes(Type)
         ;
-            !.MaybeType = no
+            !.MaybeType = no,
+            Type = both_self_and_mutual_recursion_must_be_tail
         ),
         (
-            !.MaybeGrades = yes(Grades0),
-            require_tailrec_grades_string(Grades0, GradesString),
-            SpecC = conflicting_attributes_error("none", GradesString,
-                PragmaContext),
-            !:Specs = [SpecC | !.Specs]
+            !.MaybeGrades = yes(Grades)
         ;
-            !.MaybeGrades = no
-        )
-    ;
-        !.SeenNone = have_not_seen_none
-    ),
-    (
-        !.Specs = [_ | _],
-        MaybeRTR = error1(!.Specs)
-    ;
-        !.Specs = [],
-        (
-            !.SeenNone = seen_none,
-            MaybeRTR = ok1(suppress_tailrec_warnings(PragmaContext))
-        ;
-            !.SeenNone = have_not_seen_none,
-            % If these values were not set, then use the defaults.
-            (
-                !.MaybeWarnOrError = yes(WarnOrError)
-            ;
-                !.MaybeWarnOrError = no,
-                WarnOrError = we_warning
-            ),
-            (
-                !.MaybeType = yes(Type)
-            ;
-                !.MaybeType = no,
-                Type = both_self_and_mutual_recursion_must_be_tail
-            ),
-            (
-                !.MaybeGrades = yes(Grades)
-            ;
-                !.MaybeGrades = no,
-                Grades = in_tailrec_grades_only
-            ),
-            RTR = enable_tailrec_warnings(WarnOrError, Type, Grades,
-                PragmaContext),
-            MaybeRTR = ok1(RTR)
-        )
+            !.MaybeGrades = no,
+            Grades = in_tailrec_grades_only
+        ),
+        RTR = enable_nontailrec_reports(WarnOrError, Type, Grades,
+            PragmaContext),
+        MaybeRTR = ok1(RTR)
     ).
 parse_pragma_require_tail_recursion_options(VarSet, PragmaContext,
-        [Term | Terms], !.SeenNone, !.MaybeWarnOrError, !.MaybeType,
-        !.MaybeGrades, !.Specs, MaybeRTR) :-
+        [Term | Terms], !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades,
+        !.Specs, MaybeRTR) :-
     (
         Term = functor(Functor, _Args, Context),
         ( if
@@ -1162,10 +1122,6 @@ parse_pragma_require_tail_recursion_options(VarSet, PragmaContext,
                     OldGradesString, Context),
                 !:Specs = [Spec | !.Specs]
             )
-        else if
-            Functor = atom("none")
-        then
-            !:SeenNone = seen_none
         else
             Spec = pragma_require_tailrec_unknown_term_error(VarSet,
                 Term, Context),
@@ -1178,8 +1134,7 @@ parse_pragma_require_tail_recursion_options(VarSet, PragmaContext,
         !:Specs = [Spec | !.Specs]
     ),
     parse_pragma_require_tail_recursion_options(VarSet, PragmaContext, Terms,
-        !.SeenNone, !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades,
-        !.Specs, MaybeRTR).
+        !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades, !.Specs, MaybeRTR).
 
 :- func conflicting_attributes_error(string, string, prog_context) =
     error_spec.
@@ -1206,6 +1161,44 @@ pragma_require_tailrec_unknown_term_error(VarSet, Term, Context) = Spec :-
         color_as_incorrect([quote(TermStr), suffix(".")]) ++
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+%---------------------------------------------------------------------------%
+%
+% Parse disable_non_tail_recursion_reports pragmas.
+%
+
+:- pred parse_pragma_disable_non_tail_recursion_reports(module_name::in,
+    string::in, list(term)::in, term::in, varset::in, prog_context::in,
+    item_seq_num::in, maybe1(item_or_marker)::out) is det.
+
+parse_pragma_disable_non_tail_recursion_reports(ModuleName, PragmaName,
+        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeIOM) :-
+    (
+        PragmaTerms = [PredOrProcSpecTerm],
+        % Parse the procedure name.
+        ContextPieces = cord.from_list([words("In the first argument of"),
+            pragma_decl(PragmaName), words("declaration:"), nl]),
+        parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces,
+            VarSet, PredOrProcSpecTerm, MaybePredOrProcSpec),
+        (
+            MaybePredOrProcSpec = ok1(PredOrProcSpec),
+            RTR = disable_nontailrec_reports(Context),
+            TailRec = impl_pragma_req_tail_rec_info(PredOrProcSpec, RTR,
+                Context, SeqNum),
+            Item = item_impl_pragma(impl_pragma_req_tail_rec(TailRec)),
+            MaybeIOM = ok1(iom_item(Item))
+        ;
+            MaybePredOrProcSpec = error1(Specs),
+            MaybeIOM = error1(Specs)
+        )
+    ;
+        ( PragmaTerms = []
+        ; PragmaTerms = [_, _ | _]
+        ),
+        Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
+            "one argument"),
+        MaybeIOM = error1([Spec])
+    ).
 
 %---------------------------------------------------------------------------%
 %

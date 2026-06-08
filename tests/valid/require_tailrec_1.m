@@ -42,8 +42,8 @@ foldl1(P, [X | Xs], !Acc) :-
     P(X, !Acc),
     foldl1(P, Xs, !Acc).
 
-% self non-tail recursive code with none pragma.
-:- pragma require_tail_recursion(pred(map1/3), [none]).
+% self non-tail recursive code with reports disabled.
+:- pragma disable_non_tail_recursion_reports(pred(map1/3)).
 map1(_, [], []).
 map1(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
@@ -64,8 +64,8 @@ odd1(N) =
         bool.not(even1(N))
     ).
 
-% mutual non-tail recursion with none pragma.
-:- pragma require_tail_recursion(func(odd2/1), [none]).
+% mutual non-tail recursion with reports disabled.
+:- pragma disable_non_tail_recursion_reports(func(odd2/1)).
 even2(N) =
     ( if N = 0 then
         yes
@@ -97,7 +97,7 @@ odd3(N) =
 
 %---------------------------------------------------------------------------%
 
-:- pragma require_tail_recursion(pred(qsortapp/2), [none]).
+:- pragma disable_non_tail_recursion_reports(pred(qsortapp/2)).
 
 qsortapp([], []).
 qsortapp([Pivot | T], List) :-

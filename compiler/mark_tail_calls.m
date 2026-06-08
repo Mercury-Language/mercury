@@ -28,8 +28,10 @@
 % which imposes additional requirements on tail calls. Calls that we
 % identify as tail calls that turn out not to be implementable as such
 % will be reported by the MLDS code generator (specifically, ml_proc_gen.m
-% and ml_call_gen.m), using the predicates defined here which are exported
+% and ml_call_gen.m), using a predicate defined here which is exported
 % for this purpose.
+% XXX This should not be needed, because this module should have
+% already reported any such calls.
 %
 %---------------------------------------------------------------------------%
 
@@ -99,6 +101,13 @@
 % as a tail call, it cannot actually implement that call as a tail call.
 %
 
+:- type report_requested_by
+    --->    request_by_code
+            % Usually, the code doing the requesting
+            % is a require_tail_recursion pragma, but it can also be
+            % a disable_warnings scope.
+    ;       request_by_option.
+
 :- type maybe_warn_non_tail_self_rec
     --->    do_not_warn_non_tail_self_rec
     ;       warn_non_tail_self_rec.
@@ -109,6 +118,7 @@
 
 :- type warn_non_tail_rec_params
     --->    warn_non_tail_rec_params(
+                report_requested_by,
                 warning_or_error,
                 report_in_which_grades,
                 maybe_warn_non_tail_self_rec,
@@ -157,59 +167,6 @@
     pred_proc_id::in, pred_proc_id::in, prog_context::in,
     nontail_rec_call_reason::in, nontail_rec_obviousness::in,
     warn_non_tail_rec_params::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% These predicates are exported to the MLDS code generator; see the comment
-% at the top of this module for the reason.
-%
-
-    % add_message_for_nontail_self_recursive_call(PFSymNameArity, ProcId,
-    %    Context, WarnOrError, !Specs):
-    %
-    % Add an error_spec to !Specs reporting that the recursive call inside
-    % the procedure described by PFSymNameArity and ProcId at Context
-    % is not *tail* recursive. Set its severity based on WarnOrError.
-    %
-:- pred add_message_for_nontail_self_recursive_call(pf_sym_name_arity::in,
-    proc_id::in, prog_context::in, nontail_rec_call_reason::in,
-    warning_or_error::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-    % add_message_for_nontail_mutual_recursive_call(CallerCallId, CallerProcId,
-    %    CalleeCallId, WarnOrError, Context, !Specs):
-    %
-    % Add an error_spec to !Specs reporting that the mutually recursive call
-    % inside the procedure described by PFSymNameArity and ProcId at Context
-    % is not *tail* recursive. Set its severity based on WarnOrError.
-    %
-:- pred add_message_for_nontail_mutual_recursive_call(pf_sym_name_arity::in,
-    proc_id::in, pf_sym_name_arity::in, prog_context::in,
-    nontail_rec_call_reason::in, warning_or_error::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-    % Have we found any recursive calls so far?
-    %
-    % We use this to generate warnings about pragmas that intend to control
-    % how recursive calls that are not *tail* recursive should be treated,
-    % when the procedure they are about contains no recursive calls at all,
-    % either self-recursive or (if we have SCC information) mutually recursive.
-    %
-:- type found_any_rec_calls
-    --->    not_found_any_rec_calls
-    ;       found_any_rec_calls.
-
-    % maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo
-    %   FoundAnyRecCalls, Context, !Specs):
-    %
-    % If FoundAnyRecCalls = not_found_any_rec_calls but ProcInfo says
-    % that the procedure has a pragma about tail recursive calls on it,
-    % then add a message to !Specs reporting that the procedure described by
-    % PFSymNameArity contains no recursive calls at all, tail-recursive or
-    % otherwise.
-    %
-:- pred maybe_report_no_tail_or_nontail_recursive_calls(pred_info::in,
-    proc_info::in, found_any_rec_calls::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -277,9 +234,8 @@ mark_tail_rec_calls_in_scc_for_mlds(Params, SCC, [PredProcId | PredProcIds],
     pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     maybe_override_params_for_proc(ProcInfo0, Params, ProcParams),
     do_mark_tail_rec_calls_in_proc(ProcParams, !.ModuleInfo, SCC,
-        PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo, WasProcChanged,
-        [], ProcSpecs),
-    !:Specs = ProcSpecs ++ !.Specs,
+        PredId, ProcId, PredInfo0, ProcInfo0, ProcInfo,
+        WasProcChanged, !Specs),
     (
         WasProcChanged = proc_was_not_changed
     ;
@@ -345,12 +301,14 @@ mark_tail_rec_calls_in_proc_for_llds_code_gen(ModuleInfo, PredId, ProcId,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- func no_warnings_non_tail_rec_params = warn_non_tail_rec_params.
+:- func no_warnings_non_tail_rec_params(report_requested_by)
+    = warn_non_tail_rec_params.
 
-no_warnings_non_tail_rec_params = Params :-
+no_warnings_non_tail_rec_params(RequestBy) = Params :-
     % Since neither SelfRec nor MutualRec is set, the values of
     % WarnOrError and Grades do not matter.
-    Params = warn_non_tail_rec_params(we_warning, in_tailrec_grades_only,
+    Params = warn_non_tail_rec_params(RequestBy, we_warning,
+        in_tailrec_grades_only,
         do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec).
 
 get_default_warn_parms(Globals, WarnNonTailRecParams) :-
@@ -376,8 +334,8 @@ get_default_warn_parms(Globals, WarnNonTailRecParams) :-
         WarnNonTailMutualRecBool = no,
         WarnNonTailMutualRecOpt = do_not_warn_non_tail_mutual_rec
     ),
-    WarnNonTailRecParams = warn_non_tail_rec_params(we_warning, Grades,
-        WarnNonTailSelfRecOpt, WarnNonTailMutualRecOpt).
+    WarnNonTailRecParams = warn_non_tail_rec_params(request_by_option,
+        we_warning, Grades, WarnNonTailSelfRecOpt, WarnNonTailMutualRecOpt).
 
 maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
     proc_info_get_maybe_require_tailrec_info(ProcInfo, MaybeRequireTailRec),
@@ -387,10 +345,10 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
     ;
         MaybeRequireTailRec = yes(Pragma),
         (
-            Pragma = suppress_tailrec_warnings(_),
-            ProcWarnParams = no_warnings_non_tail_rec_params
+            Pragma = disable_nontailrec_reports(_),
+            ProcWarnParams = no_warnings_non_tail_rec_params(request_by_code)
         ;
-            Pragma = enable_tailrec_warnings(WarnOrError, RecType, Grades,
+            Pragma = enable_nontailrec_reports(WarnOrError, RecType, Grades,
                 _Context),
             (
                 RecType = only_self_recursion_must_be_tail,
@@ -401,8 +359,8 @@ maybe_override_warn_params_for_proc(ProcInfo, WarnParams, ProcWarnParams) :-
                 SelfRec = warn_non_tail_self_rec,
                 MutualRec = warn_non_tail_mutual_rec
             ),
-            ProcWarnParams = warn_non_tail_rec_params(WarnOrError, Grades,
-                SelfRec, MutualRec)
+            ProcWarnParams = warn_non_tail_rec_params(request_by_code,
+                WarnOrError, Grades, SelfRec, MutualRec)
         )
     ).
 
@@ -508,7 +466,7 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
             MaybeSelfFeature = no,
             MaybeMutualFeature = no,
             MaybeRecordTailCalls = do_not_record_tail_recursion,
-            WarnNonTailRecParams = warn_non_tail_rec_params(_, _,
+            WarnNonTailRecParams = warn_non_tail_rec_params(_, _, _,
                 do_not_warn_non_tail_self_rec, do_not_warn_non_tail_mutual_rec)
         then
             WasProcChanged = proc_was_not_changed
@@ -662,60 +620,9 @@ find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
 mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _, _)
-        % Note: we don't give tailcall warnings for negated goals, maybe we
-        % should?
-        ; GoalExpr0 = negation(_)
-        ),
-        Goal = Goal0,
-        not_at_tail(AtTail0, AtTail)
-    ;
-        GoalExpr0 = scope(Reason, SubGoal0),
-        (
-            Reason = disable_warnings(HeadWarning, TailWarnings),
-            ( if
-                ( HeadWarning = goal_warning_non_tail_recursive_calls
-                ; list.member(goal_warning_non_tail_recursive_calls,
-                    TailWarnings)
-                )
-            then
-                OldParams = !.Info ^ mtc_params,
-                InnerParams = OldParams ^ warn_params :=
-                    no_warnings_non_tail_rec_params,
-                InnerInfo0 = !.Info ^ mtc_params := InnerParams,
-                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
-                    InnerInfo0, InnerInfo),
-                !:Info = InnerInfo ^ mtc_params := OldParams
-            else
-                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
-                    !Info)
-            )
-        ;
-            ( Reason = exist_quant(_, _)
-            ; Reason = promise_solutions(_, _)
-            ; Reason = commit(_)
-            ),
-            not_at_tail(AtTail0, AtTail1),
-            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail1, AtTail,
-                !Info)
-        ;
-            ( Reason = promise_purity(_)
-            ; Reason = barrier(_)
-            ; Reason = from_ground_term(_, _)
-            ; Reason = trace_goal(_, _, _, _, _)
-            ; Reason = loop_control(_, _, _)
-            ),
-            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
-                !Info)
-        ;
-            ( Reason = require_detism(_)
-            ; Reason = require_complete_switch(_)
-            ; Reason = require_switch_arms_detism(_, _)
-            ),
-            unexpected($file, $pred, "unexpected scope kind")
-        ),
-        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
+            AtTail0, AtTail, !Info)
     ;
         GoalExpr0 = unify(LHSVar, _, _, Unify0, _),
         Goal = Goal0,
@@ -725,7 +632,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
         (
             LHSVarIsDummy = is_dummy_type,
             % Unifications involving dummy type variables are no-ops,
-            % and do not inhibit a preceding tail call.
+            % and do not prevent a preceding call from being a tail call.
             AtTail = AtTail0
         ;
             LHSVarIsDummy = is_not_dummy_type,
@@ -749,134 +656,15 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             )
         )
     ;
-        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, ArgVars, Builtin,
-            _UnifyContext, _SymName),
-        CalleePredProcId = proc(CalleePredId, CalleeProcId),
-        CurPredProcId = !.Info ^ mtc_cur_proc,
-        CurSCCPredProcIds = !.Info ^ mtc_cur_scc,
-        ( if
-            Builtin = not_builtin,
-            ( if CalleePredProcId = CurPredProcId then
-                SelfOrMutual = call_is_self_rec
-            else if set.member(CalleePredProcId, CurSCCPredProcIds) then
-                SelfOrMutual = call_is_mutual_rec
-            else
-                false
-            )
-        then
-            !Info ^ mtc_any_rec_calls := found_any_rec_calls,
-            ( if
-                AtTail0 = at_tail(OutputVars),
-                require_det (
-                    ModuleInfo = !.Info ^ mtc_module,
-                    module_info_pred_info(ModuleInfo, CalleePredId,
-                        CalleePredInfo),
-                    pred_info_get_arg_types(CalleePredInfo, CalleeArgTypes),
-                    pred_info_proc_info(CalleePredInfo, CalleeProcId,
-                        CalleeProcInfo),
-                    proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
-                    find_output_args(ModuleInfo,
-                        CalleeArgTypes, CalleeArgModes, ArgVars,
-                        CalleeOutputVars)
-                ),
-
-                % For self-recursive calls, the caller and callee
-                % will obviously have
-                %
-                % - the same number of arguments, and
-                % - the same number of output arguments.
-                %
-                % Neither condition is a given for mutually recursive calls,
-                % which is why we check only output arguments, not all
-                % arguments.
-                %
-                % For a recursive call (either self or mutual) to be a *tail*
-                % call, the callee must have the same sequence of output
-                % arguments (the same set of variables in the same order)
-                % as the caller.
-                %
-                % CalleeOutputVars is the sequence of output vars of this call;
-                % OutputVars is the sequence of output vars of the caller,
-                % updated to reflect any "renaming" done by assigment
-                % unifications after the call. For example, if the first
-                % output argument of the caller is X, but the call is followed
-                % by the assignment X: = X0 (which our backwards traversal
-                % will have already seen, and updated AtTail0 accordingly),
-                % then this call cannot be a tail call unless its first output
-                % argument is X0. (The call cannot output X, since X cannot
-                % have two producers.)
-                OutputVars = CalleeOutputVars
-            then
-                !.Info ^ mtc_params = tail_rec_params(
-                    MaybeSelfFeature, MaybeMutualFeature,
-                    MaybeRecord, _WarnParams),
-                (
-                    SelfOrMutual = call_is_self_rec,
-                    (
-                        MaybeSelfFeature = no,
-                        Goal = Goal0
-                    ;
-                        MaybeSelfFeature = yes(SelfFeature),
-                        goal_info_add_feature(SelfFeature,
-                            GoalInfo0, GoalInfo),
-                        Goal = hlds_goal(GoalExpr0, GoalInfo)
-                    ),
-                    (
-                        MaybeRecord = do_not_record_tail_recursion
-                    ;
-                        MaybeRecord = record_tail_recursion,
-                        !Info ^ mtc_self_tail_rec_calls :=
-                            has_self_tail_rec_call
-                    )
-                ;
-                    SelfOrMutual = call_is_mutual_rec,
-                    (
-                        MaybeMutualFeature = no,
-                        Goal = Goal0
-                    ;
-                        MaybeMutualFeature = yes(MutualFeature),
-                        goal_info_add_feature(MutualFeature,
-                            GoalInfo0, GoalInfo),
-                        Goal = hlds_goal(GoalExpr0, GoalInfo)
-                    ),
-                    (
-                        MaybeRecord = do_not_record_tail_recursion
-                    ;
-                        MaybeRecord = record_tail_recursion,
-                        !Info ^ mtc_mutual_tail_rec_calls :=
-                            has_mutual_tail_rec_call
-                    )
-                )
-            else
-                (
-                    ( AtTail0 = at_tail(_)
-                    ; AtTail0 = not_at_tail(have_not_seen_later_rec_call)
-                    ),
-                    Obviousness = non_obvious_nontail_rec,
-                    Goal = Goal0
-                ;
-                    AtTail0 = not_at_tail(have_seen_later_rec_call),
-                    Obviousness = obvious_nontail_rec,
-                    % Record the obviousness for the MLDS code generator.
-                    goal_info_add_feature(feature_obvious_nontail_rec_call,
-                        GoalInfo0, GoalInfo),
-                    Goal = hlds_goal(GoalExpr0, GoalInfo)
-                ),
-                ModuleInfo = !.Info ^ mtc_module,
-                CallerPredProcId = !.Info ^ mtc_cur_proc,
-                Context = goal_info_get_context(GoalInfo0),
-                WarnParams = !.Info ^ mtc_params ^ warn_params,
-                Specs0 = !.Info ^ mtc_error_specs,
-                maybe_report_nontail_recursive_call(ModuleInfo,
-                    CallerPredProcId, CalleePredProcId, Context,
-                    ntrcr_program, Obviousness, WarnParams, Specs0, Specs),
-                !Info ^ mtc_error_specs := Specs
-            ),
-            AtTail = not_at_tail(have_seen_later_rec_call)
-        else
-            Goal = Goal0,
-            not_at_tail(AtTail0, AtTail)
-        )
+        ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
+        % No goal inside a negation can be a *tail* call. However, a negation
+        % can contain recursive calls about whose non-tail-call nature
+        % we COULD generate a report.
+        ; GoalExpr0 = negation(_)
+        ),
+        Goal = Goal0,
+        not_at_tail(AtTail0, AtTail)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -892,7 +680,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             not_at_tail(AtTail0, AtTail1)
         ),
         list.reverse(Goals0, RevGoals0),
-        mark_tail_rec_calls_in_conj(RevGoals0, RevGoals, AtTail1, AtTail,
+        mark_tail_rec_calls_in_rev_conj(RevGoals0, RevGoals, AtTail1, AtTail,
             !Info),
         list.reverse(RevGoals, Goals),
         GoalExpr = conj(ConjType, Goals),
@@ -956,8 +744,183 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        (
+            Reason = disable_warnings(HeadWarning, TailWarnings),
+            ( if
+                ( HeadWarning = goal_warning_non_tail_recursive_calls
+                ; list.member(goal_warning_non_tail_recursive_calls,
+                    TailWarnings)
+                )
+            then
+                OldParams = !.Info ^ mtc_params,
+                InnerParams = OldParams ^ warn_params :=
+                    no_warnings_non_tail_rec_params(request_by_code),
+                InnerInfo0 = !.Info ^ mtc_params := InnerParams,
+                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                    InnerInfo0, InnerInfo),
+                !:Info = InnerInfo ^ mtc_params := OldParams
+            else
+                mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                    !Info)
+            )
+        ;
+            ( Reason = exist_quant(_, _)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = commit(_)
+            ),
+            not_at_tail(AtTail0, AtTail1),
+            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail1, AtTail,
+                !Info)
+        ;
+            ( Reason = promise_purity(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, _)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _, _)
+            ),
+            mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,
+                !Info)
+        ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
+            ),
+            unexpected($file, $pred, "unexpected scope kind")
+        ),
+        Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
+    ;
         GoalExpr0 = shorthand(_),
         unexpected($pred, "shorthand")
+    ).
+
+:- pred mark_tail_rec_calls_in_plain_call(
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_info::in,
+    hlds_goal::out, at_tail::in, at_tail::out,
+    mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
+
+mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
+        AtTail0, AtTail, !Info) :-
+    GoalExpr0 = plain_call(CalleePredId, CalleeProcId, ArgVars, Builtin,
+        _UnifyContext, _SymName),
+    CalleePredProcId = proc(CalleePredId, CalleeProcId),
+    CurPredProcId = !.Info ^ mtc_cur_proc,
+    CurSCCPredProcIds = !.Info ^ mtc_cur_scc,
+    ( if
+        Builtin = not_builtin,
+        ( if CalleePredProcId = CurPredProcId then
+            SelfOrMutual = call_is_self_rec
+        else if set.member(CalleePredProcId, CurSCCPredProcIds) then
+            SelfOrMutual = call_is_mutual_rec
+        else
+            false
+        )
+    then
+        !Info ^ mtc_any_rec_calls := found_any_rec_calls,
+        ( if
+            AtTail0 = at_tail(OutputVars),
+            require_det (
+                ModuleInfo = !.Info ^ mtc_module,
+                module_info_pred_info(ModuleInfo, CalleePredId,
+                    CalleePredInfo),
+                pred_info_get_arg_types(CalleePredInfo, CalleeArgTypes),
+                pred_info_proc_info(CalleePredInfo, CalleeProcId,
+                    CalleeProcInfo),
+                proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
+                find_output_args(ModuleInfo, CalleeArgTypes, CalleeArgModes,
+                    ArgVars, CalleeOutputVars)
+            ),
+            % For self-recursive calls, the caller and callee
+            % will obviously have
+            %
+            % - the same number of arguments, and
+            % - the same number of output arguments.
+            %
+            % Neither condition is a given for mutually recursive calls,
+            % which is why we check only output arguments, not all arguments.
+            %
+            % For a recursive call (either self or mutual) to be a *tail* call,
+            % the callee must have the same sequence of output arguments
+            % (the same set of variables in the same order) as the caller.
+            %
+            % CalleeOutputVars is the sequence of output vars of this call;
+            % OutputVars is the sequence of output vars of the caller,
+            % updated to reflect any "renaming" done by assigment
+            % unifications after the call. For example, if the first
+            % output argument of the caller is X, but the call is followed
+            % by the assignment X: = X0 (which our backwards traversal
+            % will have already seen, and updated AtTail0 accordingly),
+            % then this call cannot be a tail call unless its first output
+            % argument is X0. (The call cannot output X, since X cannot
+            % have two producers.)
+            OutputVars = CalleeOutputVars
+        then
+            !.Info ^ mtc_params = tail_rec_params(
+                MaybeSelfFeature, MaybeMutualFeature,
+                MaybeRecord, _WarnParams),
+            (
+                SelfOrMutual = call_is_self_rec,
+                (
+                    MaybeSelfFeature = no,
+                    Goal = hlds_goal(GoalExpr0, GoalInfo0)
+                ;
+                    MaybeSelfFeature = yes(SelfFeature),
+                    goal_info_add_feature(SelfFeature, GoalInfo0, GoalInfo),
+                    Goal = hlds_goal(GoalExpr0, GoalInfo)
+                ),
+                (
+                    MaybeRecord = do_not_record_tail_recursion
+                ;
+                    MaybeRecord = record_tail_recursion,
+                    !Info ^ mtc_self_tail_rec_calls := has_self_tail_rec_call
+                )
+            ;
+                SelfOrMutual = call_is_mutual_rec,
+                (
+                    MaybeMutualFeature = no,
+                    Goal = hlds_goal(GoalExpr0, GoalInfo0)
+                ;
+                    MaybeMutualFeature = yes(MutualFeature),
+                    goal_info_add_feature(MutualFeature, GoalInfo0, GoalInfo),
+                    Goal = hlds_goal(GoalExpr0, GoalInfo)
+                ),
+                (
+                    MaybeRecord = do_not_record_tail_recursion
+                ;
+                    MaybeRecord = record_tail_recursion,
+                    !Info ^ mtc_mutual_tail_rec_calls :=
+                        has_mutual_tail_rec_call
+                )
+            )
+        else
+            (
+                ( AtTail0 = at_tail(_)
+                ; AtTail0 = not_at_tail(have_not_seen_later_rec_call)
+                ),
+                Obviousness = non_obvious_nontail_rec,
+                Goal = hlds_goal(GoalExpr0, GoalInfo0)
+            ;
+                AtTail0 = not_at_tail(have_seen_later_rec_call),
+                Obviousness = obvious_nontail_rec,
+                % Record the obviousness for the MLDS code generator.
+                goal_info_add_feature(feature_obvious_nontail_rec_call,
+                    GoalInfo0, GoalInfo),
+                Goal = hlds_goal(GoalExpr0, GoalInfo)
+            ),
+            ModuleInfo = !.Info ^ mtc_module,
+            CallerPredProcId = !.Info ^ mtc_cur_proc,
+            Context = goal_info_get_context(GoalInfo0),
+            WarnParams = !.Info ^ mtc_params ^ warn_params,
+            Specs0 = !.Info ^ mtc_error_specs,
+            maybe_report_nontail_recursive_call(ModuleInfo,
+                CallerPredProcId, CalleePredProcId, Context,
+                ntrcr_program, Obviousness, WarnParams, Specs0, Specs),
+            !Info ^ mtc_error_specs := Specs
+        ),
+        AtTail = not_at_tail(have_seen_later_rec_call)
+    else
+        Goal = hlds_goal(GoalExpr0, GoalInfo0),
+        not_at_tail(AtTail0, AtTail)
     ).
 
 :- pred is_output_arg_rename(prog_var::in, prog_var::in,
@@ -975,15 +938,15 @@ is_output_arg_rename(ToVar, FromVar, [Var0 | Vars0], [Var | Vars]) :-
         is_output_arg_rename(ToVar, FromVar, Vars0, Vars)
     ).
 
-:- pred mark_tail_rec_calls_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    at_tail::in, at_tail::out,
+:- pred mark_tail_rec_calls_in_rev_conj(
+    list(hlds_goal)::in, list(hlds_goal)::out, at_tail::in, at_tail::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-mark_tail_rec_calls_in_conj([], [], !AtTail, !Info).
-mark_tail_rec_calls_in_conj([RevGoal0 | RevGoals0], [RevGoal | RevGoals],
+mark_tail_rec_calls_in_rev_conj([], [], !AtTail, !Info).
+mark_tail_rec_calls_in_rev_conj([RevGoal0 | RevGoals0], [RevGoal | RevGoals],
         !AtTail, !Info) :-
     mark_tail_rec_calls_in_goal(RevGoal0, RevGoal, !AtTail, !Info),
-    mark_tail_rec_calls_in_conj(RevGoals0, RevGoals, !AtTail, !Info).
+    mark_tail_rec_calls_in_rev_conj(RevGoals0, RevGoals, !AtTail, !Info).
 
 :- pred mark_tail_rec_calls_in_nonlast_disjunct(at_tail::in,
     hlds_goal::in, hlds_goal::out, later_rec_call::in, later_rec_call::out,
@@ -1046,7 +1009,7 @@ not_at_tail(Before, After) :-
 maybe_report_nontail_recursive_call(ModuleInfo,
         CallerPredProcId, CalleePredProcId, Context, Reason, Obviousness,
         WarnParams, !Specs) :-
-    WarnParams = warn_non_tail_rec_params(WarnOrError, Grades,
+    WarnParams = warn_non_tail_rec_params(RequestBy, WarnOrError, Grades,
         WarnNonTailSelfRec, WarnNonTailMutualRec),
     ( if
         ( if CallerPredProcId = CalleePredProcId then
@@ -1070,8 +1033,8 @@ maybe_report_nontail_recursive_call(ModuleInfo,
         )
     then
         report_nontail_recursive_call(ModuleInfo,
-            CallerPredProcId, CalleePredProcId, Context, Reason, WarnOrError,
-            !Specs)
+            CallerPredProcId, CalleePredProcId, Context, Reason,
+            RequestBy, WarnOrError, !Specs)
     else
         true
     ).
@@ -1090,21 +1053,28 @@ grade_supports_tail_recursion(ModuleInfo) :-
 
 :- pred report_nontail_recursive_call(module_info::in,
     pred_proc_id::in, pred_proc_id::in, prog_context::in,
-    nontail_rec_call_reason::in, warning_or_error::in,
+    nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
-        Context, Reason, WarnOrError, !Specs) :-
+        Context, Reason, RequestBy, WarnOrError, !Specs) :-
     CallerPredProcId = proc(CallerPredId, CallerProcId),
     module_info_pred_info(ModuleInfo, CallerPredId, CallerPredInfo),
     CallerPredOrFunc = pred_info_is_pred_or_func(CallerPredInfo),
     CallerName = pred_info_name(CallerPredInfo),
     CallerPredFormArity = pred_info_pred_form_arity(CallerPredInfo),
-    CallerId = pf_sym_name_arity(CallerPredOrFunc, unqualified(CallerName),
+    CallerPFSNA = pf_sym_name_arity(CallerPredOrFunc, unqualified(CallerName),
         CallerPredFormArity),
+    pred_info_get_proc_table(CallerPredInfo, CallerProcTable),
+    map.count(CallerProcTable, CallerNumProcs),
+    ( if CallerNumProcs > 1 then
+        MaybeCallerProcId = yes(CallerProcId)
+    else
+        MaybeCallerProcId = no
+    ),
     ( if CallerPredProcId = CalleePredProcId then
-        add_message_for_nontail_self_recursive_call(CallerId, CallerProcId,
-            Context, Reason, WarnOrError, !Specs)
+        add_message_for_nontail_self_recursive_call(CallerPFSNA,
+            MaybeCallerProcId, Context, Reason, RequestBy, WarnOrError, !Specs)
     else
         CalleePredProcId = proc(CalleePredId, _),
         module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
@@ -1112,43 +1082,75 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         CalleeName = qualified(pred_info_module(CalleePredInfo),
             pred_info_name(CalleePredInfo)),
         CalleePredFormArity = pred_info_pred_form_arity(CalleePredInfo),
-        CalleeId = pf_sym_name_arity(CalleePredOrFunc, CalleeName,
+        CalleePFSNA = pf_sym_name_arity(CalleePredOrFunc, CalleeName,
             CalleePredFormArity),
-        add_message_for_nontail_mutual_recursive_call(CallerId,
-            CallerProcId, CalleeId, Context, Reason, WarnOrError, !Specs)
+        add_message_for_nontail_mutual_recursive_call(CallerPFSNA,
+            MaybeCallerProcId, CalleePFSNA, Context, Reason,
+            RequestBy, WarnOrError, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
 
-add_message_for_nontail_self_recursive_call(PFSymNameArity, ProcId, Context,
-        Reason, WarnOrError, !Specs) :-
+    % add_message_for_nontail_self_recursive_call(PFSymNameArity,
+    %   MaybeCallerProcId, Context, Reason, RequestBy, WarnOrError, !Specs):
+    %
+    % Add an error_spec to !Specs reporting that the recursive call inside
+    % the procedure described by PFSymNameArity and CallerProcId (if specified)
+    % at Context is not *tail* recursive. Set its severity based on
+    % WarnOrError.
+    %
+:- pred add_message_for_nontail_self_recursive_call(pf_sym_name_arity::in,
+    maybe(proc_id)::in, prog_context::in, nontail_rec_call_reason::in,
+    report_requested_by::in, warning_or_error::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
+        Context, Reason, RequestBy, WarnOrError, !Specs) :-
+    ( RequestBy = request_by_code,   Option = warn_requested_by_code
+    ; RequestBy = request_by_option, Option = warn_non_tail_recursion_self
+    ),
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
-    woe_to_severity_and_string(warn_non_tail_recursion_self, WarnOrError,
-        Severity, WarnOrErrorWord),
-    proc_id_to_int(ProcId, ProcNumber0),
-    ProcNumber = ProcNumber0 + 1,
-    MainPieces = [words("In mode number"), int_fixed(ProcNumber),
-        words("of"), unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-        suffix(":"), nl,
-        WarnOrErrorWord, words("self-recursive call")] ++ ReasonPieces,
+    woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
+    caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces),
+    MainPieces = [WarnOrErrorWord, words("in")] ++ ProcIdPieces ++
+        [unqual_pf_sym_name_pred_form_arity(CallerPFSNA), suffix(":"), nl,
+        words("this")] ++ color_as_subject([words("self-recursive call")]) ++
+        ReasonPieces,
     MainMsg = msg(Context, MainPieces),
     Spec = error_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
-add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
-        CalleeId, Context, Reason, WarnOrError, !Specs) :-
+    % add_message_for_nontail_mutual_recursive_call(CallerPFSNA,
+    %   MaybeCallerProcId, CalleePFSNA, Context, Reason, RequestBy,
+    %   WarnOrError, !Specs):
+    %
+    % Add an error_spec to !Specs reporting that the mutually recursive call
+    % to CalleePFSNA inside the procedure described by CallerPFSNA and
+    % CallerProcId (if specified) at Context is not *tail* recursive.
+    % Set its severity based on WarnOrError.
+    %
+:- pred add_message_for_nontail_mutual_recursive_call(pf_sym_name_arity::in,
+    maybe(proc_id)::in, pf_sym_name_arity::in, prog_context::in,
+    nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
+        CalleePFSNA, Context, Reason, RequestBy, WarnOrError, !Specs) :-
+    ( RequestBy = request_by_code,   Option = warn_requested_by_code
+    ; RequestBy = request_by_option, Option = warn_non_tail_recursion_mutual
+    ),
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
-    woe_to_severity_and_string(warn_non_tail_recursion_mutual, WarnOrError,
-        Severity, WarnOrErrorWord),
-    proc_id_to_int(CallerProcId, ProcNumber0),
-    ProcNumber = ProcNumber0 + 1,
-    MainPieces = [words("In mode number"), int_fixed(ProcNumber), words("of"),
-        unqual_pf_sym_name_pred_form_arity(CallerId), suffix(":"), nl,
-        WarnOrErrorWord, words("mutually recursive call to"),
-        unqual_pf_sym_name_pred_form_arity(CalleeId)] ++ ReasonPieces,
+    woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
+    caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces),
+    MainPieces = [WarnOrErrorWord, words("in")] ++ ProcIdPieces ++
+        [unqual_pf_sym_name_pred_form_arity(CallerPFSNA), suffix(":"), nl,
+        words("this")] ++
+        color_as_subject([words("mutually recursive call")]) ++
+        [words("to"), unqual_pf_sym_name_pred_form_arity(CalleePFSNA)] ++
+        ReasonPieces,
     MainMsg = msg(Context, MainPieces),
     Spec = error_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
@@ -1161,11 +1163,27 @@ woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord) :-
     (
         WarnOrError = we_warning,
         Severity = severity_warning(Option),
-        WarnOrErrorWord = words("warning:")
+        WarnOrErrorWord = words("Warning")
     ;
         WarnOrError = we_error,
         Severity = severity_error,
-        WarnOrErrorWord = words("error:")
+        WarnOrErrorWord = words("Error")
+    ).
+
+:- pred caller_proc_id_pieces(maybe(proc_id)::in, list(format_piece)::out)
+    is det.
+
+caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces) :-
+    (
+        MaybeCallerProcId = no,
+        ProcIdPieces = []
+    ;
+        MaybeCallerProcId = yes(CallerProcId),
+        proc_id_to_int(CallerProcId, CallerProcNumber0),
+        % Internally, proc_ids start at zero. For users, they start at one.
+        CallerProcNumber = CallerProcNumber0 + 1,
+        ProcIdPieces = [words("mode number"),
+            int_fixed(CallerProcNumber), words("of")]
     ).
 
 :- pred nontail_rec_call_reason_to_pieces(nontail_rec_call_reason::in,
@@ -1186,10 +1204,13 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
                 words("cannot be applied to it,")]) ++
             [words("because the callee cannot reach the caller"),
             words("via tail calls only."), nl],
-        VerbosePieces = [words("The MLDS backend"),
-            words("can optimize only *mutual* tail recursion;"),
-            words("it cannot optimize tail recursion"),
-            words("if it goes only one way between two procedures."), nl],
+        VerbosePieces = [words("With --high-level-code,"),
+            words("the compiler can implement mutual tail recursion"),
+            words("only for sets of procedures where"),
+            words("every procedure in the set can reach")] ++
+            color_as_hint([words("every")]) ++
+            [words("other procedure in the set using")] ++
+            color_as_hint([words("tail calls only.")]) ++ [nl],
         VerboseMsgs = [simple_msg(Context,
             [verbose_only(verbose_once, VerbosePieces)])]
     ;
@@ -1211,6 +1232,30 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
 
 %---------------------------------------------------------------------------%
 
+    % Have we found any recursive calls so far?
+    %
+    % We use this to generate warnings about pragmas that intend to control
+    % how recursive calls that are not *tail* recursive should be treated,
+    % when the procedure they are about contains no recursive calls at all,
+    % either self-recursive or (if we have SCC information) mutually recursive.
+    %
+:- type found_any_rec_calls
+    --->    not_found_any_rec_calls
+    ;       found_any_rec_calls.
+
+    % maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
+    %   FoundAnyRecCalls, Context, !Specs):
+    %
+    % If FoundAnyRecCalls = not_found_any_rec_calls but ProcInfo says
+    % that the procedure has a pragma about tail recursive calls on it,
+    % then add a message to !Specs reporting that the procedure described by
+    % PFSymNameArity contains no recursive calls at all, tail-recursive or
+    % otherwise.
+    %
+:- pred maybe_report_no_tail_or_nontail_recursive_calls(pred_info::in,
+    proc_info::in, found_any_rec_calls::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
         FoundAnyRecCalls, !Specs) :-
     (
@@ -1223,8 +1268,15 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
             MaybeRequireTailRec = no
         ;
             MaybeRequireTailRec = yes(RequireTailRecInfo),
-            ( RequireTailRecInfo = enable_tailrec_warnings(_, _, _, Context)
-            ; RequireTailRecInfo = suppress_tailrec_warnings(Context)
+            (
+                RequireTailRecInfo = disable_nontailrec_reports(Context),
+                % In the absence of any recursive calls,
+                % the pragma that records disable_nontailrec_reports
+                % is totally useless.
+                WarnOrError = we_error
+            ;
+                RequireTailRecInfo = enable_nontailrec_reports(WarnOrError,
+                    _, _, Context)
             ),
             pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
             pred_info_get_name(PredInfo, PredName),
@@ -1232,23 +1284,26 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
             PFSymNameArity = pf_sym_name_arity(PredOrFunc,
                 unqualified(PredName), PredFormArity),
             report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
-                !Specs)
+                WarnOrError, warn_requested_by_code, !Specs)
         )
     ).
 
 :- pred report_no_tail_or_nontail_recursive_calls(pf_sym_name_arity::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, warning_or_error::in, option::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context, !Specs) :-
+report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
+        WarnOrError, Option, !Specs) :-
+    woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _),
-    Pieces = [words("In"), pragma_decl("require_tail_recursion"), words("for"),
+    Pieces = [WarnOrErrorWord,
+        words("in"), pragma_decl("require_tail_recursion"), words("for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
-        words("warning: the code defining this"), p_or_f(PredOrFunc),
+        words("the code defining this"), p_or_f(PredOrFunc),
         words("contains")] ++
         color_as_incorrect([words("no recursive calls at all,")]) ++
         [words("tail-recursive or otherwise."), nl],
-    Spec = spec($pred, severity_warning(warn_no_recursion), phase_code_gen,
-        Context, Pieces),
+    Spec = spec($pred, Severity, phase_code_gen, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

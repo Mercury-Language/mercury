@@ -1,0 +1,49 @@
+require_tailrec_option.m:092: Warning in function `even1'/1:
+require_tailrec_option.m:092:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:092:   `odd1'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:105: Warning in function `odd1'/1:
+require_tailrec_option.m:105:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:105:   `even1'/1 is tail recursive, but [38;5;203mtail recursion[39;49m
+require_tailrec_option.m:105:   [38;5;203moptimization cannot be applied to it,[39;49m because
+require_tailrec_option.m:105:   the callee cannot reach the caller via tail
+require_tailrec_option.m:105:   calls only.
+require_tailrec_option.m:105:   With --high-level-code, the compiler can
+require_tailrec_option.m:105:   implement mutual tail recursion only for sets
+require_tailrec_option.m:105:   of procedures where every procedure in the set
+require_tailrec_option.m:105:   can reach [38;5;226mevery[39;49m other procedure in the set
+require_tailrec_option.m:105:   using [38;5;226mtail calls only.[39;49m
+require_tailrec_option.m:119: Error in function `even2'/1:
+require_tailrec_option.m:119:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:119:   `odd2'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:128: Warning in function `odd2'/1:
+require_tailrec_option.m:128:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:128:   `even2'/1 is tail recursive, but [38;5;203mtail recursion[39;49m
+require_tailrec_option.m:128:   [38;5;203moptimization cannot be applied to it,[39;49m because
+require_tailrec_option.m:128:   the callee cannot reach the caller via tail
+require_tailrec_option.m:128:   calls only.
+require_tailrec_option.m:142: Warning in function `even3'/1:
+require_tailrec_option.m:142:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:142:   `odd3'/1 is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:151: Warning in function `odd3'/1:
+require_tailrec_option.m:151:   this [38;5;87mmutually recursive call[39;49m to function
+require_tailrec_option.m:151:   `even3'/1 is tail recursive, but [38;5;203mtail recursion[39;49m
+require_tailrec_option.m:151:   [38;5;203moptimization cannot be applied to it,[39;49m because
+require_tailrec_option.m:151:   the callee cannot reach the caller via tail
+require_tailrec_option.m:151:   calls only.
+require_tailrec_option.m:164: Warning in predicate `qsort_1'/2:
+require_tailrec_option.m:164:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:187: Warning in predicate `qsort_3'/2:
+require_tailrec_option.m:187:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:198: Error in predicate `qsort_4'/2:
+require_tailrec_option.m:198:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:209: Warning in predicate `qsort_5'/2:
+require_tailrec_option.m:209:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:220: Warning in predicate `qsort_6'/2:
+require_tailrec_option.m:220:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:232: Error in predicate `qsort_7'/2:
+require_tailrec_option.m:232:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+require_tailrec_option.m:256: Error in `:- pragma require_tail_recursion' for
+require_tailrec_option.m:256:   function `cons'/2:
+require_tailrec_option.m:256:   the code defining this function contains [38;5;203mno[39;49m
+require_tailrec_option.m:256:   [38;5;203mrecursive calls at all,[39;49m tail-recursive or
+require_tailrec_option.m:256:   otherwise.

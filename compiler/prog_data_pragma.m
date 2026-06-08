@@ -503,14 +503,14 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- interface.
 
 :- type require_tail_recursion
-    --->    suppress_tailrec_warnings(
-                rtrs_context            :: prog_context
+    --->    disable_nontailrec_reports(
+                dntrr_context           :: prog_context
             )
-    ;       enable_tailrec_warnings(
-                rtre_warn_or_error      :: warning_or_error,
-                rtre_recursion_type     :: require_tail_recursion_type,
-                rtre_grades             :: report_in_which_grades,
-                rtre_context            :: prog_context
+    ;       enable_nontailrec_reports(
+                entrr_warn_or_error     :: warning_or_error,
+                entrr_recursion_type    :: require_tail_recursion_type,
+                entrr_report_grades     :: report_in_which_grades,
+                entrr_context           :: prog_context
             ).
 
     % Should we report violations of the required level of tail recursion ...

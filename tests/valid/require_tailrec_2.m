@@ -64,8 +64,8 @@ foldl1(P, [X | Xs], !Acc) :-
     P(X, !Acc),
     foldl1(P, Xs, !Acc).
 
-% self tail recursive code with none pragma.
-:- pragma require_tail_recursion(foldl2/4, [none]).
+% self tail recursive code with reports disabled.
+:- pragma disable_non_tail_recursion_reports(foldl2/4).
 foldl2(_, [], !Acc).
 foldl2(P, [X | Xs], !Acc) :-
     P(X, !Acc),
@@ -85,14 +85,14 @@ foldl4(P, [X | Xs], !Acc) :-
     P(X, !Acc),
     foldl4(P, Xs, !Acc).
 
-% Self non-tail recursive code with no pragma
+% Self non-tail recursive code with no pragma.
 map1(_, [], []).
 map1(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
     map1(P, Xs, Ys).
 
-% Self non-tail recursive code with none pragma
-:- pragma require_tail_recursion(map2/3, [none]).
+% Self non-tail recursive code with reports disabled.
+:- pragma disable_non_tail_recursion_reports(map2/3).
 map2(_, [], []).
 map2(P, [X | Xs], [Y | Ys]) :-
     P(X, Y),
@@ -112,15 +112,15 @@ odd1(N) =
         even1(N - 1)
     ).
 
-% Mutual tail recursion with none pragma.
-:- pragma require_tail_recursion(even2/1, [none]).
+% Mutual tail recursion with reports disabled.
+:- pragma disable_non_tail_recursion_reports(even2/1).
 even2(N) =
     ( if N = 0 then
         yes
     else
         odd2(N - 1)
     ).
-:- pragma require_tail_recursion(odd2/1, [none]).
+:- pragma disable_non_tail_recursion_reports(odd2/1).
 odd2(N) =
     ( if N = 0 then
         no
@@ -128,7 +128,7 @@ odd2(N) =
         even2(N - 1)
     ).
 
-% Mutual tail recursion with none pragma.
+% Mutual tail recursion.
 :- pragma require_tail_recursion(even3/1, [self_or_mutual_recursion]).
 even3(N) =
     ( if N = 0 then
@@ -156,7 +156,7 @@ odd4(N) =
         bool.not(even4(N))
     ).
 
-:- pragma require_tail_recursion(even5/1, [none]).
+:- pragma disable_non_tail_recursion_reports(even5/1).
 even5(N) =
     ( if N = 0 then
         yes
@@ -187,7 +187,7 @@ odd6(N) =
 
 %---------------------------------------------------------------------------%
 
-:- pragma require_tail_recursion(qsortapp/2, [none]).
+:- pragma disable_non_tail_recursion_reports(qsortapp/2).
 
 qsortapp([], []).
 qsortapp([Pivot | T], List) :-

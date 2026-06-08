@@ -1,6 +1,0 @@
-require_tailrec_1.m:117: In mode number 1 of predicate `qsortapp_4'/2:
-require_tailrec_1.m:117:   error: self-recursive call is [38;5;203mnot tail recursive.[39;49m
-require_tailrec_1.m:142: In `:- pragma require_tail_recursion' for function
-require_tailrec_1.m:142:   `cons'/2:
-require_tailrec_1.m:142:   warning: the code defining this function contains [38;5;203mno[39;49m
-require_tailrec_1.m:142:   [38;5;203mrecursive calls at all,[39;49m tail-recursive or otherwise.

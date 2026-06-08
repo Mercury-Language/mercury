@@ -32,9 +32,8 @@ ALWAYS_SPECIAL_RULE_SINGLEMODULE_PROGS = \
 	foreign_include_file_missing \
 	illtyped_compare \
 	make_opt_error \
-	require_tailrec_1 \
-	require_tailrec_2 \
-	require_tailrec_3
+	require_tailrec_pragma \
+	require_tailrec_option
 
 INTERMOD_SPECIAL_MULTIMODULE_PROGS = \
 	abstract_eqv \
@@ -583,9 +582,11 @@ illtyped_compare.err: illtyped_compare.m
 	else true; \
 	fi
 
-# For these tests the error is only caught when generating target code.
+# The next line is needed for the foreign_include_file_missing test case.
 .PHONY: missing_file
-require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_include_file_missing.err: %.err : %.m
+
+# For these tests, the error is only caught when generating target code.
+require_tailrec_pragma.err require_tailrec_option.err foreign_include_file_missing.err: %.err : %.m
 	-$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		$*.m > $*.int_err 2>&1;
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \

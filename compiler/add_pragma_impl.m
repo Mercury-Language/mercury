@@ -612,8 +612,8 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
             color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
         OrigPieces = [words("The earlier pragma is here."), nl],
-        ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
-        ; RequireTailrecOrig = enable_tailrec_warnings(_, _, _, ContextOrig)
+        ( RequireTailrecOrig = disable_nontailrec_reports(ContextOrig)
+        ; RequireTailrecOrig = enable_nontailrec_reports(_, _, _, ContextOrig)
         ),
         Spec = error_spec($pred, severity_error, phase_pt2h,
             [msg(Context, MainPieces),

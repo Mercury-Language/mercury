@@ -1264,15 +1264,16 @@ mercury_format_pragma_require_tail_rec(Lang, RequireTR, S, !U) :-
     RequireTR = impl_pragma_req_tail_rec_info(PredOrProcSpec, Warn, _, _),
     ProcSpecStr = pred_or_proc_pfumm_name_to_string(Lang, PredOrProcSpec),
     (
-        Warn = suppress_tailrec_warnings(_),
-        string.format(":- pragma warn_tail_recursion(%s, [none]).\n",
+        Warn = disable_nontailrec_reports(_),
+        string.format(
+            ":- pragma disable_non_tail_recursion_reports(%s).\n",
             [s(ProcSpecStr)], DeclStr)
     ;
-        Warn = enable_tailrec_warnings(WarnOrError, Type, Grades, _),
+        Warn = enable_nontailrec_reports(WarnOrError, Type, Grades, _),
         warning_or_error_string(WarnOrError, WarnOrErrorStr),
         require_tailrec_type_string(Type, TypeStr),
         require_tailrec_grades_string(Grades, GradesStr),
-        string.format(":- pragma warn_tail_recursion(%s, [%s, %s, %s]).\n",
+        string.format(":- pragma require_tail_recursion(%s, [%s, %s, %s]).\n",
             [s(ProcSpecStr), s(WarnOrErrorStr), s(TypeStr), s(GradesStr)],
             DeclStr)
     ),

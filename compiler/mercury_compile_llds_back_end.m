@@ -207,8 +207,7 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
     compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 330, "liveness", !DumpInfo, !IO),
 
-    maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats,
-        !HLDS, !Specs, !IO),
+    mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 332, "mark_debug_tailrec_calls",
         !DumpInfo, !IO),
 
@@ -580,12 +579,11 @@ compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred maybe_mark_tail_rec_calls(io.text_output_stream::in,
-    bool::in, bool::in, module_info::in, module_info::out,
+:- pred mark_tail_rec_calls(io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
+mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Marking directly tail recursive calls...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
