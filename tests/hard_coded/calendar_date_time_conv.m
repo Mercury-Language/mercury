@@ -22,127 +22,90 @@
 :- import_module bool.
 :- import_module calendar.
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    test_valid_date_times(!IO),
-    test_invalid_date_times(!IO),
-    test_exception_valid_date_times(!IO),
-    test_exception_invalid_date_times(!IO).
+    io.write_string("=== Testing with valid inputs ===\n", !IO),
+    list.foldl(test_valid_date_time(yes), valid_date_times, !IO),
+    list.foldl(test_valid_date_time(no), valid_no_roundtrip_date_times, !IO),
+
+    io.nl(!IO),
+    io.write_string("=== Testing with invalid inputs ===\n", !IO),
+    list.foldl(test_invalid_date_time, invalid_date_times, !IO).
 
 %---------------------------------------------------------------------------%
+%
+% In both test_valid_duration and test_invalid_duration, we exercise
+% both the semidet predicate duration_from_string/2, and its det function
+% version, duration_from_string/1.
+%
+% We always print the results from the semidet predicate version.
+% We print the results from the det function version ONLY if it differs
+% from the result of the semidet predicate version on the same input.
+%
+%---------------------------------------------------------------------------%
 
-:- pred test_valid_date_times(io::di, io::uo) is det.
+:- pred test_valid_date_time(bool::in, dt_conv_test::in,
+    io::di, io::uo) is cc_multi.
 
-test_valid_date_times(!IO) :-
-    io.write_string(
-        "=== Testing date_time_from_string/2 with valid inputs ===\n\n",
-        !IO),
-    list.foldl(do_test_valid_date_time(yes), valid_date_times, !IO),
-    list.foldl(do_test_valid_date_time(no), valid_no_roundtrip_date_times,
-        !IO),
-    io.nl(!IO).
-
-:- pred do_test_valid_date_time(bool::in, dt_conv_test::in,
-    io::di, io::uo) is det.
-
-do_test_valid_date_time(CheckRoundTrip, Test, !IO) :-
-    Test = dt_conv_test(Desc, TestString),
-    io.format("date_time_from_string(\"%s\") ===> ", [s(TestString)], !IO),
-    ( if date_time_from_string(TestString, DateTime) then
-        RoundTripString = date_time_to_string(DateTime),
+test_valid_date_time(CheckRoundTrip, Test, !IO) :-
+    Test = dt_conv_test(Desc, TestStr),
+    write_test_call(tsl_30, TestStr, Desc, !IO),
+    ( if date_time_from_string(TestStr, DateTimeP) then
+        MaybeDateTimeP = yes(DateTimeP),
+        RoundTripStr = date_time_to_string(DateTimeP),
         (
             CheckRoundTrip = yes,
-            ( if TestString = RoundTripString then
-                io.format("TEST PASSED (accepted: %s)\n",
-                    [s(string(DateTime))], !IO)
+            ( if TestStr = RoundTripStr then
+                io.format("PASS %s\n", [s(string(DateTimeP))], !IO)
             else
-                io.write_string("TEST FAILED (roundtrip failed)\n", !IO)
+                io.format("FAIL %s\nTEST %s\nTRIP %s\n",
+                    [s(string(DateTimeP)), s(TestStr), s(RoundTripStr)], !IO)
             )
         ;
             CheckRoundTrip = no,
-            io.format("TEST PASSED (accepted: %s: to-string: \"%s\"))\n",
-                [s(string(DateTime)), s(RoundTripString)], !IO)
+            io.format("PASS %s\nTEST %s\nTRIP %s\n",
+                [s(string(DateTimeP)), s(TestStr), s(RoundTripStr)], !IO)
         )
     else
-        io.format("TEST FAILED (rejected: %s)\n", [s(Desc)], !IO)
-    ).
+        MaybeDateTimeP = no,
+        io.format("FAIL reject\n", [], !IO)
+    ),
+    ( try []
+        DateTimeF = det_date_time_from_string(TestStr)
+    then
+        MaybeDateTimeF = yes(DateTimeF)
+    catch_any _ ->
+        MaybeDateTimeF = no
+    ),
+    report_any_disagrement(MaybeDateTimeP, MaybeDateTimeF, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred test_invalid_date_times(io::di, io::uo) is det.
+:- pred test_invalid_date_time(dt_conv_test::in, io::di, io::uo) is cc_multi.
 
-test_invalid_date_times(!IO) :-
-    io.write_string(
-        "=== Testing date_time_from_string/2 with invalid inputs ===\n\n",
-        !IO),
-    list.foldl(do_test_invalid_date_time, invalid_date_times, !IO),
-    io.nl(!IO).
-
-:- pred do_test_invalid_date_time(dt_conv_test::in, io::di, io::uo) is det.
-
-do_test_invalid_date_time(Test, !IO) :-
-    Test = dt_conv_test(Desc, TestString),
-    io.format("date_time_from_string(\"%s\") ===> ", [s(TestString)], !IO),
-    ( if date_time_from_string(TestString, DateTime) then
-        DateTimeString = date_time_to_string(DateTime),
-        io.format("TEST FAILED (accepted: %s)\n",
-            [s(DateTimeString)], !IO)
+test_invalid_date_time(Test, !IO) :-
+    Test = dt_conv_test(Desc, TestStr),
+    write_test_call(tsl_30, TestStr, Desc, !IO),
+    ( if date_time_from_string(TestStr, DateTimeP) then
+        MaybeDateTimeP = yes(DateTimeP),
+        DateTimePStr = date_time_to_string(DateTimeP),
+        io.format("FAIL: ERROR NOT DETECTED %s\n", [s(DateTimePStr)], !IO)
     else
-        io.format("TEST PASSED (rejected: %s)\n", [s(Desc)], !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred test_exception_valid_date_times(io::di, io::uo) is cc_multi.
-
-test_exception_valid_date_times(!IO) :-
-    io.write_string(
-        "=== Testing det_date_from_string/1 with valid inputs ===\n\n", !IO),
-    list.foldl(do_test_exception_valid_date_time, valid_date_times, !IO),
-    io.nl(!IO).
-
-:- pred do_test_exception_valid_date_time(dt_conv_test::in, io::di, io::uo)
-    is cc_multi.
-
-do_test_exception_valid_date_time(Test, !IO) :-
-    Test = dt_conv_test(Desc, TestString),
-    io.format("det_date_time_from_string(\"%s\") ===> ", [s(TestString)], !IO),
+        MaybeDateTimeP = no,
+        io.format("PASS: ERROR DETECTED\n", [], !IO)
+    ),
     ( try []
-        DateTime = det_date_time_from_string(TestString)
+        DateTimeF = det_date_time_from_string(TestStr)
     then
-        io.format("TEST PASSED (accepted: %s)\n",
-            [s(string(DateTime))], !IO)
+        MaybeDateTimeF = yes(DateTimeF)
     catch_any _ ->
-        io.format("TEST FAILED (exception: %s)\n", [s(Desc)], !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred test_exception_invalid_date_times(io::di, io::uo) is cc_multi.
-
-test_exception_invalid_date_times(!IO) :-
-    io.write_string(
-        "=== Testing det_date_from_string/1 with invalid inputs ===\n\n", !IO),
-    list.foldl(do_test_exception_invalid_date_time, invalid_date_times, !IO),
-    io.nl(!IO).
-
-:- pred do_test_exception_invalid_date_time(dt_conv_test::in, io::di, io::uo)
-    is cc_multi.
-
-do_test_exception_invalid_date_time(Test, !IO) :-
-    Test = dt_conv_test(Desc, TestString),
-    io.format("det_date_time_from_string(\"%s\") ===> ", [s(TestString)], !IO),
-    ( try []
-        DateTime = det_date_time_from_string(TestString)
-    then
-        io.format("TEST FAILED (accepted: %s)\n",
-            [s(string(DateTime))], !IO)
-    catch_any _ ->
-        io.format("TEST PASSED (exception: %s)\n", [s(Desc)], !IO)
-    ).
+        MaybeDateTimeF = no
+    ),
+    report_any_disagrement(MaybeDateTimeP, MaybeDateTimeF, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -173,7 +136,7 @@ valid_date_times = [
 
     dt_conv_test("year -1", "-0001-01-01 00:00:00"),
     dt_conv_test("end of year -1", "-0001-12-31 00:00:00"),
-    dt_conv_test("Julian period origin in proleptic Gregorian calendar",
+    dt_conv_test("Julian origin in proleptic Gregorian calendar",
         "-4713-11-24 00:00:00"),
 
     dt_conv_test("five-digit year", "10000-01-01 00:00:00"),
@@ -331,9 +294,41 @@ invalid_date_times = [
     dt_conv_test("missing day", "2024-01- 00:00:00"),
     dt_conv_test("missing hour", "2024-01-01 :00:00"),
     dt_conv_test("missing minute", "2024-01-01 00::00"),
-    dt_conv_test("trailing colon with no second digits",
-        "2024-01-01 00:00:")
+    dt_conv_test("trailing colon with no second digits", "2024-01-01 00:00:")
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred report_any_disagrement(maybe(date_time)::in, maybe(date_time)::in,
+    io::di, io::uo) is det.
+
+report_any_disagrement(MaybeDateTimeP, MaybeDateTimeF, !IO) :-
+    ( if MaybeDateTimeP = MaybeDateTimeF then
+        true
+    else
+        io.format("DISAGREEMENT: pred %s, func %s\n",
+            [s(string.string(MaybeDateTimeP)),
+            s(string.string(MaybeDateTimeF))], !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type test_str_len
+    --->    tsl_18
+    ;       tsl_30.
+
+:- pred write_test_call(test_str_len::in, string::in, string::in,
+    io::di, io::uo) is det.
+
+write_test_call(TestStrLen, TestStr, Desc, !IO) :-
+    string.format("\n\"%s\":", [s(TestStr)], TestId),
+    (
+        TestStrLen = tsl_18,
+        io.format("%-18s %s\n", [s(TestId), s(Desc)], !IO)
+    ;
+        TestStrLen = tsl_30,
+        io.format("%-30s %s\n", [s(TestId), s(Desc)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar_date_time_conv.
