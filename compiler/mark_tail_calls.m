@@ -1048,6 +1048,7 @@ grade_supports_tail_recursion(ModuleInfo) :-
     globals.lookup_bool_option(Globals, source_to_source_debug, no),
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy, no),
     globals.lookup_bool_option(Globals, use_minimal_model_own_stacks, no),
+    globals.lookup_bool_option(Globals, use_trail, no),
     globals.get_gc_method(Globals, GC),
     GC \= gc_accurate.
 
