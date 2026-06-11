@@ -598,7 +598,7 @@ try_stm(Goal, Result, !STM) :-
         Result = Result0
     ;
         Result0 = exception(Exception),
-        % If the exception is an STM rollback exception rethrow it since
+        % If the exception is an STM rollback exception, rethrow it since
         % the handler at the beginning of the atomic scope should deal with
         % it; otherwise let the user deal with it.
         ( if
@@ -1071,10 +1071,8 @@ catch_impl(Pred, Handler, T) :-
 :- pragma foreign_code("C", "
 #ifdef MR_HIGHLEVEL_CODE
 
-// We also need to provide definitions of these builtins
-// as functions rather than as macros. This is needed
-// (a) in case we take their address, and (b) for the
-// GCC back-end interface.
+// We also need to provide definitions of these builtins as functions rather
+// than as macros. This is needed in case we take their address.
 
 #undef mercury__exception__builtin_catch_3_p_0
 #undef mercury__exception__builtin_catch_3_p_1
@@ -2399,9 +2397,9 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         "" Mercury handlers in deep profiling grades"");
 #endif
 
-    MR_r1 = handler;    // get the Handler closure
-    MR_r2 = 1;          // One additional input argument
-    MR_r3 = exception;  // This is our one input argument
+    MR_r1 = handler;    // Get the Handler closure.
+    MR_r2 = 1;          // One additional input argument.
+    MR_r3 = exception;  // This is our one input argument.
 
     // Restore the value of MR_trace_from_full that we saved at the
     // start of builtin_catch.
