@@ -1182,7 +1182,7 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
         subtract_ints_with_borrow(24, HourA, HourB, Hours, !:Borrow),
         (
             OriginalOrder = descending,
-            add_duration(duration(0, -1, 0, 0), DateA, DateAMinus1Month),
+            add_duration(duration(-1, 0, 0, 0), DateA, DateAMinus1Month),
             DaysToBorrow = max_day_in_month_for(DateAMinus1Month ^ dt_year,
                 DateAMinus1Month ^ dt_month),
             DateAEndOfMonth = max_day_in_month_for(DateA ^ dt_year,
