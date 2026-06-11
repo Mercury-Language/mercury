@@ -857,7 +857,7 @@ X // Y = Div :-
 :- pragma inline(func('/'/2)).
 X / Y = X // Y.
 
-X mod Y = X  - (X div Y) * Y.
+X mod Y = X - (X div Y) * Y.
 
 :- pragma inline(func(rem/2)).
 X rem Y = Rem :-
@@ -913,13 +913,13 @@ X >>u Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-num_zeros(I) = 32 - num_ones(I).
+num_zeros(I32) = 32 - num_ones(I32).
 
 :- pragma foreign_proc("Java",
-    num_ones(U::in) = (N::out),
+    num_ones(I32::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Integer.bitCount(U);
+    N = java.lang.Integer.bitCount(I32);
 ").
 
 num_ones(I32) = N :-
@@ -929,22 +929,21 @@ num_ones(I32) = N :-
 %---------------------%
 
 :- pragma foreign_proc("Java",
-    num_leading_zeros(U::in) = (N::out),
+    num_leading_zeros(I32::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Integer.numberOfLeadingZeros(U);
+    N = java.lang.Integer.numberOfLeadingZeros(I32);
 ").
 
 num_leading_zeros(I32) = N :-
     U32 = uint32.cast_from_int32(I32),
     N = uint32.num_leading_zeros(U32).
 
-
 :- pragma foreign_proc("Java",
-    num_trailing_zeros(U::in) = (N::out),
+    num_trailing_zeros(I32::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Integer.numberOfTrailingZeros(U);
+    N = java.lang.Integer.numberOfTrailingZeros(I32);
 ").
 
 num_trailing_zeros(I32) = N :-

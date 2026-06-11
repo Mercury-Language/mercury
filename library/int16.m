@@ -640,7 +640,7 @@ X >>u Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-num_zeros(U) = 16 - num_ones(U).
+num_zeros(I16) = 16 - num_ones(I16).
 
 num_ones(I16) = N :-
     U16 = uint16.cast_from_int16(I16),

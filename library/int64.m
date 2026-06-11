@@ -413,14 +413,14 @@ from_int(I) = cast_from_int(I).
     cast_from_int(I::in) = (I64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    I64 = (long) I; // Mercury's 'int' type in the C# grade is 32-bits.
+    I64 = (long) I; // Mercury's 'int' type in the C# grade is 32 bits.
 ").
 
 :- pragma foreign_proc("Java",
     cast_from_int(I::in) = (I64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    I64 = (long) I; // Mercury's 'int' type in the Java grade is 32-bits.
+    I64 = (long) I; // Mercury's 'int' type in the Java grade is 32 bits.
 ").
 
 %---------------------------------------------------------------------------%
@@ -609,7 +609,7 @@ det_to_int(I64) = I :-
         (ulong) Byte0);
 ").
 
-from_bytes_be(Byte7, Byte6, Byte5,Byte4, Byte3, Byte2, Byte1, Byte0) =
+from_bytes_be(Byte7, Byte6, Byte5, Byte4, Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7).
 
 %---------------------------------------------------------------------------%
@@ -683,7 +683,7 @@ X / Y = X // Y.
 
 % The operations unchecked_quotient and unchecked_rem are builtins.
 
-X mod Y = X  - (X div Y) * Y.
+X mod Y = X - (X div Y) * Y.
 
 :- pragma inline(func(rem/2)).
 X rem Y = Rem :-
@@ -741,13 +741,13 @@ X >>u Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-num_zeros(U) = 64 - num_ones(U).
+num_zeros(I64) = 64 - num_ones(I64).
 
 :- pragma foreign_proc("Java",
-    num_ones(U::in) = (N::out),
+    num_ones(I64::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Long.bitCount(U);
+    N = java.lang.Long.bitCount(I64);
 ").
 
 num_ones(I64) = N :-
@@ -757,10 +757,10 @@ num_ones(I64) = N :-
 %---------------------%
 
 :- pragma foreign_proc("Java",
-    num_leading_zeros(U::in) = (N::out),
+    num_leading_zeros(I64::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Long.numberOfLeadingZeros(U);
+    N = java.lang.Long.numberOfLeadingZeros(I64);
 ").
 
 num_leading_zeros(I64) = N :-
@@ -768,10 +768,10 @@ num_leading_zeros(I64) = N :-
     N = uint64.num_leading_zeros(U64).
 
 :- pragma foreign_proc("Java",
-    num_trailing_zeros(U::in) = (N::out),
+    num_trailing_zeros(I64::in) = (N::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    N = java.lang.Long.numberOfTrailingZeros(U);
+    N = java.lang.Long.numberOfTrailingZeros(I64);
 ").
 
 num_trailing_zeros(I64) = N :-

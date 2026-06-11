@@ -579,7 +579,7 @@ X >>u Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-num_zeros(I) = 8 - num_ones(I).
+num_zeros(I8) = 8 - num_ones(I8).
 
 num_ones(I8) = N :-
     U8 = uint8.cast_from_int8(I8),
