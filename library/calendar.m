@@ -858,6 +858,7 @@ date_time_from_string(Str, DateTime) :-
         Minute =< 59,
         read_char((:), !Chars),
         read_int_and_num_chars(Second, 2, !Chars),
+        Second >= 0,
         Second < 61,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
@@ -1296,7 +1297,7 @@ duration(DateA, DateB) = duration_between(DateA, DateB).
     --->    ascending
     ;       descending.
 
-    % This predicate has the precondition that DateA < DateB.
+    % This predicate has the precondition that DateA > DateB.
     % OriginalOrder is the original order of the date_time arguments
     % (descending means that in the original call DateA < DateB, while
     % ascending means that in the original call DateA > DateB). This is needed
