@@ -109,6 +109,20 @@ ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
+# In csharp grade, mark mer_std as Native-AOT-compatible. The
+# rtti_implementation.m / builtin.deep_copy paths route through the
+# MR_DuTerm interface (no System.Reflection), so the .NET trim/AOT
+# toolchain can statically prove the dynamic-RTTI machinery without
+# IL2075 warnings. For a `csharp_library' target `--csharp-aot' only
+# adds an `<IsAotCompatible>true</IsAotCompatible>' csproj marker;
+# the build flow itself is unchanged. The other Mercury libraries
+# (mer_browser, mer_ssdb, mer_mdbcomp) keep their plain
+# `<IsTrimmable>true</...>' marker for now because they have not yet
+# been audited for AOT-compatibility.
+ifneq ("$(filter csharp%,$(GRADE))","")
+MCFLAGS += --csharp-aot
+endif
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS	     += $(DLL_CFLAGS)

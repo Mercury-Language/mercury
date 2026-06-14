@@ -49,6 +49,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds_to_cs_data.
 :- import_module ml_backend.mlds_to_cs_func.
 :- import_module ml_backend.mlds_to_cs_name.
@@ -59,6 +60,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -91,10 +93,18 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
         GenericTypeParamsStr = ""
     ),
     io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO),
-    io.format(Stream, "%s%s%s%sclass %s%s\n",
+    % DU representation classes (those implementing MR_DuTerm) are emitted
+    % as record classes so that C# auto-generates structural Equals,
+    % GetHashCode, and ToString for them.
+    ( if list.member(ml_csharp_mr_du_term_interface, Implements) then
+        ClassKind = "record class"
+    else
+        ClassKind = "class"
+    ),
+    io.format(Stream, "%s%s%s%s%s %s%s\n",
         [s(IndentStr), s(AccessPrefix),
         s(OverridePrefix), s(ConstnessPrefix),
-        s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
+        s(ClassKind), s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
     SuperClassNames = get_superclass_names(Info, Inherits, Implements),
     (
         SuperClassNames = []
@@ -119,6 +129,19 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
     list.foldl(
         output_function_defn_for_csharp(Info, Stream, Indent1, CtorsAux),
         Ctors, !IO),
+
+    % If this class implements MR_DuTerm (which we attach to every
+    % csharp DU representation class in ml_type_gen.m), emit method
+    % bodies for the four interface methods. Done by walking the
+    % MemberFields list -- positional fvn_du_ctor_field_hld fields
+    % become the cases in MR_GetField; the optional fvn_data_tag field
+    % drives MR_GetSecondaryTag.
+    ( if list.member(ml_csharp_mr_du_term_interface, Implements) then
+        output_mr_du_term_methods_for_csharp(Info, Stream, Indent1, ClassName,
+            ClassArity, Inherits, MemberFields, !IO)
+    else
+        true
+    ),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
 output_enum_class_defn_for_csharp(Info0, Stream, Indent, EnumDefn, !IO) :-
@@ -249,6 +272,7 @@ interface_to_string_for_csharp(InterfaceId) = String :-
 :- pred interface_is_special_for_csharp(string::in) is semidet.
 
 interface_is_special_for_csharp("MercuryType").
+interface_is_special_for_csharp("MR_DuTerm").
 
 %---------------------------------------------------------------------------%
 
@@ -342,6 +366,183 @@ constness_prefix_for_csharp(Constness) = ConstnessPrefix :-
         Constness = modifiable,
         ConstnessPrefix = ""
     ).
+
+%---------------------------------------------------------------------------%
+%
+% MR_DuTerm interface emission.
+%
+% Emit the four methods that satisfy mercury.runtime.MR_DuTerm on every
+% C# class generated from a Mercury discriminated-union type ctor.
+% This lets library/rtti_implementation.m walk a term's positional
+% fields and read its secondary tag without using System.Reflection,
+% so that mer_std remains compatible with the .NET trim/AOT toolchain.
+%
+
+    % A positional field on a DU representation class: the C# field
+    % name and the C# type string for the field. Used by
+    % output_mr_du_term_methods_for_csharp to emit MR_GetField cases
+    % and MR_DeepCopy assignments.
+    %
+:- type cs_du_field
+    --->    cs_du_field(string, string).
+
+:- pred output_mr_du_term_methods_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_class_name::in, arity::in,
+    mlds_class_inherits::in, list(mlds_field_var_defn)::in,
+    io::di, io::uo) is det.
+
+output_mr_du_term_methods_for_csharp(Info, Stream, Indent, ClassName,
+        ClassArity, Inherits, MemberFields, !IO) :-
+    classify_mr_du_term_fields(Info, MemberFields, PositionalFields,
+        OwnHasDataTag),
+    list.length(PositionalFields, NumPositional),
+    % In csharp DU emission, the only classes that inherit are
+    % sectag-using subclasses inheriting their secondary-tag class
+    % (or, in the single-functor case, the base class). Both ancestors
+    % carry a data_tag field, so an inherits_class(_) class always has
+    % a reachable data_tag whether or not its own MemberFields list one.
+    (
+        Inherits = inherits_nothing,
+        Modifier = "virtual ",
+        HasDataTag = OwnHasDataTag
+    ;
+        Inherits = inherits_class(_),
+        Modifier = "override ",
+        HasDataTag = yes
+    ),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1u),
+    Indent2Str = indent2_string(Indent + 2u),
+    ClassNameStr =
+        unqual_class_name_to_ll_string_for_csharp(ClassName, ClassArity),
+
+    % MR_GetField.
+    io.format(Stream, "%spublic %sobject MR_GetField(int index)\n",
+        [s(IndentStr), s(Modifier)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    (
+        PositionalFields = [],
+        io.format(Stream,
+            "%sthrow new System.IndexOutOfRangeException(" ++
+            "\"MR_GetField: no positional fields\");\n",
+            [s(Indent1Str)], !IO)
+    ;
+        PositionalFields = [_ | _],
+        io.format(Stream, "%sswitch (index) {\n", [s(Indent1Str)], !IO),
+        output_mr_get_field_cases(Stream, Indent2Str, 0,
+            PositionalFields, !IO),
+        io.format(Stream, "%sdefault:\n", [s(Indent2Str)], !IO),
+        io.format(Stream,
+            "%s    throw new System.IndexOutOfRangeException(" ++
+            "\"MR_GetField: index out of range\");\n",
+            [s(Indent2Str)], !IO),
+        io.format(Stream, "%s}\n", [s(Indent1Str)], !IO)
+    ),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
+
+    % MR_GetFieldCount.
+    io.format(Stream,
+        "%spublic %sint MR_GetFieldCount() { return %d; }\n",
+        [s(IndentStr), s(Modifier), i(NumPositional)], !IO),
+
+    % MR_GetSecondaryTag.
+    (
+        HasDataTag = yes,
+        io.format(Stream,
+            "%spublic %sint MR_GetSecondaryTag()" ++
+            " { return this.data_tag; }\n",
+            [s(IndentStr), s(Modifier)], !IO)
+    ;
+        HasDataTag = no,
+        io.format(Stream,
+            "%spublic %sint MR_GetSecondaryTag() { return -1; }\n",
+            [s(IndentStr), s(Modifier)], !IO)
+    ),
+
+    % MR_DeepCopy. Clone the instance via MemberwiseClone (which
+    % preserves the runtime type of `this'), then overwrite each
+    % positional field with the result of recursing through the
+    % caller-supplied deep-copy fn. Fields of `object' type accept
+    % the boxed result directly; fields of more specific types
+    % require an explicit cast back from `object'.
+    io.format(Stream,
+        "%spublic %sobject MR_DeepCopy(System.Func<object, object> f)\n",
+        [s(IndentStr), s(Modifier)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    (
+        PositionalFields = [],
+        io.format(Stream, "%sreturn this.MemberwiseClone();\n",
+            [s(Indent1Str)], !IO)
+    ;
+        PositionalFields = [_ | _],
+        io.format(Stream, "%s%s n = (%s) this.MemberwiseClone();\n",
+            [s(Indent1Str), s(ClassNameStr), s(ClassNameStr)], !IO),
+        output_mr_deep_copy_assignments(Stream, Indent1Str, PositionalFields,
+            !IO),
+        io.format(Stream, "%sreturn n;\n", [s(Indent1Str)], !IO)
+    ),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
+
+    % Walk the field list, splitting it into the ordered list of
+    % positional-field {name, typestr} pairs (used by MR_GetField and
+    % MR_DeepCopy) and a flag for whether the class carries a data_tag
+    % field (used by MR_GetSecondaryTag). Other field kinds (e.g.
+    % fvn_mr_value on enums, fvn_global_data_field on global data) are
+    % ignored: they should not appear on classes implementing MR_DuTerm.
+    %
+:- pred classify_mr_du_term_fields(csharp_out_info::in,
+    list(mlds_field_var_defn)::in, list(cs_du_field)::out, bool::out) is det.
+
+classify_mr_du_term_fields(_, [], [], no).
+classify_mr_du_term_fields(Info, [FieldDefn | FieldDefns],
+        PositionalFields, HasDataTag) :-
+    classify_mr_du_term_fields(Info, FieldDefns, PositionalFields0,
+        HasDataTag0),
+    FieldDefn = mlds_field_var_defn(FieldVarName, _, _, FieldType, _, _),
+    (
+        FieldVarName = fvn_du_ctor_field_hld(_),
+        FieldNameStr = field_var_name_to_ll_string_for_csharp(FieldVarName),
+        FieldTypeStr = type_to_string_for_csharp(Info, FieldType),
+        PositionalFields =
+            [cs_du_field(FieldNameStr, FieldTypeStr) | PositionalFields0],
+        HasDataTag = HasDataTag0
+    ;
+        FieldVarName = fvn_data_tag,
+        PositionalFields = PositionalFields0,
+        HasDataTag = yes
+    ;
+        ( FieldVarName = fvn_global_data_field(_, _)
+        ; FieldVarName = fvn_mr_value
+        ; FieldVarName = fvn_enum_const(_)
+        ; FieldVarName = fvn_base_class(_)
+        ; FieldVarName = fvn_ptr_num
+        ; FieldVarName = fvn_env_field_from_local_var(_)
+        ; FieldVarName = fvn_prev
+        ; FieldVarName = fvn_trace
+        ),
+        PositionalFields = PositionalFields0,
+        HasDataTag = HasDataTag0
+    ).
+
+:- pred output_mr_get_field_cases(io.text_output_stream::in, string::in,
+    int::in, list(cs_du_field)::in, io::di, io::uo) is det.
+
+output_mr_get_field_cases(_, _, _, [], !IO).
+output_mr_get_field_cases(Stream, IndentStr, Idx,
+        [cs_du_field(FieldName, _) | Fields], !IO) :-
+    io.format(Stream, "%scase %d: return this.%s;\n",
+        [s(IndentStr), i(Idx), s(FieldName)], !IO),
+    output_mr_get_field_cases(Stream, IndentStr, Idx + 1, Fields, !IO).
+
+:- pred output_mr_deep_copy_assignments(io.text_output_stream::in,
+    string::in, list(cs_du_field)::in, io::di, io::uo) is det.
+
+output_mr_deep_copy_assignments(_, _, [], !IO).
+output_mr_deep_copy_assignments(Stream, IndentStr,
+        [cs_du_field(FieldName, FieldTypeStr) | Fields], !IO) :-
+    io.format(Stream, "%sn.%s = (%s) f(this.%s);\n",
+        [s(IndentStr), s(FieldName), s(FieldTypeStr), s(FieldName)], !IO),
+    output_mr_deep_copy_assignments(Stream, IndentStr, Fields, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_class.

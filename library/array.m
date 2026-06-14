@@ -1175,7 +1175,7 @@ ML_new_array(int Size, object Item)
 {
     System.Array arr;
     if (Size == 0) {
-        return null;
+        return System.Array.Empty<object>();
     }
     if (
         Item is int || Item is uint || Item is sbyte || Item is byte ||
@@ -1214,9 +1214,9 @@ public static System.Array
 ML_array_resize(System.Array arr0, int Size, object Item)
 {
     if (Size == 0) {
-        return null;
+        return System.Array.Empty<object>();
     }
-    if (arr0 == null) {
+    if (arr0 == null || arr0.Length == 0) {
         return ML_new_array(Size, Item);
     }
     if (arr0.Length == Size) {
@@ -1283,8 +1283,8 @@ ML_array_resize(System.Array arr0, int Size, object Item)
 public static System.Array
 ML_shrink_array(System.Array arr, int Size)
 {
-    if (arr == null) {
-        return null;
+    if (arr == null || arr.Length == 0) {
+        return System.Array.Empty<object>();
     }
 
     // We need to use Item here to determine the type instead of arr itself
@@ -1707,14 +1707,7 @@ make_empty_array = A :-
     make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX A better solution than using the null pointer to represent
-    // the empty array would be to create an array of size 0. However,
-    // we need to determine the element type of the array before we can
-    // do that. This could be done by examining the RTTI of the array
-    // type and then using System.Type.GetType(""<mercury type>"") to
-    // determine it. However constructing the <mercury type> string is
-    // a non-trivial amount of work.
-    Array = null;
+    Array = System.Array.Empty<object>();
 ").
 :- pragma foreign_proc("Java",
     make_empty_array(Array::array_uo),
@@ -2295,11 +2288,7 @@ max(A) = Max :-
     max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Array != null) {
-        Max = Array.Length - 1;
-    } else {
-        Max = -1;
-    }
+    Max = Array.Length - 1;
 ").
 :- pragma foreign_proc("Java",
     max(Array::in, Max::out),
@@ -2380,11 +2369,7 @@ size(A) = Size :-
     size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Array != null) {
-        Max = Array.Length;
-    } else {
-        Max = 0;
-    }
+    Max = Array.Length;
 ").
 :- pragma foreign_proc("Java",
     size(Array::in, Max::out),

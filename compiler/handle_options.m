@@ -189,7 +189,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
         check_option_values(OptionTable0, OptionTable,
             Target, WordSize, GC_Method, TermNorm, Term2Norm,
             TraceLevel, TraceSuppress, SSTraceLevel,
-            MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+            MaybeThreadSafe, C_CompilerType,
             ReuseStrategy, MaybeFeedbackInfo,
             HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
             LinkExtMap, !:Specs, !IO),
@@ -260,7 +260,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir,
                 OptTuple, OpMode, Target, WordSize, GC_Method,
                 TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
-                MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+                MaybeThreadSafe, C_CompilerType,
                 Linkage, MercuryLinkage, LibraryInstallLinkages,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
@@ -313,7 +313,7 @@ convert_library_install_linkages([Str | Strs],
     opt_tuple::in, op_mode::in, compilation_target::in, word_size::in,
     gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
-    may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
+    may_be_thread_safe::in, c_compiler_type::in,
     static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
@@ -325,7 +325,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir, !.OptTuple,
         OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        MaybeThreadSafe, C_CompilerType,
         Linkage, MercuryLinkage, LibLinkages, ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         LinkExtMap, !Specs, !:Globals, !IO) :-
@@ -394,7 +394,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     % the options from which the subdir setting is computed.
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode,
         MaybeFeedbackInfo, FileInstallCmd, TraceSuppress, ReuseStrategy,
-        LimitErrorContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
+        LimitErrorContextsMap, LinkExtMap, C_CompilerType,
         Linkage, MercuryLinkage, LibLinkages, MaybeStdLibGrades, Target,
         use_cur_dir, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
@@ -1904,8 +1904,6 @@ handle_op_mode_implications(OpMode, !Globals) :-
             ; OpModeQuery = opmq_output_cflags
             ; OpModeQuery = opmq_output_c_include_directory_flags
             ; OpModeQuery = opmq_output_grade_defines
-            ; OpModeQuery = opmq_output_csharp_compiler
-            ; OpModeQuery = opmq_output_csharp_compiler_type
             ; OpModeQuery = opmq_output_java_class_dir
             ; OpModeQuery = opmq_output_link_command
             ; OpModeQuery = opmq_output_shared_lib_link_command

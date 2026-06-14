@@ -82,6 +82,13 @@ Changes that may break compatibility
 * We have dropped support for versions of MSVC before version 19.3
   (Visual Studio 2022).
 
+* The `csharp` grade now requires the .NET 10 SDK and uses `dotnet build`
+  to link assemblies. The compiler no longer invokes `csc` or `mcs`
+  directly. The following options and configure flags have been removed:
+  `--csharp-compiler`, `--csharp-compiler-type`, `--output-csharp-compiler`,
+  `--output-csharp-compiler-type`, and `--with-csharp-compiler`. Mono and
+  the .NET Framework runtime are no longer supported.
+
 * The `--use-subdirs` and `--use-grade-subdirs` options now cause `.mh` files
   to be placed in a `Mercury/mhs` subdirectory instead of the current
   directory. This reduces clutter in the current directory, but may require
@@ -1962,6 +1969,59 @@ Portability improvements
 
 * We have updated the script `tools/configure_cross` to support
   cross-compiling using clang.
+
+* The `csharp` grade now targets .NET 10 (or later) and C# 14.
+  The previous Mono and .NET Framework code paths have been removed.
+  When configure detects a `dotnet` command and a .NET 10+ SDK with
+  Roslyn (`<sdk>/Roslyn/bincore/csc.dll`), it is preferred over a
+  stand-alone `csc` or `mcs`; users may force this selection with
+  `--with-csharp-compiler=dotnet`.
+
+* `mmc --grade csharp --make` now produces its output by generating
+  a `<MainModule>.csproj` next to the linked target and invoking
+  `dotnet build` once.  MSBuild emits the managed `<MainModule>.dll`,
+  the apphost binary (`<MainModule>.exe` on Windows; renamed to
+  `<MainModule>.exe` on Linux and macOS to match Mercury's existing
+  csharp_executable file-name convention), and the runtimeconfig.json.
+  As a result, the wrapper shell script and the `MONO_PATH`
+  environment-variable threading have been removed.
+
+* Library targets in `csharp` grade now carry
+  `<IsTrimmable>true</IsTrimmable>` so consumers may publish trimmed
+  binaries with `<PublishTrimmed>true</PublishTrimmed>` from their
+  own `.csproj`.
+
+* The new `--csharp-aot` option opts a `csharp_executable` build into
+  Native AOT publishing: `mmc` switches the link step from
+  `dotnet build` to `dotnet publish -p:PublishAot=true -r <rid>`, and
+  the generated csproj sets `<PublishAot>`, `<SelfContained>`,
+  `<InvariantGlobalization>` and a `<RuntimeIdentifier>` derived from
+  the target architecture.  The result is a single self-contained
+  native binary with no managed `.dll`, `runtimeconfig.json` or
+  `deps.json` companions.  The user is responsible for ensuring no
+  module reachable from main consumes dynamic RTTI (`type_desc`,
+  `construct`, `deconstruct`, `term_to_xml`, generic `io.write` or
+  `compare_representation`) and that every linked Mercury library was
+  built AOT-compatible.  For library targets the option only adds an
+  `<IsAotCompatible>true</IsAotCompatible>` marker to the csproj;
+  the build flow is unchanged.
+
+* The C# implementation of `library/io.file.m` has been modernised:
+  the obsolete `Directory.CreateDirectory(string, DirectorySecurity)`
+  overload (removed in .NET 5) is gone, the Code Access Security
+  `SecurityPermission.Demand()` calls have been replaced with
+  no-ops (CAS is no longer enforced under modern .NET), and the
+  `__MonoCS__` preprocessor guards around the libc `mkdir` P/Invoke
+  have been removed in favour of `RuntimeInformation.IsOSPlatform`.
+
+* The C# backend has gained real implementations for several
+  previously-stubbed standard library predicates: `math.fma/3` and
+  `math.have_fma/0` now use `System.Math.FusedMultiplyAdd`,
+  `benchmarking.report_stats/3` and `benchmarking.report_full_memory_stats/2`
+  now report real GC and process memory information, and
+  `builtin.tuple_arity/2`, `builtin.tuple_arg/3`, and
+  `builtin.compare_representation_3_p_0/3` no longer throw a
+  `Sorry, not implemented' exception.
 
 Changes to the extras distribution
 ----------------------------------

@@ -2989,16 +2989,17 @@ unsafe_index(S, N) = C :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     char c1 = Str[Index];
-    Ch = c1;
-    if (System.Char.IsSurrogate(c1)) {
-        try {
-            char c2 = Str[Index + 1];
+    if (System.Char.IsHighSurrogate(c1) && Index + 1 < Str.Length) {
+        char c2 = Str[Index + 1];
+        if (System.Char.IsLowSurrogate(c2)) {
             Ch = System.Char.ConvertToUtf32(c1, c2);
-        } catch (System.ArgumentOutOfRangeException) {
-            // Return unpaired surrogate code point.
-        } catch (System.IndexOutOfRangeException) {
-            // Return unpaired surrogate code point.
+        } else {
+            // Unpaired high surrogate.
+            Ch = c1;
         }
+    } else {
+        // BMP character or unpaired low surrogate.
+        Ch = c1;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -3070,23 +3071,23 @@ unsafe_index_next_repl(Str, Index, NextIndex, Ch, MaybeReplaced) :-
         does_not_affect_liveness, no_sharing],
 "
     ReplacedCodeUnit = -1;
-    try {
-        Ch = System.Char.ConvertToUtf32(Str, Index);
-        if (Ch <= 0xffff) {
-            NextIndex = Index + 1;
-        } else {
+    if (Index >= 0 && Index < Str.Length) {
+        char c1 = Str[Index];
+        if (System.Char.IsHighSurrogate(c1) && Index + 1 < Str.Length
+            && System.Char.IsLowSurrogate(Str[Index + 1]))
+        {
+            Ch = System.Char.ConvertToUtf32(c1, Str[Index + 1]);
             NextIndex = Index + 2;
+        } else {
+            // BMP character or unpaired surrogate.
+            Ch = c1;
+            NextIndex = Index + 1;
         }
         SUCCESS_INDICATOR = true;
-    } catch (System.ArgumentOutOfRangeException) {
+    } else {
         Ch = 0;
         NextIndex = Index;
         SUCCESS_INDICATOR = false;
-    } catch (System.ArgumentException) {
-        // Return unpaired surrogate code point.
-        Ch = Str[Index];
-        NextIndex = Index + 1;
-        SUCCESS_INDICATOR = true;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -3176,21 +3177,13 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
         SUCCESS_INDICATOR = false;
     } else {
         char c2 = Str[Index - 1];
-        if (System.Char.IsLowSurrogate(c2)) {
-            try {
-                char c1 = Str[Index - 2];
-                Ch = System.Char.ConvertToUtf32(c1, c2);
-                PrevIndex = Index - 2;
-            } catch (System.ArgumentOutOfRangeException) {
-                // Return unpaired surrogate code point.
-                Ch = (int) c2;
-                PrevIndex = Index - 1;
-            } catch (System.IndexOutOfRangeException) {
-                // Return unpaired surrogate code point.
-                Ch = (int) c2;
-                PrevIndex = Index - 1;
-            }
+        if (System.Char.IsLowSurrogate(c2) && Index >= 2
+            && System.Char.IsHighSurrogate(Str[Index - 2]))
+        {
+            Ch = System.Char.ConvertToUtf32(Str[Index - 2], c2);
+            PrevIndex = Index - 2;
         } else {
+            // BMP character or unpaired surrogate.
             Ch = (int) c2;
             PrevIndex = Index - 1;
         }
@@ -6884,12 +6877,12 @@ float_to_string(Float) = S2 :-
     } else if (System.Double.IsNegativeInfinity(Flt)) {
         Str = ""-infinity"";
     } else {
-        Str = Flt.ToString(""R"");
+        Str = Flt.ToString(""r"");
 
         // Append '.0' if there is no 'e' or '.' in the string.
         bool contains = false;
         foreach (char c in Str) {
-            if (c == 'e' || c == 'E' || c == '.') {
+            if (c == 'e' || c == '.') {
                 contains = true;
                 break;
             }

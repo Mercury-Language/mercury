@@ -841,10 +841,10 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         }
 
         if (checkExecute) {
-            // We need unrestricted permissions to execute unmanaged code.
-            (new System.Security.Permissions.SecurityPermission(
-                System.Security.Permissions.SecurityPermissionFlag.
-                AllFlags)).Demand();
+            // Code Access Security was removed in .NET 5+; SecurityPermission
+            // demands are no-ops on the modern runtime, so this check has
+            // nothing to enforce.  Leave it as a deliberate no-op rather than
+            // pulling in the legacy System.Security.Permissions package.
         }
     }
 ").
@@ -1371,46 +1371,31 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
     try {
         DirName = Path.Combine(ParentDirName, Path.GetRandomFileName());
 
-        switch (Environment.OSVersion.Platform) {
-            case PlatformID.Win32NT:
-                // obtain the owner of the temporary directory
-                IdentityReference tempInfo =
-                    new DirectoryInfo(ParentDirName)
-                        .GetAccessControl(AccessControlSections.Owner)
-                        .GetOwner(typeof(SecurityIdentifier));
-
-                DirectorySecurity security = new DirectorySecurity();
-                security.AddAccessRule(
-                    new FileSystemAccessRule(tempInfo,
-                        FileSystemRights.ListDirectory
-                            | FileSystemRights.Read
-                            | FileSystemRights.Modify,
-                        InheritanceFlags.None,
-                        PropagationFlags.None,
-                        AccessControlType.Allow
-                    )
-                );
-                Directory.CreateDirectory(DirName, security);
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            // On Windows the directory inherits the parent's ACLs by
+            // default, which is what callers want for a temp directory
+            // tucked under (typically) %TEMP%.  The .NET 5+ runtime no
+            // longer supports the old Directory.CreateDirectory(path,
+            // DirectorySecurity) overload, and pulling in the legacy
+            // System.IO.FileSystem.AccessControl package just to set
+            // explicit owner-only rules would be more code than it is
+            // worth -- the inherited ACL is already correct here.
+            Directory.CreateDirectory(DirName);
+            Error = null;
+        } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+            || RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            int rc = ML_sys_mkdir(DirName, 0x7 << 6);
+            if (rc == 0) {
                 Error = null;
-                break;
-#if __MonoCS__
-            case PlatformID.Unix:
-            case (PlatformID)6: // MacOSX:
-                int rc = ML_sys_mkdir(DirName, 0x7 << 6);
-                if (rc == 0) {
-                    Error = null;
-                } else {
-                    // The actual error would need to be retrieved from errno.
-                    Error = new System.IO.IOException(
-                        ""Error creating directory"");
-                }
-                break;
-#endif
-            default:
-                Error = new System.NotImplementedException(
-                    ""Changing folder permissions is not supported for: "" +
-                    Environment.OSVersion);
-                break;
+            } else {
+                // The actual error would need to be retrieved from errno.
+                Error = new System.IO.IOException(
+                    ""Error creating directory"");
+            }
+        } else {
+            Error = new System.NotImplementedException(
+                ""Changing folder permissions is not supported for: "" +
+                RuntimeInformation.OSDescription);
         }
     } catch (System.Exception e) {
         DirName = string.Empty;
@@ -1500,12 +1485,13 @@ using System.Security.Principal;      // For IdentityReference etc.
 ").
 
 :- pragma foreign_code("C#", "
-#if __MonoCS__
-    // int chmod(const char *path, mode_t mode);
+    // int mkdir(const char *path, mode_t mode);
+    // The DllImport for libc works on .NET 5+ on Linux and macOS;
+    // the import is harmless on Windows because we never call it
+    // (it is gated by RuntimeInformation.IsOSPlatform above).
     [DllImport(""libc"", SetLastError=true, EntryPoint=""mkdir"",
         CallingConvention=CallingConvention.Cdecl)]
     static extern int ML_sys_mkdir (string path, uint mode);
-#endif
 ").
 
 %---------------------%

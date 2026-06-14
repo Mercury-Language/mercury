@@ -936,21 +936,46 @@ mktime(TM, Time, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        _YD::in, _WD::in, _N::in, IsOk::out, Time::out, ErrorMsg::out,
+        _YD::in, _WD::in, N::in, IsOk::out, Time::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    // We don't use YD, WD and N.
-    // XXX Ignoring N, the daylight savings time indicator, is bad.
-    // On the day when you switch back to standard time from daylight
-    // savings time, the time '2:30am' occurs twice, once during daylight
-    // savings time (N = 1), and then again an hour later, during standard
-    // time (N = 0). The .NET API does not seem to provide any way
-    // to get the right answer in both cases.
     try {
         System.DateTime local_time =
             new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
-        Time = local_time.ToUniversalTime();
+
+        // For ambiguous local times, ToUniversalTime assumes standard time.
+        System.DateTime utcTime = local_time.ToUniversalTime();
+
+        if (N != -1) {
+            // Correct for DST, following the same algorithm as the Java
+            // implementation: convert first, then check whether the result
+            // is in DST, and adjust by the savings amount if it does not
+            // match what the caller requested.
+            System.TimeZoneInfo tz = System.TimeZoneInfo.Local;
+            System.DateTimeOffset utcDto =
+                new System.DateTimeOffset(utcTime, System.TimeSpan.Zero);
+            bool isDst = tz.IsDaylightSavingTime(utcDto);
+
+            if ((N == 1 && !isDst) || (N == 0 && isDst)) {
+                System.TimeSpan savings = System.TimeSpan.Zero;
+                foreach (var rule in tz.GetAdjustmentRules()) {
+                    if (rule.DateStart <= local_time.Date &&
+                        local_time.Date <= rule.DateEnd)
+                    {
+                        savings = rule.DaylightDelta;
+                        break;
+                    }
+                }
+                if (N == 1) {
+                    utcTime = utcTime.Subtract(savings);
+                } else {
+                    utcTime = utcTime.Add(savings);
+                }
+            }
+        }
+
+        Time = utcTime;
         IsOk = mr_bool.YES;
         ErrorMsg = \"\";
     } catch (System.ArgumentOutOfRangeException e) {

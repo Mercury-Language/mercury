@@ -1381,32 +1381,7 @@ AC_SUBST(MATH_LIB)
 # Microsoft.NET configuration
 #
 
-AC_ARG_WITH(csharp-compiler,
-    AS_HELP_STRING([--with-csharp-compiler=<compiler>],
-                   [Specify which C Sharp compiler to use (default:
-                   autodetect)]),
-    [mercury_cv_with_csharp_compiler="$withval"],
-    [mercury_cv_with_csharp_compiler=""])
 MERCURY_CHECK_DOTNET
-
-# The Roslyn (i.e. Microsoft) C# compiler does not support signing assemblies
-# with a strong name on non-Windows platforms.  If we are using that compiler
-# on a non-Windows platform then only delay sign the assembly.
-
-CSHARP_DELAYSIGN_FLAG=
-if test "$CSHARP_COMPILER_TYPE" = "microsoft"; then
-    case "$host" in
-        *cygwin* | *mingw*)
-            CSHARP_DELAYSIGN_FLAG=
-        ;;
-
-        *)
-            CSHARP_DELAYSIGN_FLAG="--csharp-flag -delaysign"
-        ;;
-    esac
-fi
-
-AC_SUBST([CSHARP_DELAYSIGN_FLAG])
 
 #-----------------------------------------------------------------------------#
 # Java configuration
@@ -3824,8 +3799,9 @@ then
     fi
 fi
 
-# Add C# back-end grade, if a C# compiler is installed.
-if test "$CSC" != "" -a "$enable_csharp_grade" = yes
+# Add C# back-end grade, if a usable .NET SDK is installed.
+if test "$DOTNET" != "" -a -n "$DOTNET_SDK_DIR" -a \
+    "$enable_csharp_grade" = yes
 then
     LIBGRADES="$LIBGRADES csharp"
 fi
