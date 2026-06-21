@@ -13019,7 +13019,7 @@ the following extensions to the Mercury language:
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
 * Termination analysis::        Support for automatic proofs of termination.
-@c * Tail recursion check::        Require that a predicate is tail recursive.
+* Ensuring tail recursion::     Require recursion to be tail recursive.
 * Feature sets::                Support for checking that optional features of
                                 the implementation are supported at compile
                                 time.
@@ -13628,103 +13628,335 @@ and if it fails, then it should quit with an error message.
 @c The compiler includes a structure reuse analysis system.
 @c
 
-@c @node Tail recursion check
-@c @section Tail recursion check
-@c
+@node Ensuring tail recursion
+@section Ensuring tail recursion
+
 @c The @samp{require_tail_recursion} pragma can be used to enable and disable
 @c warnings or errors for predicates and functions that contain recursive
 @c calls which are not @emph{tail} recursive.
-@c
-@c XXX add pred() and func() wrappers
-@c @example
-@c :- pragma require_tail_recursion(@var{Name}/@var{Arity}, @var{Options}).
-@c :- pragma require_tail_recursion(@var{Name}(@var{Modes}), @var{Options}).
-@c :- pragma require_tail_recursion(@var{Name}(@var{Modes}) = @var{ReturnMode},
-@c     @var{Options}).
-@c @end example
-@c
-@c This pragma affects all modes of a predicate or function (in the first form)
-@c or a specific mode of a predicate or function (the second and third forms).
-@c These pragmas can be used to enable or inhibit warnings for non tail
-@c recursive code.
-@c
-@c When tail recursion warnings are enabled using the
-@c @samp{--warn-non-tail-recursion} compiler option (see the user's guide),
-@c the compiler may emit warnings for predicates that the developer knows and
-@c accepts aren't tail recursive.
-@c These can be suppressed using the @samp{none} option in the
-@c @samp{require_tail_recursion} pragma.
-@c
-@c @example
-@c :- pragma require_tail_recursion(foo/3, [none]).
-@c @end example
-@c
-@c When the @samp{--warn-non-tail-recursion} compiler option is not enabled
-@c then the pragma can be used to explicitly enable the tail recursion check
-@c for a predicate or function.
-@c If you think that a predicate or function will probably recurse deeply,
-@c and may exhaust the stack unless its recursive calls are all tail recursive,
-@c then use this pragma on that predicate
-@c to get a warning or an error
-@c if any of those recursive calls are not tail recursive.
-@c You may also wish to enable this warning
-@c if you expect the predicate or function to be called many times,
-@c even if those calls are very unlikely to exhaust the stack,
-@c simply because tail recursion is more efficient than non-tail recursion.
-@c
-@c @example
-@c :- pragma require_tail_recursion(map/3).
-@c @end example
-@c
-@c The following options may be given:
-@c
-@c @table @code
-@c
-@c @item warn
-@c Non tail recursive code should generate a compiler warning.
-@c This is the default.
-@c This option is incompatible with @samp{error} and @samp{none}.
-@c
-@c @item error
-@c Non tail recursive code should generate a compiler error.
-@c This option is incompatible with @samp{warn} and @samp{none}.
-@c
-@c @item none
-@c Disable the tail recursion check for this predicate or function.
-@c This option is incompatible with every other option.
-@c
-@c @item self_or_mutual_recursion
-@c Allow the recursive calls to be self or mutually recursive.
-@c The compiler will generate warnings or errors for recursive calls that are
-@c not tail calls (and not later followed by a recursive call that @emph{is} a
-@c tail call).
-@c This is the default.
-@c This option is incompatible with @samp{self_recursion_only} and @samp{none}.
-@c
-@c @item self_recursion_only
-@c Require that all recursive calls are self-recursive.
-@c In addition to @code{self_or_mutual_recursion},
-@c this option causes the compiler to generate a warning or error
-@c when a mutually recursive call is a @emph{tail} call, even if it can
-@c optimize the tail call.
-@c Some backends can optimize self recursion but not mutual recursion,
-@c or mutual recursion is less efficient.
-@c This option can be used to alert the programmer of code that isn't tail
-@c recursive on these backends.
-@c This option is incompatible with @samp{self_or_mutual_recursion} and
-@c @samp{none}.
-@c
-@c @end table
-@c
-@c Note that the compiler cannot analyse recursion across module boundaries
-@c or through higher-order calls.
-@c Therefore inter-module and higher-order calls are considered to be
-@c non-recursive.
-@c
-@c This pragma has no effect with @samp{--no-optimize-tailcalls}.
-@c
-@c Issuing the pragma more than once for the same predicate or function, or a
-@c mode off that predicate or function, will cause undefined behaviour.
+
+@c The @samp{require_tail_recursion} pragma
+@c allows programmers to ask the compiler's help in ensuring that
+@c recursive predicates can recurse arbitrarily deeply
+@c while using a bounded amount of stack space.
+@c This is sometimes critical for avoiding crashes from stack exhaustion
+@c when handling large amounts of data.
+@c Even in situations where this is not an issue,
+@c tail recursion can still be critical for good performance
+@c (because it leads to much better locality,
+@c and therefore makes better use of caches).
+
+In declarative languages such as Mercury,
+iteration must be implemented using recursive code,
+in which a predicate or function calls itself,
+with (hopefully) changed input arguments,
+either directly (@emph{self} recursion),
+or indirectly through other predicates or functions (@emph{mutual} recursion).
+In general, each call consumes some stack space,
+which means that without special treatment,
+the amount of stack space consumed by an iteration
+is proportional to the number of iterations.
+If the number of iterations is large enough,
+the amount of stack space required can exceed the amount available,
+and this @emph{stack exhaustion} will lead to a crash.
+
+The standard technique for avoiding this
+is @emph{tail call optimization}.
+@c which, when applied to recursive calls, is also called @emph{tail recursion}.
+This technique is applicable whenever a call
+is the very last thing that a predicate or function does.
+This means not just that it is not followed by any computation,
+but also that it is not followed by any argument shuffling,
+because the vector of the output arguments of the call
+matches exactly the vector of the output arguments
+of the procedure containing the call.
+Tail call optimization exploits this
+by freeing the stack space of the caller just before the call,
+allowing the callee to reuse its stack space.
+
+@emph{Tail recursion optimization} is
+the specific case of @emph{tail call optimization}
+where the tail call is (directly or mutually) recursive.
+However, it is a very important specific case,
+because it can significantly improve both robustness and performance.
+The reason for this is that
+when tail recursion optimization is applied
+to @emph{all} the recursive calls in an iteration,
+then the optimized code can handle an unbounded number of iterations
+using constant (and therefore bounded) stack space.
+This is often critical in code that has to handle large amounts of data.
+Even in situations where stack exhaustion is not an issue,
+tail recursion can still be critical for good performance,
+because it leads to much better memory locality for references to the stack,
+and therefore makes better use of caches.
+
+The @samp{require_tail_recursion} pragma
+asks the compiler to generate a diagnostic
+when any recursive call in a named predicate or function
+(with the exception mentioned below)
+is not @emph{tail} recursive.
+This can be useful both
+
+@itemize @bullet
+@item
+when initially writing the predicate or function,
+to verify that its recursive calls are tail recursive, and
+@item
+when maintaining the predicate or function,
+to verify that changes to its code have not destroyed this property.
+@end itemize
+
+The exception applies to conjunctions that contain two or more recursive calls,
+as in the recursive clause of quicksort.
+Since obviously only the last of these calls can be a tail call,
+@c Since it is obviously impossible
+@c for any of those calls except the last one to be tail calls,
+generating a diagnostic for each non-last call would be just a nuisance.
+Therefore this pragma applies
+only to the last recursive call in each conjunction.
+
+Note that when compiling a module, the compiler cannot see
+
+@itemize @bullet
+@item
+the code of predicates and functions defined in other modules,
+because of separate compilation
+(though intermodule optimization allows some exceptions to this), or
+@item
+the code or even the identities of the callees of higher-order calls,
+including type class method calls,
+since the callee is selected at runtime, not compile time.
+@end itemize
+
+Thus, for the purposes of warning about non-tail recursion,
+the compiler considers
+both intermodule calls and higher-order calls to be non-recursive.
+
+The simplest form of this pragma has a single argument
+that specifies the name and arity
+of the predicate or a function it is intended to apply to:
+
+@example
+:- pragma require_tail_recursion(pred(@var{PredName}/@var{Arity})).
+:- pragma require_tail_recursion(func(@var{FuncName}/@var{Arity})).
+@end example
+
+Such a pragma asks the compiler to generate a warning
+if any recursive call in the body of the named predicate or function,
+whether it be self-recursive or mutually recursive,
+is not a @emph{tail} call.
+It also asks for the warning to be generated
+only in grades that permit tail recursion at all.
+(The implementation of some grades,
+including grades that permit debugging or perform deep profiling,
+need to get control for their own purposes at the end of every clause,
+which means that @emph{no} call can be a tail call.)
+
+(The @samp{pred()} and @samp{func()} wrappers around the name/arity pair
+are optional in the usual case where there is no risk of confusion,
+but it is good practice to include them anyway.)
+
+By default, the pragma applies
+to all the modes of the specified predicate or function.
+If you want it to apply to only a specific subset of those modes,
+you can use the first form below for a predicate
+and the second form for a function:
+
+@example
+:- pragma require_tail_recursion(@var{Name}(@var{Modes})).
+:- pragma require_tail_recursion(@var{Name}(@var{Modes}) = @var{ReturnMode}).
+@end example
+
+These forms are almost never needed, because in practice,
+the vast majority of predicates and functions have just one mode.
+
+The default is for a @samp{require_tail_recursion} pragma
+to ask the compiler to generate a warning
+if any recursive call in the body of the named predicate or function
+(with the exception of non-last recursive calls in a conjunction)
+whether it be self-recursive or mutually recursive,
+is not a @emph{tail} call.
+It also asks for the warning to be generated
+only in grades that permit tail recursion at all.
+However, programmers can specify options
+that change one or more of these choices.
+They can do so by adding to the pragma a second argument
+that consists of a list of one or more of the options listed in this table,
+which represent three possible binary choices.
+
+@table @code
+
+@item warn
+Every recursive call (other than a non-last recursive call in a conjunction)
+should generate a warning if it is not @emph{tail} recursive.
+This option, which is the default, is incompatible with @samp{error}.
+
+@item error
+Every recursive call (other than a non-last recursive call in a conjunction)
+should generate an error if it is not @emph{tail} recursive.
+This option is incompatible with @samp{warn}.
+
+@item self_or_mutual_recursion
+Allow the compiler to generate a diagnostic (warning or error)
+for both self-recursive and mutually recursive calls.
+This option, which is the default,
+is incompatible with @samp{self_recursion_only}.
+
+@item self_recursion_only
+Allow the compiler to generate a diagnostic (warning or error)
+only for self-recursive calls;
+do not generate diagnostics
+for mutually recursive calls that are not tail recursive.
+This option is incompatible with @samp{self_or_mutual_recursion}.
+
+@item in_tailrec_grades_only
+Tell the compiler to generate a diagnostic for non-tail recursion
+only if the grade allows for the possibility of tail recursion.
+This disables all such diagnostics
+in grades in which @emph{no} call can be a tail call.
+This option, which is the default,
+is incompatible with @samp{in_all_grades}.
+
+@item in_all_grades
+Tell the compiler to generate a diagnostic for non-tail recursion
+even in grades that do not allow the possibility of tail recursion.
+In such grades, which includes
+debugging, deep profiling, trailing, and minimal model grades,
+this will generate a diagnostic for @emph{every} recursive call.
+The resulting diagnostics can be a useful reminder
+if you were intending to debug or to profile the program
+with data sets that would exhaust the stack without tail recursion,
+but they are likely to be nuisances otherwise.
+This option is incompatible with @samp{in_tailrec_grades_only}.
+
+@end table
+
+If you want to be told about
+@emph{all} recursive calls in a module that are not tail calls,
+you @emph{could} add a @samp{require_tail_recursion} pragma
+for every predicate and function in the module.
+However, there is an easier way to achieve the same effect:
+using the @samp{--warn-non-tail-recursion} option.
+This option takes an argument which can be one of two words:
+either @samp{self-and-mutual}, or just @samp{self}.
+The first specifies the @samp{self_or_mutual_recursion}
+for all the implicitly generated pragmas,
+while the second likewise specifies @samp{self_recursion_only}.
+In both cases, the other two choices
+will be set to @samp{warn} and @samp{in_tailrec_grades_only}.
+
+@c @itemize
+@c @item
+@c Specifying @samp{--warn-non-tail-recursion self-and-mutual}
+@c has the same effect as specifying
+@c a @samp{require_tail_recursion} pragma
+@c with the default values of all the options,
+@c meaning @samp{[warn, self_or_mutual_recursion, in_tailrec_grades_only]}.
+@c @item
+@c Specifying @samp{--warn-non-tail-recursion self-mutual}
+@c has the same effect as specifying
+@c a @samp{require_tail_recursion} pragma
+@c with the @samp{self_recursion_only} option,
+@c and the default values of the other two options,
+@c meaning @samp{[warn, self_recursion_only, in_tailrec_grades_only]}.
+@c @end itemize.
+
+If you think that
+the implicit pragmas specified by either form of this option
+are right for @emph{almost, but not quite all}
+of the predicates and functions in a module,
+you can still use the option, and override its effect where necessary.
+You can do this either
+
+@itemize
+@item by explicitly specifying
+a @samp{require_tail_recursion} pragma for a predicate or function,
+which will override the one that would be implicitly specified by the option,
+@item or by specifying
+a @samp{disable_non_tail_recursion_reports} pragma for a predicate or function,
+which will turn off all non-tail recursion diagnostics
+for that predicate or function.
+These have the same forms as @samp{require_tail_recursion} pragmas:
+@example
+:- pragma disable_non_tail_recursion_reports(pred(@var{PredName}/@var{Arity})).
+:- pragma disable_non_tail_recursion_reports(func(@var{FuncName}/@var{Arity})).
+:- pragma disable_non_tail_recursion_reports(@var{Name}(@var{Modes})).
+:- pragma disable_non_tail_recursion_reports(@var{Name}(@var{Modes}) = @var{ReturnMode}).
+@end example
+just with a different pragma name, and with no second argument allowed.
+@end itemize
+
+It is worth mentioning that
+the compiler may generate different sets of warnings
+(or errors, if you asked for them)
+in two different grades even if both grades support tail recursion.
+
+The kind of code which is most likely to cause users to encounter this fact
+is a set of two or more mutually recursive predicates
+in which some recursive calls are not tail calls.
+As an example, consider predicates @code{p1} and @code{p2},
+where @code{p1} calls @code{p2} via a tail call,
+but @code{p2} calls @code{p1} via a non-tail call.
+
+@itemize @bullet
+@item
+With @samp{--no-high-level-code},
+the Mercury compiler generates code that does its own stack management,
+which means that the compiler can apply tail call optimization
+to the call from @code{p1} to @code{p2},
+and will generate a warning only for the call from @code{p2} to @code{p1}.
+@item
+With @samp{--high-level-code},
+the Mercury compiler generates code
+in another high level language (C, C#, or Java)
+and stack management is the responsibility of the target language.
+Since the Mercury compiler cannot ensure
+the application of tail call optimization
+to the call from @code{p1} to @code{p2},
+it will generate a warning for both calls.
+@end itemize
+
+While the set of diagnostics you get differs in the two cases,
+their overall message is much the same.
+This is because the iteration represented by these two predicates
+will consume an amount of stack space
+that is linear in the number of iterations
+@emph{even with @samp{--no-high-level-code}}.
+This is because in that case, the compiler can optimize away
+half of the iteration's stack frames (@code{p1}'s stack frames),
+but it can do nothing about the other half (@code{p2}'s stack frames).
+The presence or absence of @samp{--high-level-code}
+thus alters the constant factor,
+but not the overall memory complexity function, which is still linear.
+Either way, programmers who wish to exclude the possibility of stack exhaustion,
+or at least make it much less likely, will need to modify the code.
+
+One technique that can reduce the need for stack space,
+though without reducing it to a constant amount,
+is two level iteration.
+Consider a non-tail-recursive loop that processes a list of M items,
+where the stack is not big enough to store M stack frames at the same time.
+You can replace this with
+
+@itemize @bullet
+@item
+an inner loop that handles the first (up to) N items of the list
+(where N is much less than M),
+and then returns to its caller
+both the results so far, and the list of remaining items;
+@item
+and an outer loop, which calls the inner loop repeatedly
+to process the next chunk of items, until all items have been processed.
+@end itemize
+
+The key insight here is that having the inner loop return after
+processing N items replaces N stack frames of the inner loop predicate
+with @emph{one} stack frame of the outer loop predicate.
+This technique can handle up to N*N items
+@c but not including
+while never using more than 2*N stack frames
+(N frames of the inner and N frames of the outer predicate).
+@c handling N*N items requires 2*N+1 frames
 
 @node Feature sets
 @section Feature sets
