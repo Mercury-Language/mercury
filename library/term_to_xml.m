@@ -398,7 +398,7 @@
     % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
     %   Term, !State):
     %
-    % Write XML elements for the given term and all its descendents, using
+    % Write XML elements for the given term and all its descendants, using
     % IndentLevel as the initial indentation level (each indentation level
     % is one tab character) and using the MakeElement predicate to map
     % functors to elements. No <?xml ... ?> header will be written.
@@ -1015,7 +1015,7 @@ maybe_indent(Stream, Format, Indent, !State) :-
     % write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
     %   MaybeFieldNames, RemainingMaybeFieldNames, !State):
     %
-    % Write an element and all its descendents to the current output stream.
+    % Write an element and all its descendants to the current output stream.
     % If MaybeFieldNames is not empty, then its head is used for the `field'
     % attribute and the Tail is returned in RemainingMaybeFieldNames.
     % This is so it can be called using foldl2.

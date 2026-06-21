@@ -166,7 +166,7 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
         map.init, CliqueCandidates),
     CliqueMessages = cord_list_to_cord(MessageCords),
 
-    % Look in descendent cliques.
+    % Look in descendant cliques.
     some [!ChildCliques] (
         list.map(proc_dynamic_callees(Deep, ParentParallelism), PDPtrs,
             ChildCliquess),

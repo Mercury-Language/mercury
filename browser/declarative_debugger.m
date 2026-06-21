@@ -510,7 +510,7 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             OutputStream =
                 get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
             io.write_string(OutputStream,
-                "All descendent calls are trusted.\n" ++
+                "All descendant calls are trusted.\n" ++
                 "Shall I continue searching in ancestor calls?\n", !IO),
             read_search_supertree_response(!.Diagnoser, Response, !IO),
             (
