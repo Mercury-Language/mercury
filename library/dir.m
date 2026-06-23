@@ -1614,7 +1614,7 @@ check_for_symlink_loop(DirName, SymLinkParent, ParentIds0, MaybeLoop, !IO) :-
   #include <direct.h>   // for _wgetcwd
 #endif
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
 #endif
 
