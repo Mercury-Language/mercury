@@ -464,12 +464,19 @@
             % inserting one or more of these lifted-out deconstructions
             % before the original switch.
 
-    ;       feature_lambda_from_try.
+    ;       feature_lambda_from_try
             % This lambda goal wraps the main part of a try goal,
             % the part that does the main job but may throw an exception.
-            % This feaure is used to inform the code that warns about
+            % This feature is used to inform the code that warns about
             % infinite recursion that the lambda goal *will* be executed
             % in context in which it is constructed.
+
+    ;       feature_non_tailrec_reported.
+            % This goal is a (self or mutual) recursive call that is not
+            % TAIL recursive, and this fact has already had a report
+            % generated for it. Do not generate another report.
+            % (The precise reason for this is explained by the comment
+            % on the ntrcr_program in mark_tail_calls.m.)
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

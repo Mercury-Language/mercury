@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,6 +20,7 @@
 
 :- import_module hlds.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.      % for nontail_rec_call_reason
@@ -310,6 +311,7 @@
     --->    nontail_rec_call(
                 ntrc_caller                 :: pred_proc_id,
                 ntrc_callee                 :: pred_proc_id,
+                ntrc_maybe_features         :: set(goal_feature),
                 ntrc_context                :: prog_context,
                 ntrc_reason                 :: nontail_rec_call_reason,
                 ntrc_obviousness            :: nontail_rec_obviousness,

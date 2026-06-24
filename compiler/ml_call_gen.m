@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -101,6 +101,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -354,7 +355,7 @@ ml_gen_plain_call(CalleePredId, CalleeProcId, CodeModel, GoalInfo, ArgVars,
         % the actual parameters.
         CallerArgs = wrap_plain_not_fcw_args(ArgVars),
         ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel, Context,
-            CallerArgs, ntrcr_program, Features,
+            CallerArgs, ntrcr_program(set_tree234.init), Features,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
@@ -494,7 +495,7 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
         )
     else
         ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel,
-            Context, CallerArgs, ntrcr_program, Features,
+            Context, CallerArgs, ntrcr_program(set_tree234.init), Features,
             LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 
@@ -715,7 +716,7 @@ ml_gen_plain_non_tail_call(CalleePredProcId, CodeModel, Context, CallerArgs,
             Obviousness = non_obvious_nontail_rec
         ),
         NonTailRecCall = nontail_rec_call(CallerPredProcId, CalleePredProcId,
-            Context, NonTailCallReason, Obviousness, Status),
+            Features, Context, NonTailCallReason, Obviousness, Status),
         NonTailRecCalls0 = InSccInfo0 ^ isi_is_target_of_non_tail_rec,
         NonTailRecCalls = [NonTailRecCall | NonTailRecCalls0],
         InSccInfo = InSccInfo0 ^ isi_is_target_of_non_tail_rec

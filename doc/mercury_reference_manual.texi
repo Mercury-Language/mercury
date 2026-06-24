@@ -13821,7 +13821,7 @@ is incompatible with @samp{in_all_grades}.
 Tell the compiler to generate a diagnostic for non-tail recursion
 even in grades that do not allow the possibility of tail recursion.
 In such grades, which includes
-debugging, deep profiling, trailing, and minimal model grades,
+debugging, deep profiling, and minimal model grades,
 this will generate a diagnostic for @emph{every} recursive call.
 The resulting diagnostics can be a useful reminder
 if you were intending to debug or to profile the program

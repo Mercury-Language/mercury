@@ -60,6 +60,7 @@ STD_PROGS = \
 	table_with_inline \
 	term_indirect_warning \
 	test_tscp \
+	trail_non_tailcall \
 	unify_f_g \
 	unify_x_f_x \
 	unknown_warning \

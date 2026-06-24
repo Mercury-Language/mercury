@@ -267,7 +267,7 @@ gather_nontail_rec_calls(InSccInfo, !NonTailRecCalls) :-
 
 report_nontail_rec_call(ModuleInfo, DefaultWarnParams, NonTailRecCall,
         !Specs) :-
-    NonTailRecCall = nontail_rec_call(Caller, Callee, Context,
+    NonTailRecCall = nontail_rec_call(Caller, Callee, Features, Context,
         Reason, Obviousness, Status),
     (
         Status = nontail_rec_call_warn_disabled
@@ -276,8 +276,8 @@ report_nontail_rec_call(ModuleInfo, DefaultWarnParams, NonTailRecCall,
         module_info_pred_proc_info(ModuleInfo, Caller, _PredInfo, ProcInfo),
         maybe_override_warn_params_for_proc(ProcInfo,
             DefaultWarnParams, ProcWarnParams),
-        maybe_report_nontail_recursive_call(ModuleInfo, Caller, Callee,
-            Context, Reason, Obviousness, ProcWarnParams, !Specs)
+        maybe_report_nontail_recursive_call(ModuleInfo, ProcWarnParams,
+            Caller, Callee, Features, Context, Reason, Obviousness, !Specs)
     ).
 
 %---------------------------------------------------------------------------%

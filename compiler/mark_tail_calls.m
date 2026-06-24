@@ -39,6 +39,7 @@
 :- interface.
 
 :- import_module hlds.hlds_dependency_graph.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
@@ -51,6 +52,8 @@
 :- import_module parse_tree.prog_data_pragma.
 
 :- import_module list.
+:- import_module set.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -138,9 +141,43 @@
 :- pred maybe_override_warn_params_for_proc(proc_info::in,
     warn_non_tail_rec_params::in, warn_non_tail_rec_params::out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- type nontail_rec_call_reason
-    --->    ntrcr_program
-            % The call is not a tail call in the program.
+    --->    ntrcr_program(set_tree234(later_op))
+            % The call is not a tail call in the program, because
+            % it is followed by some operations.
+            %
+            % If the set is nonempty, which it always should be when
+            % we generate a report from inside this module, the elements
+            % of the set describe the kinds of operations that will happen
+            % after the call.
+            %
+            % If the set is empty, which it always will be when
+            % we generate a report from outside this module, then we have
+            % no such information. (Our outside callers are part of the
+            % MLDS code generator, and its tasks do not include keeping track
+            % of such things).
+            %
+            % The ability of the MLDS code generator to generate diagnostics
+            % about non-tail recursion is mostly a historical accident.
+            % We should take away that ability as soon as we are sure that
+            % all the non-tail recursive calls that the code generator
+            % would report are reported by this module as well.
+            %
+            % However, until that is done, we do NOT want both (a) the code of
+            % do_mark_tail_rec_calls_in_proc and (b) the MLDS code generator
+            % to generate reports for the same non-tail recursive call.
+            % This is because we add a short explanation for any later_op
+            % in the set that is not visible (or at least not easily visible)
+            % to users. The code that writes out error_specs removes any
+            % duplicates, but it cannot remove *almost* duplicates
+            % that differ only in the presence vs absence of these
+            % explanations. The code below that prints the (potentially)
+            % more informative message therefore attaches this feature
+            % to the goal the message is about. When a call to
+            % maybe_report_nontail_recursive_call from the MLDS code generator
+            % sees this feature, it should refrain from generating a report.
 
     ;       ntrcr_mlds_in_scc_not_in_tscc
             % The call is a tail call in the program, but the MLDS code
@@ -159,14 +196,16 @@
             % in the main function of its predicate, but in a separate
             % continuation function.
 
+:- type later_op.
+
 :- type nontail_rec_obviousness
     --->    non_obvious_nontail_rec
     ;       obvious_nontail_rec.
 
 :- pred maybe_report_nontail_recursive_call(module_info::in,
-    pred_proc_id::in, pred_proc_id::in, prog_context::in,
+    warn_non_tail_rec_params::in, pred_proc_id::in, pred_proc_id::in,
+    set(goal_feature)::in, prog_context::in,
     nontail_rec_call_reason::in, nontail_rec_obviousness::in,
-    warn_non_tail_rec_params::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -174,8 +213,8 @@
 
 :- implementation.
 
+:- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.type_util.
@@ -190,7 +229,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -482,8 +520,9 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
                 proc(PredId, ProcId), SCC, VarTable, Params,
                 has_no_self_tail_rec_call, has_no_mutual_tail_rec_call,
                 not_found_any_rec_calls, []),
-            mark_tail_rec_calls_in_goal(Goal0, Goal, at_tail(Outputs), _,
-                Info0, Info),
+            AtTail0 = at_tail_info(set_tree234.init, Outputs),
+            mark_tail_rec_calls_in_goal(Goal0, Goal,
+                AtTail0, _AtTail, Info0, Info),
             Info = mark_tail_rec_calls_info(_, _, _, _, _, _,
                 HasSelfTailRecCall, HasMutualTailRecCall,
                 FoundAnyRecCalls, GoalSpecs),
@@ -547,16 +586,78 @@ find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
 
 %---------------------------------------------------------------------------%
 
-    % Is the current position within the procedure a tail position?
-    % If it is, what are the output arguments?
-    %
-:- type at_tail
-    --->    at_tail(list(prog_var))
-    ;       not_at_tail(later_rec_call).
+:- type at_tail_info
+    --->    at_tail_info(
+                % Is the current position within the procedure a tail position?
+                % The answer is "yes" if-and-only-if this set is empty.
+                set_tree234(later_op),
 
-:- type later_rec_call
-    --->    have_seen_later_rec_call
-    ;       have_not_seen_later_rec_call.
+                % If the current position within the procedure is a tail
+                % position, then what are the output arguments? These will
+                % start out as the vector of the procedure's output arguments,
+                % but if our backwards traversal sees an assignment unification
+                % to one of these variables, then we replace it in this list
+                % with the id of the variable it is assigned from.
+                % (This is because any recursive call must define the
+                % assigned-from variable, since the mode system ensures
+                % that the assigned-to variable cannot have as generators
+                % *both* the recursive call and the assignment unification.)
+                %
+                % If the first argument is a nonempty set, then this field
+                % is meaningless. The reason why we do not have a separate
+                % function symbol in this type that eliminates this field
+                % in that event is that we have tried that, and it complicates
+                % all our code for managing branching goals.
+                list(prog_var)
+            ).
+
+:- type later_op
+    --->    later_unify
+    ;       later_unify_assign
+    ;       later_nonrec_call
+    ;       later_rec_call
+
+    ;       later_par_join
+            % Each conjunct in a parallel conjunction is followed by
+            % the join of the parallel threads.
+
+    ;       later_disjunction
+    ;       later_disjunction_fail
+    ;       later_switch
+    ;       later_ite
+    ;       later_negation
+            % These mean that a branched goal (a disjunction, a switch,
+            % or an if-then-else) follows the goal whose initial at_tail_info
+            % contains one of these later_ops.
+            %
+            % Just in case we can use these details later, we distinguish
+            % empty disjunctions (later_disjunction_fail) from nonempty ones
+            % (later_disjunction), and negations (which are effectively
+            % special cases of if-then-elses) from their general form.
+
+    ;       later_next_disjunct
+            % This applies to goals that represent non-last disjuncts.
+            % Such goals are followed by the code of the next disjunct.
+
+    ;       later_cond_end
+            % This applies to goal that represent an if-then-else's condition.
+            % Such goals are followed by the code that switches between
+            % the then part and the else part.
+
+    ;       later_negation_end
+            % This applies to goals inside negations. Such goals are
+            % followed by the code that flips success to failure or vice versa.
+
+    ;       later_commit
+            % This applies to goals inside scopes that perform commits.
+            % Such goals are followed by the code that performs that commit.
+
+    ;       later_trail_prune.
+            % This applies to goals that represent disjuncts
+            % - in a model_det or model_semi disjunction
+            % - in trailing grades.
+            % Such goals are followed by an operation that prunes away
+            % the trail ticket that was created to represent the disjunction.
 
 :- type call_is_self_or_mutual_rec
     --->    call_is_self_rec
@@ -614,7 +715,7 @@ find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
     % in the mtc_any_rec_calls and mtc_self_tail_rec_calls fields.
     %
 :- pred mark_tail_rec_calls_in_goal(hlds_goal::in, hlds_goal::out,
-    at_tail::in, at_tail::out,
+    at_tail_info::in, at_tail_info::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
 mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
@@ -642,29 +743,26 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 ; Unify0 = simple_test(_, _)
                 ; Unify0 = complicated_unify(_, _, _)
                 ),
-                not_at_tail(AtTail0, AtTail)
+                add_later_op(later_unify, AtTail0, AtTail)
             ;
                 Unify0 = assign(ToVar, FromVar),
+                AtTail0 = at_tail_info(Laters0, Outputs0),
                 ( if
-                    AtTail0 = at_tail(Outputs0),
+                    set_tree234.is_empty(Laters0),
                     is_output_arg_rename(ToVar, FromVar, Outputs0, Outputs)
                 then
-                    AtTail = at_tail(Outputs)
+                    AtTail = at_tail_info(Laters0, Outputs)
                 else
-                    AtTail = not_at_tail(have_not_seen_later_rec_call)
+                    add_later_op(later_unify_assign, AtTail0, AtTail)
                 )
             )
         )
     ;
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _, _)
-        % No goal inside a negation can be a *tail* call. However, a negation
-        % can contain recursive calls about whose non-tail-call nature
-        % we COULD generate a report.
-        ; GoalExpr0 = negation(_)
         ),
         Goal = Goal0,
-        not_at_tail(AtTail0, AtTail)
+        add_later_op(later_nonrec_call, AtTail0, AtTail)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
         (
@@ -677,7 +775,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             % the conjunction into a loop control scope, and therefore any
             % parallel conjunctions we find at *this* point cannot support
             % tail calls.
-            not_at_tail(AtTail0, AtTail1)
+            add_later_op(later_par_join, AtTail0, AtTail1)
         ),
         list.reverse(Goals0, RevGoals0),
         mark_tail_rec_calls_in_rev_conj(RevGoals0, RevGoals, AtTail1, AtTail,
@@ -686,39 +784,65 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
+        % No goal inside a negation can be a *tail* call. However, a negation
+        % can contain recursive calls about whose non-tail-call nature
+        % we COULD generate a report.
+        GoalExpr0 = negation(SubGoal0),
+        add_later_op(later_negation_end, AtTail0, AtTail1),
+        mark_tail_rec_calls_in_goal(SubGoal0, SubGoal,
+            AtTail1, AtTail2, !Info),
+        add_later_op(later_negation, AtTail2, AtTail),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
         GoalExpr0 = disj(Disjuncts0),
         ( if list.split_last(Disjuncts0, NonLastDisjuncts0, LastDisjunct0) then
             % If the disjunction is in tail position, then it is possible
-            % for a goal inside the last disjunct to be a tail call.
+            % for a goal inside the last disjunct to be a tail call,
+            % unless the disjunction is a model_det or model_semi disjunction
+            % in a trailing grade.
+            Detism = goal_info_get_determinism(GoalInfo0),
+            determinism_to_code_model(Detism, CodeModel),
+            ( if
+                ( CodeModel = model_det ; CodeModel = model_semi ),
+                ModuleInfo = !.Info ^ mtc_module,
+                module_info_get_globals(ModuleInfo, Globals),
+                globals.lookup_bool_option(Globals, use_trail, yes)
+            then
+                add_later_op(later_trail_prune, AtTail0, AtTail1)
+            else
+                AtTail1 = AtTail0
+            ),
             mark_tail_rec_calls_in_goal(LastDisjunct0, LastDisjunct,
-                AtTail0, LastAtTail, !Info),
+                AtTail1, LastAtTail, !Info),
             % Even if the disjunction as a whole is in tail position,
             % a goal inside a nonlast disjunct cannot be a tail call,
             % because if it fails, its execution will be followed
             % by backtracking to later disjuncts.
-            project_seen_later_rec_call(LastAtTail, SeenLaterRecCall0),
-            NonLastAtTail0 = not_at_tail(SeenLaterRecCall0),
+            add_later_op(later_next_disjunct, AtTail1, NonLastAtTail0),
             list.map_foldl2(
                 mark_tail_rec_calls_in_nonlast_disjunct(NonLastAtTail0),
                 NonLastDisjuncts0, NonLastDisjuncts,
-                SeenLaterRecCall0, SeenLaterRecCall, !Info),
-            AtTail = not_at_tail(SeenLaterRecCall),
+                [], NonLastAtTails, !Info),
+            join_branch_at_tails(LastAtTail, NonLastAtTails,
+                BeforeDisjunctsAtTail),
+            add_later_op(later_disjunction, BeforeDisjunctsAtTail, AtTail),
             GoalExpr = disj(NonLastDisjuncts ++ [LastDisjunct]),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             % There are no disjuncts. Any goals before the disjunction
             % will be followed by disj([]), which is `fail', so they cannot
             % be tail calls.
-            project_seen_later_rec_call(AtTail0, SeenLaterRecCall),
-            AtTail = not_at_tail(SeenLaterRecCall),
+            add_later_op(later_disjunction_fail, AtTail0, AtTail),
             Goal = Goal0
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        project_seen_later_rec_call(AtTail0, SeenLaterRecCall0),
         list.map_foldl2(mark_tail_rec_calls_in_case(AtTail0), Cases0, Cases,
-            SeenLaterRecCall0, SeenLaterRecCall, !Info),
-        AtTail = not_at_tail(SeenLaterRecCall),
+            [], AtTails, !Info),
+        list.det_head_tail(AtTails, HeadAtTail, TailAtTails),
+        join_branch_at_tails(HeadAtTail, TailAtTails, AtTail1),
+        add_later_op(later_switch, AtTail1, AtTail),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -727,20 +851,12 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             !Info),
         mark_tail_rec_calls_in_goal(Else0, Else, AtTail0, AtTailBeforeElse,
             !Info),
-        project_seen_later_rec_call(AtTailBeforeThen, SeenRecCallInThen),
-        project_seen_later_rec_call(AtTailBeforeElse, SeenRecCallInElse),
-        ( if
-            ( SeenRecCallInThen = have_seen_later_rec_call
-            ; SeenRecCallInElse = have_seen_later_rec_call
-            )
-        then
-            SeenRecCallAfterCond = have_seen_later_rec_call
-        else
-            SeenRecCallAfterCond = have_not_seen_later_rec_call
-        ),
-        AtTailAfterCond = not_at_tail(SeenRecCallAfterCond),
-        mark_tail_rec_calls_in_goal(Cond0, Cond, AtTailAfterCond, AtTail,
+        join_branch_at_tails(AtTailBeforeThen, [AtTailBeforeElse],
+            AtTailAfterCond0),
+        add_later_op(later_cond_end, AtTailAfterCond0, AtTailAfterCond),
+        mark_tail_rec_calls_in_goal(Cond0, Cond, AtTailAfterCond, AtTail1,
             !Info),
+        add_later_op(later_ite, AtTail1, AtTail),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -769,7 +885,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
             ; Reason = promise_solutions(_, _)
             ; Reason = commit(_)
             ),
-            not_at_tail(AtTail0, AtTail1),
+            add_later_op(later_commit, AtTail0, AtTail1),
             mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail1, AtTail,
                 !Info)
         ;
@@ -796,7 +912,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
 
 :- pred mark_tail_rec_calls_in_plain_call(
     hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_info::in,
-    hlds_goal::out, at_tail::in, at_tail::out,
+    hlds_goal::out, at_tail_info::in, at_tail_info::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
 mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
@@ -817,8 +933,9 @@ mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
         )
     then
         !Info ^ mtc_any_rec_calls := found_any_rec_calls,
+        AtTail0 = at_tail_info(Laters0, OutputVars),
         ( if
-            AtTail0 = at_tail(OutputVars),
+            set_tree234.is_empty(Laters0),
             require_det (
                 ModuleInfo = !.Info ^ mtc_module,
                 module_info_pred_info(ModuleInfo, CalleePredId,
@@ -845,7 +962,7 @@ mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
             %
             % CalleeOutputVars is the sequence of output vars of this call;
             % OutputVars is the sequence of output vars of the caller,
-            % updated to reflect any "renaming" done by assigment
+            % updated to reflect any "renaming" done by assignment
             % unifications after the call. For example, if the first
             % output argument of the caller is X, but the call is followed
             % by the assignment X: = X0 (which our backwards traversal
@@ -893,34 +1010,38 @@ mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
                 )
             )
         else
-            (
-                ( AtTail0 = at_tail(_)
-                ; AtTail0 = not_at_tail(have_not_seen_later_rec_call)
-                ),
-                Obviousness = non_obvious_nontail_rec,
-                Goal = hlds_goal(GoalExpr0, GoalInfo0)
-            ;
-                AtTail0 = not_at_tail(have_seen_later_rec_call),
+            ( if set_tree234.contains(Laters0, later_rec_call) then
                 Obviousness = obvious_nontail_rec,
                 % Record the obviousness for the MLDS code generator.
                 goal_info_add_feature(feature_obvious_nontail_rec_call,
-                    GoalInfo0, GoalInfo),
-                Goal = hlds_goal(GoalExpr0, GoalInfo)
+                    GoalInfo0, GoalInfo1)
+            else
+                Obviousness = non_obvious_nontail_rec,
+                GoalInfo1 = GoalInfo0
             ),
             ModuleInfo = !.Info ^ mtc_module,
             CallerPredProcId = !.Info ^ mtc_cur_proc,
             Context = goal_info_get_context(GoalInfo0),
             WarnParams = !.Info ^ mtc_params ^ warn_params,
             Specs0 = !.Info ^ mtc_error_specs,
-            maybe_report_nontail_recursive_call(ModuleInfo,
-                CallerPredProcId, CalleePredProcId, Context,
-                ntrcr_program, Obviousness, WarnParams, Specs0, Specs),
-            !Info ^ mtc_error_specs := Specs
+            Features = goal_info_get_features(GoalInfo0),
+            maybe_report_nontail_recursive_call(ModuleInfo, WarnParams,
+                CallerPredProcId, CalleePredProcId, Features, Context,
+                ntrcr_program(Laters0), Obviousness, Specs0, Specs),
+            !Info ^ mtc_error_specs := Specs,
+
+            % Mark the goal so that the code generator, which lacks the info
+            % from which we derive Laters0, does not generate a second,
+            % slightly different, diagnostic for it.
+            goal_info_add_feature(feature_non_tailrec_reported,
+                GoalInfo1, GoalInfo),
+            Goal = hlds_goal(GoalExpr0, GoalInfo)
         ),
-        AtTail = not_at_tail(have_seen_later_rec_call)
+        set_tree234.insert(later_rec_call, Laters0, Laters),
+        AtTail = at_tail_info(Laters, OutputVars)
     else
         Goal = hlds_goal(GoalExpr0, GoalInfo0),
-        not_at_tail(AtTail0, AtTail)
+        add_later_op(later_nonrec_call, AtTail0, AtTail)
     ).
 
 :- pred is_output_arg_rename(prog_var::in, prog_var::in,
@@ -939,7 +1060,8 @@ is_output_arg_rename(ToVar, FromVar, [Var0 | Vars0], [Var | Vars]) :-
     ).
 
 :- pred mark_tail_rec_calls_in_rev_conj(
-    list(hlds_goal)::in, list(hlds_goal)::out, at_tail::in, at_tail::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    at_tail_info::in, at_tail_info::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
 mark_tail_rec_calls_in_rev_conj([], [], !AtTail, !Info).
@@ -948,67 +1070,72 @@ mark_tail_rec_calls_in_rev_conj([RevGoal0 | RevGoals0], [RevGoal | RevGoals],
     mark_tail_rec_calls_in_goal(RevGoal0, RevGoal, !AtTail, !Info),
     mark_tail_rec_calls_in_rev_conj(RevGoals0, RevGoals, !AtTail, !Info).
 
-:- pred mark_tail_rec_calls_in_nonlast_disjunct(at_tail::in,
-    hlds_goal::in, hlds_goal::out, later_rec_call::in, later_rec_call::out,
+:- pred mark_tail_rec_calls_in_nonlast_disjunct(at_tail_info::in,
+    hlds_goal::in, hlds_goal::out,
+    list(at_tail_info)::in, list(at_tail_info)::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-mark_tail_rec_calls_in_nonlast_disjunct(AtTail0, !Disjunct,
-        !SeenLaterRecCall, !Info) :-
+mark_tail_rec_calls_in_nonlast_disjunct(AtTail0, !Disjunct, !AtTails, !Info) :-
     mark_tail_rec_calls_in_goal(!Disjunct, AtTail0, AtTail, !Info),
-    accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall).
+    !:AtTails = [AtTail | !.AtTails].
 
-:- pred mark_tail_rec_calls_in_case(at_tail::in, case::in, case::out,
-    later_rec_call::in, later_rec_call::out,
+:- pred mark_tail_rec_calls_in_case(at_tail_info::in, case::in, case::out,
+    list(at_tail_info)::in, list(at_tail_info)::out,
     mark_tail_rec_calls_info::in, mark_tail_rec_calls_info::out) is det.
 
-mark_tail_rec_calls_in_case(AtTail0, Case0, Case, !SeenLaterRecCall, !Info) :-
+mark_tail_rec_calls_in_case(AtTail0, Case0, Case, !AtTails, !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info),
-    accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall),
+    !:AtTails = [AtTail | !.AtTails],
     Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred accumulate_seen_later_rec_call(at_tail::in,
-    later_rec_call::in, later_rec_call::out) is det.
+%---------------------------------------------------------------------------%
 
-accumulate_seen_later_rec_call(AtTail, !SeenLaterRecCall) :-
+:- pred add_later_op(later_op::in,
+    at_tail_info::in, at_tail_info::out) is det.
+
+add_later_op(Later, AtTail0, AtTail) :-
+    AtTail0 = at_tail_info(Laters0, Outputs0),
+    set_tree234.insert(Later, Laters0, Laters),
+    AtTail  = at_tail_info(Laters, Outputs0).
+
+    % Once we have finished the backwards traversal of every branch
+    % in a branched control structure (disjunction, switch or if-then-else),
+    % join together the at_tail_info structures we got at the end of
+    % each traversal (which represent what we know about the program points
+    % at the *starts* of those branches) to compute what we know about
+    % the program point before the branched control structure itself.
+    %
+:- pred join_branch_at_tails(at_tail_info::in, list(at_tail_info)::in,
+    at_tail_info::out) is det.
+
+join_branch_at_tails(HeadAtTail, TailAtTails, AtTail) :-
     (
-        AtTail = at_tail(_)
+        TailAtTails = [],
+        AtTail = HeadAtTail
     ;
-        AtTail = not_at_tail(AtTailSeenLaterRecCall),
-        (
-            AtTailSeenLaterRecCall = have_not_seen_later_rec_call
-        ;
-            AtTailSeenLaterRecCall = have_seen_later_rec_call,
-            !:SeenLaterRecCall = have_seen_later_rec_call
-        )
-    ).
-
-:- pred project_seen_later_rec_call(at_tail::in, later_rec_call::out) is det.
-
-project_seen_later_rec_call(AtTail, SeenLaterRecCall) :-
-    (
-        AtTail = at_tail(_),
-        SeenLaterRecCall = have_not_seen_later_rec_call
-    ;
-        AtTail = not_at_tail(SeenLaterRecCall)
-    ).
-
-:- pred not_at_tail(at_tail::in, at_tail::out) is det.
-
-not_at_tail(Before, After) :-
-    (
-        Before = at_tail(_),
-        After = not_at_tail(have_not_seen_later_rec_call)
-    ;
-        Before = not_at_tail(_),
-        After = Before
+        TailAtTails = [HeadTailAtTail | TailTailAtTails],
+        HeadAtTail = at_tail_info(HeadLaters, HeadOutputArgs),
+        HeadTailAtTail = at_tail_info(HeadTailLaters, _HeadTailOutputArgs),
+        set_tree234.union(HeadLaters, HeadTailLaters, NextLaters),
+        % NOTE HeadOutputArgs and _HeadTailOutputArgs may be different,
+        % since different branches may compute the final output arguments
+        % using different code. However, this does not matter, because
+        %
+        % - when we traverse backwards past any branched control structure,
+        %   we add that fact to the later_ops set, and
+        % - the resulting guaranteed-to-be-nonempty later_ops set
+        %   implies that the second field of the resulting at_tail_info
+        %   will not be used for anything.
+        NextAtTail = at_tail_info(NextLaters, HeadOutputArgs),
+        join_branch_at_tails(NextAtTail, TailTailAtTails, AtTail)
     ).
 
 %---------------------------------------------------------------------------%
 
-maybe_report_nontail_recursive_call(ModuleInfo,
-        CallerPredProcId, CalleePredProcId, Context, Reason, Obviousness,
-        WarnParams, !Specs) :-
+maybe_report_nontail_recursive_call(ModuleInfo, WarnParams,
+        CallerPredProcId, CalleePredProcId, Features, Context,
+        Reason, Obviousness, !Specs) :-
     WarnParams = warn_non_tail_rec_params(RequestBy, WarnOrError, Grades,
         WarnNonTailSelfRec, WarnNonTailMutualRec),
     ( if
@@ -1030,7 +1157,8 @@ maybe_report_nontail_recursive_call(ModuleInfo,
         ;
             Grades = in_tailrec_grades_only,
             grade_supports_tail_recursion(ModuleInfo)
-        )
+        ),
+        not set.contains(Features, feature_non_tailrec_reported)
     then
         report_nontail_recursive_call(ModuleInfo,
             CallerPredProcId, CalleePredProcId, Context, Reason,
@@ -1048,7 +1176,6 @@ grade_supports_tail_recursion(ModuleInfo) :-
     globals.lookup_bool_option(Globals, source_to_source_debug, no),
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy, no),
     globals.lookup_bool_option(Globals, use_minimal_model_own_stacks, no),
-    globals.lookup_bool_option(Globals, use_trail, no),
     globals.get_gc_method(Globals, GC),
     GC \= gc_accurate.
 
@@ -1193,10 +1320,13 @@ caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces) :-
 nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs) :-
     (
-        Reason = ntrcr_program,
+        Reason = ntrcr_program(LaterSet),
+        set_tree234.to_sorted_list(LaterSet, Laters),
+        list.map(warning_pieces_about_later_op, Laters, WarningPieceLists),
+        list.condense(WarningPieceLists, WarningPieces),
         ReasonPieces = [words("is")] ++
-            color_as_incorrect([words("not tail recursive.")]) ++
-            [nl],
+            color_as_incorrect([words("not tail recursive.")]) ++ [nl] ++
+            WarningPieces,
         VerboseMsgs = []
     ;
         Reason = ntrcr_mlds_in_scc_not_in_tscc,
@@ -1229,6 +1359,46 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
                 words("cannot be applied to it,")]) ++
             [words("because it occurs after a choice point."), nl],
         VerboseMsgs = []
+    ).
+
+:- pred warning_pieces_about_later_op(later_op::in, list(format_piece)::out)
+    is det.
+
+warning_pieces_about_later_op(Later, Pieces) :-
+    (
+        ( Later = later_unify
+        ; Later = later_unify_assign
+        ; Later = later_nonrec_call
+        ; Later = later_rec_call
+        ; Later = later_disjunction
+        ; Later = later_disjunction_fail
+        ; Later = later_switch
+        ; Later = later_ite
+        ; Later = later_negation
+        ; Later = later_next_disjunct
+        ; Later = later_cond_end
+        ; Later = later_negation_end
+        ),
+        % These operations should be visible to the user, so reporting them
+        % would be much more likely to be clutter than useful.
+        Pieces = []
+    ;
+        Later = later_par_join,
+        Pieces = [words("This call is inside a parallel conjunction."),
+            words("The code of each parallel conjunct is followed by code"),
+            words("to wait for all the other conjuncts."), nl]
+    ;
+        Later = later_commit,
+        Pieces = [words("This call is inside a scope"),
+            words("that changes determinism."),
+            words("The code inside such scopes is followed by code"),
+            words("that manages this change."), nl]
+    ;
+        Later = later_trail_prune,
+        Pieces = [words("This call is inside a disjunction"),
+            words("that cannot succeed more than once."),
+            words("In trailing grades, each disjunct in such disjunctions"),
+            words("is followed by code to manage the trail."), nl]
     ).
 
 %---------------------------------------------------------------------------%

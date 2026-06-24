@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2020, 2022-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -128,8 +128,8 @@ add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !ProcInfo) :-
     proc_info_set_var_table(VarTable, !ProcInfo),
     % The code below does not maintain the non-local variables,
     % so we need to requantify.
-    % XXX it would be more efficient to maintain them rather than
-    % recomputing them every time.
+    % XXX It would be more efficient, but also more error-prone,
+    % to maintain them in the code below.
     requantify_proc_general(ord_nl_no_lambda, !ProcInfo).
 
 :- pred goal_add_trail_ops(hlds_goal::in, hlds_goal::out,
@@ -158,8 +158,8 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             Context = goal_info_get_context(GoalInfo0),
             CodeModel = goal_info_get_code_model(GoalInfo0),
 
-            % Allocate a new trail ticket so that we can restore things on
-            % back-tracking.
+            % Allocate a new trail ticket, so that we can restore the trail
+            % on back-tracking.
             new_ticket_var(TicketVar, !Info),
             gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
             disj_add_trail_ops(Disjuncts0, Disjuncts, is_first_disjunct,
@@ -187,11 +187,12 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         Fail = fail_goal_with_context(Context),
         (
             NumSolns = at_most_zero,
-            % The "then" part of the if-then-else will be unreachable, but to
-            % preserve the invariants that the MLDS back-end relies on, we
-            % need to make sure that it can't fail. So we use a call to
-            % `private_builtin.unused' (which will call error/1) rather than
-            % `fail' for the "then" part.
+            % The "then" part of the if-then-else will be unreachable, but
+            % to preserve the invariants that the MLDS back-end relies on,
+            % we must make sure that it can't fail. This is why construct
+            % ThenGoal to call `private_builtin.unused' (an abort that is
+            % visible only at runtime) instead of making it `fail' (which
+            % would be an abort that would be visible at compile time).
             trail_generate_call(!.Info, "unused", [],
                 instmap_delta_bind_no_var, detism_det, purity_pure, Context,
                 ThenGoal)
@@ -202,8 +203,8 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ),
             ThenGoal = Fail
         ),
-        NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
-        goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info)
+        NewOuterGoalExpr = if_then_else([], InnerGoal, ThenGoal, True),
+        goal_expr_add_trail_ops(NewOuterGoalExpr, OuterGoalInfo, Goal, !Info)
     ;
         GoalExpr0 = scope(Reason, InnerGoal0),
         OuterGoalInfo = GoalInfo0,
@@ -371,33 +372,32 @@ disj_add_trail_ops([Goal0 | Goals0], [Goal | Goals], IsFirstBranch, CodeModel,
     Goal0 = hlds_goal(_, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
 
-    % First undo the effects of any earlier branches.
+    % First, undo the effects of the earlier branches, if there are any.
     (
         IsFirstBranch = is_first_disjunct,
-        UndoList = []
+        UndoGoals = []
     ;
         IsFirstBranch = is_not_first_disjunct,
         gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
-        UndoList0 = [ResetTicketUndoGoal],
         (
             Goals0 = [],
-            % Once we've reached the last disjunct, we can discard
+            % Once we have reached the last disjunct, we can discard
             % the trail ticket.
             gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-            UndoList = UndoList0 ++ [DiscardTicketGoal]
+            UndoGoals = [ResetTicketUndoGoal, DiscardTicketGoal]
         ;
             Goals0 = [_ | _],
-            UndoList = UndoList0
+            UndoGoals = [ResetTicketUndoGoal]
         )
     ),
     goal_add_trail_ops(Goal0, Goal1, !Info),
 
     % For model_semi and model_det disjunctions, once we reach the end of
-    % the disjunct goal, we're committing to this disjunct, so we need to
+    % the disjunct goal, we are committing to this disjunct, so we need to
     % prune the trail ticket.
     (
         CodeModel = model_non,
-        PruneList = []
+        PruneGoals = []
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -405,12 +405,12 @@ disj_add_trail_ops([Goal0 | Goals0], [Goal | Goals], IsFirstBranch, CodeModel,
         gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
             !.Info),
         gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-        PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
+        PruneGoals = [ResetTicketCommitGoal, PruneTicketGoal]
     ),
 
     % Package up the stuff we built earlier.
     Goal1 = hlds_goal(_, GoalInfo1),
-    conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1, Goal),
+    conj_list_to_goal(UndoGoals ++ [Goal1] ++ PruneGoals, GoalInfo1, Goal),
 
     % Recursively handle the remaining disjuncts.
     disj_add_trail_ops(Goals0, Goals, is_not_first_disjunct, CodeModel,

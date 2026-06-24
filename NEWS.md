@@ -1679,6 +1679,17 @@ Changes to the Mercury language
   an underscore, indicating that they should be singleton variables, but
   which nevertheless occur more than once.
 
+* The new pragma `require_tail_recursion` can now be used to ask the compiler
+  to warn you about recursive calls (either self-recursive or mutually
+  recursive) that a named predicate or function makes that are not tail
+  recursive, and whose iteration lengths are therefore limited by the
+  amount of available stack space.
+
+  The existing option `--warn-non-tail-recursion` implicitly asks the compiler
+  to do this for every predicate and function in the module being compiled.
+  The new pragma `disable_non_tail_recursion_reports` will disable any such
+  reports about calls from the predicate or function it names.
+
 * Floating point number literals may now contain an underscore
   between the digits forming the fraction part and the `e` or `E` that
   introduces the exponent part.

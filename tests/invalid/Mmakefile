@@ -170,6 +170,8 @@ BORING_SINGLEMODULE_PROGS = \
 	fbnf \
 	field_syntax_error \
 	foreign_enum_invalid \
+	foreign_proc_dup_var \
+	foreign_proc_no_det \
 	foreign_procs_exist_type \
 	foreign_purity_mismatch \
 	foreign_solver_type \
@@ -195,7 +197,6 @@ BORING_SINGLEMODULE_PROGS = \
 	ho_type_arity_bug \
 	ho_type_mode_bug \
 	ho_unique_error \
-	int_ops \
 	html \
 	impure_method_impl \
 	incompatible_instance_constraints \
@@ -205,6 +206,7 @@ BORING_SINGLEMODULE_PROGS = \
 	inst_for_eqv_type \
 	inst_matches_final_bug \
 	instance_var_bug \
+	int_ops \
 	integral_constant_no_suffix \
 	invalid_export_detism \
 	invalid_instance_declarations \
@@ -253,8 +255,6 @@ BORING_SINGLEMODULE_PROGS = \
 	overload_resolution_preference \
 	overloading \
 	polymorphic_unification \
-	foreign_proc_dup_var \
-	foreign_proc_no_det \
 	promise_equivalent_solutions_test_1 \
 	promise_equivalent_solutions_test_2 \
 	qual_basic_test \

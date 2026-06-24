@@ -1,0 +1,6 @@
+trail_non_tailcall.m:033: Warning in predicate `foo'/2:
+trail_non_tailcall.m:033:   this [38;5;87mself-recursive call[39;49m is [38;5;203mnot tail recursive.[39;49m
+trail_non_tailcall.m:033:   This call is inside a disjunction that cannot
+trail_non_tailcall.m:033:   succeed more than once. In trailing grades, each
+trail_non_tailcall.m:033:   disjunct in such disjunctions is followed by code
+trail_non_tailcall.m:033:   to manage the trail.
