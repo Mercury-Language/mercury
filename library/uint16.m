@@ -108,7 +108,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Conversion to/from uint8
+% Conversion to/from uint8.
 %
 
     % cast_to_uint8(U16) = U8:

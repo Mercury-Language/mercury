@@ -358,6 +358,7 @@
 :- func num_leading_zeros(uint64) = int.
 
     % num_trailing_zeros(U) = N:
+    %
     % N is the number of trailing zeros in the binary representation of U.
     %
 :- func num_trailing_zeros(uint64) = int.

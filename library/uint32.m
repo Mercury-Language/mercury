@@ -146,7 +146,7 @@
 % Conversion to/from uint16.
 %
 
-    % cast_to_uint8(U32) = U16:
+    % cast_to_uint16(U32) = U16:
     %
     % Convert a uint32 to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
@@ -179,7 +179,7 @@
     %
     % Convert a uint64 to a uint32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in the range [0, 2^32 - 1].
+    % to U64 only if U64 is in the range [0, 2^32 - 1].
     %
 :- func cast_from_uint64(uint64) = uint32.
 
@@ -645,7 +645,7 @@ det_from_uint(U) = U32 :-
     ( if from_uint(U, U32Prime) then
         U32 = U32Prime
     else
-        error($pred, "cannot convert int to uint32")
+        error($pred, "cannot convert uint to uint32")
     ).
 
 :- pragma foreign_proc("C",
