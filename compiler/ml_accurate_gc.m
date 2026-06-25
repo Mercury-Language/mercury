@@ -97,6 +97,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_unify_gen_construct.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -383,10 +384,22 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
         mlds_code_addr(QualFuncLabel, Signature))),
 
     % Generate the call
-    % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
+    % `private_builtin.gc_trace((MR_C_Pointer) TypeInfo,
+    %                            (MR_C_Pointer) &Var);'.
+    %
+    % The cast on TypeInfoRval is needed because TypeInfoRval may have
+    % an MLDS type that prints as a C pointer in some cases — most
+    % notably when the typeinfo source is itself a pointer-typed local
+    % (an existentially-typed output parameter, where TypeInfo_for_ArgT
+    % is passed as MR_Word *). gc_trace's first parameter is declared
+    % as MR_Word, so without the cast gcc rejects the call with
+    % `-Werror=int-conversion'. CPointerType prints as `MR_Word' under
+    % the C backend, so the cast is also a no-op for the common case
+    % where TypeInfoRval already has MR_Word-equivalent type.
+    CastTypeInfoRval = ml_cast(CPointerType, TypeInfoRval),
     CastVarAddr = ml_cast(CPointerType, ml_mem_addr(VarLval)),
     TraceStmt = ml_stmt_call(Signature, FuncAddr,
-        [TypeInfoRval, CastVarAddr], [], ordinary_call, Context).
+        [CastTypeInfoRval, CastVarAddr], [], ordinary_call, Context).
 
     % Generate HLDS code to construct the type_info for this type.
     %
@@ -398,7 +411,13 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo0),
     ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
     module_info_pred_proc_info(ModuleInfo0, PredProcId, PredInfo0, ProcInfo0),
-    % Generate the HLDS code to create the type_infos.
+    % Generate the HLDS code to create the type_infos. Note that this may
+    % insert new entries into the module's const_struct_db (when the type's
+    % type_info can be built from constant args), and the resulting HLDS goals
+    % may reference those new entries via type_info_const(N) cons_ids.
+    % Those references must be resolvable when MLDS is generated below, so we
+    % must extend the ConstStructMap and GlobalData in our ml_gen_info to
+    % cover any newly-inserted entries.
     polymorphism_make_type_info_var_mi(Type, Context,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
@@ -407,7 +426,16 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % Save the new information back in the ml_gen_info.
     proc_info_get_var_table(ProcInfo, VarTable),
     ml_gen_info_set_module_info(ModuleInfo, !Info),
-    ml_gen_info_set_var_table(VarTable, !Info).
+    ml_gen_info_set_var_table(VarTable, !Info),
+
+    % Extend the const_struct_map with any newly-added entries.
+    ml_gen_info_get_const_struct_map(!.Info, ConstStructMap0),
+    ml_gen_info_get_target(!.Info, Target),
+    ml_gen_info_get_global_data(!.Info, GlobalData0),
+    ml_extend_const_struct_map(ModuleInfo, Target,
+        ConstStructMap0, ConstStructMap, GlobalData0, GlobalData),
+    ml_gen_info_set_const_struct_map(ConstStructMap, !Info),
+    ml_gen_info_set_global_data(GlobalData, !Info).
 
 %---------------------------------------------------------------------------%
 

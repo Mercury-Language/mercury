@@ -512,6 +512,8 @@
 :- pred ml_gen_info_get_num_ptag_bits(ml_gen_info::in, uint8::out) is det.
 :- pred ml_gen_info_get_const_struct_map(ml_gen_info::in,
     map(int, ml_ground_term)::out) is det.
+:- pred ml_gen_info_set_const_struct_map(map(int, ml_ground_term)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_get_var_lvals(ml_gen_info::in,
     map(prog_var, mlds_lval)::out) is det.
 :- pred ml_gen_info_get_env_var_names(ml_gen_info::in, set(string)::out)
@@ -1122,6 +1124,10 @@ ml_gen_info_get_num_ptag_bits(Info, X) :-
     X = Info ^ mgi_rare_info ^ mgri_num_ptag_bits.
 ml_gen_info_get_const_struct_map(Info, X) :-
     X = Info ^ mgi_rare_info ^ mgri_const_struct_map.
+ml_gen_info_set_const_struct_map(X, !Info) :-
+    RareInfo0 = !.Info ^ mgi_rare_info,
+    RareInfo = RareInfo0 ^ mgri_const_struct_map := X,
+    !Info ^ mgi_rare_info := RareInfo.
 ml_gen_info_get_var_lvals(Info, X) :-
     X = Info ^ mgi_rare_info ^ mgri_var_lvals.
 ml_gen_info_get_env_var_names(Info, X) :-

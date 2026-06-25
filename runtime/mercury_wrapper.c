@@ -90,7 +90,17 @@ ENDINIT
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
   size_t    MR_heap_size =                13 * sizeof(MR_Word);
 #else
-  size_t    MR_heap_size =              8192 * sizeof(MR_Word);
+  // The default initial heap size. Under accurate GC the heap is split
+  // into two semispaces of this size each. The redzone+mprotect machinery
+  // and the pre-GC MR_extend_zone path in mercury_accurate_gc.c will grow
+  // the zones from here when programs need more, so this is just a
+  // starting point that avoids paying GC overhead for tiny programs.
+  // The previous default (8192 words = 64 KB) was small enough that any
+  // non-toy program triggered constant GCs and hit zone-extension paths
+  // immediately; bump to 1024 * 1024 words = 8 MB on 64-bit, which keeps
+  // hello-world cheap but lets `tests/hard_coded` programs run without
+  // requiring `--heap-size` to be set on the command line.
+  size_t    MR_heap_size =        1024 * 1024 * sizeof(MR_Word);
 #endif
 #ifdef MR_STACK_SEGMENTS
 size_t      MR_detstack_size =            64 * sizeof(MR_Word);

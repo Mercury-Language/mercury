@@ -945,6 +945,35 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
                 unexpected($pred, "malformed ref_assign")
             )
         ;
+            SimpleCode = field_assign(CellLval, OffsetLval, ValueLval),
+            % Lower field_assign(Cell, Offset, Value) as
+            %   *(Cell + Offset words) = Value
+            % stripping Cell's primary tag at runtime. We pass the
+            % offset as a runtime rval so that any future LCMC pattern
+            % that picks the offset dynamically still works; today the
+            % offset is always a compile-time literal that the C
+            % compiler folds into a constant displacement.
+            % The destination slot has mlds_generic_type (MR_Box = void *)
+            % but the value rval has its own concrete type (e.g. MR_Word
+            % for boxed cells, MR_Float for unboxed-float fields). Box
+            % the rval so the back-end emits the type-appropriate
+            % conversion: a cast for word-sized values, MR_box_float for
+            % floats, MR_box_int64/uint64 for 64-bit ints. A bare cast
+            % would mis-handle floats (gcc rejects float-to-pointer).
+            ( if
+                CellLval = ml_local_var(_CellVarName, CellType),
+                ValueLval = ml_local_var(_ValueVarName, ValueType)
+            then
+                FieldId = ml_field_offset(ml_lval(OffsetLval)),
+                FieldLval = ml_field(no, ml_lval(CellLval), CellType,
+                    FieldId, mlds_generic_type),
+                BoxedValueRval = ml_box(ValueType, ml_lval(ValueLval)),
+                Stmt = ml_gen_assign(FieldLval, BoxedValueRval, Context),
+                Stmts = [Stmt]
+            else
+                unexpected($pred, "malformed field_assign")
+            )
+        ;
             SimpleCode = test(_),
             unexpected($pred, "malformed model_det builtin predicate")
         ;
@@ -961,6 +990,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
             Stmts = [Stmt]
         ;
             ( SimpleCode = ref_assign(_, _)
+            ; SimpleCode = field_assign(_, _, _)
             ; SimpleCode = assign(_, _)
             ; SimpleCode = noop(_)
             ),
