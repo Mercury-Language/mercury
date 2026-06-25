@@ -225,7 +225,7 @@
 :- pred set_input_stream(io.text_input_stream::in,
     io.text_input_stream::out, io::di, io::uo) is det.
 
-    % Changes the current input stream to the stream specified.
+    % Changes the current binary input stream to the stream specified.
     % Returns the previous stream.
     %
 :- pred set_binary_input_stream(io.binary_input_stream::in,
