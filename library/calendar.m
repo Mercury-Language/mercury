@@ -1278,87 +1278,90 @@ local_time_offset(TZ, !IO) :-
 %
 
 duration_between(DateA, DateB) = Duration :-
-    compare(CompResult, DateB, DateA),
+    compare(CompResult, DateA, DateB),
     (
         CompResult = (<),
-        greedy_subtract_descending(ascending, DateA, DateB, Duration0),
-        Duration = negate(Duration0)
+        % DateA is the earlier date, so the duration between is non-negative.
+        Duration = greedy_difference_from_earlier(DateA, DateB)
     ;
         CompResult = (=),
         Duration = zero_duration
     ;
         CompResult = (>),
-        greedy_subtract_descending(descending, DateB, DateA, Duration)
+        % DateA is the later date, so the duration between is non-positive.
+        % Compute the magnitude of the duration anchored at the later date
+        % and then negate it.
+        Magnitude = greedy_difference_from_later(DateB, DateA),
+        Duration = negate(Magnitude)
     ).
 
 duration(DateA, DateB) = duration_between(DateA, DateB).
 
-:- type order
-    --->    ascending
-    ;       descending.
-
-    % This predicate has the precondition that DateA > DateB.
-    % OriginalOrder is the original order of the date_time arguments
-    % (descending means that in the original call DateA < DateB, while
-    % ascending means that in the original call DateA > DateB). This is needed
-    % to correctly compute the days component of the resulting duration.
-    % The calculation is different depending on the original order, because we
-    % want the invariant:
-    %   add_duration(duration_between(DateA, DateB), DateA, DateB)
-    % to hold, and in the case where DateA > DateB, Duration will be negative.
+    % greedy_difference_from_earlier(Earlier, Later) = Duration:
+    % greedy_difference_from_later(Earlier, Later) = Duration:
     %
-:- pred greedy_subtract_descending(order::in, date_time::in,
-    date_time::in, duration::out) is det.
+    % Both functions compute the non-negative difference between Earlier and
+    % Later and have the precondition that Earlier < Later. They differ only in
+    % how the whole months in that difference are counted, which can give
+    % different durations because months vary in length:
+    %
+    % - greedy_difference_from_earlier counts the largest whole number of
+    %   months for which Earlier + that many months =< Later, then measures the
+    %   remaining, less-than-a-month difference forwards to Later. The result D
+    %   satisfies add_duration(D, Earlier) = Later.
+    %
+    % - greedy_difference_from_later counts the largest whole number of months
+    %   for which Later - that many months >= Earlier, then measures the
+    %   remaining difference backwards to Earlier. The result D satisfies
+    %   add_duration(negate(D), Later) = Earlier.
+    %
+    % In each function the month count is found by a trial addition of the
+    % year-and-month difference, decremented by one if that oversteps because
+    % the days and time of day have not yet been accounted for. The remaining
+    % difference is found using do_fixed_duration_between/2.
+    % Both the month count and the remainder will be non-negative.
+    % This satisfies the requirement that the components of a duration do not
+    % have mixed signs.
+    %
+:- func greedy_difference_from_earlier(date_time, date_time) = duration.
 
-greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
-    some [!Borrow] (
-        MicroSecondA = DateA ^ dt_microsecond,
-        MicroSecondB = DateB ^ dt_microsecond,
-        subtract_ints_with_borrow(microseconds_per_second, MicroSecondA,
-            MicroSecondB, MicroSeconds, !:Borrow),
-        SecondA = DateA ^ dt_second - !.Borrow,
-        SecondB = DateB ^ dt_second,
-        subtract_ints_with_borrow(60, SecondA, SecondB, Seconds, !:Borrow),
-        MinuteA = DateA ^ dt_minute - !.Borrow,
-        MinuteB = DateB ^ dt_minute,
-        subtract_ints_with_borrow(60, MinuteA, MinuteB, Minutes, !:Borrow),
-        HourA = DateA ^ dt_hour - !.Borrow,
-        HourB = DateB ^ dt_hour,
-        subtract_ints_with_borrow(24, HourA, HourB, Hours, !:Borrow),
-        (
-            OriginalOrder = descending,
-            add_duration(duration(-1, 0, 0, 0), DateA, DateAMinus1Month),
-            DaysToBorrow = max_day_in_month_for(DateAMinus1Month ^ dt_year,
-                DateAMinus1Month ^ dt_month),
-            DateAEndOfMonth = max_day_in_month_for(DateA ^ dt_year,
-                DateA ^ dt_month),
-            DayA = DateA ^ dt_day - !.Borrow,
-            DayB = int.min(DateB ^ dt_day, DateAEndOfMonth)
-        ;
-            OriginalOrder = ascending,
-            DaysToBorrow = max_day_in_month_for(DateB ^ dt_year,
-                DateB ^ dt_month),
-            DateBEndOfMonth = max_day_in_month_for(DateB ^ dt_year,
-                DateB ^ dt_month),
-            DayA = int.min(DateA ^ dt_day - !.Borrow, DateBEndOfMonth),
-            DayB = DateB ^ dt_day
-        ),
-        subtract_ints_with_borrow(DaysToBorrow, DayA, DayB, Days, !:Borrow),
-        MonthA = DateA ^ dt_month - !.Borrow,
-        MonthB = DateB ^ dt_month,
-        subtract_ints_with_borrow(12, MonthA, MonthB, Months, !:Borrow),
-        YearA = DateA ^ dt_year - !.Borrow,
-        YearB = DateB ^ dt_year,
-        ( if YearA >= YearB then
-            Years = YearA - YearB
-        else
-            % If this happens, then DateA < DateB, which violates
-            % a precondition of this predicate.
-            unexpected($pred, "left over years")
-        ),
-        Duration = init_duration(Years, Months, Days, Hours, Minutes, Seconds,
-            MicroSeconds)
-    ).
+greedy_difference_from_earlier(Earlier, Later) = Duration :-
+    MonthsUpperBound = 12 * (Later ^ dt_year - Earlier ^ dt_year)
+        + (Later ^ dt_month - Earlier ^ dt_month),
+    add_duration(init_duration(0, MonthsUpperBound, 0, 0, 0, 0, 0),
+        Earlier, Candidate),
+    ( if compare((>), Candidate, Later) then
+        Months = MonthsUpperBound - 1,
+        add_duration(init_duration(0, Months, 0, 0, 0, 0, 0), Earlier,
+            Landing)
+    else
+        Months = MonthsUpperBound,
+        Landing = Candidate
+    ),
+    % Landing =< Later, and they differ by less than a month, so the remainder
+    % has a zero months component.
+    Remainder = do_fixed_duration_between(Landing, Later),
+    Remainder = duration(_, RemDays, RemSeconds, RemMicroSeconds),
+    Duration = duration(Months, RemDays, RemSeconds, RemMicroSeconds).
+
+:- func greedy_difference_from_later(date_time, date_time) = duration.
+
+greedy_difference_from_later(Earlier, Later) = Duration :-
+    MonthsUpperBound = 12 * (Later ^ dt_year - Earlier ^ dt_year)
+        + (Later ^ dt_month - Earlier ^ dt_month),
+    add_duration(init_duration(0, -MonthsUpperBound, 0, 0, 0, 0, 0),
+        Later, Candidate),
+    ( if compare((<), Candidate, Earlier) then
+        Months = MonthsUpperBound - 1,
+        add_duration(init_duration(0, -Months, 0, 0, 0, 0, 0), Later, Landing)
+    else
+        Months = MonthsUpperBound,
+        Landing = Candidate
+    ),
+    % Landing >= Earlier, differing by less than a month.
+    Remainder = do_fixed_duration_between(Earlier, Landing),
+    Remainder = duration(_, RemDays, RemSeconds, RemMicroSeconds),
+    Duration = duration(Months, RemDays, RemSeconds, RemMicroSeconds).
 
     % subtract_ints_with_borrow(BorrowAmount, Val1, Val2, Val, Borrow):
     %
