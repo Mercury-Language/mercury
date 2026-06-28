@@ -14,7 +14,7 @@ mdb> c
 mdb> f
       E3:     C2 EXIT pred all_trusted.p/2-0 (det)
 mdb> dd -d 3 -n 7 -a
-All descendent calls are trusted.
+All descendant calls are trusted.
 Shall I continue searching in ancestor calls?
 > y
 2No bug found.

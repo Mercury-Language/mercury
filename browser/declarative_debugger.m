@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2022, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -509,7 +509,7 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             OutputStream =
                 get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
             io.write_string(OutputStream,
-                "All descendent calls are trusted.\n" ++
+                "All descendant calls are trusted.\n" ++
                 "Shall I continue searching in ancestor calls?\n", !IO),
             read_search_supertree_response(!.Diagnoser, Response, !IO),
             (

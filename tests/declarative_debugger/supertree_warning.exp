@@ -14,7 +14,7 @@ mdb> c
 mdb> f
       E3:     C2 EXIT pred supertree_warning.q/2-0 (det)
 mdb> dd -d 3 -n 7 -a
-All descendent calls are trusted.
+All descendant calls are trusted.
 Shall I continue searching in ancestor calls?
 > maybe
 Please answer yes or no.
@@ -24,7 +24,7 @@ Valid? quit
 Diagnosis aborted.
       E3:     C2 EXIT pred supertree_warning.q/2-0 (det)
 mdb> dd -d 3 -n 7 -a
-All descendent calls are trusted.
+All descendant calls are trusted.
 Shall I continue searching in ancestor calls?
 > n
 Diagnosis aborted.
