@@ -280,12 +280,6 @@
 :- pred all_du_ctor_arg_types(module_info::in, mer_type::in,
     list({string, arity, list(mer_type)})::out) is det.
 
-    % Is this type a du type?
-    %
-% ZZZ
-:- pred type_is_du_type(module_info::in, mer_type::in,
-    hlds_type_defn::out, type_body_du::out) is semidet.
-
     % Given a type constructor and one of its cons_ids, look up the definition
     % of that cons_id. Fails if the cons_id is not user-defined.
     %
@@ -1598,13 +1592,6 @@ get_user_ctor_arg_types(TypeParams, TypeCtorArgTypes, Ctor,
     CtorArgTypes0 = list.map(func(C) = C ^ arg_type, CtorArgs),
     apply_subst_to_types(TSubst, CtorArgTypes0, CtorArgTypes),
     Name = unqualify_name(SymName).
-
-type_is_du_type(ModuleInfo, Type, TypeDefn, TypeBodyDu) :-
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    type_to_ctor(Type, TypeCtor),
-    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(TypeBodyDu).
 
 get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
