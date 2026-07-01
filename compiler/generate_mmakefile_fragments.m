@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
     %   or (more rarely) with "mmc --generate-dependency-file", and
     %
     % - when the compiler is auto-updating the .d file of a module that
-    %   it has build a HLDS for, usually for semantic analysis followed
+    %   it has built a HLDS for, usually for semantic analysis followed
     %   by target code generation.
     %
     % This module, d_file_deps.m and write_deps_file.m refer to the first
@@ -246,7 +246,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -255,6 +254,7 @@
 
 :- import_module bool.
 :- import_module cord.
+:- import_module dir.
 :- import_module library.
 :- import_module map.
 :- import_module one_or_more.
@@ -1893,6 +1893,38 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     add_mmake_fragment(MmakeFragmentLibTarget, !MmakeFile),
     add_mmake_fragment(MmakeFragmentSharedLib, !MmakeFile),
     add_mmake_entries([MmakeRuleLib, MmakeRuleJar], !MmakeFile).
+
+    % Given a `mmake' variable reference to a list of .class files, return a
+    % gmake expression that generates the list of arguments that `jar' can use
+    % to refer to that set of class files.
+    %
+    % This does a similar job to list_class_files_for_jar in
+    % link_target_code.m, but the details are completely different.
+    %
+:- pred list_class_files_for_jar_mmake(globals::in, string::in, string::out)
+    is det.
+
+list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
+    % XXX LEGACY
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
+        ClassSubDirPath, _ClassSubDirPathProposed),
+    (
+        ClassSubDirPath = [],
+        ListClassFiles = ClassFiles
+    ;
+        ClassSubDirPath = [_ | _],
+        ClassSubDir = dir.relative_path_name_from_components(ClassSubDirPath),
+        % Here we use the `-C' option of jar to change directory during
+        % execution, then use sed to strip away the Mercury/classes/ prefix
+        % to the class files.
+        % Otherwise, the class files would be stored as
+        %   Mercury/classes/*.class
+        % within the jar file, which is not what we want.
+        % XXX It would be nice to avoid this dependency on sed.
+        ListClassFiles = "-C " ++ ClassSubDir ++ " \\\n" ++
+            "\t\t`echo "" " ++ ClassFiles ++ """" ++
+            " | sed 's| '" ++ ClassSubDir ++ "/| |'`"
+    ).
 
 %---------------------%
 
