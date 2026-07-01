@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1630,7 +1630,7 @@ module_name_to_target_timestamp_file_name_create_dirs(Globals, ModuleName,
     ),
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, TimestampExt,
-            ModuleName, TimestampFileName, _TimestampFileNameProposed, !IO).
+        ModuleName, TimestampFileName, _TimestampFileNameProposed, !IO).
 
 %---------------------%
 
