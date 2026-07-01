@@ -31,8 +31,7 @@
 %-----------------------------------------------------------------------------%
 
     % This type is useful when defining options and behaviours that may
-    % raise either an error or a warning.  See
-    % pragma_require_tail_recursion.
+    % raise either an error or a warning. See require_tail_recursion pragmas.
     %
 :- type warning_or_error
     --->    we_warning
