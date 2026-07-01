@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -111,6 +111,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.create_launchers.
 :- import_module libs.file_util.
 :- import_module libs.mmakefiles.
 :- import_module libs.options.
@@ -119,7 +121,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_parse_tree.
 

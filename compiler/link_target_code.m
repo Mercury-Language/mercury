@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -178,6 +178,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.create_launchers.
 :- import_module libs.options.
 :- import_module libs.shell_util.
 :- import_module libs.system_cmds.
@@ -1379,8 +1380,8 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
     then
         construct_cli_shell_script_for_csharp(Globals, FullOutputFileName,
             ContentStr),
-        create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            ContentStr, Succeeded, !IO)
+        create_shell_script_as_executable(ProgressStream, Globals,
+            MainModuleName, ContentStr, Succeeded, !IO)
     else
         Succeeded = Succeeded0
     ).

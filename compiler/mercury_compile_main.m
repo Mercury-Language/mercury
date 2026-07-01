@@ -41,6 +41,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.create_launchers.
 :- import_module backend_libs.link_target_code.
 :- import_module check_hlds.
 :- import_module check_hlds.switch_detection.
@@ -498,6 +499,12 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
         ( Target = target_c
         ; Target = target_csharp
         ),
+        % XXX The code below is appropriate for creating real, actual
+        % executable files, as used by the C backend. Why are we executing
+        % the same code for C#, whose backend uses a launcher script,
+        % not a real executable? This totally does the wrong thing
+        % for e.g. "mmc --grade csharp a.m b.m c.m".
+        %
         % XXX STREAM
         % Should we go from non-main-module-specific
         % progress and error streams to main-module-specific streams?
