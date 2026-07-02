@@ -1856,7 +1856,7 @@ get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
             Pieces = [words(Error), suffix("."), nl],
             % XXX SEARCH_ERROR _SearchDirs
             Spec = no_ctxt_spec($pred, severity_error,
-                phase_find_files(LibFileName), Pieces),
+                phase_find_files(LibFileName, no), Pieces),
             !:Specs = [Spec],
             !:Succeeded = did_not_succeed
         )

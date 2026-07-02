@@ -149,7 +149,7 @@ write_source_file_map(ErrorStream, Globals, FileNames, !IO) :-
             Pieces = [fixed(Progname), suffix(":"), words("error opening"),
                 quote(ModulesFileName), words("for output:"),
                 words(ErrorMsg), suffix("."), nl],
-            Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
+            Spec = no_ctxt_spec($pred, severity_error, phase_write_files,
                 Pieces),
             write_error_spec(ErrorStream, Globals, Spec, !IO)
         )
@@ -241,7 +241,8 @@ find_name_of_module_in_file(FileName, MaybeModuleName, !IO) :-
         io.progname_base("mercury_compile", Progname, !IO),
         Pieces = [fixed(Progname), suffix(":"), words("error opening"),
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error,
+            phase_find_files(FileName, no), Pieces),
         MaybeModuleName = error1([Spec])
     ).
 

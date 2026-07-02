@@ -186,7 +186,7 @@ expand_at_file_arguments_loop([Arg | Args], !ExpandedArgs, !Specs, !IO) :-
             % NOTE read_named_file_as_lines_wf does not just open the file;
             % it also reads its contents. Failures can occur in either part.
             Spec = construct_spec_for_cannot_open_file_for_input(FileName,
-                IOError),
+                no, IOError),
             !:Specs = [Spec | !.Specs]
         )
     else

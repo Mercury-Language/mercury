@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -170,7 +170,7 @@ get_used_file_should_we_recompile_module(ProgressStream, Globals,
     ;
         ReadUsedFileResult = used_file_error(UsedFileError),
         maybe_write_recompilation_message(ProgressStream, Globals,
-            write_used_file_error(Globals, ModuleName, UsedFileError),
+            report_used_file_read_error(Globals, ModuleName, UsedFileError),
             !IO),
         !Info ^ rci_what_to_recompile := all_file_components
     ).
@@ -1677,10 +1677,10 @@ maybe_write_recompilation_message(ProgressStream, Globals, P, !IO) :-
 
 %---------------------%
 
-:- pred write_used_file_error(globals::in, module_name::in,
+:- pred report_used_file_read_error(globals::in, module_name::in,
     used_file_error::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
+report_used_file_read_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
         suffix(":"), nl],
     % Changing this to severity_error causes lots of test case failures
@@ -1689,7 +1689,9 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     (
         UsedFileError = uf_read_error(FileName, _IOError),
         Pieces = [words("file"), quote(FileName), words("not found."), nl],
-        Spec = no_ctxt_spec($pred, Severity, phase_read_files,
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used),
+        Spec = no_ctxt_spec($pred, Severity,
+            phase_find_files(FileName, yes(module_file_id(ModuleName, Ext))),
             PrefixPieces ++ Pieces)
     ;
         UsedFileError = uf_invalid_file_format(FileName),

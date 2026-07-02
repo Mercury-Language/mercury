@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2019-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -884,8 +884,7 @@ check_analysis_file_version_number(FileName, FileStr, MaxOffset,
             words("but it does not."), nl],
         LineContext0 = line_context(LineNumber, _),
         Context = context(FileName, LineNumber),
-        Spec = spec($pred, severity_error, phase_read_files,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_read_files, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -911,8 +910,7 @@ parse_analysis_file_entries(FileName, FileStr, MaxOffset, ParseEntry,
         Pieces = [words(Msg), nl],
         LineContext0 = line_context(LineNumber, _),
         Context = context(FileName, LineNumber),
-        Spec = spec($pred, severity_error, phase_read_files,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_read_files, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

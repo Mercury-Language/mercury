@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2019-2025 The Mercury team.
+% Copyright (C) 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -633,8 +633,11 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
             HaveReadOwnPlainOpt0 =
                 have_not_read_module(OwnOptFileName, OwnOptModuleErrors),
             ParseTreePlainOpts = ParseTreePlainOpts0,
+            PlainOptExt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
+            OwnOptModuleFileId = module_file_id(ModuleName, PlainOptExt),
             report_cannot_read_opt_file(Globals, warn_missing_opt_files,
-                OwnOptFileName, OwnOptModuleErrors,
+                OwnOptFileName, OwnOptModuleFileId, OwnOptModuleErrors,
                 NonBlockingSpecs0, NonBlockingSpecs)
         )
     else
@@ -1445,8 +1448,11 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         )
     ;
         HaveReadPlainOpt = have_not_read_module(FileName, ModuleErrors),
+        PlainOptExt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
+        ModuleFileId = module_file_id(ModuleName, PlainOptExt),
         report_cannot_read_opt_file(Globals, warn_missing_opt_files,
-            FileName, ModuleErrors, !NonBlockingSpecs),
+            FileName, ModuleFileId, ModuleErrors, !NonBlockingSpecs),
         ModuleNames1 = ModuleNames0,
         DontQueueOptModules1 = DontQueueOptModules0
     ),
@@ -1480,7 +1486,10 @@ read_trans_opt_files(ProgressStream, Globals, [ModuleName | ModuleNames],
     ;
         HaveReadTransOpt = have_not_read_module(FileName, ReadErrors),
         WarnOpt = warn_missing_trans_opt_files,
-        report_cannot_read_opt_file(Globals, WarnOpt, FileName,
+        TransOptExt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
+        ModuleFileId = module_file_id(ModuleName, TransOptExt),
+        report_cannot_read_opt_file(Globals, WarnOpt, FileName, ModuleFileId,
             ReadErrors, !NonBlockingSpecs)
     ),
     read_trans_opt_files(ProgressStream, Globals, ModuleNames,
@@ -1503,10 +1512,10 @@ read_trans_opt_files(ProgressStream, Globals, [ModuleName | ModuleNames],
     % respectively.
     %
 :- pred report_cannot_read_opt_file(globals::in, option::in,
-    file_name::in, read_module_errors::in,
+    file_name::in, module_file_id::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_cannot_read_opt_file(Globals, WarnOption, FileName,
+report_cannot_read_opt_file(Globals, WarnOption, FileName, ModuleFileId,
         ReadModuleErrors, !NonBlockingSpecs) :-
     % We get here if we couldn't find and/or open the file.
     % ModuleErrors ^ rm_fatal_error_specs will already contain
@@ -1528,7 +1537,7 @@ report_cannot_read_opt_file(Globals, WarnOption, FileName,
             suffix("."), nl],
         FatalErrors = ReadModuleErrors ^ rm_fatal_errors,
         ( if set.contains(FatalErrors, frme_could_not_find_file) then
-            Phase = phase_find_files(FileName)
+            Phase = phase_find_files(FileName, yes(ModuleFileId))
         else
             Phase = phase_read_files
         ),

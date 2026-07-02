@@ -3114,7 +3114,7 @@ optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         w("Generate messages if the arguments of a data constructor"),
         w("could be packed more tightly if they were reordered.")])).
-optdb(oc_inform, show_pred_movability,              accumulating([]),
+optdb(oc_inform,    show_pred_movability,              accumulating([]),
     alt_arg_help("show-pred-moveability",
             ["show-pred-movability"], "pred_or_func_name", [
         w("Write out a short report on the effect of moving the code of"),

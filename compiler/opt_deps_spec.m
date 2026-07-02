@@ -1,12 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % File: opt_deps_spec.m.
+%
+% This module figures out dependencies involving both .opt and .trans_opt
+% files. Most of the code implements the --trans-opt-deps-spec option.
 %
 %---------------------------------------------------------------------------%
 
@@ -23,6 +26,10 @@
 :- import_module io.
 :- import_module list.
 
+    % compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
+    %   ImpDepsGraph, IndirectOptDepsGraph, TransOptDepsGraph,
+    %   TransOptDepsOrdering, !Specs, !IO)
+    %
 :- pred compute_opt_trans_opt_deps_graph(io.text_output_stream::in,
     globals::in, module_name::in, digraph(module_name)::in,
     digraph(module_name)::out, digraph(module_name)::out,
@@ -62,8 +69,8 @@
 %---------------------------------------------------------------------------%
 
 compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
-        ImpDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptDepsOrdering, !Specs, !IO) :-
+        ImpDepsGraph, IndirectOptDepsGraph, TransOptDepsGraph,
+        TransOptDepsOrdering, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, also_output_module_order, OutputOrder),
     (
         OutputOrder = yes,
@@ -244,7 +251,8 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
         ReadResult = error(Error),
         Pieces = [words("Error: cannot open"), quote(FileName), suffix(":"),
             words(io.error_message(Error)), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error,
+            phase_find_files(FileName, no), Pieces),
         Result = error1([Spec])
     ).
 

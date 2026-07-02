@@ -500,7 +500,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 else
                     ErrorFile = FileToFind
                 ),
-                Phase = phase_find_files(ErrorFile),
+                Phase = phase_find_files(ErrorFile, no),
                 Pieces = [words("Error: cannot open options file"),
                     quote(ErrorFile), suffix(":"),
                     words(Error), suffix("."), nl],
@@ -923,8 +923,7 @@ parse_variable_name(FileName, LineNumber, Chars0, Chars, MaybeVarName) :-
         Pieces = [words("expected variable name before"),
             quote(string.from_char_list(FirstWordChars)), suffix("."), nl],
         Context = term_context.context(FileName, LineNumber),
-        Spec = spec($pred, severity_error, phase_read_files,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_read_files, Context, Pieces),
         MaybeVarName = ovos_spec(Spec)
     else
         MaybeVarName = ovos_var_name(VarName)
@@ -1274,8 +1273,7 @@ report_unterminated_variable_reference(FileName, LineNumber, RevChars)
     Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error: unterminated reference to a variable after"),
         quote(string.from_rev_char_list(RevChars)), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_read_files,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_read_files, Context, Pieces).
 
 :- pred report_any_undefined_variables(file_name::in, int::in,
     set(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -1469,8 +1467,7 @@ check_ml_libs_values(VarValues, !Specs) :-
         Pieces = [words("Error: MLLIBS must contain only"),
             quote("-l"), words("options, found")] ++
             quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

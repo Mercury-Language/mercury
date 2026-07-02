@@ -125,8 +125,8 @@
 :- pred report_cannot_open_file_for_output_nc(io.text_output_stream::in,
     file_name::in, io.error::in, io::di, io::uo) is det.
 
-:- func construct_spec_for_cannot_open_file_for_input(file_name, io.error)
-    = error_spec.
+:- func construct_spec_for_cannot_open_file_for_input(file_name,
+    maybe(module_file_id), io.error) = error_spec.
 :- func construct_spec_for_cannot_open_file_for_output(file_name, io.error)
     = error_spec.
 
@@ -428,17 +428,19 @@ report_cannot_open_file_for_output_nc(ProgressStream, FileName,
 
 %---------------------------------------------------------------------------%
 
-construct_spec_for_cannot_open_file_for_input(FileName, IOError) = Spec :-
+construct_spec_for_cannot_open_file_for_input(FileName, MaybeModuleFileId,
+        IOError) = Spec :-
+    Phase = phase_find_files(FileName, MaybeModuleFileId),
     IOErrorMsg = io.error_message(IOError),
     Msg = msg_for_cannot_open_file_for_input(FileName, IOErrorMsg),
     Pieces = [words(Msg), nl],
-    Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces).
+    Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces).
 
 construct_spec_for_cannot_open_file_for_output(FileName, IOError) = Spec :-
     IOErrorMsg = io.error_message(IOError),
     Msg = msg_for_cannot_open_file_for_output(FileName, IOErrorMsg),
     Pieces = [words(Msg), nl],
-    Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces).
+    Spec = no_ctxt_spec($pred, severity_error, phase_write_files, Pieces).
 
 %---------------------------------------------------------------------------%
 

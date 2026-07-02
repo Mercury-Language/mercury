@@ -438,26 +438,53 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         % Print all remaining module-specific error_specs,
         % as well as the ones generated just above.
         write_error_specs(ErrorStream, Globals, !.Specs, !IO),
-        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
-
         io.get_exit_status(ExitStatus, !IO),
-        ( if ExitStatus = 0 then
+        ( if
+            OpModeArgs = opma_augment(opmau_front_and_middle(
+                opfam_target_object_and_executable)),
             ModulesToLink = cord.list(ModulesToLinkCord),
-            ExtraObjFiles = cord.list(ExtraObjFilesCord),
+            ModulesToLink = [FirstModule | _]
+        then
             ( if
-                OpModeArgs = opma_augment(opmau_front_and_middle(
-                    opfam_target_object_and_executable)),
-                ModulesToLink = [FirstModule | _]
+                ExitStatus = 0
             then
+                ExtraObjFiles = cord.list(ExtraObjFilesCord),
                 generate_executable(ProgressStream, ErrorStream, Globals,
                     InvokedByMmcMake, Params,
                     FirstModule, ModulesToLink, ExtraObjFiles, !IO)
+            else if
+                all_args_end_in_dot_m(Args) = yes,
+                % XXX We should test not only !.Specs, but ALL the
+                % error_specs we have already printed *before* the call
+                % to write_error_specs above.
+                could_not_read_some_int_file(!.Specs) = yes
+            then
+                % Should we add the condition that all words in Args
+                % end with ".m"?
+                Pieces = [words("You can invoke the Mercury compiler"),
+                    words("with a list of Mercury source files to compile")] ++
+                    color_as_incorrect([words("only")]) ++
+                    [words("if you have previously built"),
+                    words("all the interface files they need, and,"),
+                    words("if intermodule is enabled,"),
+                    words("all the optimization interface files they need."),
+                    words("Since arranging all this by hand is tedious,"),
+                    words("you should consider using either"),
+                    quote("mmc --make"), words("or"), quote("mmake"),
+                    words("as a build system."), nl],
+                % The severity option and phase are not appropriate, but
+                % (a) we do not have an appropriate option or phase, and
+                % (b) we do not need them.
+                Severity = severity_informational(warn_dodgy_simple_code),
+                Spec = no_ctxt_spec($pred, Severity, phase_style, Pieces),
+                !:Specs = [Spec | !.Specs]
             else
                 true
             )
         else
             true
-        )
+        ),
+        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO)
     ;
         LibgradeCheckSpecs = [_ | _],
         % Print all remaining module-specific error_specs.
@@ -480,6 +507,46 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
     ;
         Statistics = no
     ).
+
+:- func all_args_end_in_dot_m(list(string)) = bool.
+
+all_args_end_in_dot_m([]) = yes.
+all_args_end_in_dot_m([Arg | Args]) = AllEndInDotM :-
+    ( if string.suffix(Arg, ".m") then
+        AllEndInDotM = all_args_end_in_dot_m(Args)
+    else
+        AllEndInDotM = no
+    ).
+
+:- func could_not_read_some_int_file(list(error_spec)) = bool.
+
+could_not_read_some_int_file([]) = no.
+could_not_read_some_int_file([Spec | Specs]) = CouldNotRead :-
+    extract_spec_phase(Spec, Phase),
+    ( if
+        Phase = phase_find_files(_FileName, MaybeModuleFileId),
+        MaybeModuleFileId = yes(ModuleFileId),
+        ModuleFileId = module_file_id(_ModuleName, Ext),
+        (
+            Ext = ext_cur_ngs(ExtInt),
+            ( ExtInt = ext_cur_ngs_int_int0
+            ; ExtInt = ext_cur_ngs_int_int1
+            ; ExtInt = ext_cur_ngs_int_int2
+            ; ExtInt = ext_cur_ngs_int_int3
+            )
+        ;
+            Ext = ext_cur_ngs_gs_max_ngs(ExtOpt),
+            ( ExtOpt = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+            ; ExtOpt = ext_cur_ngs_gs_max_ngs_legacy_opt_trans
+            )
+        )
+    then
+        CouldNotRead = yes
+    else
+        CouldNotRead = could_not_read_some_int_file(Specs)
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred generate_executable(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_invoked_by_mmc_make::in,
@@ -976,7 +1043,7 @@ handle_not_found_files(Specs0, Specs, Continue) :-
 
 acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
     extract_spec_phase(Spec, Phase),
-    ( if Phase = phase_find_files(FileName) then
+    ( if Phase = phase_find_files(FileName, _) then
         !:NotFoundFiles = [fixed(FileName) | !.NotFoundFiles]
     else
         !:OtherSpecs = [Spec | !.OtherSpecs]

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -458,7 +458,7 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, Search, ModuleName,
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
         io_error_to_read_module_errors(frme_could_not_open_file,
-            phase_find_files(FileName0), ErrorMsg, Errors0, !IO),
+            phase_find_files(FileName0, no), ErrorMsg, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, mfas_error(Errors0),
             fk_src, ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors, !IO),
@@ -492,7 +492,7 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
         io_error_to_read_module_errors(frme_could_not_open_file,
-            phase_find_files(FileNameDotM), ErrorMsg, Errors0, !IO),
+            phase_find_files(FileNameDotM, no), ErrorMsg, Errors0, !IO),
         read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
             no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileNameDotM, Errors)
@@ -592,6 +592,7 @@ read_module_int0(ProgressStream, Globals, ReadReasonMsg, Search,
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int0), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
+        yes(module_file_id(ModuleName, ext_cur_ngs(ext_cur_ngs_int_int0))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -624,6 +625,7 @@ read_module_int1(ProgressStream, Globals, ReadReasonMsg, Search,
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int1), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
+        yes(module_file_id(ModuleName, ext_cur_ngs(ext_cur_ngs_int_int1))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -656,6 +658,7 @@ read_module_int2(ProgressStream, Globals, ReadReasonMsg, Search,
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int2), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
+        yes(module_file_id(ModuleName, ext_cur_ngs(ext_cur_ngs_int_int2))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -688,6 +691,7 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, Search,
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int3), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
+        yes(module_file_id(ModuleName, ext_cur_ngs(ext_cur_ngs_int_int3))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -726,6 +730,8 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_opt(ofk_opt), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
+        yes(module_file_id(ModuleName,
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -764,6 +770,8 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
         ModuleName, fk_opt(ofk_trans_opt), FileName0, ReadDoneMsg,
         SearchAuthDirs, !IO),
     search_for_file_and_stream_or_error(SearchAuthDirs, FileName0,
+        yes(module_file_id(ModuleName,
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans))),
         MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream),
@@ -1104,7 +1112,7 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
     --->    mfas_ok(path_name_and_stream)
     ;       mfas_error(read_module_errors).
 
-    % search_for_file_and_stream_or_error(Dirs, FileName,
+    % search_for_file_and_stream_or_error(Dirs, FileName, MaybeModuleFileId,
     %   MaybeFilePathNameAndStream, !IO):
     %
     % Search Dirs for FileName. If found, return the path name of the file
@@ -1112,10 +1120,11 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
     % is the caller's responsibility.
     %
 :- pred search_for_file_and_stream_or_error(search_auth_dirs::in,
-    file_name::in, maybe_file_and_stream::out, io::di, io::uo) is det.
+    file_name::in, maybe(module_file_id)::in, maybe_file_and_stream::out,
+    io::di, io::uo) is det.
 
 search_for_file_and_stream_or_error(SearchAuthDirs, FileName0,
-        MaybeFileNameAndStream, !IO) :-
+        MaybeModuleFileId, MaybeFileNameAndStream, !IO) :-
     % NB. Consider using search_for_file_returning_dir_and_stream,
     % which does not canonicalise the path, and is therefore more efficient.
     search_for_file_and_stream(SearchAuthDirs, FileName0,
@@ -1127,7 +1136,8 @@ search_for_file_and_stream_or_error(SearchAuthDirs, FileName0,
         RawMaybeFileNameAndStream = error(ErrorMsg),
         % XXX SEARCH_ERROR _SearchDirs
         io_error_to_read_module_errors(frme_could_not_find_file,
-            phase_find_files(FileName0), ErrorMsg, Errors, !IO),
+            phase_find_files(FileName0, MaybeModuleFileId), ErrorMsg,
+            Errors, !IO),
         MaybeFileNameAndStream = mfas_error(Errors)
     ).
 

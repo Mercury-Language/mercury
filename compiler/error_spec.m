@@ -25,6 +25,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
@@ -153,12 +154,24 @@
     ;       phase_check_libs
     ;       phase_make_target
     ;       phase_make_int
-    ;       phase_find_files(string)
-            % The name of the file we tried to find, but failed.
+    ;       phase_find_files(string, maybe(module_file_id))
+            % The first argument is name of the file we tried but failed
+            % to open for reading, possibly after a search.
             % The intention is to make it possible to use this info
             % to replace several messages that all report failures
             % to find files with a single, shorter message to that effect.
+            %
+            % If the file we wanted to open for reading is module.ext
+            % for some module name and extension, then we record this fact
+            % in the second argument. (Note that source files do not have
+            % a representation in the ext type.)
     ;       phase_read_files
+            % We use this phase to report both failed attempts to read files
+            % after having opened them, and both parse errors and semantic
+            % errors that were discovered while reading the file.
+    ;       phase_write_files
+            % We use this phase to report failed attempts to open files
+            % for writing.
     ;       phase_module_name
     ;       phase_t2pt              % short for "term to parse tree"
     % The "tim" in the next few phase names is short for "type inst mode".
@@ -192,6 +205,11 @@
 :- type mode_report_control
     --->    report_in_any_mode
     ;       report_only_if_in_all_modes.
+
+:- type module_file_id
+    --->    module_file_id(module_name, ext).
+            % The file we could not find belonged to this module,
+            % and had this extension.
 
 %---------------------------------------------------------------------------%
 
