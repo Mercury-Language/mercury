@@ -233,11 +233,6 @@ peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
         MaybeResult = error2(_PartialFileString, _FileStringLen, ErrorCode),
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
-        % ZZZ
-        % It is arguable whether the phase here should be phase_find_files,
-        % but since SourceFileName0 *should* be a source file, and our use of
-        % phase_find_files is restricted to other kinds of files, it does not
-        % matter.
         io_error_to_error_spec(phase_find_files(SourceFileName0, no),
             ErrorMsg, Spec, !IO),
         MaybeModuleName = error1([Spec])
