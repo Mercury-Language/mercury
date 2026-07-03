@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -211,6 +211,7 @@
 :- import_module parse_tree.module_cmds.
 
 :- import_module dir.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module require.
 :- import_module string.
@@ -627,6 +628,31 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
         ProgressStream, ProgressStream, cmd_verbose_commands,
         JavaCompiler, NonAtFileCommandArgs, CommandArgs, MaybeMFilterJavac,
         Succeeded, !IO).
+
+    % Get the value of the Java class path from the environment. (Normally
+    % it will be obtained from the CLASSPATH environment variable, but if
+    % that isn't present, then we use the value of the java.class.path
+    % environment variable used instead.
+    %
+    % This is used for the Java back-end, which does not support environment
+    % variables properly.
+    %
+:- pred get_env_classpath(string::out, io::di, io::uo) is det.
+
+get_env_classpath(Classpath, !IO) :-
+    io.environment.get_environment_var("CLASSPATH", MaybeCP, !IO),
+    (
+        MaybeCP = yes(Classpath)
+    ;
+        MaybeCP = no,
+        io.environment.get_environment_var("java.class.path", MaybeJCP, !IO),
+        (
+            MaybeJCP = yes(Classpath)
+        ;
+            MaybeJCP = no,
+            Classpath = ""
+        )
+    ).
 
 :- func java_classpath_separator = string.
 

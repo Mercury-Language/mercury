@@ -165,16 +165,6 @@
     %
 :- pred get_mercury_std_libs_for_java(globals::in, list(string)::out) is det.
 
-    % Get the value of the Java class path from the environment. (Normally
-    % it will be obtained from the CLASSPATH environment variable, but if
-    % that isn't present, then we use the value of the java.class.path
-    % environment variable used instead.
-    %
-    % This is used for the Java back-end, which does not support environment
-    % variables properly.
-    %
-:- pred get_env_classpath(string::out, io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -185,7 +175,6 @@
 
 :- import_module bool.
 :- import_module dir.
-:- import_module io.environment.
 :- import_module io.file.
 :- import_module maybe.
 :- import_module string.
@@ -418,23 +407,6 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
         list.cons(StdLibDir/"lib"/GradeDir/"mer_rt.jar", !StdLibs)
     ;
         MaybeStdLibDir = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
-get_env_classpath(Classpath, !IO) :-
-    io.environment.get_environment_var("CLASSPATH", MaybeCP, !IO),
-    (
-        MaybeCP = yes(Classpath)
-    ;
-        MaybeCP = no,
-        io.environment.get_environment_var("java.class.path", MaybeJCP, !IO),
-        (
-            MaybeJCP = yes(Classpath)
-        ;
-            MaybeJCP = no,
-            Classpath = ""
-        )
     ).
 
 %-----------------------------------------------------------------------------%
