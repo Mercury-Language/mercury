@@ -25,6 +25,8 @@
 :- include_module foreign.
 :- include_module interval.
 :- include_module link_target_code.
+:- include_module link_target_code_c.
+:- include_module link_target_util.
 :- include_module lookup_switch_util.
 :- include_module matching.
 :- include_module name_mangle.

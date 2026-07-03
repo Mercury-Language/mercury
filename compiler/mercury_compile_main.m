@@ -42,7 +42,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.create_launchers.
-:- import_module backend_libs.link_target_code.
+:- import_module backend_libs.link_target_code_c.
 :- import_module check_hlds.
 :- import_module check_hlds.switch_detection.
 :- import_module hlds.

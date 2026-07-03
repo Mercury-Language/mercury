@@ -63,6 +63,8 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.link_target_code.
+:- import_module backend_libs.link_target_code_c.
+:- import_module backend_libs.link_target_util.
 :- import_module libs.check_libgrades.
 :- import_module libs.file_util.
 :- import_module libs.options.
@@ -697,10 +699,10 @@ maybe_warn_linked_target_up_to_date(ProgressStream,
         % We did not just perform a link, but check whether the other copy
         % of the would-have-been-linked-if-that-were-needed file has to be
         % re-copied.
-        post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals, ProgressStream,
+        post_link_maybe_make_symlink_or_copy(ProgressStream, NoLinkObjsGlobals,
+            LinkedTargetType, MainModuleName,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-            MainModuleName, LinkedTargetType, Succeeded,
-            MadeSymlinkOrCopy, !IO),
+            Succeeded, MadeSymlinkOrCopy, !IO),
         (
             MadeSymlinkOrCopy = yes,
             maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,

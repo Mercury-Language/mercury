@@ -2626,8 +2626,13 @@ converting C# code to .dll files
 (containing .NET Common Intermediate Language).
 <li>
 link_target_code.m invokes compilers and/or linkers
-for our various target languages
+for C# and Java
 to convert the generated code into executables.
+<li>
+link_target_code_c.m does the same for C.
+<li>
+link_target_util.m defines types and operations
+for the two modules just above.
 <li>
 string_encoding.m: defines utility predicates related to string encodings.
 <li>

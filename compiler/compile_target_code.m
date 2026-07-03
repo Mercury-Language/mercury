@@ -91,6 +91,10 @@
     % make_init_obj_file(ProgressStream, Globals, MustCompile,
     %   MainModuleName, AllModuleNames, MaybeInitObjFileName, !IO):
     %
+    % NOTE: it would seem sensible to use a bespoke enum type for
+    % the MustCompile argument, but some our callers pass as that argument
+    % the value of a boolean option.
+    %
 :- pred make_init_obj_file(io.text_output_stream::in, globals::in, bool::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.

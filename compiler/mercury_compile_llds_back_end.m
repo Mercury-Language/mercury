@@ -63,7 +63,7 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.link_target_code.
+:- import_module backend_libs.link_target_code_c.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
