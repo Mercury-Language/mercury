@@ -22,9 +22,10 @@
 % - to mercury_compile_main.m, to allow it to create the launcher as part of
 %   the opfam_target_object_and_executable op_mode.
 %
-% The C# backend was designed NOT to support Mmake, and mercury_compile_main.m
-% flat out IGNORES the job of create launcher scripts for that op_mode when
-% targeting C#.
+% Unlike the Java backend, which has some (quite incomplete) support from
+% mmake, the C# backend was has NO support from mmake, and
+% mercury_compile_main.m flat out IGNORES the job of creating
+% launcher scripts (if needed) for that op_mode when targeting C#.
 %
 % This is why the C# equivalent of create_java_shell_script is local to
 % link_target_code.m. If and when we ever fix the IGNORE above (if that fix
