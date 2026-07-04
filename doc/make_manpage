@@ -247,5 +247,5 @@ END {
     print ".SH SEE ALSO"
     print "The Mercury User's Guide."
     print ".PP"
-    print "<http://www.mercurylang.org/information/documentation.html>"
+    print "<https://www.mercurylang.org/documentation/documentation.html>"
 }
