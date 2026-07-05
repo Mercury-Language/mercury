@@ -608,10 +608,10 @@ mapped_extension_top_target_file(Globals, ModuleNameStr0, ExtStr,
     ;
         (
             LinkedTargetKind = ltk_static_library,
-            TargetType = linked_target(static_library)
+            TargetType = linked_target(c_static_library)
         ;
             LinkedTargetKind = ltk_shared_library,
-            TargetType = linked_target(shared_library)
+            TargetType = linked_target(c_shared_library)
         ;
             LinkedTargetKind = ltk_library_install,
             TargetType = misc_target(misc_target_install_library)
@@ -642,7 +642,7 @@ get_executable_type(Globals) = ExecutableType :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        ExecutableType = executable
+        ExecutableType = c_executable
     ;
         CompilationTarget = target_csharp,
         ExecutableType = csharp_executable

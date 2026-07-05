@@ -121,14 +121,14 @@ link_files_into_executable_or_library_for_c_cs_java(ProgressStream, Globals,
     linked_target_file_name_full_curdir(Globals, ModuleName, LinkedTargetType,
         FullOutputFileName, CurDirOutputFileName, !IO),
     (
-        ( LinkedTargetType = executable
-        ; LinkedTargetType = shared_library
+        ( LinkedTargetType = c_executable
+        ; LinkedTargetType = c_shared_library
         ),
         create_exe_or_shared_lib_for_c(ProgressStream, Globals,
             LinkedTargetType, ModuleName, FullOutputFileName, FilesToLink,
             Specs, LinkSucceeded, !IO)
     ;
-        LinkedTargetType = static_library,
+        LinkedTargetType = c_static_library,
         create_static_lib_for_c(ProgressStream, Globals,
             FullOutputFileName, yes, FilesToLink, LinkSucceeded, !IO),
         Specs = []

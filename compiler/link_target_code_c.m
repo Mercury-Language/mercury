@@ -167,7 +167,7 @@ link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
     AllNonInitObjectFileNames =
         ModuleObjectFileNames ++ ExtraLinkFileNames ++ ExtraObjFileNames,
     (
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         MustCompile = yes,
         make_init_obj_file(ProgressStream, Globals, MustCompile,
             MainModuleName, ModuleNames, InitObjResult, !IO),
@@ -180,7 +180,7 @@ link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
             MaybeFilesToLink = no
         )
     ;
-        LinkedTargetType = shared_library,
+        LinkedTargetType = c_shared_library,
         MaybeFilesToLink = yes(AllNonInitObjectFileNames)
     ),
     (
@@ -211,7 +211,7 @@ link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
 create_exe_or_shared_lib_for_c(ProgressStream, Globals, LinkedTargetType,
         ModuleName, FullOutputFileName, ObjectsList, Specs, Succeeded, !IO) :-
     (
-        LinkedTargetType = shared_library,
+        LinkedTargetType = c_shared_library,
         CommandOpt = link_shared_lib_command,
         RpathFlagOpt = shlib_linker_rpath_flag,
         RpathSepOpt = shlib_linker_rpath_separator,
@@ -231,7 +231,7 @@ create_exe_or_shared_lib_for_c(ProgressStream, Globals, LinkedTargetType,
         ),
         ReserveStackSizeOpt = ""
     ;
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         CommandOpt = link_executable_command,
         RpathFlagOpt = linker_rpath_flag,
         RpathSepOpt = linker_rpath_separator,
@@ -264,7 +264,7 @@ create_exe_or_shared_lib_for_c(ProgressStream, Globals, LinkedTargetType,
     % Should the executable be statically linked?
     globals.get_linkage(Globals, Linkage),
     ( if
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         Linkage = sos_static
     then
         globals.lookup_string_option(Globals, linker_static_flags, StaticOpts)
@@ -436,7 +436,7 @@ get_strip_flags_for_c(Globals, LinkedTargetType,
     % Should the executable be stripped?
     globals.lookup_bool_option(Globals, strip, Strip),
     ( if
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         Strip = yes
     then
         globals.lookup_string_option(Globals, linker_strip_flag,
@@ -507,7 +507,7 @@ get_restricted_command_line_link_opts_for_c(Globals, LinkedTargetType,
     (
         RestrictedCommandLine = yes,
         (
-            LinkedTargetType = executable,
+            LinkedTargetType = c_executable,
             get_c_compiler_type(Globals, C_CompilerType),
             (
                 C_CompilerType = cc_cl_x86(_),
@@ -553,7 +553,7 @@ get_restricted_command_line_link_opts_for_c(Globals, LinkedTargetType,
                 RestrictedCmdLinkOpts = ""
             )
         ;
-            LinkedTargetType = shared_library,
+            LinkedTargetType = c_shared_library,
             RestrictedCmdLinkOpts = ""
         )
     ;
@@ -572,7 +572,7 @@ get_install_name_opt_for_c(Globals, ModuleName, LinkedTargetType,
         UseInstallName),
     ( if
         UseInstallName = bool.yes,
-        LinkedTargetType = shared_library
+        LinkedTargetType = c_shared_library
     then
         % NOTE: ShLibFileName must *not* be prefixed with a directory.
         % The call to get_install_name_option below will prefix it
@@ -603,7 +603,7 @@ get_linker_output_option_for_c(Globals, LinkedTargetType, OutputOpt) :-
         ; C_CompilerType = cc_cl_x64(_)
         ; C_CompilerType = cc_cl_arm64(_)
         ),
-        ( if LinkedTargetType = executable then
+        ( if LinkedTargetType = c_executable then
             % NOTE: -Fe _must not_ be separated from its argument by any
             % whitespace; the lack of a trailing space in the following
             % is deliberate.
@@ -797,7 +797,7 @@ create_static_lib_for_c(ProgressStream, Globals, FullLibFileName, Quote,
 get_library_link_flags_for_c(Globals, Specs, LinkFlagsStr, !IO) :-
     % We output the library link flags as they are for when we are linking
     % an executable.
-    LinkedTargetType = executable,
+    LinkedTargetType = c_executable,
     RpathFlagOpt = linker_rpath_flag,
     RpathSepOpt = linker_rpath_separator,
 
@@ -858,10 +858,10 @@ get_system_libs_for_c(Globals, LinkedTargetType, SystemLibs) :-
     ),
     % Other system libraries.
     (
-        LinkedTargetType = shared_library,
+        LinkedTargetType = c_shared_library,
         globals.lookup_string_option(Globals, shared_libs, OtherSystemLibs)
     ;
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         globals.lookup_string_option(Globals, math_lib, OtherSystemLibs)
     ),
     SystemLibs = string.join_list(" ",
@@ -1052,11 +1052,11 @@ link_lib_args_for_c(Globals, LinkedTargetType, StdLibDir, GradeDir, Ext,
 
 make_link_lib_arg_for_c(Globals, LinkedTargetType, LibName, LinkOpt) :-
     (
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         LinkLibFlag = linker_link_lib_flag,
         LinkLibSuffix = linker_link_lib_suffix
     ;
-        LinkedTargetType = shared_library,
+        LinkedTargetType = c_shared_library,
         LinkLibFlag = shlib_linker_link_lib_flag,
         LinkLibSuffix = shlib_linker_link_lib_suffix
     ),
@@ -1082,7 +1082,7 @@ get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
         UseInstallName = no,
         SharedLibsSupported = shared_libraries_supported,
         ( Linkage = sos_shared
-        ; LinkedTargetType = shared_library
+        ; LinkedTargetType = c_shared_library
         )
     then
         globals.lookup_accumulating_option(Globals,
@@ -1188,18 +1188,15 @@ get_link_opts_for_library_for_c(Globals, LibName, LinkLibOpt, Specs, !IO) :-
 get_linked_target_type_for_c(Globals, LinkedTargetType) :-
     globals.lookup_bool_option(Globals, shared_lib_not_executable,
         MakeSharedLib),
-    ( MakeSharedLib = yes, LinkedTargetType = shared_library
-    ; MakeSharedLib = no,  LinkedTargetType = executable
+    ( MakeSharedLib = yes, LinkedTargetType = c_shared_library
+    ; MakeSharedLib = no,  LinkedTargetType = c_executable
     ).
 
 %---------------------%
 
 get_object_code_type(Globals, FileType, PIC) :-
     (
-        FileType = executable,
-        get_executable_object_code_type(Globals, PIC)
-    ;
-        ( FileType = static_library
+        ( FileType = c_static_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
         ; FileType = java_executable
@@ -1207,7 +1204,10 @@ get_object_code_type(Globals, FileType, PIC) :-
         ),
         PIC = non_pic
     ;
-        FileType = shared_library,
+        FileType = c_executable,
+        get_executable_object_code_type(Globals, PIC)
+    ;
+        FileType = c_shared_library,
         globals.lookup_string_option(Globals, pic_object_file_extension,
             PicObjExt),
         globals.lookup_string_option(Globals, object_file_extension, ObjExt),

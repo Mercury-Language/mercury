@@ -29,22 +29,22 @@
 %---------------------------------------------------------------------------%
 
 :- type linked_target_type
-    --->    executable
-    ;       static_library
-    ;       shared_library
+    --->    c_executable
+    ;       c_static_library
+    ;       c_shared_library
     ;       csharp_executable
     ;       csharp_library
     ;       java_executable
     ;       java_archive.
 
 :- inst c_linked_target_type for linked_target_type/0
-    --->    executable
-    ;       static_library
-    ;       shared_library.
+    --->    c_executable
+    ;       c_static_library
+    ;       c_shared_library.
 
 :- inst c_exe_or_shared_lib for linked_target_type/0
-    --->    executable
-    ;       shared_library.
+    --->    c_executable
+    ;       c_shared_library.
 
 :- inst csharp_linked_target_type for linked_target_type/0
     --->    csharp_executable
@@ -132,7 +132,7 @@ linked_target_file_name_full_curdir(Globals, MainModuleName, LinkedTargetType,
         % Java archives and Java executables get the same filename.
         % XXX Then why make the distinction in linked_target_type?
         (
-            LinkedTargetType = executable,
+            LinkedTargetType = c_executable,
             Ext = ext_cur_gas(ext_cur_gas_exec_exec_opt)
         ;
             LinkedTargetType = csharp_executable,
@@ -153,10 +153,10 @@ linked_target_file_name_full_curdir(Globals, MainModuleName, LinkedTargetType,
             CurDirFileName, !IO)
     ;
         (
-            LinkedTargetType = static_library,
+            LinkedTargetType = c_static_library,
             Ext = ext_cur_gas(ext_cur_gas_lib_lib_opt)
         ;
-            LinkedTargetType = shared_library,
+            LinkedTargetType = c_shared_library,
             Ext = ext_cur_gas(ext_cur_gas_lib_sh_lib_opt)
         ),
         % XXX LEGACY

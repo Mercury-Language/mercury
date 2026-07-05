@@ -109,9 +109,9 @@ make_main_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     maybe_write_msg(ProgressStream, CleaningMsg, !IO),
 
     LinkedTargetTypes = [
-        executable,
-        static_library,
-        shared_library,
+        c_executable,
+        c_static_library,
+        c_shared_library,
         csharp_executable,
         csharp_library,
         java_executable,

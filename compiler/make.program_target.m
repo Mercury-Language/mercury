@@ -110,11 +110,11 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
         LinkedTargetSucceeded, !Info, !Specs, !IO) :-
     LinkedTargetFile = linked_target_file(_MainModuleName, LinkedTargetType),
     (
-        LinkedTargetType = shared_library,
+        LinkedTargetType = c_shared_library,
         ExtraOptions = ["--compile-to-shared-lib"]
     ;
-        ( LinkedTargetType = executable
-        ; LinkedTargetType = static_library
+        ( LinkedTargetType = c_executable
+        ; LinkedTargetType = c_static_library
         ; LinkedTargetType = csharp_executable
         ; LinkedTargetType = csharp_library
         ; LinkedTargetType = java_executable
@@ -125,10 +125,10 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
     globals.get_library_install_linkages(Globals, LibraryInstallLinkages),
     ( if
         (
-            LinkedTargetType = static_library,
+            LinkedTargetType = c_static_library,
             not set.member(sos_static, LibraryInstallLinkages)
         ;
-            LinkedTargetType = shared_library,
+            LinkedTargetType = c_shared_library,
             not set.member(sos_shared, LibraryInstallLinkages)
         )
     then
@@ -574,13 +574,13 @@ maybe_build_linked_target(ProgressStream,
     % libraries linked using dlopen().
     AllModulesList = set.to_sorted_list(AllModules),
     (
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
             MainModuleName, AllModulesList, InitObjSucceeded, InitObjects,
             !Info, !IO)
     ;
-        ( LinkedTargetType = static_library
-        ; LinkedTargetType = shared_library
+        ( LinkedTargetType = c_static_library
+        ; LinkedTargetType = c_shared_library
         ; LinkedTargetType = csharp_executable
         ; LinkedTargetType = csharp_library
         ; LinkedTargetType = java_executable
@@ -844,12 +844,12 @@ linked_target_cleanup(ProgressStream, Globals,
             CurDirMainModuleLinkedFileName, !Info, !IO)
     ),
     (
-        LinkedTargetType = executable,
+        LinkedTargetType = c_executable,
         remove_init_files(ProgressStream, Globals, verbose_make,
             MainModuleName, !Info, !IO)
     ;
-        ( LinkedTargetType = static_library
-        ; LinkedTargetType = shared_library
+        ( LinkedTargetType = c_static_library
+        ; LinkedTargetType = c_shared_library
         ; LinkedTargetType = csharp_executable
         ; LinkedTargetType = csharp_library
         ; LinkedTargetType = java_executable
@@ -1672,7 +1672,7 @@ build_library(MainModuleName, AllModules, Globals, ProgressStream, Succeeded,
 build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
         !Info, !Specs, !IO) :-
     make_linked_target(ProgressStream, Globals,
-        linked_target_file(MainModuleName, static_library),
+        linked_target_file(MainModuleName, c_static_library),
         StaticSucceeded, !Info, !Specs, !IO),
     are_shared_libraries_supported(Globals, SharedLibsSupported),
     (
@@ -1680,7 +1680,7 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
         (
             SharedLibsSupported = shared_libraries_supported,
             make_linked_target(ProgressStream, Globals,
-                linked_target_file(MainModuleName, shared_library),
+                linked_target_file(MainModuleName, c_shared_library),
                 SharedLibsSucceeded, !Info, !Specs, !IO)
         ;
             SharedLibsSupported = shared_libraries_not_supported,
