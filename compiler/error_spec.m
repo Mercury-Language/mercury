@@ -166,9 +166,9 @@
             % in the second argument. (Note that source files do not have
             % a representation in the ext type.)
     ;       phase_read_files
-            % We use this phase to report both failed attempts to read files
-            % after having opened them, and both parse errors and semantic
-            % errors that were discovered while reading the file.
+            % We use this phase to report failed attempts to read files,
+            % as well as parse errors and semantic errors discovered
+            % while reading the file.
     ;       phase_write_files
             % We use this phase to report failed attempts to open files
             % for writing.
