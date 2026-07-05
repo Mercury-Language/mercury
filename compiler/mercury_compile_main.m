@@ -42,7 +42,9 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.create_launchers.
+:- import_module backend_libs.link_target_code.
 :- import_module backend_libs.link_target_code_c.
+:- import_module backend_libs.link_target_util.
 :- import_module check_hlds.
 :- import_module check_hlds.switch_detection.
 :- import_module hlds.
@@ -441,22 +443,26 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
 
         % Print all remaining module-specific error_specs,
         % as well as the ones generated just above.
+        %
+        % Note that the call to generate_executable below CAN generate
+        % new error_specs, which it also writes out. It is ok for any such
+        % diagnostics to come out after the ones we print here.
         write_not_yet_written_specs(ErrorStream, Globals,
             !MaybeWrittenSpecs, !IO),
-        io.get_exit_status(ExitStatus, !IO),
         ( if
             OpModeArgs = opma_augment(opmau_front_and_middle(
                 opfam_target_object_and_executable)),
             ModulesToLink = cord.list(ModulesToLinkCord),
-            ModulesToLink = [FirstModule | _]
+            ModulesToLink = [FirstModuleName | _]
         then
+            io.get_exit_status(ExitStatus, !IO),
             ( if
                 ExitStatus = 0
             then
                 ExtraObjFiles = cord.list(ExtraObjFilesCord),
                 generate_executable(ProgressStream, ErrorStream, Globals,
                     InvokedByMmcMake, Params,
-                    FirstModule, ModulesToLink, ExtraObjFiles, !IO)
+                    FirstModuleName, ModulesToLink, ExtraObjFiles, !IO)
             else if
                 all_args_end_in_dot_m(Args) = yes,
                 AllSpecsSoFar =
@@ -561,27 +567,28 @@ could_not_read_some_int_file([Spec | Specs]) = CouldNotRead :-
     list(module_name)::in, list(string)::in, io::di, io::uo) is det.
 
 generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
-        Params, FirstModule, ModulesToLink, ExtraObjFiles, !IO) :-
+        Params, FirstModuleName, ModulesToLink, ExtraObjFiles, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_java,
         % For Java, at the "link" step we just generate a shell script;
         % the actual linking will be done at runtime by the Java interpreter.
-        create_java_shell_script(ProgressStream, Globals, FirstModule,
+        create_java_shell_script(ProgressStream, Globals, FirstModuleName,
             Succeeded, !IO)
     ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ),
-        % XXX The code below is appropriate for creating real, actual
-        % executable files, as used by the C backend. Why are we executing
-        % the same code for C#, whose backend uses a launcher script,
-        % not a real executable? This totally does the wrong thing
-        % for e.g. "mmc --grade csharp a.m b.m c.m".
-        %
-        % XXX STREAM
-        % Should we go from non-main-module-specific
-        % progress and error streams to main-module-specific streams?
+        Target = target_csharp,
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
+        % The next two lines duplicate the relevant parts of the
+        % build_linked_target predicate in make.program_target.m.
+        % XXX LEGACY
+        list.map2(module_name_to_file_name(Globals, $pred, Ext),
+            ModulesToLink, CssFilesToLink, _CssFilesToLinkProposed),
+        link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
+            Globals, csharp_executable, FirstModuleName, CssFilesToLink,
+            Specs, Succeeded, !IO),
+        write_error_specs(ErrorStream, Globals, Specs, !IO)
+    ;
+        Target = target_c,
         (
             InvokedByMmcMake = op_mode_invoked_by_mmc_make,
             % `mmc --make' has already set up the options.
@@ -594,7 +601,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
             globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
             setup_for_build_with_module_options(ProgressStream,
                 DefaultOptionTable, MaybeStdLibGrades, not_invoked_by_mmc_make,
-                FirstModule, Params, [], MayBuild, !IO),
+                FirstModuleName, Params, [], MayBuild, !IO),
             (
                 MayBuild = may_not_build(Specs),
                 Succeeded = did_not_succeed

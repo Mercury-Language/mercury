@@ -442,8 +442,6 @@ construct_cli_shell_script_for_csharp(Globals, ExeFileName, ContentStr) :-
 
 create_exe_or_lib_for_java(ProgressStream, Globals, LinkedTargetType,
         MainModuleName, FullJarFileName, ObjectList, Succeeded, !IO) :-
-    globals.lookup_string_option(Globals, java_archive_command, Jar),
-
     list_class_files_for_jar(Globals, ObjectList, ClassSubDir, ListClassFiles,
         !IO),
     (
@@ -454,10 +452,13 @@ create_exe_or_lib_for_java(ProgressStream, Globals, LinkedTargetType,
     ),
 
     % Write the list of class files to a temporary file and pass the name of
-    % the temporary file to jar using @syntax. The list of class files can be
-    % extremely long. We create the temporary file in the current directory to
-    % avoid problems under Cygwin, where absolute paths will be interpreted
-    % incorrectly when passed to a non-Cygwin jar program.
+    % the temporary file to jar using @syntax. We do this because the list
+    % of class files can be extremely long, and can cause problems with
+    % limited argument vector lengths.
+    %
+    % We create the temporary file in the current directory to avoid problems
+    % under Cygwin, where absolute paths will be interpreted incorrectly
+    % when passed to a non-Cygwin jar program.
     open_temp_output_with_naming_scheme(".", "mtmp", "", TempFileResult, !IO),
     (
         TempFileResult = ok({TempFileName, Stream}),
@@ -465,8 +466,9 @@ create_exe_or_lib_for_java(ProgressStream, Globals, LinkedTargetType,
             ListClassFiles, !IO),
         io.close_output(Stream, !IO),
 
+        globals.lookup_string_option(Globals, java_archive_command, JarCmd),
         Cmd = string.append_list(
-            [Jar, " cf ", FullJarFileName, " @", TempFileName]),
+            [JarCmd, " cf ", FullJarFileName, " @", TempFileName]),
         invoke_system_command(Globals, ProgressStream, ProgressStream,
             cmd_verbose_commands, Cmd, Succeeded0, !IO),
         io.file.remove_file(TempFileName, _, !IO),

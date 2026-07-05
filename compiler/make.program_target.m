@@ -736,10 +736,10 @@ build_linked_target(ProgressStream, NoLinkObjsGlobals, CompilationTarget, PIC,
     % timestamp checking above -- they will have been checked when the
     % module's object file was built.
     list.map_foldl2(
-        get_module_foreign_object_files(ProgressStream, NoLinkObjsGlobals,
+        get_module_fact_table_object_files(ProgressStream, NoLinkObjsGlobals,
             PIC),
-        AllModulesList, ForeignObjectFileNameLists, !Info, !IO),
-    ForeignObjectFileNames = list.condense(ForeignObjectFileNameLists),
+        AllModulesList, FactTableObjFileNameLists, !Info, !IO),
+    FactTableObjFileNames = list.condense(FactTableObjFileNameLists),
 
     (
         CompilationTarget = target_c,
@@ -757,10 +757,19 @@ build_linked_target(ProgressStream, NoLinkObjsGlobals, CompilationTarget, PIC,
     list.map2(module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
         ProgModules, ProgModuleObjFileNames, _ProgModuleObjFileNamesProposed),
 
-    % LinkObjectFileNames may contain `.a' files which must come
-    % after all the object files on the linker command line.
+    % InitObjectFileNames, passed from maybe_build_linked_target:
+    %   Contains the _init.o object file. Makes sense only for C.
+    % ProgModuleObjFileNames:
+    %   Contains the "object" files of the modules of the program itself.
+    % FactTableObjFileNames:
+    %   Contains the set of object files implementing fact tables.
+    %   Makes sense only for C.
+    % LinkObjectFileNames, passed from maybe_build_linked_targets:
+    %   Contains the value of the link_objects option. This consists of
+    %   .a files (that make sense only for C) that must come after
+    %    all the object files on the linker command line.
     AllObjects = InitObjectFileNames ++ ProgModuleObjFileNames ++
-        ForeignObjectFileNames ++ LinkObjectFileNames,
+        FactTableObjFileNames ++ LinkObjectFileNames,
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_java
@@ -793,21 +802,21 @@ build_linked_target(ProgressStream, NoLinkObjsGlobals, CompilationTarget, PIC,
         maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
     ).
 
-:- pred get_module_foreign_object_files(io.text_output_stream::in, globals::in,
-    pic::in, module_name::in, list(file_name)::out,
+:- pred get_module_fact_table_object_files(io.text_output_stream::in,
+    globals::in, pic::in, module_name::in, list(file_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_module_foreign_object_files(ProgressStream, Globals, PIC,
-        ModuleName, ForeignObjectFiles, !MakeInfo, !IO) :-
+get_module_fact_table_object_files(ProgressStream, Globals, PIC,
+        ModuleName, FactTableObjFiles, !MakeInfo, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !MakeInfo, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         get_any_fact_table_object_code_files(Globals, PIC, ModuleDepInfo,
-            ForeignFiles, !IO),
-        ForeignObjectFiles = list.map(
+            FactTableFiles, !IO),
+        FactTableObjFiles = list.map(
             (func(foreign_code_file(_, _, ObjFile)) = ObjFile),
-            ForeignFiles)
+            FactTableFiles)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         % This error should have been detected earlier.
