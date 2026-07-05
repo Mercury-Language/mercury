@@ -27,7 +27,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_spec.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
@@ -43,9 +43,9 @@
     op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
     read_module_errors::in, parse_tree_src::in,
     file_components_to_recompile::in,
-    list(module_name)::out, list(string)::out, list(error_spec)::out,
+    list(module_name)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.check_module_interface.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.module_baggage.
@@ -96,11 +96,13 @@
 augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, SourceFileName, MaybeTimestamp,
         ReadModuleErrors, ParseTreeSrc, MaybeModulesToRecompile,
-        ModulesToLink, ExtraObjFiles, !:Specs, !HaveParseTreeMaps, !IO) :-
+        ModulesToLink, ExtraObjFiles,
+        !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     ModuleName = ParseTreeSrc ^ pts_module_name,
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-        !:Specs, BurdenedModules0),
+        SplitSpecs, BurdenedModules0),
+    add_to_be_written_specs(SplitSpecs, !MaybeWrittenSpecs),
     (
         MaybeModulesToRecompile = some_file_components(ModulesToRecompile),
         ToRecompile =
@@ -136,7 +138,7 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
     augment_and_process_all_submodules(ProgressStream, ErrorStream,
         GlobalsToUse, OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
         BurdenedModulesToRecompile, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveParseTreeMaps, !IO).
+        !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -147,19 +149,18 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
     list(burdened_module)::in, list(module_name)::out, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
         BurdenedModules, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveParseTreeMaps, !IO) :-
+        !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, MaybeTimestamp),
         BurdenedModules, ExtraObjFileLists,
-        !Specs, !HaveParseTreeMaps, !IO),
+        !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO),
     list.map(burdened_module_to_module_name, BurdenedModules, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
@@ -189,27 +190,30 @@ burdened_module_to_module_name(BurdenedModule, ModuleName) :-
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
     burdened_module::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 augment_and_process_module(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
-        BurdenedModule, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO) :-
+        BurdenedModule, ExtraObjFiles,
+        !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc),
-    check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
+    check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc,
+        NoExportSpecs),
+    add_to_be_written_specs(NoExportSpecs, !MaybeWrittenSpecs),
     % XXX STREAM We could switch from a general progress stream
     % to a module-specific progress stream.
     grab_qual_imported_modules_augment(ProgressStream, Globals,
         MaybeTimestamp, ParseTreeModuleSrc, AugCompUnit,
         Baggage0, Baggage, !HaveParseTreeMaps, !IO),
-    Errors = Baggage ^ mb_errors,
-    !:Specs = get_read_module_specs(Errors) ++ !.Specs,
-    ( if set.is_empty(Errors ^ rm_fatal_errors) then
+    BaggageErrors = Baggage ^ mb_errors,
+    BaggageSpecs = get_read_module_specs(BaggageErrors),
+    add_to_be_written_specs(BaggageSpecs, !MaybeWrittenSpecs),
+    ( if set.is_empty(BaggageErrors ^ rm_fatal_errors) then
         process_augmented_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
             ExtraObjFiles, no_prev_dump, _,
-            !Specs, !HaveParseTreeMaps, !IO)
+            !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO)
     else
         ExtraObjFiles = []
     ).
@@ -219,25 +223,25 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
     module_baggage::in, aug_compilation_unit::in,
     list(string)::out, dump_info::in, dump_info::out,
-    list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 process_augmented_module(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit, ExtraObjFiles,
-        !DumpInfo, !Specs, !HaveParseTreeMaps, !IO) :-
+        !DumpInfo, !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
         HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
-        PreHLDSErrors, !DumpInfo, !Specs, !HaveParseTreeMaps, !IO),
+        PreHLDSErrors, !DumpInfo, !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO),
     frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
         UndefTypes, UndefModes, PreHLDSErrors, FrontEndErrors,
-        HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
+        HLDS1, HLDS20, !DumpInfo, !MaybeWrittenSpecs, !IO),
     io.get_exit_status(ExitStatus, !IO),
     ( if
         PreHLDSErrors = no,
         FrontEndErrors = no,
-        contains_errors(Globals, !.Specs) = no,
+        SpecsSofar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
+        contains_errors(Globals, SpecsSofar) = no,
         ExitStatus = 0
     then
         globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -253,8 +257,8 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_trans_opt,
-            output_trans_opt_file(ProgressStream, HLDS21, !Specs,
-                !DumpInfo, !IO),
+            output_trans_opt_file(ProgressStream, HLDS21, !DumpInfo,
+                !MaybeWrittenSpecs, !IO),
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_analysis_registry,
@@ -262,11 +266,11 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
                 Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
             (
                 AnalysisSpecs = [],
-                output_analysis_file(ProgressStream, HLDS22, !Specs,
-                    !DumpInfo, !IO)
+                output_analysis_file(ProgressStream, HLDS22,
+                    !DumpInfo, !MaybeWrittenSpecs, !IO)
             ;
                 AnalysisSpecs = [_ | _],
-                !:Specs = AnalysisSpecs ++ !.Specs
+                add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs)
             ),
             ExtraObjFiles = []
         ;
@@ -282,10 +286,10 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
                 MaybeTopModule = Baggage ^ mb_maybe_top_module,
                 after_front_end_passes(ProgressStream, ErrorStream, Globals,
                     OpModeFrontAndMiddle, MaybeTopModule, MaybeTimestampMap,
-                    HLDS22, ExtraObjFiles, !Specs, !DumpInfo, !IO)
+                    HLDS22, ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO)
             ;
                 AnalysisSpecs = [_ | _],
-                !:Specs = AnalysisSpecs ++ !.Specs,
+                add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs),
                 ExtraObjFiles = []
             )
         )
@@ -371,16 +375,16 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
     io.text_output_stream::in, globals::in,
     op_mode_front_and_middle::in, maybe_top_module::in,
     maybe(module_timestamp_map)::in, module_info::in,
-    list(string)::out, list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    list(string)::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 after_front_end_passes(ProgressStream, ErrorStream, Globals,
         OpModeFrontAndMiddle, MaybeTopModule, MaybeTimestampMap, !.HLDS,
-        ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
+        ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
     middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
-        !HLDS, !DumpInfo, !Specs, !IO),
+        !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
 
     % Remove any existing `.used' file before writing the output file.
     % This avoids leaving the old `used' file lying around if compilation
@@ -393,8 +397,9 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals,
         UsageFileName, _UsageFileNameProposed),
     io.file.remove_file(UsageFileName, _, !IO),
 
+    FrontEndSpecs = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
     FrontEndErrors =
-        contains_errors_or_warnings_treated_as_errors(Globals, !.Specs),
+        contains_errors_or_warnings_treated_as_errors(Globals, FrontEndSpecs),
     io.get_exit_status(ExitStatus, !IO),
     ( if
         FrontEndErrors = no,
@@ -412,7 +417,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals,
             choose_and_execute_backend_passes(ProgressStream, ErrorStream,
                 Globals, OpModeCodeGen, ModuleName, MaybeTopModule,
                 MaybeTimestampMap, !.HLDS, ExtraObjFiles,
-                !Specs, !DumpInfo, !IO)
+                !DumpInfo, !MaybeWrittenSpecs, !IO)
         )
     else
         % Make sure that the compiler exits with a non-zero exit status.
@@ -428,22 +433,24 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals,
     io.text_output_stream::in, globals::in,
     op_mode_codegen::in, module_name::in, maybe_top_module::in,
     maybe(module_timestamp_map)::in, module_info::in,
-    list(string)::out, list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    list(string)::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         OpModeCodeGen, ModuleName, MaybeTopModule, MaybeTimestampMap, !.HLDS,
-        ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
+        ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_csharp,
-        hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+        hlds_to_mlds(ProgressStream, !.HLDS, MLDS,
+            !DumpInfo, !MaybeWrittenSpecs, !IO),
         % mlds_to_csharp never goes beyond generating C# code.
         mlds_to_csharp(ProgressStream, !.HLDS, MLDS, Succeeded, !IO),
         ExtraObjFiles = []
     ;
         Target = target_java,
-        hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+        hlds_to_mlds(ProgressStream, !.HLDS, MLDS,
+            !DumpInfo, !MaybeWrittenSpecs, !IO),
         mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded, !IO),
         (
             OpModeCodeGen = opfam_target_code_only,
@@ -476,7 +483,8 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            hlds_to_mlds(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
+            hlds_to_mlds(ProgressStream, !.HLDS, MLDS,
+                !DumpInfo, !MaybeWrittenSpecs, !IO),
             mlds_to_high_level_c(ProgressStream, Globals, MLDS,
                 TargetCodeSucceeded, !IO),
             (
@@ -512,7 +520,7 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         ;
             HighLevelCode = no,
             hlds_to_llds(ProgressStream, ErrorStream, !HLDS,
-                GlobalData, LLDS, !DumpInfo, !IO),
+                GlobalData, LLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
             llds_to_c(ProgressStream, !.HLDS, GlobalData, LLDS,
                 TargetCodeSucceeded, !IO),
             (

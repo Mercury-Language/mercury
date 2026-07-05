@@ -22,29 +22,28 @@
 :- import_module libs.
 :- import_module libs.op_mode.
 :- import_module parse_tree.
-:- import_module parse_tree.error_spec.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
-:- import_module list.
 :- import_module set.
 
 :- pred middle_pass(io.text_output_stream::in, io.text_output_stream::in,
     op_mode_front_and_middle::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 :- pred middle_pass_for_opt_file(io.text_output_stream::in,
     module_info::in, module_info::out, set(gen_pragma_unused_args_info)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 :- pred output_trans_opt_file(io.text_output_stream::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 :- pred output_analysis_file(io.text_output_stream::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -63,6 +62,7 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_tree_out.
@@ -119,6 +119,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -262,7 +263,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
 
     maybe_simplify(ProgressStream, maybe.no, bool.no,
         simplify_pass_pre_implicit_parallelism, Verbose, Stats,
-        !HLDS, [], _SimplifySpecsPreImpPar, !IO),
+        !HLDS, init_maybe_written_specs, _SimplifySpecsPreImpPar, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 172,
         "pre_implicit_parallelism_simplify", !DumpInfo, !IO),
 
@@ -334,7 +335,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
         % have been applied.
         maybe_simplify(ProgressStream, maybe.no, bool.no,
             simplify_pass_pre_prof_transforms, Verbose, Stats, !HLDS,
-            [], _SimplifySpecsPreProf, !IO),
+            init_maybe_written_specs, _SimplifySpecsPreProf, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 215,
             "pre_prof_transforms_simplify", !DumpInfo, !IO),
 
@@ -376,7 +377,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
 %---------------------------------------------------------------------------%
 
 middle_pass_for_opt_file(ProgressStream, !HLDS, PragmaUnusedArgsInfos,
-        !Specs, !IO) :-
+        !MaybeWrittenSpecs, !IO) :-
     % NOTE If you add any passes here, you will probably need to change the
     % code in mercury_compile_front_end.m that decides whether to call
     % this predicate.
@@ -405,9 +406,11 @@ middle_pass_for_opt_file(ProgressStream, !HLDS, PragmaUnusedArgsInfos,
     maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_unused_args(ProgressStream, Verbose, Stats,
         do_gather_pragma_unused_args, do_not_record_analysis_unused_args,
-        PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+        PragmaUnusedArgsInfos, !HLDS, !MaybeWrittenSpecs, !IO),
+    maybe_termination(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
+    maybe_termination2(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats,
         !HLDS, !IO),
     maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
@@ -416,7 +419,8 @@ middle_pass_for_opt_file(ProgressStream, !HLDS, PragmaUnusedArgsInfos,
 
 %---------------------------------------------------------------------------%
 
-output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
+output_trans_opt_file(ProgressStream, !.HLDS, !DumpInfo,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -442,10 +446,12 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 118, "exception_analysis",
         !DumpInfo, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 120, "termination",
         !DumpInfo, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination2(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 121, "termination_2",
         !DumpInfo, !IO),
     (
@@ -564,7 +570,8 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
+output_analysis_file(ProgressStream, !.HLDS, !DumpInfo,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -590,10 +597,12 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 118, "exception_analysis",
         !DumpInfo, !IO),
-    maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 120, "termination",
         !DumpInfo, !IO),
-    maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_termination2(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 121, "termination_2",
         !DumpInfo, !IO),
     (
@@ -625,7 +634,7 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
         !DumpInfo, !IO),
     maybe_unused_args(ProgressStream, Verbose, Stats,
         do_not_gather_pragma_unused_args, do_record_analysis_unused_args,
-        _PragmaUnusedArgsInfos, !HLDS, !Specs, !IO),
+        _PragmaUnusedArgsInfos, !HLDS, !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 165, "unused_args",
         !DumpInfo, !IO),
     maybe_analyse_trail_usage(ProgressStream, Verbose, Stats, !HLDS, !IO),
@@ -640,7 +649,7 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     % XXX Is AllAvailModules the right set of modules to pass here?
     analysis.operations.write_analysis_files(ProgressStream, mmc, !.HLDS,
         AllAvailModules, AnalysisInfo, AnalysisSpecs, !IO),
-    !:Specs = AnalysisSpecs ++ !.Specs.
+    add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -690,13 +699,14 @@ maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO) :-
 
 :- pred tabling(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-tabling(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+tabling(ProgressStream, Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Transforming tabled predicates...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
-    table_gen_process_module(!HLDS, !Specs),
+    table_gen_process_module(!HLDS, [], TableSpecs),
+    add_to_be_written_specs(TableSpecs, !MaybeWrittenSpecs),
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
@@ -717,10 +727,10 @@ expand_lambdas(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred maybe_do_direct_arg_in_out_transform(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 maybe_do_direct_arg_in_out_transform(ProgressStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_direct_arg_proc_map(!.HLDS, DirectArgProcMap),
     ( if map.is_empty(DirectArgProcMap) then
         true
@@ -729,7 +739,7 @@ maybe_do_direct_arg_in_out_transform(ProgressStream, Verbose, Stats,
             "% Transforming direct arg in out procedures...\n", !IO),
         do_direct_arg_in_out_transform_in_module(ProgressStream,
             DirectArgProcMap, !HLDS, DirectArgSpecs),
-        !:Specs = DirectArgSpecs ++ !.Specs,
+        add_to_be_written_specs(DirectArgSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ).
@@ -802,9 +812,10 @@ maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred maybe_termination(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_termination(ProgressStream, Verbose, Stats, !HLDS,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination_enable, Termination),
     (
@@ -812,7 +823,7 @@ maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Detecting termination...\n", !IO),
         analyse_termination_in_module(!HLDS, TermSpecs),
-        !:Specs = TermSpecs ++ !.Specs,
+        add_to_be_written_specs(TermSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose,
             "% Termination checking done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
@@ -824,9 +835,10 @@ maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 :- pred maybe_termination2(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_termination2(ProgressStream, Verbose, Stats, !HLDS,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, termination2_enable, Termination2),
     (
@@ -834,7 +846,7 @@ maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Detecting termination 2...\n", !IO),
         term2_analyse_module(!HLDS, TermSpecs),
-        !:Specs = TermSpecs ++ !.Specs,
+        add_to_be_written_specs(TermSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose,
             "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
@@ -865,10 +877,11 @@ maybe_type_ctor_infos(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_dead_procs(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out,
+    module_info::in, maybe_written_specs::in, maybe_written_specs::out,
     io::di, io::uo) is det.
 
-maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS, !Specs, !IO) :-
+maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_dead_procs, WarnDeadProcs),
     globals.lookup_bool_option(Globals, warn_dead_preds, WarnDeadPreds),
@@ -888,7 +901,7 @@ maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS, !Specs, !IO) :-
         ),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         dead_proc_warn(HLDS, DeadSpecs),
-        !:Specs = DeadSpecs ++ !.Specs,
+        add_to_be_written_specs(DeadSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
@@ -912,7 +925,7 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_simplify(ProgressStream, maybe.no, bool.no,
             simplify_pass_post_untuple, Verbose, Stats, !HLDS,
-            [], _SimplifySpecs, !IO),
+            init_maybe_written_specs, _SimplifyMaybeWrittenSpecs, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         Untuple = do_not_untuple
@@ -922,9 +935,10 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred maybe_tuple_arguments(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Tuple = OptTuple ^ ot_tuple,
@@ -933,7 +947,7 @@ maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(ProgressStream, Verbose, "% Tupling...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         tuple_arguments(ProgressStream, TupleSpecs, !HLDS, !IO),
-        !:Specs = TupleSpecs ++ !.Specs,
+        add_to_be_written_specs(TupleSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -1011,10 +1025,10 @@ maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 :- pred maybe_implicit_parallelism(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, implicit_parallelism,
         ImplicitParallelism),
@@ -1026,8 +1040,9 @@ maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
         apply_implicit_parallelism_transformation(ParSpecs, !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         % XXX This is a bit late for printing errors.
-        !:Specs = ParSpecs ++ !.Specs,
-        maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
+        add_to_be_written_specs(ParSpecs, !MaybeWrittenSpecs),
+        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+            !MaybeWrittenSpecs, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         % The user hasn't asked for implicit parallelism.
@@ -1038,10 +1053,10 @@ maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
 
 :- pred maybe_introduce_accumulators(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     IntroduceAccumulators = OptTuple ^ ot_introduce_accumulators,
@@ -1058,7 +1073,7 @@ maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
             Task = update_module_pred_cookie(_, Cookie),
             univ_to_type(Cookie, AccSpecs)
         then
-            !:Specs = AccSpecs ++ !.Specs
+            add_to_be_written_specs(AccSpecs, !MaybeWrittenSpecs)
         else
             unexpected($pred, "bad task")
         ),
@@ -1233,11 +1248,11 @@ maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 :- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
     maybe_gather_pragma_unused_args::in, maybe_record_analysis_unused_args::in,
     set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 maybe_unused_args(ProgressStream, Verbose, Stats,
         GatherPragmas, RecordAnalysis, PragmaUnusedArgsInfos,
-        !HLDS, !Specs, !IO) :-
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
@@ -1254,7 +1269,7 @@ maybe_unused_args(ProgressStream, Verbose, Stats,
         maybe_flush_output(ProgressStream, Verbose, !IO),
         unused_args_process_module(GatherPragmas, RecordAnalysis,
             UnusedSpecs, PragmaUnusedArgsInfos, !HLDS),
-        !:Specs = UnusedSpecs ++ !.Specs,
+        add_to_be_written_specs(UnusedSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
@@ -1488,9 +1503,10 @@ maybe_par_loop_control(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred maybe_float_reg_wrapper(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_float_reg_wrapper(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_float_reg_wrapper(ProgressStream, Verbose, Stats, !HLDS,
+        !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     (
@@ -1499,7 +1515,7 @@ maybe_float_reg_wrapper(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
             "% Inserting float register wrappers...", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         float_regs.insert_reg_wrappers(!HLDS, RegSpecs),
-        !:Specs = RegSpecs ++ !.Specs,
+        add_to_be_written_specs(RegSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

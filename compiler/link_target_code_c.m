@@ -72,9 +72,9 @@
 %
 % Section three: link flags.
 %
-    % Output the list of flags required to link against the selected set
-    % of Mercury libraries (the standard libraries, plus any other specified
-    % via the --ml option) in the current grade.
+    % Return a string containing the list of flags required to link
+    % against the selected set of Mercury libraries (the standard libraries,
+    % plus any other specified via the --ml option) in the current grade.
     % This predicate is used to implement the `--output-library-link-flags'
     % option.
     %
@@ -82,8 +82,8 @@
     % but it does do a search in the filesystem for libraries that are
     % named in the values of options, and those searches can fail.
     %
-:- pred output_library_link_flags_for_c(globals::in, io.text_output_stream::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred get_library_link_flags_for_c(globals::in, list(error_spec)::out,
+    string::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -789,17 +789,12 @@ create_static_lib_for_c(ProgressStream, Globals, FullLibFileName, Quote,
     ).
 
 %---------------------------------------------------------------------------%
-%
-% Utility predicates needed for creating more than one kind of linked target.
-%
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Library link flags.
+% Section three.
 %
 
-output_library_link_flags_for_c(Globals, Stream, Specs, !IO) :-
+get_library_link_flags_for_c(Globals, Specs, LinkFlagsStr, !IO) :-
     % We output the library link flags as they are for when we are linking
     % an executable.
     LinkedTargetType = executable,
@@ -825,9 +820,9 @@ output_library_link_flags_for_c(Globals, Stream, Specs, !IO) :-
     % Find the Mercury standard libraries.
     get_mercury_std_libs_for_c(Globals, LinkedTargetType, MercuryStdLibs),
     get_system_libs_for_c(Globals, LinkedTargetType, SystemLibs),
-    io.format(Stream, "%s %s %s %s %s\n",
+    string.format("%s %s %s %s %s\n",
         [s(LinkLibraryDirectories), s(RpathOpts), s(LinkLibraries),
-        s(MercuryStdLibs), s(SystemLibs)], !IO).
+        s(MercuryStdLibs), s(SystemLibs)], LinkFlagsStr).
 
 :- pred get_system_libs_for_c(globals::in,
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.

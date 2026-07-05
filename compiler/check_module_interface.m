@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2011-2025 The Mercury team.
+% Copyright (C) 2011-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,8 +30,7 @@
     % report a warning.
     %
 :- pred check_module_interface_for_no_exports(globals::in,
-    parse_tree_module_src::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    parse_tree_module_src::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -52,10 +51,11 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
+check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, Specs) :-
     globals.lookup_bool_option(Globals, warn_nothing_exported, ExportWarning),
     (
-        ExportWarning = no
+        ExportWarning = no,
+        Specs = []
     ;
         ExportWarning = yes,
         ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
@@ -152,9 +152,10 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             IntPromises = []
         then
             generate_no_exports_warning(ModuleName, ModuleNameContext,
-                NumIntIncls, !Specs)
+                NumIntIncls, Spec),
+            Specs = [Spec]
         else
-            true
+            Specs = []
         )
     ).
 
@@ -163,10 +164,9 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
     ;       1.
 
 :- pred generate_no_exports_warning(module_name::in, prog_context::in,
-    int::in(num_int_incls),
-    list(error_spec)::in, list(error_spec)::out) is det.
+    int::in(num_int_incls), error_spec::out) is det.
 
-generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
+generate_no_exports_warning(ModuleName, Context, NumIntIncls, Spec) :-
     AlwaysPieces =
         [invis_order_default_start(2, ""),
         words("Warning: the interface of module")] ++
@@ -202,8 +202,7 @@ generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
         [always(AlwaysPieces),
         verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec($pred, severity_warning(warn_nothing_exported),
-        phase_t2pt, [Msg]),
-    !:Specs = [Spec | !.Specs].
+        phase_t2pt, [Msg]).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.check_module_interface.

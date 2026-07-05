@@ -28,6 +28,8 @@
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module bool.
 :- import_module io.
@@ -36,7 +38,7 @@
 :- pred hlds_to_llds(io.text_output_stream::in, io.text_output_stream::in,
     module_info::in, module_info::out, global_data::out,
     list(c_procedure)::out, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 :- pred map_args_to_regs(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -98,9 +100,7 @@
 :- import_module ll_backend.unify_gen_construct.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -122,7 +122,7 @@
 %---------------------------------------------------------------------------%
 
 hlds_to_llds(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
-        !DumpInfo, !IO) :-
+        !DumpInfo, !MaybeWrittenSpecs,!IO) :-
     module_info_get_name(!.HLDS, ModuleName),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, OptUnboxFloat),
@@ -164,24 +164,23 @@ hlds_to_llds(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
     (
         TradPasses = no,
         llds_backend_pass_by_phases(ProgressStream, !HLDS, LLDS, !GlobalData,
-            [], Specs, !DumpInfo, !IO)
+            !DumpInfo, !MaybeWrittenSpecs, !IO)
     ;
         TradPasses = yes,
         llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData,
-            [], Specs)
+            !MaybeWrittenSpecs)
     ),
-    write_error_specs(ErrorStream, Globals, Specs, !IO).
+    write_not_yet_written_specs(ErrorStream, Globals, !MaybeWrittenSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred llds_backend_pass_by_phases(io.text_output_stream::in,
     module_info::in, module_info::out, list(c_procedure)::out,
-    global_data::in, global_data::out,
-    list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    global_data::in, global_data::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
-        !DumpInfo, !IO) :-
+llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData,
+        !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -198,7 +197,8 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
     maybe_dump_hlds(ProgressStream, !.HLDS, 320, "followcode", !DumpInfo, !IO),
 
     maybe_simplify(ProgressStream, maybe.no, bool.no, simplify_pass_ll_backend,
-        Verbose, Stats, !HLDS, [], SimplifySpecs, !IO),
+        Verbose, Stats, !HLDS, init_maybe_written_specs, SimplifyMWS, !IO),
+    SimplifySpecs = maybe_written_specs_to_specs(SimplifyMWS),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
         "simplify has errors"),
     maybe_dump_hlds(ProgressStream, !.HLDS, 325, "ll_backend_simplify",
@@ -207,7 +207,8 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
     compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 330, "liveness", !DumpInfo, !IO),
 
-    mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS,
+        !MaybeWrittenSpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 332, "mark_debug_tailrec_calls",
         !DumpInfo, !IO),
 
@@ -230,7 +231,7 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
 :- pred llds_backend_pass_by_preds(io.text_output_stream::in,
     module_info::in, module_info::out, list(c_procedure)::out,
     global_data::in, global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
@@ -270,7 +271,7 @@ llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
     maybe(dup_proc_label_map)::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_by_preds_loop_over_preds(_, !HLDS, _, _,
         [], _, !CProcsCord, !GlobalData, !Specs).
@@ -290,7 +291,7 @@ llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
     maybe(dup_proc_label_map)::in, maybe(dup_proc_label_map)::out,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
         SCCMap, PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
@@ -360,7 +361,7 @@ llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
     pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
     global_data::in, global_data::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_for_pred(_, _, _, _, _, [], [], !GlobalData, !HLDS, !Specs).
 llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
@@ -378,11 +379,11 @@ llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
     const_struct_map::in, scc_map(pred_proc_id)::in,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, c_procedure::out,
     global_data::in, global_data::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
         PredId, ProcId, PredInfo, !.ProcInfo, CProc,
-        !GlobalData, !HLDS, !Specs) :-
+        !GlobalData, !HLDS, !MaybeWrittenSpecs) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVarsConst = OptTuple ^ ot_opt_saved_vars_const,
@@ -449,7 +450,8 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
             "Marking directly tail recursive calls in", PredProcId, !IO)
     ),
     mark_tail_rec_calls_in_proc_for_llds_code_gen(!.HLDS, PredId, ProcId,
-        PredInfo, SCCMap, !ProcInfo, !Specs),
+        PredInfo, SCCMap, !ProcInfo, [], TailSpecs),
+    add_to_be_written_specs(TailSpecs, !MaybeWrittenSpecs),
 
     trace [io(!IO)] (
         maybe_write_proc_progress_message(ProgressStream, !.HLDS,
@@ -581,9 +583,10 @@ compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred mark_tail_rec_calls(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+mark_tail_rec_calls(ProgressStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Marking directly tail recursive calls...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -592,7 +595,8 @@ mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
     process_valid_nonimported_preds_errors(
         update_pred_error(
             mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
-        !HLDS, !Specs),
+        !HLDS, [], TailSpecs),
+    add_to_be_written_specs(TailSpecs, !MaybeWrittenSpecs),
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 

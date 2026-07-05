@@ -25,14 +25,13 @@
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
-:- import_module parse_tree.error_spec.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
-:- import_module list.
 
 :- pred hlds_to_mlds(io.text_output_stream::in, module_info::in, mlds::out,
-    list(error_spec)::in, list(error_spec)::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 :- pred mlds_to_high_level_c(io.text_output_stream::in, globals::in, mlds::in,
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -68,24 +67,27 @@
 :- import_module ml_backend.mlds_to_cs_file.        % MLDS -> C#
 :- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
 :- import_module bool.
+:- import_module list.
 :- import_module maybe.
 :- import_module pprint.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
+hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS,
+        !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_simplify(ProgressStream, maybe.no, bool.no, simplify_pass_ml_backend,
-        Verbose, Stats, !HLDS, [], _SimplifySpecs, !IO),
+        Verbose, Stats, !HLDS, init_maybe_written_specs, _SimplifySpecs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 405, "ml_backend_simplify",
         !DumpInfo, !IO),
 
@@ -113,7 +115,8 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
         !DumpInfo, !IO),
 
     mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
-        !HLDS, !Specs, !IO),
+        !HLDS, [], TailSpecs, !IO),
+    add_to_be_written_specs(TailSpecs, !MaybeWrittenSpecs),
     maybe_dump_hlds(ProgressStream, !.HLDS, 430, "mark_tail_calls",
         !DumpInfo, !IO),
 
@@ -130,7 +133,8 @@ hlds_to_mlds(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     ),
     maybe_write_string(ProgressStream, Verbose,
         "% Converting HLDS to MLDS...\n", !IO),
-    ml_code_gen(ProgressStream, MLDS_Target, !:MLDS, !HLDS, !Specs),
+    ml_code_gen(ProgressStream, MLDS_Target, !:MLDS, !HLDS, [], CodeGenSpecs),
+    add_to_be_written_specs(CodeGenSpecs, !MaybeWrittenSpecs),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 499, "final", !DumpInfo, !IO),
