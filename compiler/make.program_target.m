@@ -353,11 +353,11 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             ;
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
                 build_linked_target_with_any_prelink(ProgressStream, Globals,
-                    MainModuleName, LinkedTargetType,
+                    CompilationTarget, PIC, MainModuleName, LinkedTargetType,
                     FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
-                    AllModules, ProgModules, CompilationTarget, PIC,
-                    ShouldRebuildLhs, Succeeded0, !Info, !IO),
+                    AllModules, ProgModules, ShouldRebuildLhs,
+                    Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, MESI, ErrorStream, !.Info, !IO)
             ),
@@ -515,18 +515,17 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
 %---------------------------------------------------------------------------%
 
 :- pred build_linked_target_with_any_prelink(io.text_output_stream::in,
-    globals::in, module_name::in, linked_target_type::in,
-    file_name::in, file_name::in, maybe_oldest_lhs_file::in,
-    set(module_name)::in, list(module_name)::in,
-    compilation_target::in, pic::in, should_rebuild_lhs::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    globals::in, compilation_target::in, pic::in,
+    module_name::in, linked_target_type::in, file_name::in, file_name::in,
+    maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
+    should_rebuild_lhs::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_linked_target_with_any_prelink(ProgressStream,
-        Globals, MainModuleName, LinkedTargetType,
+build_linked_target_with_any_prelink(ProgressStream, Globals,
+        CompilationTarget, PIC, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ProgModules,
-        CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
+        ShouldRebuildLhs, Succeeded, !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, make_pre_link_command,
         MaybePreLinkCommand),
     (
@@ -543,27 +542,27 @@ build_linked_target_with_any_prelink(ProgressStream,
     (
         PreLinkSucceeded = succeeded,
         maybe_build_linked_target(ProgressStream, Globals,
-            MainModuleName, LinkedTargetType,
+            CompilationTarget, PIC, MainModuleName, LinkedTargetType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
             MaybeOldestLhsTimestamp, AllModules, ProgModules,
-            CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO)
+            ShouldRebuildLhs, Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
 :- pred maybe_build_linked_target(io.text_output_stream::in, globals::in,
-    module_name::in, linked_target_type::in, file_name::in, file_name::in,
-    maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
-    compilation_target::in, pic::in, should_rebuild_lhs::in,
+    compilation_target::in, pic::in, module_name::in, linked_target_type::in,
+    file_name::in, file_name::in, maybe_oldest_lhs_file::in,
+    set(module_name)::in, list(module_name)::in, should_rebuild_lhs::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-maybe_build_linked_target(ProgressStream,
-        Globals0, MainModuleName, LinkedTargetType,
+maybe_build_linked_target(ProgressStream, Globals0, CompilationTarget, PIC,
+        MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ProgModules,
-        CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
+        ShouldRebuildLhs, Succeeded, !Info, !IO) :-
     % Clear the link_objects option -- we will pass the list of files directly.
     globals.lookup_accumulating_option(Globals0, link_objects, LinkObjects),
     globals.set_option(link_objects, accumulating([]),
@@ -644,9 +643,9 @@ maybe_build_linked_target(ProgressStream,
                 Succeeded, !Info, !IO)
         else
             build_linked_target(ProgressStream, NoLinkObjsGlobals,
-                MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
-                AllModulesList, ProgModules, InitObjects, LinkObjects,
-                CompilationTarget, PIC, Succeeded, !Info, !IO)
+                CompilationTarget, PIC, MainModuleName, LinkedTargetType,
+                FullMainModuleLinkedFileName, AllModulesList, ProgModules,
+                InitObjects, LinkObjects, Succeeded, !Info, !IO)
         )
     ).
 
@@ -718,16 +717,16 @@ maybe_warn_linked_target_up_to_date(ProgressStream,
     ).
 
 :- pred build_linked_target(io.text_output_stream::in, globals::in,
-    module_name::in, linked_target_type::in, file_name::in,
-    list(module_name)::in, list(module_name)::in,
-    list(file_name)::in, list(file_name)::in, compilation_target::in, pic::in,
+     compilation_target::in, pic::in, module_name::in, linked_target_type::in,
+     file_name::in, list(module_name)::in, list(module_name)::in,
+    list(file_name)::in, list(file_name)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_linked_target(ProgressStream, NoLinkObjsGlobals,
+build_linked_target(ProgressStream, NoLinkObjsGlobals, CompilationTarget, PIC,
         MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
         AllModulesList, ProgModules, InitObjectFileNames, LinkObjectFileNames,
-        CompilationTarget, PIC, Succeeded, !Info, !IO) :-
+        Succeeded, !Info, !IO) :-
     maybe_making_filename_msg(NoLinkObjsGlobals,
         FullMainModuleLinkedFileName, MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
