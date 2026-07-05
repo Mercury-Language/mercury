@@ -32,6 +32,8 @@
     list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
     % Remove all nested modules from a list of modules.
     %
 :- pred filter_out_nested_modules(io.text_output_stream::in, globals::in,
@@ -40,6 +42,11 @@
 
 :- pred get_target_modules(io.text_output_stream::in, globals::in,
     module_target_type::in, list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+:- pred get_nonnested_and_parent_modules(io.text_output_stream::in,
+    globals::in, list(module_name)::in,
+    list(module_name)::out, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Return a list of modules in reverse order of their dependencies,
@@ -192,6 +199,54 @@ get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
         cord.snoc(ModuleName, !TargetModulesCord)
     else
         true
+    ).
+
+%---------------------------------------------------------------------------%
+
+get_nonnested_and_parent_modules(ProgressStream, Globals, ModuleNames,
+        NonnestedModules, ParentModules, !Info, !IO) :-
+    list.foldl4(
+        acc_nonnested_and_parent_modules(ProgressStream, Globals),
+        ModuleNames,
+        [], NonnestedModules, [], ParentModules, !Info, !IO).
+
+:- pred acc_nonnested_and_parent_modules(io.text_output_stream::in,
+    globals::in, module_name::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+acc_nonnested_and_parent_modules(ProgressStream, Globals, ModuleName,
+        !NonnestedModules, !ParentModules, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        (
+            MaybeTopModule = top_module(_NestedSubModules),
+            % don't include in NestedModules
+            %   which means DO include in NonnestedModules
+            !:NonnestedModules = [ModuleName | !.NonnestedModules],
+            module_dep_info_get_children(ModuleDepInfo, Children),
+            ( if set.is_empty(Children) then
+                true
+            else
+                !:ParentModules = [ModuleName | !.ParentModules]
+            )
+        ;
+            MaybeTopModule = not_top_module
+            % do include in NestedModules
+            %   which means DO NOT include in NonnestedModules
+            %   which means DO NOT include in ParentModules
+        )
+    ;
+        MaybeModuleDepInfo = no_module_dep_info,
+        % don't include in NestedModules
+        %   which means DO include in NonnestedModules
+        % do not include in ParentModules
+        %   due to absence of info about any children
+        !:NonnestedModules = [ModuleName | !.NonnestedModules]
     ).
 
 %---------------------------------------------------------------------------%
