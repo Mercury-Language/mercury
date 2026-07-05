@@ -649,73 +649,6 @@ maybe_build_linked_target(ProgressStream, Globals0, CompilationTarget, PIC,
         )
     ).
 
-:- pred make_init_obj_file_check_result(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in,
-    maybe_succeeded::out, list(file_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
-        MainModuleName, AllModulesList, Succeeded, InitObjects, !Info, !IO) :-
-    globals.lookup_bool_option(NoLinkObjsGlobals, part_opmode_rebuild,
-        MustRecompile),
-    make_init_obj_file(ProgressStream, NoLinkObjsGlobals, MustRecompile,
-        MainModuleName, AllModulesList, InitObjectResult, !IO),
-    (
-        InitObjectResult = yes(InitObject),
-        % We may need to update the timestamp of the `_init.o' file.
-        FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
-        map.delete(InitObject, FileTimestampMap0, FileTimestampMap1),
-        make_info_set_file_timestamp_map(FileTimestampMap1, !Info),
-        % There is no module_target_type for the `_init.o' file,
-        % so mki_target_file_timestamps should not contain anything
-        % that needs to be invalidated.
-        Succeeded = succeeded,
-        InitObjects = [InitObject]
-    ;
-        InitObjectResult = no,
-        Succeeded = did_not_succeed,
-        InitObjects = []
-    ).
-
-:- pred maybe_warn_linked_target_up_to_date(io.text_output_stream::in,
-    globals::in, module_name::in, linked_target_type::in,
-    file_name::in, file_name::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-maybe_warn_linked_target_up_to_date(ProgressStream,
-        NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
-        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-        Succeeded, !Info, !IO) :-
-    MainModuleLinkedTarget =
-        top_target_file(MainModuleName, linked_target(LinkedTargetType)),
-    ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
-        maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-            MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
-            UpToDateMsg),
-        maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
-        Succeeded = succeeded
-    else
-        % We did not just perform a link, but check whether the other copy
-        % of the would-have-been-linked-if-that-were-needed file has to be
-        % re-copied.
-        post_link_maybe_make_symlink_or_copy(ProgressStream, NoLinkObjsGlobals,
-            LinkedTargetType, MainModuleName,
-            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-            Succeeded, MadeSymlinkOrCopy, !IO),
-        (
-            MadeSymlinkOrCopy = yes,
-            maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
-                FullMainModuleLinkedFileName, LinkMsg),
-            maybe_write_msg(ProgressStream, LinkMsg, !IO)
-        ;
-            MadeSymlinkOrCopy = no,
-            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                MainModuleLinkedTarget, FullMainModuleLinkedFileName,
-                !Info, UpToDateMsg),
-            maybe_write_msg(ProgressStream, UpToDateMsg, !IO)
-        )
-    ).
-
 :- pred build_linked_target(io.text_output_stream::in, globals::in,
      compilation_target::in, pic::in, module_name::in, linked_target_type::in,
      file_name::in, list(module_name)::in, list(module_name)::in,
@@ -770,18 +703,12 @@ build_linked_target(ProgressStream, NoLinkObjsGlobals, CompilationTarget, PIC,
     %    all the object files on the linker command line.
     AllObjects = InitObjectFileNames ++ ProgModuleObjFileNames ++
         FactTableObjFileNames ++ LinkObjectFileNames,
-    (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_java
-        ; CompilationTarget = target_csharp
-        ),
-        % Run the link in a separate process so it can be killed
-        % if an interrupt is received.
-        call_in_forked_process(
-            link_and_write_error_specs(NoLinkObjsGlobals, ProgressStream,
-                LinkedTargetType, MainModuleName, AllObjects),
-            Succeeded, !IO)
-    ),
+    % Run the link in a separate process so it can be killed
+    % if an interrupt is received.
+    call_in_forked_process(
+        link_and_write_error_specs(NoLinkObjsGlobals, ProgressStream,
+            LinkedTargetType, MainModuleName, AllObjects),
+        Succeeded, !IO),
     CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
     set.delete(
         top_target_file(MainModuleName, linked_target(LinkedTargetType)),
@@ -834,6 +761,79 @@ link_and_write_error_specs(Globals, ProgressStream,
         Specs, Succeeded, !IO),
     % The errors we can get here are not specific to any Mercury module.
     write_error_specs(ProgressStream, Globals, Specs, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred make_init_obj_file_check_result(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::out, list(file_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
+        MainModuleName, AllModulesList, Succeeded, InitObjects, !Info, !IO) :-
+    globals.lookup_bool_option(NoLinkObjsGlobals, part_opmode_rebuild,
+        MustRecompile),
+    make_init_obj_file(ProgressStream, NoLinkObjsGlobals, MustRecompile,
+        MainModuleName, AllModulesList, InitObjectResult, !IO),
+    (
+        InitObjectResult = yes(InitObject),
+        % We may need to update the timestamp of the `_init.o' file.
+        FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+        map.delete(InitObject, FileTimestampMap0, FileTimestampMap1),
+        make_info_set_file_timestamp_map(FileTimestampMap1, !Info),
+        % There is no module_target_type for the `_init.o' file,
+        % so mki_target_file_timestamps should not contain anything
+        % that needs to be invalidated.
+        Succeeded = succeeded,
+        InitObjects = [InitObject]
+    ;
+        InitObjectResult = no,
+        Succeeded = did_not_succeed,
+        InitObjects = []
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_warn_linked_target_up_to_date(io.text_output_stream::in,
+    globals::in, module_name::in, linked_target_type::in,
+    file_name::in, file_name::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+maybe_warn_linked_target_up_to_date(ProgressStream,
+        NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
+        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+        Succeeded, !Info, !IO) :-
+    MainModuleLinkedTarget =
+        top_target_file(MainModuleName, linked_target(LinkedTargetType)),
+    ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
+        maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+            MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
+            UpToDateMsg),
+        maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
+        Succeeded = succeeded
+    else
+        % We did not just perform a link, but check whether the other copy
+        % of the would-have-been-linked-if-that-were-needed file has to be
+        % re-copied.
+        post_link_maybe_make_symlink_or_copy(ProgressStream, NoLinkObjsGlobals,
+            LinkedTargetType, MainModuleName,
+            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+            Succeeded, MadeSymlinkOrCopy, !IO),
+        (
+            MadeSymlinkOrCopy = yes,
+            maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
+                FullMainModuleLinkedFileName, LinkMsg),
+            maybe_write_msg(ProgressStream, LinkMsg, !IO)
+        ;
+            MadeSymlinkOrCopy = no,
+            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+                MainModuleLinkedTarget, FullMainModuleLinkedFileName,
+                !Info, UpToDateMsg),
+            maybe_write_msg(ProgressStream, UpToDateMsg, !IO)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred linked_target_cleanup(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
@@ -1809,4 +1809,3 @@ make_local_module_id_option(ModuleName, Opts0, Opts) :-
 %---------------------------------------------------------------------------%
 :- end_module make.program_target.
 %---------------------------------------------------------------------------%
-
