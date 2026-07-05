@@ -79,20 +79,18 @@
 :- import_module make.library_install.
 :- import_module make.module_target.
 :- import_module make.options_file.
+:- import_module make.order.
 :- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_dep_info.
-:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.write_error_spec.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
-:- import_module cord.
-:- import_module digraph.
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
@@ -373,103 +371,6 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
 
 %---------------------%
 
-:- pred order_target_modules(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-order_target_modules(ProgressStream, Globals, Modules, OrderedModules,
-        !Info, !IO) :-
-    globals.lookup_bool_option(Globals, order_make_by_timestamp,
-        OrderByTimestamp),
-    (
-        OrderByTimestamp = yes,
-        list.map_foldl2(pair_module_with_timestamp(ProgressStream, Globals),
-            Modules, PairedModules, !Info, !IO),
-        list.sort(compare_paired_modules, PairedModules, RevOrderedPairs),
-        % More recently touched files, i.e. files with *larger* timestamps,
-        % should appear *earlier* in the list.
-        list.reverse(RevOrderedPairs, OrderedPairs),
-        list.map(pair.snd, OrderedPairs, OrderedModules)
-    ;
-        OrderByTimestamp = no,
-        list.map(pair_module_with_name, Modules, PairedModules),
-        list.sort(compare_paired_modules, PairedModules, OrderedPairs),
-        list.map(pair.snd, OrderedPairs, OrderedModules)
-    ).
-
-:- pred pair_module_with_timestamp(io.text_output_stream::in, globals::in,
-    module_name::in, pair(timestamp, module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-pair_module_with_timestamp(ProgressStream, Globals, Module,
-        Timestamp - Module, !Info, !IO) :-
-    Target = target_file(Module, module_target_source),
-    get_target_timestamp(ProgressStream, Globals, Target, MaybeTimestamp,
-        !Info, !IO),
-    (
-        MaybeTimestamp = ok(Timestamp)
-    ;
-        MaybeTimestamp = error(_),
-        Timestamp = oldest_timestamp
-    ).
-
-:- pred pair_module_with_name(module_name::in,
-    pair(string, module_name)::out) is det.
-
-pair_module_with_name(Module, Name - Module) :-
-    Name = sym_name_to_string(Module).
-
-:- pred compare_paired_modules(pair(T, module_name)::in,
-    pair(T, module_name)::in, comparison_result::out) is det.
-
-compare_paired_modules(KeyA - ModuleA, KeyB - ModuleB, Result) :-
-    compare(KeyResult, KeyA, KeyB),
-    % More recently touched files should appear earlier in the list.
-    (
-        ( KeyResult = (<)
-        ; KeyResult = (>)
-        ),
-        Result = KeyResult
-    ;
-        KeyResult = (=),
-        ModuleAStr = sym_name_to_string(ModuleA),
-        ModuleBStr = sym_name_to_string(ModuleB),
-        compare(Result, ModuleAStr, ModuleBStr)
-    ).
-
-%---------------------%
-
-    % Remove all nested modules from a list of modules.
-    %
-:- pred filter_out_nested_modules(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-filter_out_nested_modules(ProgressStream, Globals, Modules0, Modules,
-        !Info, !IO) :-
-    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
-        set.init, NestedModules, !Info, !IO),
-    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
-
-:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
-    module_name::in, set(module_name)::in, set(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-collect_nested_modules(ProgressStream, Globals, ModuleName,
-        !NestedModules, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
-        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
-        set.union(NestedSubModules, !NestedModules)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info
-    ).
-
-%---------------------%
-
 :- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
     pic::in, module_name::in, list(target_id)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -492,8 +393,8 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
         unexpected($pred, "unknown imports")
     ),
 
-    % None of the current backends require externally compiled foreign
-    % code, except the C backend for fact tables.
+    % None of the current backends require externally compiled foreign code,
+    % except the C backend for fact tables.
     (
         CompilationTarget = target_c,
         FactFileToTarget =
@@ -1517,93 +1418,6 @@ build_analysis_files_2(ProgressStream, Globals, MainModuleName, TargetModules,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred get_target_modules(io.text_output_stream::in, globals::in,
-    module_target_type::in, list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_target_modules(ProgressStream, Globals, TargetType,
-        AllModules, TargetModules, !Info, !IO) :-
-    ( if TargetType = module_target_errors then
-        % `.err' files are only produced for the top-level module
-        % in each source file.
-        list.foldl3(
-            get_non_nested_target_modules(ProgressStream, Globals),
-            AllModules, cord.init, TargetModulesCord, !Info, !IO),
-        TargetModules = cord.list(TargetModulesCord)
-    else
-        TargetModules = AllModules
-    ).
-
-:- pred get_non_nested_target_modules(io.text_output_stream::in, globals::in,
-    module_name::in, cord(module_name)::in, cord(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
-        !TargetModulesCord, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    ( if
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_source_file_module_name(ModuleDepInfo,
-            SourceFileModuleName),
-        ModuleName = SourceFileModuleName
-    then
-        cord.snoc(ModuleName, !TargetModulesCord)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Return a list of modules in reverse order of their dependencies,
-    % i.e. the list is the module dependency graph from bottom-up. Mutually
-    % dependent modules (modules which form a clique in the dependency graph)
-    % are returned adjacent in the list in arbitrary order.
-    %
-:- pred get_bottom_up_ordered_modules(
-    map(module_name, maybe_module_dep_info)::in,
-    list(module_name)::in, list(module_name)::out) is det.
-
-get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
-    list.foldl2(
-        add_module_relations(lookup_module_dep_info_in_maybe_map(ModuleDeps)),
-        Modules0, digraph.init, _IntDepsGraph, digraph.init, ImpDepsGraph),
-    SccSets = digraph.return_sccs_in_to_from_order(ImpDepsGraph),
-    list.map(set.to_sorted_list, SccSets, SccLists),
-    list.condense(SccLists, Modules).
-
-    % add_module_relations(LookupModuleImports, ModuleName,
-    %   !IntDepsRel, !ImpDepsRel)
-    %
-    % Add a module's interface and implementation dependencies to IntDepsRel
-    % and ImpDepsRel respectively. Dependencies are found using the
-    % LookupModuleImports function.
-    %
-:- pred add_module_relations(lookup_module_dep_info_func::in, module_name::in,
-    digraph(module_name)::in, digraph(module_name)::out,
-    digraph(module_name)::in, digraph(module_name)::out) is det.
-
-add_module_relations(LookupModuleImportsFunc, ModuleName,
-        !IntDepsGraph, !ImpDepsGraph) :-
-    ModuleDepInfo = LookupModuleImportsFunc(ModuleName),
-    add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImportsFunc,
-        !IntDepsGraph, !ImpDepsGraph).
-
-%---------------------------------------------------------------------------%
-
-:- func lookup_module_dep_info_in_maybe_map(
-    map(module_name, maybe_module_dep_info), module_name)
-    = module_dep_info.
-
-lookup_module_dep_info_in_maybe_map(ModuleDeps, ModuleName) = ModuleDepInfo :-
-    map.lookup(ModuleDeps, ModuleName, MaybeModuleDepInfo),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info,
-        unexpected($pred, "MaybeModuleDepInfo = no")
-    ).
 
 :- pred modules_needing_reanalysis(bool::in, globals::in,
     list(module_name)::in, list(module_name)::out, list(module_name)::out,

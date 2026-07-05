@@ -284,6 +284,9 @@ make.clean.m handles `mmc --make' targets for cleanup.
 make.module_target.m handles targets built by a compilation action
 associated with a single module, for example making interface files.
 <li>
+make.order.m computes lists of target modules,
+and orders them by name or by timestamp on request.
+<li>
 make.track_flags.m keeps a database that records
 which options were used to compile each module.
 <li>
