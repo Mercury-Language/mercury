@@ -26,6 +26,10 @@ This is a bug-fix release.
   strings containing a fractional second component with no whole number part
   (e.g. "PT.5S") were incorrectly being accepted.
 
+* We have fixed a bug in `calendar.duration/2` that caused it to compute
+  an incorrect duration, or abort, for some pairs of dates whose difference
+  required borrowing days across months of differing length.
+
 * We have fixed bugs in the C# and Java implementations of
   `math.unchecked_log2/1` that caused target language compilation errors
   when compiling with `--intermodule-optimisation`.
