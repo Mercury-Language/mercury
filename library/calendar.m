@@ -1407,21 +1407,31 @@ day_duration(DateTimeA, DateTimeB) =
 :- func do_fixed_duration_between(date_time, date_time) = duration.
 
 do_fixed_duration_between(Earlier, Later) = Duration :-
+    LaterMicroSeconds = Later ^ dt_microsecond,
+    EarlierMicroSeconds = Earlier ^ dt_microsecond,
     subtract_ints_with_borrow(microseconds_per_second,
-        Later ^ dt_microsecond, Earlier ^ dt_microsecond,
+        LaterMicroSeconds, EarlierMicroSeconds,
         MicroSeconds, BorrowFromSeconds),
-    LaterSecondLessBorrow = Later ^ dt_second - BorrowFromSeconds,
-    subtract_ints_with_borrow(60, LaterSecondLessBorrow,
-        Earlier ^ dt_second, Seconds, BorrowFromMinutes),
-    LaterMinuteLessBorrow = Later ^ dt_minute - BorrowFromMinutes,
+
+    LaterSecondsLessBorrow = Later ^ dt_second - BorrowFromSeconds,
+    EarlierSeconds = Earlier ^ dt_second,
     subtract_ints_with_borrow(60,
-        LaterMinuteLessBorrow, Earlier ^ dt_minute, Minutes, BorrowFromHours),
-    LaterHourLessBorrow = Later ^ dt_hour - BorrowFromHours,
+        LaterSecondsLessBorrow, EarlierSeconds, Seconds, BorrowFromMinutes),
+
+    LaterMinutesLessBorrow = Later ^ dt_minute - BorrowFromMinutes,
+    EarlierMinutes = Earlier ^ dt_minute,
+    subtract_ints_with_borrow(60,
+        LaterMinutesLessBorrow, EarlierMinutes, Minutes, BorrowFromHours),
+
+    LaterHoursLessBorrow = Later ^ dt_hour - BorrowFromHours,
+    EarlierHours = Earlier ^ dt_hour,
     subtract_ints_with_borrow(24,
-        LaterHourLessBorrow, Earlier ^ dt_hour, Hours, BorrowFromDays),
+        LaterHoursLessBorrow, EarlierHours, Hours, BorrowFromDays),
+
     LaterDay = julian_day_number(Later),
     EarlierDay = julian_day_number(Earlier),
     Days = LaterDay - BorrowFromDays - EarlierDay,
+
     Duration = init_duration(0, 0, Days, Hours, Minutes, Seconds,
         MicroSeconds).
 
