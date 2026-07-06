@@ -1242,18 +1242,18 @@ max_day_in_month_for(YearValue, MonthValue) = Max :-
 
 %---------------------------------------------------------------------------%
 
-duration_leq(DurA, DurB) :-
+duration_leq(DurationA, DurationB) :-
     % Partial relation on durations. This algorithm is described at
     % https://www.w3.org/TR/xmlschema-2/#duration.
     list.all_true(
-        ( pred(TestDate::in) is semidet :-
-            add_duration(DurA, TestDate, DateA),
-            add_duration(DurB, TestDate, DateB),
-            compare(CompRes, DateA, DateB),
+        ( pred(TestDateTime::in) is semidet :-
+            add_duration(DurationA, TestDateTime, DateTimeA),
+            add_duration(DurationB, TestDateTime, DateTimeB),
+            compare(CompRes, DateTimeA, DateTimeB),
             ( CompRes = (<) ; CompRes = (=) )
         ), test_dates).
 
-    % Returns dates used to compare durations.
+    % Returns date_times used to compare durations.
     %
 :- func test_dates = list(date_time).
 
@@ -1264,38 +1264,39 @@ test_dates = [
     date_time(1903, 7, 1, 0, 0, 0, 0)
 ].
 
-local_time_offset(TZ, !IO) :-
+local_time_offset(Offset, !IO) :-
     time.time(TimeT, !IO),
     time.localtime(TimeT, LocalTM, !IO),
     GMTM = time.gmtime(TimeT),
     LocalTime = tm_to_date(LocalTM),
     GMTime = tm_to_date(GMTM),
-    TZ = duration_between(GMTime, LocalTime).
+    Offset = duration_between(GMTime, LocalTime).
 
 %---------------------------------------------------------------------------%
 %
 % Computing the duration between two dates.
 %
 
-duration_between(DateA, DateB) = Duration :-
-    compare(CompResult, DateA, DateB),
+duration_between(DateTimeA, DateTimeB) = Duration :-
+    compare(CompResult, DateTimeA, DateTimeB),
     (
         CompResult = (<),
-        % DateA is the earlier date, so the duration between is non-negative.
-        Duration = greedy_difference_from_earlier(DateA, DateB)
+        % DateTimeA is the earlier date, so the duration between is
+        % non-negative.
+        Duration = greedy_difference_from_earlier(DateTimeA, DateTimeB)
     ;
         CompResult = (=),
         Duration = zero_duration
     ;
         CompResult = (>),
-        % DateA is the later date, so the duration between is non-positive.
+        % DateTimeA is the later date, so the duration between is non-positive.
         % Compute the magnitude of the duration anchored at the later date
         % and then negate it.
-        Magnitude = greedy_difference_from_later(DateB, DateA),
+        Magnitude = greedy_difference_from_later(DateTimeB, DateTimeA),
         Duration = negate(Magnitude)
     ).
 
-duration(DateA, DateB) = duration_between(DateA, DateB).
+duration(DateTimeA, DateTimeB) = duration_between(DateTimeA, DateTimeB).
 
     % greedy_difference_from_earlier(Earlier, Later) = Duration:
     % greedy_difference_from_later(Earlier, Later) = Duration:
@@ -1380,45 +1381,49 @@ subtract_ints_with_borrow(BorrowVal, Val1, Val2, Diff, Borrow) :-
         Diff = BorrowVal + Val1 - Val2
     ).
 
-fixed_duration_between(DateA, DateB) = Duration :-
-    compare(CompResult, DateB, DateA),
+fixed_duration_between(DateTimeA, DateTimeB) = Duration :-
+    compare(CompResult, DateTimeA, DateTimeB),
     (
         CompResult = (<),
-        Duration0 = do_fixed_duration_between(DateB, DateA),
-        Duration = negate(Duration0)
+        Duration = do_fixed_duration_between(DateTimeA, DateTimeB)
     ;
         CompResult = (=),
         Duration = zero_duration
     ;
         CompResult = (>),
-        Duration = do_fixed_duration_between(DateA, DateB)
+        Duration0 = do_fixed_duration_between(DateTimeB, DateTimeA),
+        Duration = negate(Duration0)
     ).
 
-day_duration(DateA, DateB) = fixed_duration_between(DateA, DateB).
+day_duration(DateTimeA, DateTimeB) =
+    fixed_duration_between(DateTimeA, DateTimeB).
 
+    % do_fixed_duration_between(Earlier, Later) = Duration:
+    %
+    % Return the non-negative difference between Earlier and Later expressed in
+    % fixed-length units only (days and smaller). It is a precondition that
+    % Earlier =< Later.
+    %
 :- func do_fixed_duration_between(date_time, date_time) = duration.
 
-do_fixed_duration_between(DateA, DateB) = Duration :-
-    some [!Borrow] (
-        MicroSecond1 = DateB ^ dt_microsecond,
-        MicroSecond2 = DateA ^ dt_microsecond,
-        subtract_ints_with_borrow(microseconds_per_second,
-            MicroSecond1, MicroSecond2, MicroSeconds, !:Borrow),
-        Second1 = DateB ^ dt_second - !.Borrow,
-        Second2 = DateA ^ dt_second,
-        subtract_ints_with_borrow(60, Second1, Second2, Seconds, !:Borrow),
-        Minute1 = DateB ^ dt_minute - !.Borrow,
-        Minute2 = DateA ^ dt_minute,
-        subtract_ints_with_borrow(60, Minute1, Minute2, Minutes, !:Borrow),
-        Hour1 = DateB ^ dt_hour - !.Borrow,
-        Hour2 = DateA ^ dt_hour,
-        subtract_ints_with_borrow(24, Hour1, Hour2, Hours, !:Borrow),
-        JDN1 = julian_day_number(DateB),
-        JDN2 = julian_day_number(DateA),
-        Days = JDN1 - !.Borrow - JDN2,
-        Duration = init_duration(0, 0, Days, Hours, Minutes, Seconds,
-            MicroSeconds)
-    ).
+do_fixed_duration_between(Earlier, Later) = Duration :-
+    subtract_ints_with_borrow(microseconds_per_second,
+        Later ^ dt_microsecond, Earlier ^ dt_microsecond,
+        MicroSeconds, BorrowFromSeconds),
+    LaterSecondLessBorrow = Later ^ dt_second - BorrowFromSeconds,
+    subtract_ints_with_borrow(60, LaterSecondLessBorrow,
+        Earlier ^ dt_second, Seconds, BorrowFromMinutes),
+    LaterMinuteLessBorrow = Later ^ dt_minute - BorrowFromMinutes,
+    subtract_ints_with_borrow(60,
+        LaterMinuteLessBorrow, Earlier ^ dt_minute, Minutes, BorrowFromHours),
+    LaterHourLessBorrow = Later ^ dt_hour - BorrowFromHours,
+    subtract_ints_with_borrow(24,
+        LaterHourLessBorrow, Earlier ^ dt_hour, Hours, BorrowFromDays),
+    LaterDay = julian_day_number(Later),
+    EarlierDay = julian_day_number(Earlier),
+    Days = LaterDay - BorrowFromDays - EarlierDay,
+    Duration = init_duration(0, 0, Days, Hours, Minutes, Seconds,
+        MicroSeconds).
 
 %---------------------------------------------------------------------------%
 
