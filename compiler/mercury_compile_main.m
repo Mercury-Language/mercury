@@ -206,7 +206,8 @@ main_after_setup(ProgressStream, ErrorStream, Globals, ArgPack, !IO) :-
             HaveParseTreeMaps0, _HaveParseTreeMaps,
             init_maybe_written_specs, MaybeWrittenSpecs, !IO),
         write_not_yet_written_specs(ErrorStream, Globals,
-            MaybeWrittenSpecs, _, !IO)
+            MaybeWrittenSpecs, _, !IO),
+        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -229,11 +230,12 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, ArgPack,
     ;
         OpMode = opm_top_generate_source_file_mapping,
         ArgPack = compiler_arg_pack(_, _, _, Args),
-        source_file_map.write_source_file_map(ErrorStream, Globals, Args, !IO)
+        source_file_map.write_source_file_map(Args, FileMapSpecs, !IO),
+        add_to_be_written_specs(FileMapSpecs, !MaybeWrittenSpecs)
     ;
         OpMode = opm_top_generate_standalone_interface(StandaloneIntBasename),
-        do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
-            StandaloneIntBasename, !IO)
+        do_op_mode_standalone_interface(ProgressStream, Globals,
+            StandaloneIntBasename, !MaybeWrittenSpecs, !IO)
     ;
         OpMode = opm_top_query(OpModeQuery),
         do_op_mode_query(Globals, OpModeQuery, !MaybeWrittenSpecs, !IO)
@@ -256,11 +258,11 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, ArgPack,
     ).
 
 :- pred do_op_mode_standalone_interface(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, string::in,
-    io::di, io::uo) is det.
+    globals::in, string::in,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
-        StandaloneIntBasename, !IO) :-
+do_op_mode_standalone_interface(ProgressStream, Globals,
+        StandaloneIntBasename, !MaybeWrittenSpecs, !IO) :-
     globals.get_target(Globals, Target),
     (
         ( Target = target_csharp
@@ -273,7 +275,7 @@ do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
             words(compilation_target_string(Target)), suffix("."), nl],
         Spec = no_ctxt_spec($pred, severity_error, phase_options,
             Pieces),
-        write_error_spec(ErrorStream, Globals, Spec, !IO)
+        add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
     ;
         Target = target_c,
         make_standalone_interface(Globals, ProgressStream,
@@ -460,9 +462,9 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
                 ExitStatus = 0
             then
                 ExtraObjFiles = cord.list(ExtraObjFilesCord),
-                generate_executable(ProgressStream, ErrorStream, Globals,
-                    InvokedByMmcMake, Params,
-                    FirstModuleName, ModulesToLink, ExtraObjFiles, !IO)
+                generate_executable(ProgressStream, Globals, InvokedByMmcMake,
+                    Params, FirstModuleName, ModulesToLink, ExtraObjFiles,
+                    !MaybeWrittenSpecs, !IO)
             else if
                 all_args_end_in_dot_m(Args) = yes,
                 AllSpecsSoFar =
@@ -493,8 +495,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
             )
         else
             true
-        ),
-        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO)
+        )
     ;
         LibgradeCheckSpecs = [_ | _],
         % Print all remaining module-specific error_specs.
@@ -561,13 +562,14 @@ could_not_read_some_int_file([Spec | Specs]) = CouldNotRead :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_executable(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_invoked_by_mmc_make::in,
-    compiler_params::in, module_name::in,
-    list(module_name)::in, list(string)::in, io::di, io::uo) is det.
+:- pred generate_executable(io.text_output_stream::in, globals::in,
+    op_mode_invoked_by_mmc_make::in, compiler_params::in, module_name::in,
+    list(module_name)::in, list(string)::in,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
-        Params, FirstModuleName, ModulesToLink, ExtraObjFiles, !IO) :-
+generate_executable(ProgressStream, Globals, InvokedByMmcMake, Params,
+        FirstModuleName, ModulesToLink, ExtraObjFiles,
+        !MaybeWrittenSpecs, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_java,
@@ -586,7 +588,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
         link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
             Globals, csharp_executable, FirstModuleName, CssFilesToLink,
             Specs, Succeeded, !IO),
-        write_error_specs(ErrorStream, Globals, Specs, !IO)
+        add_to_be_written_specs(Specs, !MaybeWrittenSpecs)
     ;
         Target = target_c,
         (
@@ -612,7 +614,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
                     Specs, Succeeded, !IO)
             )
         ),
-        write_error_specs(ErrorStream, Globals, Specs, !IO)
+        add_to_be_written_specs(Specs, !MaybeWrittenSpecs)
     ),
     maybe_set_exit_status(Succeeded, !IO).
 

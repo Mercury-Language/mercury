@@ -23,9 +23,9 @@
 
 :- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
 :- import_module io.
@@ -46,12 +46,12 @@
 % Part 2: constructing Mercury.modules files.
 %
 
-    % write_source_file_map(ErrorStream, Globals, FileNames, !IO):
+    % write_source_file_map(FileNames, Specs, !IO):
     %
     % Given a list of file names, produce the Mercury.modules file.
     %
-:- pred write_source_file_map(io.text_output_stream::in,
-    globals::in, list(string)::in, io::di, io::uo) is det.
+:- pred write_source_file_map(list(string)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -94,7 +94,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.parse_module.   % for peek_at_file
 :- import_module parse_tree.parse_tree_out_sym_name.
@@ -130,18 +129,19 @@ default_module_name_for_file(FileName, DefaultModuleName) :-
 % Part 2.
 %
 
-write_source_file_map(ErrorStream, Globals, FileNames, !IO) :-
+write_source_file_map(FileNames, Specs, !IO) :-
     list.foldl4(acc_source_file_map_line, FileNames,
-        bimap.init, _, cord.init, MapFileLineCord, [], Specs, !IO),
+        bimap.init, _, cord.init, MapFileLineCord, [], Specs0, !IO),
     (
-        Specs = [],
+        Specs0 = [],
         ModulesFileName = modules_file_name,
         io.open_output(ModulesFileName, ModulesFileResult, !IO),
         (
             ModulesFileResult = ok(ModulesFileStream),
             MapFileLines = cord.list(MapFileLineCord),
             io.write_strings(ModulesFileStream, MapFileLines, !IO),
-            io.close_output(ModulesFileStream, !IO)
+            io.close_output(ModulesFileStream, !IO),
+            Specs = []
         ;
             ModulesFileResult = error(Error),
             ErrorMsg = io.error_message(Error),
@@ -151,11 +151,11 @@ write_source_file_map(ErrorStream, Globals, FileNames, !IO) :-
                 words(ErrorMsg), suffix("."), nl],
             Spec = no_ctxt_spec($pred, severity_error, phase_write_files,
                 Pieces),
-            write_error_spec(ErrorStream, Globals, Spec, !IO)
+            Specs = [Spec]
         )
     ;
-        Specs = [_ | _],
-        write_error_specs(ErrorStream, Globals, Specs, !IO)
+        Specs0 = [_ | _],
+        Specs = Specs0
     ).
 
 :- pred acc_source_file_map_line(file_name::in,

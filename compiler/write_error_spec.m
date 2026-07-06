@@ -2536,7 +2536,7 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
     % for the next module.
     get_wrote_something(WroteSomething, !IO),
     set_wrote_something(no, !IO),
-    get_bad_color_schemes(BadColorSchemeSpecs0, !IO),
+    get_bad_color_schemes(BadColorSchemeSpecs, !IO),
     set_bad_color_schemes([], !IO),
     get_some_errors_were_context_limited(Limited, !IO),
     set_some_errors_were_context_limited(no_errors_were_context_limited, !IO),
@@ -2547,7 +2547,6 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
         WroteSomething = no
     ;
         WroteSomething = yes,
-        list.sort_and_remove_dups(BadColorSchemeSpecs0, BadColorSchemeSpecs),
         write_error_specs(ErrorStream, Globals, BadColorSchemeSpecs, !IO)
     ),
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1305,7 +1305,7 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
             Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             globals.set_option(print_error_spec_id, bool(yes),
                 Globals0, Globals),
-            write_error_spec(DebugStream, Globals, Spec, !IO),
+            write_error_spec(DebugStream, Globals, Spec, !IO), % debug msg
             io.flush_output(DebugStream, !IO)
         )
     ).

@@ -1710,7 +1710,7 @@ report_used_file_read_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
         list.condense(MsgsList, Msgs),
         Spec = error_spec($pred, Severity, phase_read_files, Msgs)
     ),
-    write_error_spec(Stream, Globals, Spec, !IO).
+    write_error_spec(Stream, Globals, Spec, !IO).   % informational only
 
 %---------------------%
 
@@ -1791,7 +1791,7 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
         phase_read_files, AllPieces),
     % Since these messages are informational, there should be no warnings
     % or errors.
-    write_error_spec(Stream, Globals, Spec, !IO).
+    write_error_spec(Stream, Globals, Spec, !IO). % informational only
 
 :- func describe_item(recomp_item_id) = list(format_piece).
 

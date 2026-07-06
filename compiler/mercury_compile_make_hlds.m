@@ -153,10 +153,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             ModuleName, MaybeDFileTransOptDeps, !IO)
     ),
 
-    maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
+    maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals,
         OpModeAugment, Verbose, MaybeDFileTransOptDeps, OptBlockingSpecs,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
-        !HaveReadModuleMaps, !IO),
+        !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO),
     (
         OptBlockingSpecs = [],
         IntermodError = no
@@ -512,16 +512,16 @@ read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
 %---------------------%
 
 :- pred maybe_grab_plain_and_trans_opt_files(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_augment::in,
+    globals::in, op_mode_augment::in,
     bool::in, maybe(list(module_name))::in, list(error_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, Verbose, MaybeDFileTransOptDeps, BlockingSpecs,
-        !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO) :-
+maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals, OpModeAugment,
+        Verbose, MaybeDFileTransOptDeps, BlockingSpecs, !Baggage,
+        !AugCompUnit, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
@@ -540,7 +540,7 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
         grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
             PlainOptBlockingSpecs,
             !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
-        maybe_write_string(ProgressStream, Verbose, "% Done.\n", !IO)
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     else
         PlainOptBlockingSpecs = []
     ),
@@ -569,7 +569,7 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
                     words("You need to remake the dependencies."), nl],
                 Severity = severity_warning(warn_missing_trans_opt_deps),
                 Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
-                write_error_spec(ErrorStream, Globals, Spec, !IO)
+                add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
             ;
                 WarnNoTransOptDeps = no
             )
