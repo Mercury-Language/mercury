@@ -270,7 +270,15 @@ invalid_durations = [
     duration_test("letter in time component", "PT1HxM"),
 
     % T present but no time components follow.
-    duration_test("T with no time components", "P1DT")
+    duration_test("T with no time components", "P1DT"),
+
+    % Component designators with missing digits.
+    duration_test("Y with no year digits", "PY"),
+    duration_test("M with no month digits", "P5YM"),
+    duration_test("D with no day digits", "P5YD"),
+    duration_test("H with no hour digits", "PTH"),
+    duration_test("M with no minute digits", "PT5HM"),
+    duration_test("S with no second digits", "PTS")
 ].
 
 %---------------------------------------------------------------------------%

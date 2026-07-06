@@ -270,3 +270,21 @@ PASS: ERROR DETECTED
 
 "P1DT":                             T with no time components
 PASS: ERROR DETECTED
+
+"PY":                               Y with no year digits
+PASS: ERROR DETECTED
+
+"P5YM":                             M with no month digits
+PASS: ERROR DETECTED
+
+"P5YD":                             D with no day digits
+PASS: ERROR DETECTED
+
+"PTH":                              H with no hour digits
+PASS: ERROR DETECTED
+
+"PT5HM":                            M with no minute digits
+PASS: ERROR DETECTED
+
+"PTS":                              S with no second digits
+PASS: ERROR DETECTED
