@@ -100,15 +100,15 @@
 
 make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
-        HLDS0, QualInfo, MaybeTimestampMap,
+        !:HLDS, QualInfo, MaybeTimestampMap,
         UndefTypes, UndefModes, PreHLDSErrors,
         !DumpInfo, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    ParseTreeModuleSrc = AugCompUnit0 ^ acu_module_src,
-    maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc,
+    ParseTreeModuleSrc0 = AugCompUnit0 ^ acu_module_src,
+    maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc0,
         !MaybeWrittenSpecs),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
     should_we_write_d_file(OpModeAugment, InvokedByMMCMake, WriteDFile),
     maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
@@ -165,19 +165,49 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     maybe_report_stats(ProgressStream, Stats, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
 
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Converting parse tree to hlds...\n", !IO),
+    module_name_to_cur_dir_file_name(ext_cur_user_hlds_dump,
+        ModuleName, DumpBaseFileName),
+    parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
+        MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports, QualInfo, !:HLDS,
+        InvalidTypeSpecs, InvalidInstModeSpecs, MakeSpecs),
+    add_to_be_written_specs(InvalidTypeSpecs, !MaybeWrittenSpecs),
+    add_to_be_written_specs(InvalidInstModeSpecs, !MaybeWrittenSpecs),
+    add_to_be_written_specs(MakeSpecs, !MaybeWrittenSpecs),
+
     EventSet = event_set(EventSetName, EventSpecMap),
-    make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet,
-        MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports,
-        Verbose, Stats, HLDS0, QualInfo,
-        InvalidTypeSpecs, InvalidInstModeSpecs,
-        FoundSemanticError, !MaybeWrittenSpecs, !IO),
+    module_info_set_event_set(EventSet, !HLDS),
+
+    % ZZZ
+    io.get_exit_status(Status, !IO),
+    SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
+    SpecsErrors = contains_errors(Globals, SpecsSoFar),
+    ( if
+        ( Status \= 0
+        ; SpecsErrors = yes
+        )
+    then
+        FoundSemanticError = yes,
+        % ZZZ
+        io.set_exit_status(1, !IO)
+    else
+        FoundSemanticError = no
+    ),
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO),
+
     bool.or(FoundSemanticError, IntermodError, PreHLDSErrors),
     maybe_write_definitions(ProgressStream,
-        Verbose, Stats, HLDS0, !IO),
+        Verbose, Stats, !.HLDS, !IO),
     maybe_write_definition_line_counts(ProgressStream,
-        Verbose, Stats, HLDS0, !IO),
+        Verbose, Stats, !.HLDS, !IO),
     maybe_write_definition_extents(ProgressStream,
-        Verbose, Stats, HLDS0, !IO),
+        Verbose, Stats, !.HLDS, !IO),
 
     ( if
         InvalidTypeSpecs = [],
@@ -196,9 +226,9 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         UndefModes = yes
     ),
 
-    maybe_dump_hlds(ProgressStream, HLDS0, 1, "initial", !DumpInfo, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 1, "initial", !DumpInfo, !IO),
     maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
-        ParseTreeModuleSrc, HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO).
+        !.HLDS, WriteDFile, MaybeDFileTransOptDeps, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -543,55 +573,6 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals, OpModeAugment,
 
 %---------------------%
 
-% ZZZ inline
-:- pred make_hlds(io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, aug_compilation_unit::in, event_set::in, mq_info::in,
-    type_eqv_map::in, used_eqv_modules::in, set_tree234(module_name)::in,
-    bool::in, bool::in, module_info::out, qual_info::out,
-    list(error_spec)::out, list(error_spec)::out, bool::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
-
-make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
-        TypeEqvMap, UsedEqvModules, UnusedImports, Verbose, Stats, !:HLDS,
-        QualInfo, InvalidTypeSpecs, InvalidInstModeSpecs, FoundSemanticError,
-        !MaybeWrittenSpecs, !IO) :-
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Converting parse tree to hlds...\n", !IO),
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    module_name_to_cur_dir_file_name(ext_cur_user_hlds_dump,
-        ModuleName, DumpBaseFileName),
-    parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
-        MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports, QualInfo, !:HLDS,
-        InvalidTypeSpecs, InvalidInstModeSpecs, MakeSpecs),
-    add_to_be_written_specs(InvalidTypeSpecs, !MaybeWrittenSpecs),
-    add_to_be_written_specs(InvalidInstModeSpecs, !MaybeWrittenSpecs),
-    add_to_be_written_specs(MakeSpecs, !MaybeWrittenSpecs),
-    module_info_set_event_set(EventSet, !HLDS),
-    % ZZZ
-    io.get_exit_status(Status, !IO),
-    SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
-    SpecsErrors = contains_errors(Globals, SpecsSoFar),
-    ( if
-        ( Status \= 0
-        ; SpecsErrors = yes
-        )
-    then
-        FoundSemanticError = yes,
-        % ZZZ
-        io.set_exit_status(1, !IO)
-    else
-        FoundSemanticError = no
-    ),
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
-    maybe_report_stats(ProgressStream, Stats, !IO).
-
-%---------------------%
-
 :- pred maybe_write_definitions(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, io::di, io::uo) is det.
 
@@ -749,12 +730,12 @@ maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
     ).
 
 :- pred maybe_write_d_file(io.text_output_stream::in, globals::in,
-    module_baggage::in, aug_compilation_unit::in, parse_tree_module_src::in,
-    module_info::in, maybe_write_d_file::in, maybe(list(module_name))::in,
+    module_baggage::in, aug_compilation_unit::in, module_info::in,
+    maybe_write_d_file::in, maybe(list(module_name))::in,
     io::di, io::uo) is det.
 
 maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
-        ParseTreeModuleSrc, HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO) :-
+        HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO) :-
     (
         WriteDFile = do_not_write_d_file
     ;
@@ -780,6 +761,7 @@ maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
             OutputMMCMakeDeps = yes,
+            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
             BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
             make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
                 BurdenedModule0, !IO)
