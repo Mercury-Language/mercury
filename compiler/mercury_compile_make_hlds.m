@@ -98,10 +98,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type maybe_write_d_file
-    --->    do_not_write_d_file
-    ;       write_d_file.
-
 make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
         HLDS0, QualInfo, MaybeTimestampMap,
@@ -114,57 +110,9 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         !MaybeWrittenSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
 
-    % ZZZ move this to a separate predicate
-    (
-        ( OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
-        ),
-        % If we are only typechecking or error checking, then we should not
-        % modify any files; this includes writing to .d files.
-        WriteDFile = do_not_write_d_file
-    ;
-        OpModeAugment = opmau_make_plain_opt,
-        % Don't write the `.d' file when making the `.opt' file because
-        % we can't work out the full transitive implementation dependencies.
-        WriteDFile = do_not_write_d_file
-    ;
-        (
-            OpModeAugment = opmau_make_trans_opt
-        ;
-            OpModeAugment = opmau_make_analysis_registry
-            % XXX We should insist on do_not_write_d_file for these.
-        ;
-            OpModeAugment = opmau_make_xml_documentation
-            % XXX We should insist on do_not_write_d_file for these.
-        ;
-            OpModeAugment = opmau_front_and_middle(OpModeFAM),
-            ( OpModeFAM = opfam_target_code_only
-            ; OpModeFAM = opfam_target_and_object_code_only
-            ; OpModeFAM = opfam_target_object_and_executable
-            )
-        ),
-        (
-            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
-            WriteDFile = do_not_write_d_file
-        ;
-            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make,
-            WriteDFile = write_d_file
-        )
-    ),
-    (
-        WriteDFile = do_not_write_d_file,
-        MaybeDFileTransOptDeps = no
-    ;
-        WriteDFile = write_d_file,
-        % We need the MaybeDFileTransOptDeps when creating the .trans_opt file.
-        % However, we *also* need the MaybeDFileTransOptDeps when writing out
-        % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
-        % a .d file that does not include the trans_opt_deps mmake rule,
-        % which will require an "mmake depend" before the next rebuild.
-        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
-            ModuleName, MaybeDFileTransOptDeps, !IO)
-    ),
-
+    should_we_write_d_file(OpModeAugment, InvokedByMMCMake, WriteDFile),
+    maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
+        WriteDFile, MaybeDFileTransOptDeps, !IO),
     maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals,
         OpModeAugment, Verbose, MaybeDFileTransOptDeps, OptBlockingSpecs,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
@@ -249,39 +197,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     ),
 
     maybe_dump_hlds(ProgressStream, HLDS0, 1, "initial", !DumpInfo, !IO),
+    maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
+        ParseTreeModuleSrc, HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO).
 
-    (
-        WriteDFile = do_not_write_d_file
-    ;
-        WriteDFile = write_d_file,
-        % The original Baggage0 will do just fine for
-        % generate_and_write_d_file_hlds, since it accesses only the parts
-        % of Baggage0 that identify the properties of the source file
-        % containing the module.
-        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
-        module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
-        (
-            MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
-            set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
-            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
-            MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo)
-        ;
-            MaybeDFileTransOptDeps = no,
-            MaybeInclTransOptRule = do_not_include_trans_opt_rule
-        ),
-        generate_and_write_d_file_hlds(ProgressStream, Globals,
-            BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO),
-        globals.lookup_bool_option(Globals,
-            generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
-        (
-            OutputMMCMakeDeps = yes,
-            BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
-            make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
-                BurdenedModule0, !IO)
-        ;
-            OutputMMCMakeDeps = no
-        )
-    ).
+%---------------------------------------------------------------------------%
 
 :- pred maybe_warn_about_stdlib_shadowing(globals::in,
     parse_tree_module_src::in,
@@ -760,6 +679,113 @@ maybe_write_definition_extents(ProgressStream, Verbose, Stats, HLDS, !IO) :-
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         Extents = no
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_write_d_file
+    --->    do_not_write_d_file
+    ;       write_d_file.
+
+:- pred should_we_write_d_file(op_mode_augment::in,
+    op_mode_invoked_by_mmc_make::in, maybe_write_d_file::out) is det.
+
+should_we_write_d_file(OpModeAugment, InvokedByMMCMake, WriteDFile) :-
+    (
+        ( OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
+        ),
+        % If we are only typechecking or error checking, then we should not
+        % modify any files; this includes writing to .d files.
+        WriteDFile = do_not_write_d_file
+    ;
+        OpModeAugment = opmau_make_plain_opt,
+        % Don't write the `.d' file when making the `.opt' file because
+        % we can't work out the full transitive implementation dependencies.
+        WriteDFile = do_not_write_d_file
+    ;
+        (
+            OpModeAugment = opmau_make_trans_opt
+        ;
+            OpModeAugment = opmau_make_analysis_registry
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_make_xml_documentation
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_front_and_middle(OpModeFAM),
+            ( OpModeFAM = opfam_target_code_only
+            ; OpModeFAM = opfam_target_and_object_code_only
+            ; OpModeFAM = opfam_target_object_and_executable
+            )
+        ),
+        (
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
+            WriteDFile = do_not_write_d_file
+        ;
+            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make,
+            WriteDFile = write_d_file
+        )
+    ).
+
+:- pred maybe_read_trans_opt_deps(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_write_d_file::in, maybe(list(module_name))::out,
+    io::di, io::uo) is det.
+
+maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
+        WriteDFile, MaybeDFileTransOptDeps, !IO) :-
+    (
+        WriteDFile = do_not_write_d_file,
+        MaybeDFileTransOptDeps = no
+    ;
+        WriteDFile = write_d_file,
+        % We need the MaybeDFileTransOptDeps when creating the .trans_opt file.
+        % However, we *also* need the MaybeDFileTransOptDeps when writing out
+        % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
+        % a .d file that does not include the trans_opt_deps mmake rule,
+        % which will require an "mmake depend" before the next rebuild.
+        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
+            ModuleName, MaybeDFileTransOptDeps, !IO)
+    ).
+
+:- pred maybe_write_d_file(io.text_output_stream::in, globals::in,
+    module_baggage::in, aug_compilation_unit::in, parse_tree_module_src::in,
+    module_info::in, maybe_write_d_file::in, maybe(list(module_name))::in,
+    io::di, io::uo) is det.
+
+maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
+        ParseTreeModuleSrc, HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO) :-
+    (
+        WriteDFile = do_not_write_d_file
+    ;
+        WriteDFile = write_d_file,
+        % The original Baggage0 will do just fine for
+        % generate_and_write_d_file_hlds, since it accesses only the parts
+        % of Baggage0 that identify the properties of the source file
+        % containing the module.
+        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
+        module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
+        (
+            MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
+            set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
+            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
+            MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo)
+        ;
+            MaybeDFileTransOptDeps = no,
+            MaybeInclTransOptRule = do_not_include_trans_opt_rule
+        ),
+        generate_and_write_d_file_hlds(ProgressStream, Globals,
+            BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO),
+        globals.lookup_bool_option(Globals,
+            generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
+        (
+            OutputMMCMakeDeps = yes,
+            BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
+            make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
+                BurdenedModule0, !IO)
+        ;
+            OutputMMCMakeDeps = no
+        )
     ).
 
 %---------------------------------------------------------------------------%
