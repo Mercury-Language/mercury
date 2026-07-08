@@ -442,11 +442,19 @@
     %
     % The string should have the form "[-]PnYnMnDTnHnMnS" where each "n" is a
     % non-negative integer representing the number of years (Y), months (M),
-    % days (D), hours (H), minutes (M) or seconds (S). The units must follow
-    % the numbers, not precede them. The duration string always starts with
-    % either 'P' or '-P', and the 'T' separates the date and time components
-    % of the duration. A component may be omitted if it is zero, and
-    % the 'T' separator is not required if all the time components are zero.
+    % days (D), hours (H), minutes (M) or seconds (S). Each number precedes its
+    % designator character. The string always starts with either 'P' or '-P',
+    % and the 'T' separates the date components from the time components.
+    %
+    % A component may be omitted entirely, in which case it is treated as zero.
+    % For example, "P1Y" is one year, with the months and days components zero.
+    % Omitting a component means leaving out both its number and its
+    % designator. A designator with no number before it, such as the 'M' in
+    % "P1YM", is not permitted.
+    %
+    % The 'T' separator must be present if and only if at least one time
+    % component (hours, minutes or seconds) is present. A 'T' with no time
+    % component after it (e.g. "P1DT") is not permitted.
     %
     % The seconds component may include a fraction component using a period.
     % This fraction component cannot include more than six digits, since
