@@ -585,6 +585,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         ( if
             ( PredName = "compare_local_uint_words"
             ; PredName = "semidet_call_3"
+            ; PredName = "store_at_field_offset_impure"
             ; PredName = "superclass_from_typeclass_info"
             ; PredName = "table_lookup_insert_typeclassinfo"
             ; PredName = "table_lookup_insert_typeinfo"

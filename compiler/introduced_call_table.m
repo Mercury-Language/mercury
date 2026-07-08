@@ -261,6 +261,7 @@ mict_private_builtin("reset_ticket_undo",   1).
 mict_private_builtin("restore_hp",          1).
 mict_private_builtin("sorry",               1).
 mict_private_builtin("store_at_ref_impure", 2).
+mict_private_builtin("store_at_field_offset_impure", 3).
 mict_private_builtin("store_ticket",        1).
 mict_private_builtin("superclass_from_typeclass_info", 3).
 mict_private_builtin("trace_evaluate_runtime_condition", 0).

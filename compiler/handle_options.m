@@ -691,15 +691,25 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_OptUnusedArgsIntermod = do_not_opt_unused_args_intermod
     ),
 
-    % XXX With accurate gc, we need to disable optimize-constructor-last-call
-    % as currently the collector (and tracing code generator) knows neither
-    % about the pre-constructed data structures nor the references into them
-    % that this optimisation uses.
+    % LCMC under accurate GC needs the cell-and-offset capture that
+    % lco.m's lci_use_field_path branch implements: the original LLD
+    % store_at_ref_type pointer is an interior pointer into a heap cell
+    % and the AGC collector cannot relocate it when the cell is
+    % evacuated. The high-level-data path passes the parent cell as a
+    % partial-inst term, so it is already safe under AGC. The low-level
+    % MLDS path uses the new store_at_field_offset_impure builtin to
+    % keep the cell pointer GC-traceable while still landing the field
+    % write at the right offset. The LLDS back-end has not yet been
+    % wired up to either alternative, so accurate GC + LLDS still
+    % disables LCMC entirely.
+    globals.lookup_bool_option(!.Globals, highlevel_code, OT_HighLevelCode),
     ( if
         AllowSrcChangesDebug = allow_src_changes,
         ProfileDeep = bool.no,
         AllowOptLCMCTermSize = bool.yes,
-        GC_Method \= gc_accurate
+        ( GC_Method \= gc_accurate
+        ; OT_HighLevelCode = yes
+        )
     then
         OT_OptLCMC = OT_OptLCMC0
     else

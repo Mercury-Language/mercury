@@ -371,9 +371,17 @@ MR_init_offsets(void)
     fake_reg_offset = (MR_Unsigned) MR_fake_reg % MR_pcache_size;
 
     for (int i = 0; i < CACHE_SLICES - 1; i++) {
-        offset_vector[i] =
-            (fake_reg_offset + MR_pcache_size * i / CACHE_SLICES)
+        size_t off = (fake_reg_offset + MR_pcache_size * i / CACHE_SLICES)
             % MR_pcache_size;
+        // The heap zone's MR_zone_min is base + offset. Heap allocations
+        // expect MR_zone_min to be MR_Word-aligned (ptag bits in pointer
+        // values must come from MR_mkword(t, addr) = addr + t, which only
+        // works when addr is word-aligned). MR_fake_reg's link-time address
+        // can land at any byte alignment, so round the offset up to the
+        // next MR_Word boundary. Cache colouring is unaffected: we shift
+        // by at most sizeof(MR_Word) - 1 bytes per slice.
+        off = (off + sizeof(MR_Word) - 1) & ~(sizeof(MR_Word) - 1);
+        offset_vector[i] = off;
     }
 }
 
@@ -654,8 +662,14 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
 #endif
 
     old_base = zone->MR_zone_bottom;
-    copy_size = zone->MR_zone_end - zone->MR_zone_bottom;
-    offset = zone->MR_zone_min - zone->MR_zone_bottom;
+    // Pointer subtraction returns the difference in MR_Word-sized units,
+    // but copy_size and offset are byte counts. Cast to (char *) so the
+    // arithmetic is in bytes; otherwise extending a zone shifts MR_zone_min
+    // forward by a factor of 1/sizeof(MR_Word) on each call, eventually
+    // misaligning it. This matters because MR_zone_min must be word-aligned
+    // for MR_mkword(t, addr) to encode the correct ptag in heap allocations.
+    copy_size = (char *) zone->MR_zone_end - (char *) zone->MR_zone_bottom;
+    offset = (char *) zone->MR_zone_min - (char *) zone->MR_zone_bottom;
 
 #ifdef MR_PROFILE_ZONES
     MR_LOCK(&memory_zones_stats_lock, "MR_extend_zone");
@@ -680,7 +694,19 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     }
 #endif  // MR_CHECK_OVERFLOW_VIA_MPROTECT
 
-    new_base = MR_realloc_zone_memory(old_base, copy_size, new_size);
+    // Reallocate the entire zone footprint, including the trailing
+    // page reserved for the hardzone (and an extra page on systems with
+    // MR_PROTECTPAGE). The zone struct claims [bottom, top) where top =
+    // bottom + new_total_size; passing only new_size used to leave the
+    // last page or two of that claimed range outside the actual
+    // allocation. MR_setup_redzones then mprotect()s a hardmax page
+    // that, by sheer virtual-memory layout, may overlap a neighbouring
+    // live allocation (e.g. the partner heap zone). Writes from the
+    // collector to those addresses then SIGSEGV with a fault address
+    // equal to our hardmax even though MR_virtual_hp is nowhere near
+    // it. Allocate new_total_size so every byte of [bottom, top) is
+    // actually ours.
+    new_base = MR_realloc_zone_memory(old_base, copy_size, new_total_size);
     if (new_base == NULL) {
         MR_fatal_error("unable reallocate memory zone: %s#%"
                 MR_INTEGER_LENGTH_MODIFIER "d",

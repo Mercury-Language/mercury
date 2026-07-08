@@ -1411,6 +1411,22 @@ __Compare__private_builtin__ref_1_0(
     %
 :- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
 
+    % store_at_field_offset_impure(Cell, Offset, Value).
+    % Used internally by the compiler's last-call-modulo-cons (LCMC)
+    % transformation when accurate GC is in effect. Cell is a tagged
+    % heap-cell pointer whose field at the given word offset (counted
+    % from the cell body, after stripping the primary tag) is to be
+    % updated to Value. Cell's primary tag is recovered at runtime via
+    % MR_tag(Cell), so the caller does not have to thread it through.
+    % The cell-and-offset pair takes the place of the interior pointer
+    % that store_at_ref_impure expects; this lets the accurate-GC
+    % collector relocate the cell normally (it is just a regular tagged
+    % pointer) instead of having to follow an interior pointer it has
+    % no representation for. Bad things will happen if this is used
+    % outside the LCMC pass.
+    %
+:- impure pred store_at_field_offset_impure(T::in, int::in, U::in) is det.
+
     % This type should be used only by the program transformation that
     % introduces calls to store_at_ref_impure. Any other use will cause
     % bad things to happen.

@@ -572,6 +572,12 @@ ml_gen_proc(ProgressStream, ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % For example, for C it outputs a function declaration with no
             % corresponding definition, making sure that the function is
             % declared as `extern' rather than `static'.
+            % external preds have no body and so will never have
+            % a GC trace function emitted; the per-arg gc_statement
+            % updates to ml_gen_info that ml_gen_info_proc_params
+            % otherwise produces have no consumer here. (Contrast
+            % with the normal-procedure case below, where we MUST
+            % thread !Info.)
             ml_gen_info_proc_params(PredProcId, _Tuples, FuncParams,
                 _ByRefOutputVars, _CopiedOutputVars, !.Info, _Info),
             FuncBody = body_external,
@@ -583,8 +589,16 @@ ml_gen_proc(ProgressStream, ModuleInfo, Target, ConstStructMap, NoneOrSelf,
             % (rather than being passed by reference) and remove them from
             % the byref_output_vars field in the ml_gen_info.
             CodeModel = proc_info_interface_code_model(ProcInfo),
+            % Note: under --gc accurate the gc_statement annotation on
+            % each argument may add new entries to the module's
+            % const_struct_db (via polymorphism_make_type_info_var_mi)
+            % and to the ml_gen_info's ConstStructMap and GlobalData
+            % (via ml_extend_const_struct_map and ml_gen_goal_as_block).
+            % We must thread !Info here, otherwise the trace function
+            % emitted later for this procedure references scalar_common
+            % entries that the file emission never sees.
             ml_gen_info_proc_params(PredProcId, ArgTuples, FuncParams,
-                ByRefOutputVars, CopiedOutputVars, !.Info, _Info),
+                ByRefOutputVars, CopiedOutputVars, !Info),
             set_of_var.list_to_set(ByRefOutputVars, ByRefOutputVarsSet),
             ml_gen_info_set_byref_output_vars(ByRefOutputVarsSet, !Info),
             (

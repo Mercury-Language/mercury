@@ -77,6 +77,16 @@
 :- pred ml_generate_const_structs(module_info::in, mlds_target_lang::in,
     ml_const_struct_map::out, ml_global_data::in, ml_global_data::out) is det.
 
+    % Extend an existing const_struct_map with any entries that are
+    % present in the module's const_struct_db but missing from the map,
+    % updating !GlobalData with their MLDS definitions. Used after MLDS-time
+    % calls (e.g. via ml_accurate_gc.m) that may insert new const_struct
+    % entries into the module_info after the initial ConstStructMap was built.
+    %
+:- pred ml_extend_const_struct_map(module_info::in, mlds_target_lang::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -94,6 +104,7 @@
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.type_util.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -698,8 +709,17 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybePtag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, _ConsArgType, FieldType),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
-    (
+    ml_gen_info_get_gc(Info, GC),
+    ( if
         HighLevelData = no,
+        GC \= gc_accurate
+    then
+        AssignKind = lco_interior_pointer
+    else
+        AssignKind = lco_cell_value
+    ),
+    (
+        AssignKind = lco_interior_pointer,
         % XXX I am not sure that the types specified here are always the right
         % ones, particularly in cases where the field whose address we are
         % taking has a non-du type such as int or float. However, I can't think
@@ -719,15 +739,26 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CastSourceRval = ml_cast(MLDS_AddrVarType, SourceRval),
         Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
     ;
-        HighLevelData = yes,
+        AssignKind = lco_cell_value,
         % For high-level data lco.m uses a different transformation where we
         % simply pass the base address of the cell. The transformation does not
         % generate unifications.
+        %
+        % Under low-level data with accurate GC, lco.m takes the same shape
+        % (lci_use_field_path = yes): the AddrVar holds the parent cell
+        % pointer rather than an interior pointer, so that the collector
+        % can relocate it through the existing tagged-pointer machinery.
+        % The actual field write is emitted later, as a
+        % store_at_field_offset_impure call.
         ml_gen_var_direct(Info, AddrVar, AddrLval),
         Assign = ml_gen_assign(AddrLval, ml_lval(CellLval), Context)
     ),
     ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
         MaybePtag, Context, Info, Assigns).
+
+:- type ml_lco_assign_kind
+    --->    lco_interior_pointer
+    ;       lco_cell_value.
 
 %---------------------------------------------------------------------------%
 
@@ -1577,6 +1608,29 @@ ml_generate_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
     list.foldl2(ml_gen_const_struct(Info), ConstStructs,
         map.init, ConstStructMap, !GlobalData).
+
+ml_extend_const_struct_map(ModuleInfo, Target, !ConstStructMap, !GlobalData) :-
+    HighLevelData = mlds_target_high_level_data(Target),
+    Info = ml_const_struct_info(ModuleInfo, Target, HighLevelData),
+
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    list.foldl2(ml_gen_const_struct_if_new(Info), ConstStructs,
+        !ConstStructMap, !GlobalData).
+
+:- pred ml_gen_const_struct_if_new(ml_const_struct_info::in,
+    pair(int, const_struct)::in,
+    ml_const_struct_map::in, ml_const_struct_map::out,
+    ml_global_data::in, ml_global_data::out) is det.
+
+ml_gen_const_struct_if_new(Info, ConstNum - ConstStruct,
+        !ConstStructMap, !GlobalData) :-
+    ( if map.contains(!.ConstStructMap, ConstNum) then
+        true
+    else
+        ml_gen_const_struct(Info, ConstNum - ConstStruct,
+            !ConstStructMap, !GlobalData)
+    ).
 
 :- type ml_const_struct_info
     --->    ml_const_struct_info(
