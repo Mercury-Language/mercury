@@ -16,7 +16,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.
 :- import_module libs.globals.
@@ -39,13 +38,13 @@
     % parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals,
     %   DumpBaseFileName, MQInfo0, TypeEqvMap,
     %   UsedEqvModules, UnusedInterfaceImports,
-    %   QualInfo, InvalidType, InvalidInstOrMode, HLDS, Specs):
+    %   QualInfo, HLDS, InvalidTypeSpecs, InvalidInstModeSpecs, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
     % (both returned by equiv_type.m), convert AugCompUnit to HLDS.
     % Return any errors found in Specs.
-    % Return InvalidType = yes if we found undefined types.
-    % Return InvalidInstOrMode = yes if we found undefined or cyclic
+    % Return nonempty InvalidTypeSpecs if we found undefined types.
+    % Return nonempty InvalidInstModeSpecs if we found undefined or cyclic
     % insts or modes.
     % QualInfo is an abstract type that check_typeclass.m will later pass
     % to produce_instance_method_clauses.
@@ -53,8 +52,9 @@
 :- pred parse_tree_to_hlds(io.text_output_stream::in, aug_compilation_unit::in,
     globals::in, string::in, mq_info::in, type_eqv_map::in,
     used_eqv_modules::in, set_tree234(module_name)::in,
-    qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
-    module_info::out, list(error_spec)::out) is det.
+    qual_info::out, module_info::out,
+    list(error_spec)::out, list(error_spec)::out,
+    list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -79,6 +79,7 @@
 :- import_module hlds.make_hlds.add_type.
 :- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds.make_hlds_separate_items.
+:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
@@ -108,6 +109,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -119,8 +121,8 @@
 
 parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedEqvModules, UnusedInterfaceImports,
-        !:QualInfo, !:FoundInvalidType, !:FoundInvalidInstOrMode,
-        !:ModuleInfo, !:Specs) :-
+        !:QualInfo, !:ModuleInfo, !:InvalidTypeSpecs, !:InvalidInstModeSpecs,
+        !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, InclSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -169,24 +171,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
             extract_spec_phase(Spec, Phase),
             Phase = phase_tim_check_invalid_inst_mode
         ),
-    list.filter(IsInvalidTypeSpec, TypeSpecs, InvalidTypeSpecs),
-    list.filter(IsInvalidInstModeSpec, InstModeSpecs, InvalidInstModeSpecs),
-    TypeErrors = contains_errors(Globals, InvalidTypeSpecs),
-    InstModeErrors = contains_errors(Globals, InvalidInstModeSpecs),
-    (
-        TypeErrors = no,
-        !:FoundInvalidType = did_not_find_invalid_type
-    ;
-        TypeErrors = yes,
-        !:FoundInvalidType = found_invalid_type
-    ),
-    (
-        InstModeErrors = no,
-        !:FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
-    ;
-        InstModeErrors = yes,
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-    ),
+    list.filter(IsInvalidTypeSpec, TypeSpecs, !:InvalidTypeSpecs),
+    list.filter(IsInvalidInstModeSpec, InstModeSpecs, !:InvalidInstModeSpecs),
 
     % We used to add items to the HLDS in three passes.
     % Roughly,
@@ -270,13 +256,13 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         % while usually returning abstract types, sometimes returns Mercury
         % types.
         add_type_defns(TypeDefnsAbstract,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverPredDeclCord,
+            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
             !SolverForeignProcCord, !SolverMutableCord),
         add_type_defns(TypeDefnsMercury,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverPredDeclCord,
+            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
             !SolverForeignProcCord, !SolverMutableCord),
         add_type_defns(TypeDefnsForeign,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverPredDeclCord,
+            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
             !SolverForeignProcCord, !SolverMutableCord),
         % We use cords to record new predicate declarations, foreign_procs
         % and mutables. This preserves order without quadratic behavior.
@@ -321,7 +307,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     add_inst_defns(InstDefns,
         !ModuleInfo, !Specs),
     check_inst_defns(!.ModuleInfo, InstDefns,
-        !FoundInvalidInstOrMode, !Specs),
+        !InvalidInstModeSpecs),
 
     % Mode definitions may refer to user defined insts. Since we have already
     % seen all inst definitions, we could check whether the newly defined
@@ -329,7 +315,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     add_mode_defns(ModeDefns,
         !ModuleInfo, !Specs),
     check_mode_defns(!.ModuleInfo, ModeDefns,
-        !FoundInvalidInstOrMode, !Specs),
+        !InvalidInstModeSpecs),
 
     % We want to post-process the type table, after all the type definitions
     % have been added to it, to do several tasks. These include
@@ -368,8 +354,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % (Currently, we discover any such errors when we type and mode check
     % the automatically created unify and compare predicates, whose bodies
     % call the user-specified predicate names.)
+    InvalidTypesSoFar = contains_errors(Globals, !.InvalidTypeSpecs),
     (
-        !.FoundInvalidType = did_not_find_invalid_type,
+        InvalidTypesSoFar = no,
         % Add constructors for du types to the HLDS, check subtype definitions,
         % and check that Mercury types defined solely by foreign types have a
         % definition that works for the current target backend.
@@ -381,9 +368,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         module_info_get_type_table(!.ModuleInfo, TypeTable0),
         foldl3_over_type_ctor_defns(
             add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
-            TypeTable0, !FoundInvalidType, !ModuleInfo, !Specs)
+            TypeTable0, !ModuleInfo, !InvalidTypeSpecs, !Specs)
     ;
-        !.FoundInvalidType = found_invalid_type
+        InvalidTypesSoFar = yes
     ),
 
     % A predicate declaration defines the type of the arguments of a predicate,
@@ -418,7 +405,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     AllMutables = Mutables ++ SolverMutables,
     module_info_get_user_init_pred_target_names(!.ModuleInfo,
         InitPredTargetNames0),
-    mq_info_get_undef_insts(MQInfo0, MQUndefInsts0),
+    mq_info_get_undef_insts(MQInfo0, MQUndefInstSpecs0),
+    one_or_more_map.keys_as_set(MQUndefInstSpecs0, MQUndefInstsSet0),
+    MQUndefInsts0 = set_tree234.from_set(MQUndefInstsSet0),
     implement_mutables_if_local(!.ModuleInfo, MQUndefInsts0, AllMutables,
         MutablePredDecls, MutableClauses, MutableForeignProcs,
         MutableForeignDeclCodes, MutableForeignBodyCodes, FPEInfosCord1,
@@ -631,28 +620,11 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
-    mq_info_get_undef_types(MQInfo, MQUndefTypes),
-    mq_info_get_undef_insts(MQInfo, MQUndefInsts),
-    mq_info_get_undef_modes(MQInfo, MQUndefModes),
-    mq_info_get_undef_typeclasses(MQInfo, MQUndefTypeClasses),
-    ( if
-        ( set_tree234.is_non_empty(MQUndefTypes)
-        ; set_tree234.is_non_empty(MQUndefTypeClasses)
-        )
-    then
-        !:FoundInvalidType = found_invalid_type
-    else
-        true
-    ),
-    ( if
-        ( set_tree234.is_non_empty(MQUndefInsts)
-        ; set_tree234.is_non_empty(MQUndefModes)
-        )
-    then
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-    else
-        true
-    ).
+    get_error_specs_in_mq_info(MQInfo,
+        MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs),
+    !:InvalidTypeSpecs = MQInvalidTypeSpecs ++ !.InvalidTypeSpecs,
+    !:InvalidInstModeSpecs = MQInvalidInstModeSpecs ++ !.InvalidInstModeSpecs,
+    !:Specs = MQNonBlockingUndefSpecs ++ !.Specs.
 
 %---------------------------------------------------------------------------%
 
@@ -853,29 +825,29 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
 
 :- pred add_type_defns(sec_list(item_type_defn_info)::in,
     module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
         ims_cord(item_foreign_proc_info)::out,
     sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
 
-add_type_defns([], !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDeclCord, !ForeignProcCord, !MutableCord).
-add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDeclCord, !ForeignProcCord, !MutableCord) :-
+add_type_defns([], !ModuleInfo, !InvalidTypeSpecs, !Specs,
+        !PredDeclCord, !ForeignProcCord, !MutableCord).
+add_type_defns([SecList | SecLists], !ModuleInfo, !InvalidTypeSpecs, !Specs,
+        !PredDeclCord, !ForeignProcCord, !MutableCord) :-
     SecList = sec_sub_list(SectionInfo, TypeDefns),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
     item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
     list.foldl6(add_type_defn(SectionInfo, TypeStatus), TypeDefns,
-        !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDeclCord, !ForeignProcCord, !MutableCord),
-    add_type_defns(SecLists, !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDeclCord, !ForeignProcCord, !MutableCord).
+        !ModuleInfo, !InvalidTypeSpecs, !Specs,
+        !PredDeclCord, !ForeignProcCord, !MutableCord),
+    add_type_defns(SecLists, !ModuleInfo, !InvalidTypeSpecs, !Specs,
+        !PredDeclCord, !ForeignProcCord, !MutableCord).
 
 :- pred add_type_defn(sec_info::in, type_status::in, item_type_defn_info::in,
     module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
@@ -883,7 +855,7 @@ add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
     sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
 
 add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
-        !ModuleInfo, !FoundInvalidType, !Specs,
+        !ModuleInfo, !InvalidTypeSpecs, !Specs,
         !PredDeclCord, !ForeignProcCord, !MutableCord) :-
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     TypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
@@ -932,7 +904,7 @@ add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
         )
     ),
     module_add_type_defn(TypeStatus, NeedQual, TypeDefnInfo,
-        !ModuleInfo, !FoundInvalidType, !Specs).
+        !ModuleInfo, !InvalidTypeSpecs, !Specs).
 
 %---------------------------------------------------------------------------%
 

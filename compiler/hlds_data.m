@@ -25,6 +25,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -727,9 +728,21 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
 :- interface.
 
     % Have we reported an error for this type definition yet?
+    % If we have, record the error_spec. If the type has more than one error,
+    % the recorded error_spec will be for the latest one.
+    %
+    % We don't need all the errors, because the only purpose we use this type
+    % for is to know whether we can omit a later diagnostic for the same type
+    % as being more likely to be confusing than helpful while being sure that
+    %
+    % - we report at least one diagnostic about the type definition, and
+    % - that this diagnostic counts as an invalid type definition, stopping
+    %   the compiler from proceeding to passes that work only when all
+    %   type definitions are trustworthy.
+    %
 :- type type_defn_prev_errors
     --->    type_defn_no_prev_errors
-    ;       type_defn_prev_errors.
+    ;       type_defn_prev_errors(error_spec).
 
     % An `hlds_type_body' holds the body of a type definition:
     % du = discriminated union, eqv_type = equivalence type (a type defined

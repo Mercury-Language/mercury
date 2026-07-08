@@ -340,8 +340,8 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
                 varset.coerce(TVarSet, VarSet),
                 DescPieces = [pragma_decl("type_spec"), words("declaration")],
                 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo,
-                    VarSet, ArgModes, DescPieces, Context, [], Specs),
-                MaybeSpecProcs = error6(Specs)
+                    VarSet, ArgModes, DescPieces, Context, Spec),
+                MaybeSpecProcs = error6([Spec])
             )
         ;
             ModesOrArity = moa_arity(UserArity),

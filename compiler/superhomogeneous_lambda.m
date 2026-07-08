@@ -961,11 +961,9 @@ qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs,
         InInt = mq_not_used_in_interface,
         qual_info_get_mq_info(QualInfo0, MQInfo0),
         qualify_lambda_arg_modes(InInt, LambdaArgs0, LambdaArgs, Modes,
-            MQInfo0, MQInfo, [], Specs),
+            MQInfo0, MQInfo),
         qual_info_set_mq_info(MQInfo, QualInfo0, QualInfo),
-        !UrInfo ^ ui_qual_info := QualInfo,
-        % Note: Specs will almost always be [].
-        add_unravel_specs(Specs, !UrInfo)
+        !UrInfo ^ ui_qual_info := QualInfo
     ;
         MaybeOptImported = is_opt_imported,
         % The modes in `.opt' files are already fully module qualified.
@@ -975,19 +973,18 @@ qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs,
 
 :- pred qualify_lambda_arg_modes(mq_in_interface::in,
     list(lambda_arg)::in, list(lambda_arg)::out, list(mer_mode)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_lambda_arg_modes(_InInt, [], [], [], !MQInfo, !Specs).
+qualify_lambda_arg_modes(_InInt, [], [], [], !MQInfo).
 qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
-        [LambdaArg | LambdaArgs], [Mode | Modes], !MQInfo, !Specs) :-
+        [LambdaArg | LambdaArgs], [Mode | Modes], !MQInfo) :-
     LambdaArg0 = lambda_arg(ArgNum, ProgArgTerm, LambdaVar,
         Kind, PresentOrAbsent, Mode0, ModeContext),
-    qualify_lambda_mode(InInt, ModeContext, Mode0, Mode, !MQInfo, !Specs),
+    qualify_lambda_mode(InInt, ModeContext, Mode0, Mode, !MQInfo),
     LambdaArg = lambda_arg(ArgNum, ProgArgTerm, LambdaVar,
         Kind, PresentOrAbsent, Mode, ModeContext),
     qualify_lambda_arg_modes(InInt, LambdaArgs0,
-        LambdaArgs, Modes, !MQInfo, !Specs).
+        LambdaArgs, Modes, !MQInfo).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.superhomogeneous_lambda.

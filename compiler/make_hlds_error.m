@@ -46,7 +46,7 @@
     %
 :- pred report_multiply_defined(string::in, sym_name::in, user_arity::in,
     prog_context::in, prog_context::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    error_spec::out) is det.
 
     % report_undefined_pred_or_func_error(MaybePorF, SymName,
     %    UserArity, OtherUserArities, Context, DeclPieces, !Specs):
@@ -65,8 +65,7 @@
 
 :- pred report_undeclared_mode_error(module_info::in,
     pred_id::in, pred_info::in, prog_varset::in, list(mer_mode)::in,
-    list(format_piece)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(format_piece)::in, prog_context::in, error_spec::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
     pred_or_func::in, sym_name::in, pred_form_arity::in, pred_status::in,
@@ -114,7 +113,7 @@
 %---------------------------------------------------------------------------%
 
 report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
-        ExtraPieces, !Specs) :-
+        ExtraPieces, Spec) :-
     % The flattening of source item blocks by modules.m puts
     % all items in a given section together. Since the original
     % source code may have had the contents of the different sections
@@ -151,8 +150,7 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         ExtraMsgs = [msg(SecondContext, ExtraPieces)]
     ),
     Spec = error_spec($pred, severity_error, phase_pt2h,
-        [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]),
-    !:Specs = [Spec | !.Specs].
+        [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]).
 
 report_undefined_pred_or_func_error(MaybePorF, SymName,
         UserArity, OtherUserArities, Context, DeclPieces, !Specs) :-
@@ -201,7 +199,7 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
 %---------------------------------------------------------------------------%
 
 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
-        DescPieces, Context, !Specs) :-
+        DescPieces, Context, Spec) :-
     PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, [suffix(":")], PredId),
     strip_module_names_from_mode_list(strip_builtin_module_name,
@@ -245,8 +243,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
     ),
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
-    !:Specs = [Spec | !.Specs].
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]).
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
     = list(format_piece).

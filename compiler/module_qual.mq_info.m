@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_parse_tree.
@@ -28,6 +29,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more_map.
 :- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
@@ -36,9 +38,11 @@
     --->    should_not_report_errors
     ;       should_report_errors.
 
-:- type maybe_suppress_found_undef
-    --->    do_not_suppress_found_undef
-    ;       suppress_found_undef.
+:- type is_undef_blocking
+    --->    undef_is_blocking
+    ;       undef_is_not_blocking.
+
+:- type undef_specs(T) == one_or_more_map(T, error_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -66,15 +70,17 @@
     set_tree234(module_name)::out) is det.
 :- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_undef_types(mq_info::in,
-    set_tree234(type_ctor)::out) is det.
+    undef_specs(type_ctor)::out) is det.
 :- pred mq_info_get_undef_insts(mq_info::in,
-    set_tree234(inst_ctor)::out) is det.
+    undef_specs(inst_ctor)::out) is det.
 :- pred mq_info_get_undef_modes(mq_info::in,
-    set_tree234(mode_ctor)::out) is det.
+    undef_specs(mode_ctor)::out) is det.
 :- pred mq_info_get_undef_typeclasses(mq_info::in,
-    set_tree234(sym_name_arity)::out) is det.
-:- pred mq_info_get_suppress_found_undef(mq_info::in,
-    maybe_suppress_found_undef::out) is det.
+    undef_specs(sym_name_arity)::out) is det.
+:- pred mq_info_get_is_undef_blocking(mq_info::in,
+    is_undef_blocking::out) is det.
+:- pred mq_info_get_nonblocking_undef_specs(mq_info::in,
+    list(error_spec)::out) is det.
 :- pred mq_info_get_should_report_errors(mq_info::in,
     maybe_should_report_errors::out) is det.
 
@@ -99,15 +105,17 @@
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_exported_instances_flag(bool::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_undef_types(set_tree234(type_ctor)::in,
+:- pred mq_info_set_undef_types(undef_specs(type_ctor)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_undef_insts(set_tree234(inst_ctor)::in,
+:- pred mq_info_set_undef_insts(undef_specs(inst_ctor)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_undef_modes(set_tree234(mode_ctor)::in,
+:- pred mq_info_set_undef_modes(undef_specs(mode_ctor)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_undef_typeclasses(set_tree234(sym_name_arity)::in,
+:- pred mq_info_set_undef_typeclasses(undef_specs(sym_name_arity)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_suppress_found_undef(maybe_suppress_found_undef::in,
+:- pred mq_info_set_is_undef_blocking(is_undef_blocking::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_nonblocking_undef_specs(list(error_spec)::in,
     mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -159,6 +167,15 @@
     %
 :- pred mq_info_set_module_used(mq_in_interface::in, module_name::in,
     mq_info::in, mq_info::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % get_error_specs_in_mq_info(Info,
+    %   InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs)
+    %
+:- pred get_error_specs_in_mq_info(mq_info::in,
+    list(error_spec)::out, list(error_spec)::out, list(error_spec)::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -220,17 +237,18 @@
                 mqsi_exported_instances_flag    :: bool,
 
                 % What types, insts, modes or typeclasses are undefined?
-                mqsi_undef_types                :: set_tree234(type_ctor),
-                mqsi_undef_insts                :: set_tree234(inst_ctor),
-                mqsi_undef_modes                :: set_tree234(mode_ctor),
-                mqsi_undef_typeclasses          :: set_tree234(sym_name_arity),
+                mqsi_undef_types                :: undef_specs(type_ctor),
+                mqsi_undef_insts                :: undef_specs(inst_ctor),
+                mqsi_undef_modes                :: undef_specs(mode_ctor),
+                mqsi_undef_typeclasses          :: undef_specs(sym_name_arity),
 
-                % Do we want to suppress the recording of an undef type, inst,
-                % mode or typeclass, as such? We sometimes do, when the error
-                % won't prevent us from continuing on to later compiler passes.
-                % (We still generate error messages in such instances, of
-                % course.)
-                mqsi_suppress_found_undef       :: maybe_suppress_found_undef,
+                % When we find undefined type, inst, mode or typeclass,
+                % do we want to record is blocking (meaning we record it
+                % in one of the four fields above, where its presence will
+                % prevent the compiler to proceeding to some passes),
+                % or as nonblocking (meaning we record it in the field below).
+                mqsi_is_undef_blocking          :: is_undef_blocking,
+                mqsi_nonblocking_undef_specs    :: list(error_spec),
 
                 % Do we want to report errors.
                 mqsi_should_report_errors       :: maybe_should_report_errors,
@@ -258,8 +276,9 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
         set_tree234.make_singleton_set(mercury_public_builtin_module),
     SubInfo = mq_sub_info(ModuleName, ImportedOrUsedModules,
         InstanceModules, ExportedInstancesFlag,
-        set_tree234.init, set_tree234.init, set_tree234.init, set_tree234.init,
-        do_not_suppress_found_undef, ReportErrors, 0),
+        one_or_more_map.init, one_or_more_map.init,
+        one_or_more_map.init, one_or_more_map.init,
+        undef_is_blocking, [], ReportErrors, 0),
 
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
@@ -313,8 +332,10 @@ mq_info_get_undef_modes(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_undef_modes.
 mq_info_get_undef_typeclasses(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_undef_typeclasses.
-mq_info_get_suppress_found_undef(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_suppress_found_undef.
+mq_info_get_is_undef_blocking(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_is_undef_blocking.
+mq_info_get_nonblocking_undef_specs(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_nonblocking_undef_specs.
 mq_info_get_should_report_errors(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_should_report_errors.
 
@@ -347,8 +368,10 @@ mq_info_set_undef_modes(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_undef_modes := X.
 mq_info_set_undef_typeclasses(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_undef_typeclasses := X.
-mq_info_set_suppress_found_undef(X, !Info) :-
-    !Info ^ mqi_sub_info ^ mqsi_suppress_found_undef := X.
+mq_info_set_is_undef_blocking(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_is_undef_blocking := X.
+mq_info_set_nonblocking_undef_specs(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_nonblocking_undef_specs := X.
 
 %---------------------------------------------------------------------------%
 
@@ -432,6 +455,22 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
     ;
         InInt = mq_not_used_in_interface
     ).
+
+%---------------------------------------------------------------------------%
+
+get_error_specs_in_mq_info(Info,
+        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs) :-
+    mq_info_get_undef_types(Info, UndefTypesMap),
+    mq_info_get_undef_insts(Info, UndefInstsMap),
+    mq_info_get_undef_modes(Info, UndefModesMap),
+    mq_info_get_undef_typeclasses(Info, UndefTypeClassesMap),
+    one_or_more_map.values(UndefTypesMap, UndefTypeSpecs),
+    one_or_more_map.values(UndefInstsMap, UndefInstSpecs),
+    one_or_more_map.values(UndefModesMap, UndefModeSpecs),
+    one_or_more_map.values(UndefTypeClassesMap, UndefTypeClassSpecs),
+    InvalidTypeSpecs = UndefTypeSpecs ++ UndefTypeClassSpecs,
+    InvalidInstModeSpecs = UndefInstSpecs ++ UndefModeSpecs,
+    mq_info_get_nonblocking_undef_specs(Info, NonBlockingUndefSpecs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.module_qual.mq_info.

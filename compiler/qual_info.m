@@ -228,7 +228,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !QualInfo, !Specs) :-
         MaybeOptImported = is_not_opt_imported,
         % Type qualifications cannot appear in the interface of a module.
         qualify_type_qualification(mq_not_used_in_interface, Context,
-            Type0, Type1, MQInfo0, MQInfo, !Specs)
+            Type0, Type1, MQInfo0, MQInfo)
     ),
 
     % Find any new type variables introduced by this type, and

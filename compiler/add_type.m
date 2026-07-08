@@ -21,7 +21,6 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
@@ -36,7 +35,7 @@
     %
 :- pred module_add_type_defn(type_status::in, need_qualifier::in,
     item_type_defn_info::in, module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Add the constructors of du types to the constructor table of the HLDS,
@@ -45,8 +44,8 @@
     %
 :- pred add_du_ctors_check_subtype_check_foreign_type(type_table::in,
     type_ctor::in, hlds_type_defn::in,
-    found_invalid_type::in, found_invalid_type::out,
     module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -95,7 +94,7 @@
 %
 
 module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
-        !ModuleInfo, !FoundInvalidType, !Specs) :-
+        !ModuleInfo, !InvalidTypeSpecs, !Specs) :-
     % XXX We should consider setting !:FoundInvalidType *only* for type
     % errors that can cause later compiler passes to either crash or to
     % report nonexistent problems. If the only effect of a type error
@@ -145,7 +144,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
     (
         ParseTreeTypeDefn = parse_tree_abstract_type(_),
         module_add_type_defn_abstract(TypeStatus, TypeCtor, Body,
-            HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
+            HLDSTypeDefn0, Context, !ModuleInfo, !InvalidTypeSpecs)
     ;
         ( ParseTreeTypeDefn = parse_tree_du_type(_)
         ; ParseTreeTypeDefn = parse_tree_sub_type(_)
@@ -153,7 +152,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         ),
         module_add_type_defn_mercury(TypeStatus, TypeCtor, TypeParams,
             ParseTreeTypeDefn, Body, HLDSTypeDefn0, Context,
-            !ModuleInfo, !FoundInvalidType, [], Specs)
+            !ModuleInfo, !InvalidTypeSpecs)
     ;
         ParseTreeTypeDefn = parse_tree_solver_type(_),
         ( if
@@ -167,40 +166,38 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
                 [words("from its defining module."), nl],
             SolverSpec = spec($pred, severity_error, phase_pt2h,
                 Context, SolverPieces),
-            Specs0 = [SolverSpec]
+            !:Specs = [SolverSpec | !.Specs]
         else
-            Specs0 = []
+            true
         ),
         module_add_type_defn_mercury(TypeStatus, TypeCtor, TypeParams,
             ParseTreeTypeDefn, Body, HLDSTypeDefn0, Context,
-            !ModuleInfo, !FoundInvalidType, Specs0, Specs)
+            !ModuleInfo, !InvalidTypeSpecs)
     ;
         ParseTreeTypeDefn = parse_tree_foreign_type(_),
         module_add_type_defn_foreign(TypeStatus0, TypeStatus, TypeCtor, Body,
-            HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
-    ),
-    !:Specs = Specs ++ !.Specs.
+            HLDSTypeDefn0, Context, !ModuleInfo, !InvalidTypeSpecs)
+    ).
 
 %---------------------%
 
 :- pred module_add_type_defn_abstract(type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in,
     prog_context::in, module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
-        !ModuleInfo, !FoundInvalidType, !Specs) :-
+        !ModuleInfo, !InvalidTypeSpecs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first,
         % the previous definition can only be another abstract definition.
         check_for_duplicate_type_declaration(TypeCtor, OldDefn, TypeStatus1,
-            Context, !FoundInvalidType, !Specs),
+            Context, !InvalidTypeSpecs),
         combine_old_and_new_type_status(OldDefn, TypeStatus1, _TypeStatus,
             TypeDefn0, TypeDefn),
         check_for_inconsistent_solver_nosolver_type(TypeCtor,
-            OldDefn, Body, Context, !FoundInvalidType, !Specs),
+            OldDefn, Body, Context, !InvalidTypeSpecs),
         replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable)
     else
         add_type_ctor_defn(TypeCtor, TypeDefn0, TypeTable0, TypeTable)
@@ -209,11 +206,10 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
 
 :- pred check_for_duplicate_type_declaration(type_ctor::in, hlds_type_defn::in,
     type_status::in, prog_context::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
-        !FoundInvalidType, !Specs) :-
+        !InvalidTypeSpecs) :-
     % Even if the source code includes only one declaration of a type,
     % augmenting a raw compilation unit can yield duplicates of that
     % declaration, included e.g. in both x.int2 and then x.int,
@@ -258,7 +254,6 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
                 [nl]
         else
             Severity = severity_error,
-            !:FoundInvalidType = found_invalid_type,
             % XXX If there were not one but *two or more* previous
             % declarations for the type, then FirstStatus may not have come
             % from the previous declaration at FirstContext; it could have
@@ -288,7 +283,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
         FirstPieces = [words("The previous declaration was here."), nl],
         FirstMsg = msg(FirstContext, FirstPieces),
         DupSpec = error_spec($pred, Severity, phase_pt2h, [DupMsg, FirstMsg]),
-        !:Specs = [DupSpec | !.Specs]
+        !:InvalidTypeSpecs = [DupSpec | !.InvalidTypeSpecs]
     else
         true
     ).
@@ -305,12 +300,11 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
     type_ctor::in, list(type_param)::in, type_defn::in(type_defn_mercury),
     hlds_type_body::in, hlds_type_defn::in, prog_context::in,
     module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
         ParseTreeTypeDefn, Body, TypeDefn0, Context,
-        !ModuleInfo, !FoundInvalidType, !Specs) :-
+        !ModuleInfo, !InvalidTypeSpecs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first
@@ -320,13 +314,13 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
         combine_old_and_new_type_status(OldDefn, TypeStatus1, TypeStatus,
             TypeDefn0, TypeDefn),
         check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn,
-            Body, Context, !FoundInvalidType, !Specs),
+            Body, Context, !InvalidTypeSpecs),
         ( if
             hlds_data.get_type_defn_body(OldDefn, OldDefnBody),
             OldDefnBody \= hlds_abstract_type(_)
         then
             maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context,
-                OldDefn, !FoundInvalidType, !Specs)
+                OldDefn, !InvalidTypeSpecs)
         else
             replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable),
             module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -339,12 +333,11 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
     (
         ParseTreeTypeDefn = parse_tree_du_type(DetailsDu),
         check_for_invalid_user_defined_unify_compare(TypeStatus,
-            TypeCtor, DetailsDu, Context, !FoundInvalidType, !Specs)
+            TypeCtor, DetailsDu, Context, !InvalidTypeSpecs)
     ;
         ParseTreeTypeDefn = parse_tree_eqv_type(DetailsEqv),
         check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus,
-            TypeCtor, TypeParams, DetailsEqv, Context,
-            !FoundInvalidType, !Specs)
+            TypeCtor, TypeParams, DetailsEqv, Context, !InvalidTypeSpecs)
     ;
         ( ParseTreeTypeDefn = parse_tree_sub_type(_)
         ; ParseTreeTypeDefn = parse_tree_solver_type(_)
@@ -356,11 +349,10 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
 :- pred module_add_type_defn_foreign(type_status::in, type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in, prog_context::in,
     module_info::in, module_info::out,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
-        Body, TypeDefn0, Context, !ModuleInfo, !FoundInvalidType, !Specs) :-
+        Body, TypeDefn0, Context, !ModuleInfo, !InvalidTypeSpecs) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first,
@@ -373,7 +365,7 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
         combine_old_and_new_type_status(OldDefn, TypeStatus1, TypeStatus,
             TypeDefn0, TypeDefn1),
         check_for_inconsistent_solver_nosolver_type(TypeCtor,
-            OldDefn, Body, Context, !FoundInvalidType, !Specs),
+            OldDefn, Body, Context, !InvalidTypeSpecs),
 
         hlds_data.get_type_defn_status(OldDefn, OldTypeStatus),
         hlds_data.get_type_defn_body(OldDefn, OldBody),
@@ -383,8 +375,7 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
             % for this type.
             check_for_inconsistent_foreign_type_visibility(TypeCtor,
                 old_defn_is_abstract, OldTypeStatus, OldContext,
-                TypeStatus0, Context, TypeDefn1, TypeDefn,
-                !FoundInvalidType, !Specs),
+                TypeStatus0, Context, TypeDefn1, TypeDefn, !InvalidTypeSpecs),
             replace_type_ctor_defn(TypeCtor, TypeDefn,
                 TypeTable0, TypeTable),
             module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -401,14 +392,14 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
                 check_for_inconsistent_foreign_type_visibility(TypeCtor,
                     old_defn_is_not_abstract, OldTypeStatus, OldContext,
                     TypeStatus1, Context, TypeDefn2, TypeDefn,
-                    !FoundInvalidType, !Specs),
+                    !InvalidTypeSpecs),
                 replace_type_ctor_defn(TypeCtor, TypeDefn,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             else
                 % ... or not.
                 maybe_report_multiply_defined_type(TypeStatus, TypeCtor,
-                    Context, OldDefn, !FoundInvalidType, !Specs)
+                    Context, OldDefn, !InvalidTypeSpecs)
             )
         )
     else
@@ -419,8 +410,7 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
             [nl],
         ForeignDeclSpec = spec($pred, severity_error, phase_pt2h,
             Context, ForeignDeclPieces),
-        !:Specs = [ForeignDeclSpec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [ForeignDeclSpec | !.InvalidTypeSpecs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -633,11 +623,10 @@ merge_maybe(no, yes(T), yes(T)).
 
 :- pred maybe_report_multiply_defined_type(type_status::in, type_ctor::in,
     prog_context::in, hlds_type_defn::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
-        !FoundInvalidType, !Specs) :-
+        !InvalidTypeSpecs) :-
     % Issue an error message if the second definition wasn't read
     % while reading .opt files.
     % XXX STATUS
@@ -647,19 +636,18 @@ maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
         TypeCtor = type_ctor(SymName, Arity),
         hlds_data.get_type_defn_context(OldDefn, OldContext),
         report_multiply_defined("type", SymName, user_arity(Arity),
-            Context, OldContext, [], !Specs),
-        !:FoundInvalidType = found_invalid_type
+            Context, OldContext, [], Spec),
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 %---------------------%
 
 :- pred check_for_invalid_user_defined_unify_compare(type_status::in,
     type_ctor::in, type_details_du::in, prog_context::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
-        Context, !FoundInvalidType, !Specs) :-
+        Context, !InvalidTypeSpecs) :-
     DetailsDu = type_details_du(Ctors, MaybeCanon, _MaybeDirectArg),
     ( if
         MaybeCanon = noncanon(_),
@@ -689,8 +677,7 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
                 verbose_only(verbose_once, VerbosePieces)]),
             DummySpec = error_spec($pred, severity_error, phase_pt2h,
                 [DummyMsg]),
-            !:Specs = [DummySpec | !.Specs],
-            !:FoundInvalidType = found_invalid_type
+            !:InvalidTypeSpecs = [DummySpec | !.InvalidTypeSpecs]
         else
             true
         )
@@ -702,11 +689,10 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
 
 :- pred check_for_polymorphic_eqv_type_with_monomorphic_body(type_status::in,
     type_ctor::in, list(type_param)::in, type_details_eqv::in,
-    prog_context::in, found_invalid_type::in, found_invalid_type::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
-        TypeParams, DetailsEqv, Context, !FoundInvalidType, !Specs) :-
+        TypeParams, DetailsEqv, Context, !InvalidTypeSpecs) :-
     DetailsEqv = type_details_eqv(EqvType),
     ( if
         % XXX We can't handle abstract exported polymorphic equivalence
@@ -729,8 +715,7 @@ check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
             verbose_only(verbose_once, abstract_monotype_workaround)]),
         PolyEqvSpec = error_spec($pred, severity_error, phase_pt2h,
             [PolyEqvMsg]),
-        !:Specs = [PolyEqvSpec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [PolyEqvSpec | !.InvalidTypeSpecs]
     else
         true
     ).
@@ -750,11 +735,10 @@ abstract_monotype_workaround = [
 
 :- pred check_for_inconsistent_solver_nosolver_type(type_ctor::in,
     hlds_type_defn::in, hlds_type_body::in, prog_context::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
-        NewContext, !FoundInvalidType, !Specs) :-
+        NewContext, !InvalidTypeSpecs) :-
     get_type_defn_body(OldDefn, OldBody),
     get_body_is_solver_type(OldBody, OldIsSolverType),
     get_body_is_solver_type(NewBody, NewIsSolverType),
@@ -814,8 +798,7 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
         OldMsg = msg(OldContext, OldPieces),
         Spec = error_spec($pred, severity_error, phase_pt2h,
             [MainMsg, OldMsg]),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 :- pred get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
@@ -858,12 +841,11 @@ get_body_is_solver_type(Body, IsSolverType) :-
     old_defn_maybe_abstract::in, type_status::in, prog_context::in,
     type_status::in, prog_context::in,
     hlds_type_defn::in, hlds_type_defn::out,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_inconsistent_foreign_type_visibility(TypeCtor,
         OldIsAbstract, OldStatus, OldContext, NewStatus, NewContext,
-        !TypeDefn, !FoundInvalidType, !Specs) :-
+        !TypeDefn, !InvalidTypeSpecs) :-
     ( if
         (
             OldIsAbstract = old_defn_is_abstract,
@@ -905,9 +887,8 @@ check_for_inconsistent_foreign_type_visibility(TypeCtor,
             Context = OldContext
         ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type,
-        set_type_defn_prev_errors(type_defn_prev_errors, !TypeDefn)
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs],
+        set_type_defn_prev_errors(type_defn_prev_errors(Spec), !TypeDefn)
     else
         true
     ).
@@ -936,7 +917,7 @@ do_foreign_type_visibilities_match(OldStatus, NewStatus) :-
 %---------------------------------------------------------------------------%
 
 add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
-        !FoundInvalidType, !ModuleInfo, !Specs) :-
+        !ModuleInfo, !InvalidTypeSpecs, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
     get_type_defn_tparams(TypeDefn, TypeParams),
@@ -955,7 +936,7 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         (
             MaybeSuperType = subtype_of(SuperType),
             check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, BodyDu,
-                SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs),
+                SuperType, MaybeSetSubtypeNoncanon, !InvalidTypeSpecs, !Specs),
             (
                 MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
             ;
@@ -996,27 +977,13 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
             CtorAddSpecs1, CtorAddSpecs),
         module_info_set_cons_table(CtorMap, !ModuleInfo),
         module_info_set_ctor_field_table(CtorFieldMap, !ModuleInfo),
-
-        (
-            CtorAddSpecs = []
-        ;
-            CtorAddSpecs = [_ | _],
-            !:FoundInvalidType = found_invalid_type,
-            !:Specs = CtorAddSpecs ++ !.Specs
-        )
+        !:InvalidTypeSpecs = CtorAddSpecs ++ !.InvalidTypeSpecs
     ;
         Body = hlds_foreign_type(ForeignTypeBody),
         get_type_defn_prev_errors(TypeDefn, PrevErrors),
         check_foreign_type_for_current_target(!.ModuleInfo, TypeCtor,
-            ForeignTypeBody, PrevErrors, Context,
-            FoundInvalidTypeInForeignBody, !Specs),
-        (
-            FoundInvalidTypeInForeignBody = found_invalid_type,
-            !:FoundInvalidType = found_invalid_type
+            ForeignTypeBody, PrevErrors, Context, !InvalidTypeSpecs)
         ;
-            FoundInvalidTypeInForeignBody = did_not_find_invalid_type
-        )
-    ;
         ( Body = hlds_abstract_type(_)
         ; Body = hlds_solver_type(_)
         ; Body = hlds_eqv_type(_)
@@ -1205,20 +1172,20 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
     %
 :- pred check_foreign_type_for_current_target(module_info::in, type_ctor::in,
     foreign_type_body::in, type_defn_prev_errors::in, prog_context::in,
-    found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
-        PrevErrors, Context, FoundInvalidType, !Specs) :-
+        PrevErrors, Context, !InvalidTypeSpecs) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
-        FoundInvalidType = did_not_find_invalid_type
-    else if PrevErrors = type_defn_prev_errors then
+        true
+    else if PrevErrors = type_defn_prev_errors(_Spec) then
         % The error message being generated below may be misleading,
         % since the relevant foreign language definition of this type
-        % may have been present, but in error.
-        FoundInvalidType = found_invalid_type
+        % may have been present, but in error. And we have already
+        % scheduled _Spec to be printed about this type definition.
+        true
     else
         LangStr = compilation_target_string(Target),
         MainPieces = [words("Error: the type")] ++
@@ -1234,8 +1201,7 @@ check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
         Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
-        !:Specs = [Spec | !.Specs],
-        FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -1248,11 +1214,11 @@ check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
 :- pred check_subtype_defn(type_table::in, tvarset::in, type_ctor::in,
     hlds_type_defn::in, type_body_du::in, mer_type::in,
     maybe_set_subtype_noncanonical::out,
-    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
-        SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
+        SuperType, MaybeSetSubtypeNoncanon, !InvalidTypeSpecs, !Specs) :-
     ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, SuperTypeArgs) then
         search_super_type_ctor_defn(TypeTable, TypeCtor, TypeDefn,
             SuperTypeCtor, [], SearchResult),
@@ -1272,17 +1238,15 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
                 ),
                 check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
                     SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu,
-                    SuperTypeArgs, !FoundInvalidType, !Specs)
+                    SuperTypeArgs, !InvalidTypeSpecs, !Specs)
             ;
                 MaybeBaseMaybeCanon = error1(UpToBaseSpecs),
-                !:Specs = UpToBaseSpecs ++ !.Specs,
-                !:FoundInvalidType = found_invalid_type,
+                !:InvalidTypeSpecs = UpToBaseSpecs ++ !.InvalidTypeSpecs,
                 MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
             )
         ;
             SearchResult = error2(SearchSpecs),
-            !:Specs = SearchSpecs ++ !.Specs,
-            !:FoundInvalidType = found_invalid_type,
+            !:InvalidTypeSpecs = SearchSpecs ++ !.InvalidTypeSpecs,
             MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
         )
     else
@@ -1294,8 +1258,7 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
             color_as_incorrect([quote(SuperTypeStr), suffix(".")]) ++ [nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type,
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs],
         MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
     ).
 
@@ -1586,12 +1549,12 @@ describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
 :- pred check_subtype_ctors(type_table::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
-    list(mer_type)::in, found_invalid_type::in, found_invalid_type::out,
+    list(mer_type)::in, list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
         SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
-        !FoundInvalidType, !Specs) :-
+        !InvalidTypeSpecs, !Specs) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data.get_type_defn_tvarset(SuperTypeDefn, SuperTVarSet),
@@ -1615,10 +1578,10 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     % Check each subtype constructor against the supertype's constructors.
     TypeBodyDu = type_body_du(OoMCtors, _, _, _, _, _),
     Ctors = one_or_more_to_list(OoMCtors),
-    list.foldl2(
+    list.foldl(
         look_up_and_check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
             SuperTypeCtor, SuperCtors),
-        Ctors, !FoundInvalidType, !Specs),
+        Ctors, !InvalidTypeSpecs),
 
     % Check order of subtype constructors relative to supertype constructors.
     hlds_data.get_type_defn_context(TypeDefn, Context),
@@ -1627,11 +1590,10 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
 
 :- pred look_up_and_check_subtype_ctor(type_table::in, tvarset::in,
     type_status::in, type_ctor::in, list(constructor)::in, constructor::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
-        SuperTypeCtor, SuperCtors, Ctor, !FoundInvalidType, !Specs) :-
+        SuperTypeCtor, SuperCtors, Ctor, !InvalidTypeSpecs) :-
     Ctor = ctor(_, _, CtorName, _, Arity, Context),
     UnqualCtorName = unqualify_name(CtorName),
     ( if
@@ -1639,7 +1601,7 @@ look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
             SuperCtor)
     then
         check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
-            !FoundInvalidType, !Specs)
+            !InvalidTypeSpecs)
     else
         CtorSNA = sym_name_arity(CtorName, Arity),
         Pieces = [words("Error:")] ++
@@ -1649,8 +1611,7 @@ look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
             color_as_subject([unqual_type_ctor(SuperTypeCtor), suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 :- pred search_ctor_by_unqual_name(list(constructor)::in, string::in, int::in,
@@ -1670,11 +1631,10 @@ search_ctor_by_unqual_name([HeadCtor | TailCtors], UnqualName, Arity, Ctor) :-
 
 :- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
     constructor::in, constructor::in,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
-        !FoundInvalidType, !Specs) :-
+        !InvalidTypeSpecs) :-
     Ctor = ctor(_, MaybeExistConstraints, CtorSymName, Args, Arity, Context),
     SuperCtor = ctor(_, MaybeSuperExistConstraints, _SuperCtorName, SuperArgs,
         _SuperArity, _SuperContext),
@@ -1683,21 +1643,14 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         MaybeExistConstraints, MaybeSuperExistConstraints, Result),
     (
         Result = ok1(ExistQVarsMapping),
-        list.foldl3_corresponding(
+        list.foldl2_corresponding(
             check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
                 CtorSymName, ExistQVarsMapping),
             Args, SuperArgs,
-            1, _, did_not_find_invalid_type, FoundInvalidType, !Specs),
-        (
-            FoundInvalidType = did_not_find_invalid_type
-        ;
-            FoundInvalidType = found_invalid_type,
-            !:FoundInvalidType = FoundInvalidType
-        )
+            1, _, !InvalidTypeSpecs)
     ;
         Result = error1(Spec),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 %---------------------%
@@ -1814,12 +1767,11 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
 :- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
     sym_name::in, existq_tvar_mapping::in,
     constructor_arg::in, constructor_arg::in, int::in, int::out,
-    found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
         ExistQVarsMapping, CtorArg, SuperCtorArg, ArgNum, ArgNum + 1,
-        !FoundInvalidType, !Specs) :-
+        !InvalidTypeSpecs) :-
     CtorArg = ctor_arg(_FieldName, ArgType, Context),
     SuperCtorArg = ctor_arg(_SuperFieldName, SuperArgType, _SuperContext),
     ( if
@@ -1843,8 +1795,7 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
             color_as_correct([quote(SuperArgTypeStr)]) ++
             [words("in the supertype."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
 %---------------------%

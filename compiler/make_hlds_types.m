@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 2022, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,14 +24,6 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
-
-:- type found_invalid_type
-    --->    did_not_find_invalid_type
-    ;       found_invalid_type.
-
-:- type found_invalid_inst_or_mode
-    --->    did_not_find_invalid_inst_or_mode
-    ;       found_invalid_inst_or_mode.
 
 :- type ims_list(T) == list(ims_sub_list(T)).
 :- type ims_cord(T) == cord(ims_sub_list(T)).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,6 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module pair.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -176,32 +175,36 @@
 
 %---------------------------------------------------------------------------%
 
-    % Report an undefined type, inst or mode.
+    % report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
+    %   IntMismatches0, QualMismatches0, PossibleAritiesSet, Spec):
+    %
+    % Report an undefined type, inst, mode, or typeclass.
     %
 :- pred report_undefined_mq_id(mq_info::in, mq_error_context::in,
     mq_id::in, qual_id_kind::in, module_name::in,
     list(module_name)::in, list(module_name)::in, set(int)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    error_spec::out) is det.
 
-    % Report an error where a type, inst, mode or typeclass had
+    % report_ambiguous_match(ErrorContext, Id, IdType,
+    %   UsableModuleNames, UnusableModuleNames, !Specs):
+    %
+    % Report an error where a type, inst, mode. or typeclass had
     % multiple possible matches.
     %
 :- pred report_ambiguous_match(mq_error_context::in, mq_id::in,
     qual_id_kind::in,
-    list(module_name)::in, list(module_name)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(module_name)::in, list(module_name)::in, error_spec::out) is det.
 
     % Output an error message about an ill-formed user_inst.
     %
 :- pred report_invalid_user_inst(sym_name::in, list(mer_inst)::in,
-    mq_error_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    mq_error_context::in, error_spec::out) is det.
 
     % Warn about a module imported in the interface that is not used
     % in the interface.
     %
 :- pred warn_unused_interface_import(module_name::in,
-    pair(module_name, one_or_more(prog_context))::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    module_name::in, one_or_more(prog_context)::in, error_spec::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -219,7 +222,7 @@
 %---------------------------------------------------------------------------%
 
 report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
-        IntMismatches0, QualMismatches0, PossibleAritiesSet, !Specs) :-
+        IntMismatches0, QualMismatches0, PossibleAritiesSet, Spec) :-
     mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId,
         ErrorContextPieces),
     InPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
@@ -389,8 +392,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
     AllPieces = InPieces ++ UndefPieces ++ ThisIntPieces ++ OtherIntPieces ++
         QualPieces ++ NonImportedPieces ++ OtherArityPieces ++
         DidYouMeanPieces,
-    Spec = spec($pred, severity_error, phase_pt2h, Context, AllPieces),
-    !:Specs = [Spec | !.Specs].
+    Spec = spec($pred, severity_error, phase_pt2h, Context, AllPieces).
 
 :- func module_name_matches_some(module_name, list(module_name)) = bool.
 
@@ -404,7 +406,7 @@ module_name_matches_some(SearchModuleName, [ModuleName | ModuleNames]) =
     ).
 
 report_ambiguous_match(ErrorContext, Id, IdType,
-        UsableModuleNames, UnusableModuleNames, !Specs) :-
+        UsableModuleNames, UnusableModuleNames, Spec) :-
     mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
         ErrorContextPieces),
     qual_id_kind_to_string(IdType, IdTypeStr),
@@ -443,12 +445,11 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     Msg = simple_msg(Context,
         [always(MainPieces), always(UnusablePieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
-    !:Specs = [Spec | !.Specs].
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]).
 
 %---------------------------------------------------------------------------%
 
-report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
+report_invalid_user_inst(_SymName, _Insts, ErrorContext, Spec) :-
     mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
         ErrorContextPieces),
     % XXX It would be nice to print the name of the variable.
@@ -470,13 +471,12 @@ report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
         [words("got a")] ++
         color_as_incorrect([words("variable.")]) ++
         [nl],
-    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
 warn_unused_interface_import(ParentModuleName,
-        ImportedModuleName - ImportContexts, !Specs) :-
+        ImportedModuleName, ImportContexts, Spec) :-
     % UNUSED_IMPORT Harmonize the operation of this predicate with
     % the operation of generate_unused_warning in unused_imports.m.
     %
@@ -498,8 +498,7 @@ warn_unused_interface_import(ParentModuleName,
     % and it will be more precise than we can do here, because it will know
     % whether the imported module is used in the *implementation* section.
     Severity = severity_warning(warn_unused_interface_imports),
-    Spec = spec($pred, Severity, phase_pt2h, HeadContext, HeadPieces),
-    !:Specs = [Spec | !.Specs].
+    Spec = spec($pred, Severity, phase_pt2h, HeadContext, HeadPieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

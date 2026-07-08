@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,13 +40,11 @@
 %---------------------%
 
 :- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------%
 
 :- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -169,7 +167,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             map.lookup(!.UserInstTable, InstCtor, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
             report_multiply_defined("inst", InstSymName, user_arity(InstArity),
-                Context, OrigContext, [], !Specs)
+                Context, OrigContext, [], DupSpec),
+            !:Specs = [DupSpec | !.Specs]
         )
     ).
 
@@ -216,7 +215,8 @@ modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
             map.lookup(ModeDefns, ModeCtor, OrigModeDefn),
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
             report_multiply_defined("mode", Name, user_arity(Arity),
-                Context, OrigContext, [], !Specs)
+                Context, OrigContext, [], Spec),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
@@ -243,26 +243,24 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
 
 %---------------------------------------------------------------------------%
 
-check_inst_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs) :-
+check_inst_defns(ModuleInfo, ImsSubLists, !InvalidInstModeSpecs) :-
     find_eqv_cycles_in_insts(ModuleInfo, ImsSubLists, set.init, Cycles),
     ( if set.is_empty(Cycles) then
         true
     else
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode,
         list.map(cycle_to_error_spec(ModuleInfo, iom_inst),
             set.to_sorted_list(Cycles), CycleSpecs),
-        !:Specs = CycleSpecs ++ !.Specs
+        !:InvalidInstModeSpecs = CycleSpecs ++ !.InvalidInstModeSpecs
     ).
 
-check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs) :-
+check_mode_defns(ModuleInfo, ImsSubLists, !InvalidInstModeSpecs) :-
     find_eqv_cycles_in_modes(ModuleInfo, ImsSubLists, set.init, Cycles),
     ( if set.is_empty(Cycles) then
         true
     else
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode,
         list.map(cycle_to_error_spec(ModuleInfo, iom_mode),
             set.to_sorted_list(Cycles), CycleSpecs),
-        !:Specs = CycleSpecs ++ !.Specs
+        !:InvalidInstModeSpecs = CycleSpecs ++ !.InvalidInstModeSpecs
     ).
 
 %---------------------%

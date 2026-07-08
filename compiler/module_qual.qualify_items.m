@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,14 +29,14 @@
 :- import_module parse_tree.prog_parse_tree.
 
 :- import_module list.
+:- import_module map.
 :- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
     % module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     %   EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName, MQ_Info,
-    %   UnusedImportsSet, UndefTypes, UndefInsts, UndefModes,
-    %   UndefTypeClasses, !Specs):
+    %   UnusedImportsSet, UnusedImportsSpecsMap):
     %
     % AugCompUnit is AugCompUnit0 with all items module qualified
     % as much as possible; likewise for EventSpecMap0 and EventSpecMap.
@@ -46,10 +46,7 @@
 :- pred module_qualify_aug_comp_unit(globals::in,
     aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
-    set_tree234(module_name)::out,
-    set_tree234(type_ctor)::out, set_tree234(inst_ctor)::out,
-    set_tree234(mode_ctor)::out, set_tree234(sym_name_arity)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    set_tree234(module_name)::out, map(module_name, error_spec)::out) is det.
 
 :- pred module_qualify_aug_make_int_unit(globals::in,
     aug_make_int_unit::in, aug_make_int_unit::out,
@@ -70,22 +67,19 @@
     % This is called from qual_info.m to qualify explicit type qualifications.
     %
 :- pred qualify_type_qualification(mq_in_interface::in, prog_context::in,
-    mer_type::in, mer_type::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mer_type::in, mer_type::out, mq_info::in, mq_info::out) is det.
 
     % This is called from add_clause.m to qualify the modes
     % in mode-specific clauses.
     %
 :- pred qualify_clause_mode_list(mq_in_interface::in, prog_context::in,
-    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out) is det.
 
     % This is called from superhomogeneous.m to qualify the modes of arguments
     % in lambda expressions.
     %
 :- pred qualify_lambda_mode(mq_in_interface::in, prog_context::in,
-    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -106,9 +100,9 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module term_context.
@@ -117,8 +111,7 @@
 
 module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
-        UnusedImportsSet, UndefTypes, UndefInsts, UndefModes,
-        UndefTypeClasses, !Specs) :-
+        UnusedImportsSet, UnusedImportsSpecsMap) :-
     AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc0,
         AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
@@ -132,20 +125,22 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     list.foldl(collect_mq_info_in_direct_int1_spec,
         map.values(DirectInt1Specs), !Info),
     qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
-        !Info, !Specs),
+        !Info),
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers),
+    % Note that unlike module_qualify_aug_make_int_unit, we do not call
+    % get_error_specs_in_mq_info here. This is because we want to retrieve
+    % the errors not from the current version !.Info, but from the version
+    % that parse_tree_to_hlds has built on top of !.Info by adding all
+    % the contents of AugCompUnit to the HLDS. Therefore that call
+    % will occur at the end of the body of inparse_tree_to_hlds.
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
-        EventSpecList0, EventSpecList, !Info, !Specs),
+        EventSpecList0, EventSpecList, !Info),
     map.from_assoc_list(EventSpecList, EventSpecMap),
-    mq_info_get_undef_types(!.Info, UndefTypes),
-    mq_info_get_undef_insts(!.Info, UndefInsts),
-    mq_info_get_undef_modes(!.Info, UndefModes),
-    mq_info_get_undef_typeclasses(!.Info, UndefTypeClasses),
 
     globals.lookup_bool_option(Globals, warn_unused_interface_imports,
         WarnUnusedInterfaceImports),
@@ -156,23 +151,25 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         ; WarnUnusedImports = yes
         )
     then
-        get_unused_imports_map(!.Info, UnusedImportsMap),
-        map.keys(UnusedImportsMap, UnusedImports),
+        get_unused_imports_map(!.Info, UnusedImportsContextMap),
+        map.keys(UnusedImportsContextMap, UnusedImports),
         set_tree234.sorted_list_to_set(UnusedImports, UnusedImportsSet),
         (
-            WarnUnusedImports = yes
+            WarnUnusedImports = yes,
             % The unused imports will be reported later by unused_imports.m.
             % That is why we return UnusedImportsSet to our caller, to be
             % stored in the HLDS until unused_imports.m can look at it.
+            map.init(UnusedImportsSpecsMap)
         ;
             WarnUnusedImports = no,
             % We can get here only if WarnUnusedInterfaceImports is yes.
-            map.to_assoc_list(UnusedImportsMap, UnusedImportsAL),
-            list.foldl(warn_unused_interface_import(ModuleName),
-                UnusedImportsAL, !Specs)
+            get_unused_imports_map(!.Info, UnusedImportsContextsMap),
+            map.map_values(warn_unused_interface_import(ModuleName),
+                UnusedImportsContextsMap, UnusedImportsSpecsMap)
         )
     else
-        UnusedImportsSet = set_tree234.init
+        UnusedImportsSet = set_tree234.init,
+        map.init(UnusedImportsSpecsMap)
     ).
 
 %---------------------%
@@ -192,20 +189,26 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         list.foldl(collect_mq_info_in_direct_int3_spec,
             map.values(DirectInt3Specs), !Info),
         qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
-            !Info, !Specs),
+            !Info),
         AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
+        get_error_specs_in_mq_info(!.Info,
+            InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
+        !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
+            NonBlockingUndefSpecs ++ !.Specs,
+
         globals.lookup_bool_option(Globals, warn_unused_interface_imports,
             WarnInterfaceImports),
         (
             WarnInterfaceImports = no
         ;
             WarnInterfaceImports = yes,
-            get_unused_imports_map(!.Info, UnusedImportsMap),
-            map.to_assoc_list(UnusedImportsMap, UnusedImports),
-            list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
-                !Specs)
+            get_unused_imports_map(!.Info, UnusedImportsContextsMap),
+            map.map_values(warn_unused_interface_import(ModuleName),
+                UnusedImportsContextsMap, UnusedImportsSpecsMap),
+            map.values(UnusedImportsSpecsMap, UnusedImportsSpecs),
+            !:Specs = UnusedImportsSpecs ++ !.Specs
         )
     ).
 
@@ -262,7 +265,11 @@ module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
     collect_mq_info_in_parse_tree_int3(int3_as_src, OrigParseTreeInt3,
         Info0, Info1),
     qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
-        Info1, _Info, !Specs).
+        Info1, Info),
+    get_error_specs_in_mq_info(Info,
+        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
+    !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
+        NonBlockingUndefSpecs ++ !.Specs.
 
 %---------------------------------------------------------------------------%
 
@@ -270,11 +277,10 @@ module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
     %
 :- pred qualify_parse_tree_module_src(
     parse_tree_module_src::in, parse_tree_module_src::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
-        !Info, !Specs) :-
+        !Info) :-
     ParseTreeModuleSrc0 = parse_tree_module_src(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
@@ -290,52 +296,52 @@ qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         ImpDeclPragmas0, ImpDeclMarkers0, ImpImplPragmas0, ImpImplMarkers0,
         ImpPromises0, ImpInitialises0, ImpFinalises0, ImpMutables0),
 
-    map.map_values_foldl2(module_qualify_type_ctor_checked_defn,
-        TypeCtorCheckedMap0, TypeCtorCheckedMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_inst_ctor_checked_defn,
-        InstCtorCheckedMap0, InstCtorCheckedMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_mode_ctor_checked_defn,
-        ModeCtorCheckedMap0, ModeCtorCheckedMap, !Info, !Specs),
+    map.map_values_foldl(module_qualify_type_ctor_checked_defn,
+        TypeCtorCheckedMap0, TypeCtorCheckedMap, !Info),
+    map.map_values_foldl(module_qualify_inst_ctor_checked_defn,
+        InstCtorCheckedMap0, InstCtorCheckedMap, !Info),
+    map.map_values_foldl(module_qualify_mode_ctor_checked_defn,
+        ModeCtorCheckedMap0, ModeCtorCheckedMap, !Info),
 
     InInt = mq_used_in_interface,
-    list.map_foldl2(module_qualify_item_typeclass(InInt),
-        IntTypeClasses0, IntTypeClasses, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_instance(InInt),
-        IntInstances0, IntInstances, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_pred_decl(InInt),
-        IntPredDecls0, IntPredDecls, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_decl(InInt),
-        IntModeDecls0, IntModeDecls, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_decl_pragma(InInt),
-        IntDeclPragmas0, IntDeclPragmas, !Info, !Specs),
+    list.map_foldl(module_qualify_item_typeclass(InInt),
+        IntTypeClasses0, IntTypeClasses, !Info),
+    list.map_foldl(module_qualify_item_instance(InInt),
+        IntInstances0, IntInstances, !Info),
+    list.map_foldl(module_qualify_item_pred_decl(InInt),
+        IntPredDecls0, IntPredDecls, !Info),
+    list.map_foldl(module_qualify_item_mode_decl(InInt),
+        IntModeDecls0, IntModeDecls, !Info),
+    list.map_foldl(module_qualify_item_decl_pragma(InInt),
+        IntDeclPragmas0, IntDeclPragmas, !Info),
     % Promises don't need to be qualified.
     IntPromises = IntPromises0,
 
     InImp = mq_not_used_in_interface,
-    list.map_foldl2(module_qualify_item_typeclass(InImp),
-        ImpTypeClasses0, ImpTypeClasses, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_instance(InImp),
-        ImpInstances0, ImpInstances, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_pred_decl(InImp),
-        ImpPredDecls0, ImpPredDecls, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_decl(InImp),
-        ImpModeDecls0, ImpModeDecls, !Info, !Specs),
+    list.map_foldl(module_qualify_item_typeclass(InImp),
+        ImpTypeClasses0, ImpTypeClasses, !Info),
+    list.map_foldl(module_qualify_item_instance(InImp),
+        ImpInstances0, ImpInstances, !Info),
+    list.map_foldl(module_qualify_item_pred_decl(InImp),
+        ImpPredDecls0, ImpPredDecls, !Info),
+    list.map_foldl(module_qualify_item_mode_decl(InImp),
+        ImpModeDecls0, ImpModeDecls, !Info),
     % Clauses don't need to be qualified.
     ImpClauses = ImpClauses0,
-    list.map_foldl2(module_qualify_item_foreign_proc(InImp),
-        ImpForeignProcs0, ImpForeignProcs, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_foreign_export_enum(InImp),
-        ImpForeignExportEnums0, ImpForeignExportEnums, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_decl_pragma(InImp),
-        ImpDeclPragmas0, ImpDeclPragmas, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_impl_pragma(InImp),
-        ImpImplPragmas0, ImpImplPragmas, !Info, !Specs),
+    list.map_foldl(module_qualify_item_foreign_proc(InImp),
+        ImpForeignProcs0, ImpForeignProcs, !Info),
+    list.map_foldl(module_qualify_item_foreign_export_enum(InImp),
+        ImpForeignExportEnums0, ImpForeignExportEnums, !Info),
+    list.map_foldl(module_qualify_item_decl_pragma(InImp),
+        ImpDeclPragmas0, ImpDeclPragmas, !Info),
+    list.map_foldl(module_qualify_item_impl_pragma(InImp),
+        ImpImplPragmas0, ImpImplPragmas, !Info),
     % Initialise and finalise items and promises don't need to be qualified.
     ImpInitialises = ImpInitialises0,
     ImpFinalises = ImpFinalises0,
     ImpPromises = ImpPromises0,
-    list.map_foldl2(module_qualify_item_mutable(InImp),
-        ImpMutables0, ImpMutables, !Info, !Specs),
+    list.map_foldl(module_qualify_item_mutable(InImp),
+        ImpMutables0, ImpMutables, !Info),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
@@ -355,28 +361,27 @@ qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
 %---------------------------------------------------------------------------%
 
 :- pred qualify_parse_tree_int3(parse_tree_int3::in, parse_tree_int3::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3, !Info, !Specs) :-
+qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3, !Info) :-
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
         IntTypeDefnMap0, IntInstDefnMap0, IntModeDefnMap0,
         IntTypeClasses0, IntInstances0, IntTypeRepns0),
 
     InInt = mq_used_in_interface,
-    map.map_values_foldl2(module_qualify_type_ctor_checked_defn,
-        IntTypeDefnMap0, IntTypeDefnMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_inst_ctor_checked_defn,
-        IntInstDefnMap0, IntInstDefnMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_mode_ctor_checked_defn,
-        IntModeDefnMap0, IntModeDefnMap, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_abstract_typeclass(InInt),
-        IntTypeClasses0, IntTypeClasses, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_abstract_instance(InInt),
-        IntInstances0, IntInstances, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_item_type_repn(ModuleName, InInt),
-        IntTypeRepns0, IntTypeRepns, !Info, !Specs),
+    map.map_values_foldl(module_qualify_type_ctor_checked_defn,
+        IntTypeDefnMap0, IntTypeDefnMap, !Info),
+    map.map_values_foldl(module_qualify_inst_ctor_checked_defn,
+        IntInstDefnMap0, IntInstDefnMap, !Info),
+    map.map_values_foldl(module_qualify_mode_ctor_checked_defn,
+        IntModeDefnMap0, IntModeDefnMap, !Info),
+    list.map_foldl(module_qualify_item_abstract_typeclass(InInt),
+        IntTypeClasses0, IntTypeClasses, !Info),
+    list.map_foldl(module_qualify_item_abstract_instance(InInt),
+        IntInstances0, IntInstances, !Info),
+    map.map_values_foldl(module_qualify_item_type_repn(ModuleName, InInt),
+        IntTypeRepns0, IntTypeRepns, !Info),
 
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
@@ -425,11 +430,9 @@ qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3, !Info, !Specs) :-
 
 :- pred module_qualify_type_ctor_checked_defn(
     type_ctor_checked_defn::in, type_ctor_checked_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
-        !Info, !Specs) :-
+module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn, !Info) :-
     (
         CheckedDefn0 = checked_defn_solver(SolverDefn0, SrcDefns0),
         (
@@ -442,15 +445,15 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             % section.
             InInt = mq_not_used_in_interface,
             module_qualify_item_type_defn(qualify_type_defn_solver,
-                InInt, FullDefn0, FullDefn, !Info, !Specs),
+                InInt, FullDefn0, FullDefn, !Info),
             SolverDefn = solver_type_full(MaybeAbsDefn0, FullDefn)
         ),
         SrcDefns0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn0),
         QualifyPred = module_qualify_item_type_defn(qualify_type_defn),
         maybe_qualify_defn(QualifyPred, mq_used_in_interface,
-            MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+            MaybeIntDefn0, MaybeIntDefn, !Info),
         maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
-            MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+            MaybeImpDefn0, MaybeImpDefn, !Info),
         SrcDefns = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
         CheckedDefn = checked_defn_solver(SolverDefn, SrcDefns)
     ;
@@ -459,20 +462,20 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             StdDefn0 = std_mer_type_eqv(EqvStatus, EqvDefn0),
             InInt = std_eqv_status_section(EqvStatus),
             module_qualify_item_type_defn(qualify_type_defn_eqv,
-                InInt, EqvDefn0, EqvDefn, !Info, !Specs),
+                InInt, EqvDefn0, EqvDefn, !Info),
             StdDefn = std_mer_type_eqv(EqvStatus, EqvDefn)
         ;
             StdDefn0 = std_mer_type_subtype(SubStatus, SubDefn0),
             InInt = std_sub_status_section(SubStatus),
             module_qualify_item_type_defn(qualify_type_defn_sub,
-                InInt, SubDefn0, SubDefn, !Info, !Specs),
+                InInt, SubDefn0, SubDefn, !Info),
             StdDefn = std_mer_type_subtype(SubStatus, SubDefn)
         ;
             StdDefn0 = std_mer_type_du_all_plain_constants(DuStatus, DuDefn0,
                 HeadCtor, TailCtors, CJCsDefnOrEnum),
             InInt = std_du_status_section(DuStatus),
             module_qualify_item_type_defn(qualify_type_defn_du,
-                InInt, DuDefn0, DuDefn, !Info, !Specs),
+                InInt, DuDefn0, DuDefn, !Info),
             % Foreign types and foreign enums need no qualification.
             StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
                 HeadCtor, TailCtors, CJCsDefnOrEnum)
@@ -481,7 +484,7 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
                 DuDefn0, CJCsDefnOrEnum),
             InInt = std_du_status_section(DuStatus),
             module_qualify_item_type_defn(qualify_type_defn_du,
-                InInt, DuDefn0, DuDefn, !Info, !Specs),
+                InInt, DuDefn0, DuDefn, !Info),
             % Foreign types and foreign enums need no qualification.
             StdDefn = std_mer_type_du_not_all_plain_constants(DuStatus,
                 DuDefn, CJCsDefnOrEnum)
@@ -493,84 +496,78 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             StdDefn = StdDefn0
         ),
         SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeignEnums0),
-        list.map_foldl2(
+        list.map_foldl(
             module_qualify_item_type_defn(qualify_type_defn,
                 mq_used_in_interface),
-            IntDefns0, IntDefns, !Info, !Specs),
-        list.map_foldl2(
+            IntDefns0, IntDefns, !Info),
+        list.map_foldl(
             module_qualify_item_type_defn(qualify_type_defn,
                 mq_not_used_in_interface),
-            ImpDefns0, ImpDefns, !Info, !Specs),
-        list.map_foldl2(
+            ImpDefns0, ImpDefns, !Info),
+        list.map_foldl(
             module_qualify_item_foreign_enum(mq_not_used_in_interface),
-            ImpForeignEnums0, ImpForeignEnums, !Info, !Specs),
+            ImpForeignEnums0, ImpForeignEnums, !Info),
         SrcDefns = src_defns_std(IntDefns, ImpDefns, ImpForeignEnums),
         CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
     ).
 
 :- pred module_qualify_inst_ctor_checked_defn(
     inst_ctor_checked_defn::in, inst_ctor_checked_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_inst_ctor_checked_defn(CheckedDefn0, CheckedDefn,
-        !Info, !Specs) :-
+module_qualify_inst_ctor_checked_defn(CheckedDefn0, CheckedDefn, !Info) :-
     CheckedDefn0 = checked_defn_inst(StdInstDefn0, SrcDefns0),
     StdInstDefn0 = std_inst_defn(Status, MaybeAbstractDefn0),
     % Because of the inst_for_type_constructor field,
     % even abstract inst definitions need qualifying.
     InInt = std_inst_status_section(Status),
     module_qualify_item_inst_defn(qualify_inst_defn, InInt,
-        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !Specs),
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info),
     StdInstDefn = std_inst_defn(Status, MaybeAbstractDefn),
     SrcDefns0 = src_defns_inst(MaybeIntDefn0, MaybeImpDefn0),
     QualifyPred = module_qualify_item_inst_defn(qualify_inst_defn),
     maybe_qualify_defn(QualifyPred, mq_used_in_interface,
-        MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+        MaybeIntDefn0, MaybeIntDefn, !Info),
     maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
-        MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+        MaybeImpDefn0, MaybeImpDefn, !Info),
     SrcDefns = src_defns_inst(MaybeIntDefn, MaybeImpDefn),
     CheckedDefn = checked_defn_inst(StdInstDefn, SrcDefns).
 
 :- pred module_qualify_mode_ctor_checked_defn(
     mode_ctor_checked_defn::in, mode_ctor_checked_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_mode_ctor_checked_defn(CheckedDefn0, CheckedDefn,
-        !Info, !Specs) :-
+module_qualify_mode_ctor_checked_defn(CheckedDefn0, CheckedDefn, !Info) :-
     CheckedDefn0 = checked_defn_mode(StdModeDefn0, SrcDefns0),
     StdModeDefn0 = std_mode_defn(Status, MaybeAbstractDefn0),
     % Abstract mode definitions don't need qualifying NOW, but will
     % in the future when we add a new mode_for_type_constructor field.
     InInt = std_mode_status_section(Status),
     module_qualify_item_mode_defn(qualify_mode_defn, InInt,
-        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !Specs),
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info),
     StdModeDefn = std_mode_defn(Status, MaybeAbstractDefn),
     SrcDefns0 = src_defns_mode(MaybeIntDefn0, MaybeImpDefn0),
     QualifyPred = module_qualify_item_mode_defn(qualify_mode_defn),
     maybe_qualify_defn(QualifyPred, mq_used_in_interface,
-        MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+        MaybeIntDefn0, MaybeIntDefn, !Info),
     maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
-        MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+        MaybeImpDefn0, MaybeImpDefn, !Info),
     SrcDefns = src_defns_mode(MaybeIntDefn, MaybeImpDefn),
     CheckedDefn = checked_defn_mode(StdModeDefn, SrcDefns).
 
 :- pred maybe_qualify_defn(
-    pred(mq_in_interface, T, T, mq_info, mq_info,
-        list(error_spec), list(error_spec))
-    :: in(pred(in, in, out, in, out, in, out) is det),
-    mq_in_interface::in,
-    maybe(T)::in, maybe(T)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    pred(mq_in_interface, T, T, mq_info, mq_info)
+    :: in(pred(in, in, out, in, out) is det),
+    mq_in_interface::in, maybe(T)::in, maybe(T)::out,
+    mq_info::in, mq_info::out) is det.
 
-maybe_qualify_defn(QualifyPred, InInt, MaybeDefn0, MaybeDefn, !Info, !Specs) :-
+maybe_qualify_defn(QualifyPred, InInt, MaybeDefn0, MaybeDefn, !Info) :-
     (
         MaybeDefn0 = no,
         MaybeDefn = no
     ;
         MaybeDefn0 = yes(Defn0),
-        QualifyPred(InInt, Defn0, Defn, !Info, !Specs),
+        QualifyPred(InInt, Defn0, Defn, !Info),
         MaybeDefn = yes(Defn)
     ).
 
@@ -613,46 +610,42 @@ std_mode_status_section(std_mode_all_private) = mq_not_used_in_interface.
 %---------------------------------------------------------------------------%
 
 :- pred module_qualify_item_type_defn(
-    pred(mq_in_interface, prog_context, type_ctor, T, T,
-        mq_info, mq_info, list(error_spec), list(error_spec))
-    :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    pred(mq_in_interface, prog_context, type_ctor, T, T, mq_info, mq_info)
+    :: in(pred(in, in, in, in, out, in, out) is det),
     mq_in_interface::in,
     item_type_defn_info_general(T)::in, item_type_defn_info_general(T)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_type_defn(QualDefn, InInt, ItemTypeDefn0, ItemTypeDefn,
-        !Info, !Specs) :-
+        !Info) :-
     ItemTypeDefn0 = item_type_defn_info(SymName, Params, TypeDefn0,
         TVarSet, Context, SeqNum),
     list.length(Params, Arity),
     TypeCtor = type_ctor(SymName, Arity),
-    QualDefn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn, !Info, !Specs),
+    QualDefn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn, !Info),
     ItemTypeDefn = item_type_defn_info(SymName, Params, TypeDefn,
         TVarSet, Context, SeqNum).
 
 :- pred module_qualify_item_inst_defn(
-    pred(mq_in_interface, prog_context, inst_ctor, T, T,
-        mq_info, mq_info, list(error_spec), list(error_spec))
-    :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    pred(mq_in_interface, prog_context, inst_ctor, T, T, mq_info, mq_info)
+    :: in(pred(in, in, in, in, out, in, out) is det),
     mq_in_interface::in,
     item_inst_defn_info_general(T)::in, item_inst_defn_info_general(T)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_inst_defn(QualDefn, InInt, ItemInstDefn0, ItemInstDefn,
-        !Info, !Specs) :-
+        !Info) :-
     ItemInstDefn0 = item_inst_defn_info(SymName, Params, MaybeForTypeCtor0,
         MaybeAbstractInstDefn0, InstVarSet, Context, SeqNum),
     list.length(Params, Arity),
     InstCtor = inst_ctor(SymName, Arity),
     ErrorContext = mqec_inst_defn(Context, InstCtor),
     QualDefn(InInt, Context, InstCtor,
-        MaybeAbstractInstDefn0, MaybeAbstractInstDefn, !Info, !Specs),
+        MaybeAbstractInstDefn0, MaybeAbstractInstDefn, !Info),
     (
         MaybeForTypeCtor0 = yes(ForTypeCtor0),
         qualify_type_ctor(InInt, ErrorContext, ForTypeCtor0, ForTypeCtor,
-            !Info, !Specs),
+            !Info),
         MaybeForTypeCtor = yes(ForTypeCtor)
     ;
         MaybeForTypeCtor0 = no,
@@ -662,32 +655,28 @@ module_qualify_item_inst_defn(QualDefn, InInt, ItemInstDefn0, ItemInstDefn,
         MaybeAbstractInstDefn, InstVarSet, Context, SeqNum).
 
 :- pred module_qualify_item_mode_defn(
-    pred(mq_in_interface, prog_context, mode_ctor, T, T,
-        mq_info, mq_info, list(error_spec), list(error_spec))
-    :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    pred(mq_in_interface, prog_context, mode_ctor, T, T, mq_info, mq_info)
+    :: in(pred(in, in, in, in, out, in, out) is det),
     mq_in_interface::in,
     item_mode_defn_info_general(T)::in, item_mode_defn_info_general(T)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_mode_defn(QualDefn, InInt, ItemModeDefn0, ItemModeDefn,
-        !Info, !Specs) :-
+        !Info) :-
     ItemModeDefn0 = item_mode_defn_info(SymName, Params,
         MaybeAbstractModeDefn0, InstVarSet, Context, SeqNum),
     list.length(Params, Arity),
     ModeCtor = mode_ctor(SymName, Arity),
     QualDefn(InInt, Context, ModeCtor,
-        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info, !Specs),
+        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info),
     ItemModeDefn = item_mode_defn_info(SymName, Params,
         MaybeAbstractModeDefn, InstVarSet, Context, SeqNum).
 
 :- pred module_qualify_item_typeclass(mq_in_interface::in,
     item_typeclass_info::in, item_typeclass_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
-        !Info, !Specs) :-
+module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass, !Info) :-
     % The definition of this predicate differs from the definition
     % of module_qualify_item_abstract_typeclass only in that it updates
     % Interface.
@@ -697,14 +686,14 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
     ClassId = class_id(Name, Arity),
     ConstraintErrorContext = mqcec_class_defn(Context, ClassId),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+        Constraints0, Constraints, !Info),
     (
         Interface0 = class_interface_abstract,
         Interface = class_interface_abstract
     ;
         Interface0 = class_interface_concrete(Methods0),
         qualify_class_decls(InInt, ClassId, Methods0, Methods,
-            !Info, !Specs),
+            !Info),
         Interface = class_interface_concrete(Methods)
     ),
     ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
@@ -712,11 +701,10 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
 
 :- pred module_qualify_item_abstract_typeclass(mq_in_interface::in,
     item_abstract_typeclass_info::in, item_abstract_typeclass_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_abstract_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
-        !Info, !Specs) :-
+        !Info) :-
     % The definition of this predicate differs from the definition
     % of module_qualify_item_typeclass only in that it does not update
     % Interface.
@@ -726,20 +714,18 @@ module_qualify_item_abstract_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
     ClassId = class_id(Name, Arity),
     ConstraintErrorContext = mqcec_class_defn(Context, ClassId),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+        Constraints0, Constraints, !Info),
     ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
         Interface0, VarSet, Context, SeqNum).
 
 :- pred module_qualify_item_instance(mq_in_interface::in,
     item_instance_info::in, item_instance_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
-        !Info, !Specs) :-
+module_qualify_item_instance(InInt, ItemInstance0, ItemInstance, !Info) :-
     % The definition of this predicate differs from the definition
     % of module_qualify_item_abstract_instance only in that it updates Body.
-    ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
+    ItemInstance0 = item_instance_info(Name0, Types0, OrigTypes0,
         Constraints0, Body0, VarSet, ModName, Context, SeqNum),
     list.length(Types0, Arity),
     ErrorContext = mqec_instance(Context, class_id(Name0, Arity)),
@@ -751,12 +737,11 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
     ),
     % We don't qualify the implementation yet, since that requires
     % us to resolve overloading.
-    ConstraintErrorContext = mqcec_instance_defn(Context, Name0,
-        OriginalTypes0),
+    ConstraintErrorContext = mqcec_instance_defn(Context, Name0, OrigTypes0),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+        Constraints0, Constraints, !Info),
     Id0 = mq_id(Name0, Arity),
-    qualify_class_name(InInt, ErrorContext, Id0, Name, !Info, !Specs),
+    qualify_class_name(InInt, ErrorContext, Id0, Name, !Info),
     % XXX We don't want to keep the errors from the expansion of both
     % forms of the instance types, since printing two error messages about
     % one instance definition that make apparently contradictory
@@ -764,23 +749,22 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
     % or not would be confusing. However, I (zs) cannot think of any
     % compelling reason right now for preferring the error messages
     % from one version of the types over the other.
-    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
-    qualify_type_list(InInt, ErrorContext, OriginalTypes0, OriginalTypes,
-        !Info, !.Specs, _),
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
+    % WAS_IGNORED We used to ignore error_specs from OrigTypes.
+    qualify_type_list(InInt, ErrorContext, OrigTypes0, OrigTypes, !Info),
     qualify_instance_body(Name, Body0, Body),
-    ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+    ItemInstance = item_instance_info(Name, Types, OrigTypes,
         Constraints, Body, VarSet, ModName, Context, SeqNum).
 
 :- pred module_qualify_item_abstract_instance(mq_in_interface::in,
     item_abstract_instance_info::in, item_abstract_instance_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
-        !Info, !Specs) :-
+        !Info) :-
     % The definition of this predicate differs from the definition
     % of module_qualify_item_instance only in that it does not update Body.
-    ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
+    ItemInstance0 = item_instance_info(Name0, Types0, OrigTypes0,
         Constraints0, Body, VarSet, ModName, Context, SeqNum),
     list.length(Types0, Arity),
     ErrorContext = mqec_instance(Context, class_id(Name0, Arity)),
@@ -792,12 +776,11 @@ module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
     ),
     % We don't qualify the implementation yet, since that requires
     % us to resolve overloading.
-    ConstraintErrorContext = mqcec_instance_defn(Context, Name0,
-        OriginalTypes0),
+    ConstraintErrorContext = mqcec_instance_defn(Context, Name0, OrigTypes0),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+        Constraints0, Constraints, !Info),
     Id0 = mq_id(Name0, Arity),
-    qualify_class_name(InInt, ErrorContext, Id0, Name, !Info, !Specs),
+    qualify_class_name(InInt, ErrorContext, Id0, Name, !Info),
     % XXX We don't want to keep the errors from the expansion of both
     % forms of the instance types, since printing two error messages about
     % one instance definition that make apparently contradictory
@@ -805,19 +788,17 @@ module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
     % or not would be confusing. However, I (zs) cannot think of any
     % compelling reason right now for preferring the error messages
     % from one version of the types over the other.
-    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
-    qualify_type_list(InInt, ErrorContext, OriginalTypes0, OriginalTypes,
-        !Info, !.Specs, _),
-    ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
+    % WAS_IGNORED We used to ignore error_specs from OrigTypes.
+    qualify_type_list(InInt, ErrorContext, OrigTypes0, OrigTypes, !Info),
+    ItemInstance = item_instance_info(Name, Types, OrigTypes,
         Constraints, Body, VarSet, ModName, Context, SeqNum).
 
 :- pred module_qualify_item_pred_decl(mq_in_interface::in,
     item_pred_decl_info::in, item_pred_decl_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
-        !Info, !Specs) :-
+module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl, !Info) :-
     ItemPredDecl0 = item_pred_decl_info(SymName, PredOrFunc,
         TypesAndMaybeModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
@@ -828,15 +809,15 @@ module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
     ErrorContext = mqec_pred_or_func(Context, PredOrFunc,
         mq_id(SymName, PredFormArityInt)),
     qualify_types_and_maybe_modes(InInt, ErrorContext,
-        TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs),
+        TypesAndMaybeModes0, TypesAndMaybeModes, !Info),
     ConstraintErrorContext = mqcec_pred_decl(Context, PFSymNameArity),
     qualify_prog_constraints(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs),
+        Constraints0, Constraints, !Info),
     (
         MaybeWithType0 = yes(WithType0),
         % XXX We could pass a more specific error context.
         qualify_type(InInt, ErrorContext, WithType0, WithType,
-            !Info, !Specs),
+            !Info),
         MaybeWithType = yes(WithType)
     ;
         MaybeWithType0 = no,
@@ -845,7 +826,7 @@ module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
     (
         MaybeWithInst0 = yes(WithInst0),
         % XXX We could pass a more specific error context.
-        qualify_inst(InInt, ErrorContext, WithInst0, WithInst, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, WithInst0, WithInst, !Info),
         MaybeWithInst = yes(WithInst)
     ;
         MaybeWithInst0 = no,
@@ -858,21 +839,19 @@ module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
 
 :- pred module_qualify_item_mode_decl(mq_in_interface::in,
     item_mode_decl_info::in, item_mode_decl_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_mode_decl(InInt, ItemModeDecl0, ItemModeDecl,
-        !Info, !Specs) :-
+module_qualify_item_mode_decl(InInt, ItemModeDecl0, ItemModeDecl, !Info) :-
     ItemModeDecl0 = item_mode_decl_info(SymName, PredOrFunc, Modes0,
         MaybeWithInst0, MaybeDetism, InstVarSet, Context, SeqNum),
     list.length(Modes0, Arity),
     ErrorContext = mqec_pred_or_func_mode(Context, PredOrFunc,
         mq_id(SymName, Arity)),
-    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
     (
         MaybeWithInst0 = yes(WithInst0),
         % XXX We could pass a more specific error context.
-        qualify_inst(InInt, ErrorContext, WithInst0, WithInst, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, WithInst0, WithInst, !Info),
         MaybeWithInst = yes(WithInst)
     ;
         MaybeWithInst0 = no,
@@ -883,49 +862,45 @@ module_qualify_item_mode_decl(InInt, ItemModeDecl0, ItemModeDecl,
 
 :- pred module_qualify_item_foreign_proc(mq_in_interface::in,
     item_foreign_proc_info::in, item_foreign_proc_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_foreign_proc(InInt, FPInfo0, FPInfo, !Info, !Specs) :-
+module_qualify_item_foreign_proc(InInt, FPInfo0, FPInfo, !Info) :-
     FPInfo0 = item_foreign_proc_info(Attrs0, Name, PredOrFunc,
         Vars0, Varset, InstVarset, Impl, Context, SeqNum),
     ErrorContext = mqec_foreign_proc(Context),
-    qualify_pragma_vars(InInt, ErrorContext, Vars0, Vars, !Info, !Specs),
+    qualify_pragma_vars(InInt, ErrorContext, Vars0, Vars, !Info),
     UserSharing0 = get_user_annotated_sharing(Attrs0),
     qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
-        !Info, !Specs),
+        !Info),
     set_user_annotated_sharing(UserSharing, Attrs0, Attrs),
     FPInfo = item_foreign_proc_info(Attrs, Name, PredOrFunc,
         Vars, Varset, InstVarset, Impl, Context, SeqNum).
 
 :- pred module_qualify_item_foreign_enum(mq_in_interface::in,
     item_foreign_enum_info::in, item_foreign_enum_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_foreign_enum(InInt, ItemForeignEnum0, ItemForeignEnum,
-        !Info, !Specs) :-
+        !Info) :-
     ItemForeignEnum0 = item_foreign_enum_info(Lang, TypeCtor0, Values,
         Context, SeqNum),
     ErrorContext = mqec_foreign_enum(Context),
-    qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor, !Info, !Specs),
+    qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor, !Info),
     ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, Values,
         Context, SeqNum).
 
 :- pred module_qualify_item_foreign_export_enum(mq_in_interface::in,
     item_foreign_export_enum_info::in, item_foreign_export_enum_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_foreign_export_enum(InInt, ItemFEE0, ItemFEE,
-        !Info, !Specs) :-
+module_qualify_item_foreign_export_enum(InInt, ItemFEE0, ItemFEE, !Info) :-
     ItemFEE0 = item_foreign_export_enum_info(Lang, TypeCtor0, Attributes,
         Overrides, Context, SeqNum),
     ErrorContext = mqec_foreign_export_enum(Context),
-    mq_info_get_suppress_found_undef(!.Info, OldSuppressUndef),
-    mq_info_set_suppress_found_undef(suppress_found_undef, !Info),
-    qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor, !Info, !Specs),
-    mq_info_set_suppress_found_undef(OldSuppressUndef, !Info),
+    mq_info_get_is_undef_blocking(!.Info, OldUndefBlocking),
+    mq_info_set_is_undef_blocking(undef_is_not_blocking, !Info),
+    qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor, !Info),
+    mq_info_set_is_undef_blocking(OldUndefBlocking, !Info),
     ItemFEE = item_foreign_export_enum_info(Lang, TypeCtor, Attributes,
         Overrides, Context, SeqNum).
 
@@ -933,11 +908,10 @@ module_qualify_item_foreign_export_enum(InInt, ItemFEE0, ItemFEE,
 
 :- pred module_qualify_item_type_repn(module_name::in, mq_in_interface::in,
     item_type_repn_info::in, item_type_repn_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 module_qualify_item_type_repn(ModuleName, InInt,
-        ItemTypeRepnInfo0, ItemTypeRepnInfo, !Info, !Specs) :-
+        ItemTypeRepnInfo0, ItemTypeRepnInfo, !Info) :-
     ItemTypeRepnInfo0 = item_type_repn_info(TypeCtorSymName0, ArgTVars,
         RepInfo0, TVarSet, Context, SeqNum),
     % We currently put type constructors names into type_repn items
@@ -962,7 +936,7 @@ module_qualify_item_type_repn(ModuleName, InInt,
         list.length(ArgTVars, TypeCtorArity),
         TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         ErrorContext = mqec_type_repn(Context, TypeCtor),
-        qualify_type(InInt, ErrorContext, EqvType0, EqvType, !Info, !Specs),
+        qualify_type(InInt, ErrorContext, EqvType0, EqvType, !Info),
         RepInfo = tcrepn_is_eqv_to(EqvType)
     ;
         RepInfo0 = tcrepn_is_subtype_of(SuperTypeCtor0),
@@ -970,7 +944,7 @@ module_qualify_item_type_repn(ModuleName, InInt,
         TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         ErrorContext = mqec_type_repn(Context, TypeCtor),
         qualify_type_ctor(InInt, ErrorContext, SuperTypeCtor0, SuperTypeCtor,
-            !Info, !Specs),
+            !Info),
         RepInfo = tcrepn_is_subtype_of(SuperTypeCtor)
     ),
     ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName, ArgTVars,
@@ -986,30 +960,28 @@ module_qualify_item_type_repn(ModuleName, InInt,
     %
 :- pred qualify_type_defn(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_defn::in, type_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
-        !Info, !Specs) :-
+qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn, !Info) :-
     (
         TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
         qualify_type_defn_solver(InInt, Context, TypeCtor,
-            DetailsSolver0, DetailsSolver, !Info, !Specs),
+            DetailsSolver0, DetailsSolver, !Info),
         TypeDefn = parse_tree_solver_type(DetailsSolver)
     ;
         TypeDefn0 = parse_tree_eqv_type(DetailsEqv0),
         qualify_type_defn_eqv(InInt, Context, TypeCtor,
-            DetailsEqv0, DetailsEqv, !Info, !Specs),
+            DetailsEqv0, DetailsEqv, !Info),
         TypeDefn = parse_tree_eqv_type(DetailsEqv)
     ;
         TypeDefn0 = parse_tree_du_type(DetailsDu0),
         qualify_type_defn_du(InInt, Context, TypeCtor,
-            DetailsDu0, DetailsDu, !Info, !Specs),
+            DetailsDu0, DetailsDu, !Info),
         TypeDefn = parse_tree_du_type(DetailsDu)
     ;
         TypeDefn0 = parse_tree_sub_type(DetailsSub0),
         qualify_type_defn_sub(InInt, Context, TypeCtor,
-            DetailsSub0, DetailsSub, !Info, !Specs),
+            DetailsSub0, DetailsSub, !Info),
         TypeDefn = parse_tree_sub_type(DetailsSub)
     ;
         ( TypeDefn0 = parse_tree_abstract_type(_)
@@ -1020,59 +992,54 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
 
 :- pred qualify_type_defn_solver(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_details_solver::in, type_details_solver::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_type_defn_solver(InInt, Context, TypeCtor,
-        DetailsSolver0, DetailsSolver, !Info, !Specs) :-
+        DetailsSolver0, DetailsSolver, !Info) :-
     DetailsSolver0 = type_details_solver(SolverTypeDetails0, MaybeUserEqComp),
     SolverTypeDetails0 = solver_type_details(RepnType0, GroundInst0, AnyInst0,
         Mutables0),
     ErrorContext = mqec_type_defn(Context, TypeCtor),
-    qualify_type(InInt, ErrorContext, RepnType0, RepnType, !Info, !Specs),
-    qualify_inst(InInt, ErrorContext, GroundInst0, GroundInst, !Info, !Specs),
-    qualify_inst(InInt, ErrorContext, AnyInst0, AnyInst, !Info, !Specs),
-    qualify_constraint_stores(InInt, Mutables0, Mutables, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, RepnType0, RepnType, !Info),
+    qualify_inst(InInt, ErrorContext, GroundInst0, GroundInst, !Info),
+    qualify_inst(InInt, ErrorContext, AnyInst0, AnyInst, !Info),
+    qualify_constraint_stores(InInt, Mutables0, Mutables, !Info),
     SolverTypeDetails  = solver_type_details(RepnType, GroundInst, AnyInst,
         Mutables),
     DetailsSolver = type_details_solver(SolverTypeDetails, MaybeUserEqComp).
 
 :- pred qualify_constraint_stores(mq_in_interface::in,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_constraint_stores(_InInt, [], [], !Info, !Specs).
+qualify_constraint_stores(_InInt, [], [], !Info).
 qualify_constraint_stores(InInt,
-        [Mutable0 | Mutables0], [Mutable | Mutables], !Info, !Specs) :-
-    module_qualify_item_mutable(InInt, Mutable0, Mutable, !Info, !Specs),
-    qualify_constraint_stores(InInt, Mutables0, Mutables, !Info, !Specs).
+        [Mutable0 | Mutables0], [Mutable | Mutables], !Info) :-
+    module_qualify_item_mutable(InInt, Mutable0, Mutable, !Info),
+    qualify_constraint_stores(InInt, Mutables0, Mutables, !Info).
 
 :- pred qualify_type_defn_eqv(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_details_eqv::in, type_details_eqv::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_type_defn_eqv(InInt, Context, TypeCtor, DetailsEqv0, DetailsEqv,
-        !Info, !Specs) :-
+        !Info) :-
     DetailsEqv0 = type_details_eqv(Type0),
     ErrorContext = mqec_type_defn(Context, TypeCtor),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
     DetailsEqv = type_details_eqv(Type).
 
 :- pred qualify_type_defn_du(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_details_du::in, type_details_du::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
-        !Info, !Specs) :-
+        !Info) :-
     DetailsDu0 = type_details_du(OoMCtors0, MaybeUserEqComp0,
         MaybeDirectArgCtors0),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
-    qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
-    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
-        !Info, !Specs),
+    qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info),
+    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors, !Info),
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     % User-defined equality pred names will be converted into predicate
     % calls and then module-qualified after type analysis (during mode
@@ -1085,44 +1052,38 @@ qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
 
 :- pred qualify_type_defn_sub(mq_in_interface::in, prog_context::in,
     type_ctor::in, type_details_sub::in, type_details_sub::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_type_defn_sub(InInt, Context, TypeCtor, DetailsSub0, DetailsSub,
-        !Info, !Specs) :-
+        !Info) :-
     DetailsSub0 = type_details_sub(SuperType0, OoMCtors0),
     ErrorContext = mqec_type_defn(Context, TypeCtor),
     % Note that this will not prevent a subtype defined in an interface
     % section from referring to an abstract type as its supertype.
     % That will be checked while checking other subtype conditions.
     qualify_type(InInt, ErrorContext, SuperType0, SuperType,
-        !Info, !Specs),
+        !Info),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
-    qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
-    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
-        !Info, !Specs),
+    qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info),
+    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors, !Info),
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     DetailsSub = type_details_sub(SuperType, OoMCtors).
 
 :- pred qualify_constructors(mq_in_interface::in, type_ctor::in,
     list(constructor)::in, list(constructor)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_constructors(_InInt, _ContainingTypeCtor, [], [], !Info, !Specs).
+qualify_constructors(_InInt, _ContainingTypeCtor, [], [], !Info).
 qualify_constructors(InInt, ContainingTypeCtor,
-        [Ctor0 | Ctors0], [Ctor | Ctors], !Info, !Specs) :-
-    qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor,
-        !Info, !Specs),
-    qualify_constructors(InInt, ContainingTypeCtor, Ctors0, Ctors,
-        !Info, !Specs).
+        [Ctor0 | Ctors0], [Ctor | Ctors], !Info) :-
+    qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info),
+    qualify_constructors(InInt, ContainingTypeCtor, Ctors0, Ctors, !Info).
 
 :- pred qualify_constructor(mq_in_interface::in, type_ctor::in,
     constructor::in, constructor::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
+qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info) :-
     Ctor0 = ctor(Ordinal, MaybeExistConstraints0, FunctionSymbolSymName, Args0,
         Arity, Context),
     FunctionSymbolName = unqualify_name(FunctionSymbolSymName),
@@ -1136,65 +1097,62 @@ qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
         ConstraintErrorContext = mqcec_type_defn_constructor(Context,
             ContainingTypeCtor, FunctionSymbolName, Arity),
         qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-            Constraints0, Constraints, !Info, !Specs),
+            Constraints0, Constraints, !Info),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             UnconstrainedExistQVars, ConstrainedExistQVars),
         MaybeExistConstraints = exist_constraints(ExistConstraints)
     ),
     qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbolName,
-        0, Args0, Args, !Info, !Specs),
+        0, Args0, Args, !Info),
     Ctor = ctor(Ordinal, MaybeExistConstraints, FunctionSymbolSymName, Args,
         Arity, Context).
 
 :- pred qualify_constructor_args(mq_in_interface::in,
     type_ctor::in, string::in, int::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_constructor_args(_InInt, _, _, _, [], [], !Info, !Specs).
+qualify_constructor_args(_InInt, _, _, _, [], [], !Info).
 qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbol,
-        LastArgNum, [Arg0 | Args0], [Arg | Args], !Info, !Specs) :-
+        LastArgNum, [Arg0 | Args0], [Arg | Args], !Info) :-
     CurArgNum = LastArgNum + 1,
     qualify_constructor_arg(InInt, ContainingTypeCtor, FunctionSymbol,
-        CurArgNum, Arg0, Arg, !Info, !Specs),
+        CurArgNum, Arg0, Arg, !Info),
     qualify_constructor_args(InInt, ContainingTypeCtor, FunctionSymbol,
-        CurArgNum, Args0, Args, !Info, !Specs).
+        CurArgNum, Args0, Args, !Info).
 
 :- pred qualify_constructor_arg(mq_in_interface::in,
     type_ctor::in, string::in, int::in,
-    constructor_arg::in, constructor_arg::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    constructor_arg::in, constructor_arg::out,
+    mq_info::in, mq_info::out) is det.
 
 qualify_constructor_arg(InInt, ContainingTypeCtor, FunctionSymbol, ArgNum,
-        Arg0, Arg, !Info, !Specs) :-
+        Arg0, Arg, !Info) :-
     Arg0 = ctor_arg(MaybeFieldName, Type0, Context),
     ErrorContext = mqec_constructor_arg(Context, ContainingTypeCtor,
         FunctionSymbol, ArgNum, MaybeFieldName),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
     Arg = ctor_arg(MaybeFieldName, Type, Context).
 
 :- pred qualify_type_list(mq_in_interface::in, mq_error_context::in,
-    list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out) is det.
 
-qualify_type_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_type_list(_InInt, _ErrorContext, [], [], !Info).
 qualify_type_list(InInt, ErrorContext, [Type0 | Types0], [Type | Types],
-        !Info, !Specs) :-
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs).
+        !Info) :-
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info).
 
-qualify_type_qualification(InInt, Context, Type0, Type, !Info, !Specs) :-
+qualify_type_qualification(InInt, Context, Type0, Type, !Info) :-
     ErrorContext = mqec_type_qual(Context),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs).
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info).
 
     % Qualify a type and its argument types.
     %
 :- pred qualify_type(mq_in_interface::in, mq_error_context::in,
-    mer_type::in, mer_type::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mer_type::in, mer_type::out, mq_info::in, mq_info::out) is det.
 
-qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
+qualify_type(InInt, ErrorContext, Type0, Type, !Info) :-
     (
         Type0 = type_variable(_Var, _Kind),
         Type = Type0
@@ -1204,9 +1162,9 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
         find_unique_match(InInt, ErrorContext, Types, qual_id_type,
-            TypeCtorId0, SymName, !Info, !Specs),
+            TypeCtorId0, SymName, !Info),
         % XXX We could pass a more specific error context.
-        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
+        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
         Type = defined_type(SymName, Args, Kind)
     ;
         Type0 = builtin_type(BuiltinType),
@@ -1234,34 +1192,32 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
     ;
         Type0 = higher_order_type(PorF, Args0, HOInstInfo0, Purity),
         % XXX We could pass a more specific error context.
-        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
+        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
         % XXX We could pass a more specific error context.
         qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-            !Info, !Specs),
+            !Info),
         Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
     ;
         Type0 = tuple_type(Args0, Kind),
         % XXX We could pass a more specific error context.
-        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
+        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
         Type = tuple_type(Args, Kind)
     ;
         Type0 = apply_n_type(Var, Args0, Kind),
         % XXX We could pass a more specific error context.
-        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
+        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
         Type = apply_n_type(Var, Args, Kind)
     ;
         Type0 = kinded_type(SubType0, Kind),
         % XXX We could pass a more specific error context.
-        qualify_type(InInt, ErrorContext, SubType0, SubType, !Info, !Specs),
+        qualify_type(InInt, ErrorContext, SubType0, SubType, !Info),
         Type = kinded_type(SubType, Kind)
     ).
 
 :- pred qualify_type_ctor(mq_in_interface::in, mq_error_context::in,
-    type_ctor::in, type_ctor::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    type_ctor::in, type_ctor::out, mq_info::in, mq_info::out) is det.
 
-qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
-        !Info, !Specs) :-
+qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor, !Info) :-
     TypeCtor0 = type_ctor(SymName0, Arity),
     ( if is_builtin_atomic_type(TypeCtor0) then
         TypeCtor = TypeCtor0
@@ -1270,7 +1226,7 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
         mq_info_get_types(!.Info, Types),
         % XXX We could pass a more specific error context.
         find_unique_match(InInt, ErrorContext, Types, qual_id_type,
-            TypeCtorId0, SymName, !Info, !Specs),
+            TypeCtorId0, SymName, !Info),
         TypeCtor = type_ctor(SymName, Arity)
     ).
 
@@ -1293,12 +1249,10 @@ is_builtin_atomic_type(TypeCtor) :-
     %
 :- pred qualify_inst_defn(mq_in_interface::in, prog_context::in,
     inst_ctor::in, maybe_abstract_inst_defn::in, maybe_abstract_inst_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_inst_defn(InInt, Context, InstCtor,
-        MaybeAbstractInstDefn0, MaybeAbstractInstDefn,
-        !Info, !Specs) :-
+        MaybeAbstractInstDefn0, MaybeAbstractInstDefn, !Info) :-
     (
         MaybeAbstractInstDefn0 = abstract_inst_defn,
         MaybeAbstractInstDefn = abstract_inst_defn
@@ -1306,7 +1260,7 @@ qualify_inst_defn(InInt, Context, InstCtor,
         MaybeAbstractInstDefn0 = nonabstract_inst_defn(InstDefn0),
         ErrorContext = mqec_inst_defn(Context, InstCtor),
         InstDefn0 = eqv_inst(Inst0),
-        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info),
         InstDefn = eqv_inst(Inst),
         MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn)
     ).
@@ -1314,14 +1268,13 @@ qualify_inst_defn(InInt, Context, InstCtor,
     % Qualify a single inst.
     %
 :- pred qualify_inst(mq_in_interface::in, mq_error_context::in,
-    mer_inst::in, mer_inst::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mer_inst::in, mer_inst::out, mq_info::in, mq_info::out) is det.
 
-qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
+qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info) :-
     (
         Inst0 = any(Uniq, HOInstInfo0),
         qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-            !Info, !Specs),
+            !Info),
         Inst = any(Uniq, HOInstInfo)
     ;
         ( Inst0 = free
@@ -1341,47 +1294,43 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
         ),
         % XXX We could pass a more specific error context.
         qualify_bound_functors(InInt, ErrorContext,
-            BoundFunctors0, BoundFunctors, !Info, !Specs),
+            BoundFunctors0, BoundFunctors, !Info),
         Inst = bound(Uniq, InstResults0, BoundFunctors)
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         % XXX We could pass a more specific error context.
         qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-            !Info, !Specs),
+            !Info),
         Inst = ground(Uniq, HOInstInfo)
     ;
         Inst0 = constrained_inst_vars(Vars, SubInst0),
         % XXX We could pass a more specific error context.
-        qualify_inst(InInt, ErrorContext, SubInst0, SubInst, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, SubInst0, SubInst, !Info),
         Inst = constrained_inst_vars(Vars, SubInst)
     ;
         Inst0 = defined_inst(InstName0),
         % XXX We could pass a more specific error context.
-        qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
-            !Info, !Specs),
+        qualify_inst_name(InInt, ErrorContext, InstName0, InstName, !Info),
         Inst = defined_inst(InstName)
     ).
 
 :- pred qualify_inst_list(mq_in_interface::in, mq_error_context::in,
-    list(mer_inst)::in, list(mer_inst)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_inst)::in, list(mer_inst)::out, mq_info::in, mq_info::out) is det.
 
-qualify_inst_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_inst_list(_InInt, _ErrorContext, [], [], !Info).
 qualify_inst_list(InInt, ErrorContext, [Inst0 | Insts0], [Inst | Insts],
-        !Info, !Specs) :-
-    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs).
+        !Info) :-
+    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info),
+    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info).
 
 :- pred qualify_ho_inst_info(mq_in_interface::in, mq_error_context::in,
-    ho_inst_info::in, ho_inst_info::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    ho_inst_info::in, ho_inst_info::out, mq_info::in, mq_info::out) is det.
 
-qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-        !Info, !Specs) :-
+qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo, !Info) :-
     (
         HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0,
             MaybeArgRegs, Detism)),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes,
             MaybeArgRegs, Detism))
     ;
@@ -1393,30 +1342,27 @@ qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
     % the argument insts.
     %
 :- pred qualify_inst_name(mq_in_interface::in, mq_error_context::in,
-    inst_name::in, inst_name::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    inst_name::in, inst_name::out, mq_info::in, mq_info::out) is det.
 
-qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
-        !Info, !Specs) :-
+qualify_inst_name(InInt, ErrorContext, InstName0, InstName, !Info) :-
     (
         InstName0 = user_inst(SymName0, Insts0),
-        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
-            !Info, !Specs),
+        qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info),
         ( if
             % Check for a variable inst constructor.
             SymName0 = unqualified("")
         then
-            report_invalid_user_inst(SymName0, Insts, ErrorContext, !Specs),
+            report_invalid_user_inst(SymName0, Insts, ErrorContext, Spec),
             InstCtor = inst_ctor(SymName0, list.length(Insts0)),
             mq_info_get_undef_insts(!.Info, UndefInsts0),
-            set_tree234.insert(InstCtor, UndefInsts0, UndefInsts),
+            one_or_more_map.add(InstCtor, Spec, UndefInsts0, UndefInsts),
             mq_info_set_undef_insts(UndefInsts, !Info),
             SymName = SymName0
         else
             list.length(Insts0, Arity),
             mq_info_get_insts(!.Info, InstIdSet),
             find_unique_match(InInt, ErrorContext, InstIdSet, qual_id_inst,
-                mq_id(SymName0, Arity), SymName, !Info, !Specs)
+                mq_id(SymName0, Arity), SymName, !Info)
         ),
         InstName = user_inst(SymName, Insts)
     ;
@@ -1434,26 +1380,24 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
 
 :- pred qualify_bound_functors(mq_in_interface::in, mq_error_context::in,
     list(bound_functor)::in, list(bound_functor)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_bound_functors(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_bound_functors(_InInt, _ErrorContext, [], [], !Info).
 qualify_bound_functors(InInt, ErrorContext,
         [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors],
-        !Info, !Specs) :-
+        !Info) :-
     qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
-        !Info, !Specs),
+        !Info),
     qualify_bound_functors(InInt, ErrorContext, BoundFunctors0, BoundFunctors,
-        !Info, !Specs).
+        !Info).
 
     % Qualify an inst of the form bound(functor(...)).
     %
 :- pred qualify_bound_functor(mq_in_interface::in, mq_error_context::in,
-    bound_functor::in, bound_functor::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    bound_functor::in, bound_functor::out, mq_info::in, mq_info::out) is det.
 
 qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
-        !Info, !Specs) :-
+        !Info) :-
     BoundFunctor0 = bound_functor(ConsId, Insts0),
     (
         ConsId = du_data_ctor(du_ctor(Name, Arity, _)),
@@ -1480,7 +1424,7 @@ qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
         ; ConsId = deep_profiling_proc_layout(_)
         )
     ),
-    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
+    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info),
     BoundFunctor = bound_functor(ConsId, Insts).
 
 %---------------------------------------------------------------------------%
@@ -1492,11 +1436,10 @@ qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
     %
 :- pred qualify_mode_defn(mq_in_interface::in, prog_context::in,
     mode_ctor::in, maybe_abstract_mode_defn::in, maybe_abstract_mode_defn::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_mode_defn(InInt, Context, ModeCtor,
-        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info, !Specs) :-
+        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info) :-
     (
         MaybeAbstractModeDefn0 = abstract_mode_defn,
         MaybeAbstractModeDefn = abstract_mode_defn
@@ -1504,46 +1447,44 @@ qualify_mode_defn(InInt, Context, ModeCtor,
         MaybeAbstractModeDefn0 = nonabstract_mode_defn(ModeDefn0),
         ErrorContext = mqec_mode_defn(Context, ModeCtor),
         ModeDefn0 = eqv_mode(Mode0),
-        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info),
         ModeDefn = eqv_mode(Mode),
         MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn)
     ).
 
-qualify_clause_mode_list(InInt, Context, Modes0, Modes, !Info, !Specs) :-
+qualify_clause_mode_list(InInt, Context, Modes0, Modes, !Info) :-
     ErrorContext = mqec_clause_mode_annotation(Context),
-    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info).
 
 :- pred qualify_mode_list(mq_in_interface::in, mq_error_context::in,
-    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out) is det.
 
-qualify_mode_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_mode_list(_InInt, _ErrorContext, [], [], !Info).
 qualify_mode_list(InInt, ErrorContext, [Mode0 | Modes0], [Mode | Modes],
-        !Info, !Specs) :-
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
-    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+        !Info) :-
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info),
+    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info).
 
-qualify_lambda_mode(InInt, Context, Mode0, Mode, !Info, !Specs) :-
+qualify_lambda_mode(InInt, Context, Mode0, Mode, !Info) :-
     ErrorContext = mqec_lambda_expr(Context),
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info).
 
 :- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
-    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out) is det.
 
-qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
+qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info) :-
     (
         Mode0 = from_to_mode(InstA0, InstB0),
-        qualify_inst(InInt, ErrorContext, InstA0, InstA, !Info, !Specs),
-        qualify_inst(InInt, ErrorContext, InstB0, InstB, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, InstA0, InstA, !Info),
+        qualify_inst(InInt, ErrorContext, InstB0, InstB, !Info),
         Mode = from_to_mode(InstA, InstB)
     ;
         Mode0 = user_defined_mode(SymName0, Insts0),
-        qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
+        qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info),
         list.length(Insts, Arity),
         mq_info_get_modes(!.Info, Modes),
         find_unique_match(InInt, ErrorContext, Modes, qual_id_mode,
-            mq_id(SymName0, Arity), SymName, !Info, !Specs),
+            mq_id(SymName0, Arity), SymName, !Info),
         Mode = user_defined_mode(SymName, Insts)
     ).
 
@@ -1555,63 +1496,58 @@ qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
 :- pred qualify_types_and_maybe_modes(mq_in_interface::in,
     mq_error_context::in,
     types_and_maybe_modes::in, types_and_maybe_modes::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_types_and_maybe_modes(InInt, ErrorContext,
-        TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs) :-
+        TypesAndMaybeModes0, TypesAndMaybeModes, !Info) :-
     (
         TypesAndMaybeModes0 = no_types_arity_zero,
         TypesAndMaybeModes = no_types_arity_zero
     ;
         TypesAndMaybeModes0 = types_only(Types0),
-        qualify_types(InInt, ErrorContext, Types0, Types, !Info, !Specs),
+        qualify_types(InInt, ErrorContext, Types0, Types, !Info),
         TypesAndMaybeModes = types_only(Types)
     ;
         TypesAndMaybeModes0 = types_and_modes(TypesAndModes0),
         qualify_types_and_modes(InInt, ErrorContext,
-            TypesAndModes0, TypesAndModes, !Info, !Specs),
+            TypesAndModes0, TypesAndModes, !Info),
         TypesAndMaybeModes = types_and_modes(TypesAndModes)
     ).
 
     % Qualify a list of types.
     %
 :- pred qualify_types(mq_in_interface::in, mq_error_context::in,
-    list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out) is det.
 
-qualify_types(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_types(InInt, ErrorContext, [Type0 | Types0], [Type | Types],
-        !Info, !Specs) :-
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_types(InInt, ErrorContext, Types0, Types, !Info, !Specs).
+qualify_types(_InInt, _ErrorContext, [], [], !Info).
+qualify_types(InInt, ErrorContext, [Type0 | Types0], [Type | Types], !Info) :-
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
+    qualify_types(InInt, ErrorContext, Types0, Types, !Info).
 
     % Qualify a list of items of the form Type::Mode, as in a
     % predicate declaration.
     %
 :- pred qualify_types_and_modes(mq_in_interface::in, mq_error_context::in,
     list(type_and_mode)::in, list(type_and_mode)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_types_and_modes(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_types_and_modes(_InInt, _ErrorContext, [], [], !Info).
 qualify_types_and_modes(InInt, ErrorContext,
         [TypeAndMode0 | TypesAndModes0], [TypeAndMode | TypesAndModes],
-        !Info, !Specs) :-
+        !Info) :-
     qualify_type_and_mode(InInt, ErrorContext,
-        TypeAndMode0, TypeAndMode, !Info, !Specs),
+        TypeAndMode0, TypeAndMode, !Info),
     qualify_types_and_modes(InInt, ErrorContext,
-        TypesAndModes0, TypesAndModes, !Info, !Specs).
+        TypesAndModes0, TypesAndModes, !Info).
 
 :- pred qualify_type_and_mode(mq_in_interface::in, mq_error_context::in,
-    type_and_mode::in, type_and_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    type_and_mode::in, type_and_mode::out, mq_info::in, mq_info::out) is det.
 
 qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
-        !Info, !Specs) :-
+        !Info) :-
     TypeAndMode0 = type_and_mode(Type0, Mode0),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info),
     TypeAndMode = type_and_mode(Type, Mode).
 
 %---------------------------------------------------------------------------%
@@ -1623,17 +1559,16 @@ qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
 :- pred qualify_prog_constraints(mq_in_interface::in,
     mq_constraint_error_context::in,
     univ_exist_constraints::in, univ_exist_constraints::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_prog_constraints(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs) :-
+        Constraints0, Constraints, !Info) :-
     Constraints0 = univ_exist_constraints(UnivCs0, ExistCs0),
     % XXX We could pass a more specific error context.
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        UnivCs0, UnivCs, !Info, !Specs),
+        UnivCs0, UnivCs, !Info),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        ExistCs0, ExistCs, !Info, !Specs),
+        ExistCs0, ExistCs, !Info),
     Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 %---------------------%
@@ -1641,34 +1576,32 @@ qualify_prog_constraints(InInt, ConstraintErrorContext,
 :- pred qualify_prog_constraint_list(mq_in_interface::in,
     mq_constraint_error_context::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_prog_constraint_list(_InInt, _ConstraintErrorContext,
-        [], [], !Info, !Specs).
+        [], [], !Info).
 qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        [Constraint0 | Constraints0], [Constraint | Constraints],
-        !Info, !Specs) :-
+        [Constraint0 | Constraints0], [Constraint | Constraints], !Info) :-
     qualify_prog_constraint(InInt, ConstraintErrorContext,
-        Constraint0, Constraint, !Info, !Specs),
+        Constraint0, Constraint, !Info),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs).
+        Constraints0, Constraints, !Info).
 
 :- pred qualify_prog_constraint(mq_in_interface::in,
     mq_constraint_error_context::in,
-    prog_constraint::in, prog_constraint::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    prog_constraint::in, prog_constraint::out,
+    mq_info::in, mq_info::out) is det.
 
 qualify_prog_constraint(InInt, ContainingErrorContext,
-        Constraint0, Constraint, !Info, !Specs) :-
+        Constraint0, Constraint, !Info) :-
     Constraint0 = constraint(ClassName0, Types0),
     list.length(Types0, Arity),
     OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
     qualify_class_name(InInt, OutsideContext,
-        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
+        mq_id(ClassName0, Arity), ClassName, !Info),
     ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
         ContainingErrorContext),
-    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
     Constraint = constraint(ClassName, Types).
 
 %---------------------%
@@ -1676,54 +1609,50 @@ qualify_prog_constraint(InInt, ContainingErrorContext,
 :- pred qualify_var_or_ground_constraint_list(mq_in_interface::in,
     mq_constraint_error_context::in,
     list(var_or_ground_constraint)::in, list(var_or_ground_constraint)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_var_or_ground_constraint_list(_InInt, _ConstraintErrorContext,
-        [], [], !Info, !Specs).
+        [], [], !Info).
 qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
-        [Constraint0 | Constraints0], [Constraint | Constraints],
-        !Info, !Specs) :-
+        [Constraint0 | Constraints0], [Constraint | Constraints], !Info) :-
     qualify_var_or_ground_constraint(InInt, ConstraintErrorContext,
-        Constraint0, Constraint, !Info, !Specs),
+        Constraint0, Constraint, !Info),
     qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs).
+        Constraints0, Constraints, !Info).
 
 :- pred qualify_var_or_ground_constraint(mq_in_interface::in,
     mq_constraint_error_context::in,
     var_or_ground_constraint::in, var_or_ground_constraint::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 qualify_var_or_ground_constraint(InInt, ContainingErrorContext,
-        Constraint0, Constraint, !Info, !Specs) :-
+        Constraint0, Constraint, !Info) :-
     Constraint0 = var_or_ground_constraint(ClassName0, Types0, Context),
     list.length(Types0, Arity),
     OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
     qualify_class_name(InInt, OutsideContext,
-        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
+        mq_id(ClassName0, Arity), ClassName, !Info),
     ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
         ContainingErrorContext),
     qualify_var_or_ground_type_list(InInt, ErrorContext, Types0, Types,
-        !Info, !Specs),
+        !Info),
     Constraint = var_or_ground_constraint(ClassName, Types, Context).
 
 :- pred qualify_var_or_ground_type_list(mq_in_interface::in,
     mq_error_context::in,
     list(var_or_ground_type)::in, list(var_or_ground_type)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_var_or_ground_type_list(_, _, [], [], !Info, !Specs).
+qualify_var_or_ground_type_list(_, _, [], [], !Info).
 qualify_var_or_ground_type_list(InInt, ErrorContext,
-        [Arg0 | Args0], [Arg | Args], !Info, !Specs) :-
+        [Arg0 | Args0], [Arg | Args], !Info) :-
     (
         Arg0 = type_var_name(_, _),
         Arg = Arg0
     ;
         Arg0 = ground_type(GroundType0),
         Type0 = coerce(GroundType0),
-        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+        qualify_type(InInt, ErrorContext, Type0, Type, !Info),
         ( if type_is_ground(Type, GroundType) then
             Arg = ground_type(GroundType)
         else
@@ -1731,39 +1660,33 @@ qualify_var_or_ground_type_list(InInt, ErrorContext,
         )
     ),
     qualify_var_or_ground_type_list(InInt, ErrorContext,
-        Args0, Args, !Info, !Specs).
+        Args0, Args, !Info).
 
 %---------------------%
 
 :- pred qualify_class_name(mq_in_interface::in, mq_error_context::in,
-    mq_id::in, sym_name::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_id::in, sym_name::out, mq_info::in, mq_info::out) is det.
 
-qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
+qualify_class_name(InInt, ErrorContext, Class0, Name, !Info) :-
     mq_info_get_classes(!.Info, ClassIdSet),
     find_unique_match(InInt, ErrorContext, ClassIdSet, qual_id_class,
-        Class0, Name, !Info, !Specs).
+        Class0, Name, !Info).
 
 %---------------------%
 
 :- pred qualify_class_decls(mq_in_interface::in, class_id::in,
     list(class_decl)::in, list(class_decl)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_class_decls(_InInt, _ClassId, [], [], !Info, !Specs).
-qualify_class_decls(InInt, ClassId,
-        [Decl0 | Decls0], [Decl | Decls], !Info, !Specs) :-
-    qualify_class_decl(InInt, ClassId, Decl0, Decl,
-        !Info, !Specs),
-    qualify_class_decls(InInt, ClassId, Decls0, Decls,
-        !Info, !Specs).
+qualify_class_decls(_InInt, _ClassId, [], [], !Info).
+qualify_class_decls(InInt, ClassId, [Decl0 | Decls0], [Decl | Decls], !Info) :-
+    qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info),
+    qualify_class_decls(InInt, ClassId, Decls0, Decls, !Info).
 
 :- pred qualify_class_decl(mq_in_interface::in, class_id::in,
-    class_decl::in, class_decl::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    class_decl::in, class_decl::out, mq_info::in, mq_info::out) is det.
 
-qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info, !Specs) :-
+qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info) :-
     % There is no need to qualify the method name, since that is done
     % when the item is parsed.
     (
@@ -1793,16 +1716,15 @@ qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info, !Specs) :-
         ErrorContext = mqec_class_method(Context, ClassId,
             PredOrFunc, Name, UserArityIfKnown),
         qualify_types_and_maybe_modes(InInt, ErrorContext,
-            TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs),
+            TypesAndMaybeModes0, TypesAndMaybeModes, !Info),
         ConstraintErrorContext = mqcec_class_method(Context, ClassId,
             PredOrFunc, Name, UserArityIfKnown),
         qualify_prog_constraints(InInt, ConstraintErrorContext,
-            Constraints0, Constraints, !Info, !Specs),
+            Constraints0, Constraints, !Info),
         (
             MaybeWithType0 = yes(WithType0),
             % XXX We could pass a more specific error context.
-            qualify_type(InInt, ErrorContext, WithType0, WithType,
-                !Info, !Specs),
+            qualify_type(InInt, ErrorContext, WithType0, WithType, !Info),
             MaybeWithType = yes(WithType)
         ;
             MaybeWithType0 = no,
@@ -1811,8 +1733,7 @@ qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info, !Specs) :-
         (
             MaybeWithInst0 = yes(WithInst0),
             % XXX We could pass a more specific error context.
-            qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
-                !Info, !Specs),
+            qualify_inst(InInt, ErrorContext, WithInst0, WithInst, !Info),
             MaybeWithInst = yes(WithInst)
         ;
             MaybeWithInst0 = no,
@@ -1845,12 +1766,12 @@ qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info, !Specs) :-
         ),
         ErrorContext = mqec_class_method_mode(Context, ClassId,
             MaybePredOrFunc, Name, UserArityIfKnown),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         (
             MaybeWithInst0 = yes(WithInst0),
             % XXX We could pass a more specific error context.
             qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
-                !Info, !Specs),
+                !Info),
             MaybeWithInst = yes(WithInst)
         ;
             MaybeWithInst0 = no,
@@ -1931,10 +1852,9 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
 
 :- pred module_qualify_item_decl_pragma(mq_in_interface::in,
     item_decl_pragma_info::in, item_decl_pragma_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
+module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info) :-
     (
         Pragma0 = decl_pragma_type_spec_constr(TypeSpecConstrInfo0),
         TypeSpecConstrInfo0 = decl_pragma_type_spec_constr_info(ModuleName,
@@ -1943,16 +1863,15 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
         ConstraintErrorContext = mqcec_type_spec_constr(Context, ModuleName),
         OoMConstraints0 = one_or_more(HeadConstraint0, TailConstraints0),
         qualify_var_or_ground_constraint(InInt, ConstraintErrorContext,
-            HeadConstraint0, HeadConstraint, !Info, !Specs),
+            HeadConstraint0, HeadConstraint, !Info),
         qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
-            TailConstraints0, TailConstraints, !Info, !Specs),
+            TailConstraints0, TailConstraints, !Info),
         OoMConstraints = one_or_more(HeadConstraint, TailConstraints),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         OoMSubsts0 = one_or_more(HeadSubst0, TailSubsts0),
-        qualify_type_subst(InInt, ErrorContext,
-            HeadSubst0, HeadSubst, !Info, !Specs),
-        list.map_foldl2(qualify_type_subst(InInt, ErrorContext),
-            TailSubsts0, TailSubsts, !Info, !Specs),
+        qualify_type_subst(InInt, ErrorContext, HeadSubst0, HeadSubst, !Info),
+        list.map_foldl(qualify_type_subst(InInt, ErrorContext),
+            TailSubsts0, TailSubsts, !Info),
         OoMSubsts = one_or_more(HeadSubst, TailSubsts),
         TypeSpecConstrInfo = decl_pragma_type_spec_constr_info(ModuleName,
             OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, Items,
@@ -1967,8 +1886,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM0 = pfumm_predicate(ModesOrArity0),
             (
                 ModesOrArity0 = moa_modes(Modes0),
-                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                    !Info, !Specs),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
                 ModesOrArity = moa_modes(Modes),
                 PFUMM = pfumm_predicate(ModesOrArity)
             ;
@@ -1979,8 +1897,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM0 = pfumm_function(ModesOrArity0),
             (
                 ModesOrArity0 = moa_modes(Modes0),
-                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                    !Info, !Specs),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
                 ModesOrArity = moa_modes(Modes),
                 PFUMM = pfumm_function(ModesOrArity)
             ;
@@ -1991,7 +1908,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM0 = pfumm_unknown(_Arity),
             PFUMM = PFUMM0
         ),
-        qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info, !Specs),
+        qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info),
         TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName,
             SpecPredName, Subst, TVarSet, Items, Context, SeqNum),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
@@ -2002,7 +1919,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
         % XXX Preds
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
-            !Info, !Specs),
+            !Info),
         OISUInfo = decl_pragma_oisu_info(TypeCtor, CreatorPreds,
             MutatorPreds, DestructorPreds, Context, SeqNum),
         Pragma = decl_pragma_oisu(OISUInfo)
@@ -2012,7 +1929,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         TermInfo = decl_pragma_termination_info(PredNameModesPF, Args, Term,
             Context, SeqNum),
@@ -2023,7 +1940,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             SuccessArgs, FailureArgs, Term, Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         Term2Info = decl_pragma_termination2_info(PredNameModesPF,
             SuccessArgs, FailureArgs, Term, Context, SeqNum),
@@ -2035,7 +1952,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing,
@@ -2048,7 +1965,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse,
@@ -2064,10 +1981,9 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
 
 :- pred module_qualify_item_impl_pragma(mq_in_interface::in,
     item_impl_pragma_info::in, item_impl_pragma_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
+module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info) :-
     (
         ( Pragma0 = impl_pragma_foreign_decl(_)
         ; Pragma0 = impl_pragma_foreign_code(_)
@@ -2090,7 +2006,7 @@ module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
                 ModesOrArity0 = moa_modes(Modes0),
                 ErrorContext = mqec_pragma_impl(Context, Pragma0),
                 qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                    !Info, !Specs),
+                    !Info),
                 ModesOrArity = moa_modes(Modes),
                 PFUMM = pfumm_predicate(ModesOrArity)
             ;
@@ -2103,7 +2019,7 @@ module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
                 ModesOrArity0 = moa_modes(Modes0),
                 ErrorContext = mqec_pragma_impl(Context, Pragma0),
                 qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                    !Info, !Specs),
+                    !Info),
                 ModesOrArity = moa_modes(Modes),
                 PFUMM = pfumm_function(ModesOrArity)
             ;
@@ -2124,7 +2040,7 @@ module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             PredNameModesPF0, CFunc, VarSet, Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, Name, Modes0),
         ErrorContext = mqec_pragma_impl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         FPEInfo = impl_pragma_fproc_export_info(Origin, Lang,
             PredNameModesPF, CFunc, VarSet, Context, SeqNum),
@@ -2132,49 +2048,44 @@ module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
     ).
 
 :- pred qualify_pragma_vars(mq_in_interface::in, mq_error_context::in,
-    list(pragma_var)::in, list(pragma_var)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(pragma_var)::in, list(pragma_var)::out,
+    mq_info::in, mq_info::out) is det.
 
-qualify_pragma_vars(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_pragma_vars(_InInt, _ErrorContext, [], [], !Info).
 qualify_pragma_vars(InInt, ErrorContext,
-        [PragmaVar0 | PragmaVars0], [PragmaVar | PragmaVars], !Info, !Specs) :-
+        [PragmaVar0 | PragmaVars0], [PragmaVar | PragmaVars], !Info) :-
     % XXX We could pass a more specific error context.
-    qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar,
-        !Info, !Specs),
-    qualify_pragma_vars(InInt, ErrorContext, PragmaVars0, PragmaVars,
-        !Info, !Specs).
+    qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar, !Info),
+    qualify_pragma_vars(InInt, ErrorContext, PragmaVars0, PragmaVars, !Info).
 
 :- pred qualify_pragma_var(mq_in_interface::in, mq_error_context::in,
-    pragma_var::in, pragma_var::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    pragma_var::in, pragma_var::out, mq_info::in, mq_info::out) is det.
 
-qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar,
-        !Info, !Specs) :-
+qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar, !Info) :-
     PragmaVar0 = pragma_var(Var, Name, Mode0, Box),
     % XXX We could pass a more specific error context.
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info),
     PragmaVar = pragma_var(Var, Name, Mode, Box).
 
 :- pred qualify_type_subst(mq_in_interface::in, mq_error_context::in,
-    type_subst::in, type_subst::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    type_subst::in, type_subst::out, mq_info::in, mq_info::out) is det.
 
-qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info, !Specs) :-
+qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info) :-
     Subst0 = one_or_more(HeadSubst0, TailSubsts0),
     qualify_tvar_substs(InInt, ErrorContext,
-        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs),
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info),
     Subst = one_or_more(HeadSubst, TailSubsts).
 
 :- pred qualify_tvar_substs(mq_in_interface::in, mq_error_context::in,
     tvar_subst::in, tvar_subst::out,
-    list(tvar_subst)::in, list(tvar_subst)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar_subst)::in, list(tvar_subst)::out,
+    mq_info::in, mq_info::out) is det.
 
 qualify_tvar_substs(InInt, ErrorContext,
-        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs) :-
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info) :-
     HeadSubst0 = tvar_subst(Var, Type0),
     % XXX We could pass a more specific error context.
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
     HeadSubst = tvar_subst(Var, Type),
     (
         TailSubsts0 = [],
@@ -2183,17 +2094,15 @@ qualify_tvar_substs(InInt, ErrorContext,
         TailSubsts0 = [HeadTailSubst0 | TailTailSubsts0],
         qualify_tvar_substs(InInt, ErrorContext,
             HeadTailSubst0, HeadTailSubst, TailTailSubsts0, TailTailSubsts,
-            !Info, !Specs),
+            !Info),
         TailSubsts = [HeadTailSubst | TailTailSubsts]
     ).
 
 :- pred qualify_user_sharing(mq_in_interface::in, mq_error_context::in,
     user_annotated_sharing::in, user_annotated_sharing::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
-        !Info, !Specs) :-
+qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing, !Info) :-
     (
         UserSharing0 = no_user_annotated_sharing,
         UserSharing = UserSharing0
@@ -2201,8 +2110,7 @@ qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
         UserSharing0 = user_sharing(Sharing, MaybeTypes0),
         (
             MaybeTypes0 = yes(user_type_info(Types0, TVarset)),
-            qualify_type_list(InInt, ErrorContext, Types0, Types,
-                !Info, !Specs),
+            qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
             MaybeTypes = yes(user_type_info(Types, TVarset)),
             UserSharing = user_sharing(Sharing, MaybeTypes)
         ;
@@ -2217,17 +2125,19 @@ qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
 %
 
 :- pred module_qualify_item_mutable(mq_in_interface::in,
-    item_mutable_info::in, item_mutable_info::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    item_mutable_info::in, item_mutable_info::out,
+    mq_info::in, mq_info::out) is det.
 
-module_qualify_item_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
+module_qualify_item_mutable(InInt, ItemMutable0, ItemMutable, !Info) :-
     ItemMutable0 = item_mutable_info(Name, OrigType0, Type0, OrigInst0, Inst0,
         InitTerm, Attrs, Varset, Context, SeqNum),
     ErrorContext = mqec_mutable(Context, Name),
-    qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info, [], _),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info, [], _),
-    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+    % WAS_IGNORED We used to ignore error_specs from OrigType.
+    qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info),
+    % WAS_IGNORED We used to ignore error_specs from OrigInst.
+    qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info),
+    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info),
     ItemMutable = item_mutable_info(Name, OrigType, Type, OrigInst, Inst,
         InitTerm, Attrs, Varset, Context, SeqNum).
 
@@ -2240,43 +2150,39 @@ module_qualify_item_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
     %
 :- pred qualify_event_specs(mq_in_interface::in, string::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
-qualify_event_specs(_InInt, _, [], [], !Info, !Specs).
+qualify_event_specs(_InInt, _, [], [], !Info).
 qualify_event_specs(InInt, FileName,
-        [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs],
-        !Info, !Specs) :-
-    qualify_event_spec(InInt, FileName, Spec0, Spec, !Info, !Specs),
-    qualify_event_specs(InInt, FileName, NameSpecs0, NameSpecs, !Info, !Specs).
+        [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs], !Info) :-
+    qualify_event_spec(InInt, FileName, Spec0, Spec, !Info),
+    qualify_event_specs(InInt, FileName, NameSpecs0, NameSpecs, !Info).
 
 :- pred qualify_event_spec(mq_in_interface::in, string::in,
-    event_spec::in, event_spec::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    event_spec::in, event_spec::out, mq_info::in, mq_info::out) is det.
 
-qualify_event_spec(InInt, FileName, EventSpec0, EventSpec,
-        !Info, !Specs) :-
+qualify_event_spec(InInt, FileName, EventSpec0, EventSpec, !Info) :-
     EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs0, SynthAttrNumOrder),
-    list.map_foldl2(
+    list.map_foldl(
         qualify_event_attr(InInt, EventName, FileName, EventLineNumber),
-        Attrs0, Attrs, !Info, !Specs),
+        Attrs0, Attrs, !Info),
     EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs, SynthAttrNumOrder).
 
 :- pred qualify_event_attr(mq_in_interface::in,
     string::in, string::in, int::in,
-    event_attribute::in, event_attribute::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    event_attribute::in, event_attribute::out,
+    mq_info::in, mq_info::out) is det.
 
 qualify_event_attr(InInt, EventName, FileName, LineNumber,
-        Attr0, Attr, !Info, !Specs) :-
+        Attr0, Attr, !Info) :-
     Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode0,
         MaybeSynthCall),
     Context = context(FileName, LineNumber),
     ErrorContext = mqec_event_spec_attr(Context, EventName, AttrName),
-    qualify_type(InInt, ErrorContext, AttrType0, AttrType, !Info, !Specs),
-    qualify_mode(InInt, ErrorContext, AttrMode0, AttrMode, !Info, !Specs),
+    qualify_type(InInt, ErrorContext, AttrType0, AttrType, !Info),
+    qualify_mode(InInt, ErrorContext, AttrMode0, AttrMode, !Info),
     Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
         MaybeSynthCall).
 

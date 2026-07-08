@@ -447,7 +447,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
                 ),
                 qual_info_get_mq_info(!.QualInfo, MQInfo0),
                 qualify_clause_mode_list(InInt, Context,
-                    ArgModes0, ArgModes, MQInfo0, MQInfo, !Specs),
+                    ArgModes0, ArgModes, MQInfo0, MQInfo),
                 qual_info_set_mq_info(MQInfo, !QualInfo)
             ),
 
@@ -493,7 +493,8 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
                 )
             else
                 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo,
-                    VarSet, ArgModes, [words("clause")], Context, !Specs),
+                    VarSet, ArgModes, [words("clause")], Context, UndefSpec),
+                !:Specs = [UndefSpec | !.Specs],
                 % Apply the clause to all modes.
                 % XXX Would it be better to apply it to none?
                 ApplProcIds = selected_modes(AllProcIds)

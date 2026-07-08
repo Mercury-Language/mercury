@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2019, 2021-2025 The Mercury team.
+% Copyright (C) 2015-2016, 2019, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,6 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.module_qual.qual_errors.
 :- import_module parse_tree.prog_data.
@@ -117,17 +116,20 @@
 
 :- pred get_names_in_id_set(id_set::in, list(string)::out) is det.
 
+    % find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
+    %   !Info):
+    %
     % Find the unique match in the current name space for a given mq_id
     % from a list of ids. If none exists, either because no match was found
-    % or multiple matches were found, report an error.
+    % or multiple matches were found, generate an error report, and
+    % put this report into the appropriate fiels of !:Info.
     %
     % This predicate assumes that type_ids, inst_ids, mode_ids and
     % class_ids have the same representation.
     %
 :- pred find_unique_match(mq_in_interface::in, mq_error_context::in,
     id_set::in, qual_id_kind::in, mq_id::in, sym_name::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -142,6 +144,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.error_spec.
 :- import_module recompilation.
 :- import_module recompilation.item_types.
 :- import_module recompilation.record_uses.
@@ -150,10 +153,10 @@
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -292,8 +295,7 @@ get_names_in_id_set(IdSet, Names) :-
 
 %---------------------------------------------------------------------------%
 
-find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
-        !Info, !Specs) :-
+find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName, !Info) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
     BaseName = unqualify_name(SymName0),
@@ -306,13 +308,12 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
-            mq_info_record_undef_mq_id(IdType, Id0, !Info),
-
             mq_info_get_this_module(!.Info, ThisModuleName),
             id_set_search_sym(IdSet, SymName0, PossibleArities),
             report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
                 ThisModuleName, IntMismatches, QualMismatches,
-                PossibleArities, !Specs),
+                PossibleArities, Spec),
+            mq_info_record_undef_mq_id(IdType, Id0, Spec, !Info),
 
             % If a module defines an entity that this module refers to,
             % even without the required module qualification, then reporting
@@ -334,10 +335,10 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
-            mq_info_record_undef_mq_id(IdType, Id0, !Info),
             NonUsableModuleNames = IntMismatches ++ QualMismatches,
             report_ambiguous_match(ErrorContext, Id0, IdType,
-                Matches, NonUsableModuleNames, !Specs)
+                Matches, NonUsableModuleNames, Spec),
+            mq_info_record_undef_mq_id(IdType, Id0, Spec, !Info)
         ;
             ReportErrors = should_not_report_errors
         )
@@ -357,39 +358,43 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             record_used_item(UsedItemType, ItemName0, ItemName), !Info)
     ).
 
-:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in,
+:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in, error_spec::in,
     mq_info::in, mq_info::out) is det.
 
-mq_info_record_undef_mq_id(IdType, Id, !Info) :-
-    mq_info_get_suppress_found_undef(!.Info, SuppressFoundUndef),
+mq_info_record_undef_mq_id(IdType, Id, Spec, !Info) :-
+    mq_info_get_is_undef_blocking(!.Info, MaybeBlocking),
     (
-        SuppressFoundUndef = suppress_found_undef
+        MaybeBlocking = undef_is_not_blocking,
+        mq_info_get_nonblocking_undef_specs(!.Info, Specs0),
+        Specs = [Spec | Specs0],
+        mq_info_set_nonblocking_undef_specs(Specs, !Info)
     ;
-        SuppressFoundUndef = do_not_suppress_found_undef,
+        MaybeBlocking = undef_is_blocking,
         Id = mq_id(SymName, Arity),
         (
             IdType = qual_id_type,
             TypeCtor = type_ctor(SymName, Arity),
             mq_info_get_undef_types(!.Info, UndefTypes0),
-            set_tree234.insert(TypeCtor, UndefTypes0, UndefTypes),
+            one_or_more_map.add(TypeCtor, Spec, UndefTypes0, UndefTypes),
             mq_info_set_undef_types(UndefTypes, !Info)
         ;
             IdType = qual_id_inst,
             InstCtor = inst_ctor(SymName, Arity),
             mq_info_get_undef_insts(!.Info, UndefInsts0),
-            set_tree234.insert(InstCtor, UndefInsts0, UndefInsts),
+            one_or_more_map.add(InstCtor, Spec, UndefInsts0, UndefInsts),
             mq_info_set_undef_insts(UndefInsts, !Info)
         ;
             IdType = qual_id_mode,
             ModeCtor = mode_ctor(SymName, Arity),
             mq_info_get_undef_modes(!.Info, UndefModes0),
-            set_tree234.insert(ModeCtor, UndefModes0, UndefModes),
+            one_or_more_map.add(ModeCtor, Spec, UndefModes0, UndefModes),
             mq_info_set_undef_modes(UndefModes, !Info)
         ;
             IdType = qual_id_class,
             SNA = sym_name_arity(SymName, Arity),
             mq_info_get_undef_typeclasses(!.Info, UndefTypeclasses0),
-            set_tree234.insert(SNA, UndefTypeclasses0, UndefTypeclasses),
+            one_or_more_map.add(SNA, Spec,
+                UndefTypeclasses0, UndefTypeclasses),
             mq_info_set_undef_typeclasses(UndefTypeclasses, !Info)
         )
     ).

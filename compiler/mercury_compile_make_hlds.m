@@ -34,12 +34,24 @@
 :- import_module io.
 :- import_module maybe.
 
+%---------------------------------------------------------------------------%
+
+    % make_hlds_pass(ProgressStream, ErrorStream, Globals,
+    %   OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
+    %   HLDS0, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
+    %   PreHLDSErrors, !DumpInfo, !HaveReadModuleMaps,
+    %   !MaybeWrittenSpecs, !IO):
+    %
+    % Every error_spec in MakeHLDSResults will also appear in
+    % !:MaybeWrittenSpecs. They are also returned separately in order
+    % to allow our caller to test for the presence of specific *kinds*
+    % of errors.
+    %
 :- pred make_hlds_pass(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
     module_baggage::in, aug_compilation_unit::in,
     module_info::out, qual_info::out, maybe(module_timestamp_map)::out,
-    bool::out, bool::out, bool::out,
-    dump_info::in, dump_info::out,
+    bool::out, bool::out, bool::out, dump_info::in, dump_info::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -50,7 +62,6 @@
 
 :- import_module hlds.hlds_defns.
 :- import_module hlds.make_hlds.make_hlds_passes.
-:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module make.
@@ -93,9 +104,9 @@
 
 make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
-        HLDS0, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
-        PreHLDSErrors, !DumpInfo,
-        !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
+        HLDS0, QualInfo, MaybeTimestampMap,
+        UndefTypes, UndefModes, PreHLDSErrors,
+        !DumpInfo, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     ParseTreeModuleSrc = AugCompUnit0 ^ acu_module_src,
@@ -103,6 +114,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         !MaybeWrittenSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
 
+    % ZZZ move this to a separate predicate
     (
         ( OpModeAugment = opmau_typecheck_only
         ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
@@ -181,10 +193,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         "% Module qualifying items...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
     module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
-        EventSpecMap0, EventSpecMap1, EventSetFileName, MQInfo0, UnusedImports,
-        MQUndefTypes, MQUndefInsts, MQUndefModes, MQUndefTypeClasses,
-        [], QualifySpecs),
-    add_to_be_written_specs(QualifySpecs, !MaybeWrittenSpecs),
+        EventSpecMap0, EventSpecMap1, EventSetFileName,
+        MQInfo0, UnusedImports, UnusedImportsSpecsMap),
+    map.values(UnusedImportsSpecsMap, UnusedImportsSpecs),
+    add_to_be_written_specs(UnusedImportsSpecs, !MaybeWrittenSpecs),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
@@ -209,7 +221,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet,
         MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports,
         Verbose, Stats, HLDS0, QualInfo,
-        MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
+        InvalidTypeSpecs, InvalidInstModeSpecs,
         FoundSemanticError, !MaybeWrittenSpecs, !IO),
     bool.or(FoundSemanticError, IntermodError, PreHLDSErrors),
     maybe_write_definitions(ProgressStream,
@@ -220,23 +232,19 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         Verbose, Stats, HLDS0, !IO),
 
     ( if
-        set_tree234.is_empty(MQUndefTypes),
-        set_tree234.is_empty(MQUndefTypeClasses),
+        InvalidTypeSpecs = [],
         EventSetErrors = no,
-        ExpandErrors = no,
-        MakeHLDSFoundInvalidType = did_not_find_invalid_type
+        ExpandErrors = no
     then
         UndefTypes = no
     else
         UndefTypes = yes
     ),
-    ( if
-        set_tree234.is_empty(MQUndefInsts),
-        set_tree234.is_empty(MQUndefModes),
-        MakeHLDSFoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
-    then
+    (
+        InvalidInstModeSpecs = [],
         UndefModes = no
-    else
+    ;
+        InvalidInstModeSpecs = [_ | _],
         UndefModes = yes
     ),
 
@@ -616,17 +624,18 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals, OpModeAugment,
 
 %---------------------%
 
+% ZZZ inline
 :- pred make_hlds(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, aug_compilation_unit::in, event_set::in, mq_info::in,
     type_eqv_map::in, used_eqv_modules::in, set_tree234(module_name)::in,
     bool::in, bool::in, module_info::out, qual_info::out,
-    found_invalid_type::out, found_invalid_inst_or_mode::out, bool::out,
+    list(error_spec)::out, list(error_spec)::out, bool::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
         TypeEqvMap, UsedEqvModules, UnusedImports, Verbose, Stats, !:HLDS,
-        QualInfo, FoundInvalidType, FoundInvalidInstOrMode,
-        FoundSemanticError, !MaybeWrittenSpecs, !IO) :-
+        QualInfo, InvalidTypeSpecs, InvalidInstModeSpecs, FoundSemanticError,
+        !MaybeWrittenSpecs, !IO) :-
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
     maybe_write_string(ProgressStream, Verbose,
@@ -636,10 +645,13 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
     module_name_to_cur_dir_file_name(ext_cur_user_hlds_dump,
         ModuleName, DumpBaseFileName),
     parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
-        MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports, QualInfo,
-        FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
+        MQInfo, TypeEqvMap, UsedEqvModules, UnusedImports, QualInfo, !:HLDS,
+        InvalidTypeSpecs, InvalidInstModeSpecs, MakeSpecs),
+    add_to_be_written_specs(InvalidTypeSpecs, !MaybeWrittenSpecs),
+    add_to_be_written_specs(InvalidInstModeSpecs, !MaybeWrittenSpecs),
     add_to_be_written_specs(MakeSpecs, !MaybeWrittenSpecs),
     module_info_set_event_set(EventSet, !HLDS),
+    % ZZZ
     io.get_exit_status(Status, !IO),
     SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
     SpecsErrors = contains_errors(Globals, SpecsSoFar),
@@ -649,6 +661,7 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
         )
     then
         FoundSemanticError = yes,
+        % ZZZ
         io.set_exit_status(1, !IO)
     else
         FoundSemanticError = no

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -151,8 +151,8 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
                     true
                 else
                     report_multiply_defined("typeclass", ClassName,
-                        user_arity(ClassArity), Context, OldContext,
-                        [], !Specs)
+                        user_arity(ClassArity), Context, OldContext, [], Spec),
+                    !:Specs = [Spec | !.Specs]
                 ),
                 HasIncompatibility = yes(OldDefn)
             else
@@ -165,7 +165,8 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
             % the original. Always report such errors, even in `.opt' files.
             UserArity = user_arity(ClassArity),
             report_multiply_defined("typeclass", ClassName, UserArity,
-                Context, OldContext, MismatchPieces, !Specs),
+                Context, OldContext, MismatchPieces, Spec),
+            !:Specs = [Spec | !.Specs],
             HasIncompatibility = yes(OldDefn)
         )
     else

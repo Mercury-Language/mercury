@@ -255,7 +255,8 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                 DescPieces =
                     [pragma_decl("foreign_export"), words("declaration")],
                 report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
-                    VarSet, ArgModes, DescPieces, Context, !Specs)
+                    VarSet, ArgModes, DescPieces, Context, Spec),
+                !:Specs = [Spec | !.Specs]
             ;
                 Origin = item_origin_compiler(_CompilerAttrs)
                 % We do not warn about errors in export pragmas created by
