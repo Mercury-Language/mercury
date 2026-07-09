@@ -271,7 +271,7 @@ julian_day_tests = [
         2454466
     ),
     julian_day_test(
-        "New year's Day",
+        "New Year's Day",
         det_init_date_time(2008, january, 1, 0, 0, 0, 0),
         2454467
     ),

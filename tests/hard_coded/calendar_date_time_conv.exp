@@ -319,7 +319,7 @@ PASS: ERROR DETECTED
 "2024-01-01 00:00:00.123.456": two decimal points
 PASS: ERROR DETECTED
 
-"2024-01-01 00:00:00.123456.7": decimal point in microseconds follow by more
+"2024-01-01 00:00:00.123456.7": decimal point in microseconds followed by more
 PASS: ERROR DETECTED
 
 "2024-001-01 00:00:00":       three-digit month

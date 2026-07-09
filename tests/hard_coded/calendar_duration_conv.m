@@ -286,13 +286,13 @@ invalid_durations = [
 :- pred report_any_disagrement(maybe(duration)::in, maybe(duration)::in,
     io::di, io::uo) is det.
 
-report_any_disagrement(MaybeDateTimeP, MaybeDateTimeF, !IO) :-
-    ( if MaybeDateTimeP = MaybeDateTimeF then
+report_any_disagrement(MaybeDurationP, MaybeDurationF, !IO) :-
+    ( if MaybeDurationP = MaybeDurationF then
         true
     else
         io.format("DISAGREEMENT: pred %s, func %s\n",
-            [s(string.string(MaybeDateTimeP)),
-            s(string.string(MaybeDateTimeF))], !IO)
+            [s(string.string(MaybeDurationP)),
+            s(string.string(MaybeDurationF))], !IO)
     ).
 
 %---------------------------------------------------------------------------%

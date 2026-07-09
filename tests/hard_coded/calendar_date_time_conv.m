@@ -38,9 +38,9 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% In both test_valid_duration and test_invalid_duration, we exercise
-% both the semidet predicate duration_from_string/2, and its det function
-% version, duration_from_string/1.
+% In both test_valid_date_time and test_invalid_date_time, we exercise
+% both the semidet predicate date_time_from_string/2, and its det function
+% version, date_time_from_string/1.
 %
 % We always print the results from the semidet predicate version.
 % We print the results from the det function version ONLY if it differs
@@ -117,7 +117,7 @@ test_invalid_date_time(Test, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-% Valid date_times crated from strings are mostly round-trippable through
+% Valid date_times created from strings are mostly round-trippable through
 % date_time_to_string/1. The only exceptions are where the year components
 % have leading zeros or the fractional components have trailing zeros.
 
@@ -188,7 +188,7 @@ valid_date_times = [
     %
 :- func valid_no_roundtrip_date_times = list(dt_conv_test).
 
-valid_no_roundtrip_date_times =[
+valid_no_roundtrip_date_times = [
     dt_conv_test("one fractional trailing zero", "2024-01-01 00:00:00.10"),
     dt_conv_test("two fractional trailing zeros", "2024-01-01 00:00:00.100"),
     dt_conv_test("three fractional trailing zeros",
@@ -273,7 +273,7 @@ invalid_date_times = [
     dt_conv_test("double space between date and time",
         "2024-01-01  00:00:00"),
     dt_conv_test("two decimal points", "2024-01-01 00:00:00.123.456"),
-    dt_conv_test("decimal point in microseconds follow by more",
+    dt_conv_test("decimal point in microseconds followed by more",
         "2024-01-01 00:00:00.123456.7"),
     dt_conv_test("three-digit month", "2024-001-01 00:00:00"),
     dt_conv_test("three-digit day", "2024-01-001 00:00:00"),
