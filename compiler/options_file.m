@@ -1309,7 +1309,7 @@ lookup_main_target(Variables, MaybeMainTarget) :-
         MaybeMainTarget = ok1([])
     ;
         MainTargetResult = var_result_error(OoMSpecs),
-        MaybeMainTarget = error1(one_or_more_to_list(OoMSpecs))
+        MaybeMainTarget = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1324,7 +1324,7 @@ lookup_mercury_stdlib_dir(Variables, MaybeMerStdLibDir) :-
         MaybeMerStdLibDir = ok1([])
     ;
         MerStdLibDirResult = var_result_error(OoMSpecs),
-        MaybeMerStdLibDir = error1(one_or_more_to_list(OoMSpecs))
+        MaybeMerStdLibDir = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1351,13 +1351,13 @@ lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
         Specs = [],
         Result = ok1(MmcOptions)
     ;
-        Specs = [_ | _],
+        Specs = [HeadSpec | TailSpecs],
         % Returning error1 here is correct because all error_specs in Specs
         % will have severity_error. There is (as of 2022 jan 23) exactly
         % one place in this module that generates an error_spec whose
         % severity is NOT severity_error, but it is not reachable from
         % lookup_env_optfile_var.
-        Result = error1(Specs)
+        Result = error1(one_or_more(HeadSpec, TailSpecs))
     ).
 
 %---------------------------------------------------------------------------%

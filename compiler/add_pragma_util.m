@@ -42,13 +42,13 @@
 
 :- pred look_up_pragma_pf_sym_arity(module_info::in, is_fully_qualified::in,
     lookup_failure_handling::in, prog_context::in, string::in,
-    pred_or_func::in, sym_name::in, user_arity::in, maybe1(pred_id)::out)
+    pred_or_func::in, sym_name::in, user_arity::in, maybe1el(pred_id)::out)
     is det.
 
 :- pred look_up_pragma_pf_sym_arity_mode_num(module_info::in,
     is_fully_qualified::in, lookup_failure_handling::in, prog_context::in,
     string::in, pred_or_func::in, sym_name::in, user_arity::in, int::in,
-    maybe4(pred_id, proc_id, pred_info, proc_info)::out) is det.
+    maybe4el(pred_id, proc_id, pred_info, proc_info)::out) is det.
 
 %---------------------%
 

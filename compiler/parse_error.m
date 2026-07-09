@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2014, 2016, 2019, 2022-2025 The Mercury team.
+% Copyright (C) 2014, 2016, 2019, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,6 +13,7 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module one_or_more.
 :- import_module set.
 
     % 1. We obviously cannot process the module if we could not read it.
@@ -155,10 +156,13 @@
 :- pred add_fatal_error(fatal_read_module_error::in, list(error_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
-    % Add a nonfatal error, and its message.
+    % Add nonfatal errors, and their messages.
     %
 :- pred add_nonfatal_error(nonfatal_read_module_error::in,
-    list(error_spec)::in,
+    error_spec::in,
+    read_module_errors::in, read_module_errors::out) is det.
+:- pred add_nonfatal_errors(nonfatal_read_module_error::in,
+    one_or_more(error_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
     % If there are any error_specs in the input list,
@@ -214,11 +218,14 @@ add_fatal_error(Error, Specs, Errors0, Errors) :-
     Errors = read_module_errors(FatalErrors, FatalSpecs,
         NonFatalErrors, NonFatalSpecs, WarningSpecs).
 
-add_nonfatal_error(Error, Specs, Errors0, Errors) :-
+add_nonfatal_error(Error, Spec, Errors0, Errors) :-
+    add_nonfatal_errors(Error, one_or_more(Spec, []), Errors0, Errors).
+
+add_nonfatal_errors(Error, OoMSpecs, Errors0, Errors) :-
     Errors0 = read_module_errors(FatalErrors, FatalSpecs,
         NonFatalErrors0, NonFatalSpecs0, WarningSpecs),
     set.insert(Error, NonFatalErrors0, NonFatalErrors),
-    NonFatalSpecs = Specs ++ NonFatalSpecs0,
+    NonFatalSpecs = one_or_more_to_list(OoMSpecs) ++ NonFatalSpecs0,
     Errors = read_module_errors(FatalErrors, FatalSpecs,
         NonFatalErrors, NonFatalSpecs, WarningSpecs).
 
@@ -226,8 +233,8 @@ add_any_nec_errors(Specs, !Errors) :-
     (
         Specs = []
     ;
-        Specs = [_ | _],
-        add_nonfatal_error(rme_nec, Specs, !Errors)
+        Specs = [HeadSpec | TailSpecs],
+        add_nonfatal_errors(rme_nec, one_or_more(HeadSpec, TailSpecs), !Errors)
     ).
 
 add_warning(Specs, Errors0, Errors) :-

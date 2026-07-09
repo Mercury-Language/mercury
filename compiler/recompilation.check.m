@@ -1704,9 +1704,9 @@ report_used_file_read_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
         AllPieces = PrefixPieces ++ [words(Message), suffix("."), nl],
         Spec = spec($pred, Severity, phase_read_files, Context, AllPieces)
     ;
-        UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
+        UsedFileError = uf_unreadable_used_items(OoMUsedItemSpecs),
         list.map(extract_spec_msgs_and_maybe_add_id(Globals),
-            UsedItemSpecs, MsgsList),
+            one_or_more_to_list(OoMUsedItemSpecs), MsgsList),
         list.condense(MsgsList, Msgs),
         Spec = error_spec($pred, Severity, phase_read_files, Msgs)
     ),

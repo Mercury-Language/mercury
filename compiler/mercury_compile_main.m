@@ -605,7 +605,8 @@ generate_executable(ProgressStream, Globals, InvokedByMmcMake, Params,
                 DefaultOptionTable, MaybeStdLibGrades, not_invoked_by_mmc_make,
                 FirstModuleName, Params, [], MayBuild, !IO),
             (
-                MayBuild = may_not_build(Specs),
+                MayBuild = may_not_build(OoMSpecs),
+                Specs = one_or_more_to_list(OoMSpecs),
                 Succeeded = did_not_succeed
             ;
                 MayBuild = may_build(_AllOptionArgs, BuildGlobals),
@@ -769,7 +770,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         MayBuild = may_not_build(SetupSpecs),
         % XXX STREAM
         % Should we print SetupSpecs to the module-specific error stream?
-        write_error_specs(ErrorStream, Globals, SetupSpecs, !IO),
+        write_oom_error_specs(ErrorStream, Globals, SetupSpecs, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;

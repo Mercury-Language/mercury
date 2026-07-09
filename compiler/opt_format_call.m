@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -718,8 +718,8 @@ check_format_call_site(ModuleInfo, PredInfo, ProcInfo, ImplicitStreamWarnings,
             check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo,
                 ConjMaps, PredMap, FormatCallSite),
             TailFmtStrVals, TailCheckResults),
-        HeadCheckSpecs = get_any_errors3(HeadCheckResult),
-        TailCheckSpecLists = list.map(get_any_errors3, TailCheckResults),
+        HeadCheckSpecs = get_any_errors3el(HeadCheckResult),
+        TailCheckSpecLists = list.map(get_any_errors3el, TailCheckResults),
         CheckSpecs = HeadCheckSpecs ++ list.condense(TailCheckSpecLists),
         !:Specs = CheckSpecs ++ !.Specs
     ).
@@ -727,7 +727,7 @@ check_format_call_site(ModuleInfo, PredInfo, ProcInfo, ImplicitStreamWarnings,
 :- pred check_fmt_str_val_vars(module_info::in, pred_info::in, proc_info::in,
     conj_maps::in, conj_pred_map::in, format_call_site::in,
     fmt_str_val_vars::in,
-    maybe3(list(compiler_format_spec), list(prog_var), list(goal_id))::out)
+    maybe3el(list(compiler_format_spec), list(prog_var), list(goal_id))::out)
     is det.
 
 check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
@@ -766,8 +766,8 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
             Specs = []
         else
             Specs =
-                get_any_errors3(FormatStringResult) ++
-                get_any_errors2(ValuesResult)
+                get_any_errors3el(FormatStringResult) ++
+                get_any_errors2el(ValuesResult)
         ),
         Result = error3(Specs)
     ).
@@ -782,7 +782,7 @@ project_all_yes([yes(Value) | TailMaybes], [Value | Tail]) :-
 
 :- pred follow_format_string_handle_unknown(module_info::in,
     conj_maps::in, conj_pred_map::in, format_call_site::in, prog_var::in,
-    maybe3(string, list(prog_var), list(goal_id))::out) is det.
+    maybe3el(string, list(prog_var), list(goal_id))::out) is det.
 
 follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
         FormatCallSite, StringVar, Result) :-
@@ -899,7 +899,7 @@ project_all_follow_string_results([HeadResult | TailResults],
 
 :- pred follow_values_handle_unknown(module_info::in, conj_maps::in,
     conj_pred_map::in, format_call_site::in, prog_var::in,
-    maybe2(list(abstract_poly_type), list(prog_var))::out) is det.
+    maybe2el(list(abstract_poly_type), list(prog_var))::out) is det.
 
 follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
         ValuesVar, Result) :-

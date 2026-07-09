@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2020-2024 The Mercury team.
+% Copyright (C) 2020-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -211,7 +211,8 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 get_any_errors1(MaybeForeignTypeName) ++
                 AssertionSpecs ++
                 get_any_errors1(MaybeMaybeCanonical),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -227,7 +228,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_foreign_language_type(cord(format_piece)::in, term::in,
@@ -250,7 +251,7 @@ parse_foreign_language_type(ContextPieces, Term, VarSet,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeForeignTypeName = error1([Spec])
+        MaybeForeignTypeName = error1(one_or_more(Spec, []))
     ).
 
 parse_foreign_type_assertions(ContextPieces, VarSet, Term,
@@ -336,7 +337,7 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             words("the foreign language declaration itself)."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ;
         (
             PragmaTerms = [LangTerm, HeaderTerm],
@@ -360,7 +361,7 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                     [nl],
                 IsLocalSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(IsLocalTerm), IsLocalPieces),
-                MaybeIsLocal = error1([IsLocalSpec])
+                MaybeIsLocal = error1(one_or_more(IsLocalSpec, []))
             )
         ),
         LangContextPieces = cord.from_list([words("In the first argument of"),
@@ -384,7 +385,7 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 [nl],
             LitOrInclSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeaderTerm), LitOrInclPieces),
-            MaybeLitOrIncl = error1([LitOrInclSpec])
+            MaybeLitOrIncl = error1(one_or_more(LitOrInclSpec, []))
         ),
         ( if
             MaybeIsLocal = ok1(IsLocal),
@@ -398,7 +399,8 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         else
             Specs = get_any_errors1(MaybeIsLocal) ++
                 get_any_errors1(MaybeLang) ++ get_any_errors1(MaybeLitOrIncl),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         PragmaTerms = [_, _, _, _ | _],
@@ -411,7 +413,7 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             words("the foreign language declaration itself)."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
@@ -469,7 +471,8 @@ parse_pragma_foreign_code(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++ CodeSpecs,
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -484,7 +487,7 @@ parse_pragma_foreign_code(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -504,7 +507,8 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
             MaybeForeignLanguage = ok1(ForeignLanguage),
             LangSpecs = []
         ;
-            MaybeForeignLanguage = error1(LangSpecs),
+            MaybeForeignLanguage = error1(OoMLangSpecs),
+            LangSpecs = one_or_more_to_list(OoMLangSpecs),
             ForeignLanguage = lang_c  % Dummy, ignored when LangSpecs \= []
         ),
         parse_pragma_ordinary_foreign_proc(ModuleName, VarSet,
@@ -517,7 +521,8 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
             MaybeIOM = ok1(IOM)
         else
             Specs = LangSpecs ++ get_any_errors1(MaybeRestIOM),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -534,7 +539,7 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_pragma_ordinary_foreign_proc(module_name::in, varset::in,
@@ -593,7 +598,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
             [nl],
         ImplSpec = spec($pred, severity_error, phase_t2pt,
             CodeContext, ImplPieces),
-        MaybeImpl = error1([ImplSpec])
+        MaybeImpl = error1(one_or_more(ImplSpec, []))
     ),
     ( if
         MaybeNamePFPragmaVars = ok3(PredName, PredOrFunc, PragmaVars),
@@ -607,10 +612,11 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
         Item = item_foreign_proc(FPInfo),
         MaybeIOM = ok1(iom_item(Item))
     else
-        AllSpecs = get_any_errors1(MaybeImpl) ++
+        Specs = get_any_errors1(MaybeImpl) ++
             get_any_errors3(MaybeNamePFPragmaVars) ++
             get_any_errors1(MaybeFlags),
-        MaybeIOM = error1(AllSpecs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 %---------------------%
@@ -641,7 +647,7 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
                 words("variable in pragma foreign_proc."), nl],
             UnnamedSpec = spec($pred, severity_error, phase_t2pt,
                 VarContext, UnnamedPieces),
-            MaybeVarName = error1([UnnamedSpec])
+            MaybeVarName = error1(one_or_more(UnnamedSpec, []))
         ),
         ArgContextPieces = ContextPieces ++ cord.from_list(
             [words("in the"), nth_fixed(ArgNum), words("argument:")]),
@@ -658,10 +664,11 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
                 bp_native_if_possible),
             MaybePragmaVars = ok1([HeadPragmaVar | TailPragmaVars])
         else
-            Specs = get_any_errors1(MaybeTailPragmaVars)
-                ++ get_any_errors1(MaybeVarName)
-                ++ get_any_errors1(MaybeTailPragmaVars),
-            MaybePragmaVars = error1(Specs)
+            Specs = get_any_errors1(MaybeTailPragmaVars) ++
+                get_any_errors1(MaybeVarName) ++
+                get_any_errors1(MaybeTailPragmaVars),
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybePragmaVars = error1(OoMSpecs)
         )
     else
         HeadTermStr = describe_error_term(VarSet, HeadTerm),
@@ -674,7 +681,8 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), Pieces),
-        MaybePragmaVars = error1([Spec | get_any_errors1(MaybeTailPragmaVars)])
+        MaybePragmaVars =
+            error1(one_or_more(Spec, get_any_errors1(MaybeTailPragmaVars)))
     ).
 
 %---------------------%
@@ -778,7 +786,7 @@ parse_and_check_foreign_proc_attributes_term(ForeignLanguage, VarSet,
                 [words("in attribute list."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeAttributes = error1([Spec])
+            MaybeAttributes = error1(one_or_more(Spec, []))
         else
             list.foldl(process_attribute, AttrList, Attributes0, Attributes),
             MaybeAttributes = check_required_attributes(ForeignLanguage,
@@ -839,7 +847,8 @@ parse_foreign_proc_attributes_list(ContextPieces, VarSet,
                 [nl],
             HeadSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeadTerm), HeadPieces),
-            MaybeAttrs = error1([HeadSpec | get_any_errors1(MaybeTailAttrs)])
+            MaybeAttrs =
+                error1(one_or_more(HeadSpec, get_any_errors1(MaybeTailAttrs)))
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -851,7 +860,7 @@ parse_foreign_proc_attributes_list(ContextPieces, VarSet,
             [nl],
         TermSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), TermPieces),
-        MaybeAttrs = error1([TermSpec])
+        MaybeAttrs = error1(one_or_more(TermSpec, []))
     ).
 
 :- pred parse_single_pragma_foreign_proc_attribute(varset::in, term::in,
@@ -1178,7 +1187,8 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors3(MaybePredAndModes) ++
                 get_any_errors1(MaybeFunction),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -1194,7 +1204,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_foreign_function_name(varset::in, cord(format_piece)::in,
@@ -1220,7 +1230,7 @@ parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(FunctionTerm), Pieces),
-        MaybeFunction = error1([Spec])
+        MaybeFunction = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1278,7 +1288,8 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
                 get_any_errors1(MaybeTypeCtor) ++
                 get_any_errors1(MaybeAttributes) ++
                 get_any_errors1(MaybeOverrides),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     else
         Pieces = [words("Error: a")] ++
@@ -1290,7 +1301,7 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred maybe_parse_export_enum_overrides(cord(format_piece)::in, varset::in,
@@ -1324,7 +1335,7 @@ parse_sym_name_string_pair(ContextPieces, VarSet, PairTerm, MaybePair) :-
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(SymNameTerm), Pieces),
-            MaybePair = error1([Spec])
+            MaybePair = error1(one_or_more(Spec, []))
         )
     else
         PairTermStr = describe_error_term(VarSet, PairTerm),
@@ -1337,7 +1348,7 @@ parse_sym_name_string_pair(ContextPieces, VarSet, PairTerm, MaybePair) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PairTerm), Pieces),
-        MaybePair = error1([Spec])
+        MaybePair = error1(one_or_more(Spec, []))
     ).
 
 :- pred maybe_parse_export_enum_attributes(list(format_piece)::in,
@@ -1388,7 +1399,7 @@ parse_export_enum_attributes(ContextPieces, VarSet, AttributesTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(AttributesTerm), Pieces),
-                AttributesResult = error1([Spec])
+                AttributesResult = error1(one_or_more(Spec, []))
             )
         ;
             MaybeAttrList = error1(AttrSpecs),
@@ -1404,7 +1415,7 @@ parse_export_enum_attributes(ContextPieces, VarSet, AttributesTerm,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(AttributesTerm), Pieces),
-        AttributesResult = error1([Spec])
+        AttributesResult = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_export_enum_attr(list(format_piece)::in,
@@ -1433,7 +1444,7 @@ parse_export_enum_attr(ContextPieces, VarSet, Term, MaybeAttribute) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeAttribute = error1([Spec])
+        MaybeAttribute = error1(one_or_more(Spec, []))
     ).
 
 :- pred process_export_enum_attribute(collected_export_enum_attribute::in,
@@ -1486,7 +1497,7 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     [nl],
                 SymNameSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ValuesTerm), SymNamePieces),
-                MaybeTypeCtor = error1([SymNameSpec])
+                MaybeTypeCtor = error1(one_or_more(SymNameSpec, []))
             )
         ;
             MaybeTypeCtor0 = error1(_),
@@ -1514,7 +1525,7 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     [nl],
                 NoValuesSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ValuesTerm), NoValuesPieces),
-                MaybeOoMValues = error1([NoValuesSpec])
+                MaybeOoMValues = error1(one_or_more(NoValuesSpec, []))
             ;
                 Values = [HeadValue | TailValues],
                 MaybeOoMValues = ok1(one_or_more(HeadValue, TailValues))
@@ -1537,7 +1548,8 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors1(MaybeTypeCtor) ++
                 get_any_errors1(MaybeOoMValues),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -1553,7 +1565,7 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_cur_module_sym_name_string_pair(cord(format_piece)::in,
@@ -1591,7 +1603,7 @@ parse_cur_module_sym_name_string_pair(ContextPieces, ModuleName, VarSet,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(SymNameTerm), Pieces),
-                    MaybePair = error1([Spec])
+                    MaybePair = error1(one_or_more(Spec, []))
                 )
             ;
                 SymName = unqualified(_),
@@ -1612,7 +1624,7 @@ parse_cur_module_sym_name_string_pair(ContextPieces, ModuleName, VarSet,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PairTerm), Pieces),
-        MaybePair = error1([Spec])
+        MaybePair = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1643,7 +1655,7 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
                 [nl],
             ModuleNameSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ModuleNameTerm), ModuleNamePieces),
-            MaybeModuleName = error1([ModuleNameSpec])
+            MaybeModuleName = error1(one_or_more(ModuleNameSpec, []))
         ),
         ( if
             MaybeForeignLang = ok1(Language),
@@ -1654,7 +1666,8 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors1(MaybeModuleName),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -1669,7 +1682,7 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1698,7 +1711,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             [nl],
         Context = get_term_context(LangTerm),
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeForeignLang = error1([Spec])
+        MaybeForeignLang = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -1719,7 +1732,7 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
             [nl],
         Context = get_term_context(TypeTerm),
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeTypeCtor = error1([Spec])
+        MaybeTypeCtor = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

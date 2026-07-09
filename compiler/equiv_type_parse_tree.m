@@ -1831,7 +1831,7 @@ check_and_maybe_add_extra_types_and_modes(PredOrFunc, PredSymName, Context,
                 ;
                     MaybeExtraTypesAndModes = error1(ExtraSpecs),
                     TypesAndMaybeModes = TypesAndMaybeModes1,
-                    !:Specs = ExtraSpecs ++ !.Specs
+                    !:Specs = one_or_more_to_list(ExtraSpecs) ++ !.Specs
                 )
             )
         ;
@@ -1867,7 +1867,7 @@ check_and_maybe_add_extra_types_and_modes(PredOrFunc, PredSymName, Context,
             ;
                 MaybeExtraTypesAndModes = error1(ExtraSpecs),
                 TypesAndMaybeModes = TypesAndMaybeModes1,
-                !:Specs = ExtraSpecs ++ !.Specs
+                !:Specs = one_or_more_to_list(ExtraSpecs) ++ !.Specs
             )
         )
     ).
@@ -1919,7 +1919,7 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredSymName, Context,
         ),
         Spec = spec($pred, severity_error, phase_expand_types,
             Context, Pieces),
-        MaybeExtraTypesAndModes = error1([Spec])
+        MaybeExtraTypesAndModes = error1(one_or_more(Spec, []))
     ).
 
 :- func pred_decl_error_prefix(pred_or_func, sym_name) = list(format_piece).

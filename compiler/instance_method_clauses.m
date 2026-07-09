@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2022-2023, 2025 The Mercury team.
+% Copyright (C) 2022-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,6 +59,7 @@
 
 :- import_module cord.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
@@ -148,7 +149,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         (
             MaybeBodyGoal = error2(BodyGoalSpecs),
             TVarSet = TVarSet0,
-            !:Specs = BodyGoalSpecs ++ !.Specs
+            !:Specs = one_or_more_to_list(BodyGoalSpecs) ++ !.Specs
         ;
             MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
             !:Specs = BodyGoalWarningSpecs ++ !.Specs,

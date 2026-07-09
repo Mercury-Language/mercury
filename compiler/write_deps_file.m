@@ -414,7 +414,7 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
     % Check whether we could read the main `.m' file.
     %
 :- pred do_we_have_a_valid_module_dep(deps_map::in, module_name::in,
-    maybe1(burdened_module)::out) is det.
+    maybe1el(burdened_module)::out) is det.
 
 do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
     ( if map.search(DepsMap, ModuleName, ModuleDep) then

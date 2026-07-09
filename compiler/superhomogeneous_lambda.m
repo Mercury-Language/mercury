@@ -77,6 +77,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -127,7 +128,7 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         MaybeLambdaHead, !UrInfo),
     (
         MaybeLambdaHead = error1(LambdaHeadSpecs),
-        add_unravel_specs(LambdaHeadSpecs, !UrInfo),
+        add_unravel_oom_specs(LambdaHeadSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         Expansion = expansion(not_fgti, cord.empty)
     ;
@@ -229,7 +230,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     Spec = spec($pred, severity_error, phase_pt2h,
                         Context, Pieces),
                     MaybeLambdaHead =
-                        error1([Spec | get_any_errors1(MaybeDetism)])
+                        error1(one_or_more(Spec, get_any_errors1(MaybeDetism)))
                 ;
                     ArgModeTerms0 =
                         [ArgModeTerm1, ArgModeTerm2 | ArgModeTerms3plus],
@@ -276,7 +277,8 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                MaybeLambdaHead = error1([Spec | get_any_errors1(MaybeDetism)])
+                MaybeLambdaHead =
+                    error1(one_or_more(Spec, get_any_errors1(MaybeDetism)))
             )
         )
     else if
@@ -318,7 +320,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                 color_as_subject([words("clauses for functions.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            MaybeLambdaHead = error1([Spec])
+            MaybeLambdaHead = error1(one_or_more(Spec, []))
         )
     else
         Form1 = "pred(<args>) is <determinism>",
@@ -342,7 +344,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
         Context = get_term_context(PFArgsDetTerm),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         record_unravel_found_syntax_error(!UrInfo),
-        MaybeLambdaHead = error1([Spec])
+        MaybeLambdaHead = error1(one_or_more(Spec, []))
     ).
 
 :- pred split_last_two(T::in, T::in, list(T)::in, list(T)::out, T::out, T::out)
@@ -578,7 +580,7 @@ parse_lambda_arg(Kind, ArgModeTerm, LambdaArg, !ArgNum,
             constrain_inst_vars_in_mode(Mode0, Mode)
         ;
             MaybeMode0 = error1(ModeSpecs),
-            !:BadModeSpecs = ModeSpecs ++ !.BadModeSpecs,
+            !:BadModeSpecs = one_or_more_to_list(ModeSpecs) ++ !.BadModeSpecs,
             Mode = default_mode_for_lambda_arg(Kind)
         )
     else
@@ -662,7 +664,7 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
             [words("is not a valid determinism."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(DetismTerm), Pieces),
-        MaybeDetism = error1([Spec])
+        MaybeDetism = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -743,7 +745,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         MaybeDetism = ok1(Detism)
     ;
         MaybeDetism = error1(DetismSpecs),
-        add_unravel_specs(DetismSpecs, !UrInfo),
+        add_unravel_oom_specs(DetismSpecs, !UrInfo),
         % Due to the error, this dummy value won't be used.
         Detism = detism_det
     ),
@@ -751,7 +753,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         MaybeBodyGoal = ok1(BodyGoal)
     ;
         MaybeBodyGoal = error1(BodyGoalSpecs),
-        add_unravel_specs(BodyGoalSpecs, !UrInfo),
+        add_unravel_oom_specs(BodyGoalSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         % Due to the error, this dummy value won't be used.
         BodyGoal = true_expr(Context)

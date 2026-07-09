@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2025 The Mercury team.
+% Copyright (C) 2014-2021, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -735,7 +735,7 @@ unravel_special_with_type(XVar, RValTerm, DeclTypeTerm0,
         DeclTypeResult = error1(DeclTypeSpecs),
         % The varset is a prog_varset even though it contains the names
         % of type variables in ErrorTerm, which is a generic term.
-        add_unravel_specs(DeclTypeSpecs, !UrInfo)
+        add_unravel_oom_specs(DeclTypeSpecs, !UrInfo)
     ),
     do_unravel_var_unification(XVar, RValTerm,
         Context, MainContext, SubContext, Purity, Order, Expansion,
@@ -840,7 +840,7 @@ unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
         Expansion = expansion(not_fgti, cord.singleton(Goal))
     ;
         MaybeVarsCond = error4(VarsCondSpecs),
-        add_unravel_specs(VarsCondSpecs, !UrInfo),
+        add_unravel_oom_specs(VarsCondSpecs, !UrInfo),
         Expansion = expansion(not_fgti,
             cord.singleton(true_goal_with_context(Context)))
     ).
@@ -1022,7 +1022,7 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
             MaybeConsId = ok1(ConsId)
         ;
             MaybeConsId = error1(ConsIdSpecs),
-            add_unravel_specs(ConsIdSpecs, !UrInfo),
+            add_unravel_oom_specs(ConsIdSpecs, !UrInfo),
             % This is a dummy.
             ConsId = some_int_const(int_const(0))
         )

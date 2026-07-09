@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2021, 2025 The Mercury team.
+% Copyright (C) 2013-2021, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,6 +57,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -68,7 +69,7 @@
 :- type last_hash
     --->    last_hash(
                 lh_maybe_stdlib_grades  :: maybe_stdlib_grades,
-                lh_maybe_stdlib_dirs    :: maybe1(list(string)),
+                lh_maybe_stdlib_dirs    :: maybe1el(list(string)),
                 lh_options              :: list(string),
                 lh_hash                 :: string
             ).
@@ -127,8 +128,9 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(Info),
-        lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs),
+        lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs0),
         AllOptionArgs = ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs,
+        maybe1_to_maybe1el(MaybeStdLibDirs0, MaybeStdLibDirs),
 
         % The set of options from one module to the next is usually identical,
         % so we can easily avoid running handle_options and stringifying and
@@ -169,14 +171,14 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
         % I also don't think we have a good basis for deciding the answer
         % to that question until we have practical experience with
         % compiler invocations that lead execution to this spot.
-        write_error_specs(ErrorStream, Globals, LookupSpecs, !IO),
+        write_oom_error_specs(ErrorStream, Globals, LookupSpecs, !IO),
         Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred option_table_hash(io.text_output_stream::in, option_table::in,
-    maybe_stdlib_grades::in, maybe1(list(string))::in, list(string)::in,
+    maybe_stdlib_grades::in, maybe1el(list(string))::in, list(string)::in,
     string::out, io::di, io::uo) is det.
 
 option_table_hash(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,

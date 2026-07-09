@@ -1241,12 +1241,14 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
                     SuperTypeArgs, !InvalidTypeSpecs, !Specs)
             ;
                 MaybeBaseMaybeCanon = error1(UpToBaseSpecs),
-                !:InvalidTypeSpecs = UpToBaseSpecs ++ !.InvalidTypeSpecs,
+                !:InvalidTypeSpecs =
+                    one_or_more_to_list(UpToBaseSpecs) ++ !.InvalidTypeSpecs,
                 MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
             )
         ;
             SearchResult = error2(SearchSpecs),
-            !:InvalidTypeSpecs = SearchSpecs ++ !.InvalidTypeSpecs,
+            !:InvalidTypeSpecs =
+                one_or_more_to_list(SearchSpecs) ++ !.InvalidTypeSpecs,
             MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
         )
     else
@@ -1299,7 +1301,7 @@ check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
             get_type_defn_context(OrigTypeDefn, OrigTypeContext),
             Spec = report_non_du_supertype(TVarSet, OrigTypeContext,
                 OrigTypeCtor, PrevSuperTypeCtors1, NextSuperType),
-            MaybeBaseMaybeCanon = error1([Spec])
+            MaybeBaseMaybeCanon = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -1323,7 +1325,7 @@ search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
     then
         Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
             PrevSuperTypeCtors, SuperTypeCtor, circularity_detected),
-        MaybeSuperTypeDefn = error2([Spec])
+        MaybeSuperTypeDefn = error2(one_or_more(Spec, []))
     else
         ( if
             search_type_ctor_defn(TypeTable, SuperTypeCtor, SuperTypeDefn)
@@ -1337,7 +1339,7 @@ search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
                 Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor,
                     OrigTypeDefn, PrevSuperTypeCtors, SuperTypeCtor,
                     supertype_is_abstract),
-                MaybeSuperTypeDefn = error2([Spec])
+                MaybeSuperTypeDefn = error2(one_or_more(Spec, []))
             else
                 check_supertype_is_du_not_foreign(OrigTypeDefn,
                     SuperTypeCtor, SuperTypeDefn, MaybeSuperTypeBodyDu),
@@ -1353,7 +1355,7 @@ search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
             Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor,
                 OrigTypeDefn, PrevSuperTypeCtors, SuperTypeCtor,
                 supertype_is_not_defined),
-            MaybeSuperTypeDefn = error2([Spec])
+            MaybeSuperTypeDefn = error2(one_or_more(Spec, []))
         )
     ).
 
@@ -1393,7 +1395,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
                 [nl],
             hlds_data.get_type_defn_context(TypeDefn, Context),
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            MaybeSuperTypeBodyDu = error1([Spec])
+            MaybeSuperTypeBodyDu = error1(one_or_more(Spec, []))
         )
     ;
         (
@@ -1421,7 +1423,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
             [nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        MaybeSuperTypeBodyDu = error1([Spec])
+        MaybeSuperTypeBodyDu = error1(one_or_more(Spec, []))
     ).
 
 :- func supertype_ctor_defn_error_to_spec(type_ctor, hlds_type_defn,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2016-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2016-2017, 2019-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,6 +142,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 
 :- import_module int.
+:- import_module one_or_more.
 :- import_module string.
 :- import_module term_int.
 
@@ -168,12 +169,12 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                 MaybeModule = error1(_),
                 Spec = report_no_module_name_before_dot(ContextPieces,
                     VarSet, ModuleTerm),
-                MaybeSymNameAndArgs = error2([Spec])
+                MaybeSymNameAndArgs = error2(one_or_more(Spec, []))
             )
         else
             Spec = report_bad_name_after_dot(ContextPieces,
                 VarSet, NameArgsTerm),
-            MaybeSymNameAndArgs = error2([Spec])
+            MaybeSymNameAndArgs = error2(one_or_more(Spec, []))
         )
     else
         ( if Term = term.functor(term.atom(Name), Args, _) then
@@ -181,7 +182,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
             MaybeSymNameAndArgs = ok2(SymName, Args)
         else
             Spec = report_no_sym_name(ContextPieces, VarSet, Term),
-            MaybeSymNameAndArgs = error2([Spec])
+            MaybeSymNameAndArgs = error2(one_or_more(Spec, []))
         )
     ).
 
@@ -231,12 +232,12 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
                 MaybeModule = error1(_),
                 Spec = report_no_module_name_before_dot(ContextPieces,
                     VarSet, ModuleTerm),
-                MaybeSymName = error1([Spec])
+                MaybeSymName = error1(one_or_more(Spec, []))
             )
         else
             Spec = report_bad_name_after_dot(ContextPieces,
                 VarSet, NameArgsTerm),
-            MaybeSymName = error1([Spec])
+            MaybeSymName = error1(one_or_more(Spec, []))
         )
     else
         ( if Term = term.functor(term.atom(Name), Args, _) then
@@ -244,7 +245,7 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
             insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName)
         else
             Spec = report_no_sym_name(ContextPieces, VarSet, Term),
-            MaybeSymName = error1([Spec])
+            MaybeSymName = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -258,7 +259,7 @@ insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName) :-
     ;
         Args = [_ | _],
         ArgSpec = report_unexpected_args(ContextPieces, Term, SymName),
-        MaybeSymName = error1([ArgSpec])
+        MaybeSymName = error1(one_or_more(ArgSpec, []))
     ).
 
 try_parse_sym_name_and_no_args(Term, SymName) :-
@@ -312,7 +313,8 @@ parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, VarSet,
             MaybeSymName = ok1(SymName)
         else
             Specs = get_any_errors1(MaybeSymName1) ++ ArgSpecs,
-            MaybeSymName = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeSymName = error1(OoMSpecs)
         )
     ;
         MaybeSymNameAndArgs0 = error2(Specs),
@@ -335,7 +337,7 @@ implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
     else
         Spec = report_failed_implicit_qualification(DefaultModuleName,
             Term, SymName0),
-        MaybeSymNameAndArgs = error2([Spec])
+        MaybeSymNameAndArgs = error2(one_or_more(Spec, []))
     ).
 
 implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
@@ -347,7 +349,7 @@ implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
     else
         Spec = report_failed_implicit_qualification(DefaultModuleName,
             Term, SymName0),
-        MaybeSymName = error1([Spec])
+        MaybeSymName = error1(one_or_more(Spec, []))
     ).
 
 try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName) :-
@@ -388,12 +390,12 @@ parse_sym_name(VarSet, Term, MaybeSymName) :-
                 ContextPieces = cord.init,
                 Spec = report_no_module_name_before_dot(ContextPieces,
                     VarSet, ModuleTerm),
-                MaybeSymName = error1([Spec])
+                MaybeSymName = error1(one_or_more(Spec, []))
             )
         else
             ContextPieces = cord.init,
             Spec = report_bad_name_after_dot(ContextPieces, VarSet, NameTerm),
-            MaybeSymName = error1([Spec])
+            MaybeSymName = error1(one_or_more(Spec, []))
         )
     else
         ( if Term = term.functor(term.atom(Name), [], _) then
@@ -402,7 +404,7 @@ parse_sym_name(VarSet, Term, MaybeSymName) :-
         else
             ContextPieces = cord.init,
             Spec = report_no_sym_name(ContextPieces, VarSet, Term),
-            MaybeSymName = error1([Spec])
+            MaybeSymName = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -472,12 +474,12 @@ parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameArity) :-
                 )
             else
                 AritySpec = report_negative_arity(ArityTerm, Arity),
-                Specs = [AritySpec | get_any_errors1(MaybeName)],
+                Specs = one_or_more(AritySpec, get_any_errors1(MaybeName)),
                 MaybeSymNameArity = error1(Specs)
             )
         else
             AritySpec = report_noninteger_arity_term(VarSet, ArityTerm),
-            Specs = [AritySpec | get_any_errors1(MaybeName)],
+            Specs = one_or_more(AritySpec, get_any_errors1(MaybeName)),
             MaybeSymNameArity = error1(Specs)
         )
     else

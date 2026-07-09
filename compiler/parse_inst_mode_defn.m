@@ -62,6 +62,7 @@
 
 :- import_module cord.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module set.
 :- import_module term_vars.
 
@@ -99,7 +100,7 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(InstDefnTerm), Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Pieces = [words("Error: an")] ++
@@ -107,7 +108,7 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_incorrect([words("should have just one argument,")]) ++
             [words("which should be the definition of an inst."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_inst_defn_eqv(module_name::in, varset::in, term::in, term::in,
@@ -147,9 +148,9 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
         ContextPieces, NameTerm, MaybeSymNameAndArgs),
     (
-        MaybeSymNameAndArgs = error2(SymNameAndArgSpecs),
-        Specs = SymNameAndArgSpecs ++ ForTypeSpecs,
-        MaybeIOM = error1(Specs)
+        MaybeSymNameAndArgs = error2(OoMSymNameAndArgSpecs),
+        append_one_or_more_list(OoMSymNameAndArgSpecs, ForTypeSpecs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ;
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
 
@@ -180,7 +181,8 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 ++ ForTypeSpecs
                 ++ get_any_errors1(MaybeInstArgVars)
                 ++ get_any_errors1(MaybeInst),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ).
 
@@ -214,7 +216,8 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
                 MaybeIOM = ok1(iom_item(Item))
             else
                 Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
-                MaybeIOM = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                MaybeIOM = error1(OoMSpecs)
             )
         )
     ;
@@ -226,7 +229,7 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             color_as_incorrect([words("should have exactly one argument.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -265,7 +268,8 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             Specs = NameSpecs ++
                 get_any_errors1(MaybeInstArgVars) ++
                 get_any_errors1(MaybeMode),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ).
 
@@ -297,7 +301,8 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
                 MaybeIOM = ok1(iom_item(Item))
             else
                 Specs = NameSpecs ++ get_any_errors1(MaybeInstArgVars),
-                MaybeIOM = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                MaybeIOM = error1(OoMSpecs)
             )
         )
     ;
@@ -309,7 +314,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             color_as_incorrect([words("should have exactly one argument.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -402,8 +407,8 @@ check_inst_mode_defn_args(AAn, DefnKind, VarSet, ArgTerms, MaybeBodyTerm,
                 list.map(term.coerce_var, ArgVars, InstArgVars),
                 MaybeArgVars = ok1(InstArgVars)
             ;
-                !.Specs = [_ | _],
-                MaybeArgVars = error1(!.Specs)
+                !.Specs = [HeadSpec | TailSpecs],
+                MaybeArgVars = error1(one_or_more(HeadSpec, TailSpecs))
             )
         )
     ;

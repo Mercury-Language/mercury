@@ -103,6 +103,7 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module int.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 
@@ -216,7 +217,7 @@ acc_source_file_map_line(FileName, Mn2FnMap0, Mn2FnMap,
         ;
             MaybeModuleName = error1(MnSpecs),
             Mn2FnMap = Mn2FnMap0,
-            !:Specs = !.Specs ++ MnSpecs
+            !:Specs = one_or_more_to_list(MnSpecs) ++ !.Specs
         )
     ).
 
@@ -243,7 +244,7 @@ find_name_of_module_in_file(FileName, MaybeModuleName, !IO) :-
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
         Spec = no_ctxt_spec($pred, severity_error,
             phase_find_files(FileName, no), Pieces),
-        MaybeModuleName = error1([Spec])
+        MaybeModuleName = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

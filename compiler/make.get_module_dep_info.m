@@ -79,6 +79,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module set.
 :- import_module string.
 
@@ -639,7 +640,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
         (
             MayBuild = may_not_build(MSISpecs),
             % XXX MAKE_STREAM
-            write_error_specs(ErrorStream, Globals, MSISpecs, !IO),
+            write_oom_error_specs(ErrorStream, Globals, MSISpecs, !IO),
             Succeeded0 = did_not_succeed
         ;
             MayBuild = may_build(_AllOptions, BuildGlobals),

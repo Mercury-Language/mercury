@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2017-2021, 2024 The Mercury team.
+% Copyright (C) 2017-2021, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,7 +108,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("one argument."), nl],
                     DuSpec = spec($pred, severity_error, phase_t2pt,
                         RepnContext, DuPieces),
-                    MaybeRepn = error1([DuSpec])
+                    MaybeRepn = error1(one_or_more(DuSpec, []))
                 )
             ;
                 AtomStr = "foreign_type_repn",
@@ -133,7 +133,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 words("got"), quote(RepnTermStr), suffix("."), nl],
             RepnSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(RepnTerm), RepnPieces),
-            MaybeRepn = error1([RepnSpec])
+            MaybeRepn = error1(one_or_more(RepnSpec, []))
         ),
         ( if
             MaybeTypeSymNameAndArgs = ok2(TypeCtorSymName0, TypeArgVars),
@@ -150,7 +150,8 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             Specs =
                 get_any_errors2(MaybeTypeSymNameAndArgs) ++
                 get_any_errors1(MaybeRepn),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     else
         Pieces = [words("Error: a"),
@@ -158,7 +159,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             words("should have two arguments: the type,"),
             words("and a description of its representation."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -177,7 +178,7 @@ parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have zero arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
+        MaybeRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -206,7 +207,7 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument, a type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
+        MaybeRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -226,7 +227,7 @@ parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
                 nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 RepnContext, Pieces),
-            MaybeRepn = error1([Spec])
+            MaybeRepn = error1(one_or_more(Spec, []))
         )
     ;
         ( RepnArgs = []
@@ -235,7 +236,7 @@ parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument, a type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
+        MaybeRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -283,7 +284,7 @@ parse_type_repn_du(VarSet, Term, MaybeDuRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -312,7 +313,8 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
             Specs =
                 get_any_errors1(MaybeFunctorName) ++
                 get_any_errors1(MaybeCJCsRepnOrEnum),
-            MaybeDuRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeDuRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -322,7 +324,7 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         Pieces = [words("Error:"), quote("direct_dummy"),
             words("should have two arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -373,7 +375,8 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
                 get_any_errors1(MaybeEnumFunctorName2) ++
                 LaterEnumSpecs ++
                 get_any_errors1(MaybeCJCsRepnOrEnum),
-            MaybeDuRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeDuRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -385,7 +388,7 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         Pieces = [words("Error:"), quote("enum"),
             words("should have four arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -435,7 +438,8 @@ parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
                 get_any_errors1(MaybeFunctorName) ++
                 get_any_errors1(MaybeArgType) ++
                 get_any_errors1(MaybeCJCsRepn),
-            MaybeDuRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeDuRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -445,7 +449,7 @@ parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         Pieces = [words("Error:"), quote("notag"),
             words("should have three arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -471,7 +475,7 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
                 quote(AtomStr), words("should be a list of types."), nl],
             ArgTypeSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArgTerm2), ArgTypePieces),
-            MaybeArgTypes = error1([ArgTypeSpec])
+            MaybeArgTypes = error1(one_or_more(ArgTypeSpec, []))
         ),
         DescPieces3 = [words("third argument of"),
             quote(AtomStr)],
@@ -495,7 +499,8 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
                 get_any_errors1(MaybeArgTypes) ++
                 get_any_errors1(MaybeCRepns) ++
                 get_any_errors1(MaybeCJCsRepn),
-            MaybeDuRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeDuRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -507,7 +512,7 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
         Pieces = [words("Error:"), quote("gen_du_only_functor"),
             words("should have four arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -528,8 +533,8 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
                 OtherFunctorSpecs = [],
                 MaybeOtherFunctors = ok1(OtherFunctors0)
             ;
-                OtherFunctorSpecs = [_ | _],
-                MaybeOtherFunctors = error1(OtherFunctorSpecs)
+                OtherFunctorSpecs = [HeadSpec | TailSpecs],
+                MaybeOtherFunctors = error1(one_or_more(HeadSpec, TailSpecs))
             )
         else
             Pieces = [words("Error: the third argument of"), quote(AtomStr),
@@ -537,7 +542,7 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
                 nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArgTerm3), Pieces),
-            MaybeOtherFunctors = error1([Spec])
+            MaybeOtherFunctors = error1(one_or_more(Spec, []))
         ),
         DescPieces4 = [words("fourth argument of"),
             quote(AtomStr)],
@@ -557,7 +562,8 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
                 get_any_errors1(MaybeFunctor2) ++
                 get_any_errors1(MaybeOtherFunctors) ++
                 get_any_errors1(MaybeCJCsRepn),
-            MaybeDuRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeDuRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -569,7 +575,7 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have four arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeDuRepn = error1([Spec])
+        MaybeDuRepn = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -585,8 +591,8 @@ parse_du_functors(VarSet, [Term | Terms], !:DuFunctors, !:Specs) :-
         MaybeDuFunctor = ok1(DuFunctor),
         !:DuFunctors = [DuFunctor | !.DuFunctors]
     ;
-        MaybeDuFunctor = error1(Specs),
-        !:Specs = Specs ++ !.Specs
+        MaybeDuFunctor = error1(OoMSpecs),
+        !:Specs = one_or_more_to_list(OoMSpecs) ++ !.Specs
     ).
 
 :- pred parse_du_functor(varset::in, term::in,
@@ -622,7 +628,8 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                     Specs =
                         get_any_errors1(MaybeFunctorName) ++
                         get_any_errors1(MaybeConstantCRepns),
-                    MaybeDuFunctor = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeDuFunctor = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -633,7 +640,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                     words("should have two arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeDuFunctor = error1([Spec])
+                MaybeDuFunctor = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "nonconstant_functor",
@@ -655,7 +662,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                         words("should be a list of types."), nl],
                     ArgTypeSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ArgTerm2), ArgTypePieces),
-                    MaybeArgTypes = error1([ArgTypeSpec])
+                    MaybeArgTypes = error1(one_or_more(ArgTypeSpec, []))
                 ),
                 DescPieces3 = [words("third argument of"), quote(AtomStr)],
                 parse_c_repns(DescPieces3, parse_more_nonconstant_repn,
@@ -673,7 +680,8 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                         get_any_errors1(MaybeFunctorName) ++
                         get_any_errors1(MaybeArgTypes) ++
                         get_any_errors1(MaybeNonConstantCRepns),
-                    MaybeDuFunctor = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeDuFunctor = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -685,7 +693,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                     words("should have three arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeDuFunctor = error1([Spec])
+                MaybeDuFunctor = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -696,7 +704,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeDuFunctor = error1([Spec])
+        MaybeDuFunctor = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_constant_repn(varset::in, term::in,
@@ -718,7 +726,8 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
                 Specs =
                     get_any_errors1(MaybeSectag) ++
                     get_any_errors1(MaybeSectagSize),
-                MaybeConstantRepn = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                MaybeConstantRepn = error1(OoMSpecs)
             )
         ;
             ( ArgTerms = []
@@ -729,7 +738,7 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
                 words("should have two arguments."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
-            MaybeConstantRepn = error1([Spec])
+            MaybeConstantRepn = error1(one_or_more(Spec, []))
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -738,7 +747,7 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeConstantRepn = error1([Spec])
+        MaybeConstantRepn = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_only_nonconstant_repn(varset::in, term::in,
@@ -777,7 +786,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         Specs =
                             get_any_errors1(MaybeHeadLocalArg) ++
                             TailLocalArgSpecs,
-                        MaybeNonConstantRepn = error1(Specs)
+                        det_list_to_one_or_more(Specs, OoMSpecs),
+                        MaybeNonConstantRepn = error1(OoMSpecs)
                     )
                 else
                     Pieces = [words("Error: the argument of"),
@@ -785,7 +795,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         words("of local cell argument representations."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         TermContext, Pieces),
-                    MaybeNonConstantRepn = error1([Spec])
+                    MaybeNonConstantRepn = error1(one_or_more(Spec, []))
                 )
             ;
                 ( ArgTerms = []
@@ -795,7 +805,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeNonConstantRepn = error1([Spec])
+                MaybeNonConstantRepn = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "only_remote_cell",
@@ -823,7 +833,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         Specs =
                             get_any_errors1(MaybeHeadRemoteArg) ++
                             TailRemoteArgSpecs,
-                        MaybeNonConstantRepn = error1(Specs)
+                        det_list_to_one_or_more(Specs, OoMSpecs),
+                        MaybeNonConstantRepn = error1(OoMSpecs)
                     )
                 else
                     Pieces = [words("Error: the argument of"),
@@ -831,7 +842,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         words("of remote cell argument representations."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         TermContext, Pieces),
-                    MaybeNonConstantRepn = error1([Spec])
+                    MaybeNonConstantRepn = error1(one_or_more(Spec, []))
                 )
             ;
                 ( ArgTerms = []
@@ -841,7 +852,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeNonConstantRepn = error1([Spec])
+                MaybeNonConstantRepn = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -852,7 +863,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeNonConstantRepn = error1([Spec])
+        MaybeNonConstantRepn = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_more_nonconstant_repn(varset::in, term::in,
@@ -895,7 +906,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                             get_any_errors1(MaybeLocalSectag) ++
                             get_any_errors1(MaybeHeadLocalArg) ++
                             TailLocalArgSpecs,
-                        MaybeNonConstantRepn = error1(Specs)
+                        det_list_to_one_or_more(Specs, OoMSpecs),
+                        MaybeNonConstantRepn = error1(OoMSpecs)
                     )
                 else
                     Pieces = [words("Error: the second argument of"),
@@ -903,8 +915,9 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         words("of local cell argument representations."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         TermContext, Pieces),
-                    Specs = [Spec | get_any_errors1(MaybeLocalSectag)],
-                    MaybeNonConstantRepn = error1(Specs)
+                    OoMSpecs = one_or_more(Spec,
+                        get_any_errors1(MaybeLocalSectag)),
+                    MaybeNonConstantRepn = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -915,7 +928,7 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     words("should have two arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeNonConstantRepn = error1([Spec])
+                MaybeNonConstantRepn = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "remote_cell",
@@ -949,7 +962,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                             get_any_errors1(MaybeRemoteSectag) ++
                             get_any_errors1(MaybeHeadRemoteArg) ++
                             TailRemoteArgSpecs,
-                        MaybeNonConstantRepn = error1(Specs)
+                        det_list_to_one_or_more(Specs, OoMSpecs),
+                        MaybeNonConstantRepn = error1(OoMSpecs)
                     )
                 else
                     Pieces = [words("Error: the second argument of"),
@@ -957,10 +971,10 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                         words("of remote cell argument representations."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         TermContext, Pieces),
-                    Specs = [Spec] ++
+                    OoMSpecs = one_or_more(Spec,
                         get_any_errors1(MaybePtag) ++
-                        get_any_errors1(MaybeRemoteSectag),
-                    MaybeNonConstantRepn = error1(Specs)
+                        get_any_errors1(MaybeRemoteSectag)),
+                    MaybeNonConstantRepn = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -972,7 +986,7 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     words("should have three arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeNonConstantRepn = error1([Spec])
+                MaybeNonConstantRepn = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "direct_arg",
@@ -995,7 +1009,7 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeNonConstantRepn = error1([Spec])
+                MaybeNonConstantRepn = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1007,7 +1021,7 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeNonConstantRepn = error1([Spec])
+        MaybeNonConstantRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -1029,7 +1043,7 @@ parse_ptag(VarSet, Term, MaybePtag) :-
                 words("got"), quote(TermStr), suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybePtag = error1([Spec])
+            MaybePtag = error1(one_or_more(Spec, []))
         )
     ;
         MaybeUint = error1(Specs),
@@ -1058,7 +1072,8 @@ parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
             Specs =
                 get_any_errors1(MaybeSectag) ++
                 get_any_errors1(MaybeSectagNumBitsUint),
-            MaybeLocalSectag = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeLocalSectag = error1(OoMSpecs)
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -1067,7 +1082,7 @@ parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeLocalSectag = error1([Spec])
+        MaybeLocalSectag = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_remote_sectag(varset::in, term::in,
@@ -1091,7 +1106,7 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
                     words("should have no arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeRemoteSectag = error1([Spec])
+                MaybeRemoteSectag = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "remote_sectag",
@@ -1111,7 +1126,8 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
                     Specs =
                         get_any_errors1(MaybeSectag) ++
                         get_any_errors1(MaybeSectagWordOrSize),
-                    MaybeRemoteSectag = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeRemoteSectag = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -1122,7 +1138,7 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
                     words("should have two arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeRemoteSectag = error1([Spec])
+                MaybeRemoteSectag = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1133,7 +1149,7 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeRemoteSectag = error1([Spec])
+        MaybeRemoteSectag = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_local_sectag_word_or_size(varset::in, term::in,
@@ -1172,7 +1188,7 @@ parse_local_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                 words("should have one argument."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
-            MaybeSectagSize = error1([Spec])
+            MaybeSectagSize = error1(one_or_more(Spec, []))
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -1182,7 +1198,7 @@ parse_local_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeSectagSize = error1([Spec])
+        MaybeSectagSize = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_remote_sectag_word_or_size(varset::in, term::in,
@@ -1206,7 +1222,7 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                     words("should have no argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeSectagSize = error1([Spec])
+                MaybeSectagSize = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "rst_part",
@@ -1230,7 +1246,7 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeSectagSize = error1([Spec])
+                MaybeSectagSize = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1241,7 +1257,7 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeSectagSize = error1([Spec])
+        MaybeSectagSize = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -1258,9 +1274,9 @@ parse_local_arg_repns(VarSet, [HeadTerm | TailTerms], LocalArgRepns, Specs) :-
         LocalArgRepns = [HeadLocalArgRepn | TailLocalArgRepns],
         Specs = TailSpecs
     ;
-        MaybeHeadLocalArgRepn = error1(HeadSpecs),
+        MaybeHeadLocalArgRepn = error1(OoMHeadSpecs),
         LocalArgRepns = TailLocalArgRepns,
-        Specs = HeadSpecs ++ TailSpecs
+        Specs = one_or_more_to_list(OoMHeadSpecs) ++ TailSpecs
     ).
 
 :- pred parse_local_arg_repn(varset::in, term::in,
@@ -1288,7 +1304,7 @@ parse_local_arg_repn(VarSet, Term, MaybeLocalArgRepn) :-
                     words("should have no arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeLocalArgRepn = error1([Spec])
+                MaybeLocalArgRepn = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1299,7 +1315,7 @@ parse_local_arg_repn(VarSet, Term, MaybeLocalArgRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeLocalArgRepn = error1([Spec])
+        MaybeLocalArgRepn = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_local_arg_repn_partial(varset::in,
@@ -1322,7 +1338,8 @@ parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
             Specs =
                 get_any_errors1(MaybeShift) ++
                 get_any_errors1(MaybeFillKindSize),
-            MaybeLocalArgRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeLocalArgRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -1333,7 +1350,7 @@ parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
             words("should have two arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             TermContext, Pieces),
-        MaybeLocalArgRepn = error1([Spec])
+        MaybeLocalArgRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -1351,9 +1368,9 @@ parse_remote_arg_repns(VarSet, [HeadTerm | TailTerms],
         RemoteArgRepns = [HeadRemoteArgRepn | TailRemoteArgRepns],
         Specs = TailSpecs
     ;
-        MaybeHeadRemoteArgRepn = error1(HeadSpecs),
+        MaybeHeadRemoteArgRepn = error1(OoMHeadSpecs),
         RemoteArgRepns = TailRemoteArgRepns,
-        Specs = HeadSpecs ++ TailSpecs
+        Specs = one_or_more_to_list(OoMHeadSpecs) ++ TailSpecs
     ).
 
 :- pred parse_remote_arg_repn(varset::in, term::in,
@@ -1399,7 +1416,7 @@ parse_remote_arg_repn(VarSet, Term, MaybeRemoteArgRepn) :-
                     words("should have no arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeRemoteArgRepn = error1([Spec])
+                MaybeRemoteArgRepn = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1414,7 +1431,7 @@ parse_remote_arg_repn(VarSet, Term, MaybeRemoteArgRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeRemoteArgRepn = error1([Spec])
+        MaybeRemoteArgRepn = error1(one_or_more(Spec, []))
     ).
 
 :- inst full_none_kind for string/0
@@ -1447,7 +1464,8 @@ parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
             Specs =
                 get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset),
-            MaybeRemoteArgRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeRemoteArgRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -1457,7 +1475,7 @@ parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have two arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeRemoteArgRepn = error1([Spec])
+        MaybeRemoteArgRepn = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_remote_arg_repn_double(varset::in, string::in, list(term)::in,
@@ -1496,7 +1514,8 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
             Specs =
                 get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset),
-            MaybeRemoteArgRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeRemoteArgRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -1507,7 +1526,7 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have three arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeRemoteArgRepn = error1([Spec])
+        MaybeRemoteArgRepn = error1(one_or_more(Spec, []))
     ).
 
 :- inst remote_partial_kind for string/0
@@ -1549,7 +1568,8 @@ parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
                 get_any_errors1(MaybeCellOffset) ++
                 get_any_errors1(MaybeShiftUint) ++
                 get_any_errors1(MaybeFillKindSize),
-            MaybeRemoteArgRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeRemoteArgRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -1561,7 +1581,7 @@ parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have four arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeRemoteArgRepn = error1([Spec])
+        MaybeRemoteArgRepn = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -1581,7 +1601,7 @@ parse_arg_only_offset(VarSet, Term, MaybeArgOnlyOffset) :-
                 words("at least -2, got"), quote(TermStr), suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeArgOnlyOffset = error1([Spec])
+            MaybeArgOnlyOffset = error1(one_or_more(Spec, []))
         )
     ;
         MaybeInt = error1(Specs),
@@ -1603,7 +1623,7 @@ parse_cell_offset(VarSet, Term, MaybeCellOffset) :-
                 words("at least -2, got"), quote(TermStr), suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeCellOffset = error1([Spec])
+            MaybeCellOffset = error1(one_or_more(Spec, []))
         )
     ;
         MaybeInt = error1(Specs),
@@ -1646,7 +1666,7 @@ parse_fill_kind_size(VarSet, Term, MaybeFillKindSize) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeFillKindSize = error1([Spec])
+                MaybeFillKindSize = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "int8",
@@ -1683,7 +1703,7 @@ parse_fill_kind_size(VarSet, Term, MaybeFillKindSize) :-
             quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeFillKindSize = error1([Spec])
+        MaybeFillKindSize = error1(one_or_more(Spec, []))
     ).
 
 :- pred ok_if_arity_zero(string::in, term.context::in, list(term)::in,
@@ -1699,7 +1719,7 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
         Pieces = [words("Error:"), quote(AtomStr),
             words("must not have any one arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeFillKindSize = error1([Spec])
+        MaybeFillKindSize = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -1748,7 +1768,7 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
                     words("should have zero arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeCJCsRepnOrEnum = error1([Spec])
+                MaybeCJCsRepnOrEnum = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "c_j_cs",
@@ -1773,7 +1793,8 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
                         get_any_errors1(MaybeMaybeRepnOrEnumC) ++
                         get_any_errors1(MaybeMaybeRepnOrEnumJava) ++
                         get_any_errors1(MaybeMaybeRepnOrEnumCsharp),
-                    MaybeCJCsRepnOrEnum = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeCJCsRepnOrEnum = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -1786,7 +1807,7 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
                     words("should have three arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeCJCsRepnOrEnum = error1([Spec])
+                MaybeCJCsRepnOrEnum = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1797,7 +1818,7 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeCJCsRepnOrEnum = error1([Spec])
+        MaybeCJCsRepnOrEnum = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_c_j_cs_repn(list(format_piece)::in,
@@ -1823,7 +1844,7 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
                     words("should have zero arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeCJCsRepn = error1([Spec])
+                MaybeCJCsRepn = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "c_j_cs",
@@ -1848,7 +1869,8 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
                         get_any_errors1(MaybeMaybeRepnC) ++
                         get_any_errors1(MaybeMaybeRepnJava) ++
                         get_any_errors1(MaybeMaybeRepnCsharp),
-                    MaybeCJCsRepn = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeCJCsRepn = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -1861,7 +1883,7 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
                     words("should have three arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeCJCsRepn = error1([Spec])
+                MaybeCJCsRepn = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1872,7 +1894,7 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeCJCsRepn = error1([Spec])
+        MaybeCJCsRepn = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -1904,7 +1926,7 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
                     words("should have zero arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeMaybeRepnOrEnum = error1([Spec])
+                MaybeMaybeRepnOrEnum = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "foreign_enum",
@@ -1934,7 +1956,7 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeMaybeRepnOrEnum = error1([Spec])
+                MaybeMaybeRepnOrEnum = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "foreign_type",
@@ -1961,7 +1983,7 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeMaybeRepnOrEnum = error1([Spec])
+        MaybeMaybeRepnOrEnum = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_maybe_foreign_repn(list(format_piece)::in, int::in,
@@ -1990,7 +2012,7 @@ parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
                     words("should have zero arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     TermContext, Pieces),
-                MaybeMaybeRepnOrEnum = error1([Spec])
+                MaybeMaybeRepnOrEnum = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "foreign_type",
@@ -2016,7 +2038,7 @@ parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeMaybeRepnOrEnum = error1([Spec])
+        MaybeMaybeRepnOrEnum = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -2044,7 +2066,7 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
-        MaybeRepn = error1([Spec])
+        MaybeRepn = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -2070,7 +2092,7 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
                 words("to be a string, got"), quote(TermStr), suffix("."), nl],
             TypeNameSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(TypeNameTerm), TypeNamePieces),
-            MaybeTypeName = error1([TypeNameSpec])
+            MaybeTypeName = error1(one_or_more(TypeNameSpec, []))
         ),
         ContextPieces2 = [words("In")] ++ DescPieces ++ [suffix(":"),
             words("in the"), nth_fixed(Nth), words("argument of"),
@@ -2088,7 +2110,8 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
             MaybeForeignTypeRepn = ok1(Repn)
         else
             Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs,
-            MaybeForeignTypeRepn = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeForeignTypeRepn = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -2101,7 +2124,7 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
             words("error:"), quote(AtomStr),
             words("should have zero arguments."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
-        MaybeForeignTypeRepn = error1([Spec])
+        MaybeForeignTypeRepn = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -2124,7 +2147,7 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
                     words("got an empty list."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeOoMStrings = error1([Spec])
+                MaybeOoMStrings = error1(one_or_more(Spec, []))
             ;
                 StringTerms = [_ | _],
                 % None of the terms in StringTerms were actually strings,
@@ -2132,7 +2155,8 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
                 % to be generated. This means StringSpecs cannot be empty.
                 expect_not(unify(StringSpecs, []), $pred,
                     "StringTerms != [] and Strings = [] but StringSpecs = []"),
-                MaybeOoMStrings = error1(StringSpecs)
+                det_list_to_one_or_more(StringSpecs, OoMStringSpecs),
+                MaybeOoMStrings = error1(OoMStringSpecs)
             )
         ;
             Strings = [HeadString  | TailStrings],
@@ -2140,8 +2164,8 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
                 StringSpecs = [],
                 MaybeOoMStrings = ok1(one_or_more(HeadString, TailStrings))
             ;
-                StringSpecs = [_ | _],
-                MaybeOoMStrings = error1(StringSpecs)
+                StringSpecs = [HeadSpec | TailSpecs],
+                MaybeOoMStrings = error1(one_or_more(HeadSpec, TailSpecs))
             )
         )
     else
@@ -2151,7 +2175,7 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
             quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeOoMStrings = error1([Spec])
+        MaybeOoMStrings = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -2174,12 +2198,11 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
             (
                 ArgTerms = [ArgTerm1],
                 ParseRepn(VarSet, ArgTerm1, MaybeRepn1),
-                ( if
-                    MaybeRepn1 = ok1(Repn1)
-                then
+                (
+                    MaybeRepn1 = ok1(Repn1),
                     MaybeCRepns = ok1(c_repns_same(Repn1))
-                else
-                    Specs = get_any_errors1(MaybeRepn1),
+                ;
+                    MaybeRepn1 = error1(Specs),
                     MaybeCRepns = error1(Specs)
                 )
             ;
@@ -2191,7 +2214,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                     words("should have one argument."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeCRepns = error1([Spec])
+                MaybeCRepns = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "c_repns_64_32",
@@ -2208,7 +2231,8 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                     Specs =
                         get_any_errors1(MaybeRepn1) ++
                         get_any_errors1(MaybeRepn2),
-                    MaybeCRepns = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeCRepns = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -2220,7 +2244,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                     words("should have two arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeCRepns = error1([Spec])
+                MaybeCRepns = error1(one_or_more(Spec, []))
             )
         ;
             AtomStr = "c_repns_all",
@@ -2251,7 +2275,8 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                         get_any_errors1(MaybeRepn4) ++
                         get_any_errors1(MaybeRepn5) ++
                         get_any_errors1(MaybeRepn6),
-                    MaybeCRepns = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeCRepns = error1(OoMSpecs)
                 )
             ;
                 ( ArgTerms = []
@@ -2267,7 +2292,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                     words("should have six arguments."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeCRepns = error1([Spec])
+                MaybeCRepns = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -2280,7 +2305,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeCRepns = error1([Spec])
+        MaybeCRepns = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -2317,7 +2342,7 @@ parse_string(VarSet, ContextPieces, Desc, Term, MaybeFunctorName) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeFunctorName = error1([Spec])
+        MaybeFunctorName = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e
@@ -2339,7 +2364,7 @@ parse_unlimited_int(VarSet, Term, MaybeInt) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeInt = error1([Spec])
+        MaybeInt = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_unlimited_uint(varset::in, term::in, maybe1(uint)::out) is det.
@@ -2360,7 +2385,7 @@ parse_unlimited_uint(VarSet, Term, MaybeUint) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeUint = error1([Spec])
+        MaybeUint = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_uint_in_range(uint::in, varset::in, term::in,
@@ -2384,7 +2409,7 @@ parse_uint_in_range(Max, VarSet, Term, MaybeUint) :-
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeUint = error1([Spec])
+        MaybeUint = error1(one_or_more(Spec, []))
     ).
 
 %-----------------------------------------------------------------------------e

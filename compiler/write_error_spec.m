@@ -43,6 +43,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
@@ -125,6 +126,8 @@
     error_spec::in, io::di, io::uo) is det.
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
+:- pred write_oom_error_specs(io.text_output_stream::in, globals::in,
+    one_or_more(error_spec)::in, io::di, io::uo) is det.
 
 :- pred write_error_specs_opt_table(io.text_output_stream::in,
     option_table::in, list(error_spec)::in, io::di, io::uo) is det.
@@ -249,7 +252,6 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
-:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module stack.
@@ -288,6 +290,9 @@ write_error_specs(Stream, Globals, Specs0, !IO) :-
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO).
+
+write_oom_error_specs(Stream, Globals, OoMSpecs, !IO) :-
+    write_error_specs(Stream, Globals, one_or_more_to_list(OoMSpecs), !IO).
 
 %---------------------%
 

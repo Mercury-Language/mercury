@@ -95,6 +95,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -234,7 +235,7 @@ add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
             !.PredSpecs = [],
             (
                 MaybeBodyGoal = error2(BodyGoalSpecs),
-                !:Specs = BodyGoalSpecs ++ !.Specs,
+                !:Specs = one_or_more_to_list(BodyGoalSpecs) ++ !.Specs,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 Clauses = Clauses0 ^ cli_had_syntax_errors :=
                     some_clause_syntax_errors,
@@ -556,7 +557,7 @@ get_mode_annotations(VarSet, ContextPieces, ArgNum, [MAArgTerm | MAArgTerms],
         MaybeMaybeMode = error1(MaybeModeSpecs),
         ArgModes = TailArgModes,
         ArgsWithoutModes = TailArgsWithoutModes,
-        Specs = MaybeModeSpecs ++ TailSpecs
+        Specs = one_or_more_to_list(MaybeModeSpecs) ++ TailSpecs
     ).
 
     % Extract the mode annotations (if any) from a single argument.

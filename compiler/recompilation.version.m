@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2087,7 +2087,7 @@ parse_item_type_version_numbers(Term, Result) :-
         Pieces = [words("Invalid item type version numbers."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_key_version_number(
@@ -2109,7 +2109,7 @@ parse_key_version_number(ParseName, Term, Result) :-
         Pieces = [words("Error in item version number."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_item_version_number(
@@ -2131,7 +2131,7 @@ parse_item_version_number(ParseName, Term, Result) :-
         Pieces = [words("Error in item version number."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

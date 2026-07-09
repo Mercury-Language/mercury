@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,6 +30,7 @@
 
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
@@ -102,6 +103,8 @@
 :- pred add_unravel_spec(error_spec::in,
     unravel_info::in, unravel_info::out) is det.
 :- pred add_unravel_specs(list(error_spec)::in,
+    unravel_info::in, unravel_info::out) is det.
+:- pred add_unravel_oom_specs(one_or_more(error_spec)::in,
     unravel_info::in, unravel_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -417,7 +420,6 @@
 :- import_module counter.
 :- import_module io.
 :- import_module maybe.
-:- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
@@ -458,6 +460,11 @@ add_unravel_specs(NewSpecs, !UrInfo) :-
         Specs = NewSpecs ++ Specs0,
         !UrInfo ^ ui_error_specs := Specs
     ).
+
+add_unravel_oom_specs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_error_specs,
+    Specs = [HeadSpec | TailSpecs] ++ Specs0,
+    !UrInfo ^ ui_error_specs := Specs.
 
 %---------------------------------------------------------------------------%
 %

@@ -43,6 +43,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 
@@ -162,7 +163,7 @@
     ;       uf_invalid_file_format(file_name)
             % The named file does not start with a valid version number
             % for a .used file.
-    ;       uf_unreadable_used_items(list(error_spec)).
+    ;       uf_unreadable_used_items(one_or_more(error_spec)).
             % XXX document this
 
     % This type represents the part of the .used file *after*

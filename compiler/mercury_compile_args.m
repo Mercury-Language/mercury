@@ -127,6 +127,8 @@ setup_all_args(ProgressStream, CmdLineArgs, ArgResult, !IO) :-
             ),
             MaybeStdLibGrades = stdlib_grades_unknown,
             lookup_mercury_stdlib_dir(EnvOptFileVariables,
+                MaybeEnvOptFileStdLibDirs0),
+            maybe1_to_maybe1el(MaybeEnvOptFileStdLibDirs0,
                 MaybeEnvOptFileStdLibDirs),
             handle_given_options(ProgressStream, DefaultOptionTable,
                 MaybeStdLibGrades, MaybeEnvOptFileStdLibDirs, AllFlags, _, _,
@@ -153,8 +155,7 @@ setup_all_args(ProgressStream, CmdLineArgs, ArgResult, !IO) :-
         ;
             OptResult = opr_failure(OptionSpecs),
             % Usually, these OptionSpecs were generated in options_file.m.
-            det_list_to_one_or_more(OptionSpecs, OoMOptionSpecs),
-            ArgResult = apr_failure(DefaultOptionTable, OoMOptionSpecs)
+            ArgResult = apr_failure(DefaultOptionTable, OptionSpecs)
         )
     ;
         ExpandSpecs = [HeadExpandSpec | TailExpandSpecs],
@@ -201,7 +202,7 @@ expand_at_file_arguments_loop([Arg | Args], !ExpandedArgs, !Specs, !IO) :-
                 % This field should really contain one_or_more(error_spec),
                 % but some of the predicates that find errors date from
                 % before the introduction of the one_or_more type.
-                oprf_fatal_errors           :: list(error_spec)
+                oprf_fatal_errors           :: one_or_more(error_spec)
             )
     ;       opr_success(
                 oprs_env_optfile_variables  :: env_optfile_variables,
@@ -244,7 +245,8 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         (
             Errors = [_ | _],
             OptionSpecs = list.map(option_error_to_error_spec, Errors),
-            Result = opr_failure(OptionSpecs)
+            det_list_to_one_or_more(OptionSpecs, OoMOptionSpecs),
+            Result = opr_failure(OoMOptionSpecs)
         ;
             Errors = [],
             Result = opr_success(EnvOptFileVariables, [],
@@ -302,8 +304,8 @@ process_options_std(ProgressStream, DefaultOptionTable, CmdLineArgs,
         ),
         io.environment.get_environment_var_map(EnvVarMap, !IO),
         (
-            OptFileSpecs = [_ | _],
-            Result = opr_failure(OptFileSpecs)
+            OptFileSpecs = [HeadSpec | TailSpecs],
+            Result = opr_failure(one_or_more(HeadSpec, TailSpecs))
         ;
             OptFileSpecs = [],
             maybe_dump_options_file(ProgressStream, ArgsOptionTable,
@@ -341,13 +343,14 @@ process_options_std(ProgressStream, DefaultOptionTable, CmdLineArgs,
                     process_options_std_config_file(ProgressStream,
                         FlagsArgsOptionTable, EnvVarMap, WarnUndef,
                         EnvOptFileVariables0, EnvOptFileVariables,
-                        MaybeMCFlags, OptFileOkSpecs, !IO),
-                    Specs = OptFileSpecs ++ OptFileOkSpecs,
+                        MaybeMCFlags, OtherConfigSpecs, !IO),
+                    Specs = OptFileSpecs ++ OtherConfigSpecs,
                     (
-                        MaybeMCFlags = no,
-                        Result = opr_failure(Specs)
+                        MaybeMCFlags = error1(OoMFlagSpecs),
+                        append_one_or_more_list(OoMFlagSpecs, Specs, OoMSpecs),
+                        Result = opr_failure(OoMSpecs)
                     ;
-                        MaybeMCFlags = yes(MCFlags),
+                        MaybeMCFlags = ok1(MCFlags),
                         Result = opr_success(EnvOptFileVariables, MCFlags,
                             OptionArgs, NonOptionArgs, Specs)
                     )
@@ -361,11 +364,11 @@ process_options_std(ProgressStream, DefaultOptionTable, CmdLineArgs,
 :- pred process_options_std_config_file(io.text_output_stream::in,
     option_table::in, environment_var_map::in, bool::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
+    maybe1(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
 
 process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
         EnvVarMap, WarnUndef, EnvOptFileVariables0, EnvOptFileVariables,
-        MaybeMCFlags, Specs, !IO) :-
+        MaybeMCFlags, OtherSpecs, !IO) :-
     getopt.lookup_maybe_string_option(FlagsArgsOptionTable, config_file,
         MaybeConfigFile0),
     % The meanings of the possible values of MaybeConfigFile0 are as follows.
@@ -399,30 +402,19 @@ process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
         MaybeConfigFile = yes(ConfigFile),
         read_named_options_file(ProgressStream, ConfigFile,
             EnvOptFileVariables0, EnvOptFileVariables,
-            ConfigNonUndefSpecs, ConfigUndefSpecs, !IO),
+            ConfigNonUndefSpecs, ConfigUndefSpecs0, !IO),
         % All entries in ConfigNonUndefSpecs are unconditionally errors.
         % All entries in ConfigUndefSpecs are unconditionally warnings.
         (
             WarnUndef = no,
-            ConfigSpecs = ConfigNonUndefSpecs
+            ConfigUndefSpecs = []
         ;
             WarnUndef = yes,
-            ConfigSpecs = ConfigNonUndefSpecs ++ ConfigUndefSpecs
+            ConfigUndefSpecs = ConfigUndefSpecs0
         ),
         (
             ConfigNonUndefSpecs = [],
-            lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags1),
-            (
-                MaybeMCFlags1 = ok1(MCFlags1),
-                MaybeMCFlags = yes(MCFlags1),
-                Specs0 = ConfigSpecs
-            ;
-                MaybeMCFlags1 = error1(MCFlagsSpecs),
-                % All error_specs in MCFlagsSpecs are errors, not warnings.
-                MaybeMCFlags = no,
-                Specs0 = ConfigSpecs ++ MCFlagsSpecs
-            ),
-
+            lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags),
             % maybe_libgrade_opts_for_detected_stdlib_grades does this lookup,
             % but only if --mercury-stdlib-dir is NOT specified. Because of
             % that, it is simpler to repeat the call here than to try to
@@ -433,31 +425,23 @@ process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
             % found and fixed up front.
             lookup_mercury_stdlib_dir(EnvOptFileVariables,
                 MaybeConfigMerStdLibDir),
-            Specs = Specs0 ++ get_any_errors1(MaybeConfigMerStdLibDir)
+            OtherSpecs = ConfigUndefSpecs ++
+                get_any_errors1(MaybeConfigMerStdLibDir)
         ;
-            ConfigNonUndefSpecs = [_ | _],
-            MaybeMCFlags = no,
-            Specs = ConfigSpecs
+            ConfigNonUndefSpecs = [HeadSpec | TailSpecs],
+            MaybeMCFlags = error1(one_or_more(HeadSpec, TailSpecs)),
+            OtherSpecs = ConfigUndefSpecs
         )
     ;
         MaybeConfigFile = no,
         EnvOptFileVariables = env_optfile_variables_init(EnvVarMap),
-        lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags1),
-        (
-            MaybeMCFlags1 = ok1(MCFlags1),
-            MaybeMCFlags = yes(MCFlags1),
-            Specs = []
-        ;
-            MaybeMCFlags1 = error1(MCFlagsSpecs),
-            % All error_specs in MCFlagsSpecs are errors, not warnings.
-            MaybeMCFlags = no,
-            Specs = MCFlagsSpecs
-        )
+        lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags),
+        OtherSpecs = []
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func report_option_error(option_error(option)) = list(error_spec).
+:- func report_option_error(option_error(option)) = one_or_more(error_spec).
 
 report_option_error(OptionError) = Specs :-
     OptionErrorStr = option_error_to_string(OptionError),
@@ -495,7 +479,8 @@ report_option_error(OptionError) = Specs :-
     else
         Msgs = [MainMsg]
     ),
-    Specs = [error_spec($pred, severity_error, phase_options, Msgs)].
+    Spec = error_spec($pred, severity_error, phase_options, Msgs),
+    Specs = one_or_more(Spec, []).
 
 %---------------------------------------------------------------------------%
 

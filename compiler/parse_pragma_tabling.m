@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2020-2024 The Mercury team.
+% Copyright (C) 2020-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,6 +50,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 
@@ -120,8 +121,8 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                         Item = item_impl_pragma(ImplPragma),
                         MaybeIOM = ok1(iom_item(Item))
                     ;
-                        DuplicateSpecs = [_ | _],
-                        MaybeIOM = error1(DuplicateSpecs)
+                        DuplicateSpecs = [HeadSpec | TailSpecs],
+                        MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
                     )
                 ;
                     MaybeAttributeList = error1(Specs),
@@ -144,7 +145,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -213,7 +214,7 @@ parse_tabling_attribute(ContextPieces, TabledMethod, VarSet, Term,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -233,8 +234,8 @@ parse_tabling_attr_fast_loose(ContextPieces, TabledMethod, _VarSet,
             Attribute = attr_strictness(cts_all_fast_loose),
             MaybeContextAttribute = ok1(Context - Attribute)
         ;
-            FastLooseSpecs = [_ | _],
-            MaybeContextAttribute = error1(FastLooseSpecs)
+            FastLooseSpecs = [HeadSpec | TailSpecs],
+            MaybeContextAttribute = error1(one_or_more(HeadSpec, TailSpecs))
         )
     ;
         ArgTerms = [_ | _],
@@ -245,7 +246,7 @@ parse_tabling_attr_fast_loose(ContextPieces, TabledMethod, _VarSet,
             color_as_incorrect([words("no arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -289,7 +290,7 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
                     [nl],
                 HiddenArgSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HiddenArgTerm), HiddenArgPieces),
-                MaybeHiddenArg = error1([HiddenArgSpec])
+                MaybeHiddenArg = error1(one_or_more(HiddenArgSpec, []))
             )
         ),
         MethodsContextPieces = ContextPieces ++
@@ -313,7 +314,8 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
             Specs = get_any_errors1(MaybeMaybeArgMethods) ++
                 get_any_errors1(MaybeHiddenArg) ++
                 FastLooseSpecs,
-            MaybeContextAttribute = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeContextAttribute = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -326,7 +328,7 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
             color_as_incorrect([words("one or two arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_arg_tabling_method(cord(format_piece)::in,
@@ -365,7 +367,7 @@ parse_arg_tabling_method(ContextPieces, VarSet, Term,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeMaybeArgTablingMethod = error1([Spec])
+        MaybeMaybeArgTablingMethod = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -407,7 +409,8 @@ parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
             MaybeContextAttribute = ok1(Context - Attribute)
         else
             Specs = get_any_errors1(MaybeLimit) ++ AllowSpecs,
-            MaybeContextAttribute = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeContextAttribute = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -420,7 +423,7 @@ parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
             color_as_incorrect([words("one argument.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -444,7 +447,7 @@ parse_tabling_attr_statistics(ContextPieces, _TabledMethod, _VarSet,
             color_as_incorrect([words("no arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -468,7 +471,7 @@ parse_tabling_attr_allow_reset(ContextPieces, _TabledMethod, _VarSet,
             color_as_incorrect([words("no arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -497,7 +500,7 @@ parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
                     [words("does not allow disable_warning_if_ignored.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeContextAttribute = error1([Spec])
+            MaybeContextAttribute = error1(one_or_more(Spec, []))
         )
     ;
         ArgTerms = [_ | _],
@@ -508,7 +511,7 @@ parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
             color_as_incorrect([words("no arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeContextAttribute = error1([Spec])
+        MaybeContextAttribute = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

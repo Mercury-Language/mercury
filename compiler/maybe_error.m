@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015, 2017, 2021-2024 The Mercury team.
+% Copyright (C) 2015, 2017, 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,6 +12,7 @@
 :- import_module parse_tree.error_spec.
 
 :- import_module list.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
@@ -52,16 +53,29 @@
     ;       ok6(T1, T2, T3, T4, T5, T6).
 
 :- type maybe1(T1) ==
-    maybe1(T1, list(error_spec)).
+    maybe1(T1, one_or_more(error_spec)).
 :- type maybe2(T1, T2) ==
-    maybe2(T1, T2, list(error_spec)).
+    maybe2(T1, T2, one_or_more(error_spec)).
 :- type maybe3(T1, T2, T3) ==
-    maybe3(T1, T2, T3, list(error_spec)).
+    maybe3(T1, T2, T3, one_or_more(error_spec)).
 :- type maybe4(T1, T2, T3, T4) ==
-    maybe4(T1, T2, T3, T4, list(error_spec)).
+    maybe4(T1, T2, T3, T4, one_or_more(error_spec)).
 :- type maybe5(T1, T2, T3, T4, T5) ==
-    maybe5(T1, T2, T3, T4, T5, list(error_spec)).
+    maybe5(T1, T2, T3, T4, T5, one_or_more(error_spec)).
 :- type maybe6(T1, T2, T3, T4, T5, T6) ==
+    maybe6(T1, T2, T3, T4, T5, T6, one_or_more(error_spec)).
+
+:- type maybe1el(T1) ==
+    maybe1(T1, list(error_spec)).
+:- type maybe2el(T1, T2) ==
+    maybe2(T1, T2, list(error_spec)).
+:- type maybe3el(T1, T2, T3) ==
+    maybe3(T1, T2, T3, list(error_spec)).
+:- type maybe4el(T1, T2, T3, T4) ==
+    maybe4(T1, T2, T3, T4, list(error_spec)).
+:- type maybe5el(T1, T2, T3, T4, T5) ==
+    maybe5(T1, T2, T3, T4, T5, list(error_spec)).
+:- type maybe6el(T1, T2, T3, T4, T5, T6) ==
     maybe6(T1, T2, T3, T4, T5, T6, list(error_spec)).
 
 %---------------------%
@@ -99,6 +113,13 @@
 :- func get_any_errors5(maybe5(T1, T2, T3, T4, T5)) = list(error_spec).
 :- func get_any_errors6(maybe6(T1, T2, T3, T4, T5, T6)) = list(error_spec).
 
+:- func get_any_errors1el(maybe1el(T1)) = list(error_spec).
+:- func get_any_errors2el(maybe2el(T1, T2)) = list(error_spec).
+:- func get_any_errors3el(maybe3el(T1, T2, T3)) = list(error_spec).
+:- func get_any_errors4el(maybe4el(T1, T2, T3, T4)) = list(error_spec).
+:- func get_any_errors5el(maybe5el(T1, T2, T3, T4, T5)) = list(error_spec).
+:- func get_any_errors6el(maybe6el(T1, T2, T3, T4, T5, T6)) = list(error_spec).
+
 :- func get_any_errors_warnings2(maybe2(T1, list(warning_spec))) =
     list(error_spec).
 :- func get_any_errors_warnings3(maybe3(T1, T2, list(warning_spec))) =
@@ -117,6 +138,10 @@
     list(T1)::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred maybe1_to_maybe1el(maybe1(T)::in, maybe1el(T)::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -126,39 +151,59 @@
 %---------------------------------------------------------------------------%
 
 get_any_errors1(ok1(_)) = [].
-get_any_errors1(error1(Specs)) = Specs.
+get_any_errors1(error1(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors2(ok2(_, _)) = [].
-get_any_errors2(error2(Specs)) = Specs.
+get_any_errors2(error2(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors3(ok3(_, _, _)) = [].
-get_any_errors3(error3(Specs)) = Specs.
+get_any_errors3(error3(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors4(ok4(_, _, _, _)) = [].
-get_any_errors4(error4(Specs)) = Specs.
+get_any_errors4(error4(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors5(ok5(_, _, _, _, _)) = [].
-get_any_errors5(error5(Specs)) = Specs.
+get_any_errors5(error5(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors6(ok6(_, _, _, _, _, _)) = [].
-get_any_errors6(error6(Specs)) = Specs.
+get_any_errors6(error6(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
+
+%---------------------%
+
+get_any_errors1el(ok1(_)) = [].
+get_any_errors1el(error1(Specs)) = Specs.
+
+get_any_errors2el(ok2(_, _)) = [].
+get_any_errors2el(error2(Specs)) = Specs.
+
+get_any_errors3el(ok3(_, _, _)) = [].
+get_any_errors3el(error3(Specs)) = Specs.
+
+get_any_errors4el(ok4(_, _, _, _)) = [].
+get_any_errors4el(error4(Specs)) = Specs.
+
+get_any_errors5el(ok5(_, _, _, _, _)) = [].
+get_any_errors5el(error5(Specs)) = Specs.
+
+get_any_errors6el(ok6(_, _, _, _, _, _)) = [].
+get_any_errors6el(error6(Specs)) = Specs.
 
 %---------------------%
 
 get_any_errors_warnings2(ok2(_, Specs)) = Specs.
-get_any_errors_warnings2(error2(Specs)) = Specs.
+get_any_errors_warnings2(error2(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors_warnings3(ok3(_, _, Specs)) = Specs.
-get_any_errors_warnings3(error3(Specs)) = Specs.
+get_any_errors_warnings3(error3(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors_warnings4(ok4(_, _, _, Specs)) = Specs.
-get_any_errors_warnings4(error4(Specs)) = Specs.
+get_any_errors_warnings4(error4(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors_warnings5(ok5(_, _, _, _, Specs)) = Specs.
-get_any_errors_warnings5(error5(Specs)) = Specs.
+get_any_errors_warnings5(error5(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 get_any_errors_warnings6(ok6(_, _, _, _, _, Specs)) = Specs.
-get_any_errors_warnings6(error6(Specs)) = Specs.
+get_any_errors_warnings6(error6(OoMSpecs)) = one_or_more_to_list(OoMSpecs).
 
 %---------------------%
 
@@ -194,10 +239,21 @@ separate_ok1_error1_loop([Maybe | Maybes], !RevOKs, !Specs) :-
         Maybe = ok1(OK),
         !:RevOKs = [OK | !.RevOKs]
     ;
-        Maybe = error1(CurSpecs),
-        !:Specs = CurSpecs ++ !.Specs
+        Maybe = error1(OoMCurSpecs),
+        !:Specs = one_or_more_to_list(OoMCurSpecs) ++ !.Specs
     ),
     separate_ok1_error1_loop(Maybes, !RevOKs, !Specs).
+
+%---------------------------------------------------------------------------%
+
+maybe1_to_maybe1el(Maybe, MaybeEl) :-
+    (
+        Maybe = ok1(T),
+        MaybeEl = ok1(T)
+    ;
+        Maybe= error1(OoM),
+        MaybeEl = error1(one_or_more_to_list(OoM))
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.maybe_error.

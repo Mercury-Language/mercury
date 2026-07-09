@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -104,6 +104,7 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -604,13 +605,15 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
         MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
         AllFlags = MCFlags ++ EnvVarArgs ++ OptionArgs,
         lookup_mercury_stdlib_dir(EnvOptFileVariables,
+            MaybeEnvOptFileStdLibDirs0),
+        maybe1_to_maybe1el(MaybeEnvOptFileStdLibDirs0,
             MaybeEnvOptFileStdLibDirs),
         handle_given_options(ProgressStream, DefaultOptionTable,
             MaybeStdLibGrades, MaybeEnvOptFileStdLibDirs, AllFlags, _, _,
             OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
-        write_error_specs(ProgressStream, Globals, LookupSpecs, !IO),
+        write_oom_error_specs(ProgressStream, Globals, LookupSpecs, !IO),
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),

@@ -57,6 +57,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module mercury_term_parser.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -143,7 +144,7 @@ compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
             TransOptDepsGraph = digraph.transitive_closure(TrimmedImpDepsGraph)
         ;
             MaybeEdgesToRemove = error1(EdgeSpecs),
-            !:Specs = EdgeSpecs ++ !.Specs,
+            !:Specs = one_or_more_to_list(EdgeSpecs) ++ !.Specs,
             TransOptDepsGraph = IndirectOptDepsGraph
         )
     ;
@@ -244,8 +245,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
                 words("due to the presence of errors."), nl],
             IgnoreSpec = spec($pred, severity_error, phase_read_files,
                 LastContext, IgnorePieces),
-            FileSpecs = [IgnoreSpec | FileSpecs0],
-            Result = error1(FileSpecs)
+            Result = error1(one_or_more(IgnoreSpec, FileSpecs0))
         )
     ;
         ReadResult = error(Error),
@@ -253,7 +253,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
             words(io.error_message(Error)), suffix("."), nl],
         Spec = no_ctxt_spec($pred, severity_error,
             phase_find_files(FileName, no), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_trans_opt_deps_spec_file(string::in, string::in, int::in,

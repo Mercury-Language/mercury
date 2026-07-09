@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury Team.
+% Copyright (C) 2025-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,6 +66,7 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 
@@ -717,7 +718,7 @@ check_color_options(!OptionTable, !Specs, !IO) :-
         MaybeConvertColorSpecs = ok1(_)
     ;
         MaybeConvertColorSpecs = error1(ConvertColorSpecs),
-        !:Specs = ConvertColorSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(ConvertColorSpecs) ++ !.Specs
     ).
 
 %---------------------------------------------------------------------------%

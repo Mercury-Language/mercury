@@ -184,7 +184,7 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
             % to the Mercury module itself, except insofar as the problem
             % may be caused by e.g. an unrecognized option name in a
             % module-specific MCFLAGS make variable.
-            write_error_specs(ProgressStream, Globals, Specs, !IO),
+            write_oom_error_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded = did_not_succeed
         )
     ;
@@ -893,7 +893,7 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
         MayBuild = may_not_build(Specs),
         % XXX MAKE_STREAM
         get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
-        write_error_specs(ErrorStream, Globals, Specs, !IO),
+        write_oom_error_specs(ErrorStream, Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,6 +30,7 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
@@ -41,7 +42,7 @@
     ;       invoked_by_mmc_make.
 
 :- type may_build
-    --->    may_not_build(list(error_spec))
+    --->    may_not_build(one_or_more(error_spec))
     ;       may_build(list(string), globals).
             % All the arguments for the build, and the globals we have set up
             % for the build.
@@ -228,13 +229,15 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         AllOptionArgs = InvokedByMakeFlags ++ ModuleOptionArgs ++
             EnvVarArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirsFlags,
         lookup_mercury_stdlib_dir(EnvOptFileVariables,
+            MaybeEnvOptFileStdLibDirs0),
+        maybe1_to_maybe1el(MaybeEnvOptFileStdLibDirs0,
             MaybeEnvOptFileStdLibDirs),
         handle_given_options(ProgressStream, DefaultOptionTable,
             MaybeStdLibGrades, MaybeEnvOptFileStdLibDirs, AllOptionArgs, _, _,
             OptionSpecs, BuildGlobals, !IO),
         (
-            OptionSpecs = [_ | _],
-            MayBuild = may_not_build(OptionSpecs)
+            OptionSpecs = [HeadSpec | TailSpecs],
+            MayBuild = may_not_build(one_or_more(HeadSpec, TailSpecs))
         ;
             OptionSpecs = [],
             MayBuild = may_build(AllOptionArgs, BuildGlobals)

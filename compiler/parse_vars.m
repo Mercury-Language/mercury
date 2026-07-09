@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2019, 2022, 2024 The Mercury team.
+% Copyright (C) 2016, 2019, 2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -86,6 +86,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 
 :- import_module bag.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
@@ -131,7 +132,7 @@ parse_and_check_quant_vars(QuantType, VarOrTypeVar, InitContextPieces,
                     color_as_incorrect([words("repeated.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(VarsTerm), Pieces),
-            MaybeVars = error1([Spec])
+            MaybeVars = error1(one_or_more(Spec, []))
         )
     ;
         MaybeVars0 = error1(_),
@@ -151,7 +152,7 @@ parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             HeadTerm = term.functor(_, _, _),
             generate_unexpected_term_message(ContextPieces, VarSet,
                 "variable", HeadTerm, Spec),
-            MaybeHeadVar = error1([Spec])
+            MaybeHeadVar = error1(one_or_more(Spec, []))
         ),
         parse_possibly_repeated_vars(TailTerm, VarSet, ContextPieces,
             MaybeTailVars),
@@ -163,12 +164,13 @@ parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         else
             Specs = get_any_errors1(MaybeHeadVar) ++
                 get_any_errors1(MaybeTailVars),
-            MaybeVars = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeVars = error1(OoMSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables", Term, Spec),
-        MaybeVars = error1([Spec])
+        MaybeVars = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -194,7 +196,7 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
                 "variable or state variable", HeadTerm, HeadSpec),
-            MaybeHeadVar = error1([HeadSpec])
+            MaybeHeadVar = error1(one_or_more(HeadSpec, []))
         ),
         parse_vars_state_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
         ( if
@@ -206,7 +208,7 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 ( if list.member(V, TailVars) then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     Vars = [V | TailVars],
                     MaybeVars = ok1(plain_state_vars(Vars, TailStateVars))
@@ -216,7 +218,7 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 ( if list.member(SV, TailStateVars) then
                     generate_repeated_state_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     StateVars = [SV | TailStateVars],
                     MaybeVars = ok1(plain_state_vars(TailVars, StateVars))
@@ -225,12 +227,13 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         else
             Specs = get_any_errors1(MaybeHeadVar) ++
                 get_any_errors1(MaybeTailVars),
-            MaybeVars = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeVars = error1(OoMSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables and/or state variables", Term, Spec),
-        MaybeVars = error1([Spec])
+        MaybeVars = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -264,7 +267,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
                 "variable or state variable", HeadTerm, HeadSpec),
-            MaybeHeadVar = error1([HeadSpec])
+            MaybeHeadVar = error1(one_or_more(HeadSpec, []))
         ),
         parse_vars_state_dot_colon_vars(Tail, VarSet, ContextPieces,
             MaybeTailVars),
@@ -278,7 +281,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 ( if list.member(V, TailVars) then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     Vars = [V | TailVars],
                     MaybeVars = ok1(plain_state_dot_colon_vars(Vars,
@@ -294,7 +297,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     StateVars = [SV | TailStateVars],
                     MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
@@ -310,7 +313,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     DotVars = [SV | TailDotVars],
                     MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
@@ -326,7 +329,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
+                    MaybeVars = error1(one_or_more(Spec, []))
                 else
                     ColonVars = [SV | TailColonVars],
                     MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
@@ -334,14 +337,15 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 )
             )
         else
-            HeadSpecs = get_any_errors1(MaybeHeadVar),
-            TailSpecs = get_any_errors1(MaybeTailVars),
-            MaybeVars = error1(HeadSpecs ++ TailSpecs)
+            Specs = get_any_errors1(MaybeHeadVar) ++
+                get_any_errors1(MaybeTailVars),
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeVars = error1(OoMSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables and/or state variables", Term, Spec),
-        MaybeVars = error1([Spec])
+        MaybeVars = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

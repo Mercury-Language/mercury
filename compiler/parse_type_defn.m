@@ -112,7 +112,7 @@ parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [words("should be followed by a type definition.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -150,7 +150,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_incorrect([words("should have just one argument,")]) ++
             [words("which should be the definition of a type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -259,13 +259,14 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 RecoverableSpecs = [],
                 IOM = iom_item(Item)
             ;
-                RecoverableSpecs = [_ | _],
-                IOM = iom_item_and_error_specs(Item, RecoverableSpecs)
+                RecoverableSpecs = [HeadSpec | TailSpecs],
+                OoMRecoverableSpecs = one_or_more(HeadSpec, TailSpecs),
+                IOM = iom_item_and_error_specs(Item, OoMRecoverableSpecs)
             ),
             MaybeIOM = ok1(IOM)
         ;
-            ErrorSpecs = [_ | _],
-            MaybeIOM = error1(ErrorSpecs)
+            ErrorSpecs = [HeadSpec | TailSpecs],
+            MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
         )
     else
         Specs = SolverSpecs ++
@@ -273,7 +274,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             get_any_errors1(MaybeSuperType0) ++
             get_any_errors1(MaybeOneOrMoreCtors) ++
             get_any_errors3(MaybeWhere),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 %---------------------%
@@ -341,7 +343,8 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
         else
             Specs = get_any_errors1(MaybeHeadConstructor) ++
                 get_any_errors1(MaybeTailConstructors),
-            MaybeConstructors = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeConstructors = error1(OoMSpecs)
         )
     ).
 
@@ -482,10 +485,11 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
                 Functor, ConstructorArgs, Arity, MainTermContext),
             MaybeConstructor = ok1(Ctor)
         else
-            Specs = get_any_errors1(MaybeMaybeExistConstraints) ++
-                get_any_errors1(MaybeFunctor) ++
+            Specs = get_any_errors1el(MaybeMaybeExistConstraints) ++
+                get_any_errors1el(MaybeFunctor) ++
                 get_any_errors1(MaybeConstructorArgs) ++ NoArgsSpecs,
-            MaybeConstructor = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeConstructor = error1(OoMSpecs)
         )
     ).
 
@@ -533,7 +537,7 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeConstructorArgs = error1([Spec])
+                MaybeConstructorArgs = error1(one_or_more(Spec, []))
             ;
                 SymNameArgs = [],
                 NameCtxt = get_term_context(NameTerm),
@@ -930,14 +934,15 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             Item = item_type_defn(ItemTypeDefn),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            FreeSpecs = [_ | _],
-            MaybeIOM = error1(FreeSpecs)
+            FreeSpecs = [HeadSpec | TailSpecs],
+            MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
         )
     else
         Specs = SolverSpecs ++
             get_any_errors2(MaybeNameAndParams) ++
             get_any_errors1(MaybeType),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -980,7 +985,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HeadTerm), Pieces),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             ;
                 MaybeDirectArgCtors = no,
                 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
@@ -1021,7 +1026,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
-                MaybeTypeDefn = error1([Spec])
+                MaybeTypeDefn = error1(one_or_more(Spec, []))
             )
         else
             Pieces = [words("Error:")] ++
@@ -1030,7 +1035,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [words("should have exactly one argument.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeTypeDefn = error1([Spec])
+            MaybeTypeDefn = error1(one_or_more(Spec, []))
         )
     else if
         BodyTerm = term.functor(term.atom(AttrName), Args, _),
@@ -1051,7 +1056,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
-                MaybeTypeDefn = error1([Spec])
+                MaybeTypeDefn = error1(one_or_more(Spec, []))
             )
         else
             Pieces = [words("Error:")] ++
@@ -1060,7 +1065,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     [words("should have exactly one argument.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeTypeDefn = error1([Spec])
+            MaybeTypeDefn = error1(one_or_more(Spec, []))
         )
     else
         Pieces = [words("Error:")] ++
@@ -1068,7 +1073,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                 words("attribute")]) ++
             [words("for abstract non-solver type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeTypeDefn = error1([Spec])
+        MaybeTypeDefn = error1(one_or_more(Spec, []))
     ),
     ( if
         MaybeNameParams = ok2(Name, Params),
@@ -1081,7 +1086,8 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
     else
         Specs = get_any_errors2(MaybeNameParams) ++
             get_any_errors1(MaybeTypeDefn),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
@@ -1131,7 +1137,8 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeIOM = ok1(iom_item(Item))
     else
         Specs = SolverSpecs ++ get_any_errors2(MaybeNameParams) ++ FreeSpecs,
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1230,7 +1237,7 @@ parse_type_decl_where_term(IsSolverType, ModuleName, SeqNum, VarSet, Term0,
                 [nl],
             EndSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(EndTerm), Pieces),
-            MaybeEndSpec = error1([EndSpec])
+            MaybeEndSpec = error1(one_or_more(EndSpec, []))
         )
     ),
     MaybeWhereDetails = make_maybe_where_details(
@@ -1286,7 +1293,7 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
                 [simple_msg(get_term_context(EndTerm),
                     [always(Pieces),
                     verbose_only(verbose_always, VerbosePieces)])]),
-            MaybeWhereEnd = error1([EndSpec])
+            MaybeWhereEnd = error1(one_or_more(EndSpec, []))
         )
     ),
     ( if
@@ -1305,7 +1312,7 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
                     ok1(noncanon(noncanon_abstract(non_solver_type)))
             else
                 Spec = abstract_noncanonical_excludes_others(Term0),
-                MaybeMaybeCanonical = error1([Spec])
+                MaybeMaybeCanonical = error1(one_or_more(Spec, []))
             )
         ;
             TypeIsAbstractNoncanonical = no,
@@ -1317,7 +1324,8 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
             get_any_errors1(MaybeEqualityIs) ++
             get_any_errors1(MaybeComparisonIs) ++
             get_any_errors1(MaybeWhereEnd),
-        MaybeMaybeCanonical = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeMaybeCanonical = error1(OoMSpecs)
     ).
 
     % parse_where_attribute(Parser, Result, MaybeTerm, MaybeTailTerm) handles
@@ -1383,7 +1391,7 @@ parse_where_is(Name, Parser, Term) = Result :-
         Pieces = [words("Error: expected"), quote("is"), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 :- func parse_where_type_is_abstract_noncanonical(term) = maybe1(maybe(unit)).
@@ -1424,7 +1432,7 @@ parse_where_inst_is(_ModuleName, VarSet, ContextPieces, Term) = MaybeInst :-
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeInst = error1([Spec])
+            MaybeInst = error1(one_or_more(Spec, []))
         else
             MaybeInst = ok1(Inst)
         )
@@ -1465,7 +1473,7 @@ parse_where_mutable_is(ModuleName, SeqNum, VarSet, Term) = MaybeItems :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeItems = error1([Spec])
+        MaybeItems = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_mutable_decl_term(module_name::in, item_seq_num::in,
@@ -1485,7 +1493,7 @@ parse_mutable_decl_term(ModuleName, SeqNum, VarSet, Term,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeItemMutableInfo = error1([Spec])
+        MaybeItemMutableInfo = error1(one_or_more(Spec, []))
     ).
 
 :- func parse_where_direct_arg_is(module_name, varset, term) =
@@ -1501,7 +1509,7 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
             [words("in"), quote("direct_arg"), words("attribute."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeDirectArgCtors = error1([Spec])
+        MaybeDirectArgCtors = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_direct_arg_functor(module_name::in, varset::in, term::in,
@@ -1527,7 +1535,7 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeFunctor = error1([Spec])
+        MaybeFunctor = error1(one_or_more(Spec, []))
     ).
 
 :- func make_maybe_where_details(is_solver_type, maybe1(maybe(unit)),
@@ -1569,7 +1577,8 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
             get_any_errors1(MaybeComparisonIs) ++
             get_any_errors1(MaybeDirectArgIs) ++
             get_any_errors1(MaybeWhereEnd),
-        MaybeWhereDetails = error3(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeWhereDetails = error3(OoMSpecs)
     ).
 
 :- func make_maybe_where_details_2(is_solver_type, maybe(unit),
@@ -1601,7 +1610,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 ok3(no, noncanon(noncanon_abstract(IsSolverType)), no)
         else
             Spec = abstract_noncanonical_excludes_others(WhereTerm),
-            MaybeWhereDetails = error3([Spec])
+            MaybeWhereDetails = error3(one_or_more(Spec, []))
         )
     ;
         TypeIsAbstractNoncanonical = maybe.no,
@@ -1617,7 +1626,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
-                MaybeWhereDetails = error3([Spec])
+                MaybeWhereDetails = error3(one_or_more(Spec, []))
             else if
                 RepresentationIs = yes(RepnType),
                 GroundIs         = MaybeGroundInst,
@@ -1661,7 +1670,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
-                MaybeWhereDetails = error3([Spec])
+                MaybeWhereDetails = error3(one_or_more(Spec, []))
             else
                unexpected($pred, "shouldn't have reached this point! (1)")
             )
@@ -1682,7 +1691,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
-                MaybeWhereDetails = error3([Spec])
+                MaybeWhereDetails = error3(one_or_more(Spec, []))
             else
                 MaybeCanonical = maybe_unify_compare(EqualityIs, ComparisonIs),
                 MaybeWhereDetails = ok3(no, MaybeCanonical, DirectArgIs)
@@ -1742,7 +1751,7 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
             color_as_incorrect([quote(TermStr), suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeTypeCtorAndArgs = error2([Spec])
+        MaybeTypeCtorAndArgs = error2(one_or_more(Spec, []))
     ;
         Term = term.functor(Functor, _ArgTerms, Context),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
@@ -1753,15 +1762,17 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
         ;
             MaybeSymNameArgs = ok2(SymName, ArgTerms),
             % Check that SymName is allowed to be a type constructor name.
-            check_user_type_name(SymName, Context, NameSpecs),
             ( if
                 unqualify_name(SymName) = "=<",
                 list.length(ArgTerms, 2)
             then
-                % This looks like an incorrect subtype definition so do not
-                % suggest that the arguments must be variables.
-                MaybeTypeCtorAndArgs = error2(NameSpecs)
+                % check_user_type_name will generate an errror_spec
+                % for this SymName, but its return type allows it
+                % to return an empty list. This call gets around that.
+                NameSpec = report_reserved_type_name(Context, "=<"),
+                MaybeTypeCtorAndArgs = error2(one_or_more(NameSpec, []))
             else
+                check_user_type_name(SymName, Context, NameSpecs),
                 terms_to_distinct_vars(VarSet, "a", "type definition",
                     ArgTerms, MaybeParamVars),
                 (
@@ -1771,8 +1782,9 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                         list.map(term.coerce_var, ParamVars, PrgParamVars),
                         MaybeTypeCtorAndArgs = ok2(SymName, PrgParamVars)
                     ;
-                        NameSpecs = [_ | _],
-                        MaybeTypeCtorAndArgs = error2(NameSpecs)
+                        NameSpecs = [HeadSpec | TailSpecs],
+                        MaybeTypeCtorAndArgs =
+                            error2(one_or_more(HeadSpec, TailSpecs))
                     )
                 ;
                     MaybeParamVars = error1(ParamsSpecs),
@@ -1794,18 +1806,20 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                             Context, Pieces),
                         % Most likely, the problems reported by ParamSpecs
                         % are caused by the absence of the arrow.
-                        MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
+                        MaybeTypeCtorAndArgs =
+                            error2(one_or_more(Spec, NameSpecs))
                     else
                         (
                             NameSpecs = [],
                             MaybeTypeCtorAndArgs = error2(ParamsSpecs)
                         ;
-                            NameSpecs = [_ | _],
+                            NameSpecs = [HeadSpec | TailSpecs],
                             % The problem reported by NameSpecs is probably
                             % the error that led to ParamsSpecs. Reporting
                             % ParamsSpecs here would be more confusing than
                             % helpful.
-                            MaybeTypeCtorAndArgs = error2(NameSpecs)
+                            MaybeTypeCtorAndArgs =
+                                error2(one_or_more(HeadSpec, TailSpecs))
                         )
                     )
                 )
@@ -1832,18 +1846,20 @@ check_user_type_name(SymName, Context, NameSpecs) :-
             Context, NamePieces),
         NameSpecs = [NameSpec]
     else if is_known_type_name(Name) then
-        % Please keep check_user_{inst,mode,type}_name in sync.
-        NamePieces = [words("Error: the type name")] ++
-            color_as_subject([quote(Name)]) ++
-            [words("is")] ++
-            color_as_incorrect([words("reserved")]) ++
-            [words("for the Mercury implementation."), nl],
-        NameSpec = spec($pred, severity_error, phase_t2pt,
-            Context, NamePieces),
-        NameSpecs = [NameSpec]
+        NameSpecs = [report_reserved_type_name(Context, Name)]
     else
         NameSpecs = []
     ).
+
+:- func report_reserved_type_name(prog_context, string) = error_spec.
+
+report_reserved_type_name(Context, Name) = Spec :-
+    Pieces = [words("Error: the type name")] ++
+        color_as_subject([quote(Name)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("reserved")]) ++
+        [words("for the Mercury implementation."), nl],
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
     % Check that all the variables in the body occur in the head.
     % Return a nonempty list of error specs if some do.
@@ -1903,7 +1919,7 @@ parse_supertype(VarSet, ContextPieces, Term, Result) :-
                 color_as_incorrect([quote(TermStr), suffix(".")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         )
     ;
         MaybeType = error1(Specs),

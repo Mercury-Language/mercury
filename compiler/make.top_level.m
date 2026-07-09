@@ -73,6 +73,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -91,7 +92,7 @@ make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO) :-
     (
         MaybeTargets = error1(Specs),
         io.stderr_stream(StdErr, !IO),
-        write_error_specs(StdErr, Globals, Specs, !IO)
+        write_oom_error_specs(StdErr, Globals, Specs, !IO)
     ;
         MaybeTargets = ok1(Targets),
         globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
@@ -164,7 +165,7 @@ get_main_target_if_needed(ProgName, EnvOptFileVariables, Targets0,
                     nl],
                 Spec = no_ctxt_spec($pred, severity_error, phase_options,
                     Pieces),
-                MaybeTargets = error1([Spec])
+                MaybeTargets = error1(one_or_more(Spec, []))
             )
         ;
             MaybeMainTargets = error1(Specs),
@@ -199,7 +200,8 @@ report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets) :-
             AbsTargetSpecs =
                 list.map(report_target_with_dir_component(ProgName),
                 AbsTargets),
-            MaybeTargets = error1(AbsTargetSpecs)
+            det_list_to_one_or_more(AbsTargetSpecs, OoMAbsTargetSpecs),
+            MaybeTargets = error1(OoMAbsTargetSpecs)
         )
     ).
 

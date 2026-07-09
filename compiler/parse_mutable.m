@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008, 2011 The University of Melbourne.
-% Copyright (C) 2016-2017, 2019-2022, 2024 The Mercury team.
+% Copyright (C) 2016-2017, 2019-2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -64,6 +64,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module string.
 :- import_module term_vars.
@@ -90,7 +91,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             ;
                 SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
@@ -109,7 +110,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
-                    MaybeIOM = error1([Spec])
+                    MaybeIOM = error1(one_or_more(Spec, []))
                 )
             )
         )
@@ -120,7 +121,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_correct([quote(":- initialise pred_name/pred_arity.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -145,7 +146,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             ;
                 SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
@@ -164,7 +165,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
-                    MaybeIOM = error1([Spec])
+                    MaybeIOM = error1(one_or_more(Spec, []))
                 )
             )
         )
@@ -174,7 +175,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_correct([quote(":- finalise pred_name/pred_arity.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -236,7 +237,8 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         else
             Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
                 get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
-            MaybeItemMutableInfo = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeItemMutableInfo = error1(OoMSpecs)
         )
     else
         Form1 = "mutable(name, type, init_value, inst)",
@@ -263,7 +265,7 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             color_as_correct([quote(Prefix ++ Form2 ++ ".")]) ++
             [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeItemMutableInfo = error1([Spec])
+        MaybeItemMutableInfo = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_mutable_name(varset::in, term::in, maybe1(string)::out) is det.
@@ -280,7 +282,7 @@ parse_mutable_name(VarSet, NameTerm, MaybeName) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(NameTerm), Pieces),
-        MaybeName = error1([Spec])
+        MaybeName = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_mutable_type(varset::in, term::in, maybe1(mer_type)::out) is det.
@@ -295,7 +297,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(TypeTerm), Pieces),
-        MaybeType = error1([Spec])
+        MaybeType = error1(one_or_more(Spec, []))
     else
         ContextPieces = cord.init,
         parse_type(allow_ho_inst_info, VarSet, ContextPieces,
@@ -317,7 +319,7 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(InstTerm), Pieces),
-        MaybeInst = error1([Spec])
+        MaybeInst = error1(one_or_more(Spec, []))
     else
         ContextPieces = cord.from_list([words("In a"), decl("mutable"),
             words("declaration:")]),
@@ -354,8 +356,8 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
                 maybe.no, MaybeTrailed, maybe.no, MaybeConstant,
                 maybe.no, MaybeIO, maybe.no, MaybeLocal, [], RecordSpecs),
             (
-                RecordSpecs = [_ | _],
-                MaybeMutAttrs = error1(RecordSpecs)
+                RecordSpecs = [HeadSpec | TailSpecs],
+                MaybeMutAttrs = error1(one_or_more(HeadSpec, TailSpecs))
             ;
                 RecordSpecs = [],
                 OnlyLangMap =
@@ -380,7 +382,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrsTerm), Pieces),
-        MaybeMutAttrs = error1([Spec])
+        MaybeMutAttrs = error1(one_or_more(Spec, []))
     ).
 
 :- pred record_mutable_attributes(varset::in,
@@ -544,8 +546,8 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
             MutAttrs = mutable_var_attributes(OnlyLangMap, Const),
             MaybeMutAttrs = ok1(MutAttrs)
         ;
-            !.Specs = [_ | _],
-            MaybeMutAttrs = error1(!.Specs)
+            !.Specs = [HeadSpec | TailSpecs],
+            MaybeMutAttrs = error1(one_or_more(HeadSpec, TailSpecs))
         )
     ).
 
@@ -603,7 +605,7 @@ report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
 :- pred parse_mutable_attr(varset::in, term::in,
     maybe1(pair(term, collected_mutable_attribute))::out) is det.
 
-parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
+parse_mutable_attr(VarSet, MutAttrTerm, MaybeMutAttr) :-
     ( if
         MutAttrTerm = term.functor(term.atom(String), [], _),
         (
@@ -623,7 +625,7 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
             MutAttr = mutable_attr_thread_local
         )
     then
-        MutAttrResult = ok1(MutAttrTerm - MutAttr)
+        MaybeMutAttr = ok1(MutAttrTerm - MutAttr)
     else if
         MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
         Args = [LangTerm, ForeignNameTerm],
@@ -631,7 +633,7 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
         ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
     then
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
-        MutAttrResult = ok1(MutAttrTerm - MutAttr)
+        MaybeMutAttr = ok1(MutAttrTerm - MutAttr)
     else
         MutAttrStr = describe_error_term(VarSet, MutAttrTerm),
         Pieces =
@@ -640,7 +642,7 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
             color_as_subject([quote(MutAttrStr), suffix(".")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrTerm), Pieces),
-        MutAttrResult = error1([Spec])
+        MaybeMutAttr = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%

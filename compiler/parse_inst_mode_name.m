@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2017, 2020-2024 The Mercury team.
+% Copyright (C) 2016-2017, 2020-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -80,6 +80,7 @@
 :- import_module parse_tree.parse_util.
 
 :- import_module bool.
+:- import_module one_or_more.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -102,7 +103,8 @@ parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces, [Term | Terms],
     else
         Specs = get_any_errors1(MaybeHeadMode)
             ++ get_any_errors1(MaybeTailModes),
-        MaybeModes = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeModes = error1(OoMSpecs)
     ).
 
 parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
@@ -116,7 +118,7 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
             [words("is")] ++
             color_as_incorrect([words("not a valid mode.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeMode = error1([Spec])
+        MaybeMode = error1(one_or_more(Spec, []))
     ;
         Term = term.functor(TermFunctor, ArgTerms0, Context),
         (
@@ -140,7 +142,7 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
                 [words("is")] ++
                 color_as_incorrect([words("not a valid mode.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeMode = error1([Spec])
+            MaybeMode = error1(one_or_more(Spec, []))
         ;
             TermFunctor = term.atom(FunctorName),
             % The is_known_mode_name predicate should succeed for exactly
@@ -162,7 +164,8 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
                 else
                     Specs = get_any_errors1(MaybeInstA)
                         ++ get_any_errors1(MaybeInstB),
-                    MaybeMode = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeMode = error1(OoMSpecs)
                 )
             else if
                 FunctorName = "is",
@@ -226,7 +229,7 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
                 [words("being used as modes."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(BeforeIsTerm), Pieces),
-            MaybeMode = error1([Spec])
+            MaybeMode = error1(one_or_more(Spec, []))
         )
     ;
         MaybeInst = error1(Specs),
@@ -251,7 +254,8 @@ parse_insts(AllowConstrainedInstVar, VarSet, ContextPieces, [Term | Terms],
     else
         Specs = get_any_errors1(MaybeHeadInst)
             ++ get_any_errors1(MaybeTailInsts),
-        MaybeInsts = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeInsts = error1(OoMSpecs)
     ).
 
 parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
@@ -282,7 +286,7 @@ parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
                 color_as_subject([quote(TermStr)]) ++
                 color_as_incorrect([words("is not a valid inst.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeInst = error1([Spec])
+            MaybeInst = error1(one_or_more(Spec, []))
         ;
             TermFunctor = term.atom(Name),
             parse_inst_atom_functor(AllowConstrainedInstVar, VarSet,
@@ -311,7 +315,7 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                     ExpectedArities) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeInst = error1([Spec])
+            MaybeInst = error1(one_or_more(Spec, []))
         ;
             KnownInstKind = known_inst_simple(Inst),
             MaybeInst = ok1(Inst)
@@ -380,7 +384,7 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(VarTerm), Pieces),
-                    MaybeInst = error1([Spec])
+                    MaybeInst = error1(one_or_more(Spec, []))
                 )
             )
         )
@@ -466,7 +470,7 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
-    MaybeInst = error1([Spec]).
+    MaybeInst = error1(one_or_more(Spec, [])).
 
 :- type known_compound_inst_kind(T)
     --->    kcik_is(T, T)
@@ -662,7 +666,8 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
         else
             Specs = get_any_errors1(MaybeArgModes)
                 ++ get_any_errors1(MaybeDetism),
-            MaybeInst = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeInst = error1(OoMSpecs)
         )
     else if
         BeforeIsTerm =
@@ -716,7 +721,8 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             Specs = get_any_errors1(MaybeArgModes0)
                 ++ get_any_errors1(MaybeRetMode)
                 ++ get_any_errors1(MaybeDetism),
-            MaybeInst = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeInst = error1(OoMSpecs)
         )
     else
         Form1 = "pred(<mode1>, ...) is <detism>",
@@ -735,7 +741,7 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(BeforeIsTerm), Pieces),
-        MaybeInst = error1([Spec])
+        MaybeInst = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_bound_functor_list(allow_constrained_inst_var::in, varset::in,
@@ -769,7 +775,7 @@ parse_bound_functor_list(AllowConstrainedInstVar, VarSet, ContextPieces,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(DisjunctionTerm), Pieces),
-            MaybeInst = error1([Spec])
+            MaybeInst = error1(one_or_more(Spec, []))
         else
             Inst = bound(Uniqueness, inst_test_no_results,
                 SortedBoundFunctors),
@@ -812,7 +818,8 @@ parse_bound_functors(AllowConstrainedInstVar, VarSet, ContextPieces,
     else
         Specs = get_any_errors1(MaybeHeadBoundFunctor)
             ++ get_any_errors1(MaybeTailBoundFunctors),
-        MaybeBoundFunctors = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeBoundFunctors = error1(OoMSpecs)
     ).
 
 :- pred parse_bound_functor(allow_constrained_inst_var::in, varset::in,
@@ -829,7 +836,7 @@ parse_bound_functor(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             color_as_incorrect([words("is not a bound inst.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeBoundFunctor = error1([Spec])
+        MaybeBoundFunctor = error1(one_or_more(Spec, []))
     ;
         Term = term.functor(Functor, _ArgTerms0, Context),
         require_complete_switch [Functor]
@@ -871,7 +878,7 @@ parse_bound_functor(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                     [words("may not be a used as a bound inst.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeBoundFunctor = error1([Spec])
+            MaybeBoundFunctor = error1(one_or_more(Spec, []))
         ;
             Functor = term.integer(Base, Integer, Signedness, Size),
 %           expect(unify(ArgTerms0, []), $pred,
@@ -913,13 +920,13 @@ parse_determinism(VarSet, Term, MaybeDetism) :-
         MaybeDetism = ok1(Detism)
     else
         TermStr = describe_error_term(VarSet, Term),
-        DetismPieces = [words("Error:")] ++
+        Pieces = [words("Error:")] ++
             color_as_subject([quote(TermStr)]) ++
             color_as_incorrect([words("is not a valid determinism.")]) ++
             [nl],
-        DetismSpec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(Term), DetismPieces),
-        MaybeDetism = error1([DetismSpec])
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
+        MaybeDetism = error1(one_or_more(Spec, []))
     ).
 
 standard_det("det",       detism_det).

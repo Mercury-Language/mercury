@@ -112,6 +112,7 @@
 :- import_module io.file.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -366,7 +367,7 @@ build_target(ProgressStream, Globals, CompilationTask,
             )
         ;
             MayBuild = may_not_build(Specs),
-            write_error_specs(ProgressStream, Globals, Specs, !IO),
+            write_oom_error_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,

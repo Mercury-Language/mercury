@@ -80,6 +80,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -517,9 +518,10 @@ polymorphism_process_unify_functor(GoalExpr0, ConsId0, ArgVars0, GoalInfo0,
             GoalExpr1 = unify(X0, RHS1, Mode0, Unification0, UnifyContext),
             polymorphism_process_unify(GoalExpr1, GoalInfo1, Goal, !Info)
         ;
-            MaybeRHS1 = error1(Specs),
+            MaybeRHS1 = error1(SpecsRHS),
             poly_info_get_errors(!.Info, Specs0),
-            poly_info_set_errors(Specs ++ Specs0, !Info),
+            Specs = one_or_more_to_list(SpecsRHS) ++ Specs0,
+            poly_info_set_errors(Specs, !Info),
             % It does not matter what Goal we return, since it won't be used.
             RHS1 = rhs_functor(some_int_const(int_const(42)),
                 is_not_exist_constr, []),

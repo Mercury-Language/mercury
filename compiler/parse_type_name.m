@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016-2024 The Mercury team.
+% Copyright (C) 2016-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -109,6 +109,7 @@
 
 :- import_module int.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 
@@ -155,7 +156,7 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 FunctorContext, Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         ;
             Functor = term.atom(Name),
             % XXX We *could* generate a specific error message for each kind
@@ -179,7 +180,7 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         FunctorContext, Pieces),
-                    Result = error1([Spec])
+                    Result = error1(one_or_more(Spec, []))
                 )
             else
                 % We don't support kind annotations yet, and we don't report
@@ -255,7 +256,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         ),
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ;
         CompoundTypeKind = kctk_pure_pred(Args),
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
@@ -266,8 +267,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             construct_higher_order_pred_type(purity_pure, ArgTypes, PredType),
             Result = ok1(PredType)
         ;
-            Specs = [_ | _],
-            Result = error1(Specs)
+            Specs = [HeadSpec | TailSpecs],
+            Result = error1(one_or_more(HeadSpec, TailSpecs))
         )
     ;
         CompoundTypeKind = kctk_pure_func(BeforeEqTerm, AfterEqTerm),
@@ -289,7 +290,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 Result = ok1(FuncType)
             else
                 Specs = ArgSpecs ++ get_any_errors1(MaybeRetType),
-                Result = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                Result = error1(OoMSpecs)
             )
         else
             % XXX Should be more specific.
@@ -303,7 +305,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(BeforeEqTerm), Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         )
     ;
         CompoundTypeKind = kctk_is(BeforeIsTerm, AfterIsTerm),
@@ -348,7 +350,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 Result = ok1(Type)
             else
                 Specs = ArgSpecs ++ get_any_errors1(MaybeRetType),
-                Result = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                Result = error1(OoMSpecs)
             )
         else if
             SubTerm = term.functor(term.atom(Name), Args, _),
@@ -362,8 +365,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 construct_higher_order_pred_type(Purity, ArgTypes, Type),
                 Result = ok1(Type)
             ;
-                Specs = [_ | _],
-                Result = error1(Specs)
+                Specs = [HeadSpec | TailSpecs],
+                Result = error1(one_or_more(HeadSpec, TailSpecs))
             )
         else if
             SubTerm = term.functor(term.atom(Name), Args, _),
@@ -411,7 +414,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 [nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(SubTerm), Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -437,7 +440,7 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         parse_type_and_maybe_mode(do_not_constrain_inst_vars, require_tm_mode,
             wnhii_func_return_arg, VarSet, RetContextPieces,
             RetTerm, MaybeRetTypeAndMaybeMode),
-        parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
+        parse_ho_type_and_inst_2(ContextPieces, Purity,
             ArgTypeAndMaybeModes, ArgTMSpecs, yes(MaybeRetTypeAndMaybeMode),
             MaybeDetism, MaybeType)
     else if
@@ -447,7 +450,7 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         parse_types_and_maybe_modes(do_not_constrain_inst_vars,
             require_tm_mode, wnhii_pred_arg, VarSet, ArgContextFunc,
             ArgTerms, 1, ArgTypeAndMaybeModes, [], ArgTMSpecs),
-        parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
+        parse_ho_type_and_inst_2(ContextPieces, Purity,
             ArgTypeAndMaybeModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
     else
         Form1 = "pred(<arguments>) is det",
@@ -463,17 +466,16 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
             [nl],
         HOSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(AfterIsTerm), HOPieces),
-        MaybeType = error1([HOSpec])
+        MaybeType = error1(one_or_more(HOSpec, []))
     ).
 
-:- pred parse_ho_type_and_inst_2(varset::in, cord(format_piece)::in,
+:- pred parse_ho_type_and_inst_2(cord(format_piece)::in,
     purity::in, list(type_and_maybe_mode)::in, list(error_spec)::in,
     maybe(maybe1(type_and_maybe_mode))::in, maybe1(determinism)::in,
     maybe1(mer_type)::out) is det.
 
-parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
+parse_ho_type_and_inst_2(_ContextPieces, Purity, ArgTypeAndModes,
         ArgSpecs, MaybeMaybeRetTypeAndMode, MaybeDetism, MaybeType) :-
-    % XXX _VarSet
     list.map2(project_tm_type_and_mode, ArgTypeAndModes, ArgTypes0, ArgModes0),
     ( if
         ArgSpecs = [],
@@ -507,11 +509,16 @@ parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
             MaybeMaybeRetTypeAndMode = yes(ok1(_)),
             RetSpecs = []
         ;
-            MaybeMaybeRetTypeAndMode = yes(error1(RetSpecs))
+            MaybeMaybeRetTypeAndMode = yes(error1(OoMRetSpecs)),
+            RetSpecs = one_or_more_to_list(OoMRetSpecs)
         ),
         Specs = ArgSpecs ++ RetSpecs ++
             get_any_errors1(MaybeDetism),
-        MaybeType = error1(Specs)
+        % If the condition fails, then either ArgSpecs is nonempty,
+        % or MaybeMaybeRetTypeAndMode is yes(error1(...)),
+        % or MaybeDetism is (_).
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeType = error1(OoMSpecs)
     ).
 
 :- pred project_tm_type_and_mode(type_and_maybe_mode::in,
@@ -540,9 +547,9 @@ parse_types_no_modes(WhyNotHOInstInfo, VarSet, ArgContextFunc, [Term | Terms],
         MaybeType = ok1(Type),
         Types = [Type | TypesTail]
     ;
-        MaybeType = error1(TSpecs),
+        MaybeType = error1(OoMTSpecs),
         Types = TypesTail,
-        !:Specs = TSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(OoMTSpecs) ++ !.Specs
     ).
 
 :- pred parse_type_no_mode(why_no_ho_inst_info::in, varset::in,
@@ -563,7 +570,7 @@ parse_type_no_mode(WhyNotHOInstInfo, VarSet, ContextPieces, Term, MaybeType) :-
             [words("in"), words(Place), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeType = error1([Spec])
+        MaybeType = error1(one_or_more(Spec, []))
     else
         AllowHOInstInfo = no_allow_ho_inst_info(WhyNotHOInstInfo),
         parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, MaybeType)
@@ -585,8 +592,8 @@ parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
         Specs = [],
         Result = ok1(list.reverse(RevTypes))
     ;
-        Specs = [_ | _],
-        Result = error1(Specs)
+        Specs = [HeadSpec | TailSpecs],
+        Result = error1(one_or_more(HeadSpec, TailSpecs))
     ).
 
 :- pred parse_types_acc(allow_ho_inst_info::in, varset::in,
@@ -603,8 +610,8 @@ parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],
         TermResult = ok1(Type),
         !:RevTypes = [Type | !.RevTypes]
     ;
-        TermResult = error1(TermSpecs),
-        !:Specs = TermSpecs ++ !.Specs
+        TermResult = error1(OoMTermSpecs),
+        !:Specs = one_or_more_to_list(OoMTermSpecs) ++ !.Specs
     ),
     parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, Terms,
         !RevTypes, !Specs).
@@ -624,9 +631,9 @@ parse_types_and_maybe_modes(MaybeInstConstraints, MaybeRequireMode, Why,
         MaybeTypeAndMaybeMode = ok1(TypeAndMaybeMode),
         TypesAndMaybeModes = [TypeAndMaybeMode | TypesAndMaybeModesTail]
     ;
-        MaybeTypeAndMaybeMode = error1(TMSpecs),
+        MaybeTypeAndMaybeMode = error1(OoMTMSpecs),
         TypesAndMaybeModes = TypesAndMaybeModesTail,
-        !:Specs = TMSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(OoMTMSpecs) ++ !.Specs
     ).
 
 parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
@@ -680,7 +687,8 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
         else
             Specs = get_any_errors1(MaybeType) ++ get_any_errors1(MaybeMode) ++
                 ColonSpecs,
-            MaybeTypeAndMode = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeTypeAndMode = error1(OoMSpecs)
         )
     else
         (
@@ -701,7 +709,7 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
                 [nl],
             MissingSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), MissingPieces),
-            MaybeTypeAndMode = error1([MissingSpec])
+            MaybeTypeAndMode = error1(one_or_more(MissingSpec, []))
         ;
             MaybeRequireMode = do_not_require_tm_mode,
             parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces, Term,
@@ -886,7 +894,7 @@ no_ho_inst_allowed_result(ContextPieces, WNHII, VarSet, Term) = Result :-
         [words("in"), words(Place), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
-    Result = error1([Spec]).
+    Result = error1(one_or_more(Spec, [])).
 
 :- type why_not_allowed
     --->    wna_by_design

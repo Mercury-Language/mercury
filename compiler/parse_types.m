@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2015-2016, 2019-2022, 2024 The Mercury team.
+% Copyright (C) 2015-2016, 2019-2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
     --->    iom_item(item)
             % The term contains an item.
 
-    ;       iom_item_and_error_specs(item, list(error_spec))
+    ;       iom_item_and_error_specs(item, one_or_more(error_spec))
             % The term contains an item. This item has errors that we want
             % to report, but from which we have recovered in a useful
             % though probably not perfect manner.
@@ -74,7 +74,7 @@
             % and sequence number of the declaration.
 
     ;       iom_handled_no_error
-    ;       iom_handled_error(list(error_spec)).
+    ;       iom_handled_error(one_or_more(error_spec)).
             % The term was completely dealt with during parsing.
             % If there was an error, one or more messages for it are attached.
             %

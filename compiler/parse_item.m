@@ -174,11 +174,11 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
             MaybeIOM = MaybeIOMPrime
         else
             Spec = decl_functor_is_not_valid(Functor, Context),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Spec = decl_is_not_an_atom(VarSet, DeclTerm),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- func decl_is_not_an_atom(varset, term) = error_spec.
@@ -369,10 +369,11 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             (
                 MaybeIOM0 = ok1(_),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             ;
-                MaybeIOM0 = error1(Specs0),
-                MaybeIOM = error1([Spec | Specs0])
+                MaybeIOM0 = error1(OoMSpecs0),
+                cons(Spec, OoMSpecs0, OoMSpecs),
+                MaybeIOM = error1(OoMSpecs)
             )
         )
     ;
@@ -480,7 +481,7 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
                 [words("in class interfaces."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
-            MaybeClassMethod = error1([Spec])
+            MaybeClassMethod = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -519,7 +520,7 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
             [words("to denote the quantification"),
             words("of a list of variables."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_constraint_attr(module_name::in, varset::in,
@@ -549,7 +550,7 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
             [words("to introduce a constraint or"),
             words("a conjunction of constraints."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_purity_attr(module_name::in, varset::in,
@@ -577,7 +578,7 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
             [words("as an annotation in front of"),
             words("a predicate or function declaration."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_attributed_decl(module_name::in, varset::in, term::in,
@@ -606,14 +607,14 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, FunctorContext,
                 Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         else
             Spec = decl_functor_is_not_valid(Functor, FunctorContext),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Spec = decl_is_not_an_atom(VarSet, Term),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -635,7 +636,7 @@ parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
                 words("which should be a module name.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_end_module_marker(list(term)::in, prog_context::in,
@@ -655,7 +656,7 @@ parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
                 words("which should be a module name.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -676,7 +677,7 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
             color_as_incorrect([words("should have no arguments.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -755,7 +756,7 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
                 words("one or more module names.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred make_item_include(prog_context::in, item_seq_num::in, module_name::in,
@@ -819,7 +820,7 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
             words("or the declaration of one mode"),
             words("of a predicate or function."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -852,7 +853,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                         decl("version_numbers"), suffix("."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ModuleNameTerm), Pieces),
-                    MaybeIOM = error1([Spec])
+                    MaybeIOM = error1(one_or_more(Spec, []))
                 )
             else
                 Pieces = [words("Error: this interface file"),
@@ -861,7 +862,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
-                MaybeIOM = ok1(iom_handled_error([Spec]))
+                MaybeIOM = ok1(iom_handled_error(one_or_more(Spec, [])))
             )
         else
             Pieces = [words("Error: invalid version number in"),
@@ -869,7 +870,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
             VersionNumberContext = get_term_context(VersionNumbersTerm),
             Spec = spec($pred, severity_error, phase_t2pt,
                 VersionNumberContext, Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     ;
         ( ArgTerms = []
@@ -883,7 +884,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
             words("a module name, and a tuple containing maps"),
             words("from item ids to timestamps."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -917,7 +918,7 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
             is_the_name_a_variable(VarSet0, vtk_clause_func, FuncHeadTerm,
                 Spec)
         then
-            MaybeFunctor = error2([Spec])
+            MaybeFunctor = error2(one_or_more(Spec, []))
         else
             HeadContextPieces =
                 cord.from_list([words("In equation head:"), nl]),
@@ -936,7 +937,7 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         ( if
             is_the_name_a_variable(VarSet0, vtk_clause_pred, HeadTerm, Spec)
         then
-            MaybeFunctor = error2([Spec])
+            MaybeFunctor = error2(one_or_more(Spec, []))
         else
             HeadContextPieces =
                 cord.from_list([words("In clause head:"), nl]),
@@ -992,9 +993,10 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
             ProgVarSet, MaybeBodyGoal, Context, SeqNum),
         MaybeClause = ok1(ItemClause)
     ;
-        MaybeFunctor = error2(FunctorSpecs),
-        Specs = FunctorSpecs ++ get_any_errors_warnings2(MaybeBodyGoal),
-        MaybeClause = error1(Specs)
+        MaybeFunctor = error2(OoMFunctorSpecs),
+        append_one_or_more_list(OoMFunctorSpecs,
+            get_any_errors_warnings2(MaybeBodyGoal), OoMSpecs),
+        MaybeClause = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1047,13 +1049,13 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             then
                 Spec = report_with_inst_and_detism(p_or_f(PredOrFunc),
                     BaseTerm),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             else if
                 WithInst = yes(_),
                 WithType = no
             then
                 Spec = report_with_inst_no_with_type(PredOrFunc, BaseTerm),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             else
                 ( if
                     % Function declarations with `with_type` annotations
@@ -1076,7 +1078,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             Specs = get_any_errors1(MaybeMaybeDetism)
                 ++ get_any_errors1(MaybeWithInst)
                 ++ get_any_errors1(MaybeWithType),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -1091,7 +1094,7 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
             [words("which should specify the types and maybe the modes"),
             words("of the arguments of a"), words(Functor), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
     % parse a `:- pred p(...)' declaration or a
@@ -1123,7 +1126,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             is_the_name_a_variable(VarSet, vtk_type_decl_pred(IsInClass),
                 PredTypeTerm, Spec)
         then
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         else
             parse_implicitly_qualified_sym_name_and_args(ModuleName,
                 VarSet, ContextPieces, PredTypeTerm, MaybePredNameAndArgs),
@@ -1156,7 +1159,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     then
                         Spec = report_with_inst_no_arg_modes(PredOrFunc,
                             PredTypeTerm),
-                        MaybeIOM = error1([Spec])
+                        MaybeIOM = error1(one_or_more(Spec, []))
                     else if
                         WithInst = no,
                         WithType = yes(_),
@@ -1164,7 +1167,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     then
                         Spec = report_with_type_no_with_inst(PredOrFunc,
                             PredTypeTerm),
-                        MaybeIOM = error1([Spec])
+                        MaybeIOM = error1(one_or_more(Spec, []))
                     else
                         varset.coerce(VarSet, TypeVarSet),
                         varset.coerce(VarSet, InstVarSet),
@@ -1197,20 +1200,22 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                                 get_term_context(PredTypeTerm), InstVarSet,
                                 HeadInconsistentVar, TailInconsistentVars,
                                 Spec),
-                            MaybeIOM = error1([Spec])
+                            MaybeIOM = error1(one_or_more(Spec, []))
                         )
                     )
                 else
                     Specs = TMSpecs ++
                         get_any_errors1(MaybeTypesAndMaybeModes),
-                    MaybeIOM = error1(Specs)
+                    det_list_to_one_or_more(Specs, OoMSpecs),
+                    MaybeIOM = error1(OoMSpecs)
                 )
             )
         )
     else
         Specs = get_any_errors1(MaybePurity) ++
             get_any_errors3(MaybeExistClassInstContext),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
     % Parse a `:- func p(...)' declaration *without* a with_type clause.
@@ -1241,7 +1246,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
                 is_the_name_a_variable(VarSet, vtk_type_decl_func(IsInClass),
                     MaybeSugaredFuncTerm, Spec)
             then
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             else
                 FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
                 parse_implicitly_qualified_sym_name_and_args(ModuleName,
@@ -1282,7 +1287,8 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
                     else
                         Specs = ArgTMSpecs ++
                             get_any_errors1(MaybeRetTypeAndMaybeMode),
-                        MaybeIOM = error1(Specs)
+                        det_list_to_one_or_more(Specs, OoMSpecs),
+                        MaybeIOM = error1(OoMSpecs)
                     )
                 )
             )
@@ -1296,7 +1302,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
                 words("from the return type."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -1343,12 +1349,13 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
             report_inconsistent_constrained_inst_vars(Where,
                 get_term_context(Term), IVarSet,
                 HeadInconsistentVar, TailInconsistentVars, Spec),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Specs = get_any_errors1(MaybeTypesAndMaybeModes)
             ++ get_any_errors1(MaybePurity),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
     % Verify that among the arguments of a :- pred or :- func declaration,
@@ -1436,7 +1443,7 @@ check_type_and_maybe_mode_list_is_consistent(TypesAndMaybeModes,
             [words("arguments have modes."), nl
             | IdPieces],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeResult = error1([Spec])
+        MaybeResult = error1(one_or_more(Spec, []))
     ).
 
 :- pred classify_type_and_maybe_mode_list(int::in,
@@ -1511,7 +1518,7 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             WithInst = yes(_)
         then
             Spec = report_with_inst_and_detism(words("mode"), Term),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         else
             parse_mode_decl_base(ModuleName, VarSet, BaseTerm, IsInClass,
                 Context, SeqNum, WithInst, MaybeDetism, QuantConstrAttrs,
@@ -1520,7 +1527,8 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
     else
         Specs = get_any_errors1(MaybeMaybeDetism)
             ++ get_any_errors1(MaybeWithInst),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 :- pred parse_mode_decl_base(module_name::in, varset::in, term::in,
@@ -1540,7 +1548,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             is_the_name_a_variable(VarSet, vtk_mode_decl_func(IsInClass),
                 MaybeSugaredFuncTerm, Spec)
         then
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         else
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
             ContextPieces = cord.from_list([words("In function"), decl("mode"),
@@ -1563,7 +1571,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             is_the_name_a_variable(VarSet, vtk_mode_decl_pred(IsInClass),
                 Term, Spec)
         then
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         else
             ContextPieces = cord.from_list([words("In"), decl("mode"),
                 words("declaration:"), nl]),
@@ -1627,12 +1635,13 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             report_inconsistent_constrained_inst_vars(Where,
                 get_term_context(PredModeTerm), InstVarSet,
                 HeadInconsistentVar, TailInconsistentVars, Spec),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Specs = get_any_errors1(MaybeArgModes0)
             ++ get_any_errors3(MaybeConstraints),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 :- pred parse_func_mode_decl(sym_name::in, list(term)::in, module_name::in,
@@ -1681,13 +1690,14 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, RetModeTerm, FullTerm,
             report_inconsistent_constrained_inst_vars(
                 "in function mode declaration", get_term_context(FullTerm),
                 InstVarSet, HeadInconsistentVar, TailInconsistentVars, Spec),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Specs = get_any_errors1(MaybeArgModes0)
             ++ get_any_errors1(MaybeRetMode0)
             ++ get_any_errors3(MaybeConstraints),
-        MaybeIOM = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeIOM = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1708,7 +1718,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
             color_as_incorrect([words("are not allowed.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybePurity = error1([Spec])
+        MaybePurity = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1787,8 +1797,8 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         MaybeExistClassInstContext = ok3(ExistQVars, ClassConstraints,
             InstConstraints)
     ;
-        Specs = [_ | _],
-        MaybeExistClassInstContext = error3(Specs)
+        Specs = [HeadSpec | TailSpecs],
+        MaybeExistClassInstContext = error3(one_or_more(HeadSpec, TailSpecs))
     ).
 
 :- pred get_class_context_and_inst_constraints_loop(module_name::in,
@@ -1815,7 +1825,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
             VarSet, VarsTerm, MaybeVars),
         (
             MaybeVars = error1(VarsSpecs),
-            !:Specs = VarsSpecs ++ !.Specs
+            !:Specs = one_or_more_to_list(VarsSpecs) ++ !.Specs
         ;
             MaybeVars = ok1(Vars),
             (
@@ -1832,7 +1842,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
             MaybeConstraints),
         (
             MaybeConstraints = error2(ConstraintSpecs),
-            !:Specs = ConstraintSpecs ++ !.Specs
+            !:Specs = one_or_more_to_list(ConstraintSpecs) ++ !.Specs
         ;
             MaybeConstraints = ok2(ClassConstraints, InstConstraint),
             (
@@ -1849,7 +1859,6 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
                     map.old_merge(!.UnivInstConstraints, InstConstraint)
             )
         )
-
     ),
     get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, !Specs, !UnivQVars, !ExistQVars,
@@ -1885,7 +1894,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
                 Item = item_promise(ItemPromise),
                 MaybeIOM = ok1(iom_item(Item))
             ;
-                GoalWarningSpecs = [_ | _],
+                GoalWarningSpecs = [HeadSpec | TailSpecs],
                 % We *could* try to preserve any warnings for code
                 % inside Goal0, and add the promise to the parse tree
                 % for later addition to the HLDS even in the presence
@@ -1894,7 +1903,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
                 % of construct that generates warning_specs is a
                 % disable_warnings scope, and those should NOT be appearing
                 % in any promise.
-                MaybeIOM = error1(GoalWarningSpecs)
+                MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
             )
         ;
             MaybeGoal0 = error2(Specs),
@@ -1907,7 +1916,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
                 words("which should be a goal.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1955,7 +1964,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
                 [nl_indent_delta(-1)],
             UnivVarsSpec = spec($pred, severity_error, phase_t2pt,
                 Context, UnivVarsPieces),
-            MaybeUnivVars = error1([UnivVarsSpec])
+            MaybeUnivVars = error1(one_or_more(UnivVarsSpec, []))
         ),
         varset.coerce(VarSet, ProgVarSet0),
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
@@ -1978,11 +1987,15 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
             Item = item_promise(ItemPromise),
             MaybeIOM = ok1(iom_item(Item))
         else
-            ( MaybeGoal0 = ok2(_, GoalSpecs)
-            ; MaybeGoal0 = error2(GoalSpecs)
+            (
+                MaybeGoal0 = ok2(_, GoalSpecs)
+            ;
+                MaybeGoal0 = error2(OoMGoalSpecs),
+                GoalSpecs = one_or_more_to_list(OoMGoalSpecs)
             ),
             Specs = PuritySpecs ++ get_any_errors1(MaybeUnivVars) ++ GoalSpecs,
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     else
         Pieces = [words("Error: a")] ++
@@ -1991,7 +2004,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
                 words("which should be a goal.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -2029,7 +2042,7 @@ parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(DetismTerm), Pieces),
-            MaybeMaybeDetism = error1([Spec])
+            MaybeMaybeDetism = error1(one_or_more(Spec, []))
         )
     else
         BeforeDetismTerm = Term,
@@ -2149,7 +2162,7 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
                 [words("must be quoted using single quotes")]) ++
             [words("(e.g. "":- module 'Foo'."")."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeModule = error1([Spec])
+        MaybeModule = error1(one_or_more(Spec, []))
     ;
         Term = term.functor(_, _, _),
         parse_implicitly_qualified_sym_name(DefaultModuleName, VarSet,

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2024-2025 The Mercury Team.
+% Copyright (C) 2024-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -96,6 +96,7 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module string.
 :- import_module uint8.
 
@@ -373,7 +374,8 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
             get_any_errors1(MaybeMaybeIncorrect) ++
             get_any_errors1(MaybeMaybeInconsistent) ++
             get_any_errors1(MaybeMaybeHint),
-        MaybeColorSpecs = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeColorSpecs = error1(OoMSpecs)
     ).
 
 :- func convert_color_spec_option(string, string) = maybe1(maybe(color_spec)).
@@ -391,7 +393,7 @@ convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
             ColorResult = is_not_color(WhyNot),
             Source = [words("the argument of"), fixed(OptionName)],
             Spec = report_why_not_color(Source, OptionValue, WhyNot),
-            MaybeMaybeColorSpec = error1([Spec])
+            MaybeMaybeColorSpec = error1(one_or_more(Spec, []))
         )
     ).
 

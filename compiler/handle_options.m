@@ -40,7 +40,7 @@
     %   OptionArgs, Args, Specs, !:Globals, !IO):
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
-    maybe_stdlib_grades::in, maybe1(list(string))::in, list(string)::in,
+    maybe_stdlib_grades::in, maybe1el(list(string))::in, list(string)::in,
     list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
     io::di, io::uo) is det.
 
@@ -168,8 +168,9 @@ dump_arguments(ProgressStream, [Arg | Args], !IO) :-
     %
 :- pred convert_option_table_result_to_globals(io.text_output_stream::in,
     option_table::in, maybe_stdlib_grades::in, maybe(option_error(option))::in,
-    option_table::in, cord(optimization_option)::in, maybe1(list(string))::in,
-    list(error_spec)::out, globals::out, io::di, io::uo) is det.
+    option_table::in, cord(optimization_option)::in,
+    maybe1el(list(string))::in, list(error_spec)::out, globals::out,
+    io::di, io::uo) is det.
 
 convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
         MaybeStdLibGrades, MaybeError, OptionTable0, OptOptionsCord,
@@ -309,7 +310,7 @@ convert_library_install_linkages([Str | Strs],
     %
 :- pred convert_options_to_globals(io.text_output_stream::in,
     option_table::in, option_table::in,
-    maybe_stdlib_grades::in, maybe1(list(string))::in,
+    maybe_stdlib_grades::in, maybe1el(list(string))::in,
     opt_tuple::in, op_mode::in, compilation_target::in, word_size::in,
     gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
@@ -2148,7 +2149,7 @@ maybe_disable_smart_recompilation(OpMode, !Globals, !Specs, !IO) :-
     % Options updated:
     %   chosen_stdlib_dir
     %
-:- pred handle_chosen_stdlib_dir(maybe1(list(string))::in,
+:- pred handle_chosen_stdlib_dir(maybe1el(list(string))::in,
     globals::in, globals::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

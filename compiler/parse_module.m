@@ -219,7 +219,7 @@ peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
                 [nl],
             Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
                 Pieces),
-            MaybeModuleName = error1([Spec])
+            MaybeModuleName = error1(one_or_more(Spec, []))
         ;
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
                 _ModuleNameContext, _WrongSpec),
@@ -235,7 +235,7 @@ peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
         io_error_to_error_spec(phase_find_files(SourceFileName0, no),
             ErrorMsg, Spec, !IO),
-        MaybeModuleName = error1([Spec])
+        MaybeModuleName = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -512,7 +512,7 @@ parse_int_file(IntFileKind, SourceFileName, FileString, FileStringLen,
             (
                 VersionNumbersResult = vnr_error(Spec, Error),
                 !:Errors = init_read_module_errors,
-                add_nonfatal_error(Error, [Spec], !Errors),
+                add_nonfatal_error(Error, Spec, !Errors),
                 MaybeParseTreeInt = no
             ;
                 VersionNumbersResult = vnr_ok(MaybeVersionNumbers),
@@ -656,7 +656,7 @@ parse_int_file_sections(FileString, FileStringLen,
                         words("interface sections."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         SectionContext, Pieces),
-                    add_nonfatal_error(rme_nec, [Spec], !Errors),
+                    add_nonfatal_error(rme_nec, Spec, !Errors),
                     MaybeParseTreeInt = no
                 ;
                     SecondSectionKind = ms_implementation,
@@ -706,11 +706,11 @@ parse_int_file_section(FileString, FileStringLen,
             ReadIOMResult = read_iom_eof
         ;
             ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-            add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors)
+            add_nonfatal_error(rme_could_not_read_term, ItemSpec, !Errors)
         ;
             ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, _IOMTerm,
                 ItemSpecs),
-            add_nonfatal_error(rme_could_not_parse_item, ItemSpecs, !Errors)
+            add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs, !Errors)
         ),
         MaybeRawItemBlock = no,
         FinalLookAhead = no_lookahead
@@ -753,7 +753,7 @@ parse_int_file_section(FileString, FileStringLen,
                 color_as_incorrect(IOMPieces ++ [suffix(".")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            add_nonfatal_error(rme_nec, [Spec], !Errors),
+            add_nonfatal_error(rme_nec, Spec, !Errors),
             FinalLookAhead = lookahead(ReadIOMResult),
             MaybeRawItemBlock = no
         )
@@ -804,14 +804,14 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
         (
             ModuleDeclPresent = no_module_decl_present(InitLookAhead,
                 InitLookAheadContext, NoModuleSpec),
-            add_nonfatal_error(rme_no_module_decl_at_start, [NoModuleSpec],
+            add_nonfatal_error(rme_no_module_decl_at_start, NoModuleSpec,
                 !Errors),
             ModuleName = DefaultModuleName,
             ModuleNameContext = InitLookAheadContext
         ;
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
                 ModuleNameContext, WrongSpec),
-            add_nonfatal_error(rme_unexpected_module_name, [WrongSpec],
+            add_nonfatal_error(rme_unexpected_module_name, WrongSpec,
                 !Errors),
             InitLookAhead = no_lookahead
         ;
@@ -866,7 +866,7 @@ parse_src_file_components(FileString, FileStringLen,
         FinalLookAhead = no_lookahead
     ;
         ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-        add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors),
+        add_nonfatal_error(rme_could_not_read_term, ItemSpec, !Errors),
         % Continue looking for a section marker.
         parse_src_file_components(FileString, FileStringLen,
             CurModuleName, ContainingModules, MaybePrevSection,
@@ -915,7 +915,7 @@ parse_src_file_components(FileString, FileStringLen,
                 [nl],
             Spec = spec($pred, severity_error, phase_read_files,
                 get_term_context(IOMTerm), Pieces),
-            add_nonfatal_error(rme_nec, [Spec], !Errors),
+            add_nonfatal_error(rme_nec, Spec, !Errors),
             parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 no_lookahead, FinalLookAhead,
@@ -944,7 +944,7 @@ parse_src_file_components(FileString, FileStringLen,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         StartContext, Pieces),
-                    add_nonfatal_error(rme_nec, [Spec], !Errors),
+                    add_nonfatal_error(rme_nec, Spec, !Errors),
                     % Recover partially by ignoring the bad module
                     % qualification. The recovery is only partial because
                     % an end_module marker that matches the incorrect module
@@ -990,10 +990,10 @@ parse_src_file_components(FileString, FileStringLen,
                     )
                 ;
                     IOM = iom_handled_error(ItemSpecs),
-                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
+                    add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ;
                     IOM = iom_item_and_error_specs(_, ItemSpecs),
-                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
+                    add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ),
                 (
                     MaybePrevSection = yes(SectionKind - SectionContext)
@@ -1076,7 +1076,7 @@ generate_missing_start_section_warning_src(CurModuleName, Context, !Errors) :-
         words("the missing declaration is an"),
         decl("implementation"), words("declaration."), nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-    add_nonfatal_error(rme_no_section_decl_at_start, [Spec], !Errors).
+    add_nonfatal_error(rme_no_section_decl_at_start, Spec, !Errors).
 
 :- pred parse_src_file_submodule(string::in, int::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
@@ -1110,7 +1110,7 @@ parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
         NoSectionSpec = spec($pred, severity_error, phase_t2pt,
             StartContext, NoSectionPieces),
         % XXX ITEM_LIST Should this be a situation-specific rme_X value?
-        add_nonfatal_error(rme_no_section_decl_at_start, [NoSectionSpec],
+        add_nonfatal_error(rme_no_section_decl_at_start, NoSectionSpec,
             !Errors),
         SectionKind = ms_interface,
         SectionContext = dummy_context
@@ -1211,7 +1211,7 @@ parse_module_header(FileString, FileStringLen,
             NoModuleSpec),
         Errors0 = init_read_module_errors,
         add_nonfatal_error(rme_no_module_decl_at_start,
-            [NoModuleSpec], Errors0, Errors),
+            NoModuleSpec, Errors0, Errors),
         MaybeModuleHeader = no_valid_module_header(Errors)
     ;
         ModuleDeclPresent = wrong_module_decl_present(ModuleName,
@@ -1220,9 +1220,9 @@ parse_module_header(FileString, FileStringLen,
             DefaultModuleName, ModuleName),
         Errors0 = init_read_module_errors,
         add_nonfatal_error(rme_no_module_decl_at_start,
-            [NoModuleSpec], Errors0, Errors1),
+            NoModuleSpec, Errors0, Errors1),
         add_nonfatal_error(rme_unexpected_module_name,
-            [WrongModuleSpec], Errors1, Errors),
+            WrongModuleSpec, Errors1, Errors),
         MaybeModuleHeader = no_valid_module_header(Errors)
     ;
         ModuleDeclPresent =
@@ -1436,11 +1436,11 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
         ;
             (
                 ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-                add_nonfatal_error(rme_could_not_read_term, [ItemSpec],
+                add_nonfatal_error(rme_could_not_read_term, ItemSpec,
                     !Errors)
             ;
                 ReadIOMResult = read_iom_parse_item_errors(_, _, ItemSpecs),
-                add_nonfatal_error(rme_could_not_parse_item, ItemSpecs,
+                add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs,
                     !Errors)
             ),
             parse_next_item_or_marker(!.SourceFileName,
@@ -1473,7 +1473,7 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                         [nl],
                     Spec = spec($pred, severity_error, phase_read_files,
                         get_term_context(IOMTerm), Pieces),
-                    add_nonfatal_error(rme_nec, [Spec], !Errors)
+                    add_nonfatal_error(rme_nec, Spec, !Errors)
                 ;
                     IOM = iom_marker_include(Incls),
                     Incls = one_or_more(HeadIncl, TailIncls),
@@ -1493,12 +1493,12 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 ;
                     IOM = iom_item_and_error_specs(Item, ItemSpecs),
                     cord.snoc(Item, !ItemsCord),
-                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
+                    add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ;
                     IOM = iom_handled_no_error
                 ;
                     IOM = iom_handled_error(HandledSpecs),
-                    add_nonfatal_error(rme_nec, HandledSpecs, !Errors)
+                    add_nonfatal_errors(rme_nec, HandledSpecs, !Errors)
                 ),
                 parse_next_item_or_marker(!.SourceFileName,
                     FileString, FileStringLen, ModuleName, NextReadIOMResult,
@@ -1555,7 +1555,7 @@ parse_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
             % The call to mercury_term_parser.read_term_from_linestr
             % has failed, which means that what we found in the file string
             % is not a valid term.
-    ;       read_iom_parse_item_errors(varset, term, list(error_spec))
+    ;       read_iom_parse_item_errors(varset, term, one_or_more(error_spec))
             % We have successfully read a term from the file string,
             % but could not parse it as an item or marker.
             % The error category is implicitly rme_could_not_parse_item.
@@ -1675,10 +1675,10 @@ check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         IOMResult = read_iom_eof
     ;
         IOMResult = read_iom_parse_term_error(ItemSpec),
-        add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors)
+        add_nonfatal_error(rme_could_not_read_term, ItemSpec, !Errors)
     ;
         IOMResult = read_iom_parse_item_errors(_VarSet, Term, ItemSpecs),
-        add_nonfatal_error(rme_could_not_parse_item, ItemSpecs, !Errors),
+        add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs, !Errors),
         report_unexpected_term_at_end(FileKind, Term, !Errors)
     ;
         IOMResult = read_iom_ok(_IOMVarSet, IOMTerm, _IOM),
@@ -1707,7 +1707,7 @@ report_unexpected_term_at_end(FileKind, Term, !Errors) :-
         Pieces = [words("Error: unexpected item in optimization file"), nl]
     ),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-    add_nonfatal_error(Error, [Spec], !Errors).
+    add_nonfatal_error(Error, Spec, !Errors).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_module.

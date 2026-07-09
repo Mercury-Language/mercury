@@ -88,11 +88,11 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
                 color_as_incorrect([words("not a recognized pragma name.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Spec = report_unrecognized_pragma_form(Context),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_named_pragma(module_name::in, varset::in, term::in,
@@ -301,7 +301,7 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 MaybeMaybeUC, MaybeIOM)
         else
             Spec = report_unrecognized_pragma_form(Context),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -348,7 +348,7 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, MarkerKind,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
             "exactly one argument"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 :- pred parse_name_arity_impl_pragma(module_name::in, string::in,
@@ -378,7 +378,7 @@ parse_name_arity_impl_pragma(ModuleName, PragmaName, MarkerKind,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
             "exactly one argument"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 %---------------------------------------------------------------------------%
@@ -412,12 +412,12 @@ parse_pragma_source_file(VarSet, ErrorTerm, PragmaTerms, MaybeIOM) :-
                 [nl],
             Context = get_term_context(SourceFileTerm),
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeIOM = error1([Spec])
+            MaybeIOM = error1(one_or_more(Spec, []))
         )
     else
         Spec = report_pragma_arity_error(ErrorTerm, "source_file",
             "exactly one argument"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -472,17 +472,18 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ErrorTerm), Pieces),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             )
         else
             Specs = get_any_errors2(MaybeSymNameArity)
                 ++ get_any_errors1(MaybeMaybeBackend),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     else
         Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
             "one or two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_symname_arity(varset::in, term::in, cord(format_piece)::in,
@@ -504,7 +505,7 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
                 [nl],
             AritySpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArityTerm), ArityPieces),
-            MaybeArity = error1([AritySpec])
+            MaybeArity = error1(one_or_more(AritySpec, []))
         ),
         ( if
             MaybeSymName = ok1(SymName),
@@ -514,7 +515,8 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
         else
             Specs = get_any_errors1(MaybeSymName)
                 ++ get_any_errors1(MaybeArity),
-            MaybeSymNameArity = error2(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeSymNameArity = error2(OoMSpecs)
         )
     else
         PredTermStr = describe_error_term(VarSet, PredTerm),
@@ -526,7 +528,7 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PredTerm), Pieces),
-        MaybeSymNameArity = error2([Spec])
+        MaybeSymNameArity = error2(one_or_more(Spec, []))
     ).
 
 :- pred parse_pragma_external_options(varset::in, maybe(term)::in,
@@ -573,7 +575,7 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(OptionsTerm), Pieces),
-            MaybeMaybeBackend = error1([Spec])
+            MaybeMaybeBackend = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -611,7 +613,8 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             Specs =
                 get_any_errors1(MaybePredSpec) ++
                 get_any_errors1(MaybeObsoleteInFavourOf),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -619,7 +622,7 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "obsolete",
             "one or two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 :- pred parse_pragma_obsolete_proc(module_name::in, list(term)::in, term::in,
@@ -656,7 +659,8 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             Specs =
                 get_any_errors3(MaybePredAndModes) ++
                 get_any_errors1(MaybeObsoleteInFavourOf),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -664,7 +668,7 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "obsolete_proc",
             "one or two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 :- pred parse_pragma_obsolete_in_favour_of(term::in, varset::in,
@@ -685,7 +689,7 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeObsoleteInFavourOf = error1([Spec])
+        MaybeObsoleteInFavourOf = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_pragma_obsolete_in_favour_of_snas(int::in, list(term)::in,
@@ -709,7 +713,7 @@ parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeHeadSNA = error1([Spec])
+        MaybeHeadSNA = error1(one_or_more(Spec, []))
     ),
     parse_pragma_obsolete_in_favour_of_snas(ArgNum + 1, Terms, VarSet,
         MaybeTailSNAs),
@@ -722,7 +726,8 @@ parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
         Specs =
             get_any_errors1(MaybeHeadSNA) ++
             get_any_errors1(MaybeTailSNAs),
-        MaybeSNAs = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeSNAs = error1(OoMSpecs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -765,7 +770,7 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
                 [nl],
             FormatCallSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(FormatCallTerm), FormatCallPieces),
-            MaybeFormatCall = error1([FormatCallSpec])
+            MaybeFormatCall = error1(one_or_more(FormatCallSpec, []))
         ),
         ( if
             MaybePredSpec = ok1(PredSpec),
@@ -776,10 +781,11 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             Item = item_decl_pragma(decl_pragma_format_call(FormatCallPragma)),
             MaybeIOM = ok1(iom_item(Item))
         else
-            IOMSpecs =
+            Specs =
                 get_any_errors1(MaybePredSpec) ++
                 get_any_errors1(MaybeFormatCall),
-            MaybeIOM = error1(IOMSpecs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -788,7 +794,7 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "format_call",
             "two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 :- pred maybe_parse_format_string_values(varset::in, term::in,
@@ -830,7 +836,8 @@ parse_format_string_values_terms(VarSet, ListPos, HeadTerm, TailTerms,
                 one_or_more_to_list(OoMTailFormatStringValues),
             TailSpecs = []
         ;
-            MaybeOoMTailFormatStringValues = error1(TailSpecs),
+            MaybeOoMTailFormatStringValues = error1(OoMTailSpecs),
+            TailSpecs = one_or_more_to_list(OoMTailSpecs),
             TailFormatStringValues = []
         )
     ),
@@ -849,7 +856,8 @@ parse_format_string_values_terms(VarSet, ListPos, HeadTerm, TailTerms,
             MaybeOoMFormatStringValues = ok1(OoMFormatStringValues)
         else
             Specs = get_any_errors1(MaybeHeadFormatStringValues) ++ TailSpecs,
-            MaybeOoMFormatStringValues = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeOoMFormatStringValues = error1(OoMSpecs)
         )
     else
         HeadTermStr = describe_error_term(VarSet, HeadTerm),
@@ -862,7 +870,7 @@ parse_format_string_values_terms(VarSet, ListPos, HeadTerm, TailTerms,
             [nl],
         HeadSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), HeadPieces),
-        Specs = [HeadSpec | TailSpecs],
+        Specs = one_or_more(HeadSpec, TailSpecs),
         MaybeOoMFormatStringValues = error1(Specs)
     ).
 
@@ -886,7 +894,8 @@ parse_format_string_values_args(VarSet, MaybeListPos, ErrorTerm, ArgTerms,
             Specs =
                 get_any_errors1(MaybeArgNumFS) ++
                 get_any_errors1(MaybeArgNumVL),
-            MaybeFormatStringValues = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeFormatStringValues = error1(OoMSpecs)
         )
     ;
         ( ArgTerms = []
@@ -901,7 +910,7 @@ parse_format_string_values_args(VarSet, MaybeListPos, ErrorTerm, ArgTerms,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
-        MaybeFormatStringValues = error1([Spec])
+        MaybeFormatStringValues = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_arg_num(varset::in, maybe(int)::in, fs_vl::in, term::in,
@@ -927,7 +936,7 @@ parse_arg_num(VarSet, MaybeListPos, FS_VL, Term, MaybeArgNum) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeArgNum = error1([Spec])
+        MaybeArgNum = error1(one_or_more(Spec, []))
     ).
 
 :- func in_format_string_values_context_pieces(maybe(int))
@@ -1006,7 +1015,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     OptionsContext, Pieces),
-                MaybeRTR = error1([Spec])
+                MaybeRTR = error1(one_or_more(Spec, []))
             )
         ;
             MaybeOptionsTerm = no,
@@ -1028,7 +1037,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
         else
             Specs = get_any_errors1(MaybePredOrProcSpec) ++
                 get_any_errors1(MaybeRTR),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -1036,7 +1046,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
             "one or two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_pragma_require_tail_recursion_options(varset::in,
@@ -1048,8 +1058,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
 parse_pragma_require_tail_recursion_options(_VarSet, PragmaContext, [],
         !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades, Specs0, MaybeRTR) :-
     (
-        Specs0 = [_ | _],
-        MaybeRTR = error1(Specs0)
+        Specs0 = [HeadSpec | TailSpecs],
+        MaybeRTR = error1(one_or_more(HeadSpec, TailSpecs))
     ;
         Specs0 = [],
         % For any option whose value was not set, use the applicable default.
@@ -1197,7 +1207,7 @@ parse_pragma_disable_non_tail_recursion_reports(ModuleName, PragmaName,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, PragmaName,
             "one argument"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1238,7 +1248,7 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 quote(TypeCtorTermStr), suffix("."), nl],
             TypeCtorSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ErrorTerm), Pieces),
-            MaybeTypeCtor = error1([TypeCtorSpec])
+            MaybeTypeCtor = error1(one_or_more(TypeCtorSpec, []))
         ),
         parse_oisu_preds_term(ModuleName, VarSet, "second", "creators",
             CreatorsTerm, MaybeCreatorsNamesArities),
@@ -1268,7 +1278,8 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 get_any_errors1(MaybeCreatorsNamesArities) ++
                 get_any_errors1(MaybeMutatorsNamesArities) ++
                 get_any_errors1(MaybeDestructorsNamesArities),
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     ;
         ( PragmaTerms = []
@@ -1278,7 +1289,7 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "oisu",
             "three or four arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
    ).
 
 :- pred parse_oisu_preds_term(module_name::in, varset::in, string::in,
@@ -1305,7 +1316,7 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
             suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybePredSpecs = error1([Spec])
+        MaybePredSpecs = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1355,12 +1366,13 @@ parse_pragma_type_spec_constr(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
         else
             Specs = ConstraintSpecs ++ get_any_errors1(MaybeApplyToSupers) ++
                 TypeSubstsSpecs ++ TypeSubstTVarSpecs,
-            MaybeIOM = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
         )
     else
         Spec = report_pragma_arity_error(ErrorTerm,
             "type_spec_constrained_preds", "three arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -1457,7 +1469,7 @@ parse_var_or_ground_constraint_acc(NamedVarNames, Term,
                 cord.snoc(Constraint, !ConstraintCord)
             ;
                 MaybeArgs = error1(ArgSpecs),
-                !:Specs = ArgSpecs ++ !.Specs
+                !:Specs = one_or_more_to_list(ArgSpecs) ++ !.Specs
             )
         )
     else
@@ -1510,7 +1522,7 @@ parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeadTerm), Pieces),
-            HeadResult = error1([Spec])
+            HeadResult = error1(one_or_more(Spec, []))
         )
     ;
         HeadResult0 = error1(HeadSpecs),
@@ -1523,7 +1535,8 @@ parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
         Result = ok1([HeadArg | TailArgs])
     else
         Specs = get_any_errors1(HeadResult) ++ get_any_errors1(TailResult),
-        Result = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        Result = error1(OoMSpecs)
     ).
 
 :- pred parse_type_subst_list(set(string)::in, term::in,
@@ -1589,7 +1602,7 @@ parse_type_subst_acc(WNHII, PrefixPieces, NamedVarNames, Term,
         cord.snoc(TypeSubst, !TypeSubstCord)
     ;
         MaybeTypeSubst = error1(TypeSubstSpecs),
-        !:Specs = TypeSubstSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(TypeSubstSpecs) ++ !.Specs
     ).
 
 :- pred parse_type_subst(why_no_ho_inst_info::in, list(format_piece)::in,
@@ -1613,7 +1626,7 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                 nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
-            MaybeTypeSubst = error1([Spec])
+            MaybeTypeSubst = error1(one_or_more(Spec, []))
         ;
             ArgTerms = [ArgTerm],
             ( if list_term_to_term_list(ArgTerm, TypeSubstTerms) then
@@ -1627,7 +1640,7 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
-                    MaybeTypeSubst = error1([Spec])
+                    MaybeTypeSubst = error1(one_or_more(Spec, []))
                 ;
                     TypeSubstTerms = [HeadTypeSubstTerm | TailTypeSubstTerms],
                     VarSet0 = !.VarSet,
@@ -1648,8 +1661,9 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                         det_list_to_one_or_more(TVarSubsts, TypeSubst),
                         MaybeTypeSubst = ok1(TypeSubst)
                     ;
-                        TVarSpecs = [_ | _],
-                        MaybeTypeSubst = error1(TVarSpecs)
+                        TVarSpecs = [HeadSpec | TailSpecs],
+                        MaybeTypeSubst =
+                            error1(one_or_more(HeadSpec, TailSpecs))
                     )
                 )
             else
@@ -1665,7 +1679,7 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybeTypeSubst = error1([Spec])
+                MaybeTypeSubst = error1(one_or_more(Spec, []))
             )
         )
     else
@@ -1681,7 +1695,7 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeTypeSubst = error1([Spec])
+        MaybeTypeSubst = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -1716,7 +1730,7 @@ parse_apply_to_supers(VarSet, Term, MaybeApplyToSupers) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeApplyToSupers = error1([Spec])
+        MaybeApplyToSupers = error1(one_or_more(Spec, []))
     ).
 
 %---------------------%
@@ -1926,8 +1940,8 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
                     Item = item_decl_pragma(decl_pragma_type_spec(TypeSpec)),
                     MaybeIOM = ok1(iom_item(Item))
                 ;
-                    TypeSpecs = [_ | _],
-                    MaybeIOM = error1(TypeSpecs)
+                    TypeSpecs = [HeadSpec | TailSpecs],
+                    MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
                 )
             )
         ;
@@ -1937,7 +1951,7 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
     else
         Spec = report_pragma_arity_error(ErrorTerm, "type_spec",
             "two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -2007,7 +2021,7 @@ parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
                 cord.snoc(TVarSubst, !TVarSubstCord)
             ;
                 MaybeType = error1(TypeSpecs),
-                !:Specs = TypeSpecs ++ !.Specs
+                !:Specs = one_or_more_to_list(TypeSpecs) ++ !.Specs
             )
         else
             TypeVarTermStr = describe_error_term(VarSet, TypeVarTerm),
@@ -2140,7 +2154,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(FileNameTerm), Pieces),
-                MaybeIOM = error1([Spec])
+                MaybeIOM = error1(one_or_more(Spec, []))
             )
         ;
             MaybePredSpec = error1(Specs),
@@ -2153,7 +2167,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "fact_table",
             "two arguments"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -2191,8 +2205,8 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                 "conflicting features in feature set",
                 ConflictingFeatures, FeatureList, ConflictSpecs),
             (
-                ConflictSpecs = [_ | _],
-                MaybeIOM = error1(ConflictSpecs)
+                ConflictSpecs = [HeadSpec | TailSpecs],
+                MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
             ;
                 ConflictSpecs = [],
                 (
@@ -2218,7 +2232,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         ),
         Spec = report_pragma_arity_error(ErrorTerm, "require_feature_set",
             "exactly one argument"),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_required_feature(varset::in, term::in,
@@ -2248,7 +2262,7 @@ parse_required_feature(VarSet, Term, MaybeReqFeature) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeReqFeature = error1([Spec])
+        MaybeReqFeature = error1(one_or_more(Spec, []))
     ).
 
 :- pred string_to_required_feature(string::in, required_feature::out)

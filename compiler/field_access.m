@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2012, 2014-2016, 2018-2020, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2012, 2014-2016, 2018-2020, 2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,6 +104,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 
 :- import_module int.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module term.
 :- import_module varset.
@@ -288,7 +289,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
         else
             Spec = make_field_list_error(VarSet,
                 get_term_context(FieldNameTerm), Term, ContextPieces),
-            MaybeFieldNames = error1([Spec])
+            MaybeFieldNames = error1(one_or_more(Spec, []))
         )
     else
         ( if try_parse_sym_name_and_args(Term, FieldName, Args) then
@@ -296,7 +297,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
         else
             Spec = make_field_list_error(VarSet, get_term_context(Term), Term,
                 ContextPieces),
-            MaybeFieldNames = error1([Spec])
+            MaybeFieldNames = error1(one_or_more(Spec, []))
         )
     ).
 

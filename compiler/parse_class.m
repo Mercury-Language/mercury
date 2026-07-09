@@ -119,7 +119,7 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_non_empty_class(module_name::in, varset::in, term::in, term::in,
@@ -143,7 +143,8 @@ parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
     else
         Specs = get_any_errors1(MaybeItemTypeClassInfo0) ++
             get_any_errors1(MaybeClassDecls),
-        MaybeItemTypeClassInfo = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeItemTypeClassInfo = error1(OoMSpecs)
     ).
 
 :- pred parse_class_head(module_name::in, varset::in, term::in,
@@ -283,7 +284,7 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
-                MaybeItemTypeClass = error1([Spec])
+                MaybeItemTypeClass = error1(one_or_more(Spec, []))
             )
         )
     ;
@@ -314,8 +315,8 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
             BadConstraintSpecs = [],
             Result = ok2(SimpleConstraints, FunDeps)
         ;
-            BadConstraintSpecs = [_ | _],
-            Result = error2(BadConstraintSpecs)
+            BadConstraintSpecs = [HeadSpec | TailSpec],
+            Result = error2(one_or_more(HeadSpec, TailSpec))
         )
     ;
         Result0 = error1(Specs),
@@ -391,7 +392,7 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     ContextPieces = cord.singleton(words("In typeclass declaration:")),
     varset.coerce(TVarSet, VarSet),
     ( if is_the_name_a_variable(VarSet, vtk_class_decl, NameTerm, Spec) then
-        MaybeTypeClassInfo = error1([Spec])
+        MaybeTypeClassInfo = error1(one_or_more(Spec, []))
     else
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
             ContextPieces, NameTerm, MaybeClassName),
@@ -407,7 +408,7 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(NameTerm), Pieces),
-                MaybeTypeClassInfo = error1([Spec])
+                MaybeTypeClassInfo = error1(one_or_more(Spec, []))
             ;
                 ArgTerms = [_ | _],
                 terms_to_distinct_vars(TVarSet, "a", "typeclass declaration",
@@ -447,7 +448,7 @@ parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(DeclsTerm), Pieces),
-        MaybeClassDecls = error1([Spec])
+        MaybeClassDecls = error1(one_or_more(Spec, []))
     ).
 
     % From a list of maybe1s, search them for errors.
@@ -462,8 +463,8 @@ find_errors(Xs, Result) :-
         Specs = [],
         Result = ok1(Results)
     ;
-        Specs = [_ | _],
-        Result = error1(Specs)
+        Specs = [HeadSpec | TailSpec],
+        Result = error1(one_or_more(HeadSpec, TailSpec))
     ).
 
 :- pred find_errors_loop(list(maybe1(T))::in, list(T)::in, list(T)::out,
@@ -477,7 +478,7 @@ find_errors_loop([X | Xs], !Results, !Specs) :-
         !:Results = [CurResult | !.Results]
     ;
         X = error1(CurSpecs),
-        !:Specs = CurSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(CurSpecs) ++ !.Specs
     ).
 
 %---------------------------------------------------------------------------%
@@ -518,7 +519,7 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 suffix(".")]) ++
             [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1([Spec])
+        MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_instance_name(module_name::in, tvarset::in, term::in,
@@ -558,7 +559,8 @@ parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
     else
         Specs = get_any_errors1(MaybeItemInstanceInfo0) ++
             get_any_errors1(MaybeInstanceConstraints),
-        MaybeItemInstanceInfo = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeItemInstanceInfo = error1(OoMSpecs)
     ).
 
 :- pred parse_instance_constraints(module_name::in, varset::in, term::in,
@@ -580,7 +582,7 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     NameContextPieces = cord.singleton(words("In instance declaration:")),
     varset.coerce(TVarSet, VarSet),
     ( if is_the_name_a_variable(VarSet, vtk_instance_decl, NameTerm, Spec) then
-        MaybeItemInstanceInfo = error1([Spec])
+        MaybeItemInstanceInfo = error1(one_or_more(Spec, []))
     else
         parse_sym_name_and_args(VarSet, NameContextPieces,
             NameTerm, MaybeClassName),
@@ -626,7 +628,7 @@ parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
             MaybeCheckSpec),
         (
             MaybeCheckSpec = yes(Spec),
-            MaybeItemInstanceInfo = error1([Spec])
+            MaybeItemInstanceInfo = error1(one_or_more(Spec, []))
         ;
             MaybeCheckSpec = no,
             MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
@@ -634,7 +636,8 @@ parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
     else
         Specs = get_any_errors1(MaybeItemInstanceInfo0) ++
             get_any_errors1(MaybeInstanceMethods),
-        MaybeItemInstanceInfo = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        MaybeItemInstanceInfo = error1(OoMSpecs)
     ).
 
 :- pred check_tvars_in_instance_constraint(item_instance_info::in,
@@ -689,7 +692,7 @@ parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MethodsTerm), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
     % Turn the term into a method instance.
@@ -737,7 +740,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
-                MaybeInstanceMethod = error1([Spec])
+                MaybeInstanceMethod = error1(one_or_more(Spec, []))
             )
         else if
             ClassMethodTerm = term.functor(term.atom("func"), [SlashTerm], _),
@@ -770,7 +773,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
-                MaybeInstanceMethod = error1([Spec])
+                MaybeInstanceMethod = error1(one_or_more(Spec, []))
             )
         else
             MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -791,12 +794,12 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(MethodTerm), Pieces),
-            MaybeInstanceMethod = error1([Spec])
+            MaybeInstanceMethod = error1(one_or_more(Spec, []))
         )
     else
         ( if MethodTerm = term.functor(term.atom(":-"), [_], _) then
             Spec = report_unexpected_method_term(VarSet, MethodTerm),
-            MaybeInstanceMethod = error1([Spec])
+            MaybeInstanceMethod = error1(one_or_more(Spec, []))
         else
             % For the clauses in an instance declaration, the default
             % module name for the clause heads is the module name of the class
@@ -884,7 +887,7 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm,
                     words("type variables and ground types.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         )
     ;
         Result0 = error1(Specs),
@@ -916,7 +919,7 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ConstraintsTerm), Pieces),
-            Result = error2([Spec])
+            Result = error2(one_or_more(Spec, []))
         )
     ;
         Result0 = error1(Specs),
@@ -997,8 +1000,10 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
         then
             Result = ok1(one_or_more.cons(HeadConstraint, TailConstraints))
         else
-            Result = error1(get_any_errors1(HeadResult) ++
-                get_any_errors1(TailResult))
+            Specs = get_any_errors1(HeadResult) ++
+                get_any_errors1(TailResult),
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            Result = error1(OoMSpecs)
         )
     ).
 
@@ -1024,7 +1029,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
                 [nl],
             LHSSpec = spec($pred, severity_error, phase_t2pt,
                 LHSContext, LHSPieces),
-            MaybeInstVar = error1([LHSSpec])
+            MaybeInstVar = error1(one_or_more(LHSSpec, []))
         ),
         ContextPieces = cord.from_list([words("In the constraining inst"),
             words("of an inst constraint:")]),
@@ -1038,7 +1043,8 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
         else
             Specs = get_any_errors1(MaybeInstVar)
                 ++ get_any_errors1(MaybeInst),
-            Result = error1(Specs)
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            Result = error1(OoMSpecs)
         )
     else if
         parse_fundep(VarSet, ConstraintTerm, Result0)
@@ -1072,7 +1078,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             color_as_incorrect([quote(ConstraintTermStr)]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ConstraintTerm), Pieces),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ).
 
 :- pred parse_fundep(varset::in, term::in,
@@ -1113,13 +1119,14 @@ parse_fundep(VarSet, Term, Result) :-
                 nl
             ],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         else
             Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
         )
     else
         Specs = get_any_errors1(MaybeDomain) ++ get_any_errors1(MaybeRange),
-        Result = error1(Specs)
+        det_list_to_one_or_more(Specs, OoMSpecs),
+        Result = error1(OoMSpecs)
     ).
 
 :- pred parse_fundep_side(varset::in, string::in, string::in, term::in,

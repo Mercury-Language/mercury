@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,6 +79,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -427,7 +428,7 @@ transform_dcg_record_syntax(LocKind, Renaming, AccessType, ArgTerms0, Context,
             svar_finish_atomic_goal(LocKind, !SVarState)
         ;
             MaybeFieldNames = error1(FieldNamesSpecs),
-            add_unravel_specs(FieldNamesSpecs, !UrInfo),
+            add_unravel_oom_specs(FieldNamesSpecs, !UrInfo),
             invalid_goal("^", ArgTerms1, GoalInfo, HLDSGoal,
                 !SVarState, !UrInfo),
             record_unravel_found_syntax_error(!UrInfo)

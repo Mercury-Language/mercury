@@ -180,7 +180,7 @@ add_pragma_type_spec_for_pred(TypeSpec, PredId,
         )
     ;
         MaybeSubstResult = error5(SubstSpecs),
-        !:Specs = SubstSpecs ++ !.Specs
+        !:Specs = one_or_more_to_list(SubstSpecs) ++ !.Specs
     ).
 
 %---------------------%
@@ -211,7 +211,7 @@ check_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
         list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
         report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
             MultiSubstVars, Spec),
-        MaybeSubstResult = error5([Spec])
+        MaybeSubstResult = error5(one_or_more(Spec, []))
     ;
         MultiSubstVars0 = [],
         pred_info_get_typevarset(PredInfo0, CalledTVarSet),
@@ -272,19 +272,19 @@ check_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
                     SubExistQVars = [_ | _],
                     report_subst_existq_tvars(PredInfo0, Context,
                         SubExistQVars, Spec),
-                    MaybeSubstResult = error5([Spec])
+                    MaybeSubstResult = error5(one_or_more(Spec, []))
                 )
             ;
                 RecSubstTVars = [_ | _],
                 report_recursive_subst(PredInfo0, Context, TVarSet0,
                     RecSubstTVars, Spec),
-                MaybeSubstResult = error5([Spec])
+                MaybeSubstResult = error5(one_or_more(Spec, []))
             )
         ;
             UnknownVarsToSub = [_ | _],
             report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
                 UnknownVarsToSub, Spec),
-            MaybeSubstResult = error5([Spec])
+            MaybeSubstResult = error5(one_or_more(Spec, []))
         )
     ).
 
@@ -341,7 +341,7 @@ find_pred_procs_to_type_spec(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
                 DescPieces = [pragma_decl("type_spec"), words("declaration")],
                 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo,
                     VarSet, ArgModes, DescPieces, Context, Spec),
-                MaybeSpecProcs = error6([Spec])
+                MaybeSpecProcs = error6(one_or_more(Spec, []))
             )
         ;
             ModesOrArity = moa_arity(UserArity),

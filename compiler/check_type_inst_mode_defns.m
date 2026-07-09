@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2019-2025 The Mercury team.
+% Copyright (C) 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -984,7 +984,7 @@ pick_first_error_free_enum_if_any([HeadMaybeCFE | TailMaybeCFEs],
     ;
         HeadMaybeCFE = error1(HeadSpecs),
         MaybeCFE = TailMaybeCFE,
-        Specs = HeadSpecs ++ TailSpecs
+        Specs = one_or_more_to_list(HeadSpecs) ++ TailSpecs
     ).
 
 :- pred build_mercury_foreign_enum_map(type_ctor::in,
@@ -1022,8 +1022,8 @@ build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet,
         CheckedForeignEnum = checked_foreign_enum(ForeignEnum, ForeignNameOoM),
         MaybeCheckedForeignEnum = ok1(CheckedForeignEnum)
     ;
-        Specs = [_ | _],
-        MaybeCheckedForeignEnum = error1(Specs)
+        Specs = [HeadSpec | TailSpecs],
+        MaybeCheckedForeignEnum = error1(one_or_more(HeadSpec, TailSpecs))
     ).
 
     % Please keep in sync with find_non_enum_ctors_build_valid_ctor_names

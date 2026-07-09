@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -322,7 +322,7 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybePredSpec = error1([Spec])
+        MaybePredSpec = error1(one_or_more(Spec, []))
     ).
 
 parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
@@ -354,7 +354,7 @@ parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybePredSpec = error1([Spec])
+        MaybePredSpec = error1(one_or_more(Spec, []))
     ).
 
 parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
@@ -425,7 +425,7 @@ parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
                     [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
-                MaybePredOrProcSpec = error1([Spec])
+                MaybePredOrProcSpec = error1(one_or_more(Spec, []))
             else
                 MaybePredOrProcSpec = error1(PredAndModeSpecs)
             )
@@ -489,7 +489,8 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, ContextPieces, VarSet,
             else
                 Specs = get_any_errors1(MaybeArgModes0)
                     ++ get_any_errors1(MaybeRetMode),
-                MaybeNameAndModes = error3(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                MaybeNameAndModes = error3(OoMSpecs)
             )
         )
     ;
@@ -634,7 +635,7 @@ parse_list_elements(Where, What, Pred, VarSet, Term, Result) :-
     (
         Term = term.variable(_, _),
         make_expected_got_spec(Where, VarSet, What, Term, Spec),
-        Result = error1([Spec])
+        Result = error1(one_or_more(Spec, []))
     ;
         Term = term.functor(Functor, Args, _Context),
         ( if
@@ -652,7 +653,8 @@ parse_list_elements(Where, What, Pred, VarSet, Term, Result) :-
             else
                 Specs = get_any_errors1(HeadResult) ++
                     get_any_errors1(TailResult),
-                Result = error1(Specs)
+                det_list_to_one_or_more(Specs, OoMSpecs),
+                Result = error1(OoMSpecs)
             )
         else if
             Functor = term.atom("[]"),
@@ -661,7 +663,7 @@ parse_list_elements(Where, What, Pred, VarSet, Term, Result) :-
             Result = ok1([])
         else
             make_expected_got_spec(Where, VarSet, What, Term, Spec),
-            Result = error1([Spec])
+            Result = error1(one_or_more(Spec, []))
         )
     ).
 
@@ -798,7 +800,7 @@ parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
             color_as_incorrect([words("outside the range of that type.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        MaybeConsId = error1([Spec])
+        MaybeConsId = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -816,7 +818,7 @@ parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
-        MaybeInt = error1([Spec])
+        MaybeInt = error1(one_or_more(Spec, []))
     ).
 
 %---------------------------------------------------------------------------%
@@ -828,8 +830,8 @@ terms_to_distinct_vars(VarSet, AAn, Kind, Terms, MaybeVars) :-
         Specs = [],
         MaybeVars = ok1(Vars)
     ;
-        Specs = [_ | _],
-        MaybeVars = error1(Specs)
+        Specs = [HeadSpec | TailSpecs],
+        MaybeVars = error1(one_or_more(HeadSpec, TailSpecs))
     ).
 
 terms_to_one_or_more_distinct_vars(VarSet, AAn, Kind, ConjTerm,
@@ -847,14 +849,14 @@ terms_to_one_or_more_distinct_vars(VarSet, AAn, Kind, ConjTerm,
             TermContext = get_term_context(ConjTerm),
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
-            MaybeVars = error1([Spec])
+            MaybeVars = error1(one_or_more(Spec, []))
         ;
             Vars = [HeadVar | TailVars],
             MaybeVars = ok1(one_or_more(HeadVar, TailVars))
         )
     ;
-        Specs = [_ | _],
-        MaybeVars = error1(Specs)
+        Specs = [HeadSpec | TailSpecs],
+        MaybeVars = error1(one_or_more(HeadSpec, TailSpecs))
     ).
 
 :- pred terms_to_distinct_vars_loop(varset(T)::in, string::in, string::in,
