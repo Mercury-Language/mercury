@@ -244,55 +244,9 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
         contains_errors(Globals, SpecsSofar) = no,
         ExitStatus = 0
     then
-        globals.lookup_bool_option(Globals, verbose, Verbose),
-        globals.lookup_bool_option(Globals, statistics, Stats),
-        maybe_write_dependency_graph(ProgressStream, Stats,
-            HLDS20, HLDS21, !IO),
-        (
-            OpModeAugment = opmau_typecheck_only,
-            ExtraObjFiles = []
-        ;
-            OpModeAugment = opmau_make_plain_opt,
-            % Only run up to typechecking when making the .opt file.
-            ExtraObjFiles = []
-        ;
-            OpModeAugment = opmau_make_trans_opt,
-            output_trans_opt_file(ProgressStream, HLDS21, !DumpInfo,
-                !MaybeWrittenSpecs, !IO),
-            ExtraObjFiles = []
-        ;
-            OpModeAugment = opmau_make_analysis_registry,
-            prepare_for_intermodule_analysis(ProgressStream, Globals,
-                Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
-            (
-                AnalysisSpecs = [],
-                output_analysis_file(ProgressStream, HLDS22,
-                    !DumpInfo, !MaybeWrittenSpecs, !IO)
-            ;
-                AnalysisSpecs = [_ | _],
-                add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs)
-            ),
-            ExtraObjFiles = []
-        ;
-            OpModeAugment = opmau_make_xml_documentation,
-            xml_documentation(ProgressStream, HLDS21, !IO),
-            ExtraObjFiles = []
-        ;
-            OpModeAugment = opmau_front_and_middle(OpModeFrontAndMiddle),
-            maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
-                Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
-            (
-                AnalysisSpecs = [],
-                MaybeTopModule = Baggage ^ mb_maybe_top_module,
-                after_front_end_passes(ProgressStream, ErrorStream, Globals,
-                    OpModeFrontAndMiddle, MaybeTopModule, MaybeTimestampMap,
-                    HLDS22, ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO)
-            ;
-                AnalysisSpecs = [_ | _],
-                add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs),
-                ExtraObjFiles = []
-            )
-        )
+        process_augmented_module_after_front_end(ProgressStream, ErrorStream,
+            Globals, OpModeAugment, Baggage, MaybeTimestampMap, HLDS20,
+            ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO)
     else
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.
@@ -302,6 +256,65 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
             true
         ),
         ExtraObjFiles = []
+    ).
+
+:- pred process_augmented_module_after_front_end(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_augment::in, module_baggage::in, maybe(module_timestamp_map)::in,
+    module_info::in, list(string)::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+process_augmented_module_after_front_end(ProgressStream, ErrorStream, Globals,
+        OpModeAugment, Baggage, MaybeTimestampMap, HLDS20, ExtraObjFiles,
+        !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    maybe_write_dependency_graph(ProgressStream, Stats,
+        HLDS20, HLDS21, !IO),
+    (
+        OpModeAugment = opmau_typecheck_only,
+        ExtraObjFiles = []
+    ;
+        OpModeAugment = opmau_make_plain_opt,
+        % Only run up to typechecking when making the .opt file.
+        ExtraObjFiles = []
+    ;
+        OpModeAugment = opmau_make_trans_opt,
+        output_trans_opt_file(ProgressStream, HLDS21, !DumpInfo,
+            !MaybeWrittenSpecs, !IO),
+        ExtraObjFiles = []
+    ;
+        OpModeAugment = opmau_make_analysis_registry,
+        prepare_for_intermodule_analysis(ProgressStream, Globals,
+            Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
+        (
+            AnalysisSpecs = [],
+            output_analysis_file(ProgressStream, HLDS22,
+                !DumpInfo, !MaybeWrittenSpecs, !IO)
+        ;
+            AnalysisSpecs = [_ | _],
+            add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs)
+        ),
+        ExtraObjFiles = []
+    ;
+        OpModeAugment = opmau_make_xml_documentation,
+        xml_documentation(ProgressStream, HLDS21, !IO),
+        ExtraObjFiles = []
+    ;
+        OpModeAugment = opmau_front_and_middle(OpModeFrontAndMiddle),
+        maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
+            Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
+        (
+            AnalysisSpecs = [],
+            MaybeTopModule = Baggage ^ mb_maybe_top_module,
+            after_front_end_passes(ProgressStream, ErrorStream, Globals,
+                OpModeFrontAndMiddle, MaybeTopModule, MaybeTimestampMap,
+                HLDS22, ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO)
+        ;
+            AnalysisSpecs = [_ | _],
+            add_to_be_written_specs(AnalysisSpecs, !MaybeWrittenSpecs),
+            ExtraObjFiles = []
+        )
     ).
 
 %---------------------------------------------------------------------------%
