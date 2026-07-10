@@ -198,7 +198,18 @@ valid_no_roundtrip_durations = [
     duration_test("zero minutes", "PT0M"),
     duration_test("zero hours", "PT0H"),
     duration_test("zero months", "P0M"),
-    duration_test("all explicit zeros", "P0Y0M0DT0H0M0S")
+    duration_test("zero years", "P0Y"),
+    duration_test("all explicit zeros", "P0Y0M0DT0H0M0S"),
+    duration_test("negative zero days", "-P0D"),
+    duration_test("negative zero years", "-P0Y"),
+    duration_test("negative zero months", "-P0M"),
+    duration_test("negative zero hours", "-PT0H"),
+    duration_test("negative zero minutes", "-PT0M"),
+    duration_test("negative zero seconds", "-PT0S"),
+    duration_test("negative zero seconds with explicit fraction",
+        "-PT0.0S"),
+    duration_test("negative zero with all explicit zeros",
+        "-P0Y0M0DT0H0M0S")
 ].
 
 %---------------------------------------------------------------------------%

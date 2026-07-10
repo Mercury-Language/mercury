@@ -132,9 +132,54 @@ PASS duration(0, 0, 0, 0)
 TEST P0M
 TRIP P0D
 
+"P0Y":                              zero years
+PASS duration(0, 0, 0, 0)
+TEST P0Y
+TRIP P0D
+
 "P0Y0M0DT0H0M0S":                   all explicit zeros
 PASS duration(0, 0, 0, 0)
 TEST P0Y0M0DT0H0M0S
+TRIP P0D
+
+"-P0D":                             negative zero days
+PASS duration(0, 0, 0, 0)
+TEST -P0D
+TRIP P0D
+
+"-P0Y":                             negative zero years
+PASS duration(0, 0, 0, 0)
+TEST -P0Y
+TRIP P0D
+
+"-P0M":                             negative zero months
+PASS duration(0, 0, 0, 0)
+TEST -P0M
+TRIP P0D
+
+"-PT0H":                            negative zero hours
+PASS duration(0, 0, 0, 0)
+TEST -PT0H
+TRIP P0D
+
+"-PT0M":                            negative zero minutes
+PASS duration(0, 0, 0, 0)
+TEST -PT0M
+TRIP P0D
+
+"-PT0S":                            negative zero seconds
+PASS duration(0, 0, 0, 0)
+TEST -PT0S
+TRIP P0D
+
+"-PT0.0S":                          negative zero seconds with explicit fraction
+PASS duration(0, 0, 0, 0)
+TEST -PT0.0S
+TRIP P0D
+
+"-P0Y0M0DT0H0M0S":                  negative zero with all explicit zeros
+PASS duration(0, 0, 0, 0)
+TEST -P0Y0M0DT0H0M0S
 TRIP P0D
 
 === Testing with invalid inputs ===
