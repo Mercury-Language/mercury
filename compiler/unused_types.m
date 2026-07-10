@@ -25,14 +25,12 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_spec.
-
-:- import_module list.
+:- import_module parse_tree.error_util.
 
 %---------------------------------------------------------------------------%
 
-:- pred warn_about_unused_types(module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred maybe_warn_about_unused_types(module_info::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -48,6 +46,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
@@ -55,6 +54,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -63,6 +63,44 @@
 :- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
+
+maybe_warn_about_unused_types(ModuleInfo, !MaybeWrittenSpecs) :-
+    SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
+    module_info_get_globals(ModuleInfo, Globals),
+    ErrorsSoFar = contains_errors(Globals, SpecsSoFar),
+    (
+        ErrorsSoFar = yes
+        % If the module contains errors, then generating warnings
+        % about unused types would have two problems.
+        %
+        % The first is that when a predicate has a type error, the
+        % type checker does not record the types of the predicate's
+        % variables in the predicate's var_table. It is possible that,
+        % in the absence of the error, the only appearance of a type_ctor
+        % in the module would be in that var_table. In situations where
+        % this does happen (e.g. tests/invalid/type_error_unambigious.m),
+        % the warning we generate would claim that a type_ctor is unused
+        % when in fact it is NOT unused. Likewise, an error with e.g.
+        % one type definition could also mutable prevent the only use
+        % of another type definition to be added to the HLDS.
+        %
+        % The second problem is that even if the warnings we generate
+        % in the presence of errors are NOT making an incorrect claim,
+        % they are still not all that helpful. This is because what matters
+        % is not which type_ctors are unused in the module as it is now
+        % (since the module is buggy), but which type_ctors will be unused
+        % in the future version of the module in which the errors have been
+        % fixed. Since the code of unused_types.m cannot possibly predict
+        % what the fixed version would look like, it is best not to
+        % invoke it during *this* compiler invocation.
+    ;
+        ErrorsSoFar = no,
+        warn_about_unused_types(ModuleInfo, [], UnusedTypeSpecs),
+        add_to_be_written_specs(UnusedTypeSpecs, !MaybeWrittenSpecs)
+    ).
+
+:- pred warn_about_unused_types(module_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_about_unused_types(ModuleInfo, !Specs) :-
     module_info_get_globals(ModuleInfo, Globals),

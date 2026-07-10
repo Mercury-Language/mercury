@@ -253,39 +253,6 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
         pretest_user_inst_table(!HLDS),
         post_typecheck_finish_preds(!HLDS, UnprovenConstraintSpecs,
             PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
-
-        SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
-        ErrorsSoFar = contains_errors(Globals, SpecsSoFar),
-        (
-            ErrorsSoFar = yes
-            % If the module contains errors, then generating warnings
-            % about unused types would have two problems.
-            %
-            % The first is that when a predicate has a type error, the
-            % type checker does not record the types of the predicate's
-            % variables in the predicate's var_table. It is possible that,
-            % in the absence of the error, the only appearance of a type_ctor
-            % in the module would be in that var_table. In situations where
-            % this does happen (e.g. tests/invalid/type_error_unambigious.m),
-            % the warning we generate would claim that a type_ctor is unused
-            % when in fact it is NOT unused. Likewise, an error with e.g.
-            % one type definition could also mutable prevent the only use
-            % of another type definition to be added to the HLDS.
-            %
-            % The second problem is that even if the warnings we generate
-            % in the presence of errors are NOT making an incorrect claim,
-            % they are still not all that helpful. This is because what matters
-            % is not which type_ctors are unused in the module as it is now
-            % (since the module is buggy), but which type_ctors will be unused
-            % in the future version of the module in which the errors have been
-            % fixed. Since the code of unused_types.m cannot possibly predict
-            % what the fixed version would look like, it is best not to
-            % invoke it during *this* compiler invocation.
-        ;
-            ErrorsSoFar = no,
-            warn_about_unused_types(!.HLDS, [], UnusedTypeSpecs),
-            add_to_be_written_specs(UnusedTypeSpecs, !MaybeWrittenSpecs)
-        ),
         maybe_dump_hlds(ProgressStream, !.HLDS, 19, "post_typecheck",
             !DumpInfo, !IO),
         % If the main part of typecheck detected some errors, then some of
@@ -304,6 +271,8 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
         ;
             TypeCheckErrors = yes
         ),
+
+        maybe_warn_about_unused_types(!.HLDS, !MaybeWrittenSpecs),
 
         ( if
             ( FoundSyntaxError = some_clause_syntax_errors
