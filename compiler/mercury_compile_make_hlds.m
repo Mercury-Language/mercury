@@ -25,22 +25,31 @@
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
 
-:- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
+:- type make_hlds_result
+    --->    make_hlds_result(
+                mhr_invalid_types       :: list(error_spec),
+                mhr_invalid_insts_modes :: list(error_spec),
+                mhr_opt_blocking        :: list(error_spec),
+                mhr_expansion           :: list(error_spec),
+                mhr_event_set           :: list(error_spec)
+            ).
+
     % make_hlds_pass(ProgressStream, ErrorStream, Globals,
     %   OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
-    %   HLDS0, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
-    %   PreHLDSErrors, !DumpInfo, !HaveReadModuleMaps,
-    %   !MaybeWrittenSpecs, !IO):
+    %   HLDS0, QualInfo, MaybeTimestampMap, Result,
+    %   !DumpInfo, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO):
     %
     % Every error_spec in MakeHLDSResults will also appear in
     % !:MaybeWrittenSpecs. They are also returned separately in order
@@ -51,7 +60,7 @@
     globals::in, op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
     module_baggage::in, aug_compilation_unit::in,
     module_info::out, qual_info::out, maybe(module_timestamp_map)::out,
-    bool::out, bool::out, bool::out, dump_info::in, dump_info::out,
+    make_hlds_result::out, dump_info::in, dump_info::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -70,7 +79,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.build_eqv_maps.
 :- import_module parse_tree.equiv_type_parse_tree.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.grab_modules.
@@ -86,9 +94,9 @@
 :- import_module parse_tree.write_error_spec.
 :- import_module recompilation.
 
+:- import_module bool.
 :- import_module char.
 :- import_module library.
-:- import_module list.
 :- import_module map.
 :- import_module set.
 :- import_module set_tree234.
@@ -100,8 +108,7 @@
 
 make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
-        !:HLDS, QualInfo, MaybeTimestampMap,
-        UndefTypes, UndefModes, PreHLDSErrors,
+        !:HLDS, QualInfo, MaybeTimestampMap, Result,
         !DumpInfo, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -117,23 +124,22 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, Verbose, MaybeDFileTransOptDeps, OptBlockingSpecs,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
         !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO),
-    (
-        OptBlockingSpecs = [],
-        IntermodError = no
-    ;
-        OptBlockingSpecs = [_ | _],
-        add_to_be_written_specs(OptBlockingSpecs, !MaybeWrittenSpecs),
-        IntermodError = yes
-    ),
+    add_to_be_written_specs(OptBlockingSpecs, !MaybeWrittenSpecs),
     MaybeTimestampMap = Baggage1 ^ mb_maybe_timestamp_map,
 
     BaggageSpecs = get_read_module_specs(Baggage1 ^ mb_errors),
     add_to_be_written_specs(BaggageSpecs, !MaybeWrittenSpecs),
 
+    % We must read in EventSpecMap0 before
+    % - the call to module_qualify_aug_comp_unit, since that call
+    %   module qualifies EventSpecMap0's contents, returning EventSpecMap1;
+    % - and the call to expand_eqv_types_insts, which expands equivalences
+    %   in EventSpecMap1, returning EventSpecMap.
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
-    maybe_read_event_set(Globals, EventSetFileName, EventSetName,
-        EventSpecMap0, EventSetErrors, !MaybeWrittenSpecs, !IO),
+    maybe_read_event_set(Globals, EventSetFileName,
+        EventSetName, EventSpecMap0, EventSetSpecs, !IO),
+    add_to_be_written_specs(EventSetSpecs, !MaybeWrittenSpecs),
 
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
@@ -157,7 +163,6 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     expand_eqv_types_insts(AugCompUnit2, AugCompUnit,
         EventSpecMap1, EventSpecMap, TypeEqvMap, UsedEqvModules,
         RecompInfo0, RecompInfo, ExpandSpecs),
-    ExpandErrors = contains_errors(Globals, ExpandSpecs),
     add_to_be_written_specs(ExpandSpecs, !MaybeWrittenSpecs),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
@@ -178,53 +183,25 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     add_to_be_written_specs(InvalidInstModeSpecs, !MaybeWrittenSpecs),
     add_to_be_written_specs(MakeSpecs, !MaybeWrittenSpecs),
 
+    % Now that we have both EventSpecMap and an initial HLDS,
+    % we can put the former into the latter.
     EventSet = event_set(EventSetName, EventSpecMap),
     module_info_set_event_set(EventSet, !HLDS),
 
-    % ZZZ
-    io.get_exit_status(Status, !IO),
-    SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
-    SpecsErrors = contains_errors(Globals, SpecsSoFar),
-    ( if
-        ( Status \= 0
-        ; SpecsErrors = yes
-        )
-    then
-        FoundSemanticError = yes,
-        % ZZZ
-        io.set_exit_status(1, !IO)
-    else
-        FoundSemanticError = no
-    ),
+    Result = make_hlds_result(InvalidTypeSpecs, InvalidInstModeSpecs,
+        OptBlockingSpecs, ExpandSpecs, EventSetSpecs),
+
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
         !MaybeWrittenSpecs, !IO),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
 
-    bool.or(FoundSemanticError, IntermodError, PreHLDSErrors),
     maybe_write_definitions(ProgressStream,
         Verbose, Stats, !.HLDS, !IO),
     maybe_write_definition_line_counts(ProgressStream,
         Verbose, Stats, !.HLDS, !IO),
     maybe_write_definition_extents(ProgressStream,
         Verbose, Stats, !.HLDS, !IO),
-
-    ( if
-        InvalidTypeSpecs = [],
-        EventSetErrors = no,
-        ExpandErrors = no
-    then
-        UndefTypes = no
-    else
-        UndefTypes = yes
-    ),
-    (
-        InvalidInstModeSpecs = [],
-        UndefModes = no
-    ;
-        InvalidInstModeSpecs = [_ | _],
-        UndefModes = yes
-    ),
 
     maybe_dump_hlds(ProgressStream, !.HLDS, 1, "initial", !DumpInfo, !IO),
     maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
@@ -322,19 +299,18 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
 %---------------------%
 
 :- pred maybe_read_event_set(globals::in, string::in,
-    string::out, event_spec_map::out, bool::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+    string::out, event_spec_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
-        Errors, !MaybeWrittenSpecs, !IO) :-
+        EventSetSpecs, !IO) :-
     ( if EventSetFileName = "" then
         EventSetName = "",
         EventSpecMap = map.init,
-        Errors = no
+        EventSetSpecs = []
     else
         read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
             EventSetSpecs, !IO),
-        add_to_be_written_specs(EventSetSpecs, !MaybeWrittenSpecs),
         Errors = contains_errors(Globals, EventSetSpecs),
         (
             Errors = no,

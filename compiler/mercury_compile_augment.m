@@ -76,6 +76,7 @@
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.write_error_spec.
 :- import_module recompilation.usage.
 :- import_module recompilation.used_file.
 :- import_module top_level.mercury_compile_front_end.
@@ -231,31 +232,59 @@ process_augmented_module(ProgressStream, ErrorStream, Globals,
         !DumpInfo, !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO) :-
     make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
-        HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
-        PreHLDSErrors, !DumpInfo, !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO),
-    frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
-        UndefTypes, UndefModes, PreHLDSErrors, FrontEndErrors,
-        HLDS1, HLDS20, !DumpInfo, !MaybeWrittenSpecs, !IO),
-    io.get_exit_status(ExitStatus, !IO),
-    ( if
-        PreHLDSErrors = no,
-        FrontEndErrors = no,
-        SpecsSofar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
-        contains_errors(Globals, SpecsSofar) = no,
-        ExitStatus = 0
-    then
-        process_augmented_module_after_front_end(ProgressStream, ErrorStream,
-            Globals, OpModeAugment, Baggage, MaybeTimestampMap, HLDS20,
-            ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO)
-    else
-        % If the number of errors is > 0, make sure that the compiler
-        % exits with a non-zero exit status.
-        ( if ExitStatus = 0 then
-            io.set_exit_status(1, !IO)
+        HLDS1, QualInfo, MaybeTimestampMap, MakeHldsResult,
+        !DumpInfo, !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    MakeHldsResult = make_hlds_result(InvalidTypeSpecs, InvalidInstModeSpecs,
+        OptBlockingSpecs, ExpandSpecs, EventSetSpecs),
+    % All of the errors in ExpandSpecs report errors that make some type
+    % definition invalid.
+    % Any errors with the definition of events are likely to lead to
+    % spurious errors when typechecking event calls. Stopping before
+    % typechecking will prevent the compiler from complaining about them.
+    BlockingTypeSpecs = InvalidTypeSpecs ++ ExpandSpecs ++ EventSetSpecs,
+    (
+        BlockingTypeSpecs = [_ | _],
+        % We can't continue after an undefined type error, since typecheck
+        % would get internal errors.
+        maybe_write_string(ProgressStream, Verbose,
+            "% Program contains undefined type error(s).\n", !IO),
+        ExtraObjFiles = [],
+        io.set_exit_status(1, !IO)
+    ;
+        BlockingTypeSpecs = [],
+        SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
+        SemanticErrors = contains_errors(Globals, SpecsSoFar),
+        OptBlockingErrors = contains_errors(Globals, OptBlockingSpecs),
+        bool.or(SemanticErrors, OptBlockingErrors, PreHLDSErrors),
+        frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
+            InvalidInstModeSpecs, PreHLDSErrors, FrontEndErrors,
+            HLDS1, HLDS20, !DumpInfo, !MaybeWrittenSpecs, !IO),
+        io.get_exit_status(ExitStatus, !IO),
+        ( if
+            PreHLDSErrors = no,
+            FrontEndErrors = no,
+            SpecsSofar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
+            contains_errors(Globals, SpecsSofar) = no,
+            ExitStatus = 0
+        then
+            process_augmented_module_after_front_end(ProgressStream,
+                ErrorStream, Globals, OpModeAugment, Baggage,
+                MaybeTimestampMap, HLDS20, ExtraObjFiles,
+                !DumpInfo, !MaybeWrittenSpecs, !IO)
         else
-            true
-        ),
-        ExtraObjFiles = []
+            % If the number of errors is > 0, make sure that the compiler
+            % exits with a non-zero exit status. However, do not override
+            % an exit status that may already be nonzero.
+            ( if ExitStatus = 0 then
+                io.set_exit_status(1, !IO)
+            else
+                true
+            ),
+            ExtraObjFiles = []
+        )
     ).
 
 :- pred process_augmented_module_after_front_end(io.text_output_stream::in,

@@ -29,16 +29,18 @@
 :- import_module libs.
 :- import_module libs.op_mode.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
 :- pred frontend_pass(io.text_output_stream::in, io.text_output_stream::in,
-    op_mode_augment::in, qual_info::in, bool::in, bool::in,
+    op_mode_augment::in, qual_info::in, list(error_spec)::in,
     bool::in, bool::out, module_info::in, module_info::out,
     dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
@@ -139,7 +141,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.maybe_error.
@@ -157,7 +158,6 @@
 
 :- import_module benchmarking.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -169,70 +169,51 @@
 %---------------------------------------------------------------------------%
 
 frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
-        FoundUndefTypeError, FoundUndefModeError, !FoundError,
+        FoundUndefModeError, !FoundError,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    % We can't continue after an undefined type error, since typecheck
-    % would get internal errors.
     module_info_get_globals(!.HLDS, Globals),
+    % It would be nice to move the decide_type_repns pass later, possibly
+    % all the way to the end of the semantic analysis passes, to make sure
+    % that semantic analysis does not depend on implementation details.
+    %
+    % Unfortunately, this would require a large amount of extra work,
+    % for reasons that are documented at the top of du_type_layout.m.
     globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    decide_type_repns_pass(ProgressStream, ErrorStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 3, "decide_type_repns",
+        !DumpInfo, !IO),
+
+    maybe_write_string(ProgressStream, Verbose,
+        "% Checking typeclasses...\n", !IO),
+    check_typeclasses(ProgressStream, !HLDS, QualInfo0, QualInfo,
+        TypeClassSpecs),
+    TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
+    add_to_be_written_specs(TypeClassSpecs, !MaybeWrittenSpecs),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass",
+        !DumpInfo, !IO),
+    set_module_recompilation_info(QualInfo, !HLDS),
     (
-        FoundUndefTypeError = yes,
-        % We can't continue after an undefined type error, because if we did,
+        TypeClassErrors = yes,
+        % We can't continue after a typeclass error, because if we did,
         % typecheck could get internal errors.
-        !:FoundError = yes,
-        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-            !MaybeWrittenSpecs, !IO),
-        maybe_write_string(ProgressStream, Verbose,
-            "% Program contains undefined type error(s).\n", !IO),
-        io.set_exit_status(1, !IO)
+        !:FoundError = yes
     ;
-        FoundUndefTypeError = no,
-        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-            !MaybeWrittenSpecs, !IO),
-
-        % It would be nice to move the decide_type_repns pass later,
-        % possibly all the way to the end of the semantic analysis passes,
-        % to make sure that semantic analysis does not depend on implementation
-        % details.
-        %
-        % Unfortunately, this would require a large amount of extra work,
-        % for reasons that are documented at the top of du_type_layout.m.
-        globals.lookup_bool_option(Globals, statistics, Stats),
-        decide_type_repns_pass(ProgressStream, ErrorStream, Verbose, Stats,
-            !HLDS, !MaybeWrittenSpecs, !IO),
-        maybe_dump_hlds(ProgressStream, !.HLDS, 3, "decide_type_repns",
-            !DumpInfo, !IO),
-
-        maybe_write_string(ProgressStream, Verbose,
-            "% Checking typeclasses...\n", !IO),
-        check_typeclasses(ProgressStream, !HLDS, QualInfo0, QualInfo,
-            TypeClassSpecs),
-        TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
-        add_to_be_written_specs(TypeClassSpecs, !MaybeWrittenSpecs),
-        maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass",
-            !DumpInfo, !IO),
-        set_module_recompilation_info(QualInfo, !HLDS),
-        (
-            TypeClassErrors = yes,
-            % We can't continue after a typeclass error, because if we did,
-            % typecheck could get internal errors.
-            !:FoundError = yes
-        ;
-            TypeClassErrors = no,
-            frontend_pass_after_typeclass_check(ProgressStream, ErrorStream,
-                OpModeAugment, FoundUndefModeError, !FoundError,
-                !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO)
-        )
+        TypeClassErrors = no,
+        frontend_pass_after_typeclass_check(ProgressStream, ErrorStream,
+            OpModeAugment, FoundUndefModeError, !FoundError,
+            !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO)
     ).
 
 :- pred frontend_pass_after_typeclass_check(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in,
-    bool::in, bool::in, bool::out,
+    list(error_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
-        FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
+        InvalidInstModeSpecs, !FoundError, !HLDS, !DumpInfo,
         !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -254,7 +235,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
     % We can't continue if the type inference iteration limit was exceeded
     % because the code to resolve overloading in post_typecheck.m (called by
     % purity.m) could abort.
-    ( if FoundUndefModeError = yes then
+    ( if InvalidInstModeSpecs = [_ | _] then
         !:FoundError = yes,
         maybe_write_string(ProgressStream, Verbose,
             "% Program contains undefined inst or undefined mode error(s).\n",
@@ -342,7 +323,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
             !:FoundError = yes
         else
             frontend_pass_after_typecheck(ProgressStream, ErrorStream,
-                OpModeAugment, Verbose, Stats, Globals, FoundUndefModeError,
+                OpModeAugment, Globals, Verbose, Stats, InvalidInstModeSpecs,
                 !FoundError, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO)
         )
     ).
@@ -465,13 +446,13 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
     maybe_dump_hlds(ProgressStream, !.HLDS, 15, "typecheck", !DumpInfo, !IO).
 
 :- pred frontend_pass_after_typecheck(io.text_output_stream::in,
-    io.text_output_stream::in, op_mode_augment::in, bool::in, bool::in,
-    globals::in, bool::in, bool::in, bool::out,
+    io.text_output_stream::in, op_mode_augment::in, globals::in,
+    bool::in, bool::in, list(error_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
-        Verbose, Stats, Globals, FoundUndefModeError,
+        Globals, Verbose, Stats, InvalidInstModeSpecs,
         !FoundError, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     % We invoke purity check even if --typecheck-only was specified,
     % because the resolution of predicate and function overloading
@@ -524,7 +505,7 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
 
         ( if
             !.FoundError = no,
-            FoundUndefModeError = no
+            InvalidInstModeSpecs = []
         then
             MakeOptIntEnabled = yes
         else
