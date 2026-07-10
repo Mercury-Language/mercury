@@ -70,6 +70,32 @@ month_to_int0(december) = 11
 
 === Test days_in_month/2 ===
 
+days_in_month(-4, january) = 31
+days_in_month(-4, february) = 29
+days_in_month(-4, march) = 31
+days_in_month(-4, april) = 30
+days_in_month(-4, may) = 31
+days_in_month(-4, june) = 30
+days_in_month(-4, july) = 31
+days_in_month(-4, august) = 31
+days_in_month(-4, september) = 30
+days_in_month(-4, october) = 31
+days_in_month(-4, november) = 30
+days_in_month(-4, december) = 31
+
+days_in_month(1900, january) = 31
+days_in_month(1900, february) = 28
+days_in_month(1900, march) = 31
+days_in_month(1900, april) = 30
+days_in_month(1900, may) = 31
+days_in_month(1900, june) = 30
+days_in_month(1900, july) = 31
+days_in_month(1900, august) = 31
+days_in_month(1900, september) = 30
+days_in_month(1900, october) = 31
+days_in_month(1900, november) = 30
+days_in_month(1900, december) = 31
+
 days_in_month(1977, january) = 31
 days_in_month(1977, february) = 28
 days_in_month(1977, march) = 31
@@ -95,6 +121,19 @@ days_in_month(2000, september) = 30
 days_in_month(2000, october) = 31
 days_in_month(2000, november) = 30
 days_in_month(2000, december) = 31
+
+days_in_month(2024, january) = 31
+days_in_month(2024, february) = 29
+days_in_month(2024, march) = 31
+days_in_month(2024, april) = 30
+days_in_month(2024, may) = 31
+days_in_month(2024, june) = 30
+days_in_month(2024, july) = 31
+days_in_month(2024, august) = 31
+days_in_month(2024, september) = 30
+days_in_month(2024, october) = 31
+days_in_month(2024, november) = 30
+days_in_month(2024, december) = 31
 
 === Test is_leap_year/1 ===
 
@@ -124,6 +163,7 @@ Unix epoch microsecond = 0
 
 === Test julian_day_number/1 ===
 
+julian_day_number(-4713-11-23 00:00:00) = -1 OK (Day before start of Julian period)
 julian_day_number(-4713-11-24 00:00:00) = 0 OK (Start of Julian period)
 julian_day_number(1970-01-01 00:00:00) = 2440588 OK (Unix epoch)
 julian_day_number(2000-01-01 00:00:00) = 2451545 OK (J2000)

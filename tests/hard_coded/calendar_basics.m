@@ -117,7 +117,12 @@ do_test_month_to_int(Desc, Func, Month, !IO) :-
 
 test_days_in_month(!IO) :-
     io.write_string("=== Test days_in_month/2 ===\n\n", !IO),
-    list.foldl(do_test_days_in_month, [1977, 2000], !IO).
+    %   -4: negative leap year.
+    % 1900: century non-leap year.
+    % 1977: non-leap year.
+    % 2000: century leap year.
+    % 2024: ordinary leap year.
+    list.foldl(do_test_days_in_month, [-4, 1900, 1977, 2000, 2024], !IO).
 
 :- pred do_test_days_in_month(year::in, io::di, io::uo) is det.
 
@@ -215,6 +220,11 @@ do_test_julian_day_number(Test, !IO) :-
 :- func julian_day_tests = list(julian_day_test).
 
 julian_day_tests = [
+    julian_day_test(
+        "Day before start of Julian period",
+        det_init_date_time(-4713, november, 23, 0, 0, 0, 0),
+        -1
+    ),
     julian_day_test(
         "Start of Julian period",
         det_init_date_time(-4713, november, 24, 0, 0, 0, 0),
@@ -379,6 +389,8 @@ test_local_time_offset(!IO) :-
             Offset ^ days = 0,
             Offset ^ hours > -13,
             Offset ^ hours < 15,
+            Offset ^ minutes >= -59,
+            Offset ^ minutes =< 59,
             Offset ^ seconds = 0,
             Offset ^ microseconds = 0
         then
