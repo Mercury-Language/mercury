@@ -85,7 +85,10 @@
 
 :- type number_of_iterations
     --->    within_iteration_limit
-    ;       exceeded_iteration_limit.
+    ;       exceeded_iteration_limit(error_spec).
+            % This error_spec reprorting the breaching of the iteration limit
+            % will have been also returned as an element of Specs
+            % in typecheck_module's argument list.
 
     % typecheck_module(ProgressStream, !ModuleInfo, Specs, FoundSyntaxError,
     %   NumberOfIterations):
@@ -239,9 +242,10 @@ typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
                 FoundSyntaxError, NumberOfIterations)
         else
             FinalValidPredIdSet = NewValidPredIdSet,
-            Specs = [typecheck_report_max_iterations_exceeded(MaxIterations)],
             FoundSyntaxError = CurFoundSyntaxError,
-            NumberOfIterations = exceeded_iteration_limit
+            Spec = typecheck_report_max_iterations_exceeded(MaxIterations),
+            Specs = [Spec],
+            NumberOfIterations = exceeded_iteration_limit(Spec)
         )
     ).
 

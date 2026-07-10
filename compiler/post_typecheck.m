@@ -41,7 +41,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % post_typecheck_finish_preds(!ModuleInfo, NumErrors,
+    % post_typecheck_finish_preds(!ModuleInfo, UnprovenConstraintSpecs,
     %   AlwaysSpecs, NoTypeErrorSpecs):
     %
     % Check that the types of variables in predicates contain no unbound type
@@ -49,22 +49,25 @@
     % head variables, and that there are no unsatisfied type class constraints.
     % Also bind any unbound type variables to the type `void'.
     %
-    % Return two lists of error messages. AlwaysSpecs will be the messages
-    % we want to print in all cases, and NoTypeErrorSpecs will be the messages
-    % we want to print only if type checking did not find any errors. The
-    % latter will be the kinds of errors that you can get as "avalanche"
-    % messages from type errors.
+    % Return three lists of error messages.
     %
-    % Separately, we return NumBadErrors, the number of errors that prevent us
-    % from proceeding further in compilation. We do this separately since some
-    % errors (e.g. bad type for main) do NOT prevent us from going further.
+    % The first, UnprovenConstraintSpecs, reports the errors that
+    % prevent us from proceeding further in compilation. Errors in the
+    % next two lists do not do this.
+    %
+    % AlwaysSpecs will be the messages we want to print in all cases,
+    % while NoTypeErrorSpecs will be the messages we want to print
+    % only if type checking did not find any errors. The latter will be
+    % the kinds of errors that you can get as "avalanche" messages
+    % from type errors.
     %
     % Note that when checking assertions, we take the conservative approach
     % of warning about unbound type variables. There may be cases for which
     % this doesn't make sense.
     %
 :- pred post_typecheck_finish_preds(module_info::in, module_info::out,
-    int::out, list(error_spec)::out, list(error_spec)::out) is det.
+    list(error_spec)::out, list(error_spec)::out, list(error_spec)::out)
+    is det.
 
     % Make sure the vartypes field in the clauses_info is valid for imported
     % predicates. (Non-imported predicates should already have it set up.)
@@ -122,47 +125,52 @@
 
 %---------------------------------------------------------------------------%
 
-post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
+post_typecheck_finish_preds(!ModuleInfo, UnprovenConstraintSpecs,
         AlwaysSpecs, NoTypeErrorSpecs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.to_sorted_assoc_list(PredIdTable0, PredIdsInfos0),
     post_typecheck_do_finish_preds(!.ModuleInfo, ValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos, map.init, _TypePropCache, 0, NumBadErrors,
-        [], AlwaysSpecs, [], NoTypeErrorSpecs),
+        PredIdsInfos0, PredIdsInfos, map.init, _TypePropCache,
+        [], UnprovenConstraintSpecs, [], AlwaysSpecs, [], NoTypeErrorSpecs),
     map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred post_typecheck_do_finish_preds(module_info::in,
     set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
-    tprop_cache::in, tprop_cache::out, int::in, int::out,
+    tprop_cache::in, tprop_cache::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 post_typecheck_do_finish_preds(_ModuleInfo, _ValidPredIdSet, [], [],
-        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs).
+        !TypePropCache,
+        !UnprovenConstraintSpecs, !AlwaysSpecs, !NoTypeErrorSpecs).
 post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos],
-        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
+        !TypePropCache,
+        !UnprovenConstraintSpecs, !AlwaysSpecs, !NoTypeErrorSpecs) :-
     PredIdInfo0 = PredId - PredInfo0,
     post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet,
-        PredId, PredInfo0, PredInfo,
-        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs),
+        PredId, PredInfo0, PredInfo, !TypePropCache,
+        !UnprovenConstraintSpecs, !AlwaysSpecs, !NoTypeErrorSpecs),
     PredIdInfo = PredId - PredInfo,
     post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos,
-        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs).
+        PredIdsInfos0, PredIdsInfos, !TypePropCache,
+        !UnprovenConstraintSpecs, !AlwaysSpecs, !NoTypeErrorSpecs).
 
 :- pred post_typecheck_do_finish_pred(module_info::in,
     set_tree234(pred_id)::in, pred_id::in, pred_info::in, pred_info::out,
-    tprop_cache::in, tprop_cache::out, int::in, int::out,
+    tprop_cache::in, tprop_cache::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
-        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
+post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId,
+        !PredInfo, !TypePropCache,
+        !UnprovenConstraintSpecs, !AlwaysSpecs, !NoTypeErrorSpecs) :-
     ( if set_tree234.contains(ValidPredIdSet, PredId) then
         % Regardless of the path we take when processing a valid predicate,
         % we need to ensure that we fill in the vte_is_dummy field in all
@@ -195,7 +203,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
             pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
             find_unproven_body_constraints(ModuleInfo, PredId, !.PredInfo,
-                !NumBadErrors, !NoTypeErrorSpecs),
+                !UnprovenConstraintSpecs),
             find_unresolved_types_fill_in_is_dummy_in_pred(ModuleInfo, PredId,
                 !PredInfo, !NoTypeErrorSpecs),
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
@@ -268,21 +276,20 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
     % other than those that occur in the types of head variables, and that
     % there are no unsatisfied type class constraints.
     %
-:- pred find_unproven_body_constraints(module_info::in, pred_id::in,
-    pred_info::in, int::in, int::out,
+:- pred find_unproven_body_constraints(module_info::in,
+    pred_id::in, pred_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(pred(find_unproven_body_constraints/7)).
+:- pragma inline(pred(find_unproven_body_constraints/5)).
 
 find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
-        !NumBadErrors, !NoTypeErrorSpecs) :-
+        !UnprovenConstraintSpecs) :-
     pred_info_get_unproven_body_constraints(PredInfo, UnprovenConstraints0),
     (
         UnprovenConstraints0 = [_ | _],
         list.sort_and_remove_dups(UnprovenConstraints0, UnprovenConstraints),
-        report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo,
-            UnprovenConstraints, !NoTypeErrorSpecs),
-        list.length(UnprovenConstraints, NumUnprovenConstraints),
-        !:NumBadErrors = !.NumBadErrors + NumUnprovenConstraints
+        Spec = report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo,
+            UnprovenConstraints),
+        !:UnprovenConstraintSpecs = [Spec | !.UnprovenConstraintSpecs]
     ;
         UnprovenConstraints0 = []
     ).
@@ -291,12 +298,11 @@ find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
 
     % Report unsatisfied typeclass constraints.
     %
-:- pred report_unsatisfied_constraints(module_info::in,
-    pred_id::in, pred_info::in, list(prog_constraint)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- func report_unsatisfied_constraints(module_info, pred_id, pred_info,
+    list(prog_constraint)) = error_spec.
 
-report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
-        !Specs) :-
+report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints)
+        = Spec :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
@@ -335,8 +341,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
     ),
     Spec = error_spec($pred, severity_error, phase_type_check,
-        [MainMsg | ContextMsgs]),
-    !:Specs = [Spec | !.Specs].
+        [MainMsg | ContextMsgs]).
 
 :- func constraint_to_error_pieces(tvarset, prog_constraint)
     = list(format_piece).

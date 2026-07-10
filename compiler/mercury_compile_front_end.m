@@ -157,7 +157,6 @@
 :- import_module transform_hlds.intermod_mark_exported.
 
 :- import_module benchmarking.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -169,7 +168,7 @@
 %---------------------------------------------------------------------------%
 
 frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
-        FoundUndefModeError, !FoundError,
+        InvalidInstModeSpecs, !FoundError,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     % It would be nice to move the decide_type_repns pass later, possibly
@@ -189,11 +188,11 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
         "% Checking typeclasses...\n", !IO),
     check_typeclasses(ProgressStream, !HLDS, QualInfo0, QualInfo,
         TypeClassSpecs),
-    TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
     add_to_be_written_specs(TypeClassSpecs, !MaybeWrittenSpecs),
     maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass",
         !DumpInfo, !IO),
     set_module_recompilation_info(QualInfo, !HLDS),
+    TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
     (
         TypeClassErrors = yes,
         % We can't continue after a typeclass error, because if we did,
@@ -202,7 +201,7 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
     ;
         TypeClassErrors = no,
         frontend_pass_after_typeclass_check(ProgressStream, ErrorStream,
-            OpModeAugment, FoundUndefModeError, !FoundError,
+            OpModeAugment, InvalidInstModeSpecs, !FoundError,
             !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO)
     ).
 
@@ -224,7 +223,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
     check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
         Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
     do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
-        FoundSyntaxError, FoundTypeError, DidWeExceedIterationLimit,
+        FoundSyntaxError, TypeCheckSpecs, NumIterations,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
 
     % We can't continue after an undefined inst/mode error, since
@@ -241,29 +240,24 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
             "% Program contains undefined inst or undefined mode error(s).\n",
             !IO),
         io.set_exit_status(1, !IO)
-    else if DidWeExceedIterationLimit = exceeded_iteration_limit then
-        % FoundTypeError will always be true here, so if Verbose = yes,
-        % we have already printed a message about the program containing
-        % type errors.
+    else if NumIterations = exceeded_iteration_limit(_LimitSpec) then
+        % TypeCheckSpecs will always contain diagnostics here, so if
+        % Verbose = yes, we have already printed those diagnostics,
+        % which will also report the breaching of the iteration limit.
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
     else
         check_for_missing_type_defns(!.HLDS, MissingTypeDefnSpecs),
         add_to_be_written_specs(MissingTypeDefnSpecs, !MaybeWrittenSpecs),
-        SomeMissingTypeDefns = contains_errors(Globals, MissingTypeDefnSpecs),
 
         pretest_user_inst_table(!HLDS),
-        post_typecheck_finish_preds(!HLDS, NumPostTypeCheckErrors,
+        post_typecheck_finish_preds(!HLDS, UnprovenConstraintSpecs,
             PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
 
-        io.get_exit_status(ExitStatus, !IO),
         SpecsSoFar = maybe_written_specs_to_specs(!.MaybeWrittenSpecs),
-        MaybeWorstSeverity = worst_severity_in_specs(Globals, SpecsSoFar),
-        ( if
-            ( ExitStatus \= 0
-            ; MaybeWorstSeverity = yes(actual_severity_error)
-            )
-        then
+        ErrorsSoFar = contains_errors(Globals, SpecsSoFar),
+        (
+            ErrorsSoFar = yes
             % If the module contains errors, then generating warnings
             % about unused types would have two problems.
             %
@@ -287,8 +281,8 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
             % fixed. Since the code of unused_types.m cannot possibly predict
             % what the fixed version would look like, it is best not to
             % invoke it during *this* compiler invocation.
-            true
-        else
+        ;
+            ErrorsSoFar = no,
             warn_about_unused_types(!.HLDS, [], UnusedTypeSpecs),
             add_to_be_written_specs(UnusedTypeSpecs, !MaybeWrittenSpecs)
         ),
@@ -300,19 +294,22 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
         % PostTypeCheckNoTypeErrorSpecs, and we report them only if
         % we did not find any errors during typecheck.
         add_to_be_written_specs(PostTypeCheckAlwaysSpecs, !MaybeWrittenSpecs),
+        TypeCheckErrors = contains_errors(Globals, TypeCheckSpecs),
         (
-            FoundTypeError = no,
+            TypeCheckErrors = no,
+            add_to_be_written_specs(UnprovenConstraintSpecs,
+                !MaybeWrittenSpecs),
             add_to_be_written_specs(PostTypeCheckNoTypeErrorSpecs,
                 !MaybeWrittenSpecs)
         ;
-            FoundTypeError = yes
+            TypeCheckErrors = yes
         ),
 
         ( if
-            ( FoundTypeError = yes
-            ; FoundSyntaxError = some_clause_syntax_errors
-            ; SomeMissingTypeDefns = yes
-            ; NumPostTypeCheckErrors > 0
+            ( FoundSyntaxError = some_clause_syntax_errors
+            ; TypeCheckErrors = yes
+            ; contains_errors(Globals, MissingTypeDefnSpecs) = yes
+            ; contains_errors(Globals, UnprovenConstraintSpecs) = yes
             )
         then
             % XXX It would be nice if we could go on and mode-check the
@@ -390,13 +387,13 @@ check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
         "warn_insts_without_matching_type", !DumpInfo, !IO).
 
 :- pred do_typecheck(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, globals::in,
-    maybe_clause_syntax_errors::out, bool::out, number_of_iterations::out,
+    bool::in, bool::in, globals::in, maybe_clause_syntax_errors::out,
+    list(error_spec)::out, number_of_iterations::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
 do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
-        FoundSyntaxError, FoundTypeError, DidWeExceedIterationLimit,
+        FoundSyntaxError, TypeCheckSpecs, NumIterations,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
     % Next typecheck the clauses.
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
@@ -417,7 +414,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         ),
         % XXX We should teach typecheck_constraints to report syntax errors.
         FoundSyntaxError = no_clause_syntax_errors,
-        DidWeExceedIterationLimit = within_iteration_limit
+        NumIterations = within_iteration_limit
     ;
         TypeCheckUsingConstraints = no,
         prepare_for_typecheck_module(!HLDS, [], PrepareSpecs),
@@ -427,7 +424,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         maybe_dump_hlds(ProgressStream, !.HLDS, 14, "pre_typecheck",
             !DumpInfo, !IO),
         typecheck_module(ProgressStream, !HLDS, TypeCheckSpecs,
-            FoundSyntaxError, DidWeExceedIterationLimit)
+            FoundSyntaxError, NumIterations)
     ),
     add_to_be_written_specs(TypeCheckSpecs, !MaybeWrittenSpecs),
     maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
