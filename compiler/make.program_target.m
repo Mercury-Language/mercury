@@ -855,7 +855,7 @@ recompile_given_java_files(ProgressStream, Globals, MainModuleName,
     ;
         MaybeErrorStream = es_ok(MESI, ErrorStream),
         call_in_forked_process(
-            compile_java_files(Globals, ProgressStream,
+            compile_java_files(ProgressStream, Globals,
                 HeadJavaFile, TailJavaFiles),
             Succeeded, !IO),
         close_module_error_stream_handle_errors(ProgressStream, Globals,
@@ -1124,7 +1124,7 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
         (
             SharedLibsSucceeded = succeeded,
             % Errors while making the .init file should be very rare.
-            make_library_init_file(Globals, ProgressStream,
+            make_library_init_file(ProgressStream, Globals,
                 MainModuleName, AllModules, Succeeded, !IO)
         ;
             SharedLibsSucceeded = did_not_succeed,

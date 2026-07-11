@@ -912,8 +912,8 @@ llds_c_to_obj(ProgressStream, Globals, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gas(ExtObj), ModuleName,
         O_File, _O_FileProposed, !IO),
-    compile_target_code.do_compile_c_file(Globals, ProgressStream,
-        PIC, C_File, O_File, Succeeded, !IO).
+    do_compile_c_file(ProgressStream, Globals, PIC, C_File, O_File,
+        Succeeded, !IO).
 
 fact_table_file_to_obj(ProgressStream, Globals, BaseName, O_FileName,
         Succeeded, !IO) :-
@@ -924,8 +924,8 @@ fact_table_file_to_obj(ProgressStream, Globals, BaseName, O_FileName,
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,
         ext_cur_ngs_gas(ExtObj)),
-    compile_target_code.do_compile_c_file(Globals, ProgressStream,
-        PIC, C_FileName, O_FileName, Succeeded, !IO).
+    do_compile_c_file(ProgressStream, Globals, PIC, C_FileName, O_FileName,
+        Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_llds_back_end.

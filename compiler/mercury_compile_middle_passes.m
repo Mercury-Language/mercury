@@ -564,7 +564,7 @@ output_trans_opt_file(ProgressStream, !.HLDS, !DumpInfo,
         % We update the .trans_opt_date file's timestamp whether or not
         % we wrote out a new version of the .trans_opt file.
         TransOptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
-        touch_module_ext_datestamp(Globals, ProgressStream,
+        touch_module_ext_datestamp(ProgressStream, Globals,
             ModuleName, TransOptDateExt, _TouchSucceeded, !IO)
     ).
 

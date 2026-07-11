@@ -644,7 +644,7 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         % We update the .optdate file's timestamp whether or not
         % we wrote out a new version of the .opt file.
         OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
-        touch_module_ext_datestamp(Globals, ProgressStream,
+        touch_module_ext_datestamp(ProgressStream, Globals,
             ModuleName, OptDateExt, _TouchSucceeded, !IO)
     ).
 

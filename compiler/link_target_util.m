@@ -209,7 +209,7 @@ post_link_maybe_make_symlink_or_copy(ProgressStream, Globals,
             % Remove the target of the symlink/copy in case it already exists.
             io.file.remove_file_recursively(CurDirFileName, _, !IO),
 
-            make_symlink_or_copy_file(Globals, ProgressStream,
+            make_symlink_or_copy_file(ProgressStream, Globals,
                 FullFileName, CurDirFileName, Succeeded0, !IO),
             MadeSymlinkOrCopy = yes
         ),
@@ -247,7 +247,7 @@ post_link_maybe_make_symlink_or_copy(ProgressStream, Globals,
                 % Remove the target of the symlink/copy in case
                 % it already exists.
                 io.file.remove_file_recursively(CurDirLauncherName, _, !IO),
-                make_symlink_or_copy_file(Globals, ProgressStream,
+                make_symlink_or_copy_file(ProgressStream, Globals,
                     FullLauncherName, CurDirLauncherName, Succeeded, !IO)
             )
         else

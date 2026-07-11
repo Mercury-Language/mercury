@@ -452,7 +452,7 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         then
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
-            touch_module_ext_datestamp(Globals, ProgressStream,
+            touch_module_ext_datestamp(ProgressStream, Globals,
                 ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_err_date),
                 TouchSucceeded, !IO),
             Succeeded = CompileSucceeded `and` TouchSucceeded
@@ -490,7 +490,7 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
         ModuleName, _ModuleDepInfo, Succeeded, !IO) :-
     (
         Target = target_c,
-        compile_c_file(Globals, ProgressStream, PIC, ModuleName,
+        compile_c_file(ProgressStream, Globals, PIC, ModuleName,
             Succeeded, !IO)
     ;
         Target = target_java,
@@ -498,7 +498,7 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
             ModuleName, JavaFile, _JavaFileProposed, !IO),
-        compile_java_files(Globals, ProgressStream, JavaFile, [],
+        compile_java_files(ProgressStream, Globals, JavaFile, [],
             Succeeded, !IO)
     ;
         Target = target_csharp,
@@ -531,7 +531,7 @@ compile_foreign_code_file(Globals, ProgressStream, PIC, ForeignCodeFile,
         Succeeded, !IO) :-
     (
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
-        do_compile_c_file(Globals, ProgressStream, PIC,
+        do_compile_c_file(ProgressStream, Globals, PIC,
             CFile, ObjFile, Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_java, _, _),

@@ -288,7 +288,7 @@ record_and_maybe_report_recompilation_why_or_why_not(ProgressStream, Globals,
             write_not_recompiling_message(ModuleName), !IO),
         % Record *in the filesystem* that this module has been found to be
         % up to date as of this time.
-        touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+        touch_file_datestamp(ProgressStream, Globals, TimestampFile,
             _Succeeded, !IO)
     ;
         Reasons = [_ | _],

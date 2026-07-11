@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003-2004, 2006-2011 The University of Melbourne.
-% Copyright (C) 2024 The Mercury team.
+% Copyright (C) 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1274,7 +1274,7 @@ write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
         ExtDate = ext_cur_ngs_gs(ext_cur_ngs_gs_an_analysis_date),
         module_name_to_write_file_name(Compiler, Globals, ExtDate,
             ThisModule, TimestampFileName, !IO),
-        touch_file_datestamp(Globals, ProgressStream, TimestampFileName,
+        touch_file_datestamp(ProgressStream, Globals, TimestampFileName,
             _Succeeded, !IO)
     ).
 

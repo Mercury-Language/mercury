@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -163,7 +163,7 @@ write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
         ModuleName = ParseTreeInt3 ^ pti3_module_name,
         actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
             FileName, OutputSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+        touch_module_ext_datestamp(ProgressStream, Globals, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int3), TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
     ;
@@ -199,7 +199,7 @@ write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
         ModuleName = ParseTreeInt0 ^ pti0_module_name,
         actually_write_interface_file0(ProgressStream, Globals, ParseTreeInt0,
             FileName, MaybeTimestamp, OutputSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+        touch_module_ext_datestamp(ProgressStream, Globals, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int0), TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
     ;
@@ -239,7 +239,7 @@ write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
         actually_write_interface_file2(ProgressStream, Globals,
             ParseTreeInt2, FileName2, MaybeSourceFileTimestamp,
             OutputSucceeded2, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+        touch_module_ext_datestamp(ProgressStream, Globals, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int12), TouchSucceeded, !IO),
         Succeeded = OutputSucceeded1 `and` OutputSucceeded2 `and`
             TouchSucceeded

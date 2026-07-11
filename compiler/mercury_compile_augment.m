@@ -549,7 +549,7 @@ execute_mlds_java_backend(ProgressStream, Globals, OpModeCodeGen,
             % XXX LEGACY
             module_name_to_file_name(Globals, $pred, ExtJava,
                 ModuleName, JavaFile, _JavaFileProposed),
-            compile_java_files(Globals, ProgressStream, JavaFile, [],
+            compile_java_files(ProgressStream, Globals, JavaFile, [],
                 Succeeded, !IO),
             maybe_set_exit_status(Succeeded, !IO)
         )
@@ -591,7 +591,7 @@ execute_mlds_c_backend(ProgressStream, Globals, OpModeCodeGen, ModuleName,
             % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred, ExtObj,
                 ModuleName, O_File, _O_FileProposed, !IO),
-            do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
+            do_compile_c_file(ProgressStream, Globals, PIC, C_File, O_File,
                 Succeeded, !IO),
             maybe_set_exit_status(Succeeded, !IO)
         )
@@ -657,7 +657,7 @@ update_recompilation_used_file(ProgressStream, Globals, ModuleName,
     ),
     module_name_to_target_timestamp_file_name_create_dirs(Globals, ModuleName,
         TimestampFile, !IO),
-    touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+    touch_file_datestamp(ProgressStream, Globals, TimestampFile,
         _Succeeded, !IO).
 
 %---------------------%

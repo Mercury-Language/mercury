@@ -278,7 +278,7 @@ do_op_mode_standalone_interface(ProgressStream, Globals,
         add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
     ;
         Target = target_c,
-        make_standalone_interface(Globals, ProgressStream,
+        make_standalone_interface(ProgressStream, Globals,
             StandaloneIntBasename, !IO)
     ).
 

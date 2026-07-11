@@ -113,18 +113,18 @@
 :- pred definitely_make_symlink(file_name::in, file_name::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-    % make_symlink_or_copy_file(Globals, ProgressStream, LinkTarget, LinkName,
+    % make_symlink_or_copy_file(ProgressStream, Globals, LinkTarget, LinkName,
     %   Succeeded, !IO):
     %
     % Attempt to make LinkName a symlink pointing to LinkTarget, copying
     % LinkTarget to LinkName if that fails (or if `--use-symlinks' is not set).
     %
-:- pred make_symlink_or_copy_file(globals::in, io.text_output_stream::in,
+:- pred make_symlink_or_copy_file(io.text_output_stream::in, globals::in,
     file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % touch_module_ext_datestamp(Globals, ProgressStream,
+    % touch_module_ext_datestamp(ProgressStream, Globals,
     %   ModuleName, Ext, Succeeded, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. (The only valid values of Ext
@@ -138,10 +138,10 @@
     % of A.int file was still up-to-date when the rebuild happened
     % is recorded by updating the timestamp of A.date.
     %
-:- pred touch_module_ext_datestamp(globals::in, io.text_output_stream::in,
+:- pred touch_module_ext_datestamp(io.text_output_stream::in, globals::in,
     module_name::in, ext::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO):
+    % touch_file_datestamp(ProgressStream, Globals, FileName, Succeeded, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
@@ -149,7 +149,7 @@
     % Filename should have an extension that indicates that it is a
     % datestanp file, though this predicate does not enforce that.
     %
-:- pred touch_file_datestamp(globals::in, io.text_output_stream::in,
+:- pred touch_file_datestamp(io.text_output_stream::in, globals::in,
     file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -231,7 +231,7 @@ copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
                 maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
                 io.file.remove_file(TmpOutputFileName, _, !IO)
             else
-                copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
+                copy_dot_tmp_to_base_file_create_file(ProgressStream, Globals,
                     "CHANGED", OutputFileName, TmpOutputFileName, Result, !IO)
             )
         ;
@@ -245,17 +245,17 @@ copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
         )
     ;
         OutputFileRes = error(_),
-        copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
+        copy_dot_tmp_to_base_file_create_file(ProgressStream, Globals,
             "been CREATED", OutputFileName, TmpOutputFileName, Result, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred copy_dot_tmp_to_base_file_create_file(globals::in,
-    io.text_output_stream::in, string::in, string::in, string::in,
+:- pred copy_dot_tmp_to_base_file_create_file(io.text_output_stream::in,
+    globals::in, string::in, string::in, string::in,
     dot_tmp_copy_result::out, io::di, io::uo) is det.
 
-copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
+copy_dot_tmp_to_base_file_create_file(ProgressStream, Globals,
         ChangedStr, OutputFileName, TmpOutputFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     string.format("%% `%s' has %s.\n", [s(OutputFileName), s(ChangedStr)],
@@ -296,7 +296,7 @@ definitely_make_symlink(LinkTarget, LinkName, Result, !IO) :-
     io.file.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
     Result = ( if LinkResult = ok then succeeded else did_not_succeed ).
 
-make_symlink_or_copy_file(Globals, ProgressStream,
+make_symlink_or_copy_file(ProgressStream, Globals,
         SourceFileName, DestinationFileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     globals.lookup_bool_option(Globals, verbose_commands, PrintCommand),
@@ -346,14 +346,14 @@ make_symlink_or_copy_file(Globals, ProgressStream,
 
 %-----------------------------------------------------------------------------%
 
-touch_module_ext_datestamp(Globals, ProgressStream, ModuleName, Ext,
+touch_module_ext_datestamp(ProgressStream, Globals, ModuleName, Ext,
         Succeeded, !IO) :-
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, FileName, _FileNameProposed, !IO),
-    touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO).
+    touch_file_datestamp(ProgressStream, Globals, FileName, Succeeded, !IO).
 
-touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO) :-
+touch_file_datestamp(ProgressStream, Globals, FileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
         "% Touching `" ++ FileName ++ "'... ", !IO),

@@ -53,15 +53,15 @@
 
 %---------------------------------------------------------------------------%
 
-    % compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO)
+    % compile_c_file(ProgressStream, Globals, PIC, ModuleName, Succeeded, !IO)
     %
-:- pred compile_c_file(globals::in, io.text_output_stream::in, pic::in,
+:- pred compile_c_file(io.text_output_stream::in, globals::in, pic::in,
     module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % do_compile_c_file(Globals, ProgressStream, PIC, CFile, ObjFile,
+    % do_compile_c_file(ProgressStream, Globals, PIC, CFile, ObjFile,
     %   Succeeded, !IO)
     %
-:- pred do_compile_c_file(globals::in, io.text_output_stream::in, pic::in,
+:- pred do_compile_c_file(io.text_output_stream::in, globals::in, pic::in,
     string::in, string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------%
@@ -71,20 +71,20 @@
 
 %---------------------%
 
-    % compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
+    % compile_java_files(ProgressStream, Globals, HeadJavaFile, TailJavaFiles,
     %   Succeeded, !IO)
     %
-:- pred compile_java_files(globals::in, io.text_output_stream::in,
+:- pred compile_java_files(io.text_output_stream::in, globals::in,
     string::in, list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------%
 
-    % make_library_init_file(Globals, ProgressStream,
+    % make_library_init_file(ProgressStream, Globals,
     %   MainModuleName, ModuleNames, Succeeded, !IO):
     %
     % Make the `.init' file for a library containing the given modules.
     %
-:- pred make_library_init_file(globals::in, io.text_output_stream::in,
+:- pred make_library_init_file(io.text_output_stream::in, globals::in,
     module_name::in, list(module_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
@@ -148,11 +148,11 @@
 % Used for standalone interfaces.
 %
 
-    % make_standalone_interface(Globals, ProgressStream, BaseName, !IO):
+    % make_standalone_interface(ProgressStream, Globals, BaseName, !IO):
     %
     % Create a standalone interface in the current directory.
     %
-:- pred make_standalone_interface(globals::in, io.text_output_stream::in,
+:- pred make_standalone_interface(io.text_output_stream::in, globals::in,
     string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -230,7 +230,7 @@ get_executable_object_code_type(_Globals, PIC) :-
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO) :-
+compile_c_file(ProgressStream, Globals, PIC, ModuleName, Succeeded, !IO) :-
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
@@ -240,10 +240,10 @@ compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gas(ExtObj), ModuleName,
         O_File, _O_FileProposed, !IO),
-    do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
+    do_compile_c_file(ProgressStream, Globals, PIC, C_File, O_File,
         Succeeded, !IO).
 
-do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
+do_compile_c_file(ProgressStream, Globals, PIC, C_File, O_File,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_string_option(Globals, c_flag_to_name_object_file,
@@ -529,7 +529,7 @@ get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
 
 %---------------------------------------------------------------------------%
 
-compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
+compile_java_files(ProgressStream, Globals, HeadJavaFile, TailJavaFiles,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
@@ -678,7 +678,7 @@ is_minus_j_flag(FlagStr) :-
 
 %---------------------------------------------------------------------------%
 
-make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
+make_library_init_file(ProgressStream, Globals, MainModuleName, AllModules,
         Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     % XXX LEGACY
@@ -694,7 +694,7 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
             module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)),
                 AllModules, AllTargetCFilesList, _AllTargetCFilesListProposed),
-        invoke_mkinit(Globals, ProgressStream, TmpInitFileStream,
+        invoke_mkinit(ProgressStream, TmpInitFileStream, Globals,
             cmd_verbose_commands, MkInit, " -k ", AllTargetCFilesList,
             TmpMkInitSucceeded0, !IO),
         (
@@ -731,7 +731,7 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
                 % Remove the target of the symlink/copy in case it already
                 % exists.
                 io.file.remove_file(CurDirInitFileName, _, !IO),
-                make_symlink_or_copy_file(Globals, ProgressStream,
+                make_symlink_or_copy_file(ProgressStream, Globals,
                     FullInitFileName, CurDirInitFileName, Succeeded, !IO)
             )
         ;
@@ -747,12 +747,11 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
         Succeeded = did_not_succeed
     ).
 
-:- pred invoke_mkinit(globals::in, io.text_output_stream::in,
-    io.text_output_stream::in, command_verbosity::in,
-    string::in, string::in, list(file_name)::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred invoke_mkinit(io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, command_verbosity::in, string::in, string::in,
+    list(file_name)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-invoke_mkinit(Globals, ProgressStream, InitFileStream, Verbosity,
+invoke_mkinit(ProgressStream, InitFileStream, Globals, Verbosity,
         MkInit, Args, FileNames, MkInitSucceeded, !IO) :-
     % mkinit expects unquoted file names.
     join_string_list(FileNames, "", "\n", "", TargetFileNames),
@@ -817,7 +816,7 @@ make_init_obj_file(ProgressStream, Globals, MustCompile,
     ),
 
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    make_init_target_file(Globals, ProgressStream, MkInit,
+    make_init_target_file(ProgressStream, Globals, MkInit,
         ModuleName, ModuleNames,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_c),
@@ -833,18 +832,18 @@ make_init_obj_file(ProgressStream, Globals, MustCompile,
         InitObjFileName, _InitObjFileNameProposed, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            do_compile_c_file(Globals, ProgressStream, PIC,
+            do_compile_c_file(ProgressStream, Globals, PIC,
                 InitTargetFileName, InitObjFileName, Res, IO0, IO)
         ),
-    maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
+    maybe_compile_init_obj_file(ProgressStream, Globals, MaybeInitTargetFile,
         MustCompile, CompileCInitFile, InitObjFileName, Result, !IO).
 
-:- pred make_init_target_file(globals::in, io.text_output_stream::in,
+:- pred make_init_target_file(io.text_output_stream::in, globals::in,
     string::in, module_name::in, list(module_name)::in, ext::in, ext::in,
     list(file_name)::in, list(file_name)::in, list(file_name)::in,
     maybe(file_name)::out, io::di, io::uo) is det.
 
-make_init_target_file(Globals, ProgressStream, MkInit,
+make_init_target_file(ProgressStream, Globals, MkInit,
         ModuleName, ModuleNames, TargetOtherExt, InitTargetOtherExt,
         StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
         MaybeInitTargetFile, !IO) :-
@@ -948,7 +947,7 @@ make_init_target_file(Globals, ProgressStream, MkInit,
     % but it preserves old behavior (or at least, it attempts to preserve it).
     % XXX ErrorStream has now been replaced by ProgressStream.
     CmdOutputStream = ProgressStream,
-    invoke_mkinit(Globals, ProgressStream, CmdOutputStream,
+    invoke_mkinit(ProgressStream, CmdOutputStream, Globals,
         cmd_verbose_commands, MkInit, MkInitArgs,
         TargetFileNameList ++ InitFileNamesList, MkInitSucceeded, !IO),
 
@@ -969,7 +968,7 @@ make_init_target_file(Globals, ProgressStream, MkInit,
         MaybeInitTargetFile = no
     ).
 
-:- pred maybe_compile_init_obj_file(globals::in, io.text_output_stream::in,
+:- pred maybe_compile_init_obj_file(io.text_output_stream::in, globals::in,
     maybe(file_name)::in, bool::in,
     compile_init_file_pred::in(compile_init_file_pred),
     file_name::in, maybe(file_name)::out, io::di, io::uo) is det.
@@ -977,7 +976,7 @@ make_init_target_file(Globals, ProgressStream, MkInit,
 :- type compile_init_file_pred == pred(file_name, maybe_succeeded, io, io).
 :- inst compile_init_file_pred == (pred(in, out, di, uo) is det).
 
-maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
+maybe_compile_init_obj_file(ProgressStream, Globals, MaybeInitTargetFile,
         MustCompile, Compile, InitObjFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -1085,12 +1084,12 @@ is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
 % NOTE: the following code is similar to that of make_init_obj_file/8 above.
 % Please see the comment just above the clause of that predicate.
 
-make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
+make_standalone_interface(ProgressStream, Globals, BaseName, !IO) :-
     make_standalone_interface_header(ProgressStream, Globals, BaseName,
         HdrSucceeded, !IO),
     (
         HdrSucceeded = succeeded,
-        make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO)
+        make_standalone_interface_body(ProgressStream, Globals, BaseName, !IO)
     ;
         HdrSucceeded = did_not_succeed
     ).
@@ -1134,10 +1133,10 @@ make_standalone_interface_header(ProgressStream, Globals,
         Succeeded = did_not_succeed
     ).
 
-:- pred make_standalone_interface_body(globals::in, io.text_output_stream::in,
+:- pred make_standalone_interface_body(io.text_output_stream::in, globals::in,
     string::in, io::di, io::uo) is det.
 
-make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO) :-
+make_standalone_interface_body(ProgressStream, Globals, BaseName, !IO) :-
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
     % See the similar code in make_init_target_file for an explanation
     % of why we must remove duplicates from this list.
@@ -1220,7 +1219,7 @@ make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO) :-
     % but it preserves old behavior (or at least, it attempts to preserve it).
     % XXX ErrorStream has now been replaced by ProgressStream.
     CmdOutputStream = ProgressStream,
-    invoke_mkinit(Globals, ProgressStream, CmdOutputStream,
+    invoke_mkinit(ProgressStream, CmdOutputStream, Globals,
         cmd_verbose_commands, MkInit, MkInitArgs, InitFiles,
         MkInitCmdSucceeded, !IO),
     (
@@ -1229,7 +1228,7 @@ make_standalone_interface_body(Globals, ProgressStream, BaseName, !IO) :-
         maybe_pic_object_file_extension(PIC, ExtObj, _),
         Ext = ext_cur_ngs_gas(ExtObj),
         ObjFileName = BaseName ++ extension_to_string(Globals, Ext),
-        do_compile_c_file(Globals, ProgressStream, PIC,
+        do_compile_c_file(ProgressStream, Globals, PIC,
             CFileName, ObjFileName, CompileSucceeded, !IO),
         (
             CompileSucceeded = succeeded
