@@ -491,30 +491,8 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         ExtraObjFiles = []
     ;
         Target = target_java,
-        hlds_to_mlds(ProgressStream, !.HLDS, MLDS,
-            !DumpInfo, !MaybeWrittenSpecs, !IO),
-        mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded, !IO),
-        (
-            OpModeCodeGen = opfam_target_code_only,
-            Succeeded = TargetCodeSucceeded
-        ;
-            ( OpModeCodeGen = opfam_target_and_object_code_only
-            ; OpModeCodeGen = opfam_target_object_and_executable
-            ),
-            (
-                TargetCodeSucceeded = did_not_succeed,
-                Succeeded = did_not_succeed
-            ;
-                TargetCodeSucceeded = succeeded,
-                % XXX LEGACY
-                module_name_to_file_name(Globals, $pred,
-                    ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
-                    ModuleName, JavaFile, _JavaFileProposed),
-                compile_java_files(Globals, ProgressStream,
-                    JavaFile, [], Succeeded, !IO),
-                maybe_set_exit_status(Succeeded, !IO)
-            )
-        ),
+        execute_mlds_java_backend(ProgressStream, Globals, OpModeCodeGen,
+            ModuleName, !.HLDS, Succeeded, !DumpInfo, !MaybeWrittenSpecs, !IO),
         ExtraObjFiles = []
     ;
         Target = target_c,
@@ -525,97 +503,162 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            hlds_to_mlds(ProgressStream, !.HLDS, MLDS,
+            execute_mlds_c_backend(ProgressStream, Globals, OpModeCodeGen,
+                ModuleName, !.HLDS, Succeeded,
                 !DumpInfo, !MaybeWrittenSpecs, !IO),
-            mlds_to_high_level_c(ProgressStream, Globals, MLDS,
-                TargetCodeSucceeded, !IO),
-            (
-                OpModeCodeGen = opfam_target_code_only,
-                Succeeded = TargetCodeSucceeded
-            ;
-                ( OpModeCodeGen = opfam_target_and_object_code_only
-                ; OpModeCodeGen = opfam_target_object_and_executable
-                ),
-                (
-                    TargetCodeSucceeded = did_not_succeed,
-                    Succeeded = did_not_succeed
-                ;
-                    TargetCodeSucceeded = succeeded,
-                    % XXX EXT Why not _create_dirs?
-                    % XXX LEGACY
-                    module_name_to_file_name(Globals, $pred,
-                        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-                        ModuleName, C_File, _C_FileProposed),
-                    get_linked_target_type_for_c(Globals, TargetType),
-                    get_object_code_type(Globals, TargetType, PIC),
-                    maybe_pic_object_file_extension(PIC, ObjExt, _),
-                    % XXX LEGACY
-                    module_name_to_file_name_create_dirs(Globals, $pred,
-                        ext_cur_ngs_gas(ObjExt), ModuleName,
-                        O_File, _O_FileProposed, !IO),
-                    do_compile_c_file(Globals, ProgressStream, PIC,
-                        C_File, O_File, Succeeded, !IO),
-                    maybe_set_exit_status(Succeeded, !IO)
-                )
-            ),
             ExtraObjFiles = []
         ;
             HighLevelCode = no,
-            hlds_to_llds(ProgressStream, ErrorStream, !HLDS,
-                GlobalData, LLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
-            llds_to_c(ProgressStream, !.HLDS, GlobalData, LLDS,
-                TargetCodeSucceeded, !IO),
-            (
-                TargetCodeSucceeded = succeeded,
-                (
-                    OpModeCodeGen = opfam_target_code_only,
-                    Succeeded = succeeded,
-                    ExtraObjFiles = []
-                ;
-                    ( OpModeCodeGen = opfam_target_and_object_code_only
-                    ; OpModeCodeGen = opfam_target_object_and_executable
-                    ),
-                    llds_c_to_obj(ProgressStream, Globals, ModuleName,
-                        CompileSucceeded, !IO),
-                    module_info_get_fact_table_file_names(!.HLDS,
-                        FactTableBaseFiles),
-                    list.map2_foldl(
-                        fact_table_file_to_obj(ProgressStream, Globals),
-                        FactTableBaseFiles, FactTableObjFiles,
-                        FactTableCompileSucceededs, !IO),
-                    ExtraObjFiles = FactTableObjFiles,
-                    Succeeded = and_list([CompileSucceeded |
-                        FactTableCompileSucceededs]),
-                    maybe_set_exit_status(Succeeded, !IO)
-                )
-            ;
-                TargetCodeSucceeded = did_not_succeed,
-                Succeeded = did_not_succeed,
-                ExtraObjFiles = []
-            )
+            execute_llds_c_backend(ProgressStream, ErrorStream, Globals,
+                OpModeCodeGen, ModuleName, !HLDS, ExtraObjFiles, Succeeded,
+                !DumpInfo, !MaybeWrittenSpecs, !IO)
         )
     ),
     (
         Succeeded = succeeded,
-        module_info_get_maybe_recompilation_info(!.HLDS, MaybeRecompInfo),
-        ( if
-            MaybeRecompInfo = yes(RecompInfo),
-            MaybeTimestampMap = yes(TimestampMap)
-        then
-            construct_used_file_contents(!.HLDS, RecompInfo,
-                MaybeTopModule, TimestampMap, UsedFileContents),
-            write_usage_file(ProgressStream, !.HLDS, UsedFileContents, !IO)
-        else
-            true
-        ),
-        module_name_to_target_timestamp_file_name_create_dirs(Globals,
-            ModuleName, TimestampFile, !IO),
-        touch_file_datestamp(Globals, ProgressStream, TimestampFile,
-            _Succeededs, !IO)
+        update_recompilation_used_file(ProgressStream, Globals, ModuleName,
+            MaybeTopModule, MaybeTimestampMap, !.HLDS, !IO)
     ;
         Succeeded = did_not_succeed
         % An error should have been reported earlier.
     ).
+
+:- pred execute_mlds_java_backend(io.text_output_stream::in, globals::in,
+    op_mode_codegen::in, module_name::in, module_info::in,
+    maybe_succeeded::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+execute_mlds_java_backend(ProgressStream, Globals, OpModeCodeGen,
+        ModuleName, HLDS, Succeeded, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    hlds_to_mlds(ProgressStream, HLDS, MLDS,
+        !DumpInfo, !MaybeWrittenSpecs, !IO),
+    mlds_to_java(ProgressStream, HLDS, MLDS, TargetCodeSucceeded, !IO),
+    (
+        OpModeCodeGen = opfam_target_code_only,
+        Succeeded = TargetCodeSucceeded
+    ;
+        ( OpModeCodeGen = opfam_target_and_object_code_only
+        ; OpModeCodeGen = opfam_target_object_and_executable
+        ),
+        (
+            TargetCodeSucceeded = did_not_succeed,
+            Succeeded = did_not_succeed
+        ;
+            TargetCodeSucceeded = succeeded,
+            ExtJava = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
+            % XXX LEGACY
+            module_name_to_file_name(Globals, $pred, ExtJava,
+                ModuleName, JavaFile, _JavaFileProposed),
+            compile_java_files(Globals, ProgressStream, JavaFile, [],
+                Succeeded, !IO),
+            maybe_set_exit_status(Succeeded, !IO)
+        )
+    ).
+
+:- pred execute_mlds_c_backend(io.text_output_stream::in, globals::in,
+    op_mode_codegen::in, module_name::in, module_info::in,
+    maybe_succeeded::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+execute_mlds_c_backend(ProgressStream, Globals, OpModeCodeGen, ModuleName,
+        HLDS, Succeeded, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+        export.output_mh_header_file(ProgressStream, HLDS, !IO),
+    hlds_to_mlds(ProgressStream, HLDS, MLDS,
+        !DumpInfo, !MaybeWrittenSpecs, !IO),
+    mlds_to_high_level_c(ProgressStream, Globals, MLDS,
+        TargetCodeSucceeded, !IO),
+    (
+        OpModeCodeGen = opfam_target_code_only,
+        Succeeded = TargetCodeSucceeded
+    ;
+        ( OpModeCodeGen = opfam_target_and_object_code_only
+        ; OpModeCodeGen = opfam_target_object_and_executable
+        ),
+        (
+            TargetCodeSucceeded = did_not_succeed,
+            Succeeded = did_not_succeed
+        ;
+            TargetCodeSucceeded = succeeded,
+            get_linked_target_type_for_c(Globals, TargetType),
+            get_object_code_type(Globals, TargetType, PIC),
+            maybe_pic_object_file_extension(PIC, ObjExt, _),
+            ExtC = ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
+            ExtObj = ext_cur_ngs_gas(ObjExt),
+            % XXX EXT Why not _create_dirs?
+            % XXX LEGACY
+            module_name_to_file_name(Globals, $pred, ExtC,
+                ModuleName, C_File, _C_FileProposed),
+            % XXX LEGACY
+            module_name_to_file_name_create_dirs(Globals, $pred, ExtObj,
+                ModuleName, O_File, _O_FileProposed, !IO),
+            do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
+                Succeeded, !IO),
+            maybe_set_exit_status(Succeeded, !IO)
+        )
+    ).
+
+:- pred execute_llds_c_backend(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_codegen::in, module_name::in, module_info::in, module_info::out,
+    list(string)::out, maybe_succeeded::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+execute_llds_c_backend(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
+        ModuleName, !HLDS, ExtraObjFiles, Succeeded,
+        !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    hlds_to_llds(ProgressStream, ErrorStream, !HLDS,
+        GlobalData, LLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
+    llds_to_c(ProgressStream, !.HLDS, GlobalData, LLDS,
+        TargetCodeSucceeded, !IO),
+    (
+        TargetCodeSucceeded = succeeded,
+        (
+            OpModeCodeGen = opfam_target_code_only,
+            Succeeded = succeeded,
+            ExtraObjFiles = []
+        ;
+            ( OpModeCodeGen = opfam_target_and_object_code_only
+            ; OpModeCodeGen = opfam_target_object_and_executable
+            ),
+            llds_c_to_obj(ProgressStream, Globals, ModuleName,
+                CompileSucceeded, !IO),
+            module_info_get_fact_table_file_names(!.HLDS, FactTableBaseFiles),
+            list.map2_foldl(
+                fact_table_file_to_obj(ProgressStream, Globals),
+                FactTableBaseFiles, FactTableObjFiles,
+                FactTableCompileSucceededs, !IO),
+            ExtraObjFiles = FactTableObjFiles,
+            Succeeded = and_list([CompileSucceeded |
+                FactTableCompileSucceededs]),
+            maybe_set_exit_status(Succeeded, !IO)
+        )
+    ;
+        TargetCodeSucceeded = did_not_succeed,
+        Succeeded = did_not_succeed,
+        ExtraObjFiles = []
+    ).
+
+:- pred update_recompilation_used_file(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_top_module::in, maybe(module_timestamp_map)::in,
+    module_info::in, io::di, io::uo) is det.
+
+update_recompilation_used_file(ProgressStream, Globals, ModuleName,
+        MaybeTopModule, MaybeTimestampMap, HLDS, !IO) :-
+    module_info_get_maybe_recompilation_info(HLDS, MaybeRecompInfo),
+    ( if
+        MaybeRecompInfo = yes(RecompInfo),
+        MaybeTimestampMap = yes(TimestampMap)
+    then
+        construct_used_file_contents(HLDS, RecompInfo, MaybeTopModule,
+            TimestampMap, UsedFileContents),
+        write_usage_file(ProgressStream, HLDS, UsedFileContents, !IO)
+    else
+        true
+    ),
+    module_name_to_target_timestamp_file_name_create_dirs(Globals, ModuleName,
+        TimestampFile, !IO),
+    touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+        _Succeeded, !IO).
 
 %---------------------%
 
