@@ -393,11 +393,19 @@
     %
     % The string should have the form "[-]PnYnMnDTnHnMnS" where each "n" is a
     % non-negative integer representing the number of years (Y), months (M),
-    % days (D), hours (H), minutes (M) or seconds (S). The units must follow
-    % the numbers, not precede them. The duration string always starts with
-    % either 'P' or '-P', and the 'T' separates the date and time components
-    % of the duration. A component may be omitted if it is zero, and
-    % the 'T' separator is not required if all the time components are zero.
+    % days (D), hours (H), minutes (M) or seconds (S). Each number precedes its
+    % designator character. The string always starts with either 'P' or '-P',
+    % and the 'T' separates the date components from the time components.
+    %
+    % A component may be omitted entirely, in which case it is treated as zero.
+    % For example, "P1Y" is one year, with the months and days components zero.
+    % Omitting a component means leaving out both its number and its
+    % designator. A designator with no number before it, such as the 'M' in
+    % "P1YM", is not permitted.
+    %
+    % The 'T' separator must be present if and only if at least one time
+    % component (hours, minutes or seconds) is present. A 'T' with no time
+    % component after it (e.g. "P1DT") is not permitted.
     %
     % The seconds component may include a fraction component using a period.
     % This fraction component cannot include more than six digits, since
@@ -716,36 +724,37 @@ unpack_date(date(Year, Month, Day, Hour, Minute, Second, MicroSecond),
 date_from_string(Str, Date) :-
     some [!Chars] (
         !:Chars = string.to_char_list(Str),
-        ( if read_char((-), !.Chars, Rest1) then
-            !:Chars = Rest1,
-            read_int_and_num_chars(Year0, YearChars, !Chars),
+        ( if read_next_char((-), !Chars) then
+            read_int_and_return_num_digits(Year0, YearChars, !Chars),
             Year = -Year0
         else
-            read_int_and_num_chars(Year, YearChars, !Chars)
+            read_int_and_return_num_digits(Year, YearChars, !Chars)
         ),
         YearChars >= 4,
-        read_char((-), !Chars),
-        read_int_and_num_chars(Month, 2, !Chars),
+        read_next_char((-), !Chars),
+        read_int_and_return_num_digits(Month, 2, !Chars),
         Month >= 1,
         Month =< 12,
-        read_char((-), !Chars),
-        read_int_and_num_chars(Day, 2, !Chars),
+        read_next_char((-), !Chars),
+        read_int_and_return_num_digits(Day, 2, !Chars),
         Day >= 1,
         Day =< max_day_in_month_for(Year, Month),
-        read_char(' ', !Chars),
-        read_int_and_num_chars(Hour, 2, !Chars),
+        read_next_char(' ', !Chars),
+        read_int_and_return_num_digits(Hour, 2, !Chars),
         Hour >= 0,
         Hour =< 23,
-        read_char((:), !Chars),
-        read_int_and_num_chars(Minute, 2, !Chars),
+        read_next_char((:), !Chars),
+        read_int_and_return_num_digits(Minute, 2, !Chars),
         Minute >= 0,
         Minute =< 59,
-        read_char((:), !Chars),
-        read_int_and_num_chars(Second, 2, !Chars),
-        Second < 62,
+        read_next_char((:), !Chars),
+        read_int_and_return_num_digits(Second, 2, !Chars),
+        Second >= 0,
+        Second < 61,
         read_microseconds(MicroSecond, !Chars),
         !.Chars = [],
-        Date = date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
+        Date = date(Year, Month, Day, Hour, Minute, Second,
+            MicroSecond)
     ).
 
 det_date_from_string(Str) = Date :-
@@ -874,12 +883,12 @@ duration_from_string(Str, Duration) :-
     some [!Chars] (
         !:Chars = string.to_char_list(Str),
         read_sign(Sign, !Chars),
-        read_char('P', !Chars),
+        read_next_char('P', !Chars),
         !.Chars \= [],
         read_years(Years, !Chars),
         read_months(Months, !Chars),
         read_days(Days, !Chars),
-        ( if read_char('T', !.Chars, TimePart) then
+        ( if read_next_char('T', !.Chars, TimePart) then
             TimePart = [_ | _],
             read_hours(Hours, TimePart, !:Chars),
             read_minutes(Minutes, !Chars),
@@ -1326,13 +1335,38 @@ foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3) :-
 % Parsing predicates.
 %
 
+:- pred read_next_char(char::out, list(char)::in, list(char)::out) is semidet.
+
+read_next_char(Char, [Char | Rest], Rest).
+
+:- pred read_int_and_return_num_digits(int::out, int::out,
+    list(char)::in, list(char)::out) is det.
+
+read_int_and_return_num_digits(Int, NumDigits, !Chars) :-
+    read_int_and_return_num_digits_loop(0, Int, 0, NumDigits, !Chars).
+
+:- pred read_int_and_return_num_digits_loop(int::in, int::out,
+    int::in, int::out, list(char)::in, list(char)::out) is det.
+
+read_int_and_return_num_digits_loop(!Int, !NumDigits, !Chars) :-
+    ( if
+        !.Chars = [Char | !:Chars],
+        decimal_digit_to_int(Char, Digit)
+    then
+        !:Int = !.Int * 10 + Digit,
+        read_int_and_return_num_digits_loop(!Int, !.NumDigits + 1, !:NumDigits,
+            !Chars)
+    else
+        true
+    ).
+
 :- pred read_microseconds(microseconds::out, list(char)::in, list(char)::out)
     is det.
 
 read_microseconds(MicroSeconds, !Chars) :-
     ( if
-        read_char((.), !.Chars, Chars1),
-        read_int_and_num_chars(Fraction, FractionDigits, Chars1, !:Chars),
+        read_next_char((.), !Chars),
+        read_int_and_return_num_digits(Fraction, FractionDigits, !Chars),
         FractionDigits > 0,
         FractionDigits < 7
     then
@@ -1341,113 +1375,105 @@ read_microseconds(MicroSeconds, !Chars) :-
         MicroSeconds = 0
     ).
 
-:- pred read_int_and_num_chars(int::out, int::out,
-    list(char)::in, list(char)::out) is det.
+%---------------------------------------------------------------------------%
+%
+% Duration parsing predicates.
+%
 
-read_int_and_num_chars(Val, N, !Chars) :-
-    read_int_and_num_chars_2(0, Val, 0, N, !Chars).
-
-:- pred read_int_and_num_chars_2(int::in, int::out, int::in, int::out,
-    list(char)::in, list(char)::out) is det.
-
-read_int_and_num_chars_2(!Val, !N, !Chars) :-
-    ( if
-        !.Chars = [Char | Rest],
-        decimal_digit_to_int(Char, Digit)
-    then
-        !:Val = !.Val * 10 + Digit,
-        read_int_and_num_chars_2(!Val, !.N + 1, !:N, Rest, !:Chars)
-    else
-        true
-    ).
-
+    % Read an optional leading minus sign. Set sign to -1 if one is present
+    % (and is consumed), and 1 otherwise (consuming nothing).
+    %
 :- pred read_sign(int::out, list(char)::in, list(char)::out) is det.
 
 read_sign(Sign, !Chars) :-
-    ( if !.Chars = [(-) | Rest] then
-        !:Chars = Rest,
+    ( if !.Chars = [(-) | !:Chars] then
         Sign = -1
     else
         Sign = 1
     ).
 
-:- pred read_char(char::out, list(char)::in, list(char)::out) is semidet.
-
-read_char(Char, [Char | Rest], Rest).
-
-:- pred read_years(int::out, list(char)::in, list(char)::out) is det.
+    % read_years, read_months, read_days, read_hours and read_minutes each read
+    % one optional duration component using
+    % read_int_and_given_char_or_return_zero, with the designator character
+    % 'Y', 'M', 'D', 'H' and 'M' respectively.
+    % Months and minutes share the designator 'M', and are distinguished only
+    % by position: months are read before the 'T' separator and minutes after
+    % it.
+    %
+:- pred read_years(int::out, list(char)::in, list(char)::out) is semidet.
 
 read_years(Years, !Chars) :-
-    read_int_and_char_or_zero(Years, 'Y', !Chars).
+    read_int_and_given_char_or_return_zero('Y', Years, !Chars).
 
-:- pred read_months(int::out, list(char)::in, list(char)::out) is det.
+:- pred read_months(int::out, list(char)::in, list(char)::out) is semidet.
 
 read_months(Months, !Chars) :-
-    read_int_and_char_or_zero(Months, 'M', !Chars).
+    read_int_and_given_char_or_return_zero('M', Months, !Chars).
 
-:- pred read_days(int::out, list(char)::in, list(char)::out) is det.
+:- pred read_days(int::out, list(char)::in, list(char)::out) is semidet.
 
 read_days(Days, !Chars) :-
-    read_int_and_char_or_zero(Days, 'D', !Chars).
+    read_int_and_given_char_or_return_zero('D', Days, !Chars).
 
-:- pred read_hours(int::out, list(char)::in, list(char)::out) is det.
+:- pred read_hours(int::out, list(char)::in, list(char)::out) is semidet.
 
 read_hours(Hours, !Chars) :-
-    read_int_and_char_or_zero(Hours, 'H', !Chars).
+    read_int_and_given_char_or_return_zero('H', Hours, !Chars).
 
-:- pred read_minutes(int::out, list(char)::in, list(char)::out) is det.
+:- pred read_minutes(int::out, list(char)::in, list(char)::out) is semidet.
 
 read_minutes(Minutes, !Chars) :-
-    read_int_and_char_or_zero(Minutes, 'M', !Chars).
+    read_int_and_given_char_or_return_zero('M', Minutes, !Chars).
 
-:- pred read_seconds_and_microseconds(seconds::out, microseconds::out,
-    list(char)::in, list(char)::out) is det.
+    % read_int_and_given_char_or_return_zero(Char, Int, !Chars):
+    %
+    % Read one optional "<integer><Char>" duration component from the front of
+    % !.Chars, where <integer> is a run of decimal digits.
+    % If !.Chars begins with Char preceded by at least one digit, then set Int
+    % to the value of those digits and !:Chars to the characters after Char.
+    % If !.Chars begins with Char with no digits before it, then fail.
+    % Otherwise, set Int to zero and leave !:Chars unchanged.
+    %
+:- pred read_int_and_given_char_or_return_zero(char::in, int::out,
+    list(char)::in, list(char)::out) is semidet.
 
-read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars) :-
+read_int_and_given_char_or_return_zero(Char, Int, !Chars) :-
     ( if
-        read_int_and_num_chars(Seconds0, NumChars, !.Chars, Chars1),
-        NumChars > 0,
-        read_microseconds(MicroSeconds0, Chars1, Chars2),
-        read_char('S', Chars2, Chars3)
+        read_int_and_return_num_digits(Int0, NumDigits, !Chars),
+        !.Chars = [Char | !:Chars]
     then
-        !:Chars = Chars3,
-        Seconds = Seconds0,
-        MicroSeconds = MicroSeconds0
-    else
-        Seconds = 0,
-        MicroSeconds = 0
-    ).
-
-:- pred read_int_and_char_or_zero(int::out, char::in,
-    list(char)::in, list(char)::out) is det.
-
-read_int_and_char_or_zero(Int, Char, !Chars) :-
-    ( if
-        read_int(Int0, !.Chars, Chars1),
-        Chars1 = [Char | Rest]
-    then
-        !:Chars = Rest,
+        NumDigits > 0,
         Int = Int0
     else
         Int = 0
     ).
 
-:- pred read_int(int::out, list(char)::in, list(char)::out) is det.
+    % read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars):
+    %
+    % Read the optional seconds component from the front of !.Chars: a run of
+    % at least one decimal digit, an optional fractional part, and the
+    % designator 'S' (for example "9S" or "9.0003S").
+    % If !.Chars begins with such a component, then set Seconds to the whole
+    % part, MicroSeconds to the fractional part expressed in microseconds, and
+    % !:Chars to the characters after the 'S'.
+    % Otherwise, set both Seconds and MicroSeconds to zero and leave !:Chars
+    % unchanged.
+    %
+:- pred read_seconds_and_microseconds(seconds::out, microseconds::out,
+    list(char)::in, list(char)::out) is det.
 
-read_int(Val, !Chars) :-
-    read_int_2(0, Val, !Chars).
-
-:- pred read_int_2(int::in, int::out, list(char)::in, list(char)::out) is det.
-
-read_int_2(!Val, !Chars) :-
+read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars) :-
     ( if
-        !.Chars = [Char | Rest],
-        decimal_digit_to_int(Char, Digit)
+        read_int_and_return_num_digits(Seconds0, NumDigits, !Chars),
+        NumDigits > 0,
+        read_microseconds(MicroSeconds0, !Chars),
+        read_next_char('S', !Chars)
     then
-        !:Val = !.Val * 10 + Digit,
-        read_int_2(!Val, Rest, !:Chars)
+        Seconds = Seconds0,
+        MicroSeconds = MicroSeconds0
     else
-        true
+        Seconds = 0,
+        MicroSeconds = 0
     ).
 
 %---------------------------------------------------------------------------%

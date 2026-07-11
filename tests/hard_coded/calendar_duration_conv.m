@@ -22,79 +22,92 @@
 :- import_module bool.
 :- import_module calendar.
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    io.write_string("=== Testing valid test data ===\n\n", !IO),
-    list.foldl(do_test_valid_duration(yes), valid_durations, !IO),
-    list.foldl(do_test_valid_duration(no), valid_no_roundtrip_durations, !IO),
+    io.write_string("=== Testing with valid inputs ===\n", !IO),
+    list.foldl(test_valid_duration(yes), valid_durations, !IO),
+    list.foldl(test_valid_duration(no), valid_no_roundtrip_durations, !IO),
+
     io.nl(!IO),
+    io.write_string("=== Testing with invalid inputs ===\n", !IO),
+    list.foldl(test_invalid_duration, invalid_durations, !IO).
 
-    io.write_string("=== Testing invalid test data ===\n\n", !IO),
-    list.foldl(do_test_invalid_duration, invalid_durations, !IO),
-    io.nl(!IO).
+%---------------------------------------------------------------------------%
+%
+% In both test_valid_duration and test_invalid_duration, we exercise
+% both the semidet predicate duration_from_string/2, and its det function
+% version, duration_from_string/1.
+%
+% We always print the results from the semidet predicate version.
+% We print the results from the det function version ONLY if it differs
+% from the result of the semidet predicate version on the same input.
+%
+%---------------------------------------------------------------------------%
 
-:- pred do_test_valid_duration(bool::in, duration_test::in,
+:- pred test_valid_duration(bool::in, duration_test::in,
     io::di, io::uo) is cc_multi.
 
-do_test_valid_duration(CheckRoundTrip, Test, !IO) :-
-    Test = duration_test(Desc, TestString),
-    write_test_call("pred", TestString, !IO),
-    ( if duration_from_string(TestString, DurationP) then
-        RoundTripString = duration_to_string(DurationP),
+test_valid_duration(CheckRoundTrip, Test, !IO) :-
+    Test = duration_test(Desc, TestStr),
+    write_test_call(TestStr, Desc, !IO),
+    ( if duration_from_string(TestStr, DurationP) then
+        MaybeDurationP = yes(DurationP),
+        RoundTripStr = duration_to_string(DurationP),
         (
             CheckRoundTrip = yes,
-            ( if TestString = RoundTripString then
-                io.format("PASS accepted %s\n",
-                    [s(string(DurationP))], !IO)
+            ( if TestStr = RoundTripStr then
+                io.format("PASS %s\n", [s(string(DurationP))], !IO)
             else
-                io.format("FAIL roundtrip \"%s\"\n",
-                    [s(RoundTripString)], !IO)
+                io.format("FAIL %s\nTEST %s\nTRIP %s\n",
+                    [s(string(DurationP)), s(TestStr), s(RoundTripStr)], !IO)
             )
         ;
             CheckRoundTrip = no,
-            io.format("PASS accepted %s\n%33s to-string \"%s\"\n",
-                [s(string(DurationP)), s(""), s(RoundTripString)], !IO)
+            io.format("PASS %s\nTEST %s\nTRIP %s\n",
+                [s(string(DurationP)), s(TestStr), s(RoundTripStr)], !IO)
         )
     else
-        io.format("FAIL reject %s\n", [s(Desc)], !IO)
+        MaybeDurationP = no,
+        io.format("FAIL reject\n", [], !IO)
     ),
-
-    write_test_call("func", TestString, !IO),
     ( try []
-        DurationF = det_duration_from_string(TestString)
+        DurationF = det_duration_from_string(TestStr)
     then
-        io.format("PASS accepted %s\n", [s(string(DurationF))], !IO)
+        MaybeDurationF = yes(DurationF)
     catch_any _ ->
-        io.format("FAIL exception %s\n", [s(Desc)], !IO)
-    ).
+        MaybeDurationF = no
+    ),
+    report_any_disagrement(MaybeDurationP, MaybeDurationF, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred do_test_invalid_duration(duration_test::in, io::di, io::uo)
-    is cc_multi.
+:- pred test_invalid_duration(duration_test::in, io::di, io::uo) is cc_multi.
 
-do_test_invalid_duration(Test, !IO) :-
-    Test = duration_test(Desc, TestString),
-    write_test_call("pred", TestString, !IO),
-    ( if duration_from_string(TestString, DurationP) then
-        DurationStringP = duration_to_string(DurationP),
-        io.format("FAIL accepted %s\n", [s(DurationStringP)], !IO)
+test_invalid_duration(Test, !IO) :-
+    Test = duration_test(Desc, TestStr),
+    write_test_call(TestStr, Desc, !IO),
+    ( if duration_from_string(TestStr, DurationP) then
+        MaybeDurationP = yes(DurationP),
+        DurationPStr = duration_to_string(DurationP),
+        io.format("FAIL: ERROR NOT DETECTED %s\n", [s(DurationPStr)], !IO)
     else
-        io.format("PASS rejected %s\n", [s(Desc)], !IO)
+        % Since we are invoked only on intended-to-be-invalid test data,
+        % this is the path successful tests should take.
+        MaybeDurationP = no,
+        io.format("PASS: ERROR DETECTED\n", [], !IO)
     ),
-
-    write_test_call("func", TestString, !IO),
     ( try []
-        DurationF = det_duration_from_string(TestString)
+        DurationF = det_duration_from_string(TestStr)
     then
-        io.format("FAIL accepted %s\n",
-            [s(string(DurationF))], !IO)
+        MaybeDurationF = yes(DurationF)
     catch_any _ ->
-        io.format("PASS exception %s\n", [s(Desc)], !IO)
-    ).
+        MaybeDurationF = no
+    ),
+    report_any_disagrement(MaybeDurationP, MaybeDurationF, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -107,9 +120,7 @@ do_test_invalid_duration(Test, !IO) :-
 %---------------------------------------------------------------------------%
 
 % Valid durations created from strings are mostly round-trippable through
-% duration_to_string/1. The exceptions are durations that are not already
-% in normal form (whose components overflow their unit) and zero durations
-% in any spelling other than "P0D".
+% duration_to_string/1. The exceptions are listed separately below.
 
     % These can be round-tripped through duration_to_string/1.
     %
@@ -187,7 +198,18 @@ valid_no_roundtrip_durations = [
     duration_test("zero minutes", "PT0M"),
     duration_test("zero hours", "PT0H"),
     duration_test("zero months", "P0M"),
-    duration_test("all explicit zeros", "P0Y0M0DT0H0M0S")
+    duration_test("zero years", "P0Y"),
+    duration_test("all explicit zeros", "P0Y0M0DT0H0M0S"),
+    duration_test("negative zero days", "-P0D"),
+    duration_test("negative zero years", "-P0Y"),
+    duration_test("negative zero months", "-P0M"),
+    duration_test("negative zero hours", "-PT0H"),
+    duration_test("negative zero minutes", "-PT0M"),
+    duration_test("negative zero seconds", "-PT0S"),
+    duration_test("negative zero seconds with explicit fraction",
+        "-PT0.0S"),
+    duration_test("negative zero with all explicit zeros",
+        "-P0Y0M0DT0H0M0S")
 ].
 
 %---------------------------------------------------------------------------%
@@ -242,8 +264,7 @@ invalid_durations = [
     duration_test("fractional minutes", "PT1.5M"),
 
     % Fractional seconds errors.
-    duration_test("seven fractional digits on seconds",
-        "PT1.1234567S"),
+    duration_test("seven fractional digits on seconds", "PT1.1234567S"),
     duration_test("decimal point with no fraction digits", "PT1.S"),
     duration_test("no integer part before decimal point", "PT.5S"),
 
@@ -260,16 +281,38 @@ invalid_durations = [
     duration_test("letter in time component", "PT1HxM"),
 
     % T present but no time components follow.
-    duration_test("T with no time components", "P1DT")
+    duration_test("T with no time components", "P1DT"),
+
+    % Component designators with missing digits.
+    duration_test("Y with no year digits", "PY"),
+    duration_test("M with no month digits", "P5YM"),
+    duration_test("D with no day digits", "P5YD"),
+    duration_test("H with no hour digits", "PTH"),
+    duration_test("M with no minute digits", "PT5HM"),
+    duration_test("S with no second digits", "PTS")
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred report_any_disagrement(maybe(duration)::in, maybe(duration)::in,
+    io::di, io::uo) is det.
+
+report_any_disagrement(MaybeDurationP, MaybeDurationF, !IO) :-
+    ( if MaybeDurationP = MaybeDurationF then
+        true
+    else
+        io.format("DISAGREEMENT: pred %s, func %s\n",
+            [s(string.string(MaybeDurationP)),
+            s(string.string(MaybeDurationF))], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
 :- pred write_test_call(string::in, string::in, io::di, io::uo) is det.
 
-write_test_call(Prefix, TestStr, !IO) :-
-    string.format("%s \"%s\":", [s(Prefix), s(TestStr)], TestId),
-    io.format("%-33s ", [s(TestId)], !IO).
+write_test_call(TestStr, Desc, !IO) :-
+    string.format("\n\"%s\":", [s(TestStr)], TestId),
+    io.format("%-36s %s\n", [s(TestId), s(Desc)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar_duration_conv.

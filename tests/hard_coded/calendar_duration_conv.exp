@@ -1,182 +1,335 @@
-=== Testing valid test data ===
+=== Testing with valid inputs ===
 
-pred "P1Y":                       PASS accepted duration(12, 0, 0, 0)
-func "P1Y":                       PASS accepted duration(12, 0, 0, 0)
-pred "P1M":                       PASS accepted duration(1, 0, 0, 0)
-func "P1M":                       PASS accepted duration(1, 0, 0, 0)
-pred "P1D":                       PASS accepted duration(0, 1, 0, 0)
-func "P1D":                       PASS accepted duration(0, 1, 0, 0)
-pred "P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
-func "P1Y2M":                     PASS accepted duration(14, 0, 0, 0)
-pred "P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
-func "P1Y2D":                     PASS accepted duration(12, 2, 0, 0)
-pred "P1M2D":                     PASS accepted duration(1, 2, 0, 0)
-func "P1M2D":                     PASS accepted duration(1, 2, 0, 0)
-pred "P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
-func "P1Y2M3D":                   PASS accepted duration(14, 3, 0, 0)
-pred "PT1H":                      PASS accepted duration(0, 0, 3600, 0)
-func "PT1H":                      PASS accepted duration(0, 0, 3600, 0)
-pred "PT1M":                      PASS accepted duration(0, 0, 60, 0)
-func "PT1M":                      PASS accepted duration(0, 0, 60, 0)
-pred "PT1S":                      PASS accepted duration(0, 0, 1, 0)
-func "PT1S":                      PASS accepted duration(0, 0, 1, 0)
-pred "PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
-func "PT1H2M":                    PASS accepted duration(0, 0, 3720, 0)
-pred "PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
-func "PT1H2S":                    PASS accepted duration(0, 0, 3602, 0)
-pred "PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
-func "PT1M2S":                    PASS accepted duration(0, 0, 62, 0)
-pred "PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
-func "PT1H2M3S":                  PASS accepted duration(0, 0, 3723, 0)
-pred "P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
-func "P1DT1H":                    PASS accepted duration(0, 1, 3600, 0)
-pred "P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
-func "P1Y2M3DT4H5M6S":            PASS accepted duration(14, 3, 14706, 0)
-pred "-P1D":                      PASS accepted duration(0, -1, 0, 0)
-func "-P1D":                      PASS accepted duration(0, -1, 0, 0)
-pred "-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
-func "-P1Y2M3DT4H5M6S":           PASS accepted duration(-14, -3, -14706, 0)
-pred "PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
-func "PT1.1S":                    PASS accepted duration(0, 0, 1, 100000)
-pred "PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
-func "PT1.12S":                   PASS accepted duration(0, 0, 1, 120000)
-pred "PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
-func "PT1.123S":                  PASS accepted duration(0, 0, 1, 123000)
-pred "PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
-func "PT1.1234S":                 PASS accepted duration(0, 0, 1, 123400)
-pred "PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
-func "PT1.12345S":                PASS accepted duration(0, 0, 1, 123450)
-pred "PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
-func "PT1.123456S":               PASS accepted duration(0, 0, 1, 123456)
-pred "PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
-func "PT0.000001S":               PASS accepted duration(0, 0, 0, 1)
-pred "PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
-func "PT0.999999S":               PASS accepted duration(0, 0, 0, 999999)
-pred "PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
-func "PT0.5S":                    PASS accepted duration(0, 0, 0, 500000)
-pred "PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
-func "PT0.0003S":                 PASS accepted duration(0, 0, 0, 300)
-pred "P0D":                       PASS accepted duration(0, 0, 0, 0)
-func "P0D":                       PASS accepted duration(0, 0, 0, 0)
-pred "P18M":                      PASS accepted duration(18, 0, 0, 0)
-                                  to-string "P1Y6M"
-func "P18M":                      PASS accepted duration(18, 0, 0, 0)
-pred "PT25H":                     PASS accepted duration(0, 1, 3600, 0)
-                                  to-string "P1DT1H"
-func "PT25H":                     PASS accepted duration(0, 1, 3600, 0)
-pred "PT90S":                     PASS accepted duration(0, 0, 90, 0)
-                                  to-string "PT1M30S"
-func "PT90S":                     PASS accepted duration(0, 0, 90, 0)
-pred "P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
-                                  to-string "P2Y6M100DT10H16M30.0003S"
-func "P1Y18M100DT10H15M90.0003S": PASS accepted duration(30, 100, 36990, 300)
-pred "PT0S":                      PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "PT0S":                      PASS accepted duration(0, 0, 0, 0)
-pred "PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "PT0.0S":                    PASS accepted duration(0, 0, 0, 0)
-pred "PT0M":                      PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "PT0M":                      PASS accepted duration(0, 0, 0, 0)
-pred "PT0H":                      PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "PT0H":                      PASS accepted duration(0, 0, 0, 0)
-pred "P0M":                       PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "P0M":                       PASS accepted duration(0, 0, 0, 0)
-pred "P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
-                                  to-string "P0D"
-func "P0Y0M0DT0H0M0S":            PASS accepted duration(0, 0, 0, 0)
+"P1Y":                              years only
+PASS duration(12, 0, 0, 0)
 
-=== Testing invalid test data ===
+"P1M":                              months only
+PASS duration(1, 0, 0, 0)
 
-pred "":                          PASS rejected empty string
-func "":                          PASS exception empty string
-pred "    ":                      PASS rejected blank string
-func "    ":                      PASS exception blank string
-pred "not a duration":            PASS rejected not a duration
-func "not a duration":            PASS exception not a duration
-pred "1Y2M3D":                    PASS rejected missing P prefix
-func "1Y2M3D":                    PASS exception missing P prefix
-pred "P":                         PASS rejected P with no components
-func "P":                         PASS exception P with no components
-pred "   P":                      PASS rejected P with no components and leading whitespace
-func "   P":                      PASS exception P with no components and leading whitespace
-pred "P   ":                      PASS rejected P with no components and trailing whitespace
-func "P   ":                      PASS exception P with no components and trailing whitespace
-pred "T1H":                       PASS rejected missing P prefix, starts with T
-func "T1H":                       PASS exception missing P prefix, starts with T
-pred "PT":                        PASS rejected P and T but no time components
-func "PT":                        PASS exception P and T but no time components
-pred "-P":                        PASS rejected negative P with no components
-func "-P":                        PASS exception negative P with no components
-pred "p1Y":                       PASS rejected lowercase p
-func "p1Y":                       PASS exception lowercase p
-pred "P1y":                       PASS rejected lowercase unit designator
-func "P1y":                       PASS exception lowercase unit designator
-pred "P1DT1H30MS":                PASS rejected bare S with no digits
-func "P1DT1H30MS":                PASS exception bare S with no digits
-pred "P1H":                       PASS rejected hours without T separator
-func "P1H":                       PASS exception hours without T separator
-pred "P1S":                       PASS rejected seconds without T separator
-func "P1S":                       PASS exception seconds without T separator
-pred "P1DT1H2M3Y":                PASS rejected years after time components
-func "P1DT1H2M3Y":                PASS exception years after time components
-pred "P1M1Y":                     PASS rejected years after months
-func "P1M1Y":                     PASS exception years after months
-pred "PT1S1H":                    PASS rejected hours after seconds
-func "PT1S1H":                    PASS exception hours after seconds
-pred "PT1S1M":                    PASS rejected minutes after seconds
-func "PT1S1M":                    PASS exception minutes after seconds
-pred "PT1M1H":                    PASS rejected hours after minutes
-func "PT1M1H":                    PASS exception hours after minutes
-pred "P1Y1Y":                     PASS rejected years specified twice
-func "P1Y1Y":                     PASS exception years specified twice
-pred "P1D1D":                     PASS rejected days specified twice
-func "P1D1D":                     PASS exception days specified twice
-pred "PT1H1H":                    PASS rejected hours specified twice
-func "PT1H1H":                    PASS exception hours specified twice
-pred "P-1Y":                      PASS rejected negative number after P
-func "P-1Y":                      PASS exception negative number after P
-pred "PT-1H":                     PASS rejected negative number after T
-func "PT-1H":                     PASS exception negative number after T
-pred "--P1D":                     PASS rejected double negative prefix
-func "--P1D":                     PASS exception double negative prefix
-pred "-P-1D":                     PASS rejected negative prefix and negative component
-func "-P-1D":                     PASS exception negative prefix and negative component
-pred "P1.5Y":                     PASS rejected fractional years
-func "P1.5Y":                     PASS exception fractional years
-pred "P1.5M":                     PASS rejected fractional months
-func "P1.5M":                     PASS exception fractional months
-pred "P1.5D":                     PASS rejected fractional days
-func "P1.5D":                     PASS exception fractional days
-pred "PT1.5H":                    PASS rejected fractional hours
-func "PT1.5H":                    PASS exception fractional hours
-pred "PT1.5M":                    PASS rejected fractional minutes
-func "PT1.5M":                    PASS exception fractional minutes
-pred "PT1.1234567S":              PASS rejected seven fractional digits on seconds
-func "PT1.1234567S":              PASS exception seven fractional digits on seconds
-pred "PT1.S":                     PASS rejected decimal point with no fraction digits
-func "PT1.S":                     PASS exception decimal point with no fraction digits
-pred "PT.5S":                     PASS rejected no integer part before decimal point
-func "PT.5S":                     PASS exception no integer part before decimal point
-pred "P1D ":                      PASS rejected trailing space
-func "P1D ":                      PASS exception trailing space
-pred " P1D":                      PASS rejected leading space
-func " P1D":                      PASS exception leading space
-pred "P 1Y":                      PASS rejected whitespace between P and components
-func "P 1Y":                      PASS exception whitespace between P and components
-pred "P1DT1H30M extra":           PASS rejected trailing text
-func "P1DT1H30M extra":           PASS exception trailing text
-pred "P1DX":                      PASS rejected invalid character after component
-func "P1DX":                      PASS exception invalid character after component
-pred "P1DT   ":                   PASS rejected T followed by whitespace
-func "P1DT   ":                   PASS exception T followed by whitespace
-pred "PxY":                       PASS rejected letter where number expected
-func "PxY":                       PASS exception letter where number expected
-pred "PT1HxM":                    PASS rejected letter in time component
-func "PT1HxM":                    PASS exception letter in time component
-pred "P1DT":                      PASS rejected T with no time components
-func "P1DT":                      PASS exception T with no time components
+"P1D":                              days only
+PASS duration(0, 1, 0, 0)
 
+"P1Y2M":                            years and months
+PASS duration(14, 0, 0, 0)
+
+"P1Y2D":                            years and days
+PASS duration(12, 2, 0, 0)
+
+"P1M2D":                            months and days
+PASS duration(1, 2, 0, 0)
+
+"P1Y2M3D":                          all date components
+PASS duration(14, 3, 0, 0)
+
+"PT1H":                             hours only
+PASS duration(0, 0, 3600, 0)
+
+"PT1M":                             minutes only
+PASS duration(0, 0, 60, 0)
+
+"PT1S":                             seconds only
+PASS duration(0, 0, 1, 0)
+
+"PT1H2M":                           hours and minutes
+PASS duration(0, 0, 3720, 0)
+
+"PT1H2S":                           hours and seconds
+PASS duration(0, 0, 3602, 0)
+
+"PT1M2S":                           minutes and seconds
+PASS duration(0, 0, 62, 0)
+
+"PT1H2M3S":                         all time components
+PASS duration(0, 0, 3723, 0)
+
+"P1DT1H":                           days and hours
+PASS duration(0, 1, 3600, 0)
+
+"P1Y2M3DT4H5M6S":                   all components
+PASS duration(14, 3, 14706, 0)
+
+"-P1D":                             negative days
+PASS duration(0, -1, 0, 0)
+
+"-P1Y2M3DT4H5M6S":                  negative all components
+PASS duration(-14, -3, -14706, 0)
+
+"PT1.1S":                           one fractional digit
+PASS duration(0, 0, 1, 100000)
+
+"PT1.12S":                          two fractional digits
+PASS duration(0, 0, 1, 120000)
+
+"PT1.123S":                         three fractional digits
+PASS duration(0, 0, 1, 123000)
+
+"PT1.1234S":                        four fractional digits
+PASS duration(0, 0, 1, 123400)
+
+"PT1.12345S":                       five fractional digits
+PASS duration(0, 0, 1, 123450)
+
+"PT1.123456S":                      six fractional digits
+PASS duration(0, 0, 1, 123456)
+
+"PT0.000001S":                      smallest nonzero microsecond
+PASS duration(0, 0, 0, 1)
+
+"PT0.999999S":                      largest microsecond value
+PASS duration(0, 0, 0, 999999)
+
+"PT0.5S":                           fractional seconds only
+PASS duration(0, 0, 0, 500000)
+
+"PT0.0003S":                        zero seconds with fraction
+PASS duration(0, 0, 0, 300)
+
+"P0D":                              zero days (canonical zero form)
+PASS duration(0, 0, 0, 0)
+
+"P18M":                             large months -> 1Y 6M
+PASS duration(18, 0, 0, 0)
+TEST P18M
+TRIP P1Y6M
+
+"PT25H":                            large hours -> 1D 1H
+PASS duration(0, 1, 3600, 0)
+TEST PT25H
+TRIP P1DT1H
+
+"PT90S":                            large seconds -> 1M 30S
+PASS duration(0, 0, 90, 0)
+TEST PT90S
+TRIP PT1M30S
+
+"P1Y18M100DT10H15M90.0003S":        doc example: P1Y18M100DT10H15M90.0003S -> P2Y6M100DT10H16M30.0003S
+PASS duration(30, 100, 36990, 300)
+TEST P1Y18M100DT10H15M90.0003S
+TRIP P2Y6M100DT10H16M30.0003S
+
+"PT0S":                             zero seconds
+PASS duration(0, 0, 0, 0)
+TEST PT0S
+TRIP P0D
+
+"PT0.0S":                           zero seconds with explicit fraction
+PASS duration(0, 0, 0, 0)
+TEST PT0.0S
+TRIP P0D
+
+"PT0M":                             zero minutes
+PASS duration(0, 0, 0, 0)
+TEST PT0M
+TRIP P0D
+
+"PT0H":                             zero hours
+PASS duration(0, 0, 0, 0)
+TEST PT0H
+TRIP P0D
+
+"P0M":                              zero months
+PASS duration(0, 0, 0, 0)
+TEST P0M
+TRIP P0D
+
+"P0Y":                              zero years
+PASS duration(0, 0, 0, 0)
+TEST P0Y
+TRIP P0D
+
+"P0Y0M0DT0H0M0S":                   all explicit zeros
+PASS duration(0, 0, 0, 0)
+TEST P0Y0M0DT0H0M0S
+TRIP P0D
+
+"-P0D":                             negative zero days
+PASS duration(0, 0, 0, 0)
+TEST -P0D
+TRIP P0D
+
+"-P0Y":                             negative zero years
+PASS duration(0, 0, 0, 0)
+TEST -P0Y
+TRIP P0D
+
+"-P0M":                             negative zero months
+PASS duration(0, 0, 0, 0)
+TEST -P0M
+TRIP P0D
+
+"-PT0H":                            negative zero hours
+PASS duration(0, 0, 0, 0)
+TEST -PT0H
+TRIP P0D
+
+"-PT0M":                            negative zero minutes
+PASS duration(0, 0, 0, 0)
+TEST -PT0M
+TRIP P0D
+
+"-PT0S":                            negative zero seconds
+PASS duration(0, 0, 0, 0)
+TEST -PT0S
+TRIP P0D
+
+"-PT0.0S":                          negative zero seconds with explicit fraction
+PASS duration(0, 0, 0, 0)
+TEST -PT0.0S
+TRIP P0D
+
+"-P0Y0M0DT0H0M0S":                  negative zero with all explicit zeros
+PASS duration(0, 0, 0, 0)
+TEST -P0Y0M0DT0H0M0S
+TRIP P0D
+
+=== Testing with invalid inputs ===
+
+"":                                 empty string
+PASS: ERROR DETECTED
+
+"    ":                             blank string
+PASS: ERROR DETECTED
+
+"not a duration":                   not a duration
+PASS: ERROR DETECTED
+
+"1Y2M3D":                           missing P prefix
+PASS: ERROR DETECTED
+
+"P":                                P with no components
+PASS: ERROR DETECTED
+
+"   P":                             P with no components and leading whitespace
+PASS: ERROR DETECTED
+
+"P   ":                             P with no components and trailing whitespace
+PASS: ERROR DETECTED
+
+"T1H":                              missing P prefix, starts with T
+PASS: ERROR DETECTED
+
+"PT":                               P and T but no time components
+PASS: ERROR DETECTED
+
+"-P":                               negative P with no components
+PASS: ERROR DETECTED
+
+"p1Y":                              lowercase p
+PASS: ERROR DETECTED
+
+"P1y":                              lowercase unit designator
+PASS: ERROR DETECTED
+
+"P1DT1H30MS":                       bare S with no digits
+PASS: ERROR DETECTED
+
+"P1H":                              hours without T separator
+PASS: ERROR DETECTED
+
+"P1S":                              seconds without T separator
+PASS: ERROR DETECTED
+
+"P1DT1H2M3Y":                       years after time components
+PASS: ERROR DETECTED
+
+"P1M1Y":                            years after months
+PASS: ERROR DETECTED
+
+"PT1S1H":                           hours after seconds
+PASS: ERROR DETECTED
+
+"PT1S1M":                           minutes after seconds
+PASS: ERROR DETECTED
+
+"PT1M1H":                           hours after minutes
+PASS: ERROR DETECTED
+
+"P1Y1Y":                            years specified twice
+PASS: ERROR DETECTED
+
+"P1D1D":                            days specified twice
+PASS: ERROR DETECTED
+
+"PT1H1H":                           hours specified twice
+PASS: ERROR DETECTED
+
+"P-1Y":                             negative number after P
+PASS: ERROR DETECTED
+
+"PT-1H":                            negative number after T
+PASS: ERROR DETECTED
+
+"--P1D":                            double negative prefix
+PASS: ERROR DETECTED
+
+"-P-1D":                            negative prefix and negative component
+PASS: ERROR DETECTED
+
+"P1.5Y":                            fractional years
+PASS: ERROR DETECTED
+
+"P1.5M":                            fractional months
+PASS: ERROR DETECTED
+
+"P1.5D":                            fractional days
+PASS: ERROR DETECTED
+
+"PT1.5H":                           fractional hours
+PASS: ERROR DETECTED
+
+"PT1.5M":                           fractional minutes
+PASS: ERROR DETECTED
+
+"PT1.1234567S":                     seven fractional digits on seconds
+PASS: ERROR DETECTED
+
+"PT1.S":                            decimal point with no fraction digits
+PASS: ERROR DETECTED
+
+"PT.5S":                            no integer part before decimal point
+PASS: ERROR DETECTED
+
+"P1D ":                             trailing space
+PASS: ERROR DETECTED
+
+" P1D":                             leading space
+PASS: ERROR DETECTED
+
+"P 1Y":                             whitespace between P and components
+PASS: ERROR DETECTED
+
+"P1DT1H30M extra":                  trailing text
+PASS: ERROR DETECTED
+
+"P1DX":                             invalid character after component
+PASS: ERROR DETECTED
+
+"P1DT   ":                          T followed by whitespace
+PASS: ERROR DETECTED
+
+"PxY":                              letter where number expected
+PASS: ERROR DETECTED
+
+"PT1HxM":                           letter in time component
+PASS: ERROR DETECTED
+
+"P1DT":                             T with no time components
+PASS: ERROR DETECTED
+
+"PY":                               Y with no year digits
+PASS: ERROR DETECTED
+
+"P5YM":                             M with no month digits
+PASS: ERROR DETECTED
+
+"P5YD":                             D with no day digits
+PASS: ERROR DETECTED
+
+"PTH":                              H with no hour digits
+PASS: ERROR DETECTED
+
+"PT5HM":                            M with no minute digits
+PASS: ERROR DETECTED
+
+"PTS":                              S with no second digits
+PASS: ERROR DETECTED
