@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -984,8 +984,8 @@ det_infer_par_conj(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
         SwitchContexts = [],
         det_diagnose_conj(InstMap0, SwitchContexts, detism_det, Goals,
             GoalMsgGroups, !DetInfo),
-        sort_error_msg_groups(GoalMsgGroups, SortedGoalMsgGroups),
-        SortedGoalMsgs = flatten_error_msg_groups(SortedGoalMsgGroups),
+        sort_diag_msg_groups(GoalMsgGroups, SortedGoalMsgGroups),
+        SortedGoalMsgs = flatten_diag_msg_groups(SortedGoalMsgGroups),
         Spec = error_spec($pred, severity_error, phase_detism_check,
             [msg(Context, Pieces)] ++ SortedGoalMsgs),
         det_info_add_error_spec(Spec, !DetInfo)
@@ -1899,14 +1899,14 @@ noncanon_unify_verbose_would_require =
     % Describe the given list of failing contexts.
     %
 :- func failing_contexts_description(module_info, var_table,
-    list(failing_context)) = list(error_msg).
+    list(failing_context)) = list(diag_msg).
 
 failing_contexts_description(ModuleInfo, VarTable, FailingContexts) =
     list.map(failing_context_description(ModuleInfo, VarTable),
         FailingContexts).
 
 :- func failing_context_description(module_info, var_table,
-    failing_context) = error_msg.
+    failing_context) = diag_msg.
 
 failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
     FailingContext = failing_context(Context, FailingGoal),

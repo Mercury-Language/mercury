@@ -257,7 +257,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,
-    list(term_error)::in, int::in, cord(error_msg)::in, cord(error_msg)::out,
+    list(term_error)::in, int::in, cord(diag_msg)::in, cord(diag_msg)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 describe_term_errors(_, _, [], _, !Msgs, !Specs).
@@ -269,7 +269,7 @@ describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
         !Msgs, !Specs).
 
 :- pred describe_term_error(module_info::in, maybe(pred_proc_id)::in,
-    term_error::in, maybe(int)::in, cord(error_msg)::in, cord(error_msg)::out,
+    term_error::in, maybe(int)::in, cord(diag_msg)::in, cord(diag_msg)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
@@ -286,7 +286,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0u,
+    ReasonMsg = gen_msg(yes(Context), always_treat_as_first, 0u,
         [always(Pieces)]),
     cord.snoc(ReasonMsg, !ReasonMsgs),
     (

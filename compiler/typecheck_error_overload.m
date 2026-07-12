@@ -114,7 +114,7 @@ report_error_too_much_overloading(ClauseContext, Context,
 %---------------------------------------------------------------------------%
 
 :- func create_first_msg(type_error_clause_context, prog_context,
-    list(format_piece), list(format_piece)) = error_msg.
+    list(format_piece), list(format_piece)) = diag_msg.
 
 create_first_msg(ClauseContext, Context, InitPieces,  VerbosePieces)
         = FirstMsg :-
@@ -333,7 +333,7 @@ add_qualifiers_reminder = [
 %---------------------------------------------------------------------------%
 
 :- func describe_overloaded_symbols(type_error_clause_context, prog_context,
-    overloaded_symbol_map) = list(error_msg).
+    overloaded_symbol_map) = list(diag_msg).
 
 describe_overloaded_symbols(ClauseContext, Context, OverloadedSymbolMap)
         = Msgs :-
@@ -375,7 +375,7 @@ describe_overloaded_symbols(ClauseContext, Context, OverloadedSymbolMap)
     ).
 
 :- func describe_overloaded_symbol(module_info,
-    pair(overloaded_symbol, one_or_more(prog_context))) = list(error_msg).
+    pair(overloaded_symbol, one_or_more(prog_context))) = list(diag_msg).
 
 describe_overloaded_symbol(ModuleInfo, Symbol - OoMSortedContexts) = Msgs :-
     OoMSortedContexts = one_or_more(FirstContext, LaterContexts),
@@ -410,12 +410,12 @@ describe_overloaded_symbol(ModuleInfo, Symbol - OoMSortedContexts) = Msgs :-
     ),
     LaterPieces = [words("That symbol is also overloaded here."), nl],
     FirstMsg = msg(FirstContext, FirstPieces),
-    LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
+    LaterMsgs = list.map(context_to_diag_msg(LaterPieces), LaterContexts),
     Msgs = [FirstMsg | LaterMsgs].
 
-:- func context_to_error_msg(list(format_piece), prog_context) = error_msg.
+:- func context_to_diag_msg(list(format_piece), prog_context) = diag_msg.
 
-context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
+context_to_diag_msg(Pieces, Context) = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_error_overload.

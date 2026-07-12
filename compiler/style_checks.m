@@ -790,7 +790,7 @@ report_non_contiguous_clauses(ModuleInfo, ItemKind, OtherPredIds, MainPredId,
 
 :- pred report_non_contiguous_clause_contexts(list(format_piece)::in,
     int::in, clause_item_number_region::in, clause_item_number_region::in,
-    list(clause_item_number_region)::in, list(error_msg)::out) is det.
+    list(clause_item_number_region)::in, list(diag_msg)::out) is det.
 
 report_non_contiguous_clause_contexts(PredPieces, GapNumber,
         FirstRegion, SecondRegion, LaterRegions, Msgs) :-

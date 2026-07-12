@@ -410,7 +410,7 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
 :- type already_printed_verbose == set(list(format_piece)).
 
 :- pred collect_msgs(option_table::in, limit_error_contexts_map::in,
-    list(std_error_msg)::in, maybe_treat_as_first::in,
+    list(std_diag_msg)::in, maybe_treat_as_first::in,
     cord(msg_pieces)::in, cord(msg_pieces)::out,
     maybe_print_spec::in, maybe_print_spec::out,
     already_printed_verbose::in, already_printed_verbose::out,
@@ -420,7 +420,7 @@ collect_msgs(_, _, [], _,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO).
 collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO) :-
-    StdMsg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, StdComponents),
+    StdMsg = gen_msg(MaybeContext, TreatAsFirst, ExtraIndent, StdComponents),
     Indent = ExtraIndent * indent2_increment,
     (
         TreatAsFirst = always_treat_as_first,
@@ -453,14 +453,14 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
 
 %---------------------------------------------------------------------------%
 
-    % Collect all the format_pieces to print out in an error_msg
-    % (which contains a list of error_msg_components in the general case),
+    % Collect all the format_pieces to print out in a diag_msg
+    % (which contains a list of diag_msg_components in the general case),
     % but do not print them yet. We take a pair of I/O states as arguments
     % *only* so that we can record in an I/O-linked mutable the fact that
     % the verbose components of some messages are not marked to be printed.
     %
 :- pred collect_msg_components(option_table::in,
-    list(error_msg_component)::in,
+    list(diag_msg_component)::in,
     cord(format_piece)::in, cord(format_piece)::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
@@ -571,10 +571,10 @@ should_this_msg_be_printed(LimitErrorContextsMap, TreatAsFirst, Indent,
     ;
         Pieces = [HeadPiece | TailPieces],
         % We could add [nl] after TailPieces to ensure that pieces from
-        % different error_msgs end up separated by a newline.
+        % different diag_msgs end up separated by a newline.
         % However, we have eventually ended up being pretty consistent
         % about adding a nl, with or without an indent delta, to the end
-        % of all error_msgs anyway, so this is not needed.
+        % of all diag_msgs anyway, so this is not needed.
         OoMPieces = one_or_more(HeadPiece, TailPieces),
         MsgPieces = msg_pieces(MaybeContext, TreatAsFirst, Indent, OoMPieces),
         (

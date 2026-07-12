@@ -135,7 +135,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func start_each_msg_with_blank_line(list(error_msg)) = list(error_msg).
+:- func start_each_msg_with_blank_line(list(diag_msg)) = list(diag_msg).
 
 %---------------------------------------------------------------------------%
 
@@ -198,7 +198,7 @@ does_spec_print_anything_2(Spec) = Prints :-
         bool.or_list(PrintsList, Prints)
     ).
 
-:- func does_msg_print_anything(error_msg) = bool.
+:- func does_msg_print_anything(diag_msg) = bool.
 
 does_msg_print_anything(Msg) = Prints :-
     (
@@ -211,7 +211,7 @@ does_msg_print_anything(Msg) = Prints :-
         Prints = no
     ;
         ( Msg = simple_msg(_, MsgComponents)
-        ; Msg = error_msg(_, _, _, MsgComponents)
+        ; Msg = gen_msg(_, _, _, MsgComponents)
         ),
         (
             MsgComponents = [],

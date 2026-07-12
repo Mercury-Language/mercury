@@ -1669,8 +1669,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
     Phase = phase_mode_check(report_in_any_mode),
     Spec = error_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
 
-:- func prefix_with_blank_line(prog_context, list(error_msg))
-    = list(error_msg).
+:- func prefix_with_blank_line(prog_context, list(diag_msg)) = list(diag_msg).
 
 prefix_with_blank_line(Context, Msgs) = [BlankMsg | Msgs] :-
     BlankMsg = msg(Context, [blank_line]).
@@ -1695,7 +1694,7 @@ is_error_important(Error) :-
     ).
 
 :- func mode_error_conjunct_to_msgs(prog_context, mode_info, delayed_goal)
-    = list(error_msg).
+    = list(diag_msg).
 
 mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -1750,7 +1749,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
             % even if it turns out to be very short (which can happen e.g.
             % for unifications).
             Components2 = [always([nl, fixed(GoalStr), nl])],
-            Msg2 = error_msg(no, treat_based_on_posn, 0u, Components2),
+            Msg2 = gen_msg(no, treat_based_on_posn, 0u, Components2),
             Msgs = [Msg1, Msg2] ++ SubMsgs
         )
     ).
@@ -2260,20 +2259,20 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             LaterMsgs0 = [LaterHead0 | LaterTail],
             (
                 LaterHead0 = msg(LaterContext, Pieces),
-                LaterHead = error_msg(yes(LaterContext), always_treat_as_first,
+                LaterHead = gen_msg(yes(LaterContext), always_treat_as_first,
                     0u, [always(Pieces)])
             ;
                 LaterHead0 = no_ctxt_msg(Pieces),
-                LaterHead = error_msg(no, always_treat_as_first,
+                LaterHead = gen_msg(no, always_treat_as_first,
                     0u, [always(Pieces)])
             ;
                 LaterHead0 = simple_msg(LaterContext, Components),
-                LaterHead = error_msg(yes(LaterContext), always_treat_as_first,
+                LaterHead = gen_msg(yes(LaterContext), always_treat_as_first,
                     0u, Components)
             ;
-                LaterHead0 = error_msg(MaybeLaterContext, _,
+                LaterHead0 = gen_msg(MaybeLaterContext, _,
                     Indent, Components),
-                LaterHead = error_msg(MaybeLaterContext, always_treat_as_first,
+                LaterHead = gen_msg(MaybeLaterContext, always_treat_as_first,
                     Indent, Components)
             ;
                 LaterHead0 = blank_msg(MaybeLaterContext),
@@ -2406,7 +2405,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
     ;       is_disjunctive.
 
 :- func merge_error_to_msgs(mode_info, prog_context, maybe_is_disjunctive,
-    merge_error) = list(error_msg).
+    merge_error) = list(diag_msg).
 
 merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     MergeError = merge_error(Var, ContextsInsts0),
@@ -2502,7 +2501,7 @@ count_ground_insts(ModuleInfo, Type, [ContextInst | ContextsInsts],
     ;       report_inst_and_groundness.
 
 :- func report_inst_in_context(mode_info, report_inst_how, maybe(color_name),
-    format_piece, mer_type, pair(prog_context, mer_inst)) = error_msg.
+    format_piece, mer_type, pair(prog_context, mer_inst)) = diag_msg.
 
 report_inst_in_context(ModeInfo, ReportIsGround, MaybeColor, VarNamePiece,
         Type, Context - Inst) = Msg :-

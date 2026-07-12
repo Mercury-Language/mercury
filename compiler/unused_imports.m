@@ -362,7 +362,7 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
     %
 :- pred add_msg_if_avail_as_general(module_name::in,
     avail_module::in, avail_module::in,
-    list(error_msg)::in, list(error_msg)::out) is det.
+    list(diag_msg)::in, list(diag_msg)::out) is det.
 
 add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
     ThisAvail = avail_module(ThisSection, ThisImportOrUse, _ThisContext),

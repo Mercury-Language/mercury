@@ -101,7 +101,7 @@
                 es_id                   :: string,
                 es_severity             :: spec_severity,
                 es_phase                :: spec_phase,
-                es_msgs                 :: list(error_msg)
+                es_msgs                 :: list(diag_msg)
             ).
 
     % An error_spec that is *intended* to contain a warning,
@@ -114,7 +114,7 @@
                 es_id                   :: string,
                 es_severity             :: spec_severity,
                 es_phase                :: spec_phase,
-                es_msgs                 :: list(std_error_msg)
+                es_msgs                 :: list(std_diag_msg)
             ).
 
     % Many operations in the compiler may either succeed or fail.
@@ -213,14 +213,14 @@
 
 %---------------------------------------------------------------------------%
 
-% An error message may have several components that may be printed under
+% An diagnostic message may have several components that may be printed under
 % different circumstances. Some components are always printed; some are
-% printed only if specific options have specific values. When an error
-% specification is printed, we concatenate the list of all the
-% format_pieces that should be printed. If this yields the empty list,
-% we print nothing. Otherwise, we print them all out.
+% printed only if the verbose option is set. When an diagnostic is printed,
+% we concatenate the list of all the format_pieces that should be printed.
+% If this yields the empty list, we print nothing. Otherwise, we print them
+% all out.
 %
-% When we print an error message in a list of error messages, we normally
+% When we print an diagnostic message in a list of diagnostics, we normally
 % treat the first line of the first message differently than the rest:
 % we separate it from the context by one space, whereas following lines
 % are separated by three spaces. You can request that the first line of
@@ -230,7 +230,7 @@
 % the error_extra_indent field to a strictly positive value.
 %
 % The term simple_msg(Context, Components) is a shorthand for (and equivalent
-% in every respect to) the term error_msg(yes(Context), treat_based_on_posn,
+% in every respect to) the term gen_msg(yes(Context), treat_based_on_posn,
 % 0, Components).
 %
 % The term msg(Context, Pieces) is a shorthand for (and equivalent
@@ -240,7 +240,7 @@
     --->    always_treat_as_first
     ;       treat_based_on_posn.
 
-:- type error_msg
+:- type diag_msg
     --->    msg(
                 simplest_context        :: prog_context,
                 simplest_pieces         :: list(format_piece)
@@ -250,24 +250,24 @@
             )
     ;       simple_msg(
                 simple_context          :: prog_context,
-                simple_components       :: list(error_msg_component)
+                simple_components       :: list(diag_msg_component)
             )
-    ;       error_msg(
-                error_context           :: maybe(prog_context),
-                error_treat_as_first    :: maybe_always_treat_as_first,
-                error_extra_indent      :: uint,
-                error_components        :: list(error_msg_component)
+    ;       gen_msg(
+                gen_context             :: maybe(prog_context),
+                gen_treat_as_first      :: maybe_always_treat_as_first,
+                gen_extra_indent        :: uint,
+                gen_components          :: list(diag_msg_component)
             )
     ;       blank_msg(
                 blank_context           :: maybe(prog_context)
             ).
 
-:- type std_error_msg =< error_msg
-    --->    error_msg(
-                error_context           :: maybe(prog_context),
-                error_treat_as_first    :: maybe_always_treat_as_first,
-                error_extra_indent      :: uint,
-                error_components        :: list(error_msg_component)
+:- type std_diag_msg =< diag_msg
+    --->    gen_msg(
+                gen_context             :: maybe(prog_context),
+                gen_treat_as_first      :: maybe_always_treat_as_first,
+                gen_extra_indent        :: uint,
+                gen_components          :: list(diag_msg_component)
             ).
 
 :- type verbose_always_or_once
@@ -276,7 +276,7 @@
             % Message components marked as verbose_once should be printed
             % just once.
 
-:- type error_msg_component
+:- type diag_msg_component
     --->    always(list(format_piece))
             % Print these components under all circumstances.
 
@@ -597,11 +597,11 @@
 :- pred append_prefix_and_maybe_verbose(maybe(color_name)::in,
     list(format_piece)::in, list(format_piece)::in,
     list(format_piece)::in, list(format_piece)::in,
-    error_msg_component::out) is det.
+    diag_msg_component::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred extract_msg_maybe_context(error_msg::in, maybe(prog_context)::out)
+:- pred extract_msg_maybe_context(diag_msg::in, maybe(prog_context)::out)
     is det.
 
 :- pred extract_spec_phase(error_spec::in, spec_phase::out) is det.
@@ -614,15 +614,15 @@
 %---------------------------------------------------------------------------%
 
 :- pred extract_spec_msgs_and_id(error_spec::in,
-    list(error_msg)::out, string::out) is det.
+    list(diag_msg)::out, string::out) is det.
 
 :- pred extract_spec_msgs_and_maybe_add_id(globals::in, error_spec::in,
-    list(error_msg)::out) is det.
+    list(diag_msg)::out) is det.
 
 :- pred maybe_add_error_spec_id(option_table::in, string::in,
-    list(error_msg)::in, list(error_msg)::out) is det.
+    list(diag_msg)::in, list(diag_msg)::out) is det.
 :- pred maybe_add_error_spec_id_std(option_table::in, string::in,
-    list(std_error_msg)::in, list(std_error_msg)::out) is det.
+    list(std_diag_msg)::in, list(std_diag_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -987,41 +987,41 @@ extract_msg_maybe_context(Msg, MaybeContext) :-
         ),
         MaybeContext = yes(Context)
     ;
-        ( Msg = error_msg(MaybeContext, _, _, _)
+        ( Msg = gen_msg(MaybeContext, _, _, _)
         ; Msg = blank_msg(MaybeContext)
         )
     ).
 
 extract_spec_phase(Spec, Phase) :-
     (
-        Spec = error_spec(_, _, Phase, _)
-    ;
         Spec = spec(_, _, Phase, _, _)
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
+    ;
+        Spec = error_spec(_, _, Phase, _)
     ).
 
 extract_spec_severity(Spec, Severity) :-
     (
-        Spec = error_spec(_, Severity, _, _)
-    ;
         Spec = spec(_, Severity, _, _, _)
     ;
         Spec = no_ctxt_spec(_, Severity, _, _)
+    ;
+        Spec = error_spec(_, Severity, _, _)
     ).
 
 accumulate_contexts(Spec, !Contexts) :-
     (
-        Spec = error_spec(_, _, _, Msgs),
-        list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
-    ;
         Spec = spec(_, _, _, Context, _),
         set.insert(Context, !Contexts)
     ;
         Spec = no_ctxt_spec(_, _, _, _)
+    ;
+        Spec = error_spec(_, _, _, Msgs),
+        list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
     ).
 
-:- pred accumulate_contexts_in_msg(error_msg::in,
+:- pred accumulate_contexts_in_msg(diag_msg::in,
     set(prog_context)::in, set(prog_context)::out) is det.
 
 accumulate_contexts_in_msg(Msg, !Contexts) :-
@@ -1037,13 +1037,13 @@ accumulate_contexts_in_msg(Msg, !Contexts) :-
 
 extract_spec_msgs_and_id(Spec, Msgs, Id) :-
     (
-        Spec = error_spec(Id, _Severity, _Phase, Msgs)
-    ;
         Spec = spec(Id, _Severity, _Phase, Context, Pieces),
         Msgs = [msg(Context, Pieces)]
     ;
         Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
         Msgs = [no_ctxt_msg(Pieces)]
+    ;
+        Spec = error_spec(Id, _Severity, _Phase, Msgs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1068,7 +1068,7 @@ maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
         ;
             Msgs0 = [HeadMsg | _],
             extract_msg_maybe_context(HeadMsg, MaybeHeadContext),
-            IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
+            IdMsg = gen_msg(MaybeHeadContext, treat_based_on_posn, 0u,
                 [always([words("error_spec id:"), fixed(Id), nl])]),
             Msgs = Msgs0 ++ [IdMsg]
         )
@@ -1089,7 +1089,7 @@ maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
         ;
             StdMsgs0 = [StdHeadMsg | _],
             extract_msg_maybe_context(coerce(StdHeadMsg), MaybeHeadContext),
-            StdIdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
+            StdIdMsg = gen_msg(MaybeHeadContext, treat_based_on_posn, 0u,
                 [always([words("error_spec id:"), fixed(Id), nl])]),
             StdMsgs = StdMsgs0 ++ [StdIdMsg]
         )

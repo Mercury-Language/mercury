@@ -1196,7 +1196,7 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 PrevPieces = [words("Here is the previous") | CallPieces]
                     ++ [suffix(".")],
                 Msg = msg(Context, CurPieces),
-                PrevMsg = error_msg(yes(PrevContext), always_treat_as_first,
+                PrevMsg = gen_msg(yes(PrevContext), always_treat_as_first,
                     0u, [always(PrevPieces)]),
                 Severity = severity_warning(warn_duplicate_calls),
                 Spec = error_spec($pred, Severity,

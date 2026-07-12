@@ -329,7 +329,7 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
 %---------------------------------------------------------------------------%
 
 :- pred generate_accu_warnings(module_info::in, var_table::in,
-    list(accu_warning)::in, list(error_msg)::out) is det.
+    list(accu_warning)::in, list(diag_msg)::out) is det.
 
 generate_accu_warnings(_, _, [], []).
 generate_accu_warnings(ModuleInfo, VarTable,
@@ -338,7 +338,7 @@ generate_accu_warnings(ModuleInfo, VarTable,
     generate_accu_warnings(ModuleInfo, VarTable, Warnings, Msgs).
 
 :- pred generate_accu_warning(module_info::in, var_table::in, accu_warning::in,
-    error_msg::out) is det.
+    diag_msg::out) is det.
 
 generate_accu_warning(ModuleInfo, VarTable, Warning, Msg) :-
     Warning = accu_warn(Context, PredId, VarA, VarB),

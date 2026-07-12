@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -197,7 +197,7 @@ report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
 %---------------------%
 
 :- type undef_class
-    --->    undef_special(list(error_msg_component))
+    --->    undef_special(list(diag_msg_component))
             % This is not a reference to an undefined predicate,
             % but a badly-executed attempt at using Mercury's "keywords".
     ;       undef_ordinary(
@@ -268,7 +268,7 @@ is_undef_pred_reference_special(ClauseContext, SymNameArity, UndefClass) :-
     ).
 
 :- pred is_undef_pred_a_syntax_error(string::in, int::in,
-    list(error_msg_component)::out) is semidet.
+    list(diag_msg_component)::out) is semidet.
 
 is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
     (
@@ -351,7 +351,7 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
         Components = [always(Pieces)]
     ).
 
-:- func report_apply_instead_of_pred = list(error_msg_component).
+:- func report_apply_instead_of_pred = list(diag_msg_component).
 
 report_apply_instead_of_pred = Components :-
     MainPieces = [words("error: the language construct")] ++
@@ -506,7 +506,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 
 %---------------------%
 
-:- func report_error_func_instead_of_pred(prog_context) = error_msg.
+:- func report_error_func_instead_of_pred(prog_context) = diag_msg.
 
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl] ++
@@ -592,7 +592,7 @@ language_builtin_functor("all", 2, "part of a goal").
 language_builtin_functor("some", 2, "part of a goal").
 
 :- pred language_builtin_functor_components(string::in, arity::in,
-    string::in, list(error_msg_component)::out) is det.
+    string::in, list(diag_msg_component)::out) is det.
 
 language_builtin_functor_components(Name, Arity, UsedAsWhat, Components) :-
     NameArity = name_arity(Name, Arity),
@@ -630,7 +630,7 @@ language_builtin_functor_components(Name, Arity, UsedAsWhat, Components) :-
 %---------------------%
 
 :- pred syntax_functor_components(string::in, arity::in,
-    list(error_msg_component)::out) is semidet.
+    list(diag_msg_component)::out) is semidet.
 
 syntax_functor_components(FunctorName, Arity, Components) :-
     (
@@ -749,7 +749,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
 %---------------------%
 
 :- pred report_error_undef_du_ctor_std(type_error_clause_context::in,
-    prog_context::in, error_msg_component::in, du_ctor::in,
+    prog_context::in, diag_msg_component::in, du_ctor::in,
     list(cons_error)::in, error_spec::out) is det.
 
 report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
@@ -913,7 +913,7 @@ accumulate_field_names(FieldSymName, _OoMFieldDefns, !FieldNames) :-
 
 %---------------------------------------------------------------------------%
 
-:- func report_cons_error(prog_context, cons_error) = list(error_msg).
+:- func report_cons_error(prog_context, cons_error) = list(diag_msg).
 
 report_cons_error(Context, ConsError) = Msgs :-
     (
@@ -1007,7 +1007,7 @@ report_cons_error(Context, ConsError) = Msgs :-
     ).
 
 :- pred report_closure_construction_errors(sym_name::in, int::in,
-    list(int)::in, list(int)::in, list(error_msg_component)::out) is det.
+    list(int)::in, list(int)::in, list(diag_msg_component)::out) is det.
 
 report_closure_construction_errors(SymName, ConsIdArity,
         PredArities, FuncArities, PredFuncComps) :-
@@ -1074,7 +1074,7 @@ report_closure_arities(PredOrFunc, Arities, Pieces) :-
 
 :- pred maybe_construct_missing_qualifier_msg(type_error_clause_context::in,
     prog_context::in, du_ctor::in,
-    list(format_piece)::out, list(error_msg)::out) is det.
+    list(format_piece)::out, list(diag_msg)::out) is det.
 
 maybe_construct_missing_qualifier_msg(ClauseContext, Context, DuCtor,
         AddendumPieces, QualMsgs) :-
@@ -1222,7 +1222,7 @@ construct_arith_import_pieces(OpKind, OpStr) = Pieces :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_construct_did_you_mean_msg(module_info::in, prog_context::in,
-    du_ctor::in, list(error_msg)::out) is det.
+    du_ctor::in, list(diag_msg)::out) is det.
 
 maybe_construct_did_you_mean_msg(ModuleInfo, Context, DuCtor,
         DidYouMeanMsgs) :-
@@ -1409,7 +1409,7 @@ accumulate_matching_pf_module_names(PredicateTable, SymName, PredId,
 %---------------------%
 
 :- func report_any_missing_module_qualifiers(type_error_clause_context,
-    prog_context, string, set(module_name)) = list(error_msg).
+    prog_context, string, set(module_name)) = list(diag_msg).
 
 report_any_missing_module_qualifiers(ClauseContext, Context,
         ItemName, ModuleNamesSet0) = Msgs :-

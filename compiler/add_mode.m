@@ -492,7 +492,7 @@ sna_context_is_for_module(ModuleName, SNA - _Context) :-
 
 :- pred local_sna_and_context_to_piece_and_msg(module_info::in,
     inst_or_mode::in, pair(sym_name_arity, prog_context)::in,
-    format_piece::out, error_msg::out) is det.
+    format_piece::out, diag_msg::out) is det.
 
 local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
         SNAPiece, Msg) :-

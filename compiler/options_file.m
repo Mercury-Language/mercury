@@ -604,7 +604,7 @@ pathname_occurs_in_incl_stack_2(InclStack0, PathName, !TopDownIncludes) :-
         )
     ).
 
-:- func include_context_msg(pair(file_name, term_context)) = error_msg.
+:- func include_context_msg(pair(file_name, term_context)) = diag_msg.
 
 include_context_msg(FileName - Context) = Msg :-
     Pieces = [words("The include directive for"), quote(FileName),

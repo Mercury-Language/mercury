@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2812,7 +2812,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     PiecesB = [words("Here is the conflicting instance."), nl],
 
     MsgA = msg(ContextA, PiecesA),
-    MsgB = error_msg(yes(ContextB), always_treat_as_first, 0u,
+    MsgB = gen_msg(yes(ContextB), always_treat_as_first, 0u,
         [always(PiecesB)]),
     Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].

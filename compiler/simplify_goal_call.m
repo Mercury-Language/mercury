@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -695,7 +695,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         true
     ).
 
-:- func shut_up_suspicious_recursion_msg = error_msg_component.
+:- func shut_up_suspicious_recursion_msg = diag_msg_component.
 
 shut_up_suspicious_recursion_msg = Component :-
     Pieces =

@@ -10,7 +10,7 @@
 % File: error_sort.m.
 % Main author: zs.
 %
-% This module sorts error_specs and error_msgs.
+% This module sorts error_specs and diag_msgs.
 %
 %---------------------------------------------------------------------------%
 
@@ -51,20 +51,20 @@
 
 %---------------------------------------------------------------------------%
 
-:- type error_msg_group
-    --->    error_msg_group(error_msg, list(error_msg)).
+:- type diag_msg_group
+    --->    diag_msg_group(diag_msg, list(diag_msg)).
 
-:- pred sort_error_msg_groups(list(error_msg_group)::in,
-    list(error_msg_group)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- func flatten_error_msg_groups(list(error_msg_group)) = list(error_msg).
-:- func flatten_error_msg_group(error_msg_group) = list(error_msg).
+:- pred sort_diag_msg_groups(list(diag_msg_group)::in,
+    list(diag_msg_group)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
+:- func flatten_diag_msg_groups(list(diag_msg_group)) = list(diag_msg).
+:- func flatten_diag_msg_group(diag_msg_group) = list(diag_msg).
+
+%---------------------------------------------------------------------------%
+
+:- pred sort_diag_msgs(list(diag_msg)::in, list(diag_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -87,14 +87,14 @@ standardize_error_specs(Specs, StdSpecs) :-
 standardize_error_spec(Spec0, StdSpec) :-
     (
         Spec0 = error_spec(Id, Severity, Phase, Msgs0),
-        list.map(standardize_error_msg, Msgs0, StdMsgs)
+        list.map(standardize_diag_msg, Msgs0, StdMsgs)
     ;
         Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
-        StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
+        StdMsgs = [gen_msg(yes(Context0), treat_based_on_posn, 0u,
             [always(Pieces0)])]
     ;
         Spec0 = no_ctxt_spec(Id, Severity, Phase, Pieces0),
-        StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
+        StdMsgs = [gen_msg(no, treat_based_on_posn, 0u,
             [always(Pieces0)])]
     ),
     (
@@ -105,9 +105,9 @@ standardize_error_spec(Spec0, StdSpec) :-
         StdSpec = error_spec(Id, Severity, Phase, StdMsgs)
     ).
 
-:- pred standardize_error_msg(error_msg::in, std_error_msg::out) is det.
+:- pred standardize_diag_msg(diag_msg::in, std_diag_msg::out) is det.
 
-standardize_error_msg(Msg0, StdMsg) :-
+standardize_diag_msg(Msg0, StdMsg) :-
     (
         Msg0 = msg(Context, Pieces0),
         MaybeContext = yes(Context),
@@ -126,7 +126,7 @@ standardize_error_msg(Msg0, StdMsg) :-
         TreatAsFirst = treat_based_on_posn,
         ExtraIndent = 0u
     ;
-        Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
+        Msg0 = gen_msg(MaybeContext, TreatAsFirst, ExtraIndent,
             StdComponents)
     ;
         Msg0 = blank_msg(MaybeContext),
@@ -139,10 +139,10 @@ standardize_error_msg(Msg0, StdMsg) :-
         % In this situation, we used to just fail, making both this predicate,
         % and its caller standardize_error_spec, semidet.
         %
-        % This was when we still had error_msgs that were conditional on
+        % This was when we still had diag_msgs that were conditional on
         % the value of an option. Ever since we moved all such conditionality
         % to the top level (to the severity of the error_spec), we never delete
-        % any error_msgs from an error_spec. The only way that execution can
+        % any diag_msgs from an error_spec. The only way that execution can
         % *now* get here is if the error_spec was *constructed* with zero
         % components. That would be a bug, which we catch here.
         %
@@ -154,7 +154,7 @@ standardize_error_msg(Msg0, StdMsg) :-
         unexpected($pred, "StdComponents = []")
     ;
         StdComponents = [_ | _],
-        StdMsg = error_msg(MaybeContext, TreatAsFirst,
+        StdMsg = gen_msg(MaybeContext, TreatAsFirst,
             ExtraIndent, StdComponents)
     ).
 
@@ -179,7 +179,7 @@ sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
 compare_std_error_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
     SpecA = error_spec(_, _, _, MsgsA),
     SpecB = error_spec(_, _, _, MsgsB),
-    compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
+    compare_std_diag_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),
         compare(Result, SpecA, SpecB)
@@ -190,11 +190,11 @@ compare_std_error_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
         Result = MsgsResult
     ).
 
-:- pred compare_std_error_msg_lists(bool::in,
-    list(std_error_msg)::in, list(std_error_msg)::in,
+:- pred compare_std_diag_msg_lists(bool::in,
+    list(std_diag_msg)::in, list(std_diag_msg)::in,
     comparison_result::out) is det.
 
-compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
+compare_std_diag_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
     (
         MsgsA = [],
         MsgsB = [],
@@ -210,11 +210,11 @@ compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
     ;
         MsgsA = [HeadMsgA | TailMsgsA],
         MsgsB = [HeadMsgB | TailMsgsB],
-        compare_error_msgs(ReverseErrorOrder,
+        compare_diag_msgs(ReverseErrorOrder,
             coerce(HeadMsgA), coerce(HeadMsgB), HeadResult),
         (
             HeadResult = (=),
-            compare_std_error_msg_lists(ReverseErrorOrder,
+            compare_std_diag_msg_lists(ReverseErrorOrder,
                 TailMsgsA, TailMsgsB, Result)
         ;
             ( HeadResult = (>)
@@ -226,16 +226,16 @@ compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
 
 %---------------------------------------------------------------------------%
 
-sort_error_msg_groups(MsgGroups0, MsgGroups) :-
-    list.sort_and_remove_dups(compare_error_msg_groups, MsgGroups0, MsgGroups).
+sort_diag_msg_groups(MsgGroups0, MsgGroups) :-
+    list.sort_and_remove_dups(compare_diag_msg_groups, MsgGroups0, MsgGroups).
 
-:- pred compare_error_msg_groups(error_msg_group::in, error_msg_group::in,
+:- pred compare_diag_msg_groups(diag_msg_group::in, diag_msg_group::in,
     comparison_result::out) is det.
 
-compare_error_msg_groups(GroupA, GroupB, Result) :-
-    GroupA = error_msg_group(HeadMsgA, TailMsgsA),
-    GroupB = error_msg_group(HeadMsgB, TailMsgsB),
-    compare_error_msgs(no, HeadMsgA, HeadMsgB, Result0),
+compare_diag_msg_groups(GroupA, GroupB, Result) :-
+    GroupA = diag_msg_group(HeadMsgA, TailMsgsA),
+    GroupB = diag_msg_group(HeadMsgB, TailMsgsB),
+    compare_diag_msgs(no, HeadMsgA, HeadMsgB, Result0),
     (
         Result0 = (=),
         (
@@ -253,9 +253,9 @@ compare_error_msg_groups(GroupA, GroupB, Result) :-
         ;
             TailMsgsA = [HeadTailMsgA | TailTailMsgsA],
             TailMsgsB = [HeadTailMsgB | TailTailMsgsB],
-            TailGroupA = error_msg_group(HeadTailMsgA, TailTailMsgsA),
-            TailGroupB = error_msg_group(HeadTailMsgB, TailTailMsgsB),
-            compare_error_msg_groups(TailGroupA, TailGroupB, Result)
+            TailGroupA = diag_msg_group(HeadTailMsgA, TailTailMsgsA),
+            TailGroupB = diag_msg_group(HeadTailMsgB, TailTailMsgsB),
+            compare_diag_msg_groups(TailGroupA, TailGroupB, Result)
         )
     ;
         ( Result0 = (<)
@@ -266,23 +266,23 @@ compare_error_msg_groups(GroupA, GroupB, Result) :-
 
 %---------------------------------------------------------------------------%
 
-flatten_error_msg_groups(Groups) = Msgs :-
-    MsgLists = list.map(flatten_error_msg_group, Groups),
+flatten_diag_msg_groups(Groups) = Msgs :-
+    MsgLists = list.map(flatten_diag_msg_group, Groups),
     list.condense(MsgLists, Msgs).
 
-flatten_error_msg_group(Group) = Msgs :-
-    Group= error_msg_group(HeadMsg, TailMsgs),
+flatten_diag_msg_group(Group) = Msgs :-
+    Group= diag_msg_group(HeadMsg, TailMsgs),
     Msgs = [HeadMsg | TailMsgs].
 
 %---------------------------------------------------------------------------%
 
-sort_error_msgs(Msgs0, Msgs) :-
-    list.sort_and_remove_dups(compare_error_msgs(no), Msgs0, Msgs).
+sort_diag_msgs(Msgs0, Msgs) :-
+    list.sort_and_remove_dups(compare_diag_msgs(no), Msgs0, Msgs).
 
-:- pred compare_error_msgs(bool::in, error_msg::in, error_msg::in,
+:- pred compare_diag_msgs(bool::in, diag_msg::in, diag_msg::in,
     comparison_result::out) is det.
 
-compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
+compare_diag_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
     extract_msg_maybe_context(MsgA, MaybeContextA),
     extract_msg_maybe_context(MsgB, MaybeContextB),
     % The context comparison makes sense only if both Msgs have a context.
@@ -329,7 +329,7 @@ compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
         )
     ).
 
-:- func project_msg_components(error_msg) = list(error_msg_component).
+:- func project_msg_components(diag_msg) = list(diag_msg_component).
 
 project_msg_components(Msg) = Components :-
     (
@@ -340,7 +340,7 @@ project_msg_components(Msg) = Components :-
     ;
         Msg = simple_msg(_, Components)
     ;
-        Msg = error_msg(_, _, _, Components)
+        Msg = gen_msg(_, _, _, Components)
     ;
         Msg = blank_msg(_),
         Components = [always([blank_line])]

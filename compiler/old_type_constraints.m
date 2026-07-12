@@ -407,7 +407,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
     %
 :- pred update_goal(pred_env::in, type_constraint_map::in,
     goal_forward_path_map::in, hlds_goal::in, hlds_goal::out,
-    list(error_msg)::out) is det.
+    list(diag_msg)::out) is det.
 
 update_goal(PredEnv, ConstraintMap, ForwardGoalPathMap, !Goal, Errors) :-
     Disjunctions = map.values(ConstraintMap),
@@ -481,7 +481,7 @@ has_one_disjunct(tconstr_conj(C), C).
     %
 :- pred create_vartypes_map(prog_context::in, prog_varset::in, tvarset::in,
     prog_var_map::in, type_domain_map::in, simple_prog_var_map::in,
-    vartypes::out, list(error_msg)::out) is det.
+    vartypes::out, list(diag_msg)::out) is det.
 
 create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
         ReplacementMap, VarTypes, Errors) :-
@@ -498,7 +498,7 @@ create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
     %
 :- pred find_variable_type(prog_context::in, prog_varset::in, tvarset::in,
     prog_var_map::in, type_domain_map::in, simple_prog_var_map::in,
-    prog_var::in, mer_type::out, maybe(error_msg)::out) is det.
+    prog_var::in, mer_type::out, maybe(diag_msg)::out) is det.
 
 find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
         ReplacementMap, Var, Type, MaybeMsg) :-
@@ -2075,7 +2075,7 @@ merge_type_constraints2(A, B, Result) :-
     % of the predicate call constraints (chosen arbitrarily). Otherwise, fail.
     %
 :- pred diagnose_ambig_pred_error(pred_env::in, list(conj_type_constraint)::in,
-    error_msg::out) is semidet.
+    diag_msg::out) is semidet.
 
 diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
     head(Conjunctions, HeadConjunct),
@@ -2089,7 +2089,7 @@ diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
     Msg = simple_msg(Context, Pieces).
 
 :- pred ambig_pred_error_message(pred_env::in, pair(goal_id, pred_id)::in,
-    error_msg_component::out) is det.
+    diag_msg_component::out) is det.
 
 ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     % XXX Should use describe_one_pred_name.
@@ -2117,8 +2117,7 @@ pred_constraint_info(Constraint, Path - PredId) :-
     % that are present in all of these subsets.
     %
 :- pred diagnose_unsatisfiability_error(type_constraint_info::in,
-    prog_context::in, prog_varset::in, tvar::in,
-    error_msg::out) is det.
+    prog_context::in, prog_varset::in, tvar::in, diag_msg::out) is det.
 
 diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints,
@@ -2209,7 +2208,7 @@ next_min_unsat(Constraint, C, !D, !P, !MinUnsats) :-
     min_unsat_constraints(Constraint, !.D, !.P, !MinUnsats),
     set.insert(C, !D).
 
-:- pred add_message_to_spec(error_msg::in, type_constraint_info::in,
+:- pred add_message_to_spec(diag_msg::in, type_constraint_info::in,
     type_constraint_info::out) is det.
 
 add_message_to_spec(ErrMsg, !TCInfo) :-

@@ -293,7 +293,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
         )
     ).
 
-:- pred cse_nopull_msgs(proc_info::in, list(error_msg)::out) is det.
+:- pred cse_nopull_msgs(proc_info::in, list(diag_msg)::out) is det.
 
 cse_nopull_msgs(ProcInfo, Msgs) :-
     proc_info_get_cse_nopull_contexts(ProcInfo, CseNoPullContexts),
@@ -905,7 +905,7 @@ is_proc_pragma_exported([ExportProc | ExportProcs], PredId, ProcId, Context) :-
 
 :- pred report_determinism_problem(module_info::in, pred_proc_id::in,
     string::in, string::in, list(format_piece)::in,
-    determinism::in, determinism::in, error_msg::out) is det.
+    determinism::in, determinism::in, diag_msg::out) is det.
 
 report_determinism_problem(ModuleInfo, PredProcId, ErrorOrWarn, ProblemStr,
         ReasonPieces, DeclaredDetism, InferredDetism, Msg) :-

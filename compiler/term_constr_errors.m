@@ -212,7 +212,7 @@ report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
 
 :- pred describe_term2_errors(module_info::in, maybe(pred_proc_id)::in,
     int::in, list(term2_error)::in,
-    cord(error_msg)::in, cord(error_msg)::out) is det.
+    cord(diag_msg)::in, cord(diag_msg)::out) is det.
 
 describe_term2_errors(_, _, _, [], !ReasonMsgsCord).
 describe_term2_errors(ModuleInfo, Single, ErrNum0, [Error | Errors],
@@ -224,7 +224,7 @@ describe_term2_errors(ModuleInfo, Single, ErrNum0, [Error | Errors],
 
 :- pred describe_term2_error(module_info::in, maybe(pred_proc_id)::in,
     maybe(int)::in, term2_error::in,
-    cord(error_msg)::in, cord(error_msg)::out) is det.
+    cord(diag_msg)::in, cord(diag_msg)::out) is det.
 
 describe_term2_error(ModuleInfo, Single, MaybeErrorNum, Error,
         !ReasonMsgsCord) :-
@@ -239,7 +239,7 @@ describe_term2_error(ModuleInfo, Single, MaybeErrorNum, Error,
         MaybeErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0u,
+    ReasonMsg = gen_msg(yes(Context), always_treat_as_first, 0u,
         [always(Pieces)]),
     cord.snoc(ReasonMsg, !ReasonMsgsCord).
 

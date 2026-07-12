@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
     % Find out what is wrong, and return a list of messages giving the causes.
     %
 :- pred det_diagnose_goal_get_msgs(instmap::in, determinism::in, hlds_goal::in,
-    list(error_msg)::out, det_info::in, det_info::out) is det.
+    list(diag_msg)::out, det_info::in, det_info::out) is det.
 
     % det_diagnose_conj(InstMap0, FailingContexts, Desired, Goals,
     %   Msgs, !DetInfo):
@@ -54,7 +54,7 @@
     % model_det.
     %
 :- pred det_diagnose_conj(instmap::in, list(switch_context)::in,
-    determinism::in, list(hlds_goal)::in, list(error_msg_group)::out,
+    determinism::in, list(hlds_goal)::in, list(diag_msg_group)::out,
     det_info::in, det_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -95,14 +95,14 @@ det_diagnose_goal_get_msgs(InstMap0, Desired, Goal, Msgs, !DetInfo) :-
     SwitchContexts = [],
     det_diagnose_goal(InstMap0, SwitchContexts, Desired, Goal,
         MsgGroups, !DetInfo),
-    sort_error_msg_groups(MsgGroups, SortedMsgGroups),
-    Msgs = flatten_error_msg_groups(SortedMsgGroups).
+    sort_diag_msg_groups(MsgGroups, SortedMsgGroups),
+    Msgs = flatten_diag_msg_groups(SortedMsgGroups).
 
     % The given goal should have determinism Desired, but doesn't.
     % Find out what is wrong, and return a list of messages giving the causes.
     %
 :- pred det_diagnose_goal(instmap::in, list(switch_context)::in,
-    determinism::in, hlds_goal::in, list(error_msg_group)::out,
+    determinism::in, hlds_goal::in, list(diag_msg_group)::out,
     det_info::in, det_info::out) is det.
 
 det_diagnose_goal(InstMap0, SwitchContexts, Desired, Goal, MsgGroups,
@@ -127,7 +127,7 @@ det_diagnose_goal(InstMap0, SwitchContexts, Desired, Goal, MsgGroups,
 
 :- pred det_diagnose_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     instmap::in, determinism::in, determinism::in, list(switch_context)::in,
-    det_info::in, det_info::out, list(error_msg_group)::out) is det.
+    det_info::in, det_info::out, list(diag_msg_group)::out) is det.
 
 det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         SwitchContexts, !DetInfo, MsgGroups) :-
@@ -139,7 +139,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
         Pieces = SurroundingContextPieces ++
             [lower_case_next_if_not_first] ++ GoalPieces ++ ProblemPieces,
-        MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+        MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, CallContext, _),
         Context = goal_info_get_context(GoalInfo),
@@ -148,7 +148,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
         Pieces = AnyUnifyPieces ++ SurroundingContextPieces ++
             [lower_case_next_if_not_first] ++ GoalPieces ++ ProblemPieces,
-        MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+        MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
     ;
         GoalExpr = generic_call(GenericCall, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
@@ -159,7 +159,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         GoalPieces = color_as_subject(GenericCallPieces),
         det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
         Pieces = GoalPieces ++ ProblemPieces,
-        MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+        MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
@@ -167,7 +167,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Pieces = [words("Determinism declaration not satisfied."),
             words("Desired determinism is"), words(DesiredStr),
             suffix("."), nl],
-        MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+        MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
     ;
         GoalExpr = conj(_, Goals),
         det_diagnose_conj(InstMap0, SwitchContexts, Desired,
@@ -225,7 +225,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 ),
             list.sort(LaterSolnDisjuncts, SortedLaterSolnDisjuncts),
             LaterMsgs = list.map(MakeLaterMsgs, SortedLaterSolnDisjuncts),
-            DisjMsgGroup = error_msg_group(FirstMsg, LaterMsgs),
+            DisjMsgGroup = diag_msg_group(FirstMsg, LaterMsgs),
             MsgGroups = [DisjMsgGroup | SubMsgGroups]
         else
             MsgGroups = SubMsgGroups
@@ -262,7 +262,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 Component = always(NestingPieces ++ NoCoverPieces)
             ),
             SwitchMsg = simple_msg(Context, [Component]),
-            SwitchMsgGroups = [error_msg_group(SwitchMsg, [])]
+            SwitchMsgGroups = [diag_msg_group(SwitchMsg, [])]
         else
             SwitchMsgGroups = []
         ),
@@ -303,14 +303,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can succeed."), nl],
-            MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+            MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
         else if
             DesiredSolns = at_most_zero,
             ActualSolns \= at_most_zero
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can fail."), nl],
-            MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
+            MsgGroups = [diag_msg_group(msg(Context, Pieces), [])]
         else
             MsgGroups = []
         )
@@ -438,7 +438,7 @@ det_diagnose_conj(InstMap0, SwitchContexts, Desired,
 
 :- pred det_diagnose_disj(instmap::in, list(switch_context)::in,
     determinism::in, determinism::in,
-    list(hlds_goal)::in, list(error_msg_group)::out,
+    list(hlds_goal)::in, list(diag_msg_group)::out,
     bag(soln_disjunct)::in, bag(soln_disjunct)::out,
     det_info::in, det_info::out) is det.
 
@@ -487,7 +487,7 @@ det_diagnose_disj(InstMap0, SwitchContexts, Desired, Actual,
 
 :- pred det_diagnose_switch_arms(instmap::in, list(switch_context)::in,
     determinism::in, prog_var::in, mer_type::in,
-    list(case)::in, list(error_msg_group)::out,
+    list(case)::in, list(diag_msg_group)::out,
     det_info::in, det_info::out) is det.
 
 det_diagnose_switch_arms(_InstMap0, _Desired, _SwitchContexts, _Var, _VarType,
@@ -511,7 +511,7 @@ det_diagnose_switch_arms(InstMap0, SwitchContexts0, Desired, Var, VarType,
     MsgGroups = HeadMsgGroups ++ TailMsgGroups.
 
 :- pred det_diagnose_orelse_goals(instmap::in, list(switch_context)::in,
-    determinism::in, list(hlds_goal)::in, list(error_msg_group)::out,
+    determinism::in, list(hlds_goal)::in, list(diag_msg_group)::out,
     det_info::in, det_info::out) is det.
 
 det_diagnose_orelse_goals(_InstMap, _SwitchContexts, _Desired,

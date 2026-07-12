@@ -1315,7 +1315,7 @@ caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces) :-
     ).
 
 :- pred nontail_rec_call_reason_to_pieces(nontail_rec_call_reason::in,
-    prog_context::in, list(format_piece)::out, list(error_msg)::out) is det.
+    prog_context::in, list(format_piece)::out, list(diag_msg)::out) is det.
 
 nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs) :-

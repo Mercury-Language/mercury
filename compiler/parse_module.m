@@ -402,7 +402,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         [words("found module")] ++
         color_as_incorrect([qual_sym_name(ActualName), suffix(".")]) ++
         [nl],
-    MainMsg = error_msg(MaybeContext, always_treat_as_first, 0u,
+    MainMsg = gen_msg(MaybeContext, always_treat_as_first, 0u,
         [always(MainPieces)]),
     list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
     list.delete_all(SortedExpectationContexts0, dummy_context,
@@ -413,7 +413,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     Spec = error_spec($pred, severity_error, phase_module_name,
         [MainMsg | SubMsgs]).
 
-:- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
+:- pred expectation_context_to_msg(prog_context::in, diag_msg::out) is det.
 
 expectation_context_to_msg(Context, SubMsg) :-
     SubPieces = [words("The expected name is specified here."), nl],

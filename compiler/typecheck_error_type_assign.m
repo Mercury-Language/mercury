@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,10 +31,10 @@
 %---------------------------------------------------------------------------%
 
 :- pred type_assign_set_msg_to_verbose_component(typecheck_info::in,
-    prog_varset::in, type_assign_set::in, error_msg_component::out) is det.
+    prog_varset::in, type_assign_set::in, diag_msg_component::out) is det.
 
 :- pred arg_type_assign_set_msg_to_verbose_component(typecheck_info::in,
-    prog_varset::in, args_type_assign_set::in, error_msg_component::out)
+    prog_varset::in, args_type_assign_set::in, diag_msg_component::out)
     is det.
 
 %---------------------------------------------------------------------------%

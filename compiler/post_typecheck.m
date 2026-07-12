@@ -336,7 +336,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints)
             [words("The constraint is due to:")],
             [words("The constraints are due to:")]),
         ContextMsgsPrefix = msg(Context, DueToPieces),
-        ContextMsgsList = constrained_goals_to_error_msgs(ModuleInfo,
+        ContextMsgsList = constrained_goals_to_diag_msgs(ModuleInfo,
             ConstrainedGoals),
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
     ),
@@ -399,11 +399,11 @@ gather_constraint_ids(ReverseConstraintMap, Constraint, !ConstraintIdSets) :-
         true
     ).
 
-:- func constrained_goals_to_error_msgs(module_info, list(hlds_goal))
-    = list(error_msg).
+:- func constrained_goals_to_diag_msgs(module_info, list(hlds_goal))
+    = list(diag_msg).
 
-constrained_goals_to_error_msgs(_, []) = [].
-constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
+constrained_goals_to_diag_msgs(_, []) = [].
+constrained_goals_to_diag_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
     (
         Goals = [_, _ | _],
         Words = describe_constrained_goal(ModuleInfo, Goal),
@@ -422,9 +422,9 @@ constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
     ),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    Msg = error_msg(yes(Context), treat_based_on_posn, 1u,
+    Msg = gen_msg(yes(Context), treat_based_on_posn, 1u,
         [always(Words ++ [Suffix | And])]),
-    Msgs = constrained_goals_to_error_msgs(ModuleInfo, Goals).
+    Msgs = constrained_goals_to_diag_msgs(ModuleInfo, Goals).
 
 :- func describe_constrained_goal(module_info, hlds_goal)
     = list(format_piece).
@@ -785,7 +785,7 @@ var_and_type_to_pieces_pairs(MaxVarNameLen, VarName - TypeStr)
 
 :- pred explain_origins_of_unnamed_vars(module_info::in, var_table::in,
     set(prog_var)::in, var_origins_map::in, prog_var::in, var_origin::in,
-    cord(error_msg)::in, cord(error_msg)::out) is det.
+    cord(diag_msg)::in, cord(diag_msg)::out) is det.
 
 explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars,
         _OriginsMap, Var, Origin, !AnonVarMsgsCord) :-
