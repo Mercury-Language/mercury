@@ -92,7 +92,7 @@ make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO) :-
     (
         MaybeTargets = error1(Specs),
         io.stderr_stream(StdErr, !IO),
-        write_oom_error_specs(StdErr, Globals, Specs, !IO)
+        write_oom_diag_specs(StdErr, Globals, Specs, !IO)
     ;
         MaybeTargets = ok1(Targets),
         globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
@@ -205,7 +205,7 @@ report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets) :-
         )
     ).
 
-:- func report_target_with_dir_component(string, string) = error_spec.
+:- func report_target_with_dir_component(string, string) = diag_spec.
 
 report_target_with_dir_component(ProgName, Target) = Spec :-
     Pieces = [fixed(ProgName), suffix(":"),

@@ -21,7 +21,7 @@
 :- pred add_pragma_type_spec_constr(io.text_output_stream::in,
     decl_pragma_type_spec_constr_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -189,7 +189,7 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
 :- pred build_class_constraint_map(io.text_output_stream::in, class_table::in,
     maybe_apply_to_supers::in, tvarset::in, var_or_ground_constraint::in,
     type_spec_constraint_map::in, type_spec_constraint_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
         PragmaTVarSet, Constraint, !ClassConstraintMap, !Specs) :-

@@ -35,8 +35,8 @@
     %
 :- pred module_add_type_defn(type_status::in, need_qualifier::in,
     item_type_defn_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Add the constructors of du types to the constructor table of the HLDS,
     % check subtype definitions, and check that Mercury types defined solely
@@ -45,8 +45,8 @@
 :- pred add_du_ctors_check_subtype_check_foreign_type(type_table::in,
     type_ctor::in, hlds_type_defn::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -184,7 +184,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
 :- pred module_add_type_defn_abstract(type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in,
     prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
         !ModuleInfo, !InvalidTypeSpecs) :-
@@ -206,7 +206,7 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
 
 :- pred check_for_duplicate_type_declaration(type_ctor::in, hlds_type_defn::in,
     type_status::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
         !InvalidTypeSpecs) :-
@@ -282,7 +282,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
         DupMsg = msg(SecondContext, DupPieces),
         FirstPieces = [words("The previous declaration was here."), nl],
         FirstMsg = msg(FirstContext, FirstPieces),
-        DupSpec = error_spec($pred, Severity, phase_pt2h, [DupMsg, FirstMsg]),
+        DupSpec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, FirstMsg]),
         !:InvalidTypeSpecs = [DupSpec | !.InvalidTypeSpecs]
     else
         true
@@ -300,7 +300,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
     type_ctor::in, list(type_param)::in, type_defn::in(type_defn_mercury),
     hlds_type_body::in, hlds_type_defn::in, prog_context::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
         ParseTreeTypeDefn, Body, TypeDefn0, Context,
@@ -349,7 +349,7 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
 :- pred module_add_type_defn_foreign(type_status::in, type_status::in,
     type_ctor::in, hlds_type_body::in, hlds_type_defn::in, prog_context::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
         Body, TypeDefn0, Context, !ModuleInfo, !InvalidTypeSpecs) :-
@@ -623,7 +623,7 @@ merge_maybe(no, yes(T), yes(T)).
 
 :- pred maybe_report_multiply_defined_type(type_status::in, type_ctor::in,
     prog_context::in, hlds_type_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
         !InvalidTypeSpecs) :-
@@ -644,7 +644,7 @@ maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
 
 :- pred check_for_invalid_user_defined_unify_compare(type_status::in,
     type_ctor::in, type_details_du::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         Context, !InvalidTypeSpecs) :-
@@ -675,7 +675,7 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
             DummyMsg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
-            DummySpec = error_spec($pred, severity_error, phase_pt2h,
+            DummySpec = diag_spec($pred, severity_error, phase_pt2h,
                 [DummyMsg]),
             !:InvalidTypeSpecs = [DummySpec | !.InvalidTypeSpecs]
         else
@@ -689,7 +689,7 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
 
 :- pred check_for_polymorphic_eqv_type_with_monomorphic_body(type_status::in,
     type_ctor::in, list(type_param)::in, type_details_eqv::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
         TypeParams, DetailsEqv, Context, !InvalidTypeSpecs) :-
@@ -713,7 +713,7 @@ check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
         PolyEqvMsg = simple_msg(Context,
             [always(PolyEqvPieces),
             verbose_only(verbose_once, abstract_monotype_workaround)]),
-        PolyEqvSpec = error_spec($pred, severity_error, phase_pt2h,
+        PolyEqvSpec = diag_spec($pred, severity_error, phase_pt2h,
             [PolyEqvMsg]),
         !:InvalidTypeSpecs = [PolyEqvSpec | !.InvalidTypeSpecs]
     else
@@ -735,7 +735,7 @@ abstract_monotype_workaround = [
 
 :- pred check_for_inconsistent_solver_nosolver_type(type_ctor::in,
     hlds_type_defn::in, hlds_type_body::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
         NewContext, !InvalidTypeSpecs) :-
@@ -796,7 +796,7 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
             nl],
         MainMsg = msg(NewContext, MainPieces),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_pt2h,
+        Spec = diag_spec($pred, severity_error, phase_pt2h,
             [MainMsg, OldMsg]),
         !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
@@ -841,7 +841,7 @@ get_body_is_solver_type(Body, IsSolverType) :-
     old_defn_maybe_abstract::in, type_status::in, prog_context::in,
     type_status::in, prog_context::in,
     hlds_type_defn::in, hlds_type_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_inconsistent_foreign_type_visibility(TypeCtor,
         OldIsAbstract, OldStatus, OldContext, NewStatus, NewContext,
@@ -995,7 +995,7 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
     need_qualifier::in, partial_qualifier_info::in, type_status::in,
     ctor_field_table::in, ctor_field_table::out,
     cons_table::in, cons_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_type_defn_ctors([], _, _, _, _, _, _, _, _,
         !FieldNameTable, !ConsTable, !Specs).
@@ -1014,7 +1014,7 @@ add_type_defn_ctors([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet,
     need_qualifier::in, partial_qualifier_info::in, type_status::in,
     ctor_field_table::in, ctor_field_table::out,
     cons_table::in, cons_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         TypeParams, KindMap, NeedQual, PQInfo, TypeStatus,
@@ -1172,7 +1172,7 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
     %
 :- pred check_foreign_type_for_current_target(module_info::in, type_ctor::in,
     foreign_type_body::in, type_defn_prev_errors::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
         PrevErrors, Context, !InvalidTypeSpecs) :-
@@ -1200,7 +1200,7 @@ check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
             words("on other back-ends, but none for this back-end."), nl],
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
         !:InvalidTypeSpecs = [Spec | !.InvalidTypeSpecs]
     ).
 
@@ -1214,8 +1214,8 @@ check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
 :- pred check_subtype_defn(type_table::in, tvarset::in, type_ctor::in,
     hlds_type_defn::in, type_body_du::in, mer_type::in,
     maybe_set_subtype_noncanonical::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
         SuperType, MaybeSetSubtypeNoncanon, !InvalidTypeSpecs, !Specs) :-
@@ -1427,7 +1427,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
     ).
 
 :- func supertype_ctor_defn_error_to_spec(type_ctor, hlds_type_defn,
-    list(type_ctor), type_ctor, search_type_ctor_defn_error) = error_spec.
+    list(type_ctor), type_ctor, search_type_ctor_defn_error) = diag_spec.
 
 supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
         PrevSuperTypeCtors, LastSuperTypeCtor, Error) = Spec :-
@@ -1493,7 +1493,7 @@ special_type_ctor_not_du(TypeCtor) :-
 %---------------------%
 
 :- func report_non_du_supertype(tvarset, prog_context, type_ctor,
-    list(type_ctor), mer_type) = error_spec.
+    list(type_ctor), mer_type) = diag_spec.
 
 report_non_du_supertype(TVarSet, OrigTypeContext, OrigTypeCtor,
         PrevSuperTypeCtors1, NextSuperType) = Spec :-
@@ -1551,8 +1551,8 @@ describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
 :- pred check_subtype_ctors(type_table::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
-    list(mer_type)::in, list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_type)::in, list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
         SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
@@ -1592,7 +1592,7 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
 
 :- pred look_up_and_check_subtype_ctor(type_table::in, tvarset::in,
     type_status::in, type_ctor::in, list(constructor)::in, constructor::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
         SuperTypeCtor, SuperCtors, Ctor, !InvalidTypeSpecs) :-
@@ -1633,7 +1633,7 @@ search_ctor_by_unqual_name([HeadCtor | TailCtors], UnqualName, Arity, Ctor) :-
 
 :- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
     constructor::in, constructor::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         !InvalidTypeSpecs) :-
@@ -1665,7 +1665,7 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
 :- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
     prog_context::in,
     maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    maybe1(existq_tvar_mapping, error_spec)::out) is det.
+    maybe1(existq_tvar_mapping, diag_spec)::out) is det.
 
 check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         MaybeExistConstraints, MaybeSuperExistConstraints, Result) :-
@@ -1737,7 +1737,7 @@ build_existq_tvars_mapping(VarA, VarB, !ExistQVarsMapping) :-
 :- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
     prog_context::in, existq_tvar_mapping::in,
     list(prog_constraint)::in, list(prog_constraint)::in,
-    maybe1(existq_tvar_mapping, error_spec)::out) is det.
+    maybe1(existq_tvar_mapping, diag_spec)::out) is det.
 
 check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
         ExistQVarsMapping, Constraints, SuperConstraints0, Result) :-
@@ -1769,7 +1769,7 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
 :- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
     sym_name::in, existq_tvar_mapping::in,
     constructor_arg::in, constructor_arg::in, int::in, int::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
         ExistQVarsMapping, CtorArg, SuperCtorArg, ArgNum, ArgNum + 1,
@@ -1971,7 +1971,7 @@ check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
 
 :- pred check_subtype_ctors_order(type_ctor::in, list(constructor)::in,
     type_ctor::in, list(constructor)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
         !Specs) :-

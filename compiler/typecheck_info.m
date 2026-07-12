@@ -50,7 +50,7 @@
 
 :- pred typecheck_info_init(io.text_output_stream::in, module_info::in,
     pred_id::in, pred_info::in, prog_varset::in, pred_status::in,
-    pred_markers::in, list(error_spec)::in, typecheck_info::out) is det.
+    pred_markers::in, list(diag_spec)::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -161,9 +161,9 @@
 :- pred typecheck_info_get_in_field_access_function(typecheck_info::in,
     maybe_in_field_access_func::out) is det.
 :- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 :- pred typecheck_info_get_overload_error(typecheck_info::in,
-    maybe(error_spec)::out) is det.
+    maybe(diag_spec)::out) is det.
 :- pred typecheck_info_get_nosuffix_integer_vars(typecheck_info::in,
     set_tree234(prog_var)::out) is det.
 :- pred typecheck_info_get_rhs_lambda(typecheck_info::in,
@@ -173,9 +173,9 @@
 
 :- pred typecheck_info_set_overloaded_symbol_map(overloaded_symbol_map::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
+:- pred typecheck_info_set_non_overload_errors(list(diag_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
+:- pred typecheck_info_set_overload_error(maybe(diag_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_rhs_lambda(maybe_rhs_lambda::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -200,13 +200,13 @@
 :- pred typecheck_info_add_nosuffix_integer_var(prog_var::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-:- pred typecheck_info_add_error(error_spec::in,
+:- pred typecheck_info_add_error(diag_spec::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_add_errors(list(error_spec)::in,
+:- pred typecheck_info_add_errors(list(diag_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 :- pred typecheck_info_get_all_errors(typecheck_info::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -271,11 +271,11 @@
 
                 % The list of errors found so far (if any), with one exception:
                 % any errors about overloading are in the overload_error field.
-                tcsi_non_overload_errors        :: list(error_spec),
+                tcsi_non_overload_errors        :: list(diag_spec),
 
                 % Have we already generated a warning or error message about
                 % highly ambiguous overloading? If yes, this has the message.
-                tcsi_overload_error             :: maybe(error_spec),
+                tcsi_overload_error             :: maybe(diag_spec),
 
                 % The set of variables that have been unified with integer
                 % constants without suffixes. If a variable in this set

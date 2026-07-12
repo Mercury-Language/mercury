@@ -38,7 +38,7 @@
     %
 :- pred make_linked_target(io.text_output_stream::in, globals::in,
     linked_target_file::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
     % make_misc_target(Globals, Target, Succeeded, !Info, !Specs, !IO):
@@ -49,7 +49,7 @@
     %
 :- pred make_misc_target(io.text_output_stream::in, globals::in,
     pair(module_name, misc_target_type)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -143,7 +143,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
     %
 :- pred make_linked_target_1(globals::in, linked_target_file::in,
     list(string)::in, io.text_output_stream::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
@@ -184,7 +184,7 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
             % to the Mercury module itself, except insofar as the problem
             % may be caused by e.g. an unrecognized option name in a
             % module-specific MCFLAGS make variable.
-            write_oom_error_specs(ProgressStream, Globals, Specs, !IO),
+            write_oom_diag_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded = did_not_succeed
         )
     ;
@@ -893,13 +893,13 @@ make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
         MayBuild = may_not_build(Specs),
         % XXX MAKE_STREAM
         get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
-        write_oom_error_specs(ErrorStream, Globals, Specs, !IO),
+        write_oom_diag_specs(ErrorStream, Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
 :- pred make_misc_target_builder(io.text_output_stream::in, globals::in,
     module_name::in, misc_target_type::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
@@ -1077,7 +1077,7 @@ find_reachable_local_modules_for_misc(ProgressStream, Globals,
     %
 :- pred build_library(module_name::in, list(module_name)::in,
     globals::in, io.text_output_stream::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 build_library(MainModuleName, AllModules, Globals, ProgressStream, Succeeded,
@@ -1099,7 +1099,7 @@ build_library(MainModuleName, AllModules, Globals, ProgressStream, Succeeded,
 
 :- pred build_c_library(io.text_output_stream::in, globals::in,
     module_name::in, list(module_name)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    make_info::in, make_info::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
@@ -1137,7 +1137,7 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
 
 :- pred build_csharp_library(io.text_output_stream::in, globals::in,
     module_name::in, maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 build_csharp_library(ProgressStream, Globals, MainModuleName, Succeeded,
         !Info, !Specs, !IO) :-
@@ -1147,7 +1147,7 @@ build_csharp_library(ProgressStream, Globals, MainModuleName, Succeeded,
 
 :- pred build_java_library(io.text_output_stream::in, globals::in,
     module_name::in, maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 build_java_library(ProgressStream, Globals, MainModuleName, Succeeded,
         !Info, !Specs, !IO) :-

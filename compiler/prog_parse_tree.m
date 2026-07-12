@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -303,15 +303,15 @@
                 ptms_mode_defns             :: mode_ctor_checked_map,
                 % The error messages generated during the construction
                 % of ptms_type_defns. We have found some invalid types if
-                % some of these error_specs (a) are severity_error, and
+                % some of these diag_specs (a) are severity_error, and
                 % (b) are phase_tim_check_invalid_type.
-                ptms_type_specs             :: list(error_spec),
+                ptms_type_specs             :: list(diag_spec),
                 % The error messages generated during the construction
                 % of ptms_inst_defns and ptms_mode_defns. We have found
-                % some invalid insts and/or modes if some of these error_specs
+                % some invalid insts and/or modes if some of these diag_specs
                 % (a) are severity_error, and (b) are
                 % phase_tim_check_invalid_inst_mode.
-                ptms_inst_mode_specs        :: list(error_spec),
+                ptms_inst_mode_specs        :: list(diag_spec),
 
                 % Items of various kinds in the interface.
                 % All these items are to be treated as being in the
@@ -822,7 +822,7 @@
                 % *other* reasons. In that case, not reporting them
                 % would give the programmer an incomplete picture
                 % of what is wrong.
-                amiu_delayed_specs  :: list(error_spec),
+                amiu_delayed_specs  :: list(diag_spec),
 
                 % The interface files of the ancestors of this module.
                 % (The read_why_int0 is always implicitly rwi0_section.)

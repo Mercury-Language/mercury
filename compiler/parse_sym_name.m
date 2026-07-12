@@ -496,7 +496,7 @@ parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameArity) :-
 %-----------------------------------------------------------------------------e
 
 :- func report_no_module_name_before_dot(cord(format_piece),
-    varset(T), term(U)) = error_spec.
+    varset(T), term(U)) = diag_spec.
 
 report_no_module_name_before_dot(ContextPieces, VarSet0, ModuleTerm) = Spec :-
     varset.coerce(VarSet0, VarSet),
@@ -511,7 +511,7 @@ report_no_module_name_before_dot(ContextPieces, VarSet0, ModuleTerm) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func report_bad_name_after_dot(cord(format_piece), varset(T), term(U))
-    = error_spec.
+    = diag_spec.
 
 report_bad_name_after_dot(ContextPieces, VarSet0, NameArgsTerm) = Spec :-
     varset.coerce(VarSet0, VarSet),
@@ -526,7 +526,7 @@ report_bad_name_after_dot(ContextPieces, VarSet0, NameArgsTerm) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func report_no_sym_name(cord(format_piece), varset(T), term(U))
-    = error_spec.
+    = diag_spec.
 
 report_no_sym_name(ContextPieces, VarSet0, Term) = Spec :-
     varset.coerce(VarSet0, VarSet),
@@ -541,7 +541,7 @@ report_no_sym_name(ContextPieces, VarSet0, Term) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func report_unexpected_args(cord(format_piece), term(T), sym_name)
-    = error_spec.
+    = diag_spec.
 
 report_unexpected_args(ContextPieces, Term, SymName) = Spec :-
     Pieces = cord.list(ContextPieces) ++
@@ -552,7 +552,7 @@ report_unexpected_args(ContextPieces, Term, SymName) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_negative_arity(term(T), int) = error_spec.
+:- func report_negative_arity(term(T), int) = diag_spec.
 
 report_negative_arity(Term, Arity) = Spec :-
     ArityStr = string.int_to_string(Arity),
@@ -564,7 +564,7 @@ report_negative_arity(Term, Arity) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_noninteger_arity_term(varset(T), term(U)) = error_spec.
+:- func report_noninteger_arity_term(varset(T), term(U)) = diag_spec.
 
 report_noninteger_arity_term(VarSet0, Term) = Spec :-
     varset.coerce(VarSet0, VarSet),
@@ -578,7 +578,7 @@ report_noninteger_arity_term(VarSet0, Term) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func report_failed_implicit_qualification(module_name, term(T), sym_name)
-    = error_spec.
+    = diag_spec.
 
 report_failed_implicit_qualification(ExpectedSymName, Term, SymName) = Spec :-
     Pieces = [words("Error: the module qualifier in")] ++

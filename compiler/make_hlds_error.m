@@ -46,7 +46,7 @@
     %
 :- pred report_multiply_defined(string::in, sym_name::in, user_arity::in,
     prog_context::in, prog_context::in, list(format_piece)::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
     % report_undefined_pred_or_func_error(MaybePorF, SymName,
     %    UserArity, OtherUserArities, Context, DeclPieces, !Specs):
@@ -61,22 +61,22 @@
 :- pred report_undefined_pred_or_func_error(maybe(pred_or_func)::in,
     sym_name::in, user_arity::in, list(user_arity)::in, prog_context::in,
     list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred report_undeclared_mode_error(module_info::in,
     pred_id::in, pred_info::in, prog_varset::in, list(mer_mode)::in,
-    list(format_piece)::in, prog_context::in, error_spec::out) is det.
+    list(format_piece)::in, prog_context::in, diag_spec::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
     pred_or_func::in, sym_name::in, pred_form_arity::in, pred_status::in,
     maybe_class_method::in, prog_context::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_about_pfumm_unknown(module_info::in, string::in,
     pred_func_or_unknown_maybe_modes::in, sym_name::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- type does_pragma_allow_modes
     --->    pragma_does_not_allow_modes
@@ -84,7 +84,7 @@
 
 :- pred warn_about_pfu_unknown(module_info::in, string::in,
     does_pragma_allow_modes::in, sym_name::in, user_arity::in,
-    prog_context::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -149,7 +149,7 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         ExtraPieces = [_ | _],
         ExtraMsgs = [msg(SecondContext, ExtraPieces)]
     ),
-    Spec = error_spec($pred, severity_error, phase_pt2h,
+    Spec = diag_spec($pred, severity_error, phase_pt2h,
         [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]).
 
 report_undefined_pred_or_func_error(MaybePorF, SymName,
@@ -243,7 +243,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
     ),
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]).
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
     = list(format_piece).
@@ -320,7 +320,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
                 InferMsg = simple_msg(Context,
                     [always(MainPieces),
                     verbose_only(verbose_once, VerbosePieces)]),
-                Spec = error_spec($pred, severity_error, phase_pt2h,
+                Spec = diag_spec($pred, severity_error, phase_pt2h,
                     [InferMsg])
             ;
                 InferTypes = yes,
@@ -351,7 +351,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
                     [nl]
             ),
             OtherAritiesMsg = msg(Context, OtherAritiesPieces),
-            Spec = error_spec($pred, severity_error, phase_pt2h,
+            Spec = diag_spec($pred, severity_error, phase_pt2h,
                 [MainMsg, OtherAritiesMsg])
         ),
         !:Specs = [Spec | !.Specs]

@@ -28,14 +28,14 @@
 %---------------------------------------------------------------------------%
 
     % report_error_var_has_wrong_type uses this type to return
-    % not just an error_spec, but possibly also an actual_expected_types
+    % not just an diag_spec, but possibly also an actual_expected_types
     % structure to its caller, which may then pass that structure on
     % to report_error_wrong_types_in_arg_vector.
     %
 :- type spec_and_maybe_actual_expected
     --->    spec_and_maybe_actual_expected(
                 % A report of the type error.
-                error_spec,
+                diag_spec,
 
                 % The actual and expected types involved in the type error,
                 % if both are unambiguously known.
@@ -56,7 +56,7 @@
 
 :- func report_error_var_has_wrong_type_arg(typecheck_info,
     type_error_goal_context, prog_context, int, prog_var, args_type_assign_set)
-    = error_spec.
+    = diag_spec.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -113,7 +113,7 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, ExpectedType,
     AlwaysPieces = InClauseForPieces ++ GoalContextPieces ++
         ActualExpectedPieces ++ DiffPieces ++ NoSuffixIntegerPieces,
     Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
@@ -141,7 +141,7 @@ report_error_var_has_wrong_type_arg(Info, GoalContext, Context,
         [always(InClauseForPieces), always(GoalContextPieces),
         always(ActualExpectedPieces), always(DiffPieces),
         VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 

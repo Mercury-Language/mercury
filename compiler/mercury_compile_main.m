@@ -443,11 +443,11 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
             )
         ),
 
-        % Print all remaining module-specific error_specs,
+        % Print all remaining module-specific diag_specs,
         % as well as the ones generated just above.
         %
         % Note that the call to generate_executable below CAN generate
-        % new error_specs, which it also writes out. It is ok for any such
+        % new diag_specs, which it also writes out. It is ok for any such
         % diagnostics to come out after the ones we print here.
         write_not_yet_written_specs(ErrorStream, Globals,
             !MaybeWrittenSpecs, !IO),
@@ -498,12 +498,12 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         )
     ;
         LibgradeCheckSpecs = [_ | _],
-        % Print all remaining module-specific error_specs.
+        % Print all remaining module-specific diag_specs.
         write_not_yet_written_specs(ErrorStream, Globals,
             !MaybeWrittenSpecs, !IO),
         maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
 
-        % Print the error_specs from the library check, which are
+        % Print the diag_specs from the library check, which are
         % not specific to any module.
         add_to_be_written_specs(LibgradeCheckSpecs, !MaybeWrittenSpecs),
         write_not_yet_written_specs(StdErr, Globals,
@@ -532,7 +532,7 @@ all_args_end_in_dot_m([Arg | Args]) = AllEndInDotM :-
         AllEndInDotM = no
     ).
 
-:- func could_not_read_some_int_file(list(error_spec)) = bool.
+:- func could_not_read_some_int_file(list(diag_spec)) = bool.
 
 could_not_read_some_int_file([]) = no.
 could_not_read_some_int_file([Spec | Specs]) = CouldNotRead :-
@@ -770,7 +770,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         MayBuild = may_not_build(SetupSpecs),
         % XXX STREAM
         % Should we print SetupSpecs to the module-specific error stream?
-        write_oom_error_specs(ErrorStream, Globals, SetupSpecs, !IO),
+        write_oom_diag_specs(ErrorStream, Globals, SetupSpecs, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1052,7 +1052,7 @@ gather_local_burdened_modules(Deps, BurdenedModule, !Ancestors) :-
         !:Ancestors = [ModuleNameComponents - BurdenedModule | !.Ancestors]
     ).
 
-:- pred handle_not_found_files(list(error_spec)::in, list(error_spec)::out,
+:- pred handle_not_found_files(list(diag_spec)::in, list(diag_spec)::out,
     bool::out) is det.
 
 handle_not_found_files(Specs0, Specs, Continue) :-
@@ -1086,9 +1086,9 @@ handle_not_found_files(Specs0, Specs, Continue) :-
         Continue = no
     ).
 
-:- pred acc_not_found_files(error_spec::in,
+:- pred acc_not_found_files(diag_spec::in,
     list(format_piece)::in, list(format_piece)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
     extract_spec_phase(Spec, Phase),

@@ -42,7 +42,7 @@
 :- pred parse_foreign_type_assertions(cord(format_piece)::in,
     varset::in, term::in,
     set(foreign_type_assertion)::in, set(foreign_type_assertion)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 

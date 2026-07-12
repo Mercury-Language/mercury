@@ -3227,9 +3227,9 @@ optdb(oc_file_req,  show_imports_graph,                bool(no),
     % Options that control whether some compiler reports are printed.
 
 optdb(oc_report,    report_noop,                       bool(yes), no_help).
-    % We use severity_informational(report_noop) error_specs when we
+    % We use severity_informational(report_noop) diag_specs when we
     % - do NOT want to print anything or affect the process exit status,
-    % - but we do want the presence of an error_spec to signal that
+    % - but we do want the presence of an diag_spec to signal that
     %   something is wrong.
     % This is not an ideal solution, but sometimes it is the best we can do.
 optdb(oc_report,    report_not_written,                bool(yes),

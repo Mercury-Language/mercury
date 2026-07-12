@@ -81,7 +81,7 @@
     %
 :- pred generate_and_write_interface_file_int3(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
-    maybe_succeeded::out, list(error_spec)::out,
+    maybe_succeeded::out, list(diag_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -95,7 +95,7 @@
     %
 :- pred generate_and_write_interface_file_int0(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
-    maybe_succeeded::out, list(error_spec)::out,
+    maybe_succeeded::out, list(diag_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -107,7 +107,7 @@
     %
 :- pred generate_and_write_interface_file_int1_int2(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
-    maybe_succeeded::out, list(error_spec)::out,
+    maybe_succeeded::out, list(diag_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -153,7 +153,7 @@ generate_and_write_interface_file_int3(ProgressStream, Globals, AddToHptm,
         Specs, Succeeded, !IO).
 
 :- pred write_parse_tree_int3(io.text_output_stream::in, globals::in,
-    generate_int3_result::in, list(error_spec)::out, maybe_succeeded::out,
+    generate_int3_result::in, list(diag_spec)::out, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
@@ -188,7 +188,7 @@ generate_and_write_interface_file_int0(ProgressStream, Globals, AddToHptm,
         Specs, Succeeded, !IO).
 
 :- pred write_parse_tree_int0(io.text_output_stream::in, globals::in,
-    generate_int0_result::in, list(error_spec)::out, maybe_succeeded::out,
+    generate_int0_result::in, list(diag_spec)::out, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
@@ -224,7 +224,7 @@ generate_and_write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
         Specs, Succeeded, !IO).
 
 :- pred write_parse_tree_int12(io.text_output_stream::in, globals::in,
-    generate_int12_result::in, list(error_spec)::out, maybe_succeeded::out,
+    generate_int12_result::in, list(diag_spec)::out, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
@@ -629,7 +629,7 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 :- pred report_file_not_written(globals::in, list(format_piece)::in,
     module_name::in, ext::in, maybe(ext)::in, ext::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 report_file_not_written(Globals, PrefixPieces, ModuleName,
         ExtA, MaybeExtB, ExtDate, Specs0, Specs, !IO) :-

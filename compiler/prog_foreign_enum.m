@@ -51,7 +51,7 @@
     prog_context::in, list(format_piece)::in, module_name::in,
     set_tree234(string)::in, assoc_list(sym_name, string)::in,
     bimap(string, string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -253,7 +253,7 @@ build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
 %---------------------------------------------------------------------------%
 
 :- pred add_bad_qual_ctors_error(prog_context::in, list(format_piece)::in,
-    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(sym_name)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
@@ -286,7 +286,7 @@ qual_ctor_to_format_piece(SymName) = [qual_sym_name(SymName)].
     % not being constructor(s) of that type.
     %
 :- pred add_unknown_ctors_error(prog_context::in, list(format_piece)::in,
-    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(sym_name)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     IsOrAre = choose_number(Ctors, "symbol is", "symbols are"),
@@ -322,7 +322,7 @@ unqual_ctor_to_format_piece(SymName) = [unqual_sym_name(SymName)].
 :- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
     list(format_piece)::in,
     list(string)::in(non_empty_list),
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
         !Specs) :-
@@ -360,7 +360,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
     ),
     Msg = simple_msg(Context, [always(PrefixPieces), CtorsComponent]),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

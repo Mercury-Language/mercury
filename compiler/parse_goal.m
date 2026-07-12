@@ -799,7 +799,7 @@ parse_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
 :- pred parse_goal_conjunction(string::in, term::in, term::in,
     cord(format_piece)::in, cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     prog_varset::in, prog_varset::out) is det.
 % Don't inline this predicate, since it is recursive.
 
@@ -905,7 +905,7 @@ parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 :- pred parse_goal_disjunction(term::in, term::in, cord(format_piece)::in,
     cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     prog_varset::in, prog_varset::out) is det.
 % Don't inline this predicate, since it is recursive.
 
@@ -1900,7 +1900,7 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
 
 :- pred generate_warnings_for_duplicate_warnings(prog_context::in,
     cord(format_piece)::in, assoc_list(goal_warning, int)::in,
-    list(goal_warning)::out, list(error_spec)::out) is det.
+    list(goal_warning)::out, list(diag_spec)::out) is det.
 
 generate_warnings_for_duplicate_warnings(_, _, [], [], []).
 generate_warnings_for_duplicate_warnings(Context, ContextPieces,
@@ -2457,7 +2457,7 @@ convert_trace_params(Components, MaybeParams) :-
     maybe(trace_expr(trace_runtime))::out,
     maybe(prog_var)::in, maybe(prog_var)::out,
     list(trace_mutable_var)::in, list(trace_mutable_var)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 collect_trace_params([], !MaybeCompileTime, !MaybeRunTime, !MaybeIO,
         !MutableVars, !Specs).
@@ -2877,7 +2877,7 @@ convert_try_params(Components, MaybeParams) :-
 
 :- pred collect_try_params(assoc_list(try_component, term.context)::in,
     maybe(prog_var)::in, maybe(prog_var)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 collect_try_params([], !MaybeIO, !Specs).
 collect_try_params([Component - Context | ComponentsContexts],
@@ -3190,7 +3190,7 @@ convert_atomic_params(ErrorTerm, ComponentsContexts, MaybeParams) :-
     maybe(atomic_component_state)::in, maybe(atomic_component_state)::out,
     maybe(atomic_component_state)::in, maybe(atomic_component_state)::out,
     maybe(list(prog_var))::in, maybe(list(prog_var))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 collect_atomic_params([], !MaybeOuter, !MaybeInner, !MaybeVars, !Specs).
 collect_atomic_params([Component - CompContext | ComponentsContexts],

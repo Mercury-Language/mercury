@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2022, 2024-2025 The Mercury Team.
+% Copyright (C) 2014-2017, 2022, 2024-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -92,7 +92,7 @@
     % Perform termination analysis on a module.
     %
 :- pred term2_analyse_module(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -215,7 +215,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
 :- pred term2_analyse_scc(term_build_options::in, fixpoint_options::in,
     pass2_options::in, scc_with_entry_points::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCCEntryPoints,
         !ModuleInfo, !Specs) :-

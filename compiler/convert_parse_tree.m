@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2019-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,16 +79,16 @@
     %
 :- pred check_convert_parse_tree_int_to_int0(
     parse_tree_int::in, parse_tree_int0::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int1(
     parse_tree_int::in, parse_tree_int1::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int2(
     parse_tree_int::in, parse_tree_int2::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int3(
     parse_tree_int::in, parse_tree_int3::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -114,10 +114,10 @@
     %
 :- pred check_convert_parse_tree_opt_to_plain_opt(
     parse_tree_opt::in, parse_tree_plain_opt::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pred check_convert_parse_tree_opt_to_trans_opt(
     parse_tree_opt::in, parse_tree_trans_opt::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -147,7 +147,7 @@
 
 :- pred check_convert_raw_comp_unit_to_module_src(globals::in,
     raw_compilation_unit::in, parse_tree_module_src::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -265,7 +265,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int0_items_int_or_imp([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
@@ -418,7 +418,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int1_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
@@ -521,7 +521,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_abstract_typeclass_info)::in,
         list(item_abstract_typeclass_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int1_items_imp([], !TypeDefns, !ForeignEnums, !TypeClasses, !Specs).
 classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
@@ -649,7 +649,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     list(item_abstract_instance_info)::in,
         list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int2_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !TypeRepns, !Specs).
@@ -717,7 +717,7 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
 
 :- pred classify_int2_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int2_items_imp([], !TypeDefns, !Specs).
 classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
@@ -871,7 +871,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     list(item_abstract_instance_info)::in,
         list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_int3_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !TypeRepns, !Specs).
@@ -1060,7 +1060,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         list(decl_pragma_struct_sharing_info)::out,
     list(decl_pragma_struct_reuse_info)::in,
         list(decl_pragma_struct_reuse_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_plain_opt_items([], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
@@ -1344,7 +1344,7 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         list(decl_pragma_struct_sharing_info)::out,
     list(decl_pragma_struct_reuse_info)::in,
         list(decl_pragma_struct_reuse_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_trans_opt_items([], !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
@@ -1630,7 +1630,7 @@ split_concrete_int_instances_acc([IntInstance | IntInstances],
 :- pred report_int_imp_fim(map(fim_spec, prog_context)::in,
     fim_spec::in,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     FIMSpec = fim_spec(Lang, ModuleName),
@@ -1649,7 +1649,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     ImpMsg = msg(ImpContext, ImpPieces),
     IntMsg = msg(IntContext, IntPieces),
     Severity = severity_warning(warn_redundant_code),
-    Spec = error_spec($pred, Severity, phase_pt2h, [ImpMsg, IntMsg]),
+    Spec = diag_spec($pred, Severity, phase_pt2h, [ImpMsg, IntMsg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -1701,7 +1701,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_src_items_in_blocks([],
         !IntIncls, !IntAvails, !IntFIMSpecMap,
@@ -1796,7 +1796,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
 
 :- pred classify_foreign_import_module(item_fim::in,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     ItemFIM = item_fim(Lang, ModuleName, Context, _SeqNum),
@@ -1818,7 +1818,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
             words("is here."), nl],
         PrevMsg = msg(PrevContext, PrevPieces),
         Severity = severity_warning(warn_redundant_code),
-        Spec = error_spec($pred, Severity, phase_pt2h, [MainMsg, PrevMsg]),
+        Spec = diag_spec($pred, Severity, phase_pt2h, [MainMsg, PrevMsg]),
         !:Specs = [Spec | !.Specs]
     else
         map.det_insert(FIMSpec, Context, !FIMSpecMap)
@@ -1843,7 +1843,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_src_items_int([],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -1914,7 +1914,7 @@ classify_src_items_int([Item | Items],
             Msg = simple_msg(ItemInstanceInfo ^ ci_context,
                 [always(AlwaysPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ),
         !:RevInstances = [ItemInstanceInfo | !.RevInstances]
@@ -2079,7 +2079,7 @@ classify_src_items_int([Item | Items],
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_src_items_imp([],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -2266,7 +2266,7 @@ acc_implicit_avail_needs_in_promise(ItemPromiseInfo, !ImplicitAvailNeeds) :-
 %---------------------------------------------------------------------------%
 
 :- pred error_item_is_exported(item::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 error_item_is_exported(Item, !Specs) :-
     error_is_exported(get_item_context(Item), items_desc_pieces(Item), !Specs).
@@ -2275,7 +2275,7 @@ error_item_is_exported(Item, !Specs) :-
     % a module interface.
     %
 :- pred error_is_exported(prog_context::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 error_is_exported(Context, DescPieces, !Specs) :-
     Pieces = [words("Error:")] ++
@@ -2302,7 +2302,7 @@ accumulate_uses_maps([Use | Uses], !UseMap) :-
 :- pred restrict_to_section_use_map_entry(string::in,
     module_name::in, section_import_and_or_use::in,
     section_use_map::in, section_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 restrict_to_section_use_map_entry(Extension, ModuleName, SectionImportAndOrUse,
         !SectionUseMap, !Specs) :-
@@ -2326,7 +2326,7 @@ restrict_to_section_use_map_entry(Extension, ModuleName, SectionImportAndOrUse,
 :- pred restrict_to_int_import_map_entry(string::in,
     module_name::in, section_import_and_or_use::in,
     int_import_map::in, int_import_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 restrict_to_int_import_map_entry(Extension, ModuleName, SectionImportAndOrUse,
         !IntImportMap, !Specs) :-
@@ -2354,7 +2354,7 @@ restrict_to_int_import_map_entry(Extension, ModuleName, SectionImportAndOrUse,
 %---------------------%
 
 :- pred report_forbidden_avail(string::in, string::in, maybe(string)::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
     (
@@ -2371,7 +2371,7 @@ report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_forbidden_item_in_src(item::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_forbidden_item_in_src(Item, !Specs) :-
     Pieces = [words("A Mercury source file")] ++

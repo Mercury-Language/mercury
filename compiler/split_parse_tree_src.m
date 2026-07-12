@@ -38,7 +38,7 @@
     %
 :- pred split_into_component_modules_perform_checks(globals::in,
     parse_tree_src::in, list(parse_tree_module_src)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -228,7 +228,7 @@ split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
 :- pred split_parse_tree_discover_submodules(parse_tree_src::in,
     module_ancestors::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
         !SplitModuleMap, !SubModulesMap, !Specs) :-
@@ -267,7 +267,7 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             ),
             Msg = msg(Context, Pieces),
             OldMsg = msg(OldContext, OldPieces),
-            Spec = error_spec($pred, severity_error, phase_pt2h,
+            Spec = diag_spec($pred, severity_error, phase_pt2h,
                 [Msg, OldMsg]),
             !:Specs = [Spec | !.Specs]
         else
@@ -466,7 +466,7 @@ get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
     module_to_submodules_map::in, module_to_submodules_map::out,
     submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 split_components_discover_submodules(_, [],
         _, !SplitModuleMap, !SubModulesMap,
@@ -487,7 +487,7 @@ split_components_discover_submodules(ModuleName, [Component | Components],
     module_to_submodules_map::in, module_to_submodules_map::out,
     submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         !SplitModuleMap, !SubModulesMap, !SubInclInfoMap,
@@ -576,7 +576,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
     section_ancestors::in, cord(item_include)::in, cord(item_include)::out,
     split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 discover_included_submodules([], _,
         !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
@@ -604,7 +604,7 @@ discover_included_submodules([Include | Includes], SectionAncestors,
             words("of that previous declaration."), nl],
         Msg = msg(Context, Pieces1 ++ Pieces2),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]),
+        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]),
         !:Specs = [Spec | !.Specs]
     else
         Entry = split_included(Context),
@@ -739,7 +739,7 @@ split_nested_info_get_context(SplitNested) = Context :-
     module_name::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
     cord(parse_tree_module_src)::in, cord(parse_tree_module_src)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 create_component_modules_depth_first(Globals, ModuleName,
         !SplitModuleMap, !SubModulesMap, !ParseTreeModuleSrcCord, !Specs) :-
@@ -882,7 +882,7 @@ submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods,
 %---------------------------------------------------------------------------%
 
 :- pred warn_empty_submodule(module_name::in, prog_context::in,
-    module_name::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_name::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
     Pieces = [words("Warning:")] ++
@@ -899,7 +899,7 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
 
 :- pred warn_duplicate_of_empty_submodule(module_name::in, module_name::in,
     prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
         Context, EmptyContext, !Specs) :-
@@ -911,7 +911,7 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
     Msg2 = msg(EmptyContext, Pieces2),
-    Spec = error_spec($pred, severity_warning(warn_nothing_exported),
+    Spec = diag_spec($pred, severity_warning(warn_nothing_exported),
         phase_pt2h, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
@@ -925,7 +925,7 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
 
 :- pred report_duplicate_submodule(module_name::in, prog_context::in,
     duplicated_section::in, module_name::in, split_module_entry::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_submodule(ModuleName, Context, DupSection,
         ParentModuleName, OldEntry, !Specs) :-
@@ -943,7 +943,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             words("of that previous declaration."), nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     ;
         OldEntry = split_nested(SplitNested, _, _),
         (
@@ -959,7 +959,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             OldPieces = [words("That previous declaration was here."), nl],
             Msg = msg(Context, Pieces),
             OldMsg = msg(OldContext, OldPieces),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
         ;
             DupSection = dup_int_only,
             report_duplicate_submodule_one_section(ModuleName, Context,
@@ -998,7 +998,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
 
 :- pred report_duplicate_submodule_one_section(module_name::in,
     prog_context::in, module_section::in, module_name::in,
-    split_nested_info::in, error_spec::out) is det.
+    split_nested_info::in, diag_spec::out) is det.
 
 report_duplicate_submodule_one_section(ModuleName, Context, Section,
         ParentModuleName, SplitNested, Spec) :-
@@ -1054,7 +1054,7 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
 
 :- pred report_duplicate_submodule_one_section_2(module_name::in,
     prog_context::in, string::in, module_name::in, prog_context::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
 report_duplicate_submodule_one_section_2(ModuleName, Context,
         SectionWord, ParentModuleName, OldContext, Spec) :-
@@ -1070,11 +1070,11 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         [nl],
     Msg = msg(Context, Pieces),
     OldMsg = msg(OldContext, OldPieces),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
 
 :- pred report_duplicate_submodule_both_sections(module_name::in,
     prog_context::in, module_name::in, prog_context::in, prog_context::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
 report_duplicate_submodule_both_sections(ModuleName, Context,
         ParentModuleName, OldIntContext, OldImpContext, Spec) :-
@@ -1093,7 +1093,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
             [nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldIntContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     else
         OldIntPieces = [words("However, its interface"),
             words("was also declared")] ++
@@ -1106,12 +1106,12 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
         Msg = msg(Context, Pieces),
         OldIntMsg = msg(OldIntContext, OldIntPieces),
         OldImpMsg = msg(OldImpContext, OldImpPieces),
-        Spec = error_spec($pred, severity_error, phase_pt2h,
+        Spec = diag_spec($pred, severity_error, phase_pt2h,
             [Msg, OldIntMsg, OldImpMsg])
     ).
 
 :- pred report_duplicate_submodule_vs_top(module_name::in, prog_context::in,
-    module_name::in, error_spec::out) is det.
+    module_name::in, diag_spec::out) is det.
 
 report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         Spec) :-

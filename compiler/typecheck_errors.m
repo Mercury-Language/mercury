@@ -26,16 +26,16 @@
 %---------------------------------------------------------------------------%
 
 :- func report_unsatisfiable_constraints(type_error_clause_context,
-    prog_context, type_assign_set) = error_spec.
+    prog_context, type_assign_set) = diag_spec.
 
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
-    prog_var, tvarset, mer_type, mer_type) = error_spec.
+    prog_var, tvarset, mer_type, mer_type) = diag_spec.
 
 :- func report_unresolved_coerce_from_to(type_error_clause_context,
-    prog_context, prog_var, tvarset, mer_type, mer_type) = error_spec.
+    prog_context, prog_var, tvarset, mer_type, mer_type) = diag_spec.
 
 :- func report_redundant_coerce(type_error_clause_context, prog_context,
-    prog_var, tvarset, mer_type) = error_spec.
+    prog_var, tvarset, mer_type) = diag_spec.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

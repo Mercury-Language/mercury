@@ -35,7 +35,7 @@
 :- type is_plain_unify
     --->    is_not_plain_unify
     ;       is_plain_unify
-    ;       is_unknown_ref(error_spec).
+    ;       is_unknown_ref(diag_spec).
 
     % Work out whether a var-functor unification is actually a function call.
     % If so, replace the unification goal with a call.
@@ -43,7 +43,7 @@
 :- pred resolve_unify_functor(module_info::in, prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_info::in, hlds_goal::out, is_plain_unify::out,
-    list(error_spec)::out,
+    list(diag_spec)::out,
     var_table::in, var_table::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -326,7 +326,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
 :- pred resolve_unify_functor_std(prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_info::in, hlds_goal::out, is_plain_unify::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 resolve_unify_functor_std(X0, ConsId, ArgVars0, Mode0,
         Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify, Specs) :-

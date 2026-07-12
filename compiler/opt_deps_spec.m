@@ -34,7 +34,7 @@
     globals::in, module_name::in, digraph(module_name)::in,
     digraph(module_name)::out, digraph(module_name)::out,
     list(module_name)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -234,7 +234,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
             list.reverse(FileSpecContexts, RevFileSpecContexts),
             (
                 RevFileSpecContexts = [],
-                % Every error_spec parse_trans_opt_deps_spec_file constructs
+                % Every diag_spec parse_trans_opt_deps_spec_file constructs
                 % should have a context.
                 unexpected($pred, "RevFileSpecContexts = []")
             ;
@@ -258,7 +258,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
 
 :- pred parse_trans_opt_deps_spec_file(string::in, string::in, int::in,
     posn::in, posn::out, trans_opt_deps_spec::in, trans_opt_deps_spec::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
         !Pos, !EdgesToRemove, !Specs) :-
@@ -280,7 +280,7 @@ parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
 
 :- pred parse_trans_opt_deps_spec_term(varset::in, term::in,
     trans_opt_deps_spec::in, trans_opt_deps_spec::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
     ( if
@@ -333,7 +333,7 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
                 Pieces2 = [words("The original entry is here."), nl],
                 Msg1 = msg(LeftTermContext, Pieces1),
                 Msg2 = msg(OldContext, Pieces2),
-                Spec = error_spec($pred, severity_error, phase_read_files,
+                Spec = diag_spec($pred, severity_error, phase_read_files,
                     [Msg1, Msg2]),
                 !:Specs = [Spec | !.Specs]
             )
@@ -360,7 +360,7 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
 :- pred parse_trans_opt_deps_spec_module_list(varset::in, term::in,
     cord(pair(term_context, module_name))::in,
     cord(pair(term_context, module_name))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_trans_opt_deps_spec_module_list(VarSet, Term, !ModuleNameCord, !Specs) :-
     ( if list_term_to_term_list(Term, TermList) then
@@ -378,7 +378,7 @@ parse_trans_opt_deps_spec_module_list(VarSet, Term, !ModuleNameCord, !Specs) :-
 :- pred parse_trans_opt_deps_spec_module_names(varset::in, list(term)::in,
     cord(pair(term_context, module_name))::in,
     cord(pair(term_context, module_name))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_trans_opt_deps_spec_module_names(_VarSet, [], !ModuleNameCord, !Specs).
 parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
@@ -399,7 +399,7 @@ parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
 %---------------------------------------------------------------------------%
 
 :- pred report_unknown_module_names_in_deps_spec(digraph(module_name)::in,
-    trans_opt_deps_spec::in, list(error_spec)::out) is det.
+    trans_opt_deps_spec::in, list(diag_spec)::out) is det.
 
 report_unknown_module_names_in_deps_spec(Graph, DepsSpec, Specs) :-
     digraph.vertices(Graph, KnownModules),
@@ -408,7 +408,7 @@ report_unknown_module_names_in_deps_spec(Graph, DepsSpec, Specs) :-
 
 :- pred report_unknown_module_names_in_allow_disallow(set(module_name)::in,
     module_name::in, allow_or_disallow_trans_opt_deps::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unknown_module_names_in_allow_disallow(KnownModules,
         Module, AllowOrDisallow, !Specs) :-
@@ -434,7 +434,7 @@ report_unknown_module_names_in_allow_disallow(KnownModules,
 :- pred report_unknown_module_names_in_module_names(set(module_name)::in,
     string::in, int::in, assoc_list(term_context, module_name)::in,
     map(module_name, int)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unknown_module_names_in_module_names(_, _, _, [], _OrdMap, !Specs).
 report_unknown_module_names_in_module_names(KnownModules, AoD, N,

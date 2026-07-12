@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,12 +49,12 @@
 
     % Quantification can detect some situations (currently just one)
     % that users deserve warnings about. The reason we return warnings
-    % in the form of quant_warnings, which must be converted to error_specs
+    % in the form of quant_warnings, which must be converted to diag_specs
     % by add_quant_warnings in make_hlds_warn.m, is that most invocations
     % of quantification are AFTER semantic analysis, and as such, they
     % do not report any warnings. Throwing away cheaply-built quant_warnings
     % is much less of a waste than throwing away relatively expensively-built
-    % error_specs.
+    % diag_specs.
 :- type quant_warning
     --->    warn_overlap(list(prog_var), prog_context).
 

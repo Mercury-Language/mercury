@@ -10,7 +10,7 @@
 % File: error_sort.m.
 % Main author: zs.
 %
-% This module sorts error_specs and diag_msgs.
+% This module sorts diag_specs and diag_msgs.
 %
 %---------------------------------------------------------------------------%
 
@@ -26,8 +26,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % The purpose of standardizing error_specs is to remove differences
-    % between error_specs that exist only in the structure of the error_specs
+    % The purpose of standardizing diag_specs is to remove differences
+    % between diag_specs that exist only in the structure of the diag_specs
     % themselves, as opposed to the text that we output for them.
     %
     % For example, the compiler could in theory generate (and once upon a time,
@@ -39,15 +39,15 @@
     %
     % But if OptionName is yes, then this difference has no effect.
     %
-:- pred standardize_error_specs(list(error_spec)::in,
-    list(std_error_spec)::out) is det.
+:- pred standardize_diag_specs(list(diag_spec)::in,
+    list(std_diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred sort_std_error_specs(globals::in,
-    list(std_error_spec)::in, list(std_error_spec)::out) is det.
-:- pred sort_std_error_specs_opt_table(option_table::in,
-    list(std_error_spec)::in, list(std_error_spec)::out) is det.
+:- pred sort_std_diag_specs(globals::in,
+    list(std_diag_spec)::in, list(std_diag_spec)::out) is det.
+:- pred sort_std_diag_specs_opt_table(option_table::in,
+    list(std_diag_spec)::in, list(std_diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -79,14 +79,14 @@
 
 %---------------------------------------------------------------------------%
 
-standardize_error_specs(Specs, StdSpecs) :-
-    list.map(standardize_error_spec, Specs, StdSpecs).
+standardize_diag_specs(Specs, StdSpecs) :-
+    list.map(standardize_diag_spec, Specs, StdSpecs).
 
-:- pred standardize_error_spec(error_spec::in, std_error_spec::out) is det.
+:- pred standardize_diag_spec(diag_spec::in, std_diag_spec::out) is det.
 
-standardize_error_spec(Spec0, StdSpec) :-
+standardize_diag_spec(Spec0, StdSpec) :-
     (
-        Spec0 = error_spec(Id, Severity, Phase, Msgs0),
+        Spec0 = diag_spec(Id, Severity, Phase, Msgs0),
         list.map(standardize_diag_msg, Msgs0, StdMsgs)
     ;
         Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
@@ -102,7 +102,7 @@ standardize_error_spec(Spec0, StdSpec) :-
         unexpected($pred, "StdMsgs = []")
     ;
         StdMsgs = [_ | _],
-        StdSpec = error_spec(Id, Severity, Phase, StdMsgs)
+        StdSpec = diag_spec(Id, Severity, Phase, StdMsgs)
     ).
 
 :- pred standardize_diag_msg(diag_msg::in, std_diag_msg::out) is det.
@@ -137,19 +137,19 @@ standardize_diag_msg(Msg0, StdMsg) :-
     (
         StdComponents = [],
         % In this situation, we used to just fail, making both this predicate,
-        % and its caller standardize_error_spec, semidet.
+        % and its caller standardize_diag_spec, semidet.
         %
         % This was when we still had diag_msgs that were conditional on
         % the value of an option. Ever since we moved all such conditionality
-        % to the top level (to the severity of the error_spec), we never delete
-        % any diag_msgs from an error_spec. The only way that execution can
-        % *now* get here is if the error_spec was *constructed* with zero
+        % to the top level (to the severity of the diag_spec), we never delete
+        % any diag_msgs from an diag_spec. The only way that execution can
+        % *now* get here is if the diag_spec was *constructed* with zero
         % components. That would be a bug, which we catch here.
         %
         % We *could* use the type system to enforce the "no empty list of
         % components" rule, but the type analysis system cannot handle
         % any subtype of the list type with acceptable performance, and
-        % using the one_or_more type instead in error_specs would be
+        % using the one_or_more type instead in diag_specs would be
         % inconvenient.
         unexpected($pred, "StdComponents = []")
     ;
@@ -160,25 +160,25 @@ standardize_diag_msg(Msg0, StdMsg) :-
 
 %---------------------------------------------------------------------------%
 
-sort_std_error_specs(Globals, StdSpecs, SortedStdSpecs) :-
+sort_std_diag_specs(Globals, StdSpecs, SortedStdSpecs) :-
     globals.get_options(Globals, OptionTable),
-    sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs).
+    sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs).
 
-sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
+sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
     getopt.lookup_bool_option(OptionTable, reverse_error_order,
         ReverseErrorOrder),
     list.sort_and_remove_dups(
-        compare_std_error_specs(ReverseErrorOrder),
+        compare_std_diag_specs(ReverseErrorOrder),
         StdSpecs, SortedStdSpecs).
 
 %---------------------%
 
-:- pred compare_std_error_specs(bool::in,
-    std_error_spec::in, std_error_spec::in, comparison_result::out) is det.
+:- pred compare_std_diag_specs(bool::in,
+    std_diag_spec::in, std_diag_spec::in, comparison_result::out) is det.
 
-compare_std_error_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
-    SpecA = error_spec(_, _, _, MsgsA),
-    SpecB = error_spec(_, _, _, MsgsB),
+compare_std_diag_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
+    SpecA = diag_spec(_, _, _, MsgsA),
+    SpecB = diag_spec(_, _, _, MsgsB),
     compare_std_diag_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),

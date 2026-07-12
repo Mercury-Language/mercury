@@ -102,7 +102,7 @@
     % Exported for use by parse_class.m.
     %
 :- pred is_the_name_a_variable(varset::in, var_term_kind::in, term::in,
-    error_spec::out) is semidet.
+    diag_spec::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -181,7 +181,7 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
         MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
-:- func decl_is_not_an_atom(varset, term) = error_spec.
+:- func decl_is_not_an_atom(varset, term) = diag_spec.
 
 decl_is_not_an_atom(VarSet, Term) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
@@ -193,7 +193,7 @@ decl_is_not_an_atom(VarSet, Term) = Spec :-
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func decl_functor_is_not_valid(string, prog_context) = error_spec.
+:- func decl_functor_is_not_valid(string, prog_context) = diag_spec.
 
 decl_functor_is_not_valid(Functor, Context) = Spec :-
     Pieces = [words("Error:")] ++
@@ -1803,7 +1803,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
 
 :- pred get_class_context_and_inst_constraints_loop(module_name::in,
     varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     cord(var)::in, cord(var)::out, cord(var)::in, cord(var)::out,
     cord(prog_constraint)::in, cord(prog_constraint)::out,
     inst_var_sub::in, inst_var_sub::out,
@@ -2245,7 +2245,7 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
 
 %---------------------------------------------------------------------------%
 
-:- func report_with_inst_and_detism(format_piece, term(T)) = error_spec.
+:- func report_with_inst_and_detism(format_piece, term(T)) = diag_spec.
 
 report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
     Pieces = [words("Error: a"), DeclKindPiece, words("declaration"),
@@ -2259,7 +2259,7 @@ report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_inst_no_arg_modes(pred_or_func, term(T)) = error_spec.
+:- func report_with_inst_no_arg_modes(pred_or_func, term(T)) = diag_spec.
 
 report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
     Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
@@ -2271,7 +2271,7 @@ report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_inst_no_with_type(pred_or_func, term(T)) = error_spec.
+:- func report_with_inst_no_with_type(pred_or_func, term(T)) = diag_spec.
 
 report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_type_no_with_inst as possible.
@@ -2285,7 +2285,7 @@ report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_type_no_with_inst(pred_or_func, term(T)) = error_spec.
+:- func report_with_type_no_with_inst(pred_or_func, term(T)) = diag_spec.
 
 report_with_type_no_with_inst(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_inst_no_with_type as possible.

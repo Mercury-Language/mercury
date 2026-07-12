@@ -66,7 +66,7 @@
     % this doesn't make sense.
     %
 :- pred post_typecheck_finish_preds(module_info::in, module_info::out,
-    list(error_spec)::out, list(error_spec)::out, list(error_spec)::out)
+    list(diag_spec)::out, list(diag_spec)::out, list(diag_spec)::out)
     is det.
 
     % Make sure the vartypes field in the clauses_info is valid for imported
@@ -141,9 +141,9 @@ post_typecheck_finish_preds(!ModuleInfo, UnprovenConstraintSpecs,
     set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 post_typecheck_do_finish_preds(_ModuleInfo, _ValidPredIdSet, [], [],
         !TypePropCache,
@@ -164,9 +164,9 @@ post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
 :- pred post_typecheck_do_finish_pred(module_info::in,
     set_tree234(pred_id)::in, pred_id::in, pred_info::in, pred_info::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId,
         !PredInfo, !TypePropCache,
@@ -223,7 +223,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId,
 
 :- pred report_unbound_inst_vars(module_info::in, pred_id::in,
     assoc_list(proc_id, list(inst_var))::in, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
         !Specs) :-
@@ -240,7 +240,7 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
 :- pred report_unbound_inst_var_error(module_info::in,
     pred_id::in, pair(proc_id, list(inst_var))::in,
     proc_table::in, proc_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
         Procs0, Procs, !Specs) :-
@@ -278,7 +278,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
     %
 :- pred find_unproven_body_constraints(module_info::in,
     pred_id::in, pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pragma inline(pred(find_unproven_body_constraints/5)).
 
 find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
@@ -299,7 +299,7 @@ find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
     % Report unsatisfied typeclass constraints.
     %
 :- func report_unsatisfied_constraints(module_info, pred_id, pred_info,
-    list(prog_constraint)) = error_spec.
+    list(prog_constraint)) = diag_spec.
 
 report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints)
         = Spec :-
@@ -340,7 +340,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints)
             ConstrainedGoals),
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
     ),
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [MainMsg | ContextMsgs]).
 
 :- func constraint_to_error_pieces(tvarset, prog_constraint)
@@ -476,7 +476,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     %
 :- pred find_unresolved_types_fill_in_is_dummy_in_pred(module_info::in,
     pred_id::in, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pragma inline(pred(find_unresolved_types_fill_in_is_dummy_in_pred/6)).
 
 find_unresolved_types_fill_in_is_dummy_in_pred(ModuleInfo, PredId, !PredInfo,
@@ -626,7 +626,7 @@ fill_in_is_dummy_slot(ModuleInfo, !Entry) :-
     %
 :- pred report_unresolved_type_warning(module_info::in, pred_id::in,
     pred_info::in, assoc_list(prog_var, var_table_entry)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         !Specs) :-
@@ -665,7 +665,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         %   VarABCD: TypeABCD
         %
         % However, if we allow MaxVarNameLen to be *too* long, then
-        % the code writing out the error_spec we are constructing
+        % the code writing out the diag_spec we are constructing
         % will be forced to break the line between the variable name
         % and the type. The value 15 is a guess at a value that is
         % - small enough not to cause such unwanted breaks, but also
@@ -728,7 +728,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         words("My apologies.)"), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec($pred, severity_warning(warn_unresolved_polymorphism),
+    Spec = diag_spec($pred, severity_warning(warn_unresolved_polymorphism),
         phase_type_check, [Msg | AnonVarMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -799,7 +799,7 @@ explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars,
 %---------------------------------------------------------------------------%
 
 :- pred check_type_of_main(pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_type_of_main(PredInfo, !Specs) :-
     ( if
@@ -864,7 +864,7 @@ setup_var_table_in_clauses_for_imported_pred(ModuleInfo, !PredInfo) :-
 
 :- pred check_for_indistinguishable_modes(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
     ( if
@@ -887,7 +887,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
 :- pred check_for_indistinguishable_modes_in_procs(module_info::in,
     pred_id::in, list(proc_id)::in, list(proc_id)::in,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_indistinguishable_modes_in_procs(_, _, [], _, !PredInfo, !Specs).
 check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
@@ -907,7 +907,7 @@ check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
 :- pred check_for_indistinguishable_mode(module_info::in, pred_id::in,
     proc_id::in, list(proc_id)::in, bool::out,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !Specs).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
@@ -961,7 +961,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
     % declare indistinguishable modes.
     %
 :- func report_indistinguishable_modes_error(module_info, proc_id, proc_id,
-    pred_id, pred_info) = error_spec.
+    pred_id, pred_info) = diag_spec.
 
 report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         PredId, PredInfo) = Spec :-
@@ -986,7 +986,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         color_as_incorrect([words("indistinguishable.")]) ++
         [nl],
     OldPieces = [words("Here is the conflicting mode declaration."), nl],
-    Spec = error_spec($pred, severity_error,
+    Spec = diag_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),

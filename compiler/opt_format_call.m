@@ -154,7 +154,7 @@
 :- pred analyze_and_optimize_format_calls(io.text_output_stream::in,
     maybe_generate_implicit_stream_warnings::in,
     module_info::in, pred_info::in, proc_info::in,
-    hlds_goal::in, maybe(hlds_goal)::out, list(error_spec)::out,
+    hlds_goal::in, maybe(hlds_goal)::out, list(diag_spec)::out,
     var_table::in, var_table::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -662,7 +662,7 @@ analyze_and_optimize_format_calls(ProgressStream, GenImplicitStreamWarnings,
     maybe_generate_implicit_stream_warnings::in, maybe_opt_format_calls::in,
     conj_maps::in, conj_pred_map::in, format_call_site::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     var_table::in, var_table::out) is det.
 
 check_format_call_site(ModuleInfo, PredInfo, ProcInfo, ImplicitStreamWarnings,

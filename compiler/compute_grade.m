@@ -40,7 +40,7 @@
     %
 :- pred check_grade_component_compatibility(globals::in,
     compilation_target::in, gc_method::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Apply some sanity checks to the library grade set and then apply any
     % library grade filters to that set.
@@ -52,7 +52,7 @@
     % XXX Actuall, I (zs) see no sanity checks here at all.
     %
 :- pred handle_libgrade_component_incl_excl(globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % The inverse of compute_grade: given a grade, set the appropriate options.
     %
@@ -292,7 +292,7 @@ handle_libgrade_component_incl_excl(!Globals, !Specs) :-
     %
 :- pred string_to_grade_component(string::in, string::in,
     list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     % XXX Including FilterDesc in the error messages seems odd, because
@@ -324,7 +324,7 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
 :- pred filter_grade(
     pred(list(string), list(string))::in(pred(in, in) is semidet),
     list(string)::in, string::in, list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Specs) :-
     grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs),
@@ -361,7 +361,7 @@ must_not_contain(OmitComponents, GradeComponents) :-
     % Emit an invalid grade error if the conversion fails.
     %
 :- pred grade_string_to_comp_strings(string::in, maybe(list(string))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
     split_grade_string(GradeString, Components),

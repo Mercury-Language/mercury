@@ -31,7 +31,7 @@
     % XXX document me
     %
 :- pred check_oisu_pragmas_for_module(assoc_list(type_ctor, oisu_preds)::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
+    module_info::in, module_info::out, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,7 @@ add_pred_to_kind_map(TypeCtor, Kind, PredId, !KindMap) :-
     list(type_ctor)::in,
     pair(pred_id, pred_info)::in, pair(pred_id, pred_info)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
         !OISUProcs, !Specs) :-
@@ -184,7 +184,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
 :- pred check_arg_oisu_types(module_info::in, pred_info::in,
     list(oisu_pred_kind_for)::in, list(type_ctor)::in, int::in,
     list(type_ctor)::in, assoc_list(mer_type, mer_mode)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
         !.HandledOISUTypeCtors, [TypeMode | TypesModes], !Specs) :-
@@ -414,7 +414,7 @@ describe_unhandled_kind_fors(HeadKindFor, TailKindFors, Pieces) :-
 %-----------------------------------------------------------------------------%
 
 :- pred check_args_have_no_oisu_types(pred_info::in, list(type_ctor)::in,
-    list(mer_type)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_type)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_args_have_no_oisu_types(_PredInfo, _OISUTypeCtors, [], !Specs).
 check_args_have_no_oisu_types(PredInfo, OISUTypeCtors, [Type | Types],

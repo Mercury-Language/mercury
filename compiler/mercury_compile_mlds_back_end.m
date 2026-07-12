@@ -294,7 +294,7 @@ maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred mark_tail_rec_calls_hlds(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO) :-

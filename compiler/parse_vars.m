@@ -351,7 +351,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_repeated_var_msg(cord(format_piece)::in,
-    varset(T)::in, term(T)::in, error_spec::out) is det.
+    varset(T)::in, term(T)::in, diag_spec::out) is det.
 
 generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
@@ -363,7 +363,7 @@ generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
         get_term_context(Term), Pieces).
 
 :- pred generate_repeated_state_var_msg(cord(format_piece)::in,
-    varset(T)::in, term(T)::in, error_spec::out) is det.
+    varset(T)::in, term(T)::in, diag_spec::out) is det.
 
 generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
@@ -375,7 +375,7 @@ generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
         get_term_context(Term), Pieces).
 
 :- pred generate_unexpected_term_message(cord(format_piece)::in,
-    varset(T)::in, string::in, term(T)::in, error_spec::out) is det.
+    varset(T)::in, string::in, term(T)::in, diag_spec::out) is det.
 
 generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
         Spec) :-

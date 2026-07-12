@@ -21,12 +21,12 @@
 
 :- pred add_foreign_procs(io.text_output_stream::in,
     ims_list(item_foreign_proc_info)::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_foreign_proc(io.text_output_stream::in, item_mercury_status::in,
     pred_status::in, item_foreign_proc_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -170,7 +170,7 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
 :- pred add_implicit_pred_decl_if_needed(pf_sym_name_arity::in,
     pred_status::in, prog_context::in, pred_id::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_implicit_pred_decl_if_needed(PFSymNameArity, PredStatus, Context, PredId,
         !ModuleInfo, !Specs) :-
@@ -276,7 +276,7 @@ is_foreign_proc_for_this_backend(Globals, Attributes, ForThisBackend) :-
     %
 :- pred compute_intended_proc_id(module_info::in, pred_info::in,
     pf_sym_name_arity::in, list(pragma_var)::in, foreign_proc_attributes::in,
-    prog_context::in, maybe_error(proc_id, error_spec)::out) is det.
+    prog_context::in, maybe_error(proc_id, diag_spec)::out) is det.
 
 compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
         PragmaVars, Attributes, Context, MaybeProcId) :-
@@ -310,7 +310,7 @@ compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
     pf_sym_name_arity::in, foreign_proc_attributes::in, list(pragma_var)::in,
     pragma_foreign_proc_impl::in, prog_context::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
         Attributes, PragmaVars, PragmaImpl, Context, !ModuleInfo, !Specs) :-
@@ -334,7 +334,7 @@ add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
 :- pred handle_wrong_backend_foreign_proc(item_mercury_status::in,
     pred_id::in, pred_info::in, wrong_backend_cause::in, prog_context::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId, !.PredInfo,
         WrongBackendCause, Context, !ModuleInfo, !Specs) :-
@@ -387,7 +387,7 @@ handle_wrong_backend_foreign_proc(ItemMercuryStatus, PredId, !.PredInfo,
     list(pragma_var)::in, list(mer_type)::in, purity::in,
     foreign_proc_attributes::in, prog_context::in,
     pragma_foreign_proc_impl::in, clauses_info::in, clauses_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc,
         PredModuleName, PredName, PredId, ProcId, PragmaVars, OrigArgTypes,
@@ -496,7 +496,7 @@ maybe_rename_user_annotated_sharing_information(Globals,
     compilation_target::in, foreign_language::in,
     list(proc_id)::in, proc_id::in, overridden_by_old_foreign_proc::out,
     list(clause)::in, list(clause)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
         PredModuleName, PredName, PredFormArity, NewContext, Target, NewLang,
@@ -634,11 +634,11 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
     % Perform all the checks on a foreign_proc that we can.
     %
 :- pred check_foreign_proc(module_info::in, pred_info::in,
-    pf_sym_name_arity::in, maybe_error(proc_id, error_spec)::in,
+    pf_sym_name_arity::in, maybe_error(proc_id, diag_spec)::in,
     prog_varset::in, list(pragma_var)::in, foreign_proc_attributes::in,
     pragma_foreign_proc_impl::in, prog_context::in,
     maybe_allowed_to_add_foreign_proc::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
         ProgVarSet, PragmaVars, Attributes, PragmaImpl, Context,
@@ -718,7 +718,7 @@ check_foreign_proc(ModuleInfo, PredInfo, PFSymNameArity, MaybeProcId,
     % *plain* imported predicates/functions, not the *opt-imported* ones.
     %
 :- pred report_if_fproc_is_for_imported_pred(pred_info::in,
-    foreign_language::in, prog_context::in, list(error_spec)::out) is det.
+    foreign_language::in, prog_context::in, list(diag_spec)::out) is det.
 
 report_if_fproc_is_for_imported_pred(PredInfo, Lang, Context, Specs) :-
     ( if pred_info_is_imported(PredInfo) then
@@ -747,7 +747,7 @@ report_if_fproc_is_for_imported_pred(PredInfo, Lang, Context, Specs) :-
 :- pred report_if_fproc_is_for_builtin(module_info::in, pred_info::in,
     foreign_language::in, prog_context::in,
     maybe_allowed_to_add_foreign_proc::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Lang, Context,
         AllowedToAdd, !Specs) :-
@@ -786,7 +786,7 @@ report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Lang, Context,
 %---------------------%
 
 :- func report_fproc_for_undeclared_mode(pf_sym_name_arity,
-    foreign_proc_attributes, prog_context) = error_spec.
+    foreign_proc_attributes, prog_context) = diag_spec.
 
 report_fproc_for_undeclared_mode(PFSymNameArity, Attributes, Context) = Spec :-
     Lang = get_foreign_language(Attributes),
@@ -807,7 +807,7 @@ report_fproc_for_undeclared_mode(PFSymNameArity, Attributes, Context) = Spec :-
 :- pred report_duplicate_foreign_proc(pred_or_func::in,
     module_name::in, string::in, pred_form_arity::in, foreign_language::in,
     prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_foreign_proc(PredOrFunc, PredModuleName, PredName,
         PredFormArity, Lang, FirstClauseContext, NewContext, !Specs) :-
@@ -822,13 +822,13 @@ report_duplicate_foreign_proc(PredOrFunc, PredModuleName, PredName,
     PiecesB = [words("The first one was here."), nl],
     MsgA = msg(NewContext, PiecesA),
     MsgB = msg(FirstClauseContext, PiecesB),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [MsgA, MsgB]),
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
 
 :- pred report_bad_foreign_proc_in_dot_opt_file(wrong_backend_cause::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
     (
@@ -881,7 +881,7 @@ report_bad_foreign_proc_in_dot_opt_file(WrongBackendCause, Context, !Specs) :-
     %
 :- pred check_foreign_proc_purity(pred_info::in, foreign_proc_attributes::in,
     foreign_language::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !Specs) :-
     pred_info_get_markers(PredInfo, PredMarkers),
@@ -921,16 +921,16 @@ check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !Specs) :-
 
 :- pred check_typeinfos_for_existq_tvars(pred_info::in,
     foreign_language::in, set(string)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeinfos_for_existq_tvars(PredInfo, Lang, Identifiers, Context,
         !Specs) :-
     pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, _ArgTypes),
-    % NOTE This code will generate a separate error_spec for each
+    % NOTE This code will generate a separate diag_spec for each
     % type_info variable that that does should occur, but does not occur,
     % in the foreign_proc. We *could* gather up their names and issue
-    % just a single error_spec listing all their names, but this situation
-    % is so rare that whether we generate separate or combined error_specs
+    % just a single diag_spec listing all their names, but this situation
+    % is so rare that whether we generate separate or combined diag_specs
     % does not matter.
     list.foldl2(
         check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang,
@@ -939,7 +939,7 @@ check_typeinfos_for_existq_tvars(PredInfo, Lang, Identifiers, Context,
 
 :- pred check_typeinfo_for_existq_tvar(pred_info::in, tvarset::in,
     foreign_language::in, set(string)::in, prog_context::in, tvar::in,
-    uint::in, uint::out, list(error_spec)::in, list(error_spec)::out) is det.
+    uint::in, uint::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang, Identifiers,
         Context, ExistQVar, !ExistQVarNum, !Specs) :-
@@ -971,7 +971,7 @@ check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang, Identifiers,
     %
 :- pred check_foreign_proc_arg_list(pf_sym_name_arity::in, prog_varset::in,
     list(prog_var)::in, foreign_language::in, prog_context::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
         Specs) :-
@@ -1023,7 +1023,7 @@ check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
 :- pred warn_singletons_in_pragma_foreign_proc(pred_info::in,
     pf_sym_name_arity::in, foreign_language::in, list(pragma_var)::in,
     set(string)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity,
         Lang, PragmaVars, Identifiers, Context, !Specs) :-
@@ -1079,7 +1079,7 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
 :- pred check_fp_body_for_success_indicator(pred_info::in,
     pf_sym_name_arity::in, proc_id::in, foreign_language::in,
     set(string)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
         Identifiers, Context, !Specs) :-
@@ -1145,7 +1145,7 @@ check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
     %
 :- pred check_fp_body_for_return(pf_sym_name_arity::in, foreign_language::in,
     set(string)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context, !Specs) :-
     ( if set.member("return", Identifiers) then

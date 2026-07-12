@@ -40,7 +40,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred frontend_pass(io.text_output_stream::in, io.text_output_stream::in,
-    op_mode_augment::in, qual_info::in, list(error_spec)::in,
+    op_mode_augment::in, qual_info::in, list(diag_spec)::in,
     bool::in, bool::out, module_info::in, module_info::out,
     dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
@@ -207,7 +207,7 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
 
 :- pred frontend_pass_after_typeclass_check(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in,
-    list(error_spec)::in, bool::in, bool::out,
+    list(diag_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -357,7 +357,7 @@ check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
 
 :- pred do_typecheck(io.text_output_stream::in, io.text_output_stream::in,
     bool::in, bool::in, globals::in, maybe_clause_syntax_errors::out,
-    list(error_spec)::out, number_of_iterations::out,
+    list(diag_spec)::out, number_of_iterations::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -413,7 +413,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
 
 :- pred frontend_pass_after_typecheck(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in, globals::in,
-    bool::in, bool::in, list(error_spec)::in, bool::in, bool::out,
+    bool::in, bool::in, list(diag_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -770,7 +770,7 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
         maybe_dump_hlds(ProgressStream, !.HLDS, 33, "unused_imports",
             !DumpInfo, !IO),
 
-        % XXX Convert the mode constraints pass to use error_specs.
+        % XXX Convert the mode constraints pass to use diag_specs.
         maybe_mode_constraints(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 34, "mode_constraints",
             !DumpInfo, !IO),
@@ -1628,7 +1628,7 @@ maybe_simplify(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
 :- pred simplify_pred(io.text_output_stream::in,
     simplify_tasks::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 simplify_pred(ProgressStream, SimplifyTasks0, PredId,
         !ModuleInfo, !PredInfo, !Specs) :-
@@ -1644,10 +1644,10 @@ simplify_pred(ProgressStream, SimplifyTasks0, PredId,
     else
         SimplifyTasks = SimplifyTasks0
     ),
-    PredSpecsAcc0 = init_error_spec_accumulator,
+    PredSpecsAcc0 = init_diag_spec_accumulator,
     simplify_pred_procs(ProgressStream, SimplifyTasks, PredId, ProcIds,
         !PredInfo, !ModuleInfo, PredSpecsAcc0, PredSpecsAcc),
-    PredSpecs = error_spec_accumulator_to_list(PredSpecsAcc),
+    PredSpecs = diag_spec_accumulator_to_list(PredSpecsAcc),
     !:Specs = PredSpecs ++ !.Specs,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),

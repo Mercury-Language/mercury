@@ -160,7 +160,7 @@
 
 type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent) :-
-    % Converting a type assign set to a part of an error_spec can take
+    % Converting a type assign set to a part of an diag_spec can take
     % a *very* long time if the type assign set is very big, which it can be
     % in large predicates with many ambiguously typed variables.
     % Yet in the common cases handled by the two predicates below,

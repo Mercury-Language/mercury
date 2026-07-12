@@ -163,7 +163,7 @@
     ;       uf_invalid_file_format(file_name)
             % The named file does not start with a valid version number
             % for a .used file.
-    ;       uf_unreadable_used_items(one_or_more(error_spec)).
+    ;       uf_unreadable_used_items(one_or_more(diag_spec)).
             % XXX document this
 
     % This type represents the part of the .used file *after*

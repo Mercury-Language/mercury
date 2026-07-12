@@ -728,8 +728,8 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
 :- interface.
 
     % Have we reported an error for this type definition yet?
-    % If we have, record the error_spec. If the type has more than one error,
-    % the recorded error_spec will be for the latest one.
+    % If we have, record the diag_spec. If the type has more than one error,
+    % the recorded diag_spec will be for the latest one.
     %
     % We don't need all the errors, because the only purpose we use this type
     % for is to know whether we can omit a later diagnostic for the same type
@@ -742,7 +742,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
     %
 :- type type_defn_prev_errors
     --->    type_defn_no_prev_errors
-    ;       type_defn_prev_errors(error_spec).
+    ;       type_defn_prev_errors(diag_spec).
 
     % An `hlds_type_body' holds the body of a type definition:
     % du = discriminated union, eqv_type = equivalence type (a type defined

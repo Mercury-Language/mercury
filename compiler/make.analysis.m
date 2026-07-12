@@ -46,7 +46,7 @@
 %---------------------------------------------------------------------------%
 
 :- type build3 == pred(io.text_output_stream, maybe_succeeded,
-    make_info, make_info, list(error_spec), list(error_spec), io, io).
+    make_info, make_info, list(diag_spec), list(diag_spec), io, io).
 :- inst build3 == (pred(in, out, in, out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
@@ -55,7 +55,7 @@
     %
 :- pred maybe_with_analysis_cache_dir_3(io.text_output_stream::in, globals::in,
     build3::in(build3), maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 

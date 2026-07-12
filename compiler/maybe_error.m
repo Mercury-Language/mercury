@@ -53,30 +53,30 @@
     ;       ok6(T1, T2, T3, T4, T5, T6).
 
 :- type maybe1(T1) ==
-    maybe1(T1, one_or_more(error_spec)).
+    maybe1(T1, one_or_more(diag_spec)).
 :- type maybe2(T1, T2) ==
-    maybe2(T1, T2, one_or_more(error_spec)).
+    maybe2(T1, T2, one_or_more(diag_spec)).
 :- type maybe3(T1, T2, T3) ==
-    maybe3(T1, T2, T3, one_or_more(error_spec)).
+    maybe3(T1, T2, T3, one_or_more(diag_spec)).
 :- type maybe4(T1, T2, T3, T4) ==
-    maybe4(T1, T2, T3, T4, one_or_more(error_spec)).
+    maybe4(T1, T2, T3, T4, one_or_more(diag_spec)).
 :- type maybe5(T1, T2, T3, T4, T5) ==
-    maybe5(T1, T2, T3, T4, T5, one_or_more(error_spec)).
+    maybe5(T1, T2, T3, T4, T5, one_or_more(diag_spec)).
 :- type maybe6(T1, T2, T3, T4, T5, T6) ==
-    maybe6(T1, T2, T3, T4, T5, T6, one_or_more(error_spec)).
+    maybe6(T1, T2, T3, T4, T5, T6, one_or_more(diag_spec)).
 
 :- type maybe1el(T1) ==
-    maybe1(T1, list(error_spec)).
+    maybe1(T1, list(diag_spec)).
 :- type maybe2el(T1, T2) ==
-    maybe2(T1, T2, list(error_spec)).
+    maybe2(T1, T2, list(diag_spec)).
 :- type maybe3el(T1, T2, T3) ==
-    maybe3(T1, T2, T3, list(error_spec)).
+    maybe3(T1, T2, T3, list(diag_spec)).
 :- type maybe4el(T1, T2, T3, T4) ==
-    maybe4(T1, T2, T3, T4, list(error_spec)).
+    maybe4(T1, T2, T3, T4, list(diag_spec)).
 :- type maybe5el(T1, T2, T3, T4, T5) ==
-    maybe5(T1, T2, T3, T4, T5, list(error_spec)).
+    maybe5(T1, T2, T3, T4, T5, list(diag_spec)).
 :- type maybe6el(T1, T2, T3, T4, T5, T6) ==
-    maybe6(T1, T2, T3, T4, T5, T6, list(error_spec)).
+    maybe6(T1, T2, T3, T4, T5, T6, list(diag_spec)).
 
 %---------------------%
 
@@ -106,36 +106,36 @@
 
 %---------------------%
 
-:- func get_any_errors1(maybe1(T1)) = list(error_spec).
-:- func get_any_errors2(maybe2(T1, T2)) = list(error_spec).
-:- func get_any_errors3(maybe3(T1, T2, T3)) = list(error_spec).
-:- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(error_spec).
-:- func get_any_errors5(maybe5(T1, T2, T3, T4, T5)) = list(error_spec).
-:- func get_any_errors6(maybe6(T1, T2, T3, T4, T5, T6)) = list(error_spec).
+:- func get_any_errors1(maybe1(T1)) = list(diag_spec).
+:- func get_any_errors2(maybe2(T1, T2)) = list(diag_spec).
+:- func get_any_errors3(maybe3(T1, T2, T3)) = list(diag_spec).
+:- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(diag_spec).
+:- func get_any_errors5(maybe5(T1, T2, T3, T4, T5)) = list(diag_spec).
+:- func get_any_errors6(maybe6(T1, T2, T3, T4, T5, T6)) = list(diag_spec).
 
-:- func get_any_errors1el(maybe1el(T1)) = list(error_spec).
-:- func get_any_errors2el(maybe2el(T1, T2)) = list(error_spec).
-:- func get_any_errors3el(maybe3el(T1, T2, T3)) = list(error_spec).
-:- func get_any_errors4el(maybe4el(T1, T2, T3, T4)) = list(error_spec).
-:- func get_any_errors5el(maybe5el(T1, T2, T3, T4, T5)) = list(error_spec).
-:- func get_any_errors6el(maybe6el(T1, T2, T3, T4, T5, T6)) = list(error_spec).
+:- func get_any_errors1el(maybe1el(T1)) = list(diag_spec).
+:- func get_any_errors2el(maybe2el(T1, T2)) = list(diag_spec).
+:- func get_any_errors3el(maybe3el(T1, T2, T3)) = list(diag_spec).
+:- func get_any_errors4el(maybe4el(T1, T2, T3, T4)) = list(diag_spec).
+:- func get_any_errors5el(maybe5el(T1, T2, T3, T4, T5)) = list(diag_spec).
+:- func get_any_errors6el(maybe6el(T1, T2, T3, T4, T5, T6)) = list(diag_spec).
 
 :- func get_any_errors_warnings2(maybe2(T1, list(warning_spec))) =
-    list(error_spec).
+    list(diag_spec).
 :- func get_any_errors_warnings3(maybe3(T1, T2, list(warning_spec))) =
-    list(error_spec).
+    list(diag_spec).
 :- func get_any_errors_warnings4(maybe4(T1, T2, T3, list(warning_spec))) =
-    list(error_spec).
+    list(diag_spec).
 :- func get_any_errors_warnings5(maybe5(T1, T2, T3, T4, list(warning_spec))) =
-    list(error_spec).
+    list(diag_spec).
 :- func get_any_errors_warnings6(maybe6(T1, T2, T3, T4, T5,
-    list(warning_spec))) = list(error_spec).
+    list(warning_spec))) = list(diag_spec).
 
 :- pred project_ok1(maybe1(T1)::in, T1::out) is semidet.
 :- pred det_project_ok1(maybe1(T1)::in, T1::out) is det.
 
 :- pred separate_ok1_error1(list(maybe1(T1))::in,
-    list(T1)::out, list(error_spec)::out) is det.
+    list(T1)::out, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -230,7 +230,7 @@ separate_ok1_error1(Maybes, OKs, Specs) :-
     list.reverse(RevOKs, OKs).
 
 :- pred separate_ok1_error1_loop(list(maybe1(T1))::in,
-    list(T1)::in, list(T1)::out, list(error_spec)::in, list(error_spec)::out)
+    list(T1)::in, list(T1)::out, list(diag_spec)::in, list(diag_spec)::out)
     is det.
 
 separate_ok1_error1_loop([], !RevOKs, !Specs).

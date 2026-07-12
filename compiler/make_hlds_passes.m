@@ -53,8 +53,8 @@
     globals::in, string::in, mq_info::in, type_eqv_map::in,
     used_eqv_modules::in, set_tree234(module_name)::in,
     qual_info::out, module_info::out,
-    list(error_spec)::out, list(error_spec)::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out, list(diag_spec)::out,
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -620,7 +620,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
-    get_error_specs_in_mq_info(MQInfo,
+    get_diag_specs_in_mq_info(MQInfo,
         MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs),
     !:InvalidTypeSpecs = MQInvalidTypeSpecs ++ !.InvalidTypeSpecs,
     !:InvalidInstModeSpecs = MQInvalidInstModeSpecs ++ !.InvalidInstModeSpecs,
@@ -629,7 +629,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_include_and_non_include(globals::in,
-    parse_tree_module_src::in, list(error_spec)::out) is det.
+    parse_tree_module_src::in, list(diag_spec)::out) is det.
 
 maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, Specs) :-
     globals.lookup_bool_option(Globals, warn_include_and_non_include,
@@ -825,8 +825,8 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
 
 :- pred add_type_defns(sec_list(item_type_defn_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
         ims_cord(item_foreign_proc_info)::out,
@@ -847,8 +847,8 @@ add_type_defns([SecList | SecLists], !ModuleInfo, !InvalidTypeSpecs, !Specs,
 
 :- pred add_type_defn(sec_info::in, type_status::in, item_type_defn_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
         ims_cord(item_foreign_proc_info)::out,
@@ -910,7 +910,7 @@ add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
 
 :- pred add_inst_defns(ims_list(item_inst_defn_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_inst_defns([], !ModuleInfo, !Specs).
 add_inst_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
@@ -924,7 +924,7 @@ add_inst_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
 
 :- pred add_mode_defns(ims_list(item_mode_defn_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_mode_defns([], !ModuleInfo, !Specs).
 add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
@@ -938,7 +938,7 @@ add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
 
 :- pred add_pred_decls(sec_list(item_pred_decl_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pred_decls([], !ModuleInfo, !Specs).
 add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
@@ -954,7 +954,7 @@ add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
 
 :- pred add_mode_decls(ims_list(item_mode_decl_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_mode_decls([], !ModuleInfo, !Specs).
 add_mode_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
@@ -1019,7 +1019,7 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
 
 :- pred add_clauses(io.text_output_stream::in, ims_list(item_clause_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_clauses(_, [], !ModuleInfo, !QualInfo, !Specs).
 add_clauses(ProgressStream, [ImsList | ImsLists],
@@ -1037,7 +1037,7 @@ add_clauses(ProgressStream, [ImsList | ImsLists],
 :- pred add_promises(io.text_output_stream::in,
     ims_list(item_promise_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_promises(_, [], !ModuleInfo, !QualInfo, !Specs).
 add_promises(ProgressStream, [ImsList | ImsLists],
@@ -1051,7 +1051,7 @@ add_promises(ProgressStream, [ImsList | ImsLists],
 :- pred add_promise(io.text_output_stream::in,
     pred_status::in, item_promise_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_promise(ProgressStream, PredStatus, PromiseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -1122,7 +1122,7 @@ add_promise(ProgressStream, PredStatus, PromiseInfo,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_initialises(_, [], !PragmaFPEInfoCord, !PredTargetNames, !Specs).
 add_initialises(ModuleInfo, [ImsList | ImsLists],
@@ -1138,7 +1138,7 @@ add_initialises(ModuleInfo, [ImsList | ImsLists],
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
         !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-
@@ -1165,7 +1165,7 @@ add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_finalises(_, [], !PragmaFPEInfoCord, !PredTargetNames, !Specs).
 add_finalises(ModuleInfo, [ImsList | ImsLists],
@@ -1181,7 +1181,7 @@ add_finalises(ModuleInfo, [ImsList | ImsLists],
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
         !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-
@@ -1215,7 +1215,7 @@ add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
         Context, SeqNum, !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-

@@ -366,7 +366,7 @@ split_last_two(Element1, Element2, Elements3plus, Main, LastButOne, Last) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_lambda_args_func(term.context::in, list(term)::in, term::in,
-    list(lambda_arg)::out, list(error_spec)::out, list(error_spec)::out,
+    list(lambda_arg)::out, list(diag_spec)::out, list(diag_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
@@ -400,7 +400,7 @@ parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
     ).
 
 :- pred parse_lambda_args_pred(term.context::in, list(term)::in,
-    list(lambda_arg)::out, list(error_spec)::out, list(error_spec)::out,
+    list(lambda_arg)::out, list(diag_spec)::out, list(diag_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args_pred(Context, ArgModeTerms,
@@ -447,7 +447,7 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
 
 :- pred add_some_not_all_args_have_modes_error(prog_context::in,
     list(lambda_arg)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     AbsentArgPieces =
@@ -464,7 +464,7 @@ add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred add_pred_no_args_have_modes_error(prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pred_no_args_have_modes_error(Context, !Specs) :-
     % We could use _AbsentArgs to make the error message more detailed.
@@ -541,8 +541,8 @@ project_lambda_var_arg_mode(LambdaArg) = LambdaVar - Mode :-
     %
 :- pred parse_lambda_args(lambda_arg_kind::in,
     list(term)::in, list(lambda_arg)::out, int::in, int::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args(_Kind, [], [], !ArgNum, !BadModeSpecs, !SVarSpecs, !UrInfo).
@@ -556,8 +556,8 @@ parse_lambda_args(Kind, [HeadArgModeTerm | TailArgModeTerms],
 
 :- pred parse_lambda_arg(lambda_arg_kind::in,
     term::in, lambda_arg::out, int::in, int::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_arg(Kind, ArgModeTerm, LambdaArg, !ArgNum,
@@ -678,9 +678,9 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
                 ho_groundness,
                 pred_or_func,
                 list(lambda_arg),
-                list(error_spec),       % Errors about unparseable and/or
+                list(diag_spec),       % Errors about unparseable and/or
                                         % missing arg modes.
-                list(error_spec),       % Errors about !X arguments.
+                list(diag_spec),       % Errors about !X arguments.
                 maybe1(determinism)     % The determinism of the lambda expr.
             ).
 

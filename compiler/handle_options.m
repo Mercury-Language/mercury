@@ -41,7 +41,7 @@
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
     maybe_stdlib_grades::in, maybe1el(list(string))::in, list(string)::in,
-    list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
+    list(string)::out, list(string)::out, list(diag_spec)::out, globals::out,
     io::di, io::uo) is det.
 
     % usage_errors(ProgressStream, Globals, Specs, !IO)
@@ -50,7 +50,7 @@
     % XXX Except that is NOT what this predicate does.
     %
 :- pred usage_errors(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
+    list(diag_spec)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -169,7 +169,7 @@ dump_arguments(ProgressStream, [Arg | Args], !IO) :-
 :- pred convert_option_table_result_to_globals(io.text_output_stream::in,
     option_table::in, maybe_stdlib_grades::in, maybe(option_error(option))::in,
     option_table::in, cord(optimization_option)::in,
-    maybe1el(list(string))::in, list(error_spec)::out, globals::out,
+    maybe1el(list(string))::in, list(diag_spec)::out, globals::out,
     io::di, io::uo) is det.
 
 convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
@@ -287,7 +287,7 @@ convert_checked_linkage(OptionTable, Option, StaticOrShared) :-
 
 :- pred convert_library_install_linkages(list(string)::in,
     set(static_or_shared)::in, set(static_or_shared)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 convert_library_install_linkages([], !LibraryInstallLinkages, !Specs).
 convert_library_install_linkages([Str | Strs],
@@ -319,7 +319,7 @@ convert_library_install_linkages([Str | Strs],
     reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
     linked_target_ext_info_map::in,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
@@ -800,7 +800,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     %   none
     %
 :- pred check_for_incompatibilities(globals::in, op_mode::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_incompatibilities(Globals, OpMode, !Specs) :-
     % `--transitive-intermodule-optimization' and `--make' are
@@ -919,7 +919,7 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
     %
 :- pred handle_implications_of_pregen_target_spf(globals::in, globals::out,
     compilation_target::in, int::in, int::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_implications_of_pregen_target_spf(!Globals, Target,
         OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize, !Specs) :-
@@ -1132,7 +1132,7 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
     %   pre_implicit_parallelism_simplify
     %
 :- pred handle_implications_of_parallel(globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_implications_of_parallel(!Globals, !Specs) :-
     current_grade_supports_par_conj(!.Globals, GradeSupportsParConj),
@@ -1220,7 +1220,7 @@ handle_implications_of_parallel(!Globals, !Specs) :-
     %
 :- pred handle_gc_options(globals::in, globals::out, gc_method::in,
     maybe_opt_frames::in, maybe_opt_frames::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
     % --gc accurate for the LLDS back-end requires `agc' stack layouts,
@@ -1328,7 +1328,7 @@ handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
     %   use_minimal_model_stack_copy_pneg
     %
 :- pred handle_minimal_model_options(globals::in, globals::out,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    bool::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
     globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
@@ -1445,7 +1445,7 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
 :- pred handle_debugging_options(compilation_target::in, trace_level::in,
     maybe_exec_trace_enabled::in, ssdb_trace_level::in,
     maybe_allow_src_changes::out, globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
         !:AllowSrcChanges, !Globals, !Specs) :-
@@ -1590,7 +1590,7 @@ maybe_update_event_set_file_name(!Globals, !IO) :-
     %
 :- pred handle_profiling_options(globals::in, globals::out,
     compilation_target::in, bool::in,maybe_allow_src_changes::out,
-    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, int::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_profiling_options(!Globals, Target, ProfileDeep, !:AllowSrcChangesProf,
         OT_HigherOrderSizeLimit0, OT_HigherOrderSizeLimit, !Specs) :-
@@ -1698,7 +1698,7 @@ handle_profiling_options(!Globals, Target, ProfileDeep, !:AllowSrcChangesProf,
     %   pre_prof_transforms_simplify
     %
 :- pred handle_record_term_sizes_options(globals::in, globals::out,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    bool::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs) :-
     globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
@@ -2076,7 +2076,7 @@ handle_option_to_option_implications(OpMode, !Globals) :-
     %   smart_recompilation (done inside disable_smart_recompilation)
     %
 :- pred maybe_disable_smart_recompilation(op_mode::in,
-    globals::in, globals::out, list(error_spec)::in, list(error_spec)::out,
+    globals::in, globals::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 maybe_disable_smart_recompilation(OpMode, !Globals, !Specs, !IO) :-
@@ -2151,7 +2151,7 @@ maybe_disable_smart_recompilation(OpMode, !Globals, !Specs, !IO) :-
     %
 :- pred handle_chosen_stdlib_dir(maybe1el(list(string))::in,
     globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
     % Was the standard library directory set on the command line?
@@ -2221,7 +2221,7 @@ handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
     %   maybe_stdlib_grades
     %
 :- pred handle_libgrades(io.text_output_stream::in, globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 handle_libgrades(ProgressStream, !Globals, !Specs, !IO) :-
     globals.get_maybe_stdlib_grades(!.Globals, MaybeStdLibGrades0),
@@ -3108,7 +3108,7 @@ handle_colors(!Globals) :-
     %
 :- pred handle_non_tail_rec_warnings(globals::in, opt_tuple::in,
     maybe_opt_mlds_tailcalls::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 handle_non_tail_rec_warnings(Globals, OptTuple0, OT_OptMLDSTailCalls,
         !Specs) :-
@@ -3366,7 +3366,7 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
     ).
 
 :- pred disable_smart_recompilation(string::in, globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 disable_smart_recompilation(OptionDescr, !Globals, !Specs, !IO) :-
     io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),

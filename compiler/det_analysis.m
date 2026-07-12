@@ -66,13 +66,13 @@
     % declarations, and determinism checking for all other predicates.
     %
 :- pred determinism_pass(io.text_output_stream::in,
-    list(error_spec)::out, module_info::in, module_info::out) is det.
+    list(diag_spec)::out, module_info::in, module_info::out) is det.
 
     % Check the determinism of a single procedure. Works only if the
     % determinisms of the procedures it calls have already been inferred.
     %
 :- pred determinism_check_proc(io.text_output_stream::in,
-    pred_id::in, proc_id::in, list(error_spec)::out,
+    pred_id::in, proc_id::in, list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
     % Infer the determinism of a procedure.
@@ -183,7 +183,7 @@ determinism_check_proc(ProgressStream, PredId, ProcId, !:Specs, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred determinism_inference_to_fixpoint(io.text_output_stream::in, bool::in,
-    list(pred_proc_id)::in, list(error_spec)::out,
+    list(pred_proc_id)::in, list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
 determinism_inference_to_fixpoint(ProgressStream, Debug, PredProcIds, Specs,
@@ -218,7 +218,7 @@ determinism_inference_to_fixpoint(ProgressStream, Debug, PredProcIds, Specs,
     ).
 
 :- pred determinism_inference_one_pass(io.text_output_stream::in, bool::in,
-    list(pred_proc_id)::in, list(error_spec)::in, list(error_spec)::out,
+    list(pred_proc_id)::in, list(diag_spec)::in, list(diag_spec)::out,
     maybe_changed::in, maybe_changed::out,
     module_info::in, module_info::out) is det.
 
@@ -232,7 +232,7 @@ determinism_inference_one_pass(ProgressStream, Debug,
 
 :- pred determinism_final_pass(io.text_output_stream::in, bool::in,
     list(pred_proc_id)::in, list(pred_proc_id)::in, list(pred_proc_id)::in,
-    list(error_spec)::out, module_info::in, module_info::out) is det.
+    list(diag_spec)::out, module_info::in, module_info::out) is det.
 
 determinism_final_pass(ProgressStream, Debug,
         DeclaredProcs, UndeclaredProcs, ImportedProcs, !:Specs, !ModuleInfo) :-
@@ -255,7 +255,7 @@ det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId, !ModuleInfo) :-
         [], _Specs, unchanged, _, !ModuleInfo).
 
 :- pred det_infer_proc(io.text_output_stream::in, bool::in, pred_proc_id::in,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     maybe_changed::in, maybe_changed::out,
     module_info::in, module_info::out) is det.
 
@@ -307,7 +307,7 @@ det_infer_proc(ProgressStream, Debug, PredProcId,
     det_infer_proc_goal(InstMap0, SolnContext, InferDetism,
         Goal0, Goal, DetInfo0, DetInfo),
     det_info_get_module_info(DetInfo, !:ModuleInfo),
-    det_info_get_error_specs(DetInfo, !:Specs),
+    det_info_get_diag_specs(DetInfo, !:Specs),
 
     % Take the worst of the old and inferred detisms. This is needed to prevent
     % loops on p :- not(p), at least if the initial assumed detism is det.

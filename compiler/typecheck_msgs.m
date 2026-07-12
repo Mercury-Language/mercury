@@ -19,7 +19,7 @@
 :- import_module list.
 :- import_module set_tree234.
 
-:- func typecheck_report_max_iterations_exceeded(int) = error_spec.
+:- func typecheck_report_max_iterations_exceeded(int) = diag_spec.
 
     % Construct the inferred `pred' or `func' declarations for a list of
     % predicates. Don't construct declarations for the inferred types
@@ -27,7 +27,7 @@
     %
 :- pred construct_type_inference_messages(module_info::in,
     set_tree234(pred_id)::in, list(pred_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -88,7 +88,7 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
     % for a single predicate.
     %
 :- func construct_type_inference_message(module_info, pred_id, pred_info)
-    = error_spec.
+    = diag_spec.
 
 construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
     PredName = pred_info_name(PredInfo),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -927,7 +927,7 @@ typecheck_arg_vector(ArgVectorKind, Context, Vars, Types,
     prog_context::in, arg_vector_kind::in, int::in,
     list(prog_var)::in, list(mer_type)::in,
     type_assign_set::in, type_assign_set::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     maybe(list(arg_vector_type_error))::in,
     maybe(list(arg_vector_type_error))::out) is det.
 
@@ -951,7 +951,7 @@ typecheck_vars_have_types_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
 :- pred typecheck_var_has_type_in_arg_vector(typecheck_info::in,
     prog_context::in, arg_vector_kind::in, int::in,
     prog_var::in, mer_type::in, type_assign_set::in, type_assign_set::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     maybe(list(arg_vector_type_error))::in,
     maybe(list(arg_vector_type_error))::out) is det.
 

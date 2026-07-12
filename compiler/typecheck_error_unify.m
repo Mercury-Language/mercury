@@ -30,19 +30,19 @@
 %---------------------------------------------------------------------------%
 
 :- func report_error_unify_var_var(typecheck_info, unify_context, prog_context,
-    prog_var, prog_var, type_assign_set) = error_spec.
+    prog_var, prog_var, type_assign_set) = diag_spec.
 
 :- func report_error_unify_var_lambda(typecheck_info, unify_context,
     prog_context, pred_or_func, prog_var, list(prog_var), type_assign_set)
-    = error_spec.
+    = diag_spec.
 
 :- func report_error_unify_var_functor_result(typecheck_info,
     unify_context, prog_context, prog_var, list(cons_type_info), cons_id,
-    int, type_assign_set) = error_spec.
+    int, type_assign_set) = diag_spec.
 
 :- func report_error_unify_var_functor_args(typecheck_info,
     unify_context, prog_context, prog_var, list(cons_type_info), cons_id,
-    list(prog_var), args_type_assign_set) = error_spec.
+    list(prog_var), args_type_assign_set) = diag_spec.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(ContextPieces), always(MainPieces), VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 
@@ -181,7 +181,7 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(ContextPieces), always(MainPieces), VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 
@@ -280,7 +280,7 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
     AlwaysPieces = ContextPieces ++ MainPieces ++
         NoSuffixIntegerPieces ++ InvisIntPieces,
     Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 
@@ -422,7 +422,7 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
     AlwaysPieces = ContextPieces ++ VarAndTermPieces ++ ArgErrorPieces ++
         InvisIntTypePieces,
     Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
     --->    mismatch_info(

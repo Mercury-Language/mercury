@@ -11,7 +11,7 @@
 % Main author: zs.
 %
 % This module contains utility predicates and functions operating on
-% error_specs.
+% diag_specs.
 %
 %---------------------------------------------------------------------------%
 
@@ -30,10 +30,10 @@
 %---------------------------------------------------------------------------%
 
     % Would trying to print the given spec result in any output?
-    % The answer can be "no" if all parts of the error_spec are
+    % The answer can be "no" if all parts of the diag_spec are
     % under a condition that happens to be false.
     %
-:- pred does_spec_print_anything(globals::in, error_spec::in) is semidet.
+:- pred does_spec_print_anything(globals::in, diag_spec::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -42,64 +42,64 @@
 :- func worst_severity(actual_severity, actual_severity)
     = actual_severity.
 
-    % Compute the actual severity of an error_spec
+    % Compute the actual severity of an diag_spec
     % (if it actually prints anything).
     %
-:- func actual_spec_severity(globals, error_spec) = maybe(actual_severity).
-:- func actual_spec_severity_opt_table(option_table, error_spec) =
+:- func actual_spec_severity(globals, diag_spec) = maybe(actual_severity).
+:- func actual_spec_severity_opt_table(option_table, diag_spec) =
     maybe(actual_severity).
 :- pred severity_to_maybe_actual_severity(option_table::in,
     spec_severity::in, maybe(actual_severity)::out) is det.
 
-    % Succeeds if and only if the given error_spec has a severity,
+    % Succeeds if and only if the given diag_spec has a severity,
     % and it is severity_error.
     %
-:- pred actual_spec_severity_is_error(globals::in, error_spec::in) is semidet.
+:- pred actual_spec_severity_is_error(globals::in, diag_spec::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
     % Compute the worst actual severity (if any) occurring in a list of
-    % error_specs.
+    % diag_specs.
     %
-:- func worst_severity_in_specs(globals, list(error_spec))
+:- func worst_severity_in_specs(globals, list(diag_spec))
     = maybe(actual_severity).
-:- func worst_severity_in_specs_opt_table(option_table, list(error_spec))
+:- func worst_severity_in_specs_opt_table(option_table, list(diag_spec))
     = maybe(actual_severity).
 
-    % Return `yes' if the given list contains error_specs whose actual severity
+    % Return `yes' if the given list contains diag_specs whose actual severity
     % is actual_severity_error.
     %
-:- func contains_errors(globals, list(error_spec)) = bool.
-:- func contains_errors_option_table(option_table, list(error_spec)) = bool.
+:- func contains_errors(globals, list(diag_spec)) = bool.
+:- func contains_errors_option_table(option_table, list(diag_spec)) = bool.
 
-    % Return `yes' if the given list contains error_specs whose actual severity
+    % Return `yes' if the given list contains diag_specs whose actual severity
     % is actual_severity_error or actual_severity_warning.
     %
-:- func contains_errors_and_or_warnings(globals, list(error_spec)) = bool.
+:- func contains_errors_and_or_warnings(globals, list(diag_spec)) = bool.
 :- func contains_errors_and_or_warnings_opt_table(option_table,
-    list(error_spec)) = bool.
+    list(diag_spec)) = bool.
 
     % If --halt-at-warn is not set, then return `yes' if the given list
-    % contains error_specs whose actual severity is actual_severity_error.
+    % contains diag_specs whose actual severity is actual_severity_error.
     %
     % If --halt-at-warn is set, then return `yes' if the given list
-    % contains error_specs whose actual severity is either
+    % contains diag_specs whose actual severity is either
     % actual_severity_error or actual_severity_warning.
     %
 :- func contains_errors_or_warnings_treated_as_errors(globals,
-    list(error_spec)) = bool.
+    list(diag_spec)) = bool.
 :- func contains_errors_or_warnings_treated_as_errors_opt_table(option_table,
-    list(error_spec)) = bool.
+    list(diag_spec)) = bool.
 
 %---------------------------------------------------------------------------%
 
     % Sometimes we want to both
     %
-    % - print an error_spec just after it is generated, and
+    % - print an diag_spec just after it is generated, and
     % - also return it to inform decisions about the presence of errors.
     %
     % To prevent the caller from writing out a duplicate copy of an
-    % error_spec, we can move it to the already_written field. This
+    % diag_spec, we can move it to the already_written field. This
     %
     % - preserves its severity (for decisions),
     % - preserves its text (which may be helpful when debugging
@@ -108,16 +108,16 @@
     %
 :- type maybe_written_specs
     --->    maybe_written_specs(
-                to_be_written       :: list(error_spec),
-                already_written     :: list(error_spec)
+                to_be_written       :: list(diag_spec),
+                already_written     :: list(diag_spec)
             ).
 
 :- func init_maybe_written_specs = maybe_written_specs.
 
-:- pred add_to_be_written_specs(list(error_spec)::in,
+:- pred add_to_be_written_specs(list(diag_spec)::in,
     maybe_written_specs::in, maybe_written_specs::out) is det.
 
-:- func maybe_written_specs_to_specs(maybe_written_specs) = list(error_spec).
+:- func maybe_written_specs_to_specs(maybe_written_specs) = list(diag_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -139,7 +139,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % Delete all the given error_specs, which are supposed to have been
+    % Delete all the given diag_specs, which are supposed to have been
     % gathered during the process that generates the contents of an interface
     % file, if halt_at_invalid_interface is not set.
     %
@@ -147,24 +147,24 @@
     % are false.
     %
 :- pred filter_interface_generation_specs(globals::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% The error_spec_accumulator type can be used to accumulate errors for
-% multiple modes of a predicate. accumulate_error_specs_for_proc will
+% The diag_spec_accumulator type can be used to accumulate errors for
+% multiple modes of a predicate. accumulate_diag_specs_for_proc will
 % eliminate warnings that should only be reported if they occur in every mode,
 % but don't occur in every mode.
 
-:- type error_spec_accumulator.
+:- type diag_spec_accumulator.
 
-:- func init_error_spec_accumulator = error_spec_accumulator.
+:- func init_diag_spec_accumulator = diag_spec_accumulator.
 
-:- pred accumulate_error_specs_for_proc(list(error_spec)::in,
-    error_spec_accumulator::in, error_spec_accumulator::out) is det.
+:- pred accumulate_diag_specs_for_proc(list(diag_spec)::in,
+    diag_spec_accumulator::in, diag_spec_accumulator::out) is det.
 
-:- func error_spec_accumulator_to_list(error_spec_accumulator) =
-    list(error_spec).
+:- func diag_spec_accumulator_to_list(diag_spec_accumulator) =
+    list(diag_spec).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -184,7 +184,7 @@
 does_spec_print_anything(_Globals, Spec) :-
     does_spec_print_anything_2(Spec) = yes.
 
-:- func does_spec_print_anything_2(error_spec) = bool.
+:- func does_spec_print_anything_2(diag_spec) = bool.
 
 does_spec_print_anything_2(Spec) = Prints :-
     (
@@ -193,7 +193,7 @@ does_spec_print_anything_2(Spec) = Prints :-
         ),
         Prints = yes
     ;
-        Spec = error_spec(_, _, _, Msgs),
+        Spec = diag_spec(_, _, _, Msgs),
         PrintsList = list.map(does_msg_print_anything, Msgs),
         bool.or_list(PrintsList, Prints)
     ).
@@ -250,7 +250,7 @@ actual_spec_severity(Globals, Spec) = MaybeSeverity :-
     MaybeSeverity = actual_spec_severity_opt_table(OptionTable, Spec).
 
 actual_spec_severity_opt_table(OptionTable, Spec) = MaybeActualSeverity :-
-    ( Spec = error_spec(_, Severity, _, _)
+    ( Spec = diag_spec(_, Severity, _, _)
     ; Spec = spec(_, Severity, _, _, _)
     ; Spec = no_ctxt_spec(_, Severity, _, _)
     ),
@@ -325,7 +325,7 @@ worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
 worst_severity_in_specs_opt_table(OptionTable, Specs) = MaybeWorst :-
     worst_severity_in_specs_loop(OptionTable, Specs, no, MaybeWorst).
 
-:- pred worst_severity_in_specs_loop(option_table::in, list(error_spec)::in,
+:- pred worst_severity_in_specs_loop(option_table::in, list(diag_spec)::in,
     maybe(actual_severity)::in, maybe(actual_severity)::out) is det.
 
 worst_severity_in_specs_loop(_OptionTable, [], !MaybeWorst).
@@ -498,11 +498,11 @@ filter_interface_generation_specs(Globals, Specs, SpecsToPrint) :-
 
 %---------------------------------------------------------------------------%
 
-:- type error_spec_accumulator == maybe(pair(set(error_spec))).
+:- type diag_spec_accumulator == maybe(pair(set(diag_spec))).
 
-init_error_spec_accumulator = no.
+init_diag_spec_accumulator = no.
 
-accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
+accumulate_diag_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
     list.filter(
         ( pred(Spec::in) is semidet :-
             Phase = project_spec_phase(Spec),
@@ -521,19 +521,19 @@ accumulate_error_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
         !:MaybeSpecs = yes(ProcAnyModeSpecSet - ProcAllModeSpecSet)
     ).
 
-:- func project_spec_phase(error_spec) = spec_phase.
+:- func project_spec_phase(diag_spec) = spec_phase.
 
 project_spec_phase(Spec) = Phase :-
     (
-        Spec = error_spec(_, _, Phase, _)
+        Spec = diag_spec(_, _, Phase, _)
     ;
         Spec = spec(_, _, Phase, _, _)
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
     ).
 
-error_spec_accumulator_to_list(no) = [].
-error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
+diag_spec_accumulator_to_list(no) = [].
+diag_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
     set.to_sorted_list(set.union(AnyModeSpecSet, AllModeSpecSet)).
 
 :- func get_maybe_mode_report_control(spec_phase) =

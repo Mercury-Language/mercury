@@ -60,7 +60,7 @@
 
 :- pred unused_args_process_module(maybe_gather_pragma_unused_args::in,
     maybe_record_analysis_unused_args::in,
-    list(error_spec)::out, set(gen_pragma_unused_args_info)::out,
+    list(diag_spec)::out, set(gen_pragma_unused_args_info)::out,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%

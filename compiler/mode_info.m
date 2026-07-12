@@ -1300,7 +1300,7 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
             module_info_get_name(ModuleInfo, ModuleName),
             get_debug_output_stream(Globals0, ModuleName, DebugStream, !IO),
             list.length(Errors, ErrorNum),
-            io.format(DebugStream, "\nAdding error_spec %d\n",
+            io.format(DebugStream, "\nAdding diag_spec %d\n",
                 [i(ErrorNum)], !IO),
             Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             globals.set_option(print_error_spec_id, bool(yes),

@@ -61,7 +61,7 @@
 :- pred create_type_ctor_checked_map(maybe_insist_on_defn::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
     type_ctor_foreign_enum_map::in, type_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
     %   EnumContext, !Specs)
@@ -73,21 +73,21 @@
     %
 :- pred report_not_enum_type_du(for_fe_or_fee::in, type_ctor::in,
     prog_context::in, list(sym_name_arity)::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred create_inst_ctor_checked_map(maybe_insist_on_defn::in,
     inst_ctor_defn_map::in, inst_ctor_defn_map::in,
     inst_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred create_mode_ctor_checked_map(maybe_insist_on_defn::in,
     mode_ctor_defn_map::in, mode_ctor_defn_map::in,
     mode_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -145,7 +145,7 @@ create_type_ctor_checked_map(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
     type_ctor_foreign_enum_map::in, type_ctor::in,
     type_ctor_checked_map::in, type_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_type_ctor_defns(InsistOnDefn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
@@ -706,7 +706,7 @@ get_maybe_context(yes(TypeDefnInfo)) = yes(TypeDefnInfo ^ td_context).
     c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
     std_du_type_status::out, module_section::out, c_j_cs_maybe_defn::out,
     list(item_type_defn_info)::out, list(item_type_defn_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
         IntAbstractStdMaybeDefn, IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
@@ -785,7 +785,7 @@ decide_subtype_status(_TypeCtor, SubDefn, SubSection, IntAbstractStdMaybeDefn,
     c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
     std_abs_type_status::out,
     item_type_defn_info_abstract::out, c_j_cs_maybe_defn::out,
-    src_defns_std::out, list(error_spec)::in, list(error_spec)::out) is det.
+    src_defns_std::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_only_foreign_type_section(TypeCtor,
         IntAbsSolverMaybeDefn, ImpAbsSolverMaybeDefn,
@@ -883,7 +883,7 @@ decide_only_foreign_type_section(TypeCtor,
     c_j_cs_maybe_enum::in, c_j_cs_enums::in,
     c_j_cs_maybe_defn_or_enum::out,
     list(item_type_defn_info_foreign)::out, list(item_foreign_enum_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
         MaybeDefnCJCs, MaybeEnumCJCs, LeftOverEnumsCJCs,
@@ -925,7 +925,7 @@ decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
     maybe(foreign_type_or_enum)::out,
     list(item_type_defn_info_foreign)::out,
     list(item_foreign_enum_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
         MaybeDefn, MaybeEnum, LeftOverEnums, MaybeDefnOrEnum,
@@ -970,7 +970,7 @@ decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
 
 :- pred pick_first_error_free_enum_if_any(
     list(maybe1(checked_foreign_enum))::in,
-    maybe(checked_foreign_enum)::out, list(error_spec)::out) is det.
+    maybe(checked_foreign_enum)::out, list(diag_spec)::out) is det.
 
 pick_first_error_free_enum_if_any([], no, []).
 pick_first_error_free_enum_if_any([HeadMaybeCFE | TailMaybeCFEs],
@@ -1076,13 +1076,13 @@ report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
             pragma_decl(PragmaName), words("declarations for it.")]) ++ [nl],
     TypePieces = [words("That Mercury definition is here."), nl] ++
         NonEnumCtorPieces,
-    Spec = error_spec($pred, severity_error, phase_pt2h,
+    Spec = diag_spec($pred, severity_error, phase_pt2h,
         [msg(EnumContext, EnumPieces), msg(TypeDefnContext, TypePieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred subtype_report_any_foreign_type(type_ctor::in,
     item_type_defn_info_sub::in, item_type_defn_info_foreign::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
     ForeignPieces = [words("Error:")] ++
@@ -1091,14 +1091,14 @@ subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
         color_as_incorrect([words("there must not be any"),
         pragma_decl("foreign_type"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(Foreign ^ td_context, ForeignPieces),
         msg(SubTypeDefn ^ td_context, SubTypePieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred subtype_report_any_foreign_enum(type_ctor::in,
     item_type_defn_info_sub::in, item_foreign_enum_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
     EnumPieces = [words("Error:")] ++
@@ -1107,7 +1107,7 @@ subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
         color_as_incorrect([words("there must not be any"),
         pragma_decl("foreign_enum"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, EnumPieces),
         msg(SubTypeDefn ^ td_context, SubTypePieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1115,7 +1115,7 @@ subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
 :- pred report_mer_foreign_section_mismatch(type_ctor::in,
     string::in, string::in,
     item_type_defn_info_general(T)::in, item_type_defn_info_foreign::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
         ForeignDefn, !Specs) :-
@@ -1129,14 +1129,14 @@ report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
         [nl],
     DuPieces = [words("That Mercury"), words(DeclOrDefn),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(ForeignDefn ^ td_context, ForeignPieces),
         msg(MerDefn ^ td_context, DuPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_foreign_type_without_declaration(type_ctor::in,
     item_type_defn_info_foreign::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
     Pieces = [words("Error: a"),
@@ -1151,7 +1151,7 @@ report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
 
 :- pred foreign_int_report_any_foreign_defn_in_imp(type_ctor::in,
     prog_context::in, item_type_defn_info_foreign::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
         ImpForeignDefn, !Specs) :-
@@ -1163,7 +1163,7 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
         [nl],
     IntPieces = [words("That foreign definition in the interface"),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(ImpForeignDefn ^ td_context, ImpPieces),
         msg(IntForeignContext, IntPieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1174,7 +1174,7 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
     maybe(item_type_defn_info_abstract)::out,
     maybe(item_type_defn_info_solver)::in,
     maybe(item_type_defn_info_solver)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
         IntMaybeAbstractDefn0, IntMaybeAbstractDefn,
@@ -1218,7 +1218,7 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
 
 :- pred report_any_redundant_abstract_type_in_imp(type_ctor::in, string::in,
     maybe(item_type_defn_info_abstract)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
         MaybeImpAbstractDefn, !Specs) :-
@@ -1240,7 +1240,7 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
 :- pred report_any_incompatible_type_decl_or_defn(type_ctor::in,
     prog_context::in, string::in, string::in, string::in,
     string::in, maybe(prog_context)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
         SectionDeclOrDefn, DeclOrDefn, MaybeDefnContext, !Specs) :-
@@ -1255,7 +1255,7 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That"), words(SectionDeclOrDefn),
             words("is here."), nl],
-        Spec = error_spec($pred, severity_error, phase_tim_check_invalid_type,
+        Spec = diag_spec($pred, severity_error, phase_tim_check_invalid_type,
             [msg(DefnContext, MainPieces),
             msg(UsedContext, UsedPieces)]),
         !:Specs = [Spec | !.Specs]
@@ -1263,7 +1263,7 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
 
 :- pred report_incompatible_foreign_enum(type_ctor::in, prog_context::in,
     string::in, string::in, item_foreign_enum_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         !Specs) :-
@@ -1274,14 +1274,14 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         [words("with the"), words(Kind), words("definition in the"),
         words(Section), words("section."), nl],
     UsedPieces = [words("That definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, MainPieces),
         msg(UsedContext, UsedPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_foreign_enum_for_undefined_type(type_ctor::in, string::in,
     item_foreign_enum_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
         !Specs) :-
@@ -1295,7 +1295,7 @@ report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
 
 :- pred maybe_report_declared_but_undefined_type(maybe_insist_on_defn::in,
     type_ctor::in, item_type_defn_info_abstract::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
         !Specs) :-
@@ -1335,7 +1335,7 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
     %
 :- pred check_any_type_ctor_defns_for_duplicates(type_ctor_defn_map::in,
     type_ctor::in, type_ctor_maybe_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
         MaybeDefn, !Specs) :-
@@ -1371,7 +1371,7 @@ check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
 :- pred at_most_one_type_decl_or_defn(decl_or_defn::in, string::in,
     type_ctor::in, list(item_type_defn_info_general(T))::in,
     maybe(item_type_defn_info_general(T))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         TypeDefns, MaybeTypeDefn, !Specs) :-
@@ -1398,7 +1398,7 @@ at_most_one_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
 
 :- pred at_most_one_foreign_type_for_all_langs(type_ctor::in,
     c_j_cs_defns::in, c_j_cs_maybe_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCs, MaybeDefnCJCs,
         !Specs) :-
@@ -1414,7 +1414,7 @@ at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCs, MaybeDefnCJCs,
 :- pred check_any_type_ctor_enums_for_duplicates(
     type_ctor_foreign_enum_map::in, type_ctor::in,
     c_j_cs_maybe_enum::out, c_j_cs_enums::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
         MaybeEnumCJCs, LeftOverEnumCJCse, !Specs) :-
@@ -1428,7 +1428,7 @@ check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
 
 :- pred at_most_one_foreign_enum_for_all_langs(type_ctor::in,
     c_j_cs_enums::in, c_j_cs_maybe_enum::out, c_j_cs_enums::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
         MaybeEnumCJCs, LeftOverEnumsCJCs, !Specs) :-
@@ -1446,7 +1446,7 @@ at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
 :- pred report_duplicate_type_decl_or_defn(decl_or_defn::in, string::in,
     type_ctor::in,
     item_type_defn_info_general(T1)::in, item_type_defn_info_general(T2)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         OrigTypeDefn, TypeDefn, !Specs) :-
@@ -1468,7 +1468,7 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original"), words(DeclOrDefnWord),
         words("is here."), nl],
-    Spec = error_spec($pred, Severity, phase_tim_check,
+    Spec = diag_spec($pred, Severity, phase_tim_check,
         [msg(TypeDefn ^ td_context, MainPieces),
         msg(OrigTypeDefn ^ td_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1476,7 +1476,7 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
     list(item_type_defn_info_foreign)::in,
     maybe(item_type_defn_info_foreign)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
         MaybeTypeDefn, !Specs) :-
@@ -1504,7 +1504,7 @@ at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
 :- pred at_most_one_foreign_enum_for_lang(type_ctor::in, foreign_language::in,
     list(item_foreign_enum_info)::in,
     maybe(item_foreign_enum_info)::out, list(item_foreign_enum_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_foreign_enum_for_lang(TypeCtor, Lang, ForeignEnums,
         MaybeForeignEnum, LeftOverForeignEnums, !Specs) :-
@@ -1558,7 +1558,7 @@ get_type_defn_info_context(TypeDefn) = TypeDefn ^ td_context.
 
 :- pred report_duplicate_foreign_defn(string::in,
     type_ctor::in, foreign_language::in, prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         LeastContext, Context, !Specs) :-
@@ -1568,7 +1568,7 @@ report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         [words("for")] ++
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
         msg(LeastContext, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1697,7 +1697,7 @@ add_data_ctor_arg_to_field_name_map(TypeCtor, CtorName, CtorArg,
 
 :- pred report_any_duplicate_field_names(field_name_of_type_ctor::in,
     one_or_more(field_name_locn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !Specs) :-
     FNLocns = one_or_more_to_list(OoMFNLocns),
@@ -1719,7 +1719,7 @@ report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !Specs) :-
 
 :- pred report_duplicate_field_name(field_name_of_type_ctor::in,
     field_name_locn::in, field_name_locn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
     FieldNameTypeCtor = field_name_of_type_ctor(FieldName, TypeCtor),
@@ -1741,7 +1741,7 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
         unqual_type_ctor(TypeCtor), suffix("."), nl],
     FirstOccurrencePieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
         msg(FirstContext, FirstOccurrencePieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1765,7 +1765,7 @@ create_inst_ctor_checked_map(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap,
 :- pred check_inst_ctor_defns(maybe_insist_on_defn::in,
     inst_ctor_defn_map::in, inst_ctor_defn_map::in, inst_ctor::in,
     inst_ctor_checked_map::in, inst_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
         !CheckedMap, !Specs) :-
@@ -1864,7 +1864,7 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
 :- pred check_any_inst_ctor_defns_for_duplicates(inst_ctor_defn_map::in,
     inst_ctor::in, maybe(item_inst_defn_info_abstract)::out,
     maybe(item_inst_defn_info_eqv)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_any_inst_ctor_defns_for_duplicates(InstDefnMap, InstCtor,
         AbstractMaybeDefn, EqvMaybeDefn, !Specs) :-
@@ -1882,7 +1882,7 @@ check_any_inst_ctor_defns_for_duplicates(InstDefnMap, InstCtor,
 :- pred at_most_one_inst_defn(string::in, inst_ctor::in,
     list(item_inst_defn_info_general(T))::in,
     maybe(item_inst_defn_info_general(T))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !Specs) :-
     (
@@ -1907,7 +1907,7 @@ at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !Specs) :-
 
 :- pred report_duplicate_inst_defn(string::in, inst_ctor::in,
     item_inst_defn_info_general(T1)::in, item_inst_defn_info_general(T2)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
     MainPieces = [words("Error")] ++
@@ -1916,7 +1916,7 @@ report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
         [words("for")] ++
         color_as_subject([unqual_inst_ctor(InstCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(InstDefn ^ id_context, MainPieces),
         msg(OrigInstDefn ^ id_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
@@ -1924,7 +1924,7 @@ report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
 :- pred report_any_redundant_abstract_inst_in_imp(inst_ctor::in,
     string::in, string::in,
     maybe(item_inst_defn_info_abstract)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
         MaybeImpAbstractDefn, !Specs) :-
@@ -1945,7 +1945,7 @@ report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
 
 :- pred report_declared_but_undefined_inst(inst_ctor::in,
     item_inst_defn_info_abstract::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_declared_but_undefined_inst(InstCtor, AbsInstDefn, !Specs) :-
     Pieces = [words("Error: the inst")] ++
@@ -1975,7 +1975,7 @@ create_mode_ctor_checked_map(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap,
 :- pred check_mode_ctor_defns(maybe_insist_on_defn::in,
     mode_ctor_defn_map::in, mode_ctor_defn_map::in, mode_ctor::in,
     mode_ctor_checked_map::in, mode_ctor_checked_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
         !CheckedMap, !Specs) :-
@@ -2074,7 +2074,7 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
 :- pred check_any_mode_ctor_defns_for_duplicates(mode_ctor_defn_map::in,
     mode_ctor::in, maybe(item_mode_defn_info_abstract)::out,
     maybe(item_mode_defn_info_eqv)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_any_mode_ctor_defns_for_duplicates(ModeDefnMap, ModeCtor,
         AbstractMaybeDefn, EqvMaybeDefn, !Specs) :-
@@ -2092,7 +2092,7 @@ check_any_mode_ctor_defns_for_duplicates(ModeDefnMap, ModeCtor,
 :- pred at_most_one_mode_defn(string::in, mode_ctor::in,
     list(item_mode_defn_info_general(T))::in,
     maybe(item_mode_defn_info_general(T))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !Specs) :-
     (
@@ -2117,7 +2117,7 @@ at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !Specs) :-
 
 :- pred report_duplicate_mode_defn(string::in, mode_ctor::in,
     item_mode_defn_info_general(T1)::in, item_mode_defn_info_general(T2)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
     MainPieces = [words("Error:")] ++
@@ -2126,7 +2126,7 @@ report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
         [words("for")] ++
         color_as_subject([unqual_mode_ctor(ModeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_tim_check,
+    Spec = diag_spec($pred, severity_error, phase_tim_check,
         [msg(ModeDefn ^ md_context, MainPieces),
         msg(OrigModeDefn ^ md_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
@@ -2134,7 +2134,7 @@ report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
 :- pred report_any_redundant_abstract_mode_in_imp(mode_ctor::in,
     string::in, string::in,
     maybe(item_mode_defn_info_abstract)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
         MaybeImpAbstractDefn, !Specs) :-
@@ -2155,7 +2155,7 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
 
 :- pred report_declared_but_undefined_mode(mode_ctor::in,
     item_mode_defn_info_abstract::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_declared_but_undefined_mode(ModeCtor, AbsModeDefn, !Specs) :-
     Pieces = [words("Error: the mode")] ++

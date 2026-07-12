@@ -102,7 +102,7 @@
 :- import_module list.
 
 :- pred decide_type_repns(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -219,7 +219,7 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     assoc_list(type_ctor, hlds_type_defn)::in,
     assoc_list(type_ctor, hlds_type_defn)::out,
     no_tag_type_table::out, set(type_ctor)::out, set(type_ctor)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
         NoTagTypeMap, UnRepnTypeCtors, BadRepnTypeCtors, !Specs) :-
@@ -260,7 +260,7 @@ decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
     no_tag_type_table::in, no_tag_type_table::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
         TypeCtorTypeDefn0, TypeCtorTypeDefn,
@@ -441,7 +441,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
 :- type maybe_du_type_repn
     --->    have_du_type_repn(du_type_repn)
     ;       have_foreign_type_repn(foreign_type_body)
-    ;       have_errors(list(error_spec)).
+    ;       have_errors(list(diag_spec)).
 
 %---------------------%
 
@@ -907,7 +907,7 @@ check_and_record_non_sub_du_more_functors(RepnTarget, TypeCtor, Context,
 
 :- pred check_non_sub_gen_du_functor(type_ctor::in,
     pair(constructor, gen_du_functor_repn)::in, uint32::in, uint32::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_non_sub_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
         !ExpectedOrdinal, !Specs) :-
@@ -924,7 +924,7 @@ check_non_sub_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
     !:ExpectedOrdinal = !.ExpectedOrdinal + 1u32.
 
 :- pred check_non_sub_du_functor(type_ctor::in, constructor::in, string::in,
-    int::in, uint32::in, list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, uint32::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_non_sub_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity,
         ExpectedOrdinal, !Specs) :-
@@ -1722,7 +1722,7 @@ compare_old_new_notag_type_ctor(Stream, OldNoTagTypeTable, NewNoTagTypeTable,
     type_repn_decision_data::in, type_table::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     assoc_list(type_ctor, hlds_type_defn)::out, no_tag_type_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_type_repns_old(ModuleInfo, TypeRepnDec, TypeTable0,
         TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs) :-
@@ -1813,7 +1813,7 @@ add_special_pred_decl_defns_for_types_maybe_lazily(
     assoc_list(type_ctor, hlds_type_defn)::out,
     component_type_map::in, component_type_map::out,
     no_tag_type_table::in, no_tag_type_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
         TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns, !SubTypeCtorsTypeDefns,
@@ -1937,7 +1937,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
     one_or_more(constructor)::in, {du_ctor_to_tag_map, foreign_language}::in,
     pair(type_ctor, hlds_type_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         BodyDu0, OoMCtors, ForeignEnums, TypeCtorTypeDefn, !Specs) :-
@@ -2013,7 +2013,7 @@ add_dummy_repn_to_foreign_enum_ctor_arg(ConsArg) = ConsArgRepn :-
     type_body_du::in, one_or_more(constructor)::in,
     pair(type_ctor, hlds_type_defn)::out,
     component_type_map::in, component_type_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         TypeCtor, TypeDefn0, BodyDu0, OoMCtors, TypeCtorTypeDefn,
@@ -2087,7 +2087,7 @@ assign_tags_to_enum_constants([Ctor | Ctors], [CtorRepn | CtorRepns],
     sym_name::in, constructor_arg::in, prog_context::in,
     pair(type_ctor, hlds_type_defn)::out,
     no_tag_type_table::in, no_tag_type_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_simple_type_non_sub_notag(_ModuleInfo, Params,
         TypeCtor, TypeDefn0, BodyDu0,
@@ -2201,7 +2201,7 @@ add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor, TypeDefn,
     type_ctor::in, foreign_type_body::in,
     maybe_require_foreign_type_for_target::in,
     component_type_map::in, component_type_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
         ForeignType, MaybeRequireForTarget, !ComponentTypeMap, !Specs) :-
@@ -2403,7 +2403,7 @@ maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor, TypeParams0,
 :- pred decide_if_complex_non_sub_du_type(module_info::in,
     decide_du_params::in, component_type_map::in,
     pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_if_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap,
         TypeCtorTypeDefn0, TypeCtorTypeDefn, !Specs) :-
@@ -2443,7 +2443,7 @@ decide_if_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap,
 :- pred decide_complex_non_sub_du_type(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, hlds_type_defn::in,
     list(constructor)::in, du_type_repn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
         TypeDefn0, Ctors, Repn, !Specs) :-
@@ -2461,7 +2461,7 @@ decide_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
 :- pred decide_complex_non_sub_du_type_single_ctor(module_info::in,
     decide_du_params::in, component_type_map::in,
     type_status::in, constructor::in, du_type_repn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_complex_non_sub_du_type_single_ctor(ModuleInfo, Params,
         ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs) :-
@@ -2512,7 +2512,7 @@ decide_complex_non_sub_du_type_single_ctor(ModuleInfo, Params,
 :- pred decide_complex_non_sub_du_type_general(module_info::in,
     decide_du_params::in, component_type_map::in, type_ctor::in,
     type_status::in, list(constructor)::in, du_type_repn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_complex_non_sub_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, Ctors, Repn, !Specs) :-
@@ -2702,7 +2702,7 @@ set_remote_args_sectag_size(SectagSize,
     decide_du_params::in, component_type_map::in, type_ctor::in,
     type_status::in, du_ctor_to_tag_map::in, int::in, constructor::in,
     constructor_repn::out, maybe_tagword_args::in, maybe_tagword_args::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_complex_non_sub_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, CtorTagMap, NumRemoteSectagBits,
@@ -2793,7 +2793,7 @@ decide_complex_non_sub_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
     maybe_cons_exist_constraints::in, sym_name::in, prog_context::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out,
     maybe_tagword_args::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 decide_complex_non_sub_du_ctor_remote_args(ModuleInfo, Params,
         ComponentTypeMap, TypeStatus, NumRemoteSectagBits, CtorTag,
@@ -4140,7 +4140,7 @@ is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
     % for it.
     %
 :- pred check_direct_arg_assertions(list(sym_name_arity)::in,
-    list(constructor)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(constructor)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
 check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
@@ -4207,7 +4207,7 @@ compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest) :-
 :- pred inform_about_any_suboptimal_packing(decide_du_params::in,
     sym_name::in, prog_context::in,
     maybe(int)::in, list(constructor_arg_repn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         MaybeSectagAsPseudoArg, CtorArgRepns, !Specs) :-

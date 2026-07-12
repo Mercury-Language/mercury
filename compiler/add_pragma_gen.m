@@ -25,19 +25,19 @@
 
 :- pred add_gen_pragma_unused_args(gen_pragma_unused_args_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_gen_pragma_exceptions(gen_pragma_exceptions_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_gen_pragma_trailing(gen_pragma_trailing_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_gen_pragma_mm_tabling(gen_pragma_mm_tabling_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -110,7 +110,7 @@
             % of read_module_error values, we used to not include these errors
             % in the set at all, which could lead to an empty set of
             % read_module_error values being paired with a nonempty list
-            % of severity_error error_specs.
+            % of severity_error diag_specs.
 
     % This type represents the set of errors that were encountered
     % during an attempt to read in a Mercury module's source file,
@@ -129,18 +129,18 @@
 :- type read_module_errors
     --->    read_module_errors(
                 % The fatal errors we have encountered, and their messages.
-                % All these error_specs should have severity_error.
+                % All these diag_specs should have severity_error.
                 rm_fatal_errors         :: set(fatal_read_module_error),
-                rm_fatal_error_specs    :: list(error_spec),
+                rm_fatal_diag_specs    :: list(diag_spec),
 
                 % The nonfatal errors we have encountered, and their messages.
-                % All these error_specs should have severity_error.
+                % All these diag_specs should have severity_error.
                 rm_nonfatal_errors      :: set(nonfatal_read_module_error),
-                rm_nonfatal_error_specs :: list(error_spec),
+                rm_nonfatal_diag_specs :: list(diag_spec),
 
                 % The warnings we have encountered. All these should have
                 % severity levels *below* severity_error.
-                rm_warning_specs        :: list(error_spec)
+                rm_warning_specs        :: list(diag_spec)
             ).
 
 %---------------------%
@@ -153,27 +153,27 @@
 
     % Add a fatal error, and its message.
     %
-:- pred add_fatal_error(fatal_read_module_error::in, list(error_spec)::in,
+:- pred add_fatal_error(fatal_read_module_error::in, list(diag_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
     % Add nonfatal errors, and their messages.
     %
 :- pred add_nonfatal_error(nonfatal_read_module_error::in,
-    error_spec::in,
+    diag_spec::in,
     read_module_errors::in, read_module_errors::out) is det.
 :- pred add_nonfatal_errors(nonfatal_read_module_error::in,
-    one_or_more(error_spec)::in,
+    one_or_more(diag_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
-    % If there are any error_specs in the input list,
+    % If there are any diag_specs in the input list,
     % record them as representing a not-elsewhere-classified nonfatal error.
     %
-:- pred add_any_nec_errors(list(error_spec)::in,
+:- pred add_any_nec_errors(list(diag_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
     % Add some warning messages.
     %
-:- pred add_warning(list(error_spec)::in,
+:- pred add_warning(list(diag_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
 %---------------------%
@@ -189,13 +189,13 @@
 
 %---------------------%
 
-    % Return all the error_specs in the argument, regardless of severity.
+    % Return all the diag_specs in the argument, regardless of severity.
     %
-:- func get_read_module_specs(read_module_errors) = list(error_spec).
+:- func get_read_module_specs(read_module_errors) = list(diag_spec).
 
 %---------------------%
 
-:- pred io_error_to_error_spec(spec_phase::in, string::in, error_spec::out,
+:- pred io_error_to_diag_spec(spec_phase::in, string::in, diag_spec::out,
     io::di, io::uo) is det.
 
 :- pred io_error_to_read_module_errors(fatal_read_module_error::in,
@@ -266,13 +266,13 @@ get_read_module_specs(Errors) = Specs :-
 
 %---------------------%
 
-io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO) :-
+io_error_to_diag_spec(Phase, ErrorMsg, Spec, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
     Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces).
 
 io_error_to_read_module_errors(FatalError, Phase, ErrorMsg, Errors, !IO) :-
-    io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO),
+    io_error_to_diag_spec(Phase, ErrorMsg, Spec, !IO),
     Errors0 = init_read_module_errors,
     add_fatal_error(FatalError, [Spec], Errors0, Errors).
 

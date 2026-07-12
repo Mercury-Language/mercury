@@ -322,7 +322,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
     % Check that the inst name is available to users.
     %
 :- pred check_user_inst_name(sym_name::in, term.context::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 check_user_inst_name(SymName, Context, NameSpecs) :-
     Name = unqualify_name(SymName),
@@ -343,7 +343,7 @@ check_user_inst_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
     %
 :- pred check_user_mode_name(sym_name::in, term.context::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 check_user_mode_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.

@@ -47,7 +47,7 @@
     need_qualifier::in, item_pred_decl_info::in,
     maybe(pair(pred_id, maybe(proc_id)))::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Is the mode declaration we are adding to the HLDS derived from
     % a combined predmode declaration?
@@ -60,7 +60,7 @@
 :- pred module_add_mode_decl(part_of_predmode::in, maybe_class_method::in,
     item_mercury_status::in, pred_status::in, item_mode_decl_info::in,
     pred_proc_id::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % report_mode_decl_after_predmode(PFNameArity, Context):
     %
@@ -74,7 +74,7 @@
     % to be the same inside class definitions as they are outside.
     %
 :- func report_mode_decl_after_predmode(pred_pf_name_arity, prog_context)
-    = error_spec.
+    = diag_spec.
 
     % Whenever there is a clause or mode declaration for an undeclared
     % predicate, we add an implicit declaration
@@ -86,7 +86,7 @@
     maybe_class_method::in, prog_context::in, pred_origin::in,
     list(format_piece)::in, pred_id::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_implicit_pred_decl(pred_or_func::in, module_name::in, string::in,
     pred_form_arity::in, pred_status::in, prog_context::in, pred_origin::in,
@@ -340,7 +340,7 @@ record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin, Context,
 
 :- pred check_for_modeless_predmode_decl(pred_status::in, pred_or_func::in,
     sym_name::in, list(mer_type)::in, maybe(determinism)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
         PredSymName, ArgTypes, MaybeDetism, Context, !Specs) :-
@@ -377,7 +377,7 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
     list(mer_type)::in, univ_exist_constraints::in, maybe_predmode_decl::in,
     purity::in, pred_markers::in, maybe(pred_id)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         PredModuleName, PredName, TVarSet, ExistQVars, Types, Constraints,
@@ -503,7 +503,7 @@ item_decl_section(ItemExport) = DeclSection :-
 
 :- pred maybe_report_any_unqualified_types(pred_status::in, sym_name::in,
     prog_context::in, list(mer_type)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_any_unqualified_types(PredStatus0, PredSymName, Context, Types,
         !Specs) :-
@@ -526,7 +526,7 @@ maybe_report_any_unqualified_types(PredStatus0, PredSymName, Context, Types,
     ).
 
 :- pred report_any_unqualified_types(sym_name::in, prog_context::in,
-    list(mer_type)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_type)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_unqualified_types(_PredSymName, _Context, [], !Specs).
 report_any_unqualified_types(PredSymName, Context, [Type | Types], !Specs) :-
@@ -534,7 +534,7 @@ report_any_unqualified_types(PredSymName, Context, [Type | Types], !Specs) :-
     report_any_unqualified_types(PredSymName, Context, Types, !Specs).
 
 :- pred report_any_unqualified_type(sym_name::in, prog_context::in,
-    mer_type::in, list(error_spec)::in, list(error_spec)::out) is det.
+    mer_type::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_unqualified_type(PredSymName, Context, Type, !Specs) :-
     (
@@ -825,7 +825,7 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
 :- pred module_do_add_mode(module_info::in, part_of_predmode::in,
     maybe_class_method::in, item_mercury_status::in, item_mode_decl_info::in,
     pred_info::in, pred_info::out, proc_id::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
         ItemMercuryStatus, ItemModeDecl, !PredInfo, ProcId, !Specs) :-
@@ -872,7 +872,7 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
 :- pred check_that_detism_is_declared(module_info::in, pred_info::in,
     maybe_class_method::in, pred_or_func::in, string::in, pred_form_arity::in,
     maybe(determinism)::in, prog_context::in, detism_decl::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_that_detism_is_declared(ModuleInfo, PredInfo, IsClassMethod, PredOrFunc,
         PredName, PredFormArity, MaybeDetism, Context, DetismDecl, !Specs) :-
@@ -908,7 +908,7 @@ check_that_detism_is_declared(ModuleInfo, PredInfo, IsClassMethod, PredOrFunc,
 
 :- pred check_for_mode_decl_in_wrong_section(decl_section::in, item_export::in,
     pred_or_func::in, string::in, pred_form_arity::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_mode_decl_in_wrong_section(PredDeclSection, ItemExport,
         PredOrFunc, PredName, PredFormArity, Context, !Specs) :-
@@ -943,7 +943,7 @@ decl_section_to_string(decl_implementation) = "implementation".
 
 :- pred check_for_mode_decl_after_predmode(maybe_predmode_decl::in,
     pred_or_func::in, string::in, pred_form_arity::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_mode_decl_after_predmode(PredIsPredMode, PredOrFunc, PredName,
         PredFormArity, Context, !Specs) :-
@@ -976,7 +976,7 @@ report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
 
 :- pred report_unspecified_det_for_method(pred_or_func::in, sym_name::in,
     pred_form_arity::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unspecified_det_for_method(PorF, SymName, PredFormArity, Context,
         !Specs) :-
@@ -993,7 +993,7 @@ report_unspecified_det_for_method(PorF, SymName, PredFormArity, Context,
 
 :- pred report_unspecified_det_for_exported(pred_or_func::in, sym_name::in,
     pred_form_arity::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unspecified_det_for_exported(PorF, SymName, PredFormArity, Context,
         !Specs) :-
@@ -1009,7 +1009,7 @@ report_unspecified_det_for_exported(PorF, SymName, PredFormArity, Context,
 
 :- pred maybe_report_unspecified_det_for_local(module_info::in,
     pred_or_func::in, sym_name::in, pred_form_arity::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_unspecified_det_for_local(ModuleInfo, PorF, SymName,
         PredFormArity, Context, !Specs) :-
@@ -1036,7 +1036,7 @@ maybe_report_unspecified_det_for_local(ModuleInfo, PorF, SymName,
         Msg = simple_msg(Context,
             [always(MainPieces),
             verbose_only(verbose_once, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
 

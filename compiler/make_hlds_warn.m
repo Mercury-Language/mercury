@@ -35,7 +35,7 @@
     %
 :- pred add_quant_warnings(module_info::in, pf_sym_name_arity::in,
     prog_varset::in, list(quant_warning)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -54,7 +54,7 @@
     %
 :- pred warn_singletons_in_clause_body(module_info::in, pf_sym_name_arity::in,
     prog_varset::in, hlds_goal::in, maybe_seen_quant::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -68,7 +68,7 @@
     %   disjunction has at most one call, and otherwise has only unifications.
     %
 :- pred check_promise_ex_decl(list(prog_var)::in, promise_type::in, goal::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -78,7 +78,7 @@
     %
 :- pred warn_suspicious_foreign_code(foreign_language::in,
     foreign_literal_or_include::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -124,7 +124,7 @@ add_quant_warnings(ModuleInfo, PfSymNameArity, VarSet, Warnings, !Specs) :-
     ).
 
 :- func quant_warning_to_spec(pf_sym_name_arity, prog_varset, quant_warning)
-    = error_spec.
+    = diag_spec.
 
 quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
     Warning = warn_overlap(Vars, Context),
@@ -275,7 +275,7 @@ warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
                 % All these fields are writeable.
 
                 % The warnings we have generated while checking.
-                wi_specs                :: list(error_spec),
+                wi_specs                :: list(diag_spec),
 
                 % The set of variables that occur singleton in the clause head.
                 wi_singleton_headvars   :: set_of_progvar,
@@ -290,7 +290,7 @@ warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
                 %
                 % It is possible for the clause head to occupy more than one
                 % line, and thus for different parts of it to have different
-                % contexts. Since we want to generate only a single error_spec,
+                % contexts. Since we want to generate only a single diag_spec,
                 % we arbitrarily pick the context of one of those variables.
                 wi_head_context         :: prog_context,
 
@@ -628,7 +628,7 @@ warn_singletons_in_scope(Params, Reason, SubGoal, GoalInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_warn_specs(list(error_spec)::in,
+:- pred add_warn_specs(list(diag_spec)::in,
     warn_info::in, warn_info::out) is det.
 
 add_warn_specs(NewSpecs, !Info) :-
@@ -642,7 +642,7 @@ add_warn_specs(NewSpecs, !Info) :-
 
 :- pred generate_variable_warning(warn_params::in, prog_context::in,
     single_or_multi::in, pf_sym_name_arity::in,
-    prog_var::in, list(prog_var)::in, list(error_spec)::out) is det.
+    prog_var::in, list(prog_var)::in, list(diag_spec)::out) is det.
 
 generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
         Var0, Vars0, Specs) :-
@@ -707,19 +707,19 @@ separate_state_var_names([Name | Names], !PlainVarNames, !BangVarNames) :-
 
     % For each singleton variable that is close enough to another variable
     % name that a "did you mean" replacement suggestion is worthwhile,
-    % generate an error_spec including that suggestions. Return
+    % generate an diag_spec including that suggestions. Return
     %
-    % - the list of such singleton-var-specific error_specs, and
+    % - the list of such singleton-var-specific diag_specs, and
     % - the list of singleton vars for which we have no "did you mean"
     %   suggestion.
     %
-    % Our caller will then generate a single error_spec that mentions
+    % Our caller will then generate a single diag_spec that mentions
     % *all* of the variables without their own "did you mean" suggestions.
     %
 :- pred generate_singleton_variable_warning_dyms(prog_varset::in,
     prog_context::in, list(format_piece)::in, option::in,
     set(string)::in, set(string)::in, list(prog_var)::in, list(string)::in,
-    list(string)::out, list(error_spec)::in, list(error_spec)::out) is det.
+    list(string)::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_singleton_variable_warning_dyms(_, _, _, _, _, _,
         [], !NoDymVarNames, !Specs).
@@ -787,7 +787,7 @@ generate_singleton_variable_warning_dyms(VarSet, Context, PreamblePieces,
 
 :- pred generate_variable_warning_no_dym(prog_context::in,
     list(format_piece)::in, option::in, string::in, list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_variable_warning_no_dym(Context, PreamblePieces, WarnOption,
         OnlyMoreThanOnce, VarNames0, !Specs) :-
@@ -814,7 +814,7 @@ generate_variable_warning_no_dym(Context, PreamblePieces, WarnOption,
 
 :- pred generate_singleton_variable_warning_dym(prog_context::in,
     list(format_piece)::in, option::in, string::in, list(format_piece)::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
 generate_singleton_variable_warning_dym(Context, PreamblePieces, WarnOption,
         VarName, DymPieces, Spec) :-
@@ -891,7 +891,7 @@ check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs) :-
     % disjunction, flatten it out into list form and perform further checks.
     %
 :- pred check_promise_ex_goal(promise_type::in, goal::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_promise_ex_goal(PromiseType, Goal, !Specs) :-
     ( if
@@ -934,7 +934,7 @@ flatten_to_conj_list(Goal, GoalList) :-
     % Taking a list of arms of the disjunction, check each arm individually.
     %
 :- pred check_promise_ex_disjunction(promise_type::in, list(list(goal))::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs) :-
     (
@@ -949,7 +949,7 @@ check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs) :-
     % unifications.
     %
 :- pred check_promise_ex_disj_arm(promise_type::in, list(goal)::in, bool::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     (
@@ -988,7 +988,7 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     % Called for any error in the above checks.
     %
 :- pred promise_ex_error(promise_type::in, prog_context::in, string::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 promise_ex_error(PromiseType, Context, Message, !Specs) :-
     Pieces = [words("In"),

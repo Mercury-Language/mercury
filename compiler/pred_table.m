@@ -315,7 +315,7 @@
 :- pred resolve_pred_overloading(module_info::in, pred_markers::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, prog_context::in,
-    sym_name::in, sym_name::out, pred_id::out, list(error_spec)::out) is det.
+    sym_name::in, sym_name::out, pred_id::out, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -340,7 +340,7 @@
     list(pred_id)::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in,
     maybe(constraint_search)::in(maybe(constraint_search)), prog_context::in,
-    pred_id::out, sym_name::out, list(error_spec)::out) is semidet.
+    pred_id::out, sym_name::out, list(diag_spec)::out) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -350,7 +350,7 @@
 :- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, module_info::in, prog_context::in,
-    pred_id::out, list(error_spec)::out) is semidet.
+    pred_id::out, list(diag_spec)::out) is semidet.
 
     % Get the pred_id and proc_id matching a higher-order term with
     % the given argument types, aborting with an error if none is found.
@@ -358,7 +358,7 @@
 :- pred get_pred_id_and_proc_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, module_info::in, prog_context::in,
-    pred_id::out, proc_id::out, list(error_spec)::out) is det.
+    pred_id::out, proc_id::out, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 

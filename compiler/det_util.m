@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2000, 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,11 +104,11 @@
 :- pred det_no_output_vars(det_info::in, instmap::in, instmap_delta::in,
     set_of_progvar::in) is semidet.
 
-:- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
+:- pred det_info_add_diag_spec(diag_spec::in, det_info::in, det_info::out)
     is det.
 
 :- pred det_info_init(module_info::in, pred_proc_id::in, var_table::in,
-    report_pess_extra_vars::in, list(error_spec)::in, det_info::out) is det.
+    report_pess_extra_vars::in, list(diag_spec)::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_proc_id(det_info::in, pred_proc_id::out) is det.
@@ -121,7 +121,7 @@
     contains_require_scope::out) is det.
 :- pred det_info_get_has_incomplete_switch(det_info::in,
     contains_incomplete_switch::out) is det.
-:- pred det_info_get_error_specs(det_info::in, list(error_spec)::out) is det.
+:- pred det_info_get_diag_specs(det_info::in, list(diag_spec)::out) is det.
 
 :- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
@@ -215,10 +215,10 @@ det_no_output_vars(DetInfo, InstMap, InstMapDelta, Vars) :-
     instmap_delta_no_output_vars(ModuleInfo, VarTable, InstMap,
         InstMapDelta, Vars).
 
-det_info_add_error_spec(Spec, !DetInfo) :-
-    det_info_get_error_specs(!.DetInfo, Specs0),
+det_info_add_diag_spec(Spec, !DetInfo) :-
+    det_info_get_diag_specs(!.DetInfo, Specs0),
     Specs = [Spec | Specs0],
-    det_info_set_error_specs(Specs, !DetInfo).
+    det_info_set_diag_specs(Specs, !DetInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -234,7 +234,7 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 di_has_format_call          :: contains_format_call,
                 di_has_req_scope            :: contains_require_scope,
                 di_has_incomplete_switch    :: contains_incomplete_switch,
-                di_error_specs              :: list(error_spec)
+                di_diag_specs              :: list(diag_spec)
             ).
 
 det_info_init(ModuleInfo, PredProcId, VarTable,
@@ -258,10 +258,10 @@ det_info_get_has_req_scope(DetInfo, X) :-
     X = DetInfo ^ di_has_req_scope.
 det_info_get_has_incomplete_switch(DetInfo, X) :-
     X = DetInfo ^ di_has_incomplete_switch.
-det_info_get_error_specs(DetInfo, X) :-
-    X = DetInfo ^ di_error_specs.
+det_info_get_diag_specs(DetInfo, X) :-
+    X = DetInfo ^ di_diag_specs.
 
-:- pred det_info_set_error_specs(list(error_spec)::in,
+:- pred det_info_set_diag_specs(list(diag_spec)::in,
     det_info::in, det_info::out) is det.
 
 det_info_set_module_info(X, !DetInfo) :-
@@ -291,8 +291,8 @@ det_info_set_has_incomplete_switch(!DetInfo) :-
     else
         !DetInfo ^ di_has_incomplete_switch := X
     ).
-det_info_set_error_specs(X, !DetInfo) :-
-    !DetInfo ^ di_error_specs := X.
+det_info_set_diag_specs(X, !DetInfo) :-
+    !DetInfo ^ di_diag_specs := X.
 
 % Access stats for the det_info structure, derived using the commented-out
 % code below:
@@ -305,7 +305,7 @@ det_info_set_error_specs(X, !DetInfo) :-
 %  4       371         0         0              pess_extra_vars
 %  5    299597       921      1381  40.009%     has_format_call
 %  6    299597       147       140  51.220%     has_req_scope
-%  7    300265         0        33   0.000%     error_specs
+%  7    300265         0        33   0.000%     diag_specs
 
 % :- pragma foreign_decl("C", local,
 % "

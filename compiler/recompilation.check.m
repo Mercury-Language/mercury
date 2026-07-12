@@ -303,7 +303,7 @@ record_and_maybe_report_recompilation_why_or_why_not(ProgressStream, Globals,
     = recompile_reason.
 
 read_module_error_stopping_reason(FileName, _Errors) = FileReason :-
-    % We are throwing away the error_specs in _Errors, even though they
+    % We are throwing away the diag_specs in _Errors, even though they
     % could illuminate the cause of the problem. XXX Why is this OK?
     Pieces = [words("error reading file"), quote(FileName), suffix("."), nl],
     % XXX Some of the errors in Errors could be errors other than
@@ -481,7 +481,7 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
                     !Info)
             )
         else
-            % We are throwing away the error_specs in Errors. Since it
+            % We are throwing away the diag_specs in Errors. Since it
             % should be a repeat of the errors we saw when the file
             % was first read in, this should be OK.
             MaybeStoppingReason = no
@@ -1708,7 +1708,7 @@ report_used_file_read_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
         list.map(extract_spec_msgs_and_maybe_add_id(Globals),
             one_or_more_to_list(OoMUsedItemSpecs), MsgsList),
         list.condense(MsgsList, Msgs),
-        Spec = error_spec($pred, Severity, phase_read_files, Msgs)
+        Spec = diag_spec($pred, Severity, phase_read_files, Msgs)
     ),
     write_error_spec(Stream, Globals, Spec, !IO).   % informational only
 

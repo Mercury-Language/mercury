@@ -44,16 +44,16 @@
 %
 % The first use case is the obvious one: reporting mode errors to users.
 % For this, both the structured representation below and a representation
-% consisting of just an error_spec would do.
+% consisting of just an diag_spec would do.
 %
 % The second use case is the handling of subgoals that require as input
 % the values of some variables that have not been produced yet by subgoals
 % to their left in a conjunction. Such subgoals must be rescheduled
 % to a later program point, one that occurs *after* all those variables
-% have been produced. For this, an error_spec would NOT do, both because
+% have been produced. For this, an diag_spec would NOT do, both because
 % it does not specify the set of variables to wait for (which the
 % mode_error_info does contain), and because the creation of a useful
-% error_spec may take far too much time. While most real-life modules
+% diag_spec may take far too much time. While most real-life modules
 % tend to average only a small handful of mode errors per compilation,
 % they have *far* more subgoals that get rescheduled. This requires
 % a mode error representation that pays the cost of constructing
@@ -63,7 +63,7 @@
 % compiler to which this consideration applies. (Type analysis in the presence
 % of type inference is another, but type inference is rare in practice.)
 % All other semantic analysis passes, when they discover a situation that
-% calls for an error or a warning, immediately construct an error_spec
+% calls for an error or a warning, immediately construct an diag_spec
 % to report it.
 %
 
@@ -442,12 +442,12 @@
     % Generate a message for the given mode error in the context
     % described by the mode_info.
     %
-:- func mode_error_info_to_spec(mode_info, mode_error_info) = error_spec.
+:- func mode_error_info_to_spec(mode_info, mode_error_info) = diag_spec.
 
     % Generate a message for the given mode warning in the context
     % described by the mode_info.
     %
-:- func mode_warning_info_to_spec(mode_info, mode_warning_info) = error_spec.
+:- func mode_warning_info_to_spec(mode_info, mode_warning_info) = diag_spec.
 
     % What it says on the tin.
     %
@@ -546,7 +546,7 @@ mode_error_info_to_spec(ModeInfo0, ModeErrorInfo) = Spec :-
         Spec = mode_error_to_spec(!.ModeInfo, ModeError)
     ).
 
-:- func mode_error_to_spec(mode_info, mode_error) = error_spec.
+:- func mode_error_to_spec(mode_info, mode_error) = diag_spec.
 
 mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     (
@@ -650,7 +650,7 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_var_to_spec(mode_info, prog_var,
-    prog_var, mer_inst, mer_inst) = error_spec.
+    prog_var, mer_inst, mer_inst) = diag_spec.
 
 mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -671,7 +671,7 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_poly_to_spec(mode_info, prog_var, mer_inst)
-    = error_spec.
+    = diag_spec.
 
 mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -692,7 +692,7 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words("Unifications of polymorphically-typed variables with"),
         words("partially instantiated modes are not allowed.")],
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -700,7 +700,7 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_functor_to_spec(mode_info, prog_var,
-    cons_id, list(prog_var), mer_inst, list(mer_inst)) = error_spec.
+    cons_id, list(prog_var), mer_inst, list(mer_inst)) = diag_spec.
 
 mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
         InstX, ArgInsts) = Spec :-
@@ -735,7 +735,7 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_lambda_to_spec(mode_info, prog_var,
-    mer_inst, mer_inst) = error_spec.
+    mer_inst, mer_inst) = diag_spec.
 
 mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -756,7 +756,7 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_multimode_pf_to_spec(mode_info, prog_var,
-    pred_id_var_multimode_error) = error_spec.
+    pred_id_var_multimode_error) = diag_spec.
 
 mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         = Spec :-
@@ -855,7 +855,7 @@ named_and_unnamed_vars_to_pieces(VarTable, Color, Vars) = Pieces :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_non_ground_non_local_lambda_var_to_spec(mode_info, prog_var,
-    mer_inst) = error_spec.
+    mer_inst) = diag_spec.
 
 mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
         = Spec :-
@@ -875,7 +875,7 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
 %---------------------------------------------------------------------------%
 
 :- func mode_error_higher_order_unify_to_spec(mode_info, prog_var,
-    mode_error_unify_rhs, mer_type, pred_or_func) = error_spec.
+    mode_error_unify_rhs, mer_type, pred_or_func) = diag_spec.
 
 mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         = Spec :-
@@ -921,7 +921,7 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         quote("all [X] call(PredA, X) <=> call(PredB, X)"), suffix(","),
         words("instead of"), quote("PredA = PredB"), suffix("."), nl],
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -930,7 +930,7 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
 
 :- func mode_error_var_is_not_sufficiently_instantiated_to_spec(mode_info,
     prog_var, mer_inst, mer_inst, maybe(pred_id_var_multimode_error))
-    = error_spec.
+    = diag_spec.
 
 mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         VarInst, ExpectedInst, MaybeMultiModeError) = Spec :-
@@ -983,7 +983,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         MultiModeMsgs = ConnectMsgs ++ SubMsgs
     ),
     AllMsgs = MainMsgs ++ UniqMsgs ++ MultiModeMsgs,
-    Spec = error_spec($pred, severity_error, Phase, AllMsgs).
+    Spec = diag_spec($pred, severity_error, Phase, AllMsgs).
 
 :- pred inst_has_uniqueness(mer_inst::in, uniqueness::in) is semidet.
 
@@ -1016,7 +1016,7 @@ inst_has_uniqueness(Inst, SearchUniq) :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_clobbered_var_is_live_to_spec(mode_info, prog_var)
-    = error_spec.
+    = diag_spec.
 
 mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -1035,7 +1035,7 @@ mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_callee_pred_has_no_mode_decl_to_spec(mode_info, pred_id)
-    = error_spec.
+    = diag_spec.
 
 mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo, PredId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -1053,7 +1053,7 @@ mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo, PredId) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_no_matching_mode_to_spec(mode_info, match_what, instmap,
-    list(prog_var), mode_mismatch, list(mode_mismatch)) = error_spec.
+    list(prog_var), mode_mismatch, list(mode_mismatch)) = diag_spec.
 
 mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         HeadMismatch, TailMismatches) = Spec :-
@@ -1489,7 +1489,7 @@ report_bound_inst_vars(InstVarSet, [Mismatch | Mismatches], ProcNum, Pieces) :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_bad_higher_order_inst_to_spec(mode_info, prog_var, mer_inst,
-    pred_or_func, user_arity, higher_order_mismatch_info) = error_spec.
+    pred_or_func, user_arity, higher_order_mismatch_info) = diag_spec.
 
 mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
         ExpectedPredOrFunc, ExpectedUserArity, Mismatch) = Spec :-
@@ -1584,7 +1584,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unschedulable_conjuncts_to_spec(mode_info,
-    one_or_more(delayed_goal), schedule_culprit) = error_spec.
+    one_or_more(delayed_goal), schedule_culprit) = diag_spec.
 
 mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
         = Spec :-
@@ -1667,7 +1667,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
             msg(ImpureGoalContext, Pieces2)]
     ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
+    Spec = diag_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
 
 :- func prefix_with_blank_line(prog_context, list(diag_msg)) = list(diag_msg).
 
@@ -1757,7 +1757,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_merge_par_conj_to_spec(mode_info, one_or_more(merge_error))
-    = error_spec.
+    = diag_spec.
 
 mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -1771,13 +1771,13 @@ mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 %---------------------------------------------------------------------------%
 
 :- func mode_error_merge_disj_to_spec(mode_info, merge_context,
-    one_or_more(merge_error)) = error_spec.
+    one_or_more(merge_error)) = diag_spec.
 
 mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -1791,7 +1791,7 @@ mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 :- func merge_context_to_string(merge_context) = string.
@@ -1803,7 +1803,7 @@ merge_context_to_string(merge_stm_atomic) = "atomic".
 %---------------------------------------------------------------------------%
 
 :- func mode_error_coerce_error_to_spec(mode_info, list(coerce_error))
-    = error_spec.
+    = diag_spec.
 
 mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
     Error = list.det_head(Errors),
@@ -2001,7 +2001,7 @@ report_bad_arity_pieces({ConsId, InstArity, ExpectedArity}) = Pieces :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_nonground_trace_goal_to_spec(mode_info,
-    prog_var, list(prog_var)) = error_spec.
+    prog_var, list(prog_var)) = diag_spec.
 
 mode_error_nonground_trace_goal_to_spec(ModeInfo, HeadNGVar, TailNGVars)
         = Spec :-
@@ -2033,7 +2033,7 @@ mode_error_nonground_trace_goal_to_spec(ModeInfo, HeadNGVar, TailNGVars)
 %---------------------------------------------------------------------------%
 
 :- func mode_error_bind_locked_var_to_spec(mode_info, var_lock_reason,
-    prog_var, mer_inst, mer_inst) = error_spec.
+    prog_var, mer_inst, mer_inst) = diag_spec.
 
 mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
         = Spec :-
@@ -2120,7 +2120,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
             [nl]
     ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_always, VerbosePieces)])]).
@@ -2128,7 +2128,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
 %---------------------------------------------------------------------------%
 
 :- func mode_error_unexpected_final_inst_to_spec(mode_info, int, prog_var,
-    mer_inst, mer_inst, final_inst_error) = error_spec.
+    mer_inst, mer_inst, final_inst_error) = diag_spec.
 
 mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
         ActualInst, ExpectedInst, Reason) = Spec :-
@@ -2190,7 +2190,7 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
 %---------------------------------------------------------------------------%
 
 :- func mode_error_in_callee_to_spec(mode_info, list(prog_var), list(mer_inst),
-    pred_id, proc_id, list(mode_error_info)) = error_spec.
+    pred_id, proc_id, list(mode_error_info)) = diag_spec.
 
 mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         CalleePredId, CalleeProcId, CalleeModeErrors) = Spec :-
@@ -2281,7 +2281,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             LaterMsgs = start_each_msg_with_blank_line([LaterHead | LaterTail])
         ),
         Phase = phase_mode_check(report_in_any_mode),
-        Spec = error_spec($pred, severity_error, Phase, [InitMsg | LaterMsgs])
+        Spec = diag_spec($pred, severity_error, Phase, [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
         unexpected($pred, "no error")
@@ -2290,7 +2290,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
 %---------------------------------------------------------------------------%
 
 :- func mode_error_cannot_create_implied_mode_to_spec(mode_info,
-    cannot_create_reason, prog_var, mer_inst, mer_inst) = error_spec.
+    cannot_create_reason, prog_var, mer_inst, mer_inst) = diag_spec.
 
 mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
         NonImpliedInitialInst) = Spec :-
@@ -2321,14 +2321,14 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
                 NonImpliedInitialInst),
         Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces)
     else
-        Spec = error_spec($pred, severity_informational(report_noop), Phase,
+        Spec = diag_spec($pred, severity_informational(report_noop), Phase,
             [simple_msg(Context, [])])
     ).
 
 %---------------------------------------------------------------------------%
 
 :- func purity_error_should_be_in_promise_purity_scope_to_spec(
-    negated_context_desc, mode_info, prog_var) = error_spec.
+    negated_context_desc, mode_info, prog_var) = diag_spec.
 
 purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
         ModeInfo, Var) = Spec :-
@@ -2357,7 +2357,7 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
 %---------------------------------------------------------------------------%
 
 :- func purity_error_lambda_should_be_any_to_spec(mode_info,
-    one_or_more(prog_var)) = error_spec.
+    one_or_more(prog_var)) = diag_spec.
 
 purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -2391,7 +2391,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
         words("can be written"),
         quote("any_func(Args) = Result is det :- ..."), suffix("."), nl]),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = error_spec($pred, severity_error, Phase,
+    Spec = diag_spec($pred, severity_error, Phase,
         [simple_msg(Context, [Always, VerboseOnly])]).
 
 %---------------------------------------------------------------------------%
@@ -2685,7 +2685,7 @@ mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_warning_cannot_succeed_var_var(mode_info,
-    prog_var, prog_var, mer_inst, mer_inst) = error_spec.
+    prog_var, prog_var, mer_inst, mer_inst) = diag_spec.
 
 mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -2712,7 +2712,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_warning_cannot_succeed_var_functor(mode_info, prog_var, mer_inst,
-    cons_id) = error_spec.
+    cons_id) = diag_spec.
 
 mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -2746,7 +2746,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_warning_cannot_succeed_ground_occur_check(mode_info, prog_var,
-    cons_id) = error_spec.
+    cons_id) = diag_spec.
 
 mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),

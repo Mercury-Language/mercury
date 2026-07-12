@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -140,7 +140,7 @@
 :- pred simplify_info_add_elim_vars(list(prog_var)::in,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred simplify_info_add_message(error_spec::in,
+:- pred simplify_info_add_message(diag_spec::in,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_incr_cost_delta(int::in,
@@ -197,7 +197,7 @@
     list(list(prog_var))::out) is det.
 :- pred simplify_info_get_allow_messages(simplify_info::in,
     maybe_allow_messages::out) is det.
-:- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
+:- pred simplify_info_get_diag_specs(simplify_info::in, list(diag_spec)::out)
     is det.
 :- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
 :- pred simplify_info_get_has_parallel_conj(simplify_info::in,
@@ -232,7 +232,7 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_allow_messages(maybe_allow_messages::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_error_specs(list(error_spec)::in,
+:- pred simplify_info_set_diag_specs(list(diag_spec)::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_cost_delta(int::in,
     simplify_info::in, simplify_info::out) is det.
@@ -366,7 +366,7 @@
                 % The relative order of the lists is unknown.
                 ssimp_elim_vars             :: list(list(prog_var)),
 
-                ssimp_error_specs           :: list(error_spec),
+                ssimp_diag_specs           :: list(diag_spec),
 
                 % Measure of the improvement in the goal from simplification.
                 ssimp_cost_delta            :: int,
@@ -497,9 +497,9 @@ simplify_info_add_message(Spec, !Info) :-
         AllowMsgs = do_not_allow_messages
     ;
         AllowMsgs = allow_messages,
-        simplify_info_get_error_specs(!.Info, Specs0),
+        simplify_info_get_diag_specs(!.Info, Specs0),
         Specs = [Spec | Specs0],
-        simplify_info_set_error_specs(Specs, !Info)
+        simplify_info_set_diag_specs(Specs, !Info)
     ).
 
 simplify_info_incr_cost_delta(Incr, !Info) :-
@@ -556,8 +556,8 @@ simplify_info_get_elim_vars(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_elim_vars.
 simplify_info_get_allow_messages(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_allow_messages.
-simplify_info_get_error_specs(Info, X) :-
-    X = Info ^ simp_sub_info ^ ssimp_error_specs.
+simplify_info_get_diag_specs(Info, X) :-
+    X = Info ^ simp_sub_info ^ ssimp_diag_specs.
 simplify_info_get_cost_delta(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_cost_delta.
 simplify_info_get_has_parallel_conj(Info, X) :-
@@ -619,8 +619,8 @@ simplify_info_set_elim_vars(X, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_elim_vars := X.
 simplify_info_set_allow_messages(X, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_allow_messages := X.
-simplify_info_set_error_specs(X, !Info) :-
-    !Info ^ simp_sub_info ^ ssimp_error_specs := X.
+simplify_info_set_diag_specs(X, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_diag_specs := X.
 simplify_info_set_cost_delta(X, !Info) :-
     ( if X = !.Info ^ simp_sub_info ^ ssimp_cost_delta then
         true
@@ -674,7 +674,7 @@ simplify_info_set_rerun_simplify_no_warn_simple(!Info) :-
 %  7     25167         0         0          inst_varset
 %  8    431612         0      4700   0.00%  elim_vars
 %  9      8132         0    428653   0.00%  allow_messages
-% 10    431084         0      4172   0.00%  error_specs
+% 10    431084         0      4172   0.00%  diag_specs
 % 11    858622     41608     25167  62.31%  requantify
 % 12    858622       531      1606  24.85%  rerun_det
 % 13    148274     83477     61740  57.48%  cost_delta

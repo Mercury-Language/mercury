@@ -155,7 +155,7 @@
     % Attempt to transform a procedure into accumulator recursive form.
     % If we succeed, we will add the recursive version of the procedure
     % to the module_info. However, we may also encounter errors, which
-    % we will add to the list of error_specs in the univ accumulator.
+    % we will add to the list of diag_specs in the univ accumulator.
     %
 :- pred accu_transform_proc(io.text_output_stream::in, pred_proc_id::in,
     pred_info::in, proc_info::in, proc_info::out,
@@ -313,10 +313,10 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
                 verbose_only(verbose_once, VerbosePieces)]),
             Msgs = [InMsg | WarnMsgs] ++ [EnsureSuppressMsg],
             Severity = severity_warning(warn_accumulator_swaps),
-            Spec = error_spec($pred, Severity, phase_accumulator_intro, Msgs),
+            Spec = diag_spec($pred, Severity, phase_accumulator_intro, Msgs),
 
             det_univ_to_type(!.Cookie, Specs0),
-            Specs = [Spec | Specs0] : list(error_spec),
+            Specs = [Spec | Specs0] : list(diag_spec),
             type_to_univ(Specs, !:Cookie)
         else
             true

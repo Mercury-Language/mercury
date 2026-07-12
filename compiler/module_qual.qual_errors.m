@@ -183,7 +183,7 @@
 :- pred report_undefined_mq_id(mq_info::in, mq_error_context::in,
     mq_id::in, qual_id_kind::in, module_name::in,
     list(module_name)::in, list(module_name)::in, set(int)::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
     % report_ambiguous_match(ErrorContext, Id, IdType,
     %   UsableModuleNames, UnusableModuleNames, !Specs):
@@ -193,18 +193,18 @@
     %
 :- pred report_ambiguous_match(mq_error_context::in, mq_id::in,
     qual_id_kind::in,
-    list(module_name)::in, list(module_name)::in, error_spec::out) is det.
+    list(module_name)::in, list(module_name)::in, diag_spec::out) is det.
 
     % Output an error message about an ill-formed user_inst.
     %
 :- pred report_invalid_user_inst(sym_name::in, list(mer_inst)::in,
-    mq_error_context::in, error_spec::out) is det.
+    mq_error_context::in, diag_spec::out) is det.
 
     % Warn about a module imported in the interface that is not used
     % in the interface.
     %
 :- pred warn_unused_interface_import(module_name::in,
-    module_name::in, one_or_more(prog_context)::in, error_spec::out) is det.
+    module_name::in, one_or_more(prog_context)::in, diag_spec::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -445,7 +445,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     Msg = simple_msg(Context,
         [always(MainPieces), always(UnusablePieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]).
 
 %---------------------------------------------------------------------------%
 

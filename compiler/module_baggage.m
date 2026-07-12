@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -244,7 +244,7 @@
     %
 :- pred parse_tree_src_to_burdened_module_list(globals::in, file_name::in,
     read_module_errors::in, maybe(timestamp)::in, parse_tree_src::in,
-    list(error_spec)::out, list(burdened_module)::out) is det.
+    list(diag_spec)::out, list(burdened_module)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -299,14 +299,14 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     AllModuleNames = set.list_to_set(
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
-    % Including all the error_specs in ReadModuleErrors in *all* of the
+    % Including all the diag_specs in ReadModuleErrors in *all* of the
     % modules in ParseTreeSrc would needlessly duplicate them in situations
     % in which ParseTreeSrc contains more than one module. We could avoid
-    % this duplication by adding the error_specs only to the baggage
-    % of the top-level module, or by adding the error_specs to the baggage
+    % this duplication by adding the diag_specs only to the baggage
+    % of the top-level module, or by adding the diag_specs to the baggage
     % of none of the modules, returning them as a separate output argument.
     % We do the latter, both because it is simpler, and because (with our
-    % current design) there is no way to tell which submodule any error_spec
+    % current design) there is no way to tell which submodule any diag_spec
     % actually complains about.
     %
     % We do duplicate the sets of error kinds, both fatal and nonfatal,
@@ -318,7 +318,7 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
     % overestimation does not prevent us from doing anything we want to do,
     % or are even are likely to want to do in the foreseeable future.
     %
-    % XXX Unfortunately, nuking the error_specs while keeping the
+    % XXX Unfortunately, nuking the diag_specs while keeping the
     % fatal error indications violates an invariant that the
     % do_we_have_a_valid_module_dep predicate in write_deps_file.m
     % depends on, so this code is commented out. This is the behavior

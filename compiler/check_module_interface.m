@@ -30,7 +30,7 @@
     % report a warning.
     %
 :- pred check_module_interface_for_no_exports(globals::in,
-    parse_tree_module_src::in, list(error_spec)::out) is det.
+    parse_tree_module_src::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -164,7 +164,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, Specs) :-
     ;       1.
 
 :- pred generate_no_exports_warning(module_name::in, prog_context::in,
-    int::in(num_int_incls), error_spec::out) is det.
+    int::in(num_int_incls), diag_spec::out) is det.
 
 generate_no_exports_warning(ModuleName, Context, NumIntIncls, Spec) :-
     AlwaysPieces =
@@ -201,7 +201,7 @@ generate_no_exports_warning(ModuleName, Context, NumIntIncls, Spec) :-
     Msg = simple_msg(Context,
         [always(AlwaysPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_warning(warn_nothing_exported),
+    Spec = diag_spec($pred, severity_warning(warn_nothing_exported),
         phase_t2pt, [Msg]).
 
 %---------------------------------------------------------------------------%

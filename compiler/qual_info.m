@@ -77,7 +77,7 @@
     %
 :- pred process_type_qualification(prog_var::in, mer_type::in, tvarset::in,
     prog_context::in, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
     unify_main_context::in, list(unify_sub_context)::in, purity::in,
@@ -255,7 +255,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !QualInfo, !Specs) :-
 
 :- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,
     vartypes::in, vartypes::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
     ( if search_var_type(!.VarTypes, Var, Type0) then

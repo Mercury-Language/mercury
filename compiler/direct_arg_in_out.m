@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020-2025 The Mercury team.
+% Copyright (C) 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -188,7 +188,7 @@
     %
 :- pred do_direct_arg_in_out_transform_in_module(io.text_output_stream::in,
     direct_arg_proc_map::in, module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -620,7 +620,7 @@ do_direct_arg_in_out_transform_in_module(ProgressStream, DirectArgProcMap,
     direct_arg_proc_in_out_map::in, direct_arg_proc_in_out_map::out,
     clone_in_out_map::in, clone_in_out_map::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 make_direct_arg_clone_or_spec(ProgressStream, PredProcId, DirectArgProc,
         !DirectArgInOutMap, !CloneInOutMap, !ModuleInfo, !Specs) :-
@@ -901,7 +901,7 @@ clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
 :- pred transform_direct_arg_in_out_calls_in_pred(io.text_output_stream::in,
     direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
     clone_in_out_map::in, pred_id::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 transform_direct_arg_in_out_calls_in_pred(ProgressStream, DirectArgProcMap,
         DirectArgProcInOutMap, CloneInOutMap, PredId, !ModuleInfo, !Specs) :-
@@ -918,7 +918,7 @@ transform_direct_arg_in_out_calls_in_pred(ProgressStream, DirectArgProcMap,
     direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
     clone_in_out_map::in, pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 transform_direct_arg_in_out_calls_in_proc(ProgressStream, DirectArgProcMap,
         DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
@@ -1955,7 +1955,7 @@ maybe_add_headvar_clone_suffix(OldVarName) = CloneVarName :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_problem_proc_error(module_info::in, pred_proc_id::in,
-    one_or_more(int)::in, error_spec::out) is det.
+    one_or_more(int)::in, diag_spec::out) is det.
 
 generate_problem_proc_error(ModuleInfo, PredProcId, OoMProblemArgs, Spec) :-
     OoMProblemArgs = one_or_more(HeadProblemArg, TailProblemArgs),
@@ -2003,7 +2003,7 @@ generate_problem_proc_error(ModuleInfo, PredProcId, OoMProblemArgs, Spec) :-
 :- pred generate_error_if_cloned_proc_is_exported(module_info::in,
     direct_arg_proc_map::in, pragma_exported_proc::in,
     list(pragma_exported_proc)::in, list(pragma_exported_proc)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_error_if_cloned_proc_is_exported(ModuleInfo, DirectArgProcMap,
         ExportedProc0, !RevExportedProcs, !Specs) :-
@@ -2029,7 +2029,7 @@ generate_error_if_cloned_proc_is_exported(ModuleInfo, DirectArgProcMap,
     ).
 
 :- pred generate_foreign_export_error(pf_sym_name_arity::in, string::in,
-    prog_context::in, error_spec::out) is det.
+    prog_context::in, diag_spec::out) is det.
 
 generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
     Pieces = [words("Error: the definition of")] ++
@@ -2049,7 +2049,7 @@ generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
 
 :- pred maybe_add_foreign_proc_error(module_info::in,
     direct_arg_proc_map::in, direct_arg_proc_in_out_map::in, pred_proc_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_add_foreign_proc_error(ModuleInfo, DirectArgProcMap,
         DirectArgProcInOutMap, PredProcId, !Specs) :-
@@ -2067,7 +2067,7 @@ maybe_add_foreign_proc_error(ModuleInfo, DirectArgProcMap,
     ).
 
 :- pred generate_call_foreign_proc_error(module_info::in, pred_proc_id::in,
-    direct_arg_proc::in, error_spec::out) is det.
+    direct_arg_proc::in, diag_spec::out) is det.
 
 generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
         Spec) :-

@@ -10,7 +10,7 @@
 % File: write_error_spec.m.
 % Main author: zs.
 %
-% This module contains code to format error_specs, which are specifications
+% This module contains code to format diag_specs, which are specifications
 % of diagnostics, for output. The output we generate has the following form:
 %
 % module.m:10: first line of error message blah blah blah
@@ -23,7 +23,7 @@
 % on the first line and Indent+3 spaces on later lines, and that every
 % line contains at most <n> characters (unless a long single word
 % forces the line over this limit) where --max-error-line-width <n>.
-% The error_spec may modify this structure, e.g. by inserting line breaks,
+% The diag_spec may modify this structure, e.g. by inserting line breaks,
 % inserting blank lines, and by increasing/decreasing the indent level.
 %
 %---------------------------------------------------------------------------%
@@ -51,10 +51,10 @@
     %   !MaybeWrittenSpecs, !IO):
     %
     % Every possible path of execution in mercury_compile.m should call
-    % write_error_specs on the accumulated but not-yet-printed error_specs
+    % write_error_specs on the accumulated but not-yet-printed diag_specs
     % exactly once, just after the compiler has finished doing all the things
     % that can generate error reports. This predicate is intended to manage
-    % the printing of error_specs before that point.
+    % the printing of diag_specs before that point.
     %
     % If Verbose = no, then that call to write_error_specs should write out
     % all at once all the error specifications accumulated until then.
@@ -123,14 +123,14 @@
     % that something should have been printed out.
     %
 :- pred write_error_spec(io.text_output_stream::in, globals::in,
-    error_spec::in, io::di, io::uo) is det.
+    diag_spec::in, io::di, io::uo) is det.
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-:- pred write_oom_error_specs(io.text_output_stream::in, globals::in,
-    one_or_more(error_spec)::in, io::di, io::uo) is det.
+    list(diag_spec)::in, io::di, io::uo) is det.
+:- pred write_oom_diag_specs(io.text_output_stream::in, globals::in,
+    one_or_more(diag_spec)::in, io::di, io::uo) is det.
 
 :- pred write_error_specs_opt_table(io.text_output_stream::in,
-    option_table::in, list(error_spec)::in, io::di, io::uo) is det.
+    option_table::in, list(diag_spec)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -221,7 +221,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred record_bad_color_scheme(error_spec::in, io::di, io::uo) is det.
+:- pred record_bad_color_scheme(diag_spec::in, io::di, io::uo) is det.
 
     % If we withheld some error information from the user (at the users'
     % own request, of course), then print a reminder of that fact,
@@ -285,19 +285,19 @@ write_error_spec(Stream, Globals, Spec, !IO) :-
     write_error_specs(Stream, Globals, [Spec], !IO).
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
-    standardize_error_specs(Specs0, StdSpecs),
+    standardize_diag_specs(Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO).
 
-write_oom_error_specs(Stream, Globals, OoMSpecs, !IO) :-
+write_oom_diag_specs(Stream, Globals, OoMSpecs, !IO) :-
     write_error_specs(Stream, Globals, one_or_more_to_list(OoMSpecs), !IO).
 
 %---------------------%
 
 write_error_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
-    standardize_error_specs(Specs, StdSpecs),
+    standardize_diag_specs(Specs, StdSpecs),
     getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContexts),
     % There is nothing we can usefully do about _BadOptions.
@@ -309,12 +309,12 @@ write_error_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred sort_and_write_error_specs(io.text_output_stream::in, option_table::in,
-    limit_error_contexts_map::in, list(std_error_spec)::in,
+    limit_error_contexts_map::in, list(std_diag_spec)::in,
     io::di, io::uo) is det.
 
 sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO) :-
-    sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs),
+    sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs),
     ColorDb = init_color_db(OptionTable),
     getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
         MaybeMaxWidth),
@@ -340,13 +340,13 @@ sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
 
 :- pred do_write_error_spec(io.text_output_stream::in, option_table::in,
     limit_error_contexts_map::in, color_db::in, maybe(int)::in,
-    std_error_spec::in,
+    std_diag_spec::in,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
 do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
         MaybeMaxWidth, StdSpec, !AlreadyPrintedVerbose, !IO) :-
-    StdSpec = error_spec(Id, Severity, _Phase, StdMsgs1),
+    StdSpec = diag_spec(Id, Severity, _Phase, StdMsgs1),
     severity_to_maybe_actual_severity(OptionTable, Severity,
         MaybeActualSeverity),
     (
@@ -355,7 +355,7 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
     ;
         MaybeActualSeverity = yes(ActualSeverity),
         % We do print StdSpec.
-        maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs1, StdMsgs),
+        maybe_add_diag_spec_id_std(OptionTable, Id, StdMsgs1, StdMsgs),
         collect_msgs(OptionTable, LimitErrorContextsMap, StdMsgs,
             treat_as_first, cord.init, AllMsgsCord,
             do_not_print_spec, MaybePrintSpec,
@@ -544,7 +544,7 @@ write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
             % We can return a msg_pieces even if its context says it should
             % not be printed because
             %
-            % - it may be part of an error_spec that has components
+            % - it may be part of an diag_spec that has components
             %   that *should* be printed, and
             %
             % - in such cases, we want to print the *whole* error message,
@@ -1581,7 +1581,7 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
             NextIndent = NextIndentPrime,
             FirstParaWarningLines = []
         else
-            % This indicates a bug in the code constructing the error_spec
+            % This indicates a bug in the code constructing the diag_spec
             % that we are trying to output here, with the bug being a
             % nl_indent_delta with a negative delta that exceeds the current
             % indent level.
@@ -2481,12 +2481,12 @@ pop_stack_ignore_empty(Stack0, Stack) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % Have we written out one or more error_specs?
+    % Have we written out one or more diag_specs?
     % We need this into to print out diagnostics about bad color schemes
     % only if a non-bad color scheme could have had an effect.
     %
     % Note that calls to the various versions of write_error_pieces,
-    % which do not pass a full error_spec to this module, do not count here.
+    % which do not pass a full diag_spec to this module, do not count here.
     % This is because they have been obsolete since *before* we supported
     % colors, and therefore don't contain anything that a color scheme
     % could affect.
@@ -2500,7 +2500,7 @@ pop_stack_ignore_empty(Stack0, Stack) :-
     % record_color_scheme_in_options in globals.m when given a color scheme
     % that it cannot parse properly.
     %
-:- mutable(bad_color_schemes, list(error_spec), [], ground,
+:- mutable(bad_color_schemes, list(diag_spec), [], ground,
     [thread_local, untrailed, attach_to_io_state]).
 
 record_bad_color_scheme(Spec, !IO) :-

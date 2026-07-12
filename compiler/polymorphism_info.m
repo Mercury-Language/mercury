@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2022, 2025 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2022, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -88,7 +88,7 @@
     % Update the fields in a pred_info and proc_info with
     % the values in a poly_info.
     %
-:- pred poly_info_extract(poly_info::in, list(error_spec)::out,
+:- pred poly_info_extract(poly_info::in, list(diag_spec)::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out,
     module_info::out) is det.
 
@@ -129,7 +129,7 @@
 :- pred poly_info_get_must_requantify(poly_info::in,
     maybe_must_requantify::out) is det.
 :- pred poly_info_get_errors(poly_info::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 :- pred poly_info_set_var_table(var_table::in,
     poly_info::in, poly_info::out) is det.
@@ -155,7 +155,7 @@
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_must_requantify(
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_errors(list(error_spec)::in,
+:- pred poly_info_set_errors(list(diag_spec)::in,
     poly_info::in, poly_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -291,7 +291,7 @@
 
                 % The list of errors we have discovered during the polymorphism
                 % pass.
-                poly_errors                 :: list(error_spec)
+                poly_errors                 :: list(diag_spec)
             ).
 
 %---------------------------------------------------------------------------%

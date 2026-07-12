@@ -134,7 +134,7 @@
     % the .int files needed to make sense of them, to !AugCompUnit.
     %
 :- pred grab_plain_opt_and_int_for_opt_files(io.text_output_stream::in,
-    globals::in, list(error_spec)::out,
+    globals::in, list(diag_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -147,7 +147,7 @@
     % to !AugCompUnit.
     %
 :- pred grab_trans_opt_files(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(error_spec)::out,
+    list(module_name)::in, list(diag_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -687,7 +687,7 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
     % Return the diagnostics that describe the things that went wrong
     % in a way that prevents us continuing on to the semantic analysis passes.
     %
-    % Instead of returning a list of error_specs, we used to return a flag
+    % Instead of returning a list of diag_specs, we used to return a flag
     % meaning "do not continue to semantic analysis". We set this flag to its
     % "do not continue" value not just when ModuleErrors ^ rm_fatal_errors
     % was nonempty, but also when ModuleErrors ^ rm_nonfatal_errors was
@@ -695,13 +695,13 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
     % nonfatal errors mixed together.
     ModuleErrors = !.Baggage ^ mb_errors,
     !:BlockingSpecs =
-        ModuleErrors ^ rm_fatal_error_specs ++
-        % ModuleErrors ^ rm_nonfatal_error_specs ++     see above
+        ModuleErrors ^ rm_fatal_diag_specs ++
+        % ModuleErrors ^ rm_nonfatal_diag_specs ++     see above
         !.BlockingSpecs,
 
-    % This adds NonBlockingSpecs to ModuleErrors ^ rm_nonfatal_error_specs.
+    % This adds NonBlockingSpecs to ModuleErrors ^ rm_nonfatal_diag_specs.
     % If we ever want to go back to the old behavior of considering
-    % ModuleErrors ^ rm_nonfatal_error_specs being nonempty as grounds for
+    % ModuleErrors ^ rm_nonfatal_diag_specs being nonempty as grounds for
     % stopping compiler execution before semantic analysis, then we would
     % want the computation of !:BlockingSpecs to use the value of that field
     % before this addition.
@@ -709,7 +709,7 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
     % NOTE Another legacy of the time when we stored fatal and nonfatal
     % errors mixed together was that previously, we also added the original
     % !.BlockingSpecs (i.e. the version from before adding
-    % ModuleErrors ^ rm_fatal_error_specs) to the baggage as well.
+    % ModuleErrors ^ rm_fatal_diag_specs) to the baggage as well.
     module_baggage_add_nonfatal_specs(NonBlockingSpecs, !Baggage).
 
 %---------------------------------------------------------------------------%
@@ -1342,14 +1342,14 @@ module_baggage_add_grabbed_file(ModuleName, FileWhy, !Baggage) :-
     map.set(ModuleName, FileWhy, GrabbedFileMap0, GrabbedFileMap),
     !Baggage ^ mb_grabbed_file_map := GrabbedFileMap.
 
-:- pred module_baggage_add_nonfatal_specs(list(error_spec)::in,
+:- pred module_baggage_add_nonfatal_specs(list(diag_spec)::in,
     module_baggage::in, module_baggage::out) is det.
 
 module_baggage_add_nonfatal_specs(NewSpecs, !Baggage) :-
     Errors0 = !.Baggage ^ mb_errors,
-    NonFatalErrorSpecs0 = Errors0 ^ rm_nonfatal_error_specs,
+    NonFatalErrorSpecs0 = Errors0 ^ rm_nonfatal_diag_specs,
     NonFatalErrorSpecs = NewSpecs ++ NonFatalErrorSpecs0,
-    Errors = Errors0 ^ rm_nonfatal_error_specs := NonFatalErrorSpecs,
+    Errors = Errors0 ^ rm_nonfatal_diag_specs := NonFatalErrorSpecs,
     !Baggage ^ mb_errors := Errors.
 
 :- pred module_baggage_add_errors(read_module_errors::in,
@@ -1408,8 +1408,8 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
     cord(parse_tree_plain_opt)::in, cord(parse_tree_plain_opt)::out,
     set(module_name)::in, set(module_name)::out,
     cord(implicit_avail_needs)::in, cord(implicit_avail_needs)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 read_plain_opt_files(_, _, _, _, [], _, !ParseTreePlainOptsCord,
@@ -1467,8 +1467,8 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
 :- pred read_trans_opt_files(io.text_output_stream::in, globals::in,
     list(module_name)::in,
     cord(parse_tree_trans_opt)::in, cord(parse_tree_trans_opt)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 read_trans_opt_files(_, _, [], !ParseTreeTransOpts,
@@ -1513,17 +1513,17 @@ read_trans_opt_files(ProgressStream, Globals, [ModuleName | ModuleNames],
     %
 :- pred report_cannot_read_opt_file(globals::in, option::in,
     file_name::in, module_file_id::in, read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_cannot_read_opt_file(Globals, WarnOption, FileName, ModuleFileId,
         ReadModuleErrors, !NonBlockingSpecs) :-
     % We get here if we couldn't find and/or open the file.
-    % ModuleErrors ^ rm_fatal_error_specs will already contain
-    % an error_severity error_spec about that, with more details
+    % ModuleErrors ^ rm_fatal_diag_specs will already contain
+    % an error_severity diag_spec about that, with more details
     % than the message we generate below, but the test case
     % hard_coded/intermod_unused_args insists on there being no error,
     % only a warning with the text below. That is why we do not add
-    % any error_specs from ModuleErrors to !Specs here.
+    % any diag_specs from ModuleErrors to !Specs here.
     %
     % I (zs) don't know whether we should add a version of ModuleSpecs
     % with downgraded severity to !Specs instead of the Spec we generate
@@ -1565,7 +1565,7 @@ report_cannot_read_opt_file(Globals, WarnOption, FileName, ModuleFileId,
     %   - or that the file has been tampered with later.
     %
 :- pred report_any_errors_in_read_opt_file(read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_errors_in_read_opt_file(ModuleErrors, !BlockingSpecs) :-
     FatalErrors = ModuleErrors ^ rm_fatal_errors,

@@ -119,7 +119,7 @@
 
 :- pred check_typeclasses(io.text_output_stream::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
     % XXX Exported to add_class.m.
     % This export should be temporary, since the code that needs it
@@ -266,7 +266,7 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
     % this information in the class table.
     %
 :- pred check_for_cyclic_classes(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 check_for_cyclic_classes(!ModuleInfo, Specs) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
@@ -393,8 +393,8 @@ find_class_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
     % or a polymorphic type whose arguments are all type variables.
     %
 :- pred check_instance_declaration_types(module_info::in,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_instance_declaration_types(ModuleInfo, !ErrorSpecs, !WarnSpecs) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -403,8 +403,8 @@ check_instance_declaration_types(ModuleInfo, !ErrorSpecs, !WarnSpecs) :-
 
 :- pred check_instance_declaration_types_for_class(module_info::in,
     class_id::in, list(hlds_instance_defn)::in,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_instance_declaration_types_for_class(ModuleInfo, ClassId,
         InstanceDefns, !ErrorSpecs, !WarnSpecs) :-
@@ -448,7 +448,7 @@ check_instance_declaration_types_for_class(ModuleInfo, ClassId,
 
 :- pred is_instance_type_vector_valid(module_info::in,
     class_id::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     instance_too_private_map::in, instance_too_private_map::out) is det.
 
 is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn,
@@ -481,7 +481,7 @@ is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn,
     %
 :- pred is_orig_type_non_eqv_type(module_info::in,
     class_id::in, hlds_instance_defn::in, mer_type::in,
-    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, int::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
         ArgNum, ArgNum+1, !Specs) :-
@@ -535,7 +535,7 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
     %
 :- pred is_valid_instance_type(module_info::in,
     class_id::in, hlds_instance_defn::in, mer_type::in,
-    int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, int::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         ArgNum, ArgNum+1, !Specs) :-
@@ -617,7 +617,7 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
 
 :- pred report_any_too_private_instance(module_info::in, class_id::in,
     list(mer_type)::in, one_or_more(instance_too_private_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_too_private_instance(ModuleInfo, ClassId,
         OrigTypes, OoMTooPrivateInfos, !WarnSpecs) :-
@@ -813,7 +813,7 @@ module_name_is_private_submodule(ModuleInfo, QueryModuleName) :-
 
 :- pred report_unnecessarily_private_instance(class_id::in,
     set(class_id)::in, set(type_ctor)::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unnecessarily_private_instance(ClassId, ConstraintClassIdSet,
         TypeCtorsSet, Context, !Specs) :-
@@ -878,7 +878,7 @@ report_unnecessarily_private_instance(ClassId, ConstraintClassIdSet,
 
 :- pred generate_instance_method_procs(module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_procs(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable),
@@ -901,7 +901,7 @@ generate_instance_method_procs(!ModuleInfo, !QualInfo, !Specs) :-
 :- pred generate_instance_method_procs_for_class(class_table::in, class_id::in,
     list(hlds_instance_defn)::in, list(hlds_instance_defn)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_procs_for_class(ClassTable, ClassId,
         InstanceDefns0, InstanceDefns, !ModuleInfo, !QualInfo, !Specs) :-
@@ -949,7 +949,7 @@ generate_instance_method_procs_for_class(ClassTable, ClassId,
     class_interface::in, list(method_info)::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_procs_for_class_instance(ClassId, ClassTVarSet,
         ClassParamTVars, SuperClasses, ClassInterface, ClassMethodInfos,
@@ -987,7 +987,7 @@ generate_instance_method_procs_for_class_instance(ClassId, ClassTVarSet,
     list(tvar)::in, list(method_info)::in, list(instance_method)::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_procs_for_concrete_instance(ClassId, ClassParamTVars,
         ClassMethodInfos, InstanceMethods,
@@ -1020,7 +1020,7 @@ generate_instance_method_procs_for_concrete_instance(ClassId, ClassParamTVars,
     list(instance_method)::in,
     map(pred_pf_name_arity, instance_method)::in,
     map(pred_pf_name_arity, instance_method)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 build_instance_method_map(_ClassId, _InstanceDefn, [],
         !InstanceMethodMap, !Specs).
@@ -1078,7 +1078,7 @@ build_instance_method_map(ClassId, InstanceDefn, [Method | Methods],
     cord(instance_method)::in, cord(instance_method)::out,
     cord(method_info)::in, cord(method_info)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_procs_for_preds(_ClassId, _ClassVars, _InstanceDefn,
         [], !InstanceMethodMap, !InstanceMethodsCord, !InstanceMethodInfosCord,
@@ -1134,7 +1134,7 @@ get_other_class_method_procs(CurMethodName,
     list(tvar)::in, pred_id::in, hlds_instance_defn::in,
     instance_method::in, list(method_info)::in, list(method_info)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
         InstanceDefn, InstanceMethod, ClassMethodInfos, InstanceMethodInfos,
@@ -1333,7 +1333,7 @@ add_instance_method_proc(ModuleInfo, ClassPredId, ClassProcTable,
 :- pred check_instance_for_superclass_conformance(module_info::in,
     class_id::in, tvarset::in, list(tvar)::in, list(prog_constraint)::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_instance_for_superclass_conformance(ModuleInfo, ClassId, ClassTVarSet,
         ClassVars0, ProgSuperClasses0, InstanceDefn0, InstanceDefn, !Specs) :-
@@ -1435,7 +1435,7 @@ check_instance_for_superclass_conformance(ModuleInfo, ClassId, ClassTVarSet,
     % Likewise for many of the predicates in its call tree.
     %
 :- pred check_for_missing_concrete_instances(module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_missing_concrete_instances(ModuleInfo, !Specs) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -1444,7 +1444,7 @@ check_for_missing_concrete_instances(ModuleInfo, !Specs) :-
 
 :- pred check_for_missing_concrete_instances_in_class(class_id::in,
     list(hlds_instance_defn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_missing_concrete_instances_in_class(ClassId, Instances, !Specs) :-
     build_type_vector_instances_map(Instances, map.init, VectorInstancesMap),
@@ -1459,7 +1459,7 @@ check_for_missing_concrete_instances_in_class(ClassId, Instances, !Specs) :-
 
 :- pred check_for_overlapping_nonidentical_instances(class_id::in,
     list(hlds_instance_defn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_overlapping_nonidentical_instances(_, [], !Specs).
 check_for_overlapping_nonidentical_instances(ClassId,
@@ -1472,7 +1472,7 @@ check_for_overlapping_nonidentical_instances(ClassId,
 
 :- pred check_for_overlapping_nonidentical_instance(class_id::in,
     hlds_instance_defn::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_overlapping_nonidentical_instance(ClassId,
         InstanceDefnA, InstanceDefnB, !Specs) :-
@@ -1572,7 +1572,7 @@ categorize_and_add_instance_defn(IsImported, InstanceDefn,
     %
 :- pred check_for_missing_concrete_instances_in_class_and_vector(class_id::in,
     pair(type_vector, type_vector_instances)::in, hlds_instance_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_missing_concrete_instances_in_class_and_vector(ClassId,
         _TypeVector - VectorInstances, PickedInstance, !Specs) :-
@@ -1725,7 +1725,7 @@ compare_instance_defns_by_context(InstanceDefnA, InstanceDefnB, Result) :-
 
 :- pred check_that_instance_constraints_match(class_id::in,
     hlds_instance_defn::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_that_instance_constraints_match(ClassId,
         ConcreteInstanceDefn, AbstractInstanceDefn, !Specs) :-
@@ -1776,7 +1776,7 @@ constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
     % also a unifier of the corresponding range arguments.
     %
 :- pred check_functional_dependencies(module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_functional_dependencies(ModuleInfo, !Specs) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -1784,7 +1784,7 @@ check_functional_dependencies(ModuleInfo, !Specs) :-
     list.foldl(check_fundeps_for_class(ModuleInfo), ClassIds, !Specs).
 
 :- pred check_fundeps_for_class(module_info::in, class_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_fundeps_for_class(ModuleInfo, ClassId, !Specs) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
@@ -1832,7 +1832,7 @@ is_concrete_or_imported_instance_defn(InstanceDefn) :-
 
 :- pred check_coverage_for_instance_defns(module_info::in, class_id::in,
     list(hlds_instance_defn)::in, list(hlds_class_fundep)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_coverage_for_instance_defns(_, _, [], _, !Specs).
 check_coverage_for_instance_defns(ModuleInfo, ClassId,
@@ -1845,7 +1845,7 @@ check_coverage_for_instance_defns(ModuleInfo, ClassId,
 
 :- pred check_coverage_for_instance_defn(module_info::in, class_id::in,
     hlds_instance_defn::in, hlds_class_fundep::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
         !Specs) :-
@@ -1870,7 +1870,7 @@ check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
     %
 :- pred check_consistency(class_id::in, hlds_class_defn::in,
     list(hlds_instance_defn)::in, list(hlds_class_fundep)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_consistency(_, _, [], _, !Specs).
 check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
@@ -1883,7 +1883,7 @@ check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
 :- pred check_consistency_pair(class_id::in, hlds_class_defn::in,
     list(hlds_class_fundep)::in,
     hlds_instance_defn::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
         !Specs) :-
@@ -1903,7 +1903,7 @@ check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
 
 :- pred check_consistency_pair_2(class_id::in, hlds_class_defn::in,
     hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         !Specs) :-
@@ -1944,7 +1944,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     %
 :- pred check_typeclass_constraints_on_preds(io.text_output_stream::in,
     module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeclass_constraints_on_preds(ProgressStream, ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
@@ -1953,7 +1953,7 @@ check_typeclass_constraints_on_preds(ProgressStream, ModuleInfo, !Specs) :-
 
 :- pred check_typeclass_constraints_on_pred(io.text_output_stream::in,
     module_info::in, pred_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeclass_constraints_on_pred(ProgressStream, ModuleInfo, PredId,
         !Specs) :-
@@ -2048,7 +2048,7 @@ pred_needs_ambiguity_check(pred_status(status_exported_to_submodules)) =  yes.
 pred_needs_ambiguity_check(pred_status(status_local)) =                   yes.
 
 :- pred check_pred_type_ambiguities(module_info::in, pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -2072,7 +2072,7 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
     % universally (existentially) quantified.
     %
 :- pred check_constraint_quant(pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_constraint_quant(PredInfo, !Specs) :-
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
@@ -2090,7 +2090,7 @@ check_constraint_quant(PredInfo, !Specs) :-
         BadExistTVars, !Specs).
 
 :- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     (
@@ -2109,7 +2109,7 @@ maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     % in the constructor arguments and the functional dependencies.
     %
 :- pred check_typeclass_constraints_on_data_ctors(module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeclass_constraints_on_data_ctors(ModuleInfo, !Specs) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -2119,7 +2119,7 @@ check_typeclass_constraints_on_data_ctors(ModuleInfo, !Specs) :-
 
 :- pred check_typeclass_constraints_on_type_data_ctors(module_info::in,
     pair(type_ctor, hlds_type_defn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeclass_constraints_on_type_data_ctors(ModuleInfo, TypeCtor - TypeDefn,
         !Specs) :-
@@ -2140,7 +2140,7 @@ check_typeclass_constraints_on_type_data_ctors(ModuleInfo, TypeCtor - TypeDefn,
 
 :- pred check_typeclass_constraints_on_data_ctor(module_info::in,
     type_ctor::in, hlds_type_defn::in, constructor::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor, TypeDefn,
         Ctor, !Specs) :-
@@ -2367,7 +2367,7 @@ collect_determined_vars(FunDep, !FunDeps, !Vars) :-
     %   module.m:NNN:    <= `foo/N'
     %
 :- pred report_cyclic_classes(class_table::in, class_path::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
     ClassPath = class_path(ClassPathClassIds),
@@ -2404,7 +2404,7 @@ add_path_element(ClassId, !LaterLines) :-
 :- pred report_badly_formed_type_in_instance(class_id::in,
     hlds_instance_defn::in, type_ctor::in, int::in,
     pair(int, mer_type)::in, assoc_list(int, mer_type)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_badly_formed_type_in_instance(ClassId, InstanceDefn, TypeCtor, ArgNum,
         HeadNonTVarArg, TailNonTVarArgs, !Specs) :-
@@ -2457,7 +2457,7 @@ non_tvar_args_to_pieces(TVarSet, HeadArgNumType, TailArgNumTypes) = Pieces :-
 
 :- pred report_eqv_type_in_abstract_exported_instance(class_id::in,
     hlds_instance_defn::in, int::in, mer_type::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_eqv_type_in_abstract_exported_instance(ClassId, InstanceDefn, ArgNum,
         Type, !Specs) :-
@@ -2485,7 +2485,7 @@ report_eqv_type_in_abstract_exported_instance(ClassId, InstanceDefn, ArgNum,
 
 :- pred report_bad_type_in_instance(class_id::in, hlds_instance_defn::in,
     list(format_piece)::in, bad_instance_type_kind::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
     (
@@ -2514,7 +2514,7 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
     %
 :- pred report_duplicate_method_defn(class_id::in, hlds_instance_defn::in,
     pred_pf_name_arity::in, prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
         FirstContext, LaterContext, !Specs) :-
@@ -2530,7 +2530,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
     FirstMsg = msg(FirstContext, FirstPieces),
     LaterPieces = [words("Later definition appears here."), nl],
     LaterMsg = msg(LaterContext, LaterPieces),
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [HeaderMsg, FirstMsg, LaterMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2538,7 +2538,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
 
 :- pred report_undefined_method(class_id::in, hlds_instance_defn::in,
     pred_pf_name_arity::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
@@ -2556,7 +2556,7 @@ report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
 
 :- pred report_unknown_instance_methods(class_id::in, hlds_instance_defn::in,
     instance_method::in, list(instance_method)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unknown_instance_methods(ClassId, InstanceDefn,
         HeadMethod, TailMethods, !Specs) :-
@@ -2595,7 +2595,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
 
 :- pred report_unsatistfied_superclass_constraint(class_id::in,
     hlds_instance_defn::in, tvarset::in, list(hlds_constraint)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
         UnprovenConstraints, !Specs) :-
@@ -2631,7 +2631,7 @@ constraint_to_pieces(TVarSet, Constraint, Pieces) :-
 
 :- pred report_overlapping_instances(class_id::in,
     prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
     PiecesA = [words("Error:")] ++
@@ -2642,13 +2642,13 @@ report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
     MsgA = msg(ContextA, PiecesA),
     PiecesB = [words("... and the other is here."), nl],
     MsgB = msg(ContextB, PiecesB),
-    Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
+    Spec = diag_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_duplicate_instance_defns_in_category(class_id::in,
     spec_severity::in, string::in, string::in,
     list(hlds_instance_defn)::in, maybe(hlds_instance_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_duplicate_instance_defns_in_category(ClassId, Severity,
         SeverityWord, Category, InstanceDefns, MaybeInstanceDefn, !Specs) :-
@@ -2667,7 +2667,7 @@ report_any_duplicate_instance_defns_in_category(ClassId, Severity,
 
 :- pred report_duplicate_instance_defn(class_id::in, spec_severity::in,
     string::in, string::in, prog_context::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
         FirstContext, LaterInstanceDefn, !Specs) :-
@@ -2680,12 +2680,12 @@ report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
     LaterMsg = msg(LaterContext, LaterPieces),
     FirstPieces = [words("Previous instance declaration was here."), nl],
     FirstMsg = msg(FirstContext, FirstPieces),
-    Spec = error_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
+    Spec = diag_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_abstract_concrete_constraints_mismatch(class_id::in,
     hlds_instance_defn::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_abstract_concrete_constraints_mismatch(ClassId,
         AbstractInstanceDefn, ConcreteInstanceDefn, !Specs) :-
@@ -2701,13 +2701,13 @@ report_abstract_concrete_constraints_mismatch(ClassId,
     ConcretePieces = [words("The corresponding"),
         words("concrete instance declaration is here."), nl],
     ConcreteMsg = msg(ConcreteContext, ConcretePieces),
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [AbstractMsg, ConcreteMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_abstract_instance_without_concrete(class_id::in,
     hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
     ClassId = class_id(ClassName, _),
@@ -2729,7 +2729,7 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
 
 :- pred report_local_vs_nonlocal_clash(class_id::in,
     hlds_instance_defn::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
         !Specs) :-
@@ -2746,7 +2746,7 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
     NonLocalPieces = [words("The other instance declaration is here."), nl],
     NonLocalContext = NonLocalInstance ^ instdefn_context,
     NonLocalMsg = msg(NonLocalContext, NonLocalPieces),
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [LocalMsg, NonLocalMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2764,7 +2764,7 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
     % long_module_name:001:   by the domain.
     %
 :- pred report_coverage_error(class_id::in, hlds_instance_defn::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
@@ -2787,7 +2787,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
 
 :- pred report_consistency_error(class_id::in, hlds_class_defn::in,
     hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         !Specs) :-
@@ -2814,7 +2814,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     MsgA = msg(ContextA, PiecesA),
     MsgB = gen_msg(yes(ContextB), always_treat_as_first, 0u,
         [always(PiecesB)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
+    Spec = diag_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2841,7 +2841,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     % long_module_name:002:   determined by the constructor's argument types.
     %
 :- pred report_unbound_tvars_in_pred_context(pred_info::in, list(tvar)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     pred_info_get_context(PredInfo, Context),
@@ -2877,12 +2877,12 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     Msg = simple_msg(Context,
         [always(Pieces),
         verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_bad_class_ids_in_pred_decl(module_info::in, pred_info::in,
     class_id::in, list(class_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
         HeadBadClassId, TailBadClassIds, !Specs) :-
@@ -2913,7 +2913,7 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
     ;       existential_constraint.
 
 :- pred report_badly_quantified_vars(pred_info::in, quant_error_type::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -2950,7 +2950,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
 %
 
 :- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
-    hlds_type_defn::in, list(error_spec)::in, list(error_spec)::out) is det.
+    hlds_type_defn::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
@@ -2971,12 +2971,12 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     Msg = simple_msg(Context,
         [always(Pieces),
         verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_bad_class_ids_in_data_ctor(type_ctor::in,
     hlds_type_defn::in, class_id::in, list(class_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
         HeadBadClassId, TailBadClassIds, !Specs) :-

@@ -140,7 +140,7 @@
     --->    term_error(prog_context, term_error_kind).
 
 :- pred report_term_errors(module_info::in, scc::in, list(term_error)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % An error is considered an indirect error if it is due either to a
     % language feature we cannot analyze or due to an error in another part
@@ -214,11 +214,11 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = error_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
@@ -253,12 +253,12 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = error_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,
     list(term_error)::in, int::in, cord(diag_msg)::in, cord(diag_msg)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 describe_term_errors(_, _, [], _, !Msgs, !Specs).
 describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
@@ -270,7 +270,7 @@ describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
 
 :- pred describe_term_error(module_info::in, maybe(pred_proc_id)::in,
     term_error::in, maybe(int)::in, cord(diag_msg)::in, cord(diag_msg)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
         !ReasonMsgs, !Specs) :-

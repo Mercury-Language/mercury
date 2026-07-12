@@ -550,7 +550,7 @@ parse_dcg_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
     prog_context::in, cord(format_piece)::in,
     cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 
@@ -660,7 +660,7 @@ parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
     term::in, term::in, maybe(prog_var)::in, maybe(prog_var)::out,
     cord(pair(goal, prog_var))::in, cord(pair(goal, prog_var))::out,
     list(warning_spec)::in, list(warning_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out) is det.
 
 parse_dcg_goal_disjunction(DCGVar0, ContextPieces, TermA, TermB,

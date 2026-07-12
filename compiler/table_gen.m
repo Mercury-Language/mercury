@@ -50,7 +50,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred table_gen_process_module(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -142,7 +142,7 @@ table_gen_process_module(!ModuleInfo, !Specs) :-
 :- pred table_gen_process_preds(bool::in, list(pred_id)::in,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_process_preds(_, [], !ModuleInfo, !GenMap, !Specs).
 table_gen_process_preds(TraceTableIO, [PredId | PredIds],
@@ -154,7 +154,7 @@ table_gen_process_preds(TraceTableIO, [PredId | PredIds],
 
 :- pred table_gen_process_pred(bool::in, pred_id::in,
     module_info::in, module_info::out, generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_process_pred(TraceTableIO, PredId, !ModuleInfo, !GenMap, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -165,7 +165,7 @@ table_gen_process_pred(TraceTableIO, PredId, !ModuleInfo, !GenMap, !Specs) :-
 :- pred table_gen_process_procs(bool::in, pred_id::in, list(proc_id)::in,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_process_procs(_, _, [], !ModuleInfo, !GenMap, !Specs).
 table_gen_process_procs(TraceTableIO, PredId, [ProcId | ProcIds],
@@ -181,7 +181,7 @@ table_gen_process_procs(TraceTableIO, PredId, [ProcId | ProcIds],
 :- pred table_gen_process_proc(bool::in,
     pred_id::in, proc_id::in, proc_info::in, pred_info::in,
     module_info::in, module_info::out, generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
         !ModuleInfo, !GenMap, !Specs) :-
@@ -209,7 +209,7 @@ table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
 :- pred table_gen_process_io_proc(pred_id::in, proc_id::in, proc_info::in,
     pred_info::in, module_info::in, module_info::out,
     generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
         !ModuleInfo, !GenMap, !Specs) :-
@@ -364,7 +364,7 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
     ).
 
 :- func report_missing_tabled_for_io(module_info, pred_info, pred_id, proc_id)
-    = error_spec.
+    = diag_spec.
 
 report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     pred_info_get_context(PredInfo, Context),
@@ -381,7 +381,7 @@ report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
     generator_map::in, generator_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 table_gen_transform_proc_if_possible(TabledMethod, PredId, ProcId,
         !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !Specs) :-
@@ -413,7 +413,7 @@ table_gen_transform_proc_if_possible(TabledMethod, PredId, ProcId,
 
 :- pred find_grade_problems_for_tabling(module_info::in,
     pred_id::in, proc_id::in, tabled_eval_method::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         !:Specs) :-
@@ -500,7 +500,7 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
 
 :- pred general_cannot_table_reason_spec(module_info::in,
     pred_id::in, proc_id::in, tabled_eval_method::in,
-    general_cannot_table_reason::in, error_spec::out) is det.
+    general_cannot_table_reason::in, diag_spec::out) is det.
 
 general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         Reason, Spec) :-
@@ -532,8 +532,8 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         TabledMethod = tabled_minimal(_),
         Pieces = [words("Error: minimal model tabling is")] ++
             ReasonDesc ++ [nl],
-        % We generate one no-context error_spec for each affected predicate,
-        % but we print only one copy of each duplicated error_spec.
+        % We generate one no-context diag_spec for each affected predicate,
+        % but we print only one copy of each duplicated diag_spec.
         Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces)
     ).
 
@@ -564,13 +564,13 @@ gen_cannot_table_reason_desc(Reason) = Desc :-
 %---------------------%
 
 :- pred mm_cannot_table_reason_spec(mm_cannot_table_reason::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
 mm_cannot_table_reason_spec(Reason, Spec) :-
     Pieces = [words("Error: minimal model tabling is not compatible with")] ++
         mm_cannot_table_reason_desc(Reason),
-    % We generate one no-context error_spec for each affected predicate,
-    % but we print only one copy of each duplicated error_spec.
+    % We generate one no-context diag_spec for each affected predicate,
+    % but we print only one copy of each duplicated diag_spec.
     Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces).
 
 :- type mm_cannot_table_reason

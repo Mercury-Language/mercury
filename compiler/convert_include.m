@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -39,7 +39,7 @@
     %
 :- pred classify_include_modules(
     list(item_include)::in, list(item_include)::in, include_module_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred include_map_to_int_imp_modules(include_module_map::in,
     set(module_name)::out, set(module_name)::out) is det.
@@ -69,7 +69,7 @@ classify_include_modules(IntIncludes, ImpIncludes,
 
 :- pred classify_include_module(module_section::in, item_include::in,
     include_module_map::in, include_module_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 classify_include_module(Section, ItemInclude, !InclMap, !Specs) :-
     ItemInclude = item_include(ModuleName, Context, _SeqNum),
@@ -83,7 +83,7 @@ classify_include_module(Section, ItemInclude, !InclMap, !Specs) :-
 
 :- pred report_duplicate_include(module_name::in,
     prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_include(ModuleName, PrevContext, Context, !Specs) :-
     MainPieces = [words("Error:")] ++
@@ -96,7 +96,7 @@ report_duplicate_include(ModuleName, PrevContext, Context, !Specs) :-
     PrevPieces = [words("The previous"),
         decl("include"), words("declaration was here."), nl],
     PrevMsg = msg(PrevContext, PrevPieces),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [MainMsg, PrevMsg]),
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [MainMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%

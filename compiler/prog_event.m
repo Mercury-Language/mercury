@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
     % errors discovered during the process.
     %
 :- pred read_event_set(string::in, string::out, event_spec_map::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, io::di, io::uo) is det.
 
     % Return a description of the given event set.
     %
@@ -374,7 +374,7 @@ read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
 
 :- pred convert_list_to_spec_map(string::in, list(event_spec_term)::in,
     event_spec_map::in, event_spec_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 convert_list_to_spec_map(_, [], !EventSpecMap, !ErrorSpecs).
 convert_list_to_spec_map(FileName, [SpecTerm | SpecTerms],
@@ -384,7 +384,7 @@ convert_list_to_spec_map(FileName, [SpecTerm | SpecTerms],
 
 :- pred convert_term_to_spec_map(string::in, event_spec_term::in,
     event_spec_map::in, event_spec_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     SpecTerm = event_spec_term(EventName, EventNumber, EventLineNumber,
@@ -457,7 +457,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
             quote(EventName), words("is here."), nl],
         EventContext = term_context.context(FileName, EventLineNumber),
         OldContext = term_context.context(FileName, OldLineNumber),
-        DuplErrorSpec = error_spec($pred, severity_error, phase_t2pt,
+        DuplErrorSpec = diag_spec($pred, severity_error, phase_t2pt,
             [msg(EventContext, Pieces1),
             msg(OldContext, Pieces2)]),
         !:ErrorSpecs = [DuplErrorSpec | !.ErrorSpecs]
@@ -481,7 +481,7 @@ acc_self_dependent_nodes(From - To, !RevSelfRecSccs) :-
     ).
 
 :- pred acc_circular_synth_attr_error(prog_context::in, string::in,
-    set(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    set(string)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 acc_circular_synth_attr_error(Context, EventName, Scc, !ErrorSpecs) :-
     Attrs = set.to_sorted_list(Scc),
@@ -570,7 +570,7 @@ keep_only_synth_attr_nums(AttrMap, [AttrName | AttrNames], SynthAttrNums) :-
     attr_name_map::in, attr_name_map::out,
     attr_type_map::in, attr_type_map::out,
     attr_key_map::in, attr_key_map::out, attr_dep_rel::in, attr_dep_rel::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 build_plain_type_map(_, _, _, [], _, !AttrNumMap, !AttrNameMap, !AttrTypeMap,
         !KeyMap, !DepRel, !ErrorSpecs).
@@ -617,7 +617,7 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
 :- pred build_dep_map(string::in, string::in,
     attr_name_map::in, attr_key_map::in, list(event_attr_term)::in,
     attr_type_map::in, attr_type_map::out, attr_dep_rel::in, attr_dep_rel::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 build_dep_map(_, _, _, _, [], !AttrTypeMap, !DepRel, !ErrorSpecs).
 build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
@@ -706,7 +706,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
 :- pred record_arg_dependencies(string::in, string::in, int::in,
     attr_key_map::in, string::in, attr_key::in,
     list(string)::in, attr_dep_rel::in, attr_dep_rel::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_arg_dependencies(_, _, _, _, _, _, [], !DepRel, !ErrorSpecs).
 record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
@@ -734,7 +734,7 @@ record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
 :- pred convert_terms_to_attrs(string::in, string::in, attr_name_map::in,
     attr_type_map::in, int::in, list(event_attr_term)::in,
     list(event_attribute)::in, list(event_attribute)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 convert_terms_to_attrs(_, _, _, _, _, [], !RevAttrs, !ErrorSpecs).
 convert_terms_to_attrs(EventName, FileName, AttrNameMap,

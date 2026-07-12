@@ -220,7 +220,7 @@
 
 :- pred expand_try_goals_in_module(io.text_output_stream::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -286,7 +286,7 @@ expand_try_goals_in_module(ProgressStream, !ModuleInfo, !Specs) :-
 
 :- pred expand_try_goals_in_pred(io.text_output_stream::in, pred_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 expand_try_goals_in_pred(ProgressStream, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -296,7 +296,7 @@ expand_try_goals_in_pred(ProgressStream, PredId, !ModuleInfo, !Specs) :-
 
 :- pred expand_try_goals_in_proc(io.text_output_stream::in,
     pred_id::in, proc_id::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 expand_try_goals_in_proc(ProgressStream, PredId, ProcId,
         !ModuleInfo, !Specs) :-
@@ -323,7 +323,7 @@ expand_try_goals_in_proc(ProgressStream, PredId, ProcId,
 :- pred update_changed_proc(io.text_output_stream::in, hlds_goal::in,
     pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 update_changed_proc(ProgressStream, Goal, PredId, ProcId, PredInfo,
         !.ProcInfo, !ModuleInfo, !Specs) :-

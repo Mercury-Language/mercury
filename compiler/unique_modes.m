@@ -52,7 +52,7 @@
     % Check every predicate in a module.
     %
 :- pred unique_modes_check_module(io.text_output_stream::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
+    module_info::in, module_info::out, list(diag_spec)::out) is det.
 
     % Just check a single goal.
     %

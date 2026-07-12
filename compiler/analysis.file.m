@@ -66,7 +66,7 @@
 :- pred read_module_analysis_results(io.text_output_stream::in,
     analysis_info::in, globals::in,
     module_name::in, module_analysis_map(some_analysis_result)::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, io::di, io::uo) is det.
 
     % write_module_analysis_results(ProgressStream, AnalysisInfo, Globals,
     %   ModuleName, AnalysisResults, !IO)
@@ -88,7 +88,7 @@
     %
 :- pred read_module_analysis_requests(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(analysis_request)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
     % write_module_analysis_requests(AnalysisInfo, Globals, ModuleName,
     %   ModuleRequests, !IO)
@@ -106,7 +106,7 @@
     % Read the intermodule dependencies graph entries for a module from disk.
     %
 :- pred read_module_imdg(analysis_info::in, globals::in, module_name::in,
-    module_analysis_map(imdg_arc)::out, list(error_spec)::out,
+    module_analysis_map(imdg_arc)::out, list(diag_spec)::out,
     io::di, io::uo) is det.
 
     % write_module_imdg(AnalysisInfo, Globals, ModuleName, ModuleEntries, !IO)
@@ -211,7 +211,7 @@ analysis_status_to_string(optimal, "optimal").
 %
 
 :- type parse_entry(T) ==
-    pred(varset, term, T, T, list(error_spec), list(error_spec)).
+    pred(varset, term, T, T, list(diag_spec), list(diag_spec)).
 :- inst parse_entry ==
     (pred(in, in, in, out, in, out) is det).
 
@@ -377,7 +377,7 @@ read_module_analysis_results(ProgressStream, Info, Globals,
     ).
 
 :- pred do_read_module_analysis_results(Compiler::in, string::in,
-    module_analysis_map(some_analysis_result)::out, list(error_spec)::out,
+    module_analysis_map(some_analysis_result)::out, list(diag_spec)::out,
     io::di, io::uo) is det <= compiler(Compiler).
 
 do_read_module_analysis_results(Compiler, AnalysisFileName, !:ModuleResults,
@@ -423,7 +423,7 @@ do_read_module_analysis_results(Compiler, AnalysisFileName, !:ModuleResults,
 :- pred parse_result_entry(Compiler::in, varset::in, term::in,
     module_analysis_map(some_analysis_result)::in,
     module_analysis_map(some_analysis_result)::out,
-    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
+    list(diag_spec)::in, list(diag_spec)::out) is det <= compiler(Compiler).
 
 parse_result_entry(Compiler, VarSet, Term, !Results, !Specs) :-
     ( if
@@ -536,7 +536,7 @@ read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
 :- pred parse_request_entry(Compiler::in, varset::in, term::in,
     module_analysis_map(analysis_request)::in,
     module_analysis_map(analysis_request)::out,
-    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
+    list(diag_spec)::in, list(diag_spec)::out) is det <= compiler(Compiler).
 
 parse_request_entry(Compiler, VarSet, Term, !Requests, !Specs) :-
     ( if
@@ -674,7 +674,7 @@ read_module_imdg(Info, Globals, ModuleName, ModuleEntries, Specs, !IO) :-
 
 :- pred parse_imdg_arc(Compiler::in, varset::in, term::in,
     module_analysis_map(imdg_arc)::in, module_analysis_map(imdg_arc)::out,
-    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
+    list(diag_spec)::in, list(diag_spec)::out) is det <= compiler(Compiler).
 
 parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
     ( if
@@ -784,7 +784,7 @@ try_parse_module_name(Term, ModuleName) :-
 
 :- pred find_and_read_analysis_file(Compiler::in, globals::in,
     parse_entry(T)::in(parse_entry), ext::in(ext_analysis), module_name::in,
-    T::in, T::out, list(error_spec)::in, list(error_spec)::out,
+    T::in, T::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det <= compiler(Compiler).
 
 find_and_read_analysis_file(Compiler, Globals, ParseEntry,
@@ -813,7 +813,7 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
     ).
 
 :- pred read_analysis_file(string::in, parse_entry(T)::in(parse_entry),
-    T::in, T::out, list(error_spec)::in, list(error_spec)::out,
+    T::in, T::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 read_analysis_file(AnalysisFileName, ParseEntry,
@@ -854,7 +854,7 @@ read_analysis_file(AnalysisFileName, ParseEntry,
 
 :- pred check_analysis_file_version_number(string::in, string::in, int::in,
     line_context::in, line_context::out, line_posn::in, line_posn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_analysis_file_version_number(FileName, FileStr, MaxOffset,
         !LineContext, !LinePosn, !Specs) :-
@@ -891,7 +891,7 @@ check_analysis_file_version_number(FileName, FileStr, MaxOffset,
 :- pred parse_analysis_file_entries(string::in, string::in, int::in,
     parse_entry(T)::in(parse_entry),
     line_context::in, line_posn::in,
-    T::in, T::out, list(error_spec)::in, list(error_spec)::out) is det.
+    T::in, T::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_analysis_file_entries(FileName, FileStr, MaxOffset, ParseEntry,
         !.LineContext, !.LinePosn, !Results, !Specs) :-
@@ -1047,7 +1047,7 @@ dir_sep(Char) :-
     dir.is_directory_separator(Char).
 
 :- pred maybe_write_analysis_cache_file(string::in,
-    module_analysis_map(some_analysis_result)::in, list(error_spec)::in,
+    module_analysis_map(some_analysis_result)::in, list(diag_spec)::in,
     io::di, io::uo) is det.
 
 maybe_write_analysis_cache_file(CacheFileName, ModuleResults, Specs, !IO) :-

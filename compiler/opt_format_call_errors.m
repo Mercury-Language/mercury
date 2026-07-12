@@ -36,16 +36,16 @@
     ;       warn_unknown_format.
 
 :- func report_unknown_format_string(module_info, pred_id,
-    maybe_warn_unknown_format, prog_context) = list(error_spec).
+    maybe_warn_unknown_format, prog_context) = list(diag_spec).
 
 :- func report_unknown_format_values(module_info, pred_id,
-    maybe_warn_unknown_format, prog_context) = list(error_spec).
+    maybe_warn_unknown_format, prog_context) = list(diag_spec).
 
 %---------------------------------------------------------------------------%
 
 :- func report_format_mismatch(module_info, pred_id, maybe({int, int, int}),
     string_format_error, list(string_format_error), prog_context)
-    = list(error_spec).
+    = list(diag_spec).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -42,7 +42,7 @@
     ;       invoked_by_mmc_make.
 
 :- type may_build
-    --->    may_not_build(one_or_more(error_spec))
+    --->    may_not_build(one_or_more(diag_spec))
     ;       may_build(list(string), globals).
             % All the arguments for the build, and the globals we have set up
             % for the build.

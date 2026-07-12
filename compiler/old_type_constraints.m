@@ -28,7 +28,7 @@
     % Typecheck the module using constraints.
     %
 :- pred old_typecheck_constraints(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -185,7 +185,7 @@
                 tconstr_tvarset             :: tvarset,
 
                 % All errors encountered during typechecking.
-                tconstr_error_specs         :: error_specs
+                tconstr_diag_specs         :: diag_specs
             ).
 
 :- type type_constraint_solution
@@ -216,7 +216,7 @@
 :- type type_constraint_id == int.
 :- type type_constraint_counter == counter.
 
-:- type error_specs == list(error_spec).
+:- type diag_specs == list(diag_spec).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -235,7 +235,7 @@ old_typecheck_constraints(!HLDS, Specs) :-
 
 :- pred typecheck_one_predicate_if_needed(pred_id::in, tconstr_environment::in,
     tconstr_environment::out, module_info::in, module_info::out,
-    error_specs::in, error_specs::out) is det.
+    diag_specs::in, diag_specs::out) is det.
 
 typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
     predicate_table_get_pred_id_table(!.Environment ^ tce_pred_env, Preds0),
@@ -305,7 +305,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 :- pred typecheck_one_predicate(pred_id::in,
     tconstr_environment::in, tconstr_environment::out,
     module_info::in, module_info::out,
-    error_specs::in, error_specs::out) is det.
+    diag_specs::in, diag_specs::out) is det.
 
 typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
     some [!Preds, !PredInfo, !ClausesInfo, !Clauses, !Goals, !PredEnv,
@@ -398,7 +398,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         predicate_table_set_pred_id_table(!.Preds, !PredEnv),
         module_info_set_predicate_table(!.PredEnv, !HLDS),
         !Environment ^ tce_pred_env := !.PredEnv,
-        !:Specs = !.TCInfo ^ tconstr_error_specs ++ !.Specs
+        !:Specs = !.TCInfo ^ tconstr_diag_specs ++ !.Specs
     ).
 
     % Updates the goal with the pred_ids of all predicates called in the goal.
@@ -2212,8 +2212,8 @@ next_min_unsat(Constraint, C, !D, !P, !MinUnsats) :-
     type_constraint_info::out) is det.
 
 add_message_to_spec(ErrMsg, !TCInfo) :-
-    Spec = error_spec($pred, severity_error, phase_type_check, [ErrMsg]),
-    !TCInfo ^ tconstr_error_specs := [Spec | !.TCInfo ^ tconstr_error_specs].
+    Spec = diag_spec($pred, severity_error, phase_type_check, [ErrMsg]),
+    !TCInfo ^ tconstr_diag_specs := [Spec | !.TCInfo ^ tconstr_diag_specs].
 
 :- pred bracket_context_to_string(prog_context::in, string::out) is det.
 

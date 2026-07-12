@@ -83,10 +83,10 @@
                 ui_state_var_store  :: svar_store,
 
                 % The errors and warnings that we definitely want to print.
-                % (The svar_store also contains error_specs, but we print those
+                % (The svar_store also contains diag_specs, but we print those
                 % only as hints *if and when* we later find certain other kinds
                 % of errors.)
-                ui_error_specs      :: list(error_spec)
+                ui_diag_specs      :: list(diag_spec)
             ).
 
 %---------------------------------------------------------------------------%
@@ -100,11 +100,11 @@
 :- pred record_unravel_found_syntax_error(
     unravel_info::in, unravel_info::out) is det.
 
-:- pred add_unravel_spec(error_spec::in,
+:- pred add_unravel_spec(diag_spec::in,
     unravel_info::in, unravel_info::out) is det.
-:- pred add_unravel_specs(list(error_spec)::in,
+:- pred add_unravel_specs(list(diag_spec)::in,
     unravel_info::in, unravel_info::out) is det.
-:- pred add_unravel_oom_specs(one_or_more(error_spec)::in,
+:- pred add_unravel_oom_specs(one_or_more(diag_spec)::in,
     unravel_info::in, unravel_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -200,7 +200,7 @@
 :- pred svar_finish_clause_body(prog_context::in, new_statevar_map::in,
     map(svar, prog_var)::in, svar_state::in, svar_state::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::out,
-    list(error_spec)::out, unused_statevar_arg_map::out,
+    list(diag_spec)::out, unused_statevar_arg_map::out,
     unravel_info::in, unravel_info::out) is det.
 
     % Finish processing a lambda expression.
@@ -385,12 +385,12 @@
 :- pred report_illegal_func_svar_result(prog_context::in, svar::in,
     unravel_info::in, unravel_info::out) is det.
 :- func report_illegal_func_svar_result_raw(prog_context,
-    prog_varset, svar) = error_spec.
+    prog_varset, svar) = diag_spec.
 
 :- pred report_illegal_bang_svar_lambda_arg(prog_context::in, svar::in,
     unravel_info::in, unravel_info::out) is det.
 :- func report_illegal_bang_svar_lambda_arg_raw(prog_context,
-    prog_varset, svar) = error_spec.
+    prog_varset, svar) = diag_spec.
 
 :- pred report_svar_unify_error(prog_context::in, svar::in,
     svar_state::in, svar_state::out,
@@ -447,24 +447,24 @@ record_unravel_found_syntax_error(!UrInfo) :-
     !UrInfo ^ ui_qual_info := QualInfo.
 
 add_unravel_spec(NewSpec, !UrInfo) :-
-    Specs0 = !.UrInfo ^ ui_error_specs,
+    Specs0 = !.UrInfo ^ ui_diag_specs,
     Specs = [NewSpec | Specs0],
-    !UrInfo ^ ui_error_specs := Specs.
+    !UrInfo ^ ui_diag_specs := Specs.
 
 add_unravel_specs(NewSpecs, !UrInfo) :-
     (
         NewSpecs = []
     ;
         NewSpecs = [_ | _],
-        Specs0 = !.UrInfo ^ ui_error_specs,
+        Specs0 = !.UrInfo ^ ui_diag_specs,
         Specs = NewSpecs ++ Specs0,
-        !UrInfo ^ ui_error_specs := Specs
+        !UrInfo ^ ui_diag_specs := Specs
     ).
 
 add_unravel_oom_specs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
-    Specs0 = !.UrInfo ^ ui_error_specs,
+    Specs0 = !.UrInfo ^ ui_diag_specs,
     Specs = [HeadSpec | TailSpecs] ++ Specs0,
-    !UrInfo ^ ui_error_specs := Specs.
+    !UrInfo ^ ui_diag_specs := Specs.
 
 %---------------------------------------------------------------------------%
 %
@@ -570,7 +570,7 @@ add_unravel_oom_specs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
                 % As of 2025 feb 20, these messages are all about situations
                 % in which a disjunction or an if-then-else initialises
                 % a state variable in some branches but not in others.
-                store_missing_init_specs    ::  list(error_spec)
+                store_missing_init_specs    ::  list(diag_spec)
             ).
 
     % Create a new svar_state/store set up to start processing a clause head.
@@ -1342,7 +1342,7 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
     list(hlds_goal)::in, list(hlds_goal)::out,
     ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 merge_changes_made_by_arms(_, [], _, _,
         !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
@@ -2563,7 +2563,7 @@ report_illegal_state_var_update(Context, RO_Construct, RO_Context,
     Pieces2 = [words("Here is the surrounding context that makes"),
         words("state variable"), quote(Name), words("readonly."), nl],
     Msg2 = msg(RO_Context, Pieces2),
-    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
+    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
     add_unravel_spec(Spec, !UrInfo).
 
 :- func ro_construct_name(readonly_context_kind) = string.
@@ -2688,7 +2688,7 @@ report_missing_inits_in_ite(Context, NextStateVars,
     !UrInfo ^ ui_state_var_store ^ store_missing_init_specs := Specs.
 
 :- pred report_missing_inits_in_disjunct(prog_context::in, list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
     Pieces = [words("Other disjuncts define")] ++

@@ -67,7 +67,7 @@
 
 :- pred maybe_report_term2_errors(module_info::in, scc::in,
     list(term2_error)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -172,7 +172,7 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
 %-----------------------------------------------------------------------------%
 
 :- pred report_term2_errors(module_info::in, scc::in,
-    list(term2_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(term2_error)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
@@ -207,7 +207,7 @@ report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [simple_msg(Context, [always(Pieces1 ++ Pieces2)]) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = error_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term2_errors(module_info::in, maybe(pred_proc_id)::in,

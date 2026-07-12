@@ -326,7 +326,7 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
 :- pred collect_superclass_constraints(varset::in,
     list(arbitrary_constraint)::in,
     list(prog_constraint)::out, list(prog_fundep)::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 collect_superclass_constraints(_, [], [], [], []).
 collect_superclass_constraints(VarSet, [Constraint | Constraints],
@@ -468,7 +468,7 @@ find_errors(Xs, Result) :-
     ).
 
 :- pred find_errors_loop(list(maybe1(T))::in, list(T)::in, list(T)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 find_errors_loop([], !Results, !Specs).
 find_errors_loop([X | Xs], !Results, !Specs) :-
@@ -641,7 +641,7 @@ parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
     ).
 
 :- pred check_tvars_in_instance_constraint(item_instance_info::in,
-    term::in, maybe(error_spec)::out) is det.
+    term::in, maybe(diag_spec)::out) is det.
 
 check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     ItemInstanceInfo = item_instance_info(_Name, Types, _OriginalTypes,
@@ -833,7 +833,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         )
     ).
 
-:- func report_unexpected_method_term(varset, term) = error_spec.
+:- func report_unexpected_method_term(varset, term) = diag_spec.
 
 report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
     MethodTermStr = describe_error_term(VarSet, MethodTerm),

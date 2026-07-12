@@ -100,7 +100,7 @@ maybe_warn_about_unused_types(ModuleInfo, !MaybeWrittenSpecs) :-
     ).
 
 :- pred warn_about_unused_types(module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_unused_types(ModuleInfo, !Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -481,7 +481,7 @@ record_type_ctors_used_in_type(Type, !ShouldBeUsedTypeCtors) :-
 %---------------------------------------------------------------------------%
 
 :- pred report_unused_type_ctor(type_table::in, type_ctor::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unused_type_ctor(TypeTable, TypeCtor, !Specs) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),

@@ -85,8 +85,8 @@
 
 :- type number_of_iterations
     --->    within_iteration_limit
-    ;       exceeded_iteration_limit(error_spec).
-            % This error_spec reprorting the breaching of the iteration limit
+    ;       exceeded_iteration_limit(diag_spec).
+            % This diag_spec reprorting the breaching of the iteration limit
             % will have been also returned as an element of Specs
             % in typecheck_module's argument list.
 
@@ -102,7 +102,7 @@
     % iff the type inference iteration limit was reached.
     %
 :- pred typecheck_module(io.text_output_stream::in,
-    module_info::in, module_info::out, list(error_spec)::out,
+    module_info::in, module_info::out, list(diag_spec)::out,
     maybe_clause_syntax_errors::out, number_of_iterations::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -192,7 +192,7 @@ typecheck_module(ProgressStream, !ModuleInfo, Specs, FoundSyntaxError,
 :- pred typecheck_to_fixpoint(io.text_output_stream::in, int::in, int::in,
     module_info::in, module_info::out,
     list(pred_id)::in, set_tree234(pred_id)::in, set_tree234(pred_id)::out,
-    list(error_spec)::out, maybe_clause_syntax_errors::out,
+    list(diag_spec)::out, maybe_clause_syntax_errors::out,
     number_of_iterations::out) is det.
 
 typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
@@ -262,7 +262,7 @@ typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
     assoc_list(pred_id, pred_info)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     list(pred_id)::in, list(pred_id)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     maybe_clause_syntax_errors::in, maybe_clause_syntax_errors::out,
     next_iteration::in, next_iteration::out) is det.
 
@@ -329,7 +329,7 @@ typecheck_module_one_iteration(ProgressStream, ModuleInfo, ValidPredIdSet,
     ).
 
 :- pred typecheck_pred_if_needed(io.text_output_stream::in, module_info::in,
-    pred_id::in, pred_info::in, pred_info::out, list(error_spec)::out,
+    pred_id::in, pred_info::in, pred_info::out, list(diag_spec)::out,
     maybe_clause_syntax_errors::out, bool::out, next_iteration::out) is det.
 
 typecheck_pred_if_needed(ProgressStream, ModuleInfo, PredId, !PredInfo,
@@ -409,7 +409,7 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
     %
 :- pred handle_stubs(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, maybe_clause_syntax_errors::in,
-    list(error_spec)::out, maybe_need_typecheck::out) is det.
+    list(diag_spec)::out, maybe_need_typecheck::out) is det.
 
 handle_stubs(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
         !:Specs, MaybeNeedTypecheck) :-
@@ -514,7 +514,7 @@ handle_stubs(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
 
 :- pred do_typecheck_pred(io.text_output_stream::in, module_info::in,
     pred_id::in, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out, next_iteration::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out, next_iteration::out) is det.
 
 do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
         !Specs, NextIteration) :-

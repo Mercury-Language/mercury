@@ -640,7 +640,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
         (
             MayBuild = may_not_build(MSISpecs),
             % XXX MAKE_STREAM
-            write_oom_error_specs(ErrorStream, Globals, MSISpecs, !IO),
+            write_oom_diag_specs(ErrorStream, Globals, MSISpecs, !IO),
             Succeeded0 = did_not_succeed
         ;
             MayBuild = may_build(_AllOptions, BuildGlobals),

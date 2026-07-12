@@ -39,7 +39,7 @@
     % most of the task of this module itself, but delegates this one to us.
     %
 :- pred propagate_checked_types_into_pred_modes(module_info::in,
-    assoc_list(proc_id, list(inst_var))::out, list(error_spec)::out,
+    assoc_list(proc_id, list(inst_var))::out, list(diag_spec)::out,
     tprop_cache::in, tprop_cache::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -110,7 +110,7 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
     assoc_list(proc_id, list(inst_var))::in,
     assoc_list(proc_id, list(inst_var))::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_procs_modes(_, _, [],
@@ -127,7 +127,7 @@ propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo,
     assoc_list(proc_id, list(inst_var))::in,
     assoc_list(proc_id, list(inst_var))::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
@@ -165,7 +165,7 @@ propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
 :- pred propagate_checked_types_into_lambda_modes_in_clauses(module_info::in,
     prog_varset::in, var_table::in, list(clause)::in, list(clause)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_clauses(_, _, _, [], [],
         !Cache, !Specs).
@@ -180,7 +180,7 @@ propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo,
 :- pred propagate_checked_types_into_lambda_modes_in_clause(module_info::in,
     prog_varset::in, var_table::in, clause::in, clause::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo,
         VarSet, VarTable, Clause0, Clause, !Cache, !Specs) :-
@@ -202,7 +202,7 @@ propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo,
 :- pred propagate_checked_types_into_lambda_modes_in_goal(tprop_info::in,
     var_table::in, hlds_goal::in, hlds_goal::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_goal(TPropInfo, VarTable,
         Goal0, Goal, !Cache, !Specs) :-
@@ -307,7 +307,7 @@ propagate_checked_types_into_lambda_modes_in_goal(TPropInfo, VarTable,
 :- pred propagate_checked_types_into_lambda_modes_in_goals(tprop_info::in,
     var_table::in, list(hlds_goal)::in, list(hlds_goal)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_goals(_, _, [], [],
         !Cache, !Specs).
@@ -321,7 +321,7 @@ propagate_checked_types_into_lambda_modes_in_goals(TPropInfo, VarTable,
 :- pred propagate_checked_types_into_lambda_modes_in_cases(tprop_info::in,
     var_table::in, list(case)::in, list(case)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_cases(_, _, [], [],
         !Cache, !Specs).
@@ -340,7 +340,7 @@ propagate_checked_types_into_lambda_modes_in_cases(TPropInfo, VarTable,
     tprop_args::in, int::in,
     assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 propagate_checked_types_into_var_modes(_, _, _, _, [], [], !Cache, !Specs).
 propagate_checked_types_into_var_modes(TPropInfo, VarTable, Args, ArgNum,

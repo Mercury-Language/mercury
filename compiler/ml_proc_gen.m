@@ -34,7 +34,7 @@
     ml_const_struct_map::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -208,7 +208,7 @@ requantify_codegen_proc(ProcId, !ProcTable) :-
     list(scc_with_entry_points)::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 ml_gen_sccs(_, _, _, _, _, _, [], !FuncDefns, !GlobalData, !Specs).
 ml_gen_sccs(ProgressStream, ModuleInfo, OptTailCalls, DefaultWarnParams,
@@ -226,7 +226,7 @@ ml_gen_sccs(ProgressStream, ModuleInfo, OptTailCalls, DefaultWarnParams,
     mlds_target_lang::in, ml_const_struct_map::in, scc_with_entry_points::in,
     list(mlds_function_defn)::in, list(mlds_function_defn)::out,
     ml_global_data::in, ml_global_data::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 ml_gen_scc(ProgressStream, ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
         ConstStructMap, SCCE, !FuncDefns, !GlobalData, !Specs) :-
@@ -263,7 +263,7 @@ gather_nontail_rec_calls(InSccInfo, !NonTailRecCalls) :-
 
 :- pred report_nontail_rec_call(module_info::in,
     warn_non_tail_rec_params::in, nontail_rec_call::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_nontail_rec_call(ModuleInfo, DefaultWarnParams, NonTailRecCall,
         !Specs) :-

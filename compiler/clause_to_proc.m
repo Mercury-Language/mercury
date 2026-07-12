@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -336,7 +336,7 @@ select_matching_nonunify_clauses_acc(ProcId, [Clause | Clauses],
 
 :- pred get_clause_disjuncts_and_warnings(list(clause)::in,
     cord(hlds_goal)::in, cord(hlds_goal)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 get_clause_disjuncts_and_warnings([], !DisjunctCord, !Warnings).
 get_clause_disjuncts_and_warnings([HeadClause | TailClauses],

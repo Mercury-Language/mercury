@@ -148,7 +148,7 @@
     %
 :- pred puritycheck_module(io.text_output_stream::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Rerun purity checking on a procedure after an optimization pass has
     % performed transformations which might affect the procedure's purity.
@@ -215,7 +215,7 @@ puritycheck_module(ProgressStream, !ModuleInfo, !Specs) :-
 
 :- pred maybe_puritycheck_preds(io.text_output_stream::in, list(pred_id)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_puritycheck_preds(_, [], !ModuleInfo, !Specs).
 maybe_puritycheck_preds(ProgressStream, [PredId | PredIds],
@@ -258,7 +258,7 @@ maybe_puritycheck_preds(ProgressStream, [PredId | PredIds],
 
 :- pred puritycheck_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 puritycheck_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     pred_info_get_purity(!.PredInfo, DeclaredPurity),
@@ -290,7 +290,7 @@ puritycheck_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     % MaybePromisedPurity:  Did we promise this pred as pure or semipure?
     %
 :- pred perform_pred_purity_checks(module_info::in, pred_id::in, pred_info::in,
-    purity::in, purity::in, maybe(purity)::in, list(error_spec)::out) is det.
+    purity::in, purity::in, maybe(purity)::in, list(diag_spec)::out) is det.
 
 perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
         ActualPurity, DeclaredPurity, MaybePromisedPurity, !:Specs) :-
@@ -820,7 +820,7 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     %
 :- pred finally_resolve_pred_overloading(module_info::in, pred_info::in,
     pred_id::in, sym_name::in, list(prog_var)::in, prog_context::in,
-    pred_id::out, sym_name::out, list(error_spec)::out) is det.
+    pred_id::out, sym_name::out, list(diag_spec)::out) is det.
 
 finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
         PredId0, PredSymName0, ArgVars0, Context,
@@ -995,7 +995,7 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     Purity = ActualPurity.
 
 :- pred check_var_functor_unify_purity(purity_info::in, hlds_goal_info::in,
-    prog_var::in, cons_id::in, list(prog_var)::in, list(error_spec)::out)
+    prog_var::in, cons_id::in, list(prog_var)::in, list(diag_spec)::out)
     is det.
 
 check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, ArgVars, Specs) :-
@@ -1062,7 +1062,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, ArgVars, Specs) :-
     ).
 
 :- pred check_lambda_purity(hlds_goal_info::in, purity::in, purity::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 check_lambda_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
     ( if less_pure(ActualPurity, DeclaredPurity) then
@@ -1077,7 +1077,7 @@ check_lambda_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
     ).
 
 :- pred check_higher_order_var_purity(var_table::in, prog_var::in,
-    hlds_goal_info::in, purity::in, purity::in, list(error_spec)::out) is det.
+    hlds_goal_info::in, purity::in, purity::in, list(diag_spec)::out) is det.
 
 check_higher_order_var_purity(VarTable, Var, GoalInfo,
         TypePurity, CalleePurity, Specs) :-
@@ -1306,7 +1306,7 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
         !Purity, !ContainsTrace, !Info, !Invariants).
 
 :- pred compute_goal_purity_in_fgt_no_ptc(list(hlds_goal)::in,
-    purity_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    purity_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 compute_goal_purity_in_fgt_no_ptc([], _, !Specs).
 compute_goal_purity_in_fgt_no_ptc([Goal0 | Goals0], Info, !Specs) :-
@@ -1414,7 +1414,7 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     ).
 
 :- pred check_outer_var_type(prog_context::in, var_table::in,
-    prog_var::in, mer_type::out, list(error_spec)::out) is det.
+    prog_var::in, mer_type::out, list(diag_spec)::out) is det.
 
 check_outer_var_type(Context, VarTable, Var, VarType, Specs) :-
     lookup_var_entry(VarTable, Var, VarEntry),
@@ -1473,7 +1473,7 @@ wrap_inner_outer_goals(Info, Outer, Goal0 - Inner, Goal) :-
 % This part of the module is for generating error messages.
 %
 
-:- func error_inconsistent_purity_promise(pred_info, purity) = error_spec.
+:- func error_inconsistent_purity_promise(pred_info, purity) = diag_spec.
 
 error_inconsistent_purity_promise(PredInfo, Purity) = Spec :-
     pred_info_get_context(PredInfo, Context),
@@ -1493,10 +1493,10 @@ error_inconsistent_purity_promise(PredInfo, Purity) = Spec :-
         words("no impurity declaration."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_purity_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_purity_check, [Msg]).
 
 :- func warn_pred_body_too_pure(module_info, pred_info, pred_id,
-    purity, purity) = error_spec.
+    purity, purity) = diag_spec.
 
 warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         ActualPurity, DeclaredPurity) = Spec :-
@@ -1521,7 +1521,7 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         phase_purity_check, Context, Pieces).
 
 :- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id,
-    purity) = error_spec.
+    purity) = diag_spec.
 
 warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
@@ -1551,11 +1551,11 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_warning(warn_unneeded_purity_pragma),
+    Spec = diag_spec($pred, severity_warning(warn_unneeded_purity_pragma),
         phase_purity_check, [Msg]).
 
 :- func error_not_pure_enough(module_info, pred_info, pred_id, purity)
-    = error_spec.
+    = diag_spec.
 
 error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
@@ -1585,7 +1585,7 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     ),
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
-:- func error_missing_body_impurity_decl(pred_info, prog_context) = error_spec.
+:- func error_missing_body_impurity_decl(pred_info, prog_context) = diag_spec.
 
 error_missing_body_impurity_decl(CalleePredInfo, Context) = Spec :-
     CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
@@ -1611,7 +1611,7 @@ error_missing_body_impurity_decl(CalleePredInfo, Context) = Spec :-
         Pieces1 ++ Pieces2).
 
 :- func warn_unnecessary_body_impurity_decl(pred_info, prog_context,
-    purity, purity) = error_spec.
+    purity, purity) = diag_spec.
 
 warn_unnecessary_body_impurity_decl(CalleePredInfo, Context,
         DeclaredGoalPurity, CalleePurity) = Spec :-
@@ -1638,7 +1638,7 @@ warn_unnecessary_body_impurity_decl(CalleePredInfo, Context,
         phase_purity_check, Context, Pieces1 ++ Pieces2).
 
 :- func report_error_lambda_purity(purity, purity, prog_context)
-    = error_spec.
+    = diag_spec.
 
 report_error_lambda_purity(DeclaredPurity, ActualPurity, Context) = Spec :-
     purity_name(DeclaredPurity, DeclaredPurityName),
@@ -1651,7 +1651,7 @@ report_error_lambda_purity(DeclaredPurity, ActualPurity, Context) = Spec :-
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func report_error_higher_order_var_purity(var_table, prog_var,
-    purity, purity, prog_context) = error_spec.
+    purity, purity, prog_context) = diag_spec.
 
 report_error_higher_order_var_purity(VarTable, Var,
         TypePurity, CalleePurity, Context) = Spec :-
@@ -1675,7 +1675,7 @@ report_error_higher_order_var_purity(VarTable, Var,
     % that are not function calls (e.g. impure X = 4).
     %
 :- func impure_unification_expr_error(var_table, prog_var,
-    bad_impure_unify_rhs, purity, prog_context) = error_spec.
+    bad_impure_unify_rhs, purity, prog_context) = diag_spec.
 
 impure_unification_expr_error(VarTable, Var, BadRHS, Purity, Context) = Spec :-
     VarName = mercury_var_to_string(VarTable, print_name_only, Var),
@@ -1697,7 +1697,7 @@ impure_unification_expr_error(VarTable, Var, BadRHS, Purity, Context) = Spec :-
         words("is not a function call."), nl],
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
-:- func impure_parallel_conjunct_error(prog_context, purity) = error_spec.
+:- func impure_parallel_conjunct_error(prog_context, purity) = diag_spec.
 
 impure_parallel_conjunct_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
@@ -1708,7 +1708,7 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func bad_outer_var_type_error(prog_context, var_table, prog_var)
-    = error_spec.
+    = diag_spec.
 
 bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
     % XXX Adding color here properly needs the actual type of Var.
@@ -1718,7 +1718,7 @@ bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
         words("must be either io.state or stm_builtin.stm."), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
-:- func mismatched_outer_var_types(prog_context) = error_spec.
+:- func mismatched_outer_var_types(prog_context) = diag_spec.
 
 mismatched_outer_var_types(Context) = Spec :-
     Pieces = [words("The types of the two outer variables differ."), nl],
@@ -1751,10 +1751,10 @@ purity_article_name(purity_impure, "an", "impure").
                 pi_converted_unify      :: converted_unify,
                 pi_pred_info            :: pred_info,
                 pi_var_table            :: var_table,
-                pi_messages             :: list(error_spec)
+                pi_messages             :: list(diag_spec)
             ).
 
-:- pred purity_info_add_message(error_spec::in,
+:- pred purity_info_add_message(diag_spec::in,
     purity_info::in, purity_info::out) is det.
 
 purity_info_add_message(Spec, !Info) :-
@@ -1762,7 +1762,7 @@ purity_info_add_message(Spec, !Info) :-
     Msgs = [Spec | Msgs0],
     !Info ^ pi_messages := Msgs.
 
-:- pred purity_info_add_messages(list(error_spec)::in,
+:- pred purity_info_add_messages(list(diag_spec)::in,
     purity_info::in, purity_info::out) is det.
 
 purity_info_add_messages(Specs, !Info) :-

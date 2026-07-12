@@ -499,8 +499,8 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
     (
         MaybeSeverityComponents = yes({Severity, SpecComponents}),
         Msg = simple_msg(Context, SpecComponents),
-        Spec = error_spec($pred, Severity, phase_detism_check, [Msg]),
-        det_info_add_error_spec(Spec, !DetInfo)
+        Spec = diag_spec($pred, Severity, phase_detism_check, [Msg]),
+        det_info_add_diag_spec(Spec, !DetInfo)
     ;
         MaybeSeverityComponents = no
     ).
@@ -564,7 +564,7 @@ generate_type_order_switch_spec(GoalInfo, TypeCtor, VarName,
         DiffPieces,
     Spec = spec($pred, severity_warning(warn_requested_by_code),
         phase_detism_check, Context, Pieces),
-    det_info_add_error_spec(Spec, !DetInfo).
+    det_info_add_diag_spec(Spec, !DetInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -761,9 +761,9 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
         Msg = msg(Context, Pieces),
         det_diagnose_goal_get_msgs(InstMap0, RequiredDetism, Goal,
             SubMsgs, !DetInfo),
-        Spec = error_spec($pred, severity_error, phase_detism_check,
+        Spec = diag_spec($pred, severity_error, phase_detism_check,
             [Msg | SubMsgs]),
-        det_info_add_error_spec(Spec, !DetInfo)
+        det_info_add_diag_spec(Spec, !DetInfo)
     ).
 
 :- pred reqscope_check_goal_detism_for_cases(determinism::in,
@@ -874,7 +874,7 @@ generate_error_not_switch_on_required_var(SwitchContexts, RequiredVar,
         [nl],
     Context = goal_info_get_context(ScopeGoalInfo),
     Spec = spec($pred, severity_error, phase_detism_check, Context, Pieces),
-    det_info_add_error_spec(Spec, !DetInfo).
+    det_info_add_diag_spec(Spec, !DetInfo).
 
 %---------------------------------------------------------------------------%
 

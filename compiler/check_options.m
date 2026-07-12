@@ -38,7 +38,7 @@
     reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
     limit_error_contexts_map::out, linked_target_ext_info_map::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -95,7 +95,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
 
 :- pred check_grade_options(option_table::in,
     compilation_target::out, word_size::out, gc_method::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
     lookup_string_option(OptionTable, target, TargetStr),
@@ -142,7 +142,7 @@ check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
 
 :- pred check_codegen_options(option_table::in,
     may_be_thread_safe::out, reuse_strategy::out, maybe(feedback_info)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
         MaybeFeedbackInfo, !Specs, !IO) :-
@@ -228,7 +228,7 @@ check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
 
 :- pred check_termination_options(option_table::in,
     termination_norm::out, termination_norm::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
     lookup_string_option(OptionTable, termination_norm, TermNormStr),
@@ -261,7 +261,7 @@ check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
 
 :- pred check_debug_options(option_table::in,
     trace_level::out, trace_suppress_items::out, ssdb_trace_level::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
         !Specs) :-
@@ -338,7 +338,7 @@ check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
 :- pred check_system_env_options(option_table::in,
     c_compiler_type::out, csharp_compiler_type::out,
     env_type::out, env_type::out, env_type::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
         HostEnvType, SystemEnvType, TargetEnvType, !Specs) :-
@@ -431,7 +431,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
     ).
 
 :- pred check_hlds_dump_options(option_table::in, option_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_hlds_dump_options(!OptionTable, !Specs) :-
     lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
@@ -512,7 +512,7 @@ check_hlds_dump_options(!OptionTable, !Specs) :-
 
 :- pred check_diagnostics_options(option_table::in,
     limit_error_contexts_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
     lookup_int_option(OptionTable, warn_incomplete_switch_threshold,
@@ -555,7 +555,7 @@ check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
 
 :- pred check_linked_target_extensions(option_table::in,
     linked_target_ext_info_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_linked_target_extensions(OptionTable, !:LinkExtMap, !Specs) :-
     map.init(!:LinkExtMap),
@@ -629,7 +629,7 @@ check_linked_target_extensions(OptionTable, !:LinkExtMap, !Specs) :-
 :- pred record_linked_target_extension(string::in, string::in,
     linked_target_kind::in,
     linked_target_ext_info_map::in, linked_target_ext_info_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_linked_target_extension(OptionExt, OptionName, LinkedTargetKind,
         !LinkExtMap, !Specs) :-
@@ -687,7 +687,7 @@ get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
     % of whether the use of colors is *enabled*.
     %
 :- pred check_color_options(option_table::in, option_table::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 check_color_options(!OptionTable, !Specs, !IO) :-
     lookup_string_option(!.OptionTable, color_scheme_set_to, ColorScheme),

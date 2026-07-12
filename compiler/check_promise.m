@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2015-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,7 +24,7 @@
 
 :- pred check_promises_in_module(io.text_output_stream::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -60,7 +60,7 @@ check_promises_in_module(ProgressStream, !ModuleInfo, !Specs) :-
 :- pred check_promises_in_preds(io.text_output_stream::in, list(pred_id)::in,
     list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_promises_in_preds(_, [], !ToInvalidatePredIds, !ModuleInfo, !Specs).
 check_promises_in_preds(ProgressStream, [PredId | PredIds],
@@ -81,7 +81,7 @@ check_promises_in_preds(ProgressStream, [PredId | PredIds],
 :- pred check_promises_in_pred(io.text_output_stream::in, pred_id::in,
     list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_promises_in_pred(ProgressStream, PredId, !ToInvalidatePredIds,
         !ModuleInfo, !Specs) :-
@@ -189,7 +189,7 @@ get_promise_ex_goal(PredInfo, Goal) :-
     % implementation of that module.
     %
 :- pred check_in_interface_promise_goal(module_info::in, pred_info::in,
-    hlds_goal::in, list(error_spec)::in, list(error_spec)::out) is det.
+    hlds_goal::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -247,7 +247,7 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
     ).
 
 :- pred check_in_interface_promise_call(module_info::in, pred_id::in,
-    hlds_goal_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    hlds_goal_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
     module_info_get_name(ModuleInfo, ModuleName),
@@ -286,7 +286,7 @@ check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
 
 :- pred check_in_interface_promise_unify_rhs(module_info::in, pred_info::in,
     prog_var::in, unify_rhs::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
         !Specs) :-
@@ -336,7 +336,7 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
     ).
 
 :- pred check_in_interface_promise_goals(module_info::in, pred_info::in,
-    list(hlds_goal)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(hlds_goal)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_in_interface_promise_goals(_ModuleInfo, _PredInfo, [], !Specs).
 check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
@@ -348,7 +348,7 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
 
 :- pred report_assertion_interface_error(module_name::in, prog_context::in,
     list(format_piece)::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_assertion_interface_error(ModuleName, Context,
         InitIdPieces, SubjectIdPieces, !Specs) :-
@@ -364,13 +364,13 @@ report_assertion_interface_error(ModuleName, Context,
         [words("Either move the promise into the implementation section,"),
         words("or move the definition into the interface."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_assertion_module_error(module_name::in, prog_context::in,
     module_name::in, list(format_piece)::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_assertion_module_error(ModuleName, Context, PredModuleName,
         InitIdPieces, SubjectIdPieces, !Specs) :-
@@ -389,7 +389,7 @@ report_assertion_module_error(ModuleName, Context, PredModuleName,
         qual_sym_name(PredModuleName), words("module."),
         words("In most cases, the latter is preferable."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].
 

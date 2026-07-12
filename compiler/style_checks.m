@@ -60,12 +60,12 @@
     ;       want_style_warnings(warnings_we_want).
 
 :- pred do_we_want_style_warnings(module_info::in,
-    maybe_want_style_warnings::out, list(error_spec)::out) is det.
+    maybe_want_style_warnings::out, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_any_style_warnings(module_info::in, warnings_we_want::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -203,7 +203,7 @@ do_we_want_style_warnings(ModuleInfo, DoWeWantStyleWarnings, Specs) :-
     ).
 
 :- pred get_allowed_non_contiguity(module_info::in,
-    allowed_non_contiguity::out, list(error_spec)::out) is det.
+    allowed_non_contiguity::out, list(diag_spec)::out) is det.
 
 get_allowed_non_contiguity(ModuleInfo, PredIdSets, !:Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -272,7 +272,7 @@ filter_out_duplicate_options(!.SeenOpts,
     string::in, uint::in, uint::out,
     list(set(pred_id))::in, list(set(pred_id))::out,
     bag(string)::in, bag(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_non_contig_name_group(PredTable, ModuleName, GroupStr,
         !OptNum, !GroupPredIdSets, !AllNamesBag, !Specs) :-
@@ -309,7 +309,7 @@ parse_non_contig_name_group(PredTable, ModuleName, GroupStr,
 
 :- pred parse_non_contig_name(predicate_table::in, module_name::in, uint::in,
     string::in, set(pred_id)::in, set(pred_id)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_non_contig_name(PredTable, ModuleName, OptNum, Name, !PredIds, !Specs) :-
     SymName = qualified(ModuleName, Name),
@@ -406,7 +406,7 @@ generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
                 style_valid_pred_ids        :: set_tree234(pred_id),
                 style_exported_preds        :: list(pred_decl_item_numbers),
                 style_nonexported_preds     :: list(pred_decl_item_numbers),
-                style_decl_gap_specs        :: list(error_spec),
+                style_decl_gap_specs        :: list(diag_spec),
                 style_clause_gaps           :: map(pred_id, regions_with_gaps)
             ).
 
@@ -605,7 +605,7 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         FirstMsg = msg(FirstContext, FirstPieces),
         SecondMsg = msg(SecondContext, SecondPieces),
         Severity = severity_warning(warn_non_contiguous_decls),
-        Spec = error_spec($pred, Severity, phase_style, [FirstMsg, SecondMsg]),
+        Spec = diag_spec($pred, Severity, phase_style, [FirstMsg, SecondMsg]),
         Specs0 = !.StyleInfo ^ style_decl_gap_specs,
         Specs = [Spec | Specs0],
         !StyleInfo ^ style_decl_gap_specs := Specs
@@ -657,7 +657,7 @@ maybe_gather_clause_gap_info(PredId, ItemNumbers, !StyleInfo) :-
     clause_item_number_types::in, set(pred_id)::in,
     map(pred_id, regions_with_gaps)::in,
     map(pred_id, regions_with_gaps)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_non_contiguous_clauses_beyond_group(ModuleInfo, ItemKind,
         GroupPredIdSet, !ClauseGapMap, !Specs) :-
@@ -749,7 +749,7 @@ merge_adjacent_regions(CurRegion, [NextRegion | LaterRegions],
 :- pred report_non_contiguous_clauses(module_info::in,
     clause_item_number_types::in,
     list(pred_id)::in, pred_id::in, regions_with_gaps::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_non_contiguous_clauses(ModuleInfo, ItemKind, OtherPredIds, MainPredId,
         RegionsWithGaps, !Specs) :-
@@ -784,7 +784,7 @@ report_non_contiguous_clauses(ModuleInfo, ItemKind, OtherPredIds, MainPredId,
         ItemKind = clauses_and_foreign_procs,
         WarnOption = warn_non_contiguous_foreign_procs
     ),
-    Spec = error_spec($pred, severity_warning(WarnOption),
+    Spec = diag_spec($pred, severity_warning(WarnOption),
         phase_type_check, Msgs),
     !:Specs = [Spec | !.Specs].
 
@@ -886,7 +886,7 @@ maybe_gather_decl_vs_defn_order_info(PredId, PredInfo,
 
 :- pred generate_inconsistent_pred_order_warnings(prog_context::in,
     clause_item_number_types::in, string::in, list(pred_decl_item_numbers)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_inconsistent_pred_order_warnings(ModuleContext, ItemKind,
         ExportedOrNotStr, PredItemNumbers, !Specs) :-

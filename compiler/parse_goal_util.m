@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2016-2024 The Mercury team.
+% Copyright (C) 2016-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,17 +29,17 @@
 %---------------------------------------------------------------------------%
 
 :- func should_have_no_args(cord(format_piece),
-    term.context, string) = error_spec.
+    term.context, string) = diag_spec.
 :- func should_have_one_goal_prefix(cord(format_piece),
-    term.context, string) = error_spec.
+    term.context, string) = diag_spec.
 :- func should_have_two_terms_infix(cord(format_piece),
-    term.context, string) = error_spec.
+    term.context, string) = diag_spec.
 :- func should_have_two_goals_infix(cord(format_piece),
-    term.context, string) = error_spec.
+    term.context, string) = diag_spec.
 :- func should_have_one_x_one_goal_prefix(cord(format_piece),
-    term.context, string, string) = error_spec.
+    term.context, string, string) = diag_spec.
 :- func should_have_one_call_prefix(cord(format_piece),
-    term.context, string) = error_spec.
+    term.context, string) = diag_spec.
 
     % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
     %   MaybeGoal0, MaybeGoal):

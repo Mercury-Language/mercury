@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 
 :- pred set_goal_contains_trace_features_in_goal(hlds_goal::in, hlds_goal::out,
     contains_trace_goal::out, last_nontrace_map::in, last_nontrace_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -158,7 +158,7 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace,
                 TraceMsg = msg(Context, TracePieces),
                 LastMsg = msg(context(FileName, LastLineNumber), LastPieces),
                 Severity = severity_warning(warn_moved_trace_goal),
-                Spec = error_spec($pred, Severity, Phase, [TraceMsg, LastMsg]),
+                Spec = diag_spec($pred, Severity, Phase, [TraceMsg, LastMsg]),
                 !:Specs = [Spec | !.Specs]
             else
                 true
@@ -240,7 +240,7 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace,
     list(hlds_goal)::in, list(hlds_goal)::out,
     contains_trace_goal::in, contains_trace_goal::out,
     last_nontrace_map::in, last_nontrace_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 set_goal_contains_trace_features_in_conj([], [], !ContainsTrace,
         !LastNonTraceMap, !Specs).
@@ -259,7 +259,7 @@ set_goal_contains_trace_features_in_conj([Goal0 | Goals0], [Goal | Goals],
     contains_trace_goal::in, contains_trace_goal::out,
     last_nontrace_map::in,
     list(last_nontrace_map)::in, list(last_nontrace_map)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 set_goal_contains_trace_features_in_disj([], [], !ContainsTrace,
         _LastNonTraceMap0, !LastNonTraceMaps, !Specs).
@@ -279,7 +279,7 @@ set_goal_contains_trace_features_in_disj([Goal0 | Goals0], [Goal | Goals],
     contains_trace_goal::in, contains_trace_goal::out,
     last_nontrace_map::in,
     list(last_nontrace_map)::in, list(last_nontrace_map)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 set_goal_contains_trace_features_in_cases([], [], !ContainsTrace,
         _LastNonTraceMap0, !LastNonTraceMaps, !Specs).

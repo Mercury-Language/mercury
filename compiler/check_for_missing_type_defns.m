@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2020, 2024 The Mercury team.
+% Copyright (C) 2015-2017, 2020, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
     % Note that a type may have several definitions, e.g. some foreign
     % definitions and a default Mercury definition.
     %
-:- pred check_for_missing_type_defns(module_info::in, list(error_spec)::out)
+:- pred check_for_missing_type_defns(module_info::in, list(diag_spec)::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -53,7 +53,7 @@ check_for_missing_type_defns(ModuleInfo, Specs) :-
         [], Specs).
 
 :- pred check_for_missing_type_defns_in_type(type_ctor::in, hlds_type_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
     ( if

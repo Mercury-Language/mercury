@@ -367,7 +367,7 @@ build_target(ProgressStream, Globals, CompilationTask,
             )
         ;
             MayBuild = may_not_build(Specs),
-            write_oom_error_specs(ProgressStream, Globals, Specs, !IO),
+            write_oom_diag_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,

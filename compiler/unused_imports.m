@@ -41,7 +41,7 @@
     % which are in the interface but should be in the implementation.
     %
 :- pred warn_about_unused_imports(io.text_output_stream::in, module_info::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -237,7 +237,7 @@ get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
 :- pred maybe_warn_about_avail(
     set_tree234(module_name)::in, set_tree234(module_name)::in,
     module_name::in, avail_module_entry::in,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     unused_avail_map::in, unused_avail_map::out) is det.
 
 maybe_warn_about_avail(UnusedAnywhereImports, UnusedInterfaceImports,
@@ -322,7 +322,7 @@ compare_avails(AvailA, AvailB, Result) :-
 
 :- pred maybe_generate_redundant_avail_warnings(module_name::in,
     list(avail_module)::in, list(avail_module)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_generate_redundant_avail_warnings(_ModuleName, [], _, !Specs).
 maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
@@ -347,7 +347,7 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
             color_as_incorrect([words("redundant.")]) ++
             [nl],
         MainMsg = msg(Context, MainPieces),
-        Spec = error_spec($pred, severity_informational(warn_unused_imports),
+        Spec = diag_spec($pred, severity_informational(warn_unused_imports),
             phase_code_gen, [MainMsg | PrevMsgs]),
         !:Specs = [Spec | !.Specs]
     ),
@@ -393,7 +393,7 @@ add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
 
 :- pred generate_unused_import_warning(module_name::in,
     pair(unused_avail_msg_kind, one_or_more(unused_avail))::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
         !Specs) :-
@@ -451,7 +451,7 @@ generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
             ),
         ModuleMsgs = list.map(UnusedAvailToMsg,
             [HeadUnusedAvail | TailUnusedAvails]),
-        Spec = error_spec($pred, severity_warning(warn_unused_imports),
+        Spec = diag_spec($pred, severity_warning(warn_unused_imports),
             phase_code_gen, [MainMsg | ModuleMsgs])
     ),
     !:Specs = [Spec | !.Specs].

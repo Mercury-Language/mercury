@@ -19,7 +19,7 @@
 
 :- pred add_pragma_type_spec(decl_pragma_type_spec_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -128,7 +128,7 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
 :- pred add_pragma_type_spec_for_pred(decl_pragma_type_spec_info::in,
     pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pragma_type_spec_for_pred(TypeSpec, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -556,7 +556,7 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
 %---------------------------------------------------------------------------%
 
 :- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
-    list(tvar)::in, error_spec::out) is det.
+    list(tvar)::in, diag_spec::out) is det.
 
 report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -571,7 +571,7 @@ report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
-    list(tvar)::in, error_spec::out) is det.
+    list(tvar)::in, diag_spec::out) is det.
 
 report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
     OccurOrOccurs =
@@ -585,7 +585,7 @@ report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, error_spec::out) is det.
+    tvarset::in, list(tvar)::in, diag_spec::out) is det.
 
 report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
     HasOrHave = choose_number(MultiSubstVars, "has", "have"),
@@ -598,7 +598,7 @@ report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, error_spec::out) is det.
+    tvarset::in, list(tvar)::in, diag_spec::out) is det.
 
 report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),

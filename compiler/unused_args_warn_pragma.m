@@ -50,7 +50,7 @@
 :- pred gather_warnings_and_pragmas(module_info::in,
     proc_to_unused_args_map::in,
     maybe_warn_unused_args::in, maybe_gather_pragma_unused_args::in,
-    list(error_spec)::out, set(gen_pragma_unused_args_info)::out) is det.
+    list(diag_spec)::out, set(gen_pragma_unused_args_info)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -365,7 +365,7 @@ record_which_unused_args_are_marked(ModuleInfo, ArgModes,
 %---------------------------------------------------------------------------%
 
 :- pred warn_unused_args_in_pred(pred_id::in, warn_unused_pred_args::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_unused_args_in_pred(_PredId, WarnUnusedPredArgs, !Specs) :-
     WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcUnusedArgsAL0),
@@ -427,7 +427,7 @@ do_all_procs_have_same_unused_args(ProcId - ProcUnusedArgs,
     % in maybe_add_proc_to_unused_args_map above.
     %
 :- pred report_pred_general_unused_args(pred_info::in, unused_proc_args::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_pred_general_unused_args(PredInfo, ProcUnusedArgs, !Specs) :-
     NameColonNlPieces = describe_one_pred_info_name(yes(color_subject),
@@ -437,7 +437,7 @@ report_pred_general_unused_args(PredInfo, ProcUnusedArgs, !Specs) :-
 
 :- pred report_proc_specific_unused_args(pred_info::in,
     pair(proc_id, unused_proc_args)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_proc_specific_unused_args(PredInfo, ProcId - ProcUnusedArgs, !Specs) :-
     NameColonNlPieces = describe_one_proc_name_pred_info_maybe_argmodes(
@@ -448,7 +448,7 @@ report_proc_specific_unused_args(PredInfo, ProcId - ProcUnusedArgs, !Specs) :-
     report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs).
 
 :- pred report_unused_args(list(format_piece)::in, prog_context::in,
-    unused_proc_args::in, list(error_spec)::in, list(error_spec)::out) is det.
+    unused_proc_args::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_unused_args(NameColonNlPieces, Context, ProcUnusedArgs, !Specs) :-
     one_or_more.foldl2(classify_unused_proc_arg, ProcUnusedArgs,

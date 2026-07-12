@@ -35,7 +35,7 @@
 :- pred module_add_clause(io.text_output_stream::in, pred_status::in,
     clause_type::in, item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % This predicate is exported for use by instance_method_clauses.m.
     %
@@ -45,7 +45,7 @@
     prog_context::in, item_seq_num::in, goal::in, prog_varset::in,
     tvarset::in, tvarset::out, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -185,7 +185,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
     prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
     item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
         PredOrFunc, PredSymName, MaybeAnnotatedArgTerms, PredFormArity,
@@ -320,7 +320,7 @@ add_clause_progress_msg(ProgressStream, ModuleInfo, PredInfo,
 
 :- pred maybe_add_error_for_field_access_function(module_info::in,
     pred_status::in, pred_or_func::in, sym_name::in, pred_form_arity::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         PredOrFunc, PredSymName, PredFormArity, Context, !Specs) :-
@@ -352,7 +352,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         FieldAccessMsg = simple_msg(Context,
             [always(FieldAccessMainPieces),
             verbose_only(verbose_always, FieldAccessVerbosePieces)]),
-        FieldAccessSpec = error_spec($pred, severity_error, phase_pt2h,
+        FieldAccessSpec = diag_spec($pred, severity_error, phase_pt2h,
             [FieldAccessMsg]),
         !:Specs = [FieldAccessSpec | !.Specs]
     else
@@ -360,7 +360,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
     ).
 
 :- pred maybe_add_error_for_builtin(module_info::in, pred_info::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     ( if pred_info_is_builtin(PredInfo) then
@@ -397,7 +397,7 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     pred_id::in, pred_info::in, list(prog_term)::out,
     clause_applicable_modes::out, list(proc_id)::out,
     qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
         PredStatus, Context, PredId, PredInfo, ArgTerms,
@@ -531,7 +531,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
     %
 :- pred get_mode_annotations(prog_varset::in, cord(format_piece)::in,
     int::in, list(prog_term)::in, list(prog_term)::out,
-    list(mer_mode)::out, list(int)::out, list(error_spec)::out) is det.
+    list(mer_mode)::out, list(int)::out, list(diag_spec)::out) is det.
 
 get_mode_annotations(_, _, _, [], [], [], [], []).
 get_mode_annotations(VarSet, ContextPieces, ArgNum, [MAArgTerm | MAArgTerms],
@@ -804,10 +804,10 @@ should_we_do_singleton_and_quant_warnings(ModuleInfo, PredStatus, ClausesInfo,
     pred_or_func::in, sym_name::in, list(prog_var)::in,
     list(prog_term)::in, prog_context::in, clause_type::in,
     goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    list(quant_warning)::out, list(error_spec)::out,
+    list(quant_warning)::out, list(diag_spec)::out,
     unused_statevar_arg_map::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms0, Context, ClauseType, ParseTreeBodyGoal, Goal,

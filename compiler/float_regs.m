@@ -140,7 +140,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred insert_reg_wrappers(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -496,7 +496,7 @@ ho_arg_reg_for_type(Type, RegType) :-
 
 :- pred insert_reg_wrappers_pred(pred_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -506,7 +506,7 @@ insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
 
 :- pred insert_reg_wrappers_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -518,7 +518,7 @@ insert_reg_wrappers_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
 
 :- pred insert_reg_wrappers_proc_2(proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Grab the appropriate fields from the pred_info and proc_info.
@@ -572,7 +572,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
 :- pred insert_reg_wrappers_proc_body(list(prog_var)::in, list(mer_mode)::in,
     hlds_goal::in, hlds_goal::out, instmap::in,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal, InstMap0,
         !Info, !Specs) :-
@@ -587,7 +587,7 @@ insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal, InstMap0,
 
 :- pred insert_reg_wrappers_goal(hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_goal(Goal0, Goal, !InstMap, !Info, !Specs) :-
     ( if instmap_is_reachable(!.InstMap) then
@@ -598,7 +598,7 @@ insert_reg_wrappers_goal(Goal0, Goal, !InstMap, !Info, !Specs) :-
 
 :- pred insert_reg_wrappers_goal_2(hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -767,7 +767,7 @@ copy_any_unreachability_from_goal_instmap_delta(Goal, InstMap0, InstMap) :-
 :- pred insert_reg_wrappers_unify_goal(hlds_goal_expr::in(goal_expr_unify),
     hlds_goal_info::in, hlds_goal::out, instmap::in, instmap::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         !Specs) :-
@@ -863,7 +863,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
     list(prog_var)::in, list(prog_var)::out,
     list(unify_mode)::in, list(unify_mode)::out, maybe(list(hlds_goal))::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
         ArgModes0, ArgModes, MaybeWrappedGoals, InstMap0, Context,
@@ -1046,7 +1046,7 @@ unify_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UnifyMode0, UnifyMode) :-
 
 :- pred insert_reg_wrappers_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_conj([], [], !InstMap, !Info, !Specs).
 insert_reg_wrappers_conj([Goal0 | Goals0], Goals, !InstMap, !Info, !Specs) :-
@@ -1061,7 +1061,7 @@ insert_reg_wrappers_conj([Goal0 | Goals0], Goals, !InstMap, !Info, !Specs) :-
 :- pred insert_reg_wrappers_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     set_of_progvar::in, instmap::in, instmap::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_disj(Goals0, Goals, NonLocals, InstMap0, InstMap, !Info,
         !Specs) :-
@@ -1080,7 +1080,7 @@ insert_reg_wrappers_disj(Goals0, Goals, NonLocals, InstMap0, InstMap, !Info,
 :- pred insert_reg_wrappers_disjunct(instmap::in,
     hlds_goal::in, hlds_goal::out, instmap::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_disjunct(InstMap0, Goal0, Goal, InstMap, !Info, !Specs) :-
     insert_reg_wrappers_goal(Goal0, Goal, InstMap0, InstMap, !Info, !Specs).
@@ -1090,7 +1090,7 @@ insert_reg_wrappers_disjunct(InstMap0, Goal0, Goal, InstMap, !Info, !Specs) :-
 :- pred insert_reg_wrappers_switch(prog_var::in,
     list(case)::in, list(case)::out, set_of_progvar::in,
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
         !Info, !Specs) :-
@@ -1110,7 +1110,7 @@ insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
 
 :- pred insert_reg_wrappers_case(prog_var::in, mer_type::in, instmap::in,
     case::in, case::out, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_case(Var, Type, InstMap0, Case0, Case, InstMap,
         !Info, !Specs) :-
@@ -1127,7 +1127,7 @@ insert_reg_wrappers_case(Var, Type, InstMap0, Case0, Case, InstMap,
 :- pred insert_reg_wrappers_ite(set_of_progvar::in,
     hlds_goal_expr::in(goal_expr_ite), hlds_goal_expr::out(goal_expr_ite),
     instmap::in, instmap::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_ite(NonLocals, GoalExpr0, GoalExpr, InstMap0, InstMap,
         !Info, !Specs) :-
@@ -1159,7 +1159,7 @@ insert_reg_wrappers_ite(NonLocals, GoalExpr0, GoalExpr, InstMap0, InstMap,
 :- pred insert_reg_wrappers_plain_call(pred_id::in, proc_id::in,
     list(prog_var)::in, list(prog_var)::out, list(hlds_goal)::out, bool::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
         MissingProc, InstMap0, Context, !Info, !Specs) :-
@@ -1190,7 +1190,7 @@ insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
     list(prog_var)::in, list(prog_var)::out, list(mer_mode)::out,
     list(ho_arg_reg)::out, list(hlds_goal)::out, instmap::in, prog_context::in,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
         WrapGoals, InstMap0, Context, !Info, !Specs) :-
@@ -1211,7 +1211,7 @@ insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
     list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out, list(hlds_goal)::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_method_call(ClassId, MethodProcNum, Vars0, Vars,
         Modes0, Modes, WrapGoals, InstMap0, Context, !Info, !Specs) :-
@@ -1269,7 +1269,7 @@ take_non_rtti_types_from_tail([Type | Types0], Types) :-
 :- pred insert_reg_wrappers_foreign_call(pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::out, list(hlds_goal)::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insert_reg_wrappers_foreign_call(PredId, ProcId, ForeignArgs0, ForeignArgs,
         WrapGoals, InstMap0, Context, !Info, !Specs) :-
@@ -1290,7 +1290,7 @@ set_foreign_arg_var(Var, !ForeignArg) :-
 :- pred match_args_for_call(instmap::in, prog_context::in, list(mer_type)::in,
     list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     list(hlds_goal)::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 match_args_for_call(InstMap0, Context, ArgTypes, ArgModes, OrigVars, Vars,
         WrapGoals, !Info, !Specs) :-
@@ -1303,7 +1303,7 @@ match_args_for_call(InstMap0, Context, ArgTypes, ArgModes, OrigVars, Vars,
     list(mer_inst)::in, list(prog_var)::in, list(prog_var)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 match_args(InstMap0, Context, ArgTypes, Insts, OrigVars, Vars, !WrapGoals,
         !Info, !Specs) :-
@@ -1329,7 +1329,7 @@ match_args(InstMap0, Context, ArgTypes, Insts, OrigVars, Vars, !WrapGoals,
 :- pred match_arg(instmap::in, prog_context::in, mer_type::in, mer_inst::in,
     prog_var::in, prog_var::out, list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
         !WrapGoals, !Info, !Specs) :-
@@ -1444,7 +1444,7 @@ get_ho_arg_regs(PredInstInfo, ArgTypes, ArgRegs) :-
     %
 :- pred maybe_report_missing_pred_inst(pred_info::in, var_table::in,
     prog_var::in, prog_context::in, list(mer_type)::in, list(mer_type)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_missing_pred_inst(PredInfo, VarTable, Var, Context,
         ArgTypesA, ArgTypesB, !Specs) :-
@@ -1464,7 +1464,7 @@ maybe_report_missing_pred_inst(PredInfo, VarTable, Var, Context,
     ).
 
 :- func report_missing_higher_order_inst(pred_info, var_table, prog_var,
-    prog_context) = error_spec.
+    prog_context) = diag_spec.
 
 report_missing_higher_order_inst(PredInfo, VarTable, Var, Context) = Spec :-
     PredPieces = describe_one_pred_info_name(no, should_module_qualify, [],
@@ -1482,7 +1482,7 @@ report_missing_higher_order_inst(PredInfo, VarTable, Var, Context) = Spec :-
         words("of the generated code in this grade.")],
     Msg = simple_msg(Context, [always(InPieces), always(ErrorPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_code_gen, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_code_gen, [Msg]).
 
 %---------------------------------------------------------------------------%
 
@@ -1521,7 +1521,7 @@ common_instmap_delta(InstMap0, NonLocals, InstMaps, CommonDelta, !Info) :-
 :- pred fix_branching_goal(assoc_list(prog_var, mer_inst)::in,
     hlds_goal::in, instmap::in, hlds_goal::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 fix_branching_goal(VarsExpectInsts, Goal0, GoalInstMap0, Goal, !Info,
         !Specs) :-
@@ -1545,7 +1545,7 @@ fix_branching_goal(VarsExpectInsts, Goal0, GoalInstMap0, Goal, !Info,
 
 :- pred fix_case_goal(assoc_list(prog_var, mer_inst)::in,
     case::in, instmap::in, case::out, lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 fix_case_goal(VarsExpectInsts, Case0, GoalInstMap0, Case, !Info, !Specs) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
@@ -1557,7 +1557,7 @@ fix_case_goal(VarsExpectInsts, Case0, GoalInstMap0, Case, !Info, !Specs) :-
     prog_context::in, prog_var_renaming::in, prog_var_renaming::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 match_vars_insts(VarsExpectInsts, InstMap0, Context, !Renaming, !WrapGoals,
         !Info, !Specs) :-
@@ -1575,7 +1575,7 @@ match_vars_insts(VarsExpectInsts, InstMap0, Context, !Renaming, !WrapGoals,
     prog_context::in, prog_var_renaming::in, prog_var_renaming::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     lambda_info::in, lambda_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
         !Info, !Specs) :-

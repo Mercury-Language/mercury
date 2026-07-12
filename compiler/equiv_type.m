@@ -108,7 +108,7 @@
     %
 :- pred replace_in_type_report_circular_eqvs(type_eqv_map::in, tvarset::in,
     prog_context::in, mer_type::in, mer_type::out, maybe_changed::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Replace equivalence types in a given type.
     % The bool output is `yes' if anything changed.
@@ -538,7 +538,7 @@ replace_in_inst_location(InstEqvMap, MaybeRecord,
 %---------------------------------------------------------------------------%
 
 :- func report_contains_circular_eqv_type(tvarset, mer_type, prog_context,
-    type_ctor, list(type_ctor)) = error_spec.
+    type_ctor, list(type_ctor)) = diag_spec.
 
 report_contains_circular_eqv_type(TVarSet, Type, Context,
         HeadTypeCtor, TailTypeCtors) = Spec :-

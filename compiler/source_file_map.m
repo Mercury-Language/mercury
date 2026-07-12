@@ -50,7 +50,7 @@
     %
     % Given a list of file names, produce the Mercury.modules file.
     %
-:- pred write_source_file_map(list(string)::in, list(error_spec)::out,
+:- pred write_source_file_map(list(string)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ write_source_file_map(FileNames, Specs, !IO) :-
 :- pred acc_source_file_map_line(file_name::in,
     source_file_map::in, source_file_map::out,
     cord(string)::in, cord(string)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 acc_source_file_map_line(FileName, Mn2FnMap0, Mn2FnMap,
         !MapFileLineCord, !Specs, !IO) :-

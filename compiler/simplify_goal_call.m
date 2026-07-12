@@ -66,7 +66,7 @@
     %
 :- pred maybe_generate_warning_for_implicit_stream_predicate(module_info::in,
     pred_id::in, pred_info::in, hlds_goal_info::in,
-    maybe(error_spec)::out) is det.
+    maybe(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -644,7 +644,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                     [always(MainPieces),
                     verbose_only(verbose_once, VerbosePieces)])],
-                Spec = error_spec($pred,
+                Spec = diag_spec($pred,
                     severity_warning(warn_dodgy_simple_code),
                     phase_simplify(report_in_any_mode), Msgs),
                 simplify_info_add_message(Spec, !Info)
@@ -659,7 +659,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                         words("the call use state variable notation."), nl],
                     Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                         [always(Pieces), shut_up_suspicious_recursion_msg])],
-                    Spec = error_spec($pred,
+                    Spec = diag_spec($pred,
                         severity_warning(warn_dodgy_simple_code),
                         phase_simplify(report_in_any_mode), Msgs),
                     simplify_info_add_message(Spec, !Info)
@@ -684,7 +684,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 Msg = simple_msg(goal_info_get_context(GoalInfo),
                     [always(Pieces), shut_up_suspicious_recursion_msg]),
                 Severity = severity_warning(warn_suspicious_recursion),
-                Spec = error_spec($pred, Severity,
+                Spec = diag_spec($pred, Severity,
                     phase_simplify(report_in_any_mode), [Msg]),
                 simplify_info_add_message(Spec, !Info)
             else

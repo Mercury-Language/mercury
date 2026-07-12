@@ -7,12 +7,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: error_spec.m.
+% File: diag_spec.m.
 % Main author: zs.
 %
-% This module defines the error_spec structure for representing
+% This module defines the diag_spec structure for representing
 % diagnostic messages, and utility predicates and functions that can help
-% create error_specs.
+% create diag_specs.
 %
 %---------------------------------------------------------------------------%
 
@@ -39,7 +39,7 @@
 %---------------------------------------------------------------------------%
 
 % Every distinct problem should generate a single error specification,
-% whose general form is error_spec(Id, Severity, Phase, Msgs).
+% whose general form is diag_spec(Id, Severity, Phase, Msgs).
 % The second, third and fourth fields of this term state respectively
 %
 % - the severity of the problem (so that we can update the exit status
@@ -57,16 +57,16 @@
 % message giving the original declaration's context.
 %
 % spec(Id, Severity, Phase, Context, Pieces) is a shorthand for
-% (and equivalent in every respect to) error_spec(Id, Severity, Phase,
+% (and equivalent in every respect to) diag_spec(Id, Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
 %
 % no_ctxt_spec(Id, Severity, Phase, Pieces) is shorthand for
-% (and equivalent in every respect to) error_spec(Id, Severity, Phase,
+% (and equivalent in every respect to) diag_spec(Id, Severity, Phase,
 % error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
 %
 % The Id field, which is present in all these alternatives, is totally
-% ignored when printing error_specs. Its job is something completely different:
-% helping developers track down where in the source code each error_spec
+% ignored when printing diag_specs. Its job is something completely different:
+% helping developers track down where in the source code each diag_spec
 % was constructed. Without the id fields, if developers want to know this,
 % e.g. because they do not want the message printed, or because there is
 % a problem with its wording, they have to grep for some words in the message.
@@ -74,16 +74,16 @@
 % while grepping for two or more consecutive words in the message may miss
 % the code generating the message, because in that code, some of those
 % consecutive words may be on different lines. On the other hand, if every
-% place that constructs an error_spec, of any of these varieties,
+% place that constructs an diag_spec, of any of these varieties,
 % fills in the id field with $pred, then finding the right place is easy:
 % just specify the developer-only option --print-error-spec-id, and
-% the identity of the predicate or function that generated each error_spec
-% will be output just after the messages in that error_spec. Even if the
+% the identity of the predicate or function that generated each diag_spec
+% will be output just after the messages in that diag_spec. Even if the
 % predicate or function that this identifies has several pieces of code
-% that construct error_specs, the scope in which you have to search for
+% that construct diag_specs, the scope in which you have to search for
 % the one you are looking for will be easily manageable.
 
-:- type error_spec
+:- type diag_spec
     --->    spec(
                 s_id                    :: string,
                 s_spec_severity         :: spec_severity,
@@ -97,24 +97,24 @@
                 ncs_spec_phase          :: spec_phase,
                 ncs_spec_pieces         :: list(format_piece)
             )
-    ;       error_spec(
-                es_id                   :: string,
-                es_severity             :: spec_severity,
-                es_phase                :: spec_phase,
-                es_msgs                 :: list(diag_msg)
+    ;       diag_spec(
+                ds_id                   :: string,
+                ds_severity             :: spec_severity,
+                ds_phase                :: spec_phase,
+                ds_msgs                 :: list(diag_msg)
             ).
 
-    % An error_spec that is *intended* to contain a warning,
+    % An diag_spec that is *intended* to contain a warning,
     % XXX We can now enforce that intention using subtypes.
     %
-:- type warning_spec == error_spec.
+:- type warning_spec == diag_spec.
 
-:- type std_error_spec =< error_spec
-    --->    error_spec(
-                es_id                   :: string,
-                es_severity             :: spec_severity,
-                es_phase                :: spec_phase,
-                es_msgs                 :: list(std_diag_msg)
+:- type std_diag_spec =< diag_spec
+    --->    diag_spec(
+                ds_id                   :: string,
+                ds_severity             :: spec_severity,
+                ds_phase                :: spec_phase,
+                ds_msgs                 :: list(std_diag_msg)
             ).
 
     % Many operations in the compiler may either succeed or fail.
@@ -123,9 +123,9 @@
     %
     % This type is not (yet) used.
     %
-% :- type maybe_error_specs(T)
+% :- type maybe_diag_specs(T)
 %   --->    ok_no_spec(T)
-%   ;       error_specs(error_spec, list(error_spec)).
+%   ;       diag_specs(diag_spec, list(diag_spec)).
 
 %---------------------------------------------------------------------------%
 
@@ -303,9 +303,9 @@
             % for the same context that we intend to appear in a specific
             % order, even though it may not be the order that sorting those
             % specs would normally give, we can add one of these to the
-            % start of each error_spec, with the order of the numbers
+            % start of each diag_spec, with the order of the numbers
             % and/or strings inside these invis orders controlling
-            % the final order of the error_specs.
+            % the final order of the diag_specs.
             %
             % This component sorts before other components that do not
             % specify such an ordinal number. The invis_order_default_end
@@ -604,24 +604,24 @@
 :- pred extract_msg_maybe_context(diag_msg::in, maybe(prog_context)::out)
     is det.
 
-:- pred extract_spec_phase(error_spec::in, spec_phase::out) is det.
+:- pred extract_spec_phase(diag_spec::in, spec_phase::out) is det.
 
-:- pred extract_spec_severity(error_spec::in, spec_severity::out) is det.
+:- pred extract_spec_severity(diag_spec::in, spec_severity::out) is det.
 
-:- pred accumulate_contexts(error_spec::in,
+:- pred accumulate_contexts(diag_spec::in,
     set(prog_context)::in, set(prog_context)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred extract_spec_msgs_and_id(error_spec::in,
+:- pred extract_spec_msgs_and_id(diag_spec::in,
     list(diag_msg)::out, string::out) is det.
 
-:- pred extract_spec_msgs_and_maybe_add_id(globals::in, error_spec::in,
+:- pred extract_spec_msgs_and_maybe_add_id(globals::in, diag_spec::in,
     list(diag_msg)::out) is det.
 
-:- pred maybe_add_error_spec_id(option_table::in, string::in,
+:- pred maybe_add_diag_spec_id(option_table::in, string::in,
     list(diag_msg)::in, list(diag_msg)::out) is det.
-:- pred maybe_add_error_spec_id_std(option_table::in, string::in,
+:- pred maybe_add_diag_spec_id_std(option_table::in, string::in,
     list(std_diag_msg)::in, list(std_diag_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -998,7 +998,7 @@ extract_spec_phase(Spec, Phase) :-
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
     ;
-        Spec = error_spec(_, _, Phase, _)
+        Spec = diag_spec(_, _, Phase, _)
     ).
 
 extract_spec_severity(Spec, Severity) :-
@@ -1007,7 +1007,7 @@ extract_spec_severity(Spec, Severity) :-
     ;
         Spec = no_ctxt_spec(_, Severity, _, _)
     ;
-        Spec = error_spec(_, Severity, _, _)
+        Spec = diag_spec(_, Severity, _, _)
     ).
 
 accumulate_contexts(Spec, !Contexts) :-
@@ -1017,7 +1017,7 @@ accumulate_contexts(Spec, !Contexts) :-
     ;
         Spec = no_ctxt_spec(_, _, _, _)
     ;
-        Spec = error_spec(_, _, _, Msgs),
+        Spec = diag_spec(_, _, _, Msgs),
         list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
     ).
 
@@ -1043,7 +1043,7 @@ extract_spec_msgs_and_id(Spec, Msgs, Id) :-
         Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
         Msgs = [no_ctxt_msg(Pieces)]
     ;
-        Spec = error_spec(Id, _Severity, _Phase, Msgs)
+        Spec = diag_spec(Id, _Severity, _Phase, Msgs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1051,9 +1051,9 @@ extract_spec_msgs_and_id(Spec, Msgs, Id) :-
 extract_spec_msgs_and_maybe_add_id(Globals, Spec, Msgs) :-
     extract_spec_msgs_and_id(Spec, Msgs0, Id),
     globals.get_options(Globals, OptionTable),
-    maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs).
+    maybe_add_diag_spec_id(OptionTable, Id, Msgs0, Msgs).
 
-maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
+maybe_add_diag_spec_id(OptionTable, Id, Msgs0, Msgs) :-
     getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
     (
         PrintId = no,
@@ -1069,12 +1069,12 @@ maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
             Msgs0 = [HeadMsg | _],
             extract_msg_maybe_context(HeadMsg, MaybeHeadContext),
             IdMsg = gen_msg(MaybeHeadContext, treat_based_on_posn, 0u,
-                [always([words("error_spec id:"), fixed(Id), nl])]),
+                [always([words("diag_spec id:"), fixed(Id), nl])]),
             Msgs = Msgs0 ++ [IdMsg]
         )
     ).
 
-maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
+maybe_add_diag_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
     getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
     (
         PrintId = no,
@@ -1090,7 +1090,7 @@ maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
             StdMsgs0 = [StdHeadMsg | _],
             extract_msg_maybe_context(coerce(StdHeadMsg), MaybeHeadContext),
             StdIdMsg = gen_msg(MaybeHeadContext, treat_based_on_posn, 0u,
-                [always([words("error_spec id:"), fixed(Id), nl])]),
+                [always([words("diag_spec id:"), fixed(Id), nl])]),
             StdMsgs = StdMsgs0 ++ [StdIdMsg]
         )
     ).

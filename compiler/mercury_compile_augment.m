@@ -371,7 +371,7 @@ maybe_write_dependency_graph(ProgressStream, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_prepare_for_intermodule_analysis(io.text_output_stream::in,
-    globals::in, bool::in, bool::in, list(error_spec)::out,
+    globals::in, bool::in, bool::in, list(diag_spec)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
@@ -388,7 +388,7 @@ maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
     ).
 
 :- pred prepare_for_intermodule_analysis(io.text_output_stream::in,
-    globals::in, bool::in, bool::in, list(error_spec)::out,
+    globals::in, bool::in, bool::in, list(diag_spec)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 prepare_for_intermodule_analysis(ProgressStream, Globals,

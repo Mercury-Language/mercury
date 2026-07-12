@@ -47,10 +47,10 @@
 %-----------------------------------------------------------------------------%
 
 :- pred add_error(spec_phase::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_warning(spec_phase::in, option::in, list(format_piece)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

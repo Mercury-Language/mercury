@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,7 @@
 :- import_module list.
 
 :- pred prepare_for_typecheck_module(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -111,7 +111,7 @@ prepare_for_typecheck_module(!ModuleInfo, !Specs) :-
 
 :- pred prepare_for_typecheck(module_info::in, set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 prepare_for_typecheck(_, _, [], [], !Specs).
 prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
@@ -208,7 +208,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred warn_about_any_unneeded_statevars(module_info::in, pred_info::in,
-    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(string)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_any_unneeded_statevars(ModuleInfo, PredInfo, HeadVarNames,
         !Specs) :-
@@ -360,7 +360,7 @@ collect_init_and_final_args(IsFirst, [ArgDesc | ArgDescs],
 
 :- pred warn_about_any_unneeded_initial_statevars_in_clause(pred_info::in,
     list(string)::in, set(uint)::in, init_and_final_map::in, clause::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_any_unneeded_initial_statevars_in_clause(PredInfo, HeadVarNames,
         AllClausesInitArgs, InitAndFinalMap, Clause, !Specs) :-
@@ -373,7 +373,7 @@ warn_about_any_unneeded_initial_statevars_in_clause(PredInfo, HeadVarNames,
 :- pred warn_about_any_unneeded_initial_statevars(pred_info::in,
     list(string)::in, set(uint)::in, init_and_final_map::in, prog_context::in,
     assoc_list(uint, statevar_arg_desc)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_any_unneeded_initial_statevars(_, _, _, _, _, [], !Specs).
 warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
@@ -438,7 +438,7 @@ warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
 :- pred maybe_warn_about_unneeded_final_statevar(module_info::in,
     pred_info::in, set(string)::in, prog_context::in, list(clause)::in,
     uint::in, init_and_final::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_warn_about_unneeded_final_statevar(ModuleInfo, PredInfo,
         BodyVarSVarNameSet, HeadClauseContext, TailClauses,
@@ -542,7 +542,7 @@ proc_args_are_free_of_declared_uniqueness(ModuleInfo, InitArgNum, FinalArgNum,
 
 :- pred warn_about_unneeded_final_statevar(pred_info::in, prog_context::in,
     list(clause)::in, uint::in, set(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext, TailClauses,
         FinalArgNum, SVarNameSet, !Specs) :-
@@ -568,7 +568,7 @@ warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext, TailClauses,
 
 :- pred warn_about_unneeded_initial_final_statevar(pred_info::in,
     prog_context::in, list(clause)::in, uint::in, uint::in, set(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
         TailClauses, InitArgNum, FinalArgNum, SVarNameSet, !Specs) :-

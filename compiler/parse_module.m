@@ -233,7 +233,7 @@ peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
         MaybeResult = error2(_PartialFileString, _FileStringLen, ErrorCode),
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
-        io_error_to_error_spec(phase_find_files(SourceFileName0, no),
+        io_error_to_diag_spec(phase_find_files(SourceFileName0, no),
             ErrorMsg, Spec, !IO),
         MaybeModuleName = error1(one_or_more(Spec, []))
     ).
@@ -366,7 +366,7 @@ parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
+:- pred maybe_add_convert_specs(globals::in, list(diag_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
 maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
@@ -383,7 +383,7 @@ maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
 
 :- pred report_module_has_unexpected_name(file_name::in,
     module_name::in, list(prog_context)::in,
-    module_name::in, maybe(term.context)::in, error_spec::out) is det.
+    module_name::in, maybe(term.context)::in, diag_spec::out) is det.
 
 report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         ActualName, MaybeActualContext, Spec) :-
@@ -410,7 +410,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     list.map(expectation_context_to_msg, SortedExpectationContexts, SubMsgs),
     % We only get invoked if the module *has* an expected name.
     % When invoked as "mmc -f", it doesn't have one.
-    Spec = error_spec($pred, severity_error, phase_module_name,
+    Spec = diag_spec($pred, severity_error, phase_module_name,
         [MainMsg | SubMsgs]).
 
 :- pred expectation_context_to_msg(prog_context::in, diag_msg::out) is det.
@@ -531,7 +531,7 @@ parse_int_file(IntFileKind, SourceFileName, FileString, FileStringLen,
 
 :- type version_number_result
     --->    vnr_ok(maybe_version_numbers)
-    ;       vnr_error(error_spec, nonfatal_read_module_error).
+    ;       vnr_error(diag_spec, nonfatal_read_module_error).
 
 :- pred parse_any_version_number_item(string::in, int::in,
     module_name::in, file_name::in, maybe_lookahead::in, maybe_lookahead::out,
@@ -583,7 +583,7 @@ parse_any_version_number_item(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_error_specs(_, _)
+            ; IOM = iom_item_and_diag_specs(_, _)
             % The reasoning for read_iom_parse_item_errors also applies
             % to iom_item_and_specs.
             ; IOM = iom_handled_no_error
@@ -738,9 +738,9 @@ parse_int_file_section(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            % The fact that IOM is not a section marker trumps any error_specs
-            % in iom_item_and_error_specs, and in iom_handled_error.
-            ; IOM = iom_item_and_error_specs(_, _)
+            % The fact that IOM is not a section marker trumps any diag_specs
+            % in iom_item_and_diag_specs, and in iom_handled_error.
+            ; IOM = iom_item_and_diag_specs(_, _)
             ; IOM = iom_handled_no_error
             ; IOM = iom_handled_error(_)
             ),
@@ -972,7 +972,7 @@ parse_src_file_components(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_error_specs(_, _)
+            ; IOM = iom_item_and_diag_specs(_, _)
             ; IOM = iom_handled_no_error
             ; IOM = iom_handled_error(_)
             ),
@@ -992,7 +992,7 @@ parse_src_file_components(FileString, FileStringLen,
                     IOM = iom_handled_error(ItemSpecs),
                     add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ;
-                    IOM = iom_item_and_error_specs(_, ItemSpecs),
+                    IOM = iom_item_and_diag_specs(_, ItemSpecs),
                     add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ),
                 (
@@ -1244,7 +1244,7 @@ parse_module_header(FileString, FileStringLen,
 
                 % A message for the error. The error category is
                 % always rme_no_module_decl_at_start.
-                error_spec
+                diag_spec
             )
     ;       wrong_module_decl_present(
                 % The name in the ":- module" decl, and its context.
@@ -1253,7 +1253,7 @@ parse_module_header(FileString, FileStringLen,
 
                 % A message for the error, which may be conditional.
                 % The category is always rme_unexpected_module_name.
-                error_spec
+                diag_spec
             )
     ;       right_module_decl_present(
                 % The name in the ":- module" decl, and its context.
@@ -1295,7 +1295,7 @@ parse_first_module_decl(FileString, FileStringLen,
     % - there are only two kinds of item_or_markers that we do not return
     %   for reprocessing, src file pragmas and ":- module" declarations, and
     % - these contain neither sym_names to be module qualified, nor
-    %   any error_specs that may contain the module name.
+    %   any diag_specs that may contain the module name.
     DummyDefaultModuleName = unqualified(""),
     read_term_to_iom_result(DummyDefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
@@ -1345,10 +1345,10 @@ parse_first_module_decl(FileString, FileStringLen,
             ; FirstIOM = iom_marker_avail(_)
             ; FirstIOM = iom_marker_fim(_)
             ; FirstIOM = iom_item(_)
-            % Ignore the error_specs.
-            ; FirstIOM = iom_item_and_error_specs(_, _)
+            % Ignore the diag_specs.
+            ; FirstIOM = iom_item_and_diag_specs(_, _)
             ; FirstIOM = iom_handled_no_error
-            % Ignore the error_specs.
+            % Ignore the diag_specs.
             ; FirstIOM = iom_handled_error(_)
             ),
             FirstLookAhead = lookahead(MaybeFirstIOM),
@@ -1491,7 +1491,7 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_item(Item),
                     cord.snoc(Item, !ItemsCord)
                 ;
-                    IOM = iom_item_and_error_specs(Item, ItemSpecs),
+                    IOM = iom_item_and_diag_specs(Item, ItemSpecs),
                     cord.snoc(Item, !ItemsCord),
                     add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ;
@@ -1551,11 +1551,11 @@ parse_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
 :- type read_iom_result
     --->    read_iom_eof
             % We have reached end-of-file.
-    ;       read_iom_parse_term_error(error_spec)
+    ;       read_iom_parse_term_error(diag_spec)
             % The call to mercury_term_parser.read_term_from_linestr
             % has failed, which means that what we found in the file string
             % is not a valid term.
-    ;       read_iom_parse_item_errors(varset, term, one_or_more(error_spec))
+    ;       read_iom_parse_item_errors(varset, term, one_or_more(diag_spec))
             % We have successfully read a term from the file string,
             % but could not parse it as an item or marker.
             % The error category is implicitly rme_could_not_parse_item.
@@ -1624,7 +1624,7 @@ line_to_pieces(Line, Pieces) :-
 
 %---------------------------------------------------------------------------%
 
-:- func report_missing_module_start(prog_context) = error_spec.
+:- func report_missing_module_start(prog_context) = diag_spec.
 
 report_missing_module_start(FirstContext) = Spec :-
     Pieces = [invis_order_default_start(0, ""),
@@ -1635,7 +1635,7 @@ report_missing_module_start(FirstContext) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
 :- func report_wrong_module_start(prog_context, module_name, module_name)
-    = error_spec.
+    = diag_spec.
 
 report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
     Pieces = [words("Error: module starts with a"), decl("module"),

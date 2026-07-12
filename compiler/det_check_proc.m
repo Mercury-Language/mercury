@@ -40,7 +40,7 @@
     %
 :- pred check_determinism_of_procs(io.text_output_stream::in,
     list(pred_proc_id)::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % As above, but for just a single procedure. Used when a change in
     % the body of a procedure (by e.g. cse_detection.m) requires redoing
@@ -49,7 +49,7 @@
     %
 :- pred check_determinism_of_proc(io.text_output_stream::in,
     pred_proc_id::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Check the determinism declarations of the specified procedures
     % whose bodies det_analysis.m did not analyze because they are
@@ -67,7 +67,7 @@
     %
 :- pred check_determinism_of_imported_procs(io.text_output_stream::in,
     module_info::in, list(pred_proc_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -161,7 +161,7 @@ check_determinism_of_imported_procs(ProgressStream, ModuleInfo,
 
 :- pred check_determinism_of_imported_proc(io.text_output_stream::in,
     module_info::in, pred_proc_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
         !Specs) :-
@@ -186,7 +186,7 @@ check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
 :- pred check_for_too_tight_or_loose_declared_determinism(
     pred_proc_id::in, pred_info::in, proc_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_for_too_tight_or_loose_declared_determinism(PredProcId,
         PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
@@ -251,7 +251,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 report_determinism_problem(!.ModuleInfo, PredProcId,
                     "Warning", "could be tighter", [],
                     DeclaredDetism, InferredDetism, ReportMsg),
-                ReportSpec = error_spec($pred,
+                ReportSpec = diag_spec($pred,
                     severity_warning(warn_det_decls_too_lax),
                     phase_detism_check, [ReportMsg]),
                 !:Specs = [ReportSpec | !.Specs]
@@ -287,7 +287,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
             report_determinism_problem(!.ModuleInfo, PredProcId,
                 "Error", "is not satisfied", ReasonPieces,
                 DeclaredDetism, InferredDetism, ReportMsg),
-            ReportSpec = error_spec($pred, severity_error, phase_detism_check,
+            ReportSpec = diag_spec($pred, severity_error, phase_detism_check,
                 [ReportMsg | start_each_msg_with_blank_line(DetailMsgs)]),
             !:Specs = [ReportSpec | !.Specs]
         )
@@ -332,7 +332,7 @@ cse_nopull_pieces =
 
 :- pred make_reqscope_checks_if_needed(module_info::in,
     pred_proc_id::in, pred_info::in, proc_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs) :-
@@ -373,7 +373,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
             pess_extra_vars_ignore, [], DetInfo0),
         Params = reqscope_params(WarnIncompleteSwitches, ReqArmsTypeOrder),
         reqscope_check_goal(Params, InstMap0, no, [], Goal, DetInfo0, DetInfo),
-        det_info_get_error_specs(DetInfo, RCSSpecs),
+        det_info_get_diag_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs
     ;
         NeedReqScope = no
@@ -422,7 +422,7 @@ determinism(detism_failure).
 %---------------------------------------------------------------------------%
 
 :- pred check_determinism_for_eval_method(proc_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_determinism_for_eval_method(ProcInfo, !Specs) :-
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
@@ -453,7 +453,7 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
             [words("This pragma is valid only for the following"),
             words(choose_number(Detisms, "determinism", "determinisms")),
             suffix(":") | DetismPieces] ++ [nl],
-        ValidSpec = error_spec($pred, severity_error, phase_detism_check,
+        ValidSpec = diag_spec($pred, severity_error, phase_detism_check,
             [simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)])]),
@@ -549,7 +549,7 @@ valid_determinism_for_tabled_eval_method(TabledMethod, Detism) = Valid :-
 %---------------------------------------------------------------------------%
 
 :- pred check_determinism_if_pred_is_main(pred_info::in, proc_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
     % Check that `main/2' has determinism `det' or `cc_multi',
@@ -621,7 +621,7 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
 
 :- pred check_function_semantics(module_info::in, pred_proc_id::in,
     pred_info::in, proc_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
     % Is this procedure the primary mode of a function?
@@ -684,7 +684,7 @@ check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
     ).
 
 :- func report_multisoln_func(module_info, pred_proc_id, proc_info,
-    determinism) = error_spec.
+    determinism) = diag_spec.
 
 report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, InferredDetism)
         = Spec :-
@@ -698,7 +698,7 @@ report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, InferredDetism)
         color_as_incorrect([quote((InferredDetismStr)), suffix(".")]) ++
         [nl],
     VerbosePieces = func_primary_mode_det_msg,
-    Spec = error_spec($pred, severity_error, phase_detism_check,
+    Spec = diag_spec($pred, severity_error, phase_detism_check,
         [simple_msg(Context,
             [always(MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -715,7 +715,7 @@ func_primary_mode_det_msg = [words("In Mercury,"),
     words("not a function."), nl].
 
 :- func report_can_fail_func(module_info, pred_proc_id, pred_info, proc_info,
-    mer_type, determinism) = error_spec.
+    mer_type, determinism) = diag_spec.
 
 report_can_fail_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, ResultType0,
         InferredDetism) = Spec :-
@@ -756,7 +756,7 @@ report_can_fail_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, ResultType0,
 
 :- pred check_io_state_proc_detism(module_info::in, pred_proc_id::in,
     pred_info::in, proc_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs) :-
@@ -862,7 +862,7 @@ is_detism_ok_for_io(Detism) = Ok :-
     %
 :- pred check_exported_proc_detism(pred_proc_id::in, proc_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs) :-
     module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),

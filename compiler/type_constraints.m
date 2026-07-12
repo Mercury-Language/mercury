@@ -25,7 +25,7 @@
     % Typecheck the module using constraints.
     %
 :- pred typecheck_constraints(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 

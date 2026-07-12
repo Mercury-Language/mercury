@@ -63,7 +63,7 @@
     %
 :- pred mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(
     hlds_dependency_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
@@ -90,11 +90,11 @@
 :- pred mark_tail_rec_calls_in_pred_for_llds_code_gen(
     scc_map(pred_proc_id)::in, pred_id::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pred mark_tail_rec_calls_in_proc_for_llds_code_gen(module_info::in,
     pred_id::in, proc_id::in, pred_info::in,
     scc_map(pred_proc_id)::in, proc_info::in, proc_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -170,7 +170,7 @@
             % to generate reports for the same non-tail recursive call.
             % This is because we add a short explanation for any later_op
             % in the set that is not visible (or at least not easily visible)
-            % to users. The code that writes out error_specs removes any
+            % to users. The code that writes out diag_specs removes any
             % duplicates, but it cannot remove *almost* duplicates
             % that differ only in the presence vs absence of these
             % explanations. The code below that prints the (potentially)
@@ -206,7 +206,7 @@
     warn_non_tail_rec_params::in, pred_proc_id::in, pred_proc_id::in,
     set(goal_feature)::in, prog_context::in,
     nontail_rec_call_reason::in, nontail_rec_obviousness::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -248,7 +248,7 @@ mark_self_and_mutual_tail_rec_calls_in_module_for_mlds_code_gen(DepInfo,
 
 :- pred mark_tail_rec_calls_in_sccs_for_mlds(tail_rec_params::in,
     list(scc_with_entry_points)::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 mark_tail_rec_calls_in_sccs_for_mlds(_Params, [], !ModuleInfo, !Specs).
 mark_tail_rec_calls_in_sccs_for_mlds(Params, [SCCEntry | SCCEntries],
@@ -262,7 +262,7 @@ mark_tail_rec_calls_in_sccs_for_mlds(Params, [SCCEntry | SCCEntries],
 :- pred mark_tail_rec_calls_in_scc_for_mlds(tail_rec_params::in,
     set(pred_proc_id)::in, list(pred_proc_id)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 mark_tail_rec_calls_in_scc_for_mlds(_Params, _SCC, [], !ModuleInfo, !Specs).
 mark_tail_rec_calls_in_scc_for_mlds(Params, SCC, [PredProcId | PredProcIds],
@@ -302,7 +302,7 @@ mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId,
 :- pred mark_tail_rec_calls_in_procs_for_llds(tail_rec_params::in,
     module_info::in, scc_map(pred_proc_id)::in, pred_id::in, list(proc_id)::in,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 mark_tail_rec_calls_in_procs_for_llds(_Params, _ModuleInfo, _SCCMap,
         _PredId, [], !PredInfo, !Specs).
@@ -479,7 +479,7 @@ get_params_for_llds_code_gen(Globals, Params) :-
 :- pred do_mark_tail_rec_calls_in_proc(tail_rec_params::in,
     module_info::in, set(pred_proc_id)::in,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
-    was_proc_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
+    was_proc_changed::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
         PredInfo, !ProcInfo, WasProcChanged, !Specs) :-
@@ -674,7 +674,7 @@ find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
                 mtc_self_tail_rec_calls     :: has_self_tail_rec_call,
                 mtc_mutual_tail_rec_calls   :: has_mutual_tail_rec_call,
                 mtc_any_rec_calls           :: found_any_rec_calls,
-                mtc_error_specs             :: list(error_spec)
+                mtc_diag_specs             :: list(diag_spec)
             ).
 
 %---------------------------------------------------------------------------%
@@ -1023,12 +1023,12 @@ mark_tail_rec_calls_in_plain_call(GoalExpr0, GoalInfo0, Goal,
             CallerPredProcId = !.Info ^ mtc_cur_proc,
             Context = goal_info_get_context(GoalInfo0),
             WarnParams = !.Info ^ mtc_params ^ warn_params,
-            Specs0 = !.Info ^ mtc_error_specs,
+            Specs0 = !.Info ^ mtc_diag_specs,
             Features = goal_info_get_features(GoalInfo0),
             maybe_report_nontail_recursive_call(ModuleInfo, WarnParams,
                 CallerPredProcId, CalleePredProcId, Features, Context,
                 ntrcr_program(Laters0), Obviousness, Specs0, Specs),
-            !Info ^ mtc_error_specs := Specs,
+            !Info ^ mtc_diag_specs := Specs,
 
             % Mark the goal so that the code generator, which lacks the info
             % from which we derive Laters0, does not generate a second,
@@ -1182,7 +1182,7 @@ grade_supports_tail_recursion(ModuleInfo) :-
 :- pred report_nontail_recursive_call(module_info::in,
     pred_proc_id::in, pred_proc_id::in, prog_context::in,
     nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         Context, Reason, RequestBy, WarnOrError, !Specs) :-
@@ -1222,7 +1222,7 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
     % add_message_for_nontail_self_recursive_call(PFSymNameArity,
     %   MaybeCallerProcId, Context, Reason, RequestBy, WarnOrError, !Specs):
     %
-    % Add an error_spec to !Specs reporting that the recursive call inside
+    % Add an diag_spec to !Specs reporting that the recursive call inside
     % the procedure described by PFSymNameArity and CallerProcId (if specified)
     % at Context is not *tail* recursive. Set its severity based on
     % WarnOrError.
@@ -1230,7 +1230,7 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
 :- pred add_message_for_nontail_self_recursive_call(pf_sym_name_arity::in,
     maybe(proc_id)::in, prog_context::in, nontail_rec_call_reason::in,
     report_requested_by::in, warning_or_error::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
         Context, Reason, RequestBy, WarnOrError, !Specs) :-
@@ -1246,7 +1246,7 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
         words("this")] ++ color_as_subject([words("self-recursive call")]) ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = error_spec($pred, Severity, phase_code_gen,
+    Spec = diag_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -1254,7 +1254,7 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
     %   MaybeCallerProcId, CalleePFSNA, Context, Reason, RequestBy,
     %   WarnOrError, !Specs):
     %
-    % Add an error_spec to !Specs reporting that the mutually recursive call
+    % Add an diag_spec to !Specs reporting that the mutually recursive call
     % to CalleePFSNA inside the procedure described by CallerPFSNA and
     % CallerProcId (if specified) at Context is not *tail* recursive.
     % Set its severity based on WarnOrError.
@@ -1262,7 +1262,7 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
 :- pred add_message_for_nontail_mutual_recursive_call(pf_sym_name_arity::in,
     maybe(proc_id)::in, pf_sym_name_arity::in, prog_context::in,
     nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
         CalleePFSNA, Context, Reason, RequestBy, WarnOrError, !Specs) :-
@@ -1280,7 +1280,7 @@ add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
         [words("to"), unqual_pf_sym_name_pred_form_arity(CalleePFSNA)] ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = error_spec($pred, Severity, phase_code_gen,
+    Spec = diag_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -1425,7 +1425,7 @@ warning_pieces_about_later_op(Later, Pieces) :-
     %
 :- pred maybe_report_no_tail_or_nontail_recursive_calls(pred_info::in,
     proc_info::in, found_any_rec_calls::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
         FoundAnyRecCalls, !Specs) :-
@@ -1461,7 +1461,7 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
 
 :- pred report_no_tail_or_nontail_recursive_calls(pf_sym_name_arity::in,
     prog_context::in, warning_or_error::in, option::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
         WarnOrError, Option, !Specs) :-

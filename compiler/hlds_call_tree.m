@@ -142,7 +142,7 @@
 %---------------------%
 
 :- pred generate_movability_report(module_info::in, call_tree_info::in,
-    list(string)::in, list(error_spec)::out) is det.
+    list(string)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1205,7 +1205,7 @@ acc_local_type_ctors_in_types(ModuleName, [Type | Types],
 %---------------------------------------------------------------------------%
 
 :- pred construct_movability_report(module_info::in, movability_report::in,
-    error_spec::out) is det.
+    diag_spec::out) is det.
 
 construct_movability_report(ModuleInfo, Report, InfoSpec) :-
     Report = movability_report(WantToMovePredIdSet, ConflictExportedPredIdSet,

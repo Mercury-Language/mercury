@@ -28,10 +28,10 @@
 %---------------------------------------------------------------------------%
 
 :- func report_warning_too_much_overloading(type_error_clause_context,
-    prog_context, overloaded_symbol_map) = error_spec.
+    prog_context, overloaded_symbol_map) = diag_spec.
 
 :- func report_error_too_much_overloading(type_error_clause_context,
-    prog_context, overloaded_symbol_map) = error_spec.
+    prog_context, overloaded_symbol_map) = diag_spec.
 
 %---------------------------------------------------------------------------%
 
@@ -95,7 +95,7 @@ report_warning_too_much_overloading(ClauseContext, Context,
         InitPieces, VerbosePieces),
     LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
         OverloadedSymbolMap),
-    Spec = error_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
+    Spec = diag_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
         phase_type_check, [FirstMsg | LaterMsgs]).
 
 report_error_too_much_overloading(ClauseContext, Context,
@@ -108,7 +108,7 @@ report_error_too_much_overloading(ClauseContext, Context,
         InitPieces, VerbosePieces),
     LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
         OverloadedSymbolMap),
-    Spec = error_spec($pred, severity_error,
+    Spec = diag_spec($pred, severity_error,
         phase_type_check, [FirstMsg | LaterMsgs]).
 
 %---------------------------------------------------------------------------%
@@ -200,7 +200,7 @@ all_identical_up_to_renaming(HeadTypes1, [HeadTypes2 | HeadTypes3plus]) :-
 
 :- func report_ambiguity_error(type_error_clause_context, prog_context,
     overloaded_symbol_map, type_assign, type_assign, list(type_assign))
-    = error_spec.
+    = diag_spec.
 
 report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
@@ -242,7 +242,7 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         LaterMsgs = [VarMsg]
     ),
     Msgs = [FirstMsg | LaterMsgs],
-    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
+    Spec = diag_spec($pred, severity_error, phase_type_check, Msgs).
 
 :- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
     prog_var) = list(format_piece).

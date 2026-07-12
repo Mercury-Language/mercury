@@ -31,22 +31,22 @@
     ims_cord(impl_pragma_tabled_info)::in,
         ims_cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_impl_pragmas_tabled(io.text_output_stream::in,
     ims_list(impl_pragma_tabled_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_pragma_foreign_proc_export(impl_pragma_fproc_export_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
 :- pred add_impl_markers(ims_list(item_impl_marker_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -130,7 +130,7 @@ add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
     item_impl_pragma_info::in,
     cord(impl_pragma_tabled_info)::in, cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
         !ModuleInfo, !Specs) :-
@@ -281,7 +281,7 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
 
 :- pred add_pragma_external_proc(impl_pragma_external_proc_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
     % XXX STATUS Check ItemMercuryStatus
@@ -335,7 +335,7 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
 
 :- pred mark_pred_as_external(prog_context::in, pred_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -375,7 +375,7 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
 :- pred add_pragma_fact_table(io.text_output_stream::in,
     item_mercury_status::in, pred_status::in, impl_pragma_fact_table_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
         !ModuleInfo, !Specs) :-
@@ -453,7 +453,7 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
     sym_name::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_id::in, prog_context::in, fact_table_gen_info::in,
     list(proc_id)::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_fact_table_procs(_, _, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
 add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
@@ -471,7 +471,7 @@ add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
     item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
     prog_context::in, fact_table_gen_info::in, proc_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
         ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
@@ -508,7 +508,7 @@ add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
 
 :- pred add_pragma_require_tail_rec(impl_pragma_req_tail_rec_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
     Pragma = impl_pragma_req_tail_rec_info(PredSpec, RequireTailrec,
@@ -584,7 +584,7 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
     prog_context::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     sym_name_arity::in, pair(proc_id, proc_info)::in,
     pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
         MaybeModes, SNA, ProcId - ProcInfo0, !PredInfo, !Specs) :-
@@ -616,7 +616,7 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
         ( RequireTailrecOrig = disable_nontailrec_reports(ContextOrig)
         ; RequireTailrecOrig = enable_nontailrec_reports(_, _, _, ContextOrig)
         ),
-        Spec = error_spec($pred, severity_error, phase_pt2h,
+        Spec = diag_spec($pred, severity_error, phase_pt2h,
             [msg(Context, MainPieces),
             msg(ContextOrig, OrigPieces)]),
         !:Specs = [Spec | !.Specs]
@@ -631,7 +631,7 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
 
 :- pred check_required_feature_set(module_info::in, set(required_feature)::in,
     item_mercury_status::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_required_feature_set(ModuleInfo, FeatureSet, ItemMercuryStatus, Context,
         !Specs) :-
@@ -648,7 +648,7 @@ check_required_feature_set(ModuleInfo, FeatureSet, ItemMercuryStatus, Context,
 
 :- pred check_required_feature(globals::in,
     prog_context::in, required_feature::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_required_feature(Globals, Context, Feature, !Specs) :-
     (
@@ -680,7 +680,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             SinglePrecFloat = yes
@@ -700,7 +700,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             SinglePrecFloat = no
@@ -747,7 +747,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("the grade modifier"), quote("tr"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             UseTrail = yes
@@ -801,7 +801,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 :- pred add_impl_pragma_tabled(io.text_output_stream::in,
     item_mercury_status::in, impl_pragma_tabled_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -842,7 +842,7 @@ add_impl_markers([ImsList | ImsLists], !ModuleInfo, !Specs) :-
 
 :- pred add_impl_marker(item_mercury_status::in, item_impl_marker_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo, !Specs) :-
     ImplMarker = item_impl_marker_info(MarkerKind, PFUNameArity, Context, _),

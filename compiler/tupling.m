@@ -93,7 +93,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred tuple_arguments(io.text_output_stream::in, list(error_spec)::out,
+:- pred tuple_arguments(io.text_output_stream::in, list(diag_spec)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%

@@ -45,7 +45,7 @@
     % Perform termination analysis on the module.
     %
 :- pred analyse_termination_in_module(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -140,7 +140,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
 
 :- pred check_foreign_code_attributes(list(scc)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs) :-
     list.foldl2(check_foreign_code_attributes_in_scc, SCCs,
@@ -148,7 +148,7 @@ check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs) :-
 
 :- pred check_foreign_code_attributes_in_scc(scc::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
     set.to_sorted_list(SCC, PPIds),
@@ -178,7 +178,7 @@ check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
 :- pred check_foreign_code_attributes_of_proc(module_info::in,
     pred_proc_id::in, foreign_proc_attributes::in,
     proc_info::in, proc_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
         !ProcInfo, !Specs) :-
@@ -279,14 +279,14 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
 
 :- pred check_pragmas_are_consistent(list(scc)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs) :-
     list.foldl2(check_scc_pragmas_are_consistent, SCCs, !ModuleInfo, !Specs).
 
 :- pred check_scc_pragmas_are_consistent(scc::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
     classify_termination_status(!.ModuleInfo,  set.to_sorted_list(SCC),
@@ -371,7 +371,7 @@ classify_termination_status(ModuleInfo, [PPId | PPIds],
     %
 :- pred analyse_termination_in_scc(pass_info::in, scc::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
     IsArgSizeKnown =
@@ -493,7 +493,7 @@ set_termination_info(TerminationInfo, PPId, !ModuleInfo) :-
 
 :- pred maybe_report_termination_errors(module_info::in, scc::in,
     list(term_error)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_report_termination_errors(ModuleInfo, SCC, Errors, !Specs) :-
     decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,

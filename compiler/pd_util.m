@@ -404,7 +404,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
         Goal0, Goal, DetInfo0, DetInfo),
     det_info_get_module_info(DetInfo, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo),
-    det_info_get_error_specs(DetInfo, Specs),
+    det_info_get_diag_specs(DetInfo, Specs),
 
     % Make sure there were no errors.
     module_info_get_globals(ModuleInfo, Globals),

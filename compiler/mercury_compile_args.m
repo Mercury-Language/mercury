@@ -32,7 +32,7 @@
 :- type arg_processing_result
     --->    apr_failure(
                 option_table,
-                one_or_more(error_spec)
+                one_or_more(diag_spec)
             )
     ;       apr_success(
                 aprs_globals                :: globals,
@@ -84,7 +84,7 @@ setup_all_args(ProgressStream, CmdLineArgs, ArgResult, !IO) :-
         cord.init, ExpandedCmdLineArgsCord, [], ExpandSpecs, !IO),
     % NOTE: We need the DefaultOptionTable both
     % - on all the success paths, to help build the Globals structure, and
-    % - on all the failure paths, to print the error_specs.
+    % - on all the failure paths, to print the diag_specs.
     get_option_default_table(DefaultOptionTable),
     (
         ExpandSpecs = [],
@@ -172,7 +172,7 @@ setup_all_args(ProgressStream, CmdLineArgs, ArgResult, !IO) :-
     %
 :- pred expand_at_file_arguments_loop(list(string)::in,
     cord(string)::in, cord(string)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 expand_at_file_arguments_loop([], !ExpandedArgs, !Specs, !IO).
 expand_at_file_arguments_loop([Arg | Args], !ExpandedArgs, !Specs, !IO) :-
@@ -199,17 +199,17 @@ expand_at_file_arguments_loop([Arg | Args], !ExpandedArgs, !Specs, !IO) :-
 
 :- type option_processing_result
     --->    opr_failure(
-                % This field should really contain one_or_more(error_spec),
+                % This field should really contain one_or_more(diag_spec),
                 % but some of the predicates that find errors date from
                 % before the introduction of the one_or_more type.
-                oprf_fatal_errors           :: one_or_more(error_spec)
+                oprf_fatal_errors           :: one_or_more(diag_spec)
             )
     ;       opr_success(
                 oprs_env_optfile_variables  :: env_optfile_variables,
                 oprs_mcflags                :: list(string),
                 oprs_option_args            :: list(string),
                 oprs_nonoption_args         :: list(string),
-                oprs_nonfatal_errors        :: list(error_spec)
+                oprs_nonfatal_errors        :: list(diag_spec)
             ).
 
 %---------------------%
@@ -244,7 +244,7 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
             OptionArgs, NonOptionArgs),
         (
             Errors = [_ | _],
-            OptionSpecs = list.map(option_error_to_error_spec, Errors),
+            OptionSpecs = list.map(option_error_to_diag_spec, Errors),
             det_list_to_one_or_more(OptionSpecs, OoMOptionSpecs),
             Result = opr_failure(OoMOptionSpecs)
         ;
@@ -260,9 +260,9 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
             OptionArgs, NonOptionArgs, Specs)
     ).
 
-:- func option_error_to_error_spec(option_error(option)) = error_spec.
+:- func option_error_to_diag_spec(option_error(option)) = diag_spec.
 
-option_error_to_error_spec(OptionError) = Spec :-
+option_error_to_diag_spec(OptionError) = Spec :-
     OptionErrorStr = option_error_to_string(OptionError),
     Pieces = [words(OptionErrorStr), suffix("."), nl],
     Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces).
@@ -364,7 +364,7 @@ process_options_std(ProgressStream, DefaultOptionTable, CmdLineArgs,
 :- pred process_options_std_config_file(io.text_output_stream::in,
     option_table::in, environment_var_map::in, bool::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    maybe1(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
+    maybe1(list(string))::out, list(diag_spec)::out, io::di, io::uo) is det.
 
 process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
         EnvVarMap, WarnUndef, EnvOptFileVariables0, EnvOptFileVariables,
@@ -441,7 +441,7 @@ process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
 
 %---------------------------------------------------------------------------%
 
-:- func report_option_error(option_error(option)) = one_or_more(error_spec).
+:- func report_option_error(option_error(option)) = one_or_more(diag_spec).
 
 report_option_error(OptionError) = Specs :-
     OptionErrorStr = option_error_to_string(OptionError),
@@ -479,7 +479,7 @@ report_option_error(OptionError) = Specs :-
     else
         Msgs = [MainMsg]
     ),
-    Spec = error_spec($pred, severity_error, phase_options, Msgs),
+    Spec = diag_spec($pred, severity_error, phase_options, Msgs),
     Specs = one_or_more(Spec, []).
 
 %---------------------------------------------------------------------------%

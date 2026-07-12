@@ -337,7 +337,7 @@
                 clause_body                 :: hlds_goal,
                 clause_lang                 :: implementation_language,
                 clause_context              :: prog_context,
-                clause_statevar_warnings    :: list(error_spec),
+                clause_statevar_warnings    :: list(diag_spec),
                 clause_unused_svar_arg_map  :: unused_statevar_arg_map,
                 clause_maybe_fact           :: is_clause_a_fact
             ).

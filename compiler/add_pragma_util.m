@@ -53,10 +53,10 @@
 %---------------------%
 
 :- func report_unknown_pred_or_func(spec_severity, string, prog_context,
-    pred_or_func, sym_name, user_arity) = error_spec.
+    pred_or_func, sym_name, user_arity) = diag_spec.
 
 :- func report_ambiguous_pred_or_func(spec_severity, string, prog_context,
-    pred_or_func, sym_name, user_arity) = error_spec.
+    pred_or_func, sym_name, user_arity) = diag_spec.
 
 %---------------------%
 
@@ -102,7 +102,7 @@
 
 :- pred check_pragma_status(string::in, pragma_status_class::in,
     item_mercury_status::in, prog_context::in, pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
@@ -118,7 +118,7 @@
     pragma_status_class::in, item_mercury_status::in, prog_context::in,
     pred_marker::in, list(pred_marker)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
@@ -141,7 +141,7 @@
     item_mercury_status::in, prog_context::in,
     add_marker_pred_info::in(add_marker_pred_info),
     list(pred_id)::in, pred_id_table::in, pred_id_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
@@ -152,7 +152,7 @@
 
 :- pred pragma_conflict_error(pred_pfu_name_arity::in, prog_context::in,
     string::in, set(pred_marker)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
@@ -161,8 +161,8 @@
     ;       require_one_match.
 
 :- type matching_pred_ids_result
-    --->    mpids_ok(pred_id, list(pred_id), list(error_spec))
-    ;       mpids_error(list(error_spec)).
+    --->    mpids_ok(pred_id, list(pred_id), list(diag_spec))
+    ;       mpids_error(list(diag_spec)).
 
     % Given maybe a pred_or_func, a symname and arity, return all
     % the pred_ids that match. Reasons for the possible return of more than one
@@ -188,7 +188,7 @@
     list(mer_mode)::in, string::in, prog_context::in,
     pred(proc_info, proc_info)::in(pred(in, out) is det),
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -278,7 +278,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
             Specs = [Spec]
         ;
             FailHandling = lfh_internal_error,

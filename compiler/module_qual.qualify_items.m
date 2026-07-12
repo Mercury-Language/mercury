@@ -46,11 +46,11 @@
 :- pred module_qualify_aug_comp_unit(globals::in,
     aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
-    set_tree234(module_name)::out, map(module_name, error_spec)::out) is det.
+    set_tree234(module_name)::out, map(module_name, diag_spec)::out) is det.
 
 :- pred module_qualify_aug_make_int_unit(globals::in,
     aug_make_int_unit::in, aug_make_int_unit::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
     %   !Specs):
@@ -60,7 +60,7 @@
     %
 :- pred module_qualify_parse_tree_int3(globals::in,
     parse_tree_int3::in, parse_tree_int3::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -131,7 +131,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers),
     % Note that unlike module_qualify_aug_make_int_unit, we do not call
-    % get_error_specs_in_mq_info here. This is because we want to retrieve
+    % get_diag_specs_in_mq_info here. This is because we want to retrieve
     % the errors not from the current version !.Info, but from the version
     % that parse_tree_to_hlds has built on top of !.Info by adding all
     % the contents of AugCompUnit to the HLDS. Therefore that call
@@ -193,7 +193,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
-        get_error_specs_in_mq_info(!.Info,
+        get_diag_specs_in_mq_info(!.Info,
             InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
         !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
             NonBlockingUndefSpecs ++ !.Specs,
@@ -266,7 +266,7 @@ module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
         Info0, Info1),
     qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         Info1, Info),
-    get_error_specs_in_mq_info(Info,
+    get_diag_specs_in_mq_info(Info,
         InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
     !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
         NonBlockingUndefSpecs ++ !.Specs.
@@ -750,7 +750,7 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance, !Info) :-
     % compelling reason right now for preferring the error messages
     % from one version of the types over the other.
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
-    % WAS_IGNORED We used to ignore error_specs from OrigTypes.
+    % WAS_IGNORED We used to ignore diag_specs from OrigTypes.
     qualify_type_list(InInt, ErrorContext, OrigTypes0, OrigTypes, !Info),
     qualify_instance_body(Name, Body0, Body),
     ItemInstance = item_instance_info(Name, Types, OrigTypes,
@@ -789,7 +789,7 @@ module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
     % compelling reason right now for preferring the error messages
     % from one version of the types over the other.
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info),
-    % WAS_IGNORED We used to ignore error_specs from OrigTypes.
+    % WAS_IGNORED We used to ignore diag_specs from OrigTypes.
     qualify_type_list(InInt, ErrorContext, OrigTypes0, OrigTypes, !Info),
     ItemInstance = item_instance_info(Name, Types, OrigTypes,
         Constraints, Body, VarSet, ModName, Context, SeqNum).
@@ -2132,10 +2132,10 @@ module_qualify_item_mutable(InInt, ItemMutable0, ItemMutable, !Info) :-
     ItemMutable0 = item_mutable_info(Name, OrigType0, Type0, OrigInst0, Inst0,
         InitTerm, Attrs, Varset, Context, SeqNum),
     ErrorContext = mqec_mutable(Context, Name),
-    % WAS_IGNORED We used to ignore error_specs from OrigType.
+    % WAS_IGNORED We used to ignore diag_specs from OrigType.
     qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info),
     qualify_type(InInt, ErrorContext, Type0, Type, !Info),
-    % WAS_IGNORED We used to ignore error_specs from OrigInst.
+    % WAS_IGNORED We used to ignore diag_specs from OrigInst.
     qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info),
     qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info),
     ItemMutable = item_mutable_info(Name, OrigType, Type, OrigInst, Inst,

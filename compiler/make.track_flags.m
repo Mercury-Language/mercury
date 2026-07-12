@@ -171,7 +171,7 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
         % I also don't think we have a good basis for deciding the answer
         % to that question until we have practical experience with
         % compiler invocations that lead execution to this spot.
-        write_oom_error_specs(ErrorStream, Globals, LookupSpecs, !IO),
+        write_oom_diag_specs(ErrorStream, Globals, LookupSpecs, !IO),
         Succeeded = did_not_succeed
     ).
 

@@ -52,12 +52,12 @@
 :- pred link_modules_into_executable_or_shared_library_for_c(
     io.text_output_stream::in, globals::in,
     list(module_name)::in, list(string)::in,
-    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
+    list(diag_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 :- pred create_exe_or_shared_lib_for_c(io.text_output_stream::in, globals::in,
     linked_target_type::in(c_exe_or_shared_lib),
     module_name::in, file_name::in, list(string)::in,
-    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
+    list(diag_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -82,7 +82,7 @@
     % but it does do a search in the filesystem for libraries that are
     % named in the values of options, and those searches can fail.
     %
-:- pred get_library_link_flags_for_c(globals::in, list(error_spec)::out,
+:- pred get_library_link_flags_for_c(globals::in, list(diag_spec)::out,
     string::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -1108,7 +1108,7 @@ get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
     % whether we are linking with static or shared Mercury libraries.
     %
 :- pred get_link_opts_for_libraries_for_c(globals::in,
-    maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
+    maybe(list(string))::out, list(diag_spec)::out, io::di, io::uo) is det.
 
 get_link_opts_for_libraries_for_c(Globals, MaybeLinkLibOpts, Specs, !IO) :-
     globals.lookup_accumulating_option(Globals, link_libraries, LinkLibraries),
@@ -1124,7 +1124,7 @@ get_link_opts_for_libraries_for_c(Globals, MaybeLinkLibOpts, Specs, !IO) :-
     ).
 
 :- pred get_link_opts_for_library_for_c(globals::in, string::in,
-    string::out, list(error_spec)::out, io::di, io::uo) is det.
+    string::out, list(diag_spec)::out, io::di, io::uo) is det.
 
 get_link_opts_for_library_for_c(Globals, LibName, LinkLibOpt, Specs, !IO) :-
     globals.get_mercury_linkage(Globals, MercuryLinkage),

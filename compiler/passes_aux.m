@@ -31,7 +31,7 @@
 
 :- type pred_error_task ==
     pred(pred_id, module_info, module_info, pred_info, pred_info,
-        list(error_spec), list(error_spec)).
+        list(diag_spec), list(diag_spec)).
 :- inst pred_error_task ==
     (pred(in, in, out, in, out, in, out) is det).
 
@@ -45,7 +45,7 @@
 
 :- pred process_valid_nonimported_preds_errors(
     update_pred_task::update_pred_task, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -225,7 +225,7 @@ process_valid_nonimported_preds_errors(Task, !ModuleInfo, !Specs) :-
 
 :- pred process_valid_nonimported_pred(update_pred_task::in(update_pred_task),
     pred_id::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 process_valid_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),

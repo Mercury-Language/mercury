@@ -59,7 +59,7 @@
 
                 % The messages we created for (non-fatal) errors
                 % while generating the parse tree.
-                list(error_spec)
+                list(diag_spec)
             )
     ;       gpti3_error(
                 % We couldn't generate the .int3 file of this module.
@@ -70,7 +70,7 @@
                 list(format_piece),
 
                 % The messages describing the reason(s) for the failure.
-                list(error_spec)
+                list(diag_spec)
             ).
 
     % Given the parse tree of a module's source code and its baggage,
@@ -91,12 +91,12 @@
                 parse_tree_int0,
                 maybe(timestamp),
                 file_name,
-                list(error_spec)
+                list(diag_spec)
             )
     ;       gpti0_error(
                 module_name,
                 list(format_piece),
-                list(error_spec)
+                list(diag_spec)
             ).
 
     % Given the parse tree of a module's source code and its baggage,
@@ -119,12 +119,12 @@
                 maybe(timestamp),   % The timestamp of the source file.
                 file_name,          % .int file name
                 file_name,          % .int2 file name
-                list(error_spec)
+                list(diag_spec)
             )
     ;       gpti12_error(
                 module_name,
                 list(format_piece),
-                list(error_spec)
+                list(diag_spec)
             ).
 
     % Given the parse tree of a module's source code and its baggage,
@@ -190,7 +190,7 @@ generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
     % We ignore _QualSpecs. The original comment about this was:
     %   Any Specs this can generate would be better reported
     %   when the module is being compiled to target language code.
-    % And create_parse_tree_int3 cannot return any error_specs either.
+    % And create_parse_tree_int3 cannot return any diag_specs either.
     % This means that EffectivelyErrors is guaranteed to be "no".
     % The error handling code here is therefore has no job to do.
     % It is here it *may* get a job later, if we ever decide
@@ -616,7 +616,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
             GenerateResult = gpti0_error(ModuleName, [], Specs)
         )
     else
-        % The negative indent is to let the rest of the error_spec
+        % The negative indent is to let the rest of the diag_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
@@ -829,7 +829,7 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
             GenerateResult = gpti12_error(ModuleName, [], Specs)
         )
     else
-        % The negative indent is to let the rest of the error_spec
+        % The negative indent is to let the rest of the diag_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
@@ -1139,7 +1139,7 @@ pre_grab_pre_qual_mode_ctor_checked_defn(ModeCtor, CheckedDefn0,
     %
 :- pred create_parse_trees_int1_int2(globals::in, aug_make_int_unit::in,
     parse_tree_int1::out, parse_tree_int2::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 create_parse_trees_int1_int2(Globals, AugMakeIntUnit,
         ParseTreeInt1, ParseTreeInt2, !Specs) :-
@@ -1157,7 +1157,7 @@ create_parse_trees_int1_int2(Globals, AugMakeIntUnit,
     type_ctor_checked_map::out,
     inst_ctor_checked_map::out, mode_ctor_checked_map::out,
     type_ctor_repn_map::out, parse_tree_int1::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 create_parse_tree_int1(Globals, AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
@@ -3664,7 +3664,7 @@ construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_add_delayed_messages(aug_make_int_unit::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_add_delayed_messages(AugMakeIntUnit, OtherSpecs, Specs) :-
     (

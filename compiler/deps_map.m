@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 
 :- pred generate_deps_map(io.text_output_stream::in, globals::in,
     maybe_search::in, file_or_module::in, module_name::out,
-    deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
+    deps_map::out, list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -124,7 +124,7 @@ generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
 %---------------------------------------------------------------------------%
 
 :- pred build_initial_deps_map_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, module_name::out, deps_map::out, list(error_spec)::out,
+    file_name::in, module_name::out, deps_map::out, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
@@ -169,7 +169,7 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     deps_map::in, deps_map::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 generate_deps_map_loop(ProgressStream, Globals, Search, CmdLineModuleName,
         !.SeenModules, !.ModuleExpCs, !ReadModules, !UnreadModules,
@@ -215,7 +215,7 @@ generate_deps_map_loop(ProgressStream, Globals, Search, CmdLineModuleName,
     expectation_contexts_map::in, expectation_contexts_map::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
-    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    deps_map::in, deps_map::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 generate_deps_map_step(ProgressStream, Globals, Search, CmdLineModuleName,
@@ -391,7 +391,7 @@ add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
 :- pred lookup_or_find_dependency_info_for_module(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, module_name::in,
     expectation_contexts::in, maybe(deps)::out, list(burdened_module)::out,
-    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    deps_map::in, deps_map::out, list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
@@ -462,7 +462,7 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
 :- pred read_module_src_file_for_dependency_info(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, module_name::in,
     expectation_contexts::in, list(burdened_module)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 read_module_src_file_for_dependency_info(ProgressStream, Globals, Search,
         CmdLineModuleName, ModuleName, ExpectationContexts,

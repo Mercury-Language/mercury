@@ -87,7 +87,7 @@
     %
 :- pred read_options_files_named_in_options_file_option(
     io.text_output_stream::in, option_table::in, env_optfile_variables::out,
-    list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, list(diag_spec)::out, io::di, io::uo) is det.
 
     % read_named_options_file(ProgressStream, OptionsPathName,
     %   !Variables, Specs, UndefSpecs, !IO) :-
@@ -103,7 +103,7 @@
     %
 :- pred read_named_options_file(io.text_output_stream::in,
     file_name::in, env_optfile_variables::in, env_optfile_variables::out,
-    list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, list(diag_spec)::out, io::di, io::uo) is det.
 
     % read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
     %   Specs, UndefSpecs, !IO):
@@ -126,13 +126,13 @@
     %
 :- pred read_args_file(io.text_output_stream::in, file_name::in,
     maybe(list(string))::out,
-    list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::out, list(diag_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
 % If any of the following predicates return error1(Specs), Specs will
 % contain only errors, not warnings. (There is only one piece of code
-% in this module that generates an error_spec with severity_warning,
+% in this module that generates an diag_spec with severity_warning,
 % and the only exported operations whose call tree includes that code
 % are ones listed *above*.)
 %
@@ -266,9 +266,9 @@ read_options_files_named_in_options_file_option(ProgressStream, OptionTable,
 :- pred read_options_file_set_params(io.text_output_stream::in,
     option_table::in, string::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 read_options_file_set_params(ProgressStream, OptionTable, OptionsFile,
         !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
@@ -378,9 +378,9 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
 :- pred read_options_file_params(search_info::in,
     pre_incl_stack::in, is_options_file_optional::in, string::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         OptionsPathName, !Variables,
@@ -522,7 +522,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
 
 :- type include_check_result
     --->    include_ok(incl_stack)
-    ;       include_error(error_spec).
+    ;       include_error(diag_spec).
 
 :- pred check_include_for_infinite_recursion(pre_incl_stack::in,
     file_name::in, include_check_result::out) is det.
@@ -545,7 +545,7 @@ check_include_for_infinite_recursion(PreStack0, PathName, Result) :-
     ).
 
 :- pred pathname_occurs_in_incl_stack(incl_stack::in, file_name::in,
-    term_context::in, error_spec::out) is semidet.
+    term_context::in, diag_spec::out) is semidet.
 
 pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
     (
@@ -577,7 +577,7 @@ pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
                 MainMsg = msg(TopContext, MainPieces),
                 InclMsgs = list.map(include_context_msg, TopDownIncludes),
                 LastMsg = include_context_msg(PathName - Context),
-                Spec = error_spec($pred, severity_error, phase_read_files,
+                Spec = diag_spec($pred, severity_error, phase_read_files,
                     [MainMsg | InclMsgs] ++ [LastMsg])
             else
                 fail
@@ -620,7 +620,7 @@ include_context_msg(FileName - Context) = Msg :-
 :- type parse_result(T)
     --->    pr_ok(T)
     ;       pr_eof
-    ;       pr_error(error_spec).
+    ;       pr_error(diag_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -632,9 +632,9 @@ include_context_msg(FileName - Context) = Msg :-
 :- pred read_options_lines(search_info::in, incl_stack::in,
     io.text_input_stream::in, file_name::in, int::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 read_options_lines(SearchInfo, InclStack0, InStream, FileName, LineNumber0,
         !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
@@ -795,7 +795,7 @@ read_options_line_loop(InStream, FileName, !LineNumber, !.RevChars,
         Result = pr_error(Spec)
     ).
 
-:- func io_error_to_parse_error(file_name, int, io.error) = error_spec.
+:- func io_error_to_parse_error(file_name, int, io.error) = diag_spec.
 
 io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
     Context = term_context.context(FileName, LineNumber),
@@ -804,7 +804,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
     Spec = spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
-:- func report_split_error(file_name, int, string) = error_spec.
+:- func report_split_error(file_name, int, string) = diag_spec.
 
 report_split_error(FileName, LineNumber, Msg) = Spec :-
     Context = term_context.context_init(FileName, LineNumber),
@@ -837,7 +837,7 @@ skip_comment_line(InStream, Result, !IO) :-
 
 :- type maybe_options_file_line
     --->    ofl_ok(options_file_line)
-    ;       ofl_error(error_spec).
+    ;       ofl_error(diag_spec).
 
 :- type options_file_line
     --->    ofl_var_defn(
@@ -910,7 +910,7 @@ parse_options_line(FileName, LineNumber, Line0, MaybeOptionsFileLine) :-
 
 :- type opt_var_or_spec
     --->    ovos_var_name(env_optfile_var)
-    ;       ovos_spec(error_spec).
+    ;       ovos_spec(diag_spec).
 
 :- pred parse_variable_name(file_name::in, int::in,
     list(char)::in, list(char)::out, opt_var_or_spec::out) is det.
@@ -1100,8 +1100,8 @@ get_string_acc([Char | Chars0], Chars, RevString0, RevString, MaybeError) :-
 :- pred update_variable(file_name::in, int::in,
     set_or_add::in, env_optfile_var::in, list(char)::in,
     env_optfile_variables::in, env_optfile_variables::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 update_variable(FileName, LineNumber, SetOrAdd, VarName, NewChars0,
         !Variables, !ParseSpecs, !UndefSpecs, !IO) :-
@@ -1144,7 +1144,7 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewChars0,
                 SplitResult = ok(_)
             ;
                 SplitResult = error(Msg),
-                Spec = split_error_msg_to_error_spec(VarName, Msg),
+                Spec = split_error_msg_to_diag_spec(VarName, Msg),
                 !:ParseSpecs = [Spec | !.ParseSpecs]
             )
         else
@@ -1177,8 +1177,8 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewChars0,
 
 :- pred expand_any_var_references(env_optfile_variables::in,
     file_name::in, int::in, list(char)::in, list(char)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
         !ParseSpecs, !UndefSpecs, !IO) :-
@@ -1190,7 +1190,7 @@ expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
 
 :- pred expand_any_var_references_loop(env_optfile_variables::in,
     file_name::in, int::in, list(char)::in, list(char)::in, list(char)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     set(string)::in, set(string)::out, io::di, io::uo) is det.
 
 expand_any_var_references_loop(_, _, _,
@@ -1266,7 +1266,7 @@ expand_any_var_references_loop(Variables, FileName, LineNumber,
     ).
 
 :- func report_unterminated_variable_reference(file_name, int, list(char))
-    = error_spec.
+    = diag_spec.
 
 report_unterminated_variable_reference(FileName, LineNumber, RevChars)
         = Spec :-
@@ -1276,7 +1276,7 @@ report_unterminated_variable_reference(FileName, LineNumber, RevChars)
     Spec = spec($pred, severity_error, phase_read_files, Context, Pieces).
 
 :- pred report_any_undefined_variables(file_name::in, int::in,
-    set(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    set(string)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         !UndefSpecs) :-
@@ -1352,9 +1352,9 @@ lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
         Result = ok1(MmcOptions)
     ;
         Specs = [HeadSpec | TailSpecs],
-        % Returning error1 here is correct because all error_specs in Specs
+        % Returning error1 here is correct because all diag_specs in Specs
         % will have severity_error. There is (as of 2022 jan 23) exactly
-        % one place in this module that generates an error_spec whose
+        % one place in this module that generates an diag_spec whose
         % severity is NOT severity_error, but it is not reachable from
         % lookup_env_optfile_var.
         Result = error1(one_or_more(HeadSpec, TailSpecs))
@@ -1365,12 +1365,12 @@ lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
 :- type variable_result(T)
     --->    var_result_set(T)
     ;       var_result_unset
-    ;       var_result_error(one_or_more(error_spec)).
+    ;       var_result_error(one_or_more(diag_spec)).
 
 :- pred lookup_env_optfile_var(env_optfile_variables::in,
     env_optfile_var_class::in, env_optfile_var_id::in,
     list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
         !AllMmcOptions, !Specs) :-
@@ -1452,7 +1452,7 @@ lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
     ).
 
 :- pred check_ml_libs_values(list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_ml_libs_values(VarValues, !Specs) :-
     NotLibLPrefix =
@@ -1690,7 +1690,7 @@ lookup_variable_words(Variables, VarName, Result) :-
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
-            Spec = split_error_msg_to_error_spec(VarName, Msg),
+            Spec = split_error_msg_to_diag_spec(VarName, Msg),
             Result = var_result_error(one_or_more(Spec, []))
         )
     else if map.search(OptsMap, VarName, OptsEntry) then
@@ -1714,9 +1714,9 @@ lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
         set.insert(VarName, !UndefVarNames)
     ).
 
-:- func split_error_msg_to_error_spec(string, string) = error_spec.
+:- func split_error_msg_to_diag_spec(string, string) = diag_spec.
 
-split_error_msg_to_error_spec(VarName, Msg) = Spec :-
+split_error_msg_to_diag_spec(VarName, Msg) = Spec :-
     Pieces = [words("Error: in environment variable"),
         quote(VarName), suffix(":"), words(Msg), nl],
     Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces).

@@ -155,7 +155,7 @@
     %   an unused procedure unless *all* its sibling procedures are unused
     %   as well.
     %
-:- pred dead_proc_warn(module_info::in, list(error_spec)::out) is det.
+:- pred dead_proc_warn(module_info::in, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1212,7 +1212,7 @@ dead_proc_eliminate_proc(ProcElimInfo, KeepAnyProc, PredId, ProcId,
     % eliminate procedures which are not needed.
     %
 :- pred do_dead_proc_warn(module_info::in, needed_map::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
@@ -1232,7 +1232,7 @@ do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
     %
 :- pred dead_proc_warn_pred(module_info::in, pred_id_table::in, bool::in,
     needed_map::in, pred_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
         PredId, !Specs) :-
@@ -1286,7 +1286,7 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
     %
 :- pred dead_proc_maybe_warn_proc(module_info::in, needed_map::in, pred_id::in,
     pred_info::in, bool::in, list(proc_id)::in, proc_table::in, proc_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
         WarnWithLiveSiblings, AllProcsInPred, ProcTable, ProcId, !Specs) :-
@@ -1422,7 +1422,7 @@ suppress_unused_mutable_access_pred(Unused, Suppress) :-
     ).
 
 :- func warn_dead_proc(module_info, option, pred_id, proc_id, prog_context)
-    = error_spec.
+    = diag_spec.
 
 warn_dead_proc(ModuleInfo, Option, PredId, ProcId, Context) = Spec :-
     ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),

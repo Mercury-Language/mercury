@@ -181,7 +181,7 @@
     % modules.
     %
 :- pred prepare_intermodule_analysis(io.text_output_stream::in, globals::in,
-    set(module_name)::in, set(module_name)::in, list(error_spec)::out,
+    set(module_name)::in, set(module_name)::in, list(diag_spec)::out,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
      % module_is_local(Info, ModuleName, IsLocal).
@@ -198,7 +198,7 @@
     %
 :- pred write_analysis_files(io.text_output_stream::in, Compiler::in,
     module_info::in, set(module_name)::in, analysis_info::in,
-    list(error_spec)::out, io::di, io::uo) is det <= compiler(Compiler).
+    list(diag_spec)::out, io::di, io::uo) is det <= compiler(Compiler).
 
     % do_read_module_overall_status(Compiler, Globals, ModuleName,
     %   MaybeModuleStatus, !IO)
@@ -1132,10 +1132,10 @@ prepare_intermodule_analysis(ProgressStream, Globals,
     % a "report".)
     %
     % The current code of this package, when it finds those same problems,
-    % just creates an error_spec, adds it to the list, and continues.
+    % just creates an diag_spec, adds it to the list, and continues.
     % This can report an unbounded number of errors per compiler invocation,
     % and unlike the old system, it also prints the context of each problem.
-    % However, the current system assumes that the problems whose error_specs
+    % However, the current system assumes that the problems whose diag_specs
     % we gather will not cause later computations to abort (e.g. by causing
     % map.lookups to fail) by breaking what were assumed to be invariants.
     % This is mostly because I (zs) *cannot find* any mention of any such
@@ -1165,7 +1165,7 @@ prepare_intermodule_analysis(ProgressStream, Globals,
 
 :- pred load_module_analysis_results(io.text_output_stream::in, globals::in,
     module_name::in, analysis_info::in, analysis_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 load_module_analysis_results(ProgressStream, Globals, ModuleName,
         !Info, !Specs, !IO) :-
@@ -1280,7 +1280,7 @@ write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
 
 :- pred load_module_imdg(globals::in, module_name::in,
     analysis_info::in, analysis_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
 
 load_module_imdg(Globals, ModuleName, !Info, !Specs, !IO) :-
     read_module_imdg(!.Info, Globals, ModuleName, IMDG, ModuleSpecs, !IO),

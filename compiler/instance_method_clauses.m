@@ -35,7 +35,7 @@
     pred_or_func::in, list(mer_type)::in, pred_markers::in, term.context::in,
     instance_status::in, clauses_info::out, tvarset::in, tvarset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -126,7 +126,7 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
     prog_context::in, instance_status::in, item_clause_info::in,
     tvarset::in, tvarset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out, clauses_info::in, clauses_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,

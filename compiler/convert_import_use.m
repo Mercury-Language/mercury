@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,7 +81,7 @@
 :- pred classify_int_imp_import_use_modules(bool::in, module_name::in,
     list(item_avail)::in, list(item_avail)::in,
     section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % classify_int_imp_use_modules(ModuleName,
     %   IntUseContextsMap, ImpUseContextsMap, !:UseMap, !Specs) :-
@@ -107,7 +107,7 @@
     %
 :- pred classify_int_imp_use_modules(module_name::in,
     module_names_contexts::in, module_names_contexts::in,
-    section_use_map::out, list(error_spec)::in, list(error_spec)::out) is det.
+    section_use_map::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred import_and_or_use_map_section_to_maybe_implicit(
     section_import_and_or_use_map::in, import_and_or_use_map::out) is det.
@@ -318,7 +318,7 @@ classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
 
 :- pred report_any_duplicate_avail_contexts(string::in, string::in,
     module_name::in, one_or_more(prog_context)::in, prog_context::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_any_duplicate_avail_contexts(Section, DeclName,
         ModuleName, OoMContexts, HeadSortedContext, !Specs) :-
@@ -343,7 +343,7 @@ report_any_duplicate_avail_contexts(Section, DeclName,
 
 :- pred report_duplicate_avail_context(string::in, string::in,
     module_name::in, prog_context::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
         DuplicateContext, !Specs) :-
@@ -358,7 +358,7 @@ report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
     DupMsg = msg(DuplicateContext, DupPieces),
     PrevMsg = msg(PrevContext, PrevPieces),
     Severity = severity_warning(warn_redundant_code),
-    Spec = error_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+    Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred record_int_import(module_name::in, prog_context::in,
@@ -370,7 +370,7 @@ record_int_import(ModuleName, Context, !ImportUseMap) :-
 
 :- pred record_int_use(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
@@ -389,7 +389,7 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = error_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             ( OldEntry = int_use(_)
@@ -408,7 +408,7 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
 
 :- pred record_imp_import(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
@@ -427,7 +427,7 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = error_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = int_use(IntUseContext),
@@ -449,7 +449,7 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
 
 :- pred record_imp_use(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
@@ -495,7 +495,7 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = error_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -528,7 +528,7 @@ record_int_use_only(ModuleName, Context, !UseMap) :-
 
 :- pred record_imp_use_only(module_name::in, prog_context::in,
     section_use_map::in, section_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
     ( if map.search(!.UseMap, ModuleName, OldEntry) then
@@ -546,7 +546,7 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = error_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -569,7 +569,7 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
     %
 :- pred warn_if_avail_for_self(module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
     ( if map.remove(ModuleName, ImportOrUse, !SectionImportOrUseMap) then
@@ -582,7 +582,7 @@ warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
             [nl],
         Msg = msg(Context, Pieces),
         Severity = severity_warning(warn_dodgy_simple_code),
-        Spec = error_spec($pred, Severity, phase_pt2h, [Msg]),
+        Spec = diag_spec($pred, Severity, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -596,7 +596,7 @@ warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
     %
 :- pred warn_if_avail_for_ancestor(module_name::in, module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_if_avail_for_ancestor(ModuleName, AncestorName,
         !SectionImportOrUseMap, !Specs) :-
@@ -614,7 +614,7 @@ warn_if_avail_for_ancestor(ModuleName, AncestorName,
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
         Severity = severity_warning(warn_redundant_code),
-        Spec = error_spec($pred, Severity, phase_pt2h, [Msg]),
+        Spec = diag_spec($pred, Severity, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -657,7 +657,7 @@ section_import_or_use_first_context(ImportOrUse, DeclName, Context) :-
     %
 :- pred error_if_use_for_self(module_name::in,
     section_use_map::in, section_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
@@ -682,7 +682,7 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     %
 :- pred error_if_use_for_ancestor(module_name::in, module_name::in,
     section_use_map::in, section_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
@@ -711,7 +711,7 @@ section_use_first_context(Use) = Context :-
 %---------------------%
 
 :- pred warn_unsorted_avail_blocks(list(item_avail)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_unsorted_avail_blocks(Avails, !Specs) :-
     build_import_use_file_map(Avails, multi_map.init, FileMap),
@@ -759,7 +759,7 @@ build_import_use_file_map([Avail | Avails], !FileMap) :-
 
 :- pred generate_unsorted_avail_block_warnings_for_file(string::in,
     list(import_use_line)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_unsorted_avail_block_warnings_for_file(FileName, ImportUseLines,
         !Specs) :-
@@ -775,7 +775,7 @@ generate_unsorted_avail_block_warnings_for_file(FileName, ImportUseLines,
 
 :- pred generate_unsorted_avail_block_warnings(string::in,
     import_use_line::in, list(import_use_line)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_unsorted_avail_block_warnings(_FileName, _, [], !Specs).
 generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,

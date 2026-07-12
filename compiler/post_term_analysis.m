@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 
 :- import_module list.
 
-:- pred run_post_term_analysis(module_info::in, list(error_spec)::out) is det.
+:- pred run_post_term_analysis(module_info::in, list(diag_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -83,7 +83,7 @@ run_post_term_analysis(ModuleInfo, Specs) :-
     % the relevant module is compiled and analysed.
     %
 :- pred warn_non_term_user_special_preds(module_info::in,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -127,7 +127,7 @@ warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
 
 :- pred warn_non_term_user_special_pred_kind(module_info::in, type_table::in,
     special_pred_id::in, type_ctor::in, pred_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
         TypeCtor, PredId, !Specs) :-
@@ -154,7 +154,7 @@ warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
     %
 :- pred process_special_pred_for_type(module_info::in,
     special_pred_id::in, type_ctor::in, hlds_type_defn::in, pred_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
         PredId, !Specs) :-
@@ -279,7 +279,7 @@ get_user_unify_compare(ModuleInfo, TypeBody, MaybeCanonical) :-
 
 :- pred generate_non_term_user_special_warning(prog_context::in,
     special_pred_id::in, type_ctor::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
         !Specs) :-

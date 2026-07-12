@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
     %
 :- pred check_insts_have_matching_types(bool::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -237,7 +237,7 @@ constructor_to_functor_name_and_arity(Ctor, FunctorNameAndArity) :-
     functors_to_types_map::in,
     assoc_list(inst_ctor, hlds_inst_defn)::in,
     assoc_list(inst_ctor, hlds_inst_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_inst_defns_have_matching_types(_, _, _, [], [], !Specs).
 check_inst_defns_have_matching_types(WarnInstsWithoutMatchingType,
@@ -255,7 +255,7 @@ check_inst_defns_have_matching_types(WarnInstsWithoutMatchingType,
 :- pred check_inst_defn_has_matching_type(bool::in, type_table::in,
     functors_to_types_map::in, inst_ctor::in,
     hlds_inst_defn::in, hlds_inst_defn::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
         TypeTable, FunctorsToTypesMap, InstCtor,
@@ -761,7 +761,7 @@ find_matching_user_types(FunctorSymName,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_issue_no_such_type_error(inst_ctor::in, hlds_inst_defn::in,
-    type_ctor::in, list(error_spec)::in, list(error_spec)::out) is det.
+    type_ctor::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
     InstStatus = InstDefn ^ inst_status,
@@ -785,7 +785,7 @@ maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
 
 :- pred maybe_issue_type_match_error(bool::in, inst_ctor::in,
     hlds_inst_defn::in, for_type_kind::in, list(cons_mismatch)::in,
-    inst_for_type_ctor::out, list(error_spec)::out) is det.
+    inst_for_type_ctor::out, list(diag_spec)::out) is det.
 
 maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
         ForTypeKind, Mismatches0, IFTC, Specs) :-
@@ -971,7 +971,7 @@ project_if_several(near_miss_cons_mismatch(_, IfSeveral)) = IfSeveral.
     inst_ctor::in, hlds_inst_defn::in,
     list(bound_functor)::in, list(type_defn_or_builtin)::in,
     list(set(type_defn_or_builtin))::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
         InstCtor, InstDefn, BoundFunctors,

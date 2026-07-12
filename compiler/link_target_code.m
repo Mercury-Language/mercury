@@ -84,7 +84,7 @@
 :- pred link_files_into_executable_or_library_for_c_cs_java(
     io.text_output_stream::in, globals::in,
     linked_target_type::in, module_name::in, list(string)::in,
-    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
+    list(diag_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

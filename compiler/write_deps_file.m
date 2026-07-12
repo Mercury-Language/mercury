@@ -72,7 +72,7 @@
     % which is used very frequently.
     %
 :- pred generate_and_write_dep_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
+    globals::in, file_or_module::in, deps_map::out, list(diag_spec)::out,
     io::di, io::uo) is det.
 
     % generate_and_write_d_file_gendep(ProgressStream, Globals, FIleOrModule,
@@ -85,7 +85,7 @@
     % which is almost never used.
     %
 :- pred generate_and_write_d_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
+    globals::in, file_or_module::in, deps_map::out, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -142,7 +142,7 @@ generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
     do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
     (
         MaybeBurdenedModule = error1(FatalErrorSpecs),
-        % The error_specs in FatalErrorSpecs may already be in !.Specs,
+        % The diag_specs in FatalErrorSpecs may already be in !.Specs,
         % but even if we add them again here, they will be printed just once.
         !:Specs = FatalErrorSpecs ++ !.Specs
     ;
@@ -163,7 +163,7 @@ generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
     do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
     (
         MaybeBurdenedModule = error1(FatalErrorSpecs),
-        % The error_specs in FatalErrorSpecs may already be in !.Specs,
+        % The diag_specs in FatalErrorSpecs may already be in !.Specs,
         % but even if we add them again here, they will be printed just once.
         !:Specs = FatalErrorSpecs ++ !.Specs
     ;
@@ -423,7 +423,7 @@ do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
         Errors = Baggage ^ mb_errors,
         FatalErrors = Errors ^ rm_fatal_errors,
         ( if set.is_non_empty(FatalErrors) then
-            FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
+            FatalErrorSpecs = Errors ^ rm_fatal_diag_specs,
             (
                 FatalErrorSpecs = [],
                 string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",

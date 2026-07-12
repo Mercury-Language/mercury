@@ -50,7 +50,7 @@
 
 :- pred check_pragma_format_call_preds(set(pred_id)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -84,7 +84,7 @@ check_pragma_format_call_preds(FormatCallPredIds, !ModuleInfo, !Specs) :-
 
 :- pred check_pragma_format_call_pred(pred_id::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
@@ -136,7 +136,7 @@ check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
     int::in, list(mer_type)::in, int::in, list(pair(proc_id, proc_info))::in,
     int::in, int::in,
     list(format_string_values)::in, list(format_string_values)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 check_format_args(_, _, _, _, _, _, _, _, _, [], [], !Specs).
 check_format_args(ModuleInfo, PredInfo, Context, MaxArgNum, ArgTypes,
@@ -268,7 +268,7 @@ check_for_non_input_arg_nums_in_proc(ModuleInfo, ArgNum, _ProcId - ProcInfo,
 %---------------------%
 
 :- func format_call_error_too_large_arg_num(pred_info, prog_context,
-    int, int, int, int, string) = error_spec.
+    int, int, int, int, string) = diag_spec.
 
 format_call_error_too_large_arg_num(PredInfo, Context, NumFormatArgs,
         FormatArgNum, MaxArgNum, ArgNum, FirstOrSecond) = Spec :-
@@ -285,7 +285,7 @@ format_call_error_too_large_arg_num(PredInfo, Context, NumFormatArgs,
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_too_small_arg_num(pred_info, prog_context,
-    int, int, int, string) = error_spec.
+    int, int, int, string) = diag_spec.
 
 format_call_error_too_small_arg_num(PredInfo, Context, NumFormatArgs,
         FormatArgNum, ArgNum, FirstOrSecond) = Spec :-
@@ -300,7 +300,7 @@ format_call_error_too_small_arg_num(PredInfo, Context, NumFormatArgs,
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_type(pred_info, prog_context,
-    int, int, int, string, string, string) = error_spec.
+    int, int, int, string, string, string) = diag_spec.
 
 format_call_error_wrong_type(PredInfo, Context, NumFormatArgs, FormatArgNum,
         ArgNum, FirstOrSecond, Role, ExpectedType) = Spec :-
@@ -316,7 +316,7 @@ format_call_error_wrong_type(PredInfo, Context, NumFormatArgs, FormatArgNum,
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_mode(pred_info, prog_context,
-    int, int, int, string, string, int, list(int)) = error_spec.
+    int, int, int, string, string, int, list(int)) = diag_spec.
 
 format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
         ArgNum, FirstOrSecond, Role, NumProcs, BadModeNums) = Spec :-

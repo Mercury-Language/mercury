@@ -47,7 +47,7 @@
     % explained by the comment below on convert_color_spec_options.
     %
 :- pred record_color_scheme_in_options(list(format_piece)::in,
-    string::in, list(error_spec)::out, option_table::in, option_table::out,
+    string::in, list(diag_spec)::out, option_table::in, option_table::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -240,7 +240,7 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
                 Msg = no_ctxt_msg(Pieces),
                 Severity =
                     severity_informational(inform_incomplete_color_scheme),
-                InformSpec = error_spec($pred, Severity, phase_options, [Msg]),
+                InformSpec = diag_spec($pred, Severity, phase_options, [Msg]),
                 record_bad_color_scheme(InformSpec, !IO),
                 Specs = []
             )
@@ -266,7 +266,7 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
 
 :- pred parse_color_specifications(list(format_piece)::in, list(string)::in,
     maybe_color_strings::in, maybe_color_strings::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_color_specifications(_, [], !MaybeColorStrs, !Specs).
 parse_color_specifications(Source, [Setting | Settings],
@@ -480,7 +480,7 @@ standard_color_name("bright-white",     color_8bit(15u8)).
 standard_color_name("bright white",     color_8bit(15u8)).
 
 :- func report_why_not_color(list(format_piece), string, why_not_color)
-    = error_spec.
+    = diag_spec.
 
 report_why_not_color(Source, Value, WhyNot) = Spec :-
     (

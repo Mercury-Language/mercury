@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
 
 :- pred compute_dep_graphs_gendep(io.text_output_stream::in, globals::in,
     module_name::in, deps_map::in, dep_graphs::out, list(burdened_module)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

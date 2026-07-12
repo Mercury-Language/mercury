@@ -45,7 +45,7 @@
     % the predicates in the stratified_preds set of the module_info structure.
     %
 :- pred check_module_for_stratification(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+    list(diag_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,7 @@ stratify_get_pred_id(proc(PredId, _), PredId).
     %
 :- pred first_order_check_sccs(list(set(pred_proc_id))::in,
     set(pred_id)::in, bool::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_sccs([], _, _, _, !Specs).
 first_order_check_sccs([HeadSCC | TailSCCs], MustBeStratifiedPreds, Warn,
@@ -132,7 +132,7 @@ first_order_check_sccs([HeadSCC | TailSCCs], MustBeStratifiedPreds, Warn,
         ModuleInfo, !Specs).
 
 :- pred first_order_check_scc(set(pred_proc_id)::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_scc(Scc, ErrorOrWarning, ModuleInfo, !Specs) :-
     first_order_check_scc_loop(set.to_sorted_list(Scc), Scc,
@@ -140,7 +140,7 @@ first_order_check_scc(Scc, ErrorOrWarning, ModuleInfo, !Specs) :-
 
 :- pred first_order_check_scc_loop(list(pred_proc_id)::in,
     set(pred_proc_id)::in, error_or_warning::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_scc_loop([], _WholeScc, _, _, !Specs).
 first_order_check_scc_loop([PredProcId | PredProcIds], WholeScc,
@@ -157,7 +157,7 @@ first_order_check_scc_loop([PredProcId | PredProcIds], WholeScc,
 
 :- pred first_order_check_goal(hlds_goal::in, bool::in, set(pred_proc_id)::in,
     pred_proc_id::in, error_or_warning::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         ModuleInfo, !Specs) :-
@@ -242,7 +242,7 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
 
 :- pred first_order_check_goals(list(hlds_goal)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_goals([], _, _, _, _, _, !Specs).
 first_order_check_goals([Goal | Goals], Negated,
@@ -254,7 +254,7 @@ first_order_check_goals([Goal | Goals], Negated,
 
 :- pred first_order_check_cases(list(case)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 first_order_check_cases([], _, _, _, _, _, !Specs).
 first_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
@@ -273,7 +273,7 @@ first_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
     %
 :- pred higher_order_check_sccs(
     assoc_list(list(pred_proc_id), set(pred_proc_id))::in, ho_map::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 :- pragma consider_used(pred(higher_order_check_sccs/5)).
 
 higher_order_check_sccs([], _HOInfo, _ModuleInfo, !Specs).
@@ -284,7 +284,7 @@ higher_order_check_sccs([HeadSCC | TailSCCs], HOInfo, ModuleInfo, !Specs) :-
     higher_order_check_sccs(TailSCCs, HOInfo, ModuleInfo, !Specs).
 
 :- pred higher_order_check_scc(list(pred_proc_id)::in, set(pred_proc_id)::in,
-    ho_map::in, module_info::in, list(error_spec)::in, list(error_spec)::out)
+    ho_map::in, module_info::in, list(diag_spec)::in, list(diag_spec)::out)
     is det.
 
 higher_order_check_scc([], _WholeScc, _HOInfo, _ModuleInfo, !Specs).
@@ -318,7 +318,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
 
 :- pred higher_order_check_goal(hlds_goal::in, bool::in, set(pred_proc_id)::in,
     pred_proc_id::in, bool::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         HighOrderLoops, ErrorOrWarning, ModuleInfo, !Specs) :-
@@ -423,7 +423,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
 
 :- pred higher_order_check_goals(list(hlds_goal)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, bool::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 higher_order_check_goals([], _, _, _, _, _, _, !Specs).
 higher_order_check_goals([Goal | Goals], Negated, WholeScc, ThisPredProcId,
@@ -435,7 +435,7 @@ higher_order_check_goals([Goal | Goals], Negated, WholeScc, ThisPredProcId,
 
 :- pred higher_order_check_cases(list(case)::in, bool::in,
     set(pred_proc_id)::in, pred_proc_id::in, bool::in, error_or_warning::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 higher_order_check_cases([], _, _, _, _, _, _, !Specs).
 higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
@@ -1010,7 +1010,7 @@ stratify_get_called_procs_cases([Case | Cases], !Calls) :-
     ;       is_warning(option).
 
 :- func generate_stratify_error(module_info, pred_proc_id, prog_context,
-    string, error_or_warning) = error_spec.
+    string, error_or_warning) = diag_spec.
 
 generate_stratify_error(ModuleInfo, PredProcId, Context, Message,
         ErrorOrWarning) = Spec :-
@@ -1037,7 +1037,7 @@ generate_stratify_error(ModuleInfo, PredProcId, Context, Message,
     Msg = simple_msg(Context,
         [always(Preamble ++ MainPieces),
         verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec($pred, Severity, phase_code_gen, [Msg]).
+    Spec = diag_spec($pred, Severity, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.stratify.

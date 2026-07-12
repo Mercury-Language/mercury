@@ -22,11 +22,11 @@
 
 :- pred add_typeclass_defns(sec_list(item_typeclass_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred add_instance_defns(ims_list(item_instance_info)::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -86,7 +86,7 @@ add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
 :- pred add_typeclass_defn(item_mercury_status::in,
     typeclass_status::in, need_qualifier::in, item_typeclass_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
         ItemTypeClassInfo, !ModuleInfo, !Specs) :-
@@ -259,7 +259,7 @@ class_fundeps_are_identical(OldFunDeps, FunDeps) :-
     typeclass_status::in, item_mercury_status::in,
     need_qualifier::in, list(class_decl)::in, list(method_info)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
         ItemMercuryStatus, NeedQual, ClassDecls, MethodInfos,
@@ -358,7 +358,7 @@ classify_class_decls([Decl | Decls], !PredOrFuncInfos, !ModeDeclMap) :-
     map(pred_pf_name_arity, cord(class_mode_info))::in,
     map(pred_pf_name_arity, cord(class_mode_info))::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_class_pred_or_func_and_mode_decls(ClassName, ClassParamVars,
         ItemMercuryStatus, PredStatus, NeedQual, PredOrFuncInfo,
@@ -477,7 +477,7 @@ add_class_pred_or_func_and_mode_decls(ClassName, ClassParamVars,
     pred_pf_name_arity::in, pred_id::in, class_mode_info::in,
     int::in, int::out, cord(method_info)::in, cord(method_info)::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_class_mode_decl(ItemMercuryStatus, PredStatus, MethodPredName, PredId,
         ModeInfo, !MethodProcNum, !MethodInfosCord, !ModuleInfo, !Specs) :-
@@ -502,7 +502,7 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, MethodPredName, PredId,
 
 :- pred add_instance_defn(instance_status::in, item_instance_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     ItemInstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
@@ -548,7 +548,7 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred pred_method_with_no_modes_error(pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 pred_method_with_no_modes_error(PredInfo, !Specs) :-
     PorF = pred_info_is_pred_or_func(PredInfo),
@@ -564,7 +564,7 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_instance_for_undefined_typeclass(class_id::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
     Pieces = [words("Error:"),
@@ -577,7 +577,7 @@ report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
 
 :- pred report_mode_decls_for_undeclared_method(pred_pf_name_arity::in,
     cord(class_mode_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_mode_decls_for_undeclared_method(MethodPredName, ModeInfosCord,
         !Specs) :-
@@ -587,7 +587,7 @@ report_mode_decls_for_undeclared_method(MethodPredName, ModeInfosCord,
 
 :- pred report_mode_decl_for_undeclared_method(pred_pf_name_arity::in,
     class_mode_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
     MethodPredName = pred_pf_name_arity(PorF, SymName, UserArity),

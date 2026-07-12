@@ -35,12 +35,12 @@
 %---------------------------------------------------------------------------%
 
 :- func report_error_call_to_undef_pred(type_error_clause_context,
-    prog_context, sym_name_pred_form_arity) = error_spec.
+    prog_context, sym_name_pred_form_arity) = diag_spec.
 
 %---------------------------------------------------------------------------%
 
 :- func report_error_undef_non_du_ctor(type_error_clause_context,
-    type_error_goal_context, prog_context, cons_id) = error_spec.
+    type_error_goal_context, prog_context, cons_id) = diag_spec.
 
 :- type cons_error
     --->    other_lang_foreign_type_constructor(type_ctor, hlds_type_defn)
@@ -51,27 +51,27 @@
 
 :- func report_error_undef_du_ctor(type_error_clause_context,
     type_error_goal_context, prog_context, du_ctor, list(cons_error))
-    = error_spec.
+    = diag_spec.
 
 %---------------------------------------------------------------------------%
 
     % Report that there is no event with the given name.
     %
-:- func report_error_undef_event(prog_context, string) = error_spec.
+:- func report_error_undef_event(prog_context, string) = diag_spec.
 
     % Report that there is an event with the given name, but not with
     % the given arity.
     %
 :- func report_error_undef_event_arity(prog_context, string, list(mer_type),
-    list(prog_var)) = error_spec.
+    list(prog_var)) = diag_spec.
 
 %---------------------------------------------------------------------------%
 
 :- func maybe_report_no_clauses(module_info, pred_id, pred_info)
-    = list(error_spec).
+    = list(diag_spec).
 
 :- func maybe_report_no_clauses_stub(module_info, pred_id, pred_info)
-    = list(error_spec).
+    = list(diag_spec).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -129,7 +129,7 @@ report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
             InClauseForComponent = always(InClauseForPieces),
             Msg = simple_msg(Context,
                 [InClauseForComponent | SpecialComponents]),
-            Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
+            Spec = diag_spec($pred, severity_error, phase_type_check, [Msg])
         ;
             UndefClass = undef_ordinary(MissingImportModules, AddendumPieces,
                 MaySuggestDefiningModules),
@@ -142,7 +142,7 @@ report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
 %---------------------%
 
 :- func report_error_pred_wrong_arity(type_error_clause_context, prog_context,
-    sym_name_pred_form_arity, list(pred_form_arity)) = error_spec.
+    sym_name_pred_form_arity, list(pred_form_arity)) = diag_spec.
 
 report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
         AllPredFormArities) = Spec :-
@@ -431,7 +431,7 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
 
 :- func report_error_pred_wrong_full_name(type_error_clause_context,
     prog_context, predicate_table, sym_name_pred_form_arity, list(module_name),
-    list(format_piece), may_suggest_defining_modules) = error_spec.
+    list(format_piece), may_suggest_defining_modules) = diag_spec.
 
 report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         SymNamePredFormArity, MissingImportModules, AddendumPieces,
@@ -502,7 +502,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         % XXX Should we print SuggestedNamesMsg as well even in this case?
         Msgs = [UndefMsg] ++ KindQualMsgs
     ),
-    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
+    Spec = diag_spec($pred, severity_error, phase_type_check, Msgs).
 
 %---------------------%
 
@@ -534,7 +534,7 @@ report_error_undef_non_du_ctor(ClauseContext, GoalContext, Context, ConsId)
         [nl],
     UndefComp = always(UndefPieces),
     Msg = simple_msg(Context, [InitComp, UndefComp]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
             fail
         )
     then
-        Spec = error_spec($pred, severity_error, phase_type_check,
+        Spec = diag_spec($pred, severity_error, phase_type_check,
             [simple_msg(Context, [ContextComp | FunctorComps])])
     else
         report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp,
@@ -750,7 +750,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
 
 :- pred report_error_undef_du_ctor_std(type_error_clause_context::in,
     prog_context::in, diag_msg_component::in, du_ctor::in,
-    list(cons_error)::in, error_spec::out) is det.
+    list(cons_error)::in, diag_spec::out) is det.
 
 report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
         ConsErrors, Spec) :-
@@ -839,7 +839,7 @@ report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
     ),
     FirstMsg = simple_msg(Context,
         [ContextComp | ConsFuncComps] ++ PredFuncComps),
-    Spec = error_spec($pred, severity_error, phase_type_check,
+    Spec = diag_spec($pred, severity_error, phase_type_check,
         [FirstMsg | ConsMsgs] ++ SuggestionMsgs).
 
 :- pred return_pred_func_arities(module_info::in, list(pred_id)::in,

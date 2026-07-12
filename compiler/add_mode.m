@@ -29,23 +29,23 @@
 
 :- pred module_add_inst_defn(inst_status::in, item_inst_defn_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
 :- pred module_add_mode_defn(mode_status::in, item_mode_defn_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
 :- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------%
 
 :- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -93,7 +93,7 @@ module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo, !Specs) :-
 :- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     maybe(type_ctor)::in, inst_defn::in, prog_context::in,
     inst_status::in, user_inst_table::in, user_inst_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         Context, InstStatus, !UserInstTable, !Specs) :-
@@ -192,7 +192,7 @@ module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo, !Specs) :-
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     mode_defn::in, prog_context::in, mode_status::in,
     mode_table::in, mode_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
         !ModeTable, !Specs) :-
@@ -248,7 +248,7 @@ check_inst_defns(ModuleInfo, ImsSubLists, !InvalidInstModeSpecs) :-
     ( if set.is_empty(Cycles) then
         true
     else
-        list.map(cycle_to_error_spec(ModuleInfo, iom_inst),
+        list.map(cycle_to_diag_spec(ModuleInfo, iom_inst),
             set.to_sorted_list(Cycles), CycleSpecs),
         !:InvalidInstModeSpecs = CycleSpecs ++ !.InvalidInstModeSpecs
     ).
@@ -258,7 +258,7 @@ check_mode_defns(ModuleInfo, ImsSubLists, !InvalidInstModeSpecs) :-
     ( if set.is_empty(Cycles) then
         true
     else
-        list.map(cycle_to_error_spec(ModuleInfo, iom_mode),
+        list.map(cycle_to_diag_spec(ModuleInfo, iom_mode),
             set.to_sorted_list(Cycles), CycleSpecs),
         !:InvalidInstModeSpecs = CycleSpecs ++ !.InvalidInstModeSpecs
     ).
@@ -408,10 +408,10 @@ check_for_cyclic_mode(ModeDefns, OrigModeCtor, ModeCtor0,
     --->    iom_inst
     ;       iom_mode.
 
-:- pred cycle_to_error_spec(module_info::in, inst_or_mode::in, cycle::in,
-    error_spec::out) is det.
+:- pred cycle_to_diag_spec(module_info::in, inst_or_mode::in, cycle::in,
+    diag_spec::out) is det.
 
-cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
+cycle_to_diag_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
     (
         InstOrMode = iom_inst,
         InstOrModeWord = "inst",
@@ -480,7 +480,7 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
             ++ CyclePieces ++ ConsequencePieces
     ),
     HeadMsg = msg(HeadContext, HeadPieces),
-    Spec = error_spec($pred, severity_error, phase_pt2h,
+    Spec = diag_spec($pred, severity_error, phase_pt2h,
         [HeadMsg | ContextMsgs]).
 
 :- pred sna_context_is_for_module(module_name::in,

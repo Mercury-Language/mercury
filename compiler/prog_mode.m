@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2015, 2024 The Mercury team.
+% Copyright (C) 2015, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -235,7 +235,7 @@
     list(type_and_mode)::in, list(inst_var)::out) is det.
 
 :- pred report_inconsistent_constrained_inst_vars(string::in, term.context::in,
-    inst_varset::in, inst_var::in, list(inst_var)::in, error_spec::out) is det.
+    inst_varset::in, inst_var::in, list(inst_var)::in, diag_spec::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

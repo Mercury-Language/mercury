@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015, 2021-2025 The Mercury team.
+% Copyright (C) 2015, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -109,7 +109,7 @@
     % any reference to whether the inst being complained about came from
     % the initial or the final inst. If the error is present in both insts,
     % then we will generate one error for each inst, but these will be
-    % identical in every respect, so sort_error_specs in error_util.m
+    % identical in every respect, so sort_diag_specs in error_util.m
     % will keep only one out of every pair of duplicate messages.
     %
     % The argument lists can be divided into two categories.
@@ -175,7 +175,7 @@
 :- pred propagate_checked_types_into_modes(tprop_info::in, tprop_args::in,
     list(mer_type)::in, list(mer_mode)::in, list(mer_mode)::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
@@ -183,7 +183,7 @@
 :- pred propagate_checked_type_into_mode(tprop_info::in,
     tprop_context::in, mer_type::in, mer_mode::in, mer_mode::out,
     tprop_cache::in, tprop_cache::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1154,9 +1154,9 @@ where [
 
     % This instance does all the work.
     %
-    % The third type here, tprop_errors, is just list(error_spec).
+    % The third type here, tprop_errors, is just list(diag_spec).
     % We need the separate type because each type in an instance
-    % may contain only a single type constructor, and list(error_spec)
+    % may contain only a single type constructor, and list(diag_spec)
     % contains two.
 :- instance tprop_record(tprop_info, tprop_context, tprop_args, tprop_errors)
     where
@@ -1181,7 +1181,7 @@ where [
 ].
 
 :- type tprop_errors
-    --->    tprop_errors(list(error_spec)).
+    --->    tprop_errors(list(diag_spec)).
 
 %---------------------%
 

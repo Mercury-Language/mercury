@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -132,7 +132,7 @@
     %
 :- pred polymorphism_process_module(io.text_output_stream::in,
     module_info::in, module_info::out, list(pred_id)::out,
-    maybe_safe_to_continue::out, list(error_spec)::out) is det.
+    maybe_safe_to_continue::out, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -206,7 +206,7 @@ polymorphism_process_module(ProgressStream, !ModuleInfo, ExistsCastPredIds,
 
 :- pred maybe_polymorphism_process_pred(io.text_output_stream::in, pred_id::in,
     maybe_safe_to_continue::in, maybe_safe_to_continue::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
 maybe_polymorphism_process_pred(ProgressStream, PredId, !SafeToContinue,
@@ -228,7 +228,7 @@ maybe_polymorphism_process_pred(ProgressStream, PredId, !SafeToContinue,
 
 :- pred polymorphism_process_pred_msg(io.text_output_stream::in, pred_id::in,
     maybe_safe_to_continue::in, maybe_safe_to_continue::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
 polymorphism_process_pred_msg(ProgressStream, PredId,
@@ -262,7 +262,7 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
     list.foldl(introduce_exists_casts_poly, ExistsPredIds, !ModuleInfo).
 
 :- pred polymorphism_process_pred(pred_id::in, maybe_safe_to_continue::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(diag_spec)::in, list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
 polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-

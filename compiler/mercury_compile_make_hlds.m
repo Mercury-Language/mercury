@@ -39,11 +39,11 @@
 
 :- type make_hlds_result
     --->    make_hlds_result(
-                mhr_invalid_types       :: list(error_spec),
-                mhr_invalid_insts_modes :: list(error_spec),
-                mhr_opt_blocking        :: list(error_spec),
-                mhr_expansion           :: list(error_spec),
-                mhr_event_set           :: list(error_spec)
+                mhr_invalid_types       :: list(diag_spec),
+                mhr_invalid_insts_modes :: list(diag_spec),
+                mhr_opt_blocking        :: list(diag_spec),
+                mhr_expansion           :: list(diag_spec),
+                mhr_event_set           :: list(diag_spec)
             ).
 
     % make_hlds_pass(ProgressStream, ErrorStream, Globals,
@@ -51,7 +51,7 @@
     %   HLDS0, QualInfo, MaybeTimestampMap, Result,
     %   !DumpInfo, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO):
     %
-    % Every error_spec in MakeHLDSResults will also appear in
+    % Every diag_spec in MakeHLDSResults will also appear in
     % !:MaybeWrittenSpecs. They are also returned separately in order
     % to allow our caller to test for the presence of specific *kinds*
     % of errors.
@@ -299,7 +299,7 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
 %---------------------%
 
 :- pred maybe_read_event_set(globals::in, string::in,
-    string::out, event_spec_map::out, list(error_spec)::out,
+    string::out, event_spec_map::out, list(diag_spec)::out,
     io::di, io::uo) is det.
 
 maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
@@ -446,7 +446,7 @@ read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
 
 :- pred maybe_grab_plain_and_trans_opt_files(io.text_output_stream::in,
     globals::in, op_mode_augment::in,
-    bool::in, maybe(list(module_name))::in, list(error_spec)::out,
+    bool::in, maybe(list(module_name))::in, list(diag_spec)::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,

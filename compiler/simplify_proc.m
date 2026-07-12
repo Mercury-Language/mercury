@@ -43,7 +43,7 @@
 :- pred simplify_pred_procs(io.text_output_stream::in,
     simplify_tasks::in, pred_id::in, list(proc_id)::in,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
-    error_spec_accumulator::in, error_spec_accumulator::out) is det.
+    diag_spec_accumulator::in, diag_spec_accumulator::out) is det.
 
     % Simplify the given procedure. Throw away any resulting error messages.
     %
@@ -134,7 +134,7 @@ simplify_pred_procs(ProgressStream, SimplifyTasks, PredId,
 :- pred simplify_pred_proc(io.text_output_stream::in, simplify_tasks::in,
     pred_id::in, proc_id::in, pred_info::in, pred_info::out,
     module_info::in, module_info::out,
-    error_spec_accumulator::in, error_spec_accumulator::out) is det.
+    diag_spec_accumulator::in, diag_spec_accumulator::out) is det.
 
 simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
         !PredInfo, !ModuleInfo, !Specs) :-
@@ -165,7 +165,7 @@ simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
     ),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, !PredInfo),
-    accumulate_error_specs_for_proc(ProcSpecs, !Specs).
+    accumulate_diag_specs_for_proc(ProcSpecs, !Specs).
 
 simplify_proc(MaybeProgressStream, ProgressStream, SimplifyTasks,
         PredId, ProcId, !ProcInfo, !ModuleInfo)  :-
@@ -217,7 +217,7 @@ simplify_goal_update_vars_in_proc(ProgressStream, SimplifyTasks,
     % Simplify the given procedure. Return the resulting error messages.
     %
 :- pred simplify_proc_return_msgs(io.text_output_stream::in,
-    simplify_tasks::in, pred_id::in, proc_id::in, list(error_spec)::out,
+    simplify_tasks::in, pred_id::in, proc_id::in, list(diag_spec)::out,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
@@ -291,14 +291,14 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_top_level_goal(NestedContext0, InstMap0,
         allow_splitting_switch_arms, Goal0, Goal1, Info0, Info1),
-    % Get the list of error_specs to print from the first invocation
-    % of simplify_top_level_goal, ignoring any error_specs added by any
+    % Get the list of diag_specs to print from the first invocation
+    % of simplify_top_level_goal, ignoring any diag_specs added by any
     % second invocation below. Most of these would probably be duplicates
     % that end up being ignored, but any non-duplicates would complain
     % about code that is compiler-generated at least in part, meaning
     % that not only would those diagnostics be in effect invalid,
     % users would also have no way of acting on them.
-    simplify_info_get_error_specs(Info1, !:Specs),
+    simplify_info_get_diag_specs(Info1, !:Specs),
     simplify_info_get_rerun_simplify_no_warn_simple(Info1,
         RerunSimplifyNoWarnSimple),
     (
@@ -457,7 +457,7 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 :- pred simplify_proc_analyze_and_format_calls(io.text_output_stream::in,
     maybe_generate_implicit_stream_warnings::in,
     module_info::in, module_info::out, pred_id::in, pred_info::in,
-    proc_id::in, proc_info::in, proc_info::out, list(error_spec)::out) is det.
+    proc_id::in, proc_info::in, proc_info::out, list(diag_spec)::out) is det.
 
 simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
         !ModuleInfo, PredId, PredInfo0, ProcId, !ProcInfo, FormatSpecs) :-
@@ -545,7 +545,7 @@ simplify_proc_analyze_and_format_calls(ProgressStream, ImplicitStreamWarnings,
         % of the goal that we will not be using.
     ).
 
-:- func had_some_unknown_format_calls(list(error_spec)) = bool.
+:- func had_some_unknown_format_calls(list(diag_spec)) = bool.
 
 had_some_unknown_format_calls([]) = no.
 had_some_unknown_format_calls([Spec | Specs]) = SomeUnknown :-
@@ -898,7 +898,7 @@ append_goals_to_case(GoalsToAppend, Case0, Case) :-
 %---------------------------------------------------------------------------%
 
 :- pred simplify_proc_maybe_warn_attribute_conflict(module_info::in,
-    pred_id::in, proc_info::in, list(error_spec)::in, list(error_spec)::out)
+    pred_id::in, proc_info::in, list(diag_spec)::in, list(diag_spec)::out)
     is det.
 
 simplify_proc_maybe_warn_attribute_conflict(ModuleInfo, PredId, ProcInfo,
@@ -933,7 +933,7 @@ simplify_proc_maybe_warn_attribute_conflict(ModuleInfo, PredId, ProcInfo,
 
 :- pred maybe_warn_about_may_duplicate_attributes(proc_may_duplicate::in,
     pred_markers::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
         !Specs) :-
@@ -977,7 +977,7 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
 
 :- pred maybe_warn_about_may_export_body_attribute(proc_may_export_body::in,
     pred_markers::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
         !Specs) :-
@@ -1129,9 +1129,9 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
                 map.init, _LastNonTraceGoal, [], TraceSpecs),
             % Note that we ignore the setting of do_not_allow_messages above,
             % since it applies only to pass 2.
-            simplify_info_get_error_specs(!.Info, Specs0),
+            simplify_info_get_diag_specs(!.Info, Specs0),
             Specs = TraceSpecs ++ Specs0,
-            simplify_info_set_error_specs(Specs, !Info)
+            simplify_info_set_diag_specs(Specs, !Info)
         else
             true
         )

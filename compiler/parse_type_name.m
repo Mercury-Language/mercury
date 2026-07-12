@@ -83,7 +83,7 @@
     maybe_require_tm_mode::in, why_no_ho_inst_info::in,
     varset::in, arg_context_func::in,
     list(term)::in, int::in, list(type_and_maybe_mode)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 :- pred parse_type_and_maybe_mode(maybe_constrain_inst_vars::in,
     maybe_require_tm_mode::in, why_no_ho_inst_info::in,
@@ -470,7 +470,7 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
     ).
 
 :- pred parse_ho_type_and_inst_2(cord(format_piece)::in,
-    purity::in, list(type_and_maybe_mode)::in, list(error_spec)::in,
+    purity::in, list(type_and_maybe_mode)::in, list(diag_spec)::in,
     maybe(maybe1(type_and_maybe_mode))::in, maybe1(determinism)::in,
     maybe1(mer_type)::out) is det.
 
@@ -534,7 +534,7 @@ project_tm_type_and_mode(type_only(_), _, _) :-
 
 :- pred parse_types_no_modes(why_no_ho_inst_info::in, varset::in,
     arg_context_func::in, list(term)::in, int::in, list(mer_type)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_types_no_modes(_, _, _, [], _, [], !Specs).
 parse_types_no_modes(WhyNotHOInstInfo, VarSet, ArgContextFunc, [Term | Terms],
@@ -599,7 +599,7 @@ parse_types(AllowHOInstInfo, VarSet, ContextPieces, Terms, Result) :-
 :- pred parse_types_acc(allow_ho_inst_info::in, varset::in,
     cord(format_piece)::in, list(term)::in,
     list(mer_type)::in, list(mer_type)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parse_types_acc(_, _, _, [], !RevTypes, !Specs).
 parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],

@@ -303,7 +303,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
 
     % With OpModeFrontAndMiddle = opfam_errorcheck_only, it may make sense
     % to execute only those passes in the middle end that can report errors.
-    % However, some passes that cannot return new error_specs may nevertheless
+    % However, some passes that cannot return new diag_specs may nevertheless
     % be needed. They may be needed
     %
     % - because they establish invariants that later middle end passes
@@ -1065,7 +1065,7 @@ maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        type_to_univ([] : list(error_spec), Cookie0),
+        type_to_univ([] : list(diag_spec), Cookie0),
         Task0 = update_module_pred_cookie(
             accu_transform_proc(ProgressStream), Cookie0),
         process_valid_nonimported_procs_update(Task0, Task, !HLDS),

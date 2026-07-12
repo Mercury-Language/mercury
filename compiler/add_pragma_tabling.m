@@ -22,7 +22,7 @@
 :- pred module_add_pragma_tabled(io.text_output_stream::in,
     impl_pragma_tabled_info::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -208,7 +208,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
     maybe(table_attributes)::in, prog_context::in,
     item_mercury_status::in, pred_status::in, pred_id::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         PredModuleName, PredName, MaybeAttributes, Context,
@@ -406,7 +406,7 @@ tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
     item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 set_eval_method_create_aux_preds_list(_, _, _, _, _, _, [], _, _, _, _, _, _,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
@@ -432,7 +432,7 @@ set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
     item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, ProcInfo0, SingleProc,
@@ -568,7 +568,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 create_tabling_statistics_pred(ProgressStream, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, SingleProc, Context,
@@ -669,7 +669,7 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         UserArity, ProcId, SingleProc, Context, IsTablingSupported,

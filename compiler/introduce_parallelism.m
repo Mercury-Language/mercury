@@ -33,7 +33,7 @@
     % Apply the implicit parallelism transformation using the specified
     % feedback file.
     %
-:- pred apply_implicit_parallelism_transformation(list(error_spec)::out,
+:- pred apply_implicit_parallelism_transformation(list(diag_spec)::out,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -190,7 +190,7 @@ cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
     pred_id::in, pred_id_table::in, pred_id_table::out,
     introduced_parallelism::in, introduced_parallelism::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_parallelise_pred(ParallelismInfo, PredId, !PredIdTable,
         !AnyPredIntroducedParallelism, !ModuleInfo, !Specs) :-
@@ -214,7 +214,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredIdTable,
     pred_info::in, pred_id::in, proc_id::in, proc_table::in, proc_table::out,
     introduced_parallelism::in, introduced_parallelism::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
         !ProcTable, !AnyProcIntroducedParallelism, !ModuleInfo, !Specs) :-
@@ -252,7 +252,7 @@ maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
     pred_info::in, proc_info::in, proc_info::out,
     introduced_parallelism::out,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 parallelise_proc(CPCProc, PredInfo, !ProcInfo,
         IntroducedParallelism, !ModuleInfo, !Specs) :-
@@ -311,7 +311,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     var_name_table::in, instmap::in, candidate_par_conjunction::in,
     hlds_goal::in, hlds_goal::out,
     introduced_parallelism::in, introduced_parallelism::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_parallelise_goal(PredInfo, ProgRepInfo, VarNameTable, Instmap0, CPC,
         Goal0, Goal, !IntroducedParallelism, !Specs) :-
@@ -551,7 +551,7 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
 %-----------------------------------------------------------------------------%
 
 :- func report_failed_parallelisation(pred_info, string, string) =
-    error_spec.
+    diag_spec.
 
 report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     % Should the severity be informational?
@@ -569,7 +569,7 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     Severity = severity_warning(warn_no_auto_parallel),
     Spec = spec($pred, Severity, phase_auto_parallelism, Context, Pieces).
 
-:- func report_already_parallelised(pred_info) = error_spec.
+:- func report_already_parallelised(pred_info) = diag_spec.
 
 report_already_parallelised(PredInfo) = Spec :-
     % Should the severity be informational?

@@ -618,9 +618,9 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
             [words("inferred")] ++ InferredPieces ++ [nl],
         det_diagnose_goal_get_msgs(InstMap0, DeclaredDetism, Goal,
             GoalMsgs, !DetInfo),
-        Spec = error_spec($pred, severity_error, phase_detism_check,
+        Spec = diag_spec($pred, severity_error, phase_detism_check,
             [msg(Context, Pieces) | GoalMsgs]),
-        det_info_add_error_spec(Spec, !DetInfo)
+        det_info_add_diag_spec(Spec, !DetInfo)
     ;
         ( Cmp = first_detism_same_as
         ; Cmp = first_detism_looser_than
@@ -681,9 +681,9 @@ det_infer_call(SolnContext, GoalInfo, PredId, ArgVars,
                 [nl],
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
-            Spec = error_spec($pred, severity_error, phase_detism_check,
+            Spec = diag_spec($pred, severity_error, phase_detism_check,
                 [msg(GoalContext, FirstPieces) | ContextMsgs]),
-            det_info_add_error_spec(Spec, !DetInfo),
+            det_info_add_diag_spec(Spec, !DetInfo),
 
             ProcId = ProcId0,
             % Code elsewhere relies on the assumption that
@@ -766,9 +766,9 @@ det_infer_generic_call(SolnContext, GoalInfo, GenericCall, CallDetism, Detism,
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
             RightFailingContexts),
-        Spec = error_spec($pred, severity_error, phase_detism_check,
+        Spec = diag_spec($pred, severity_error, phase_detism_check,
             [msg(Context, FirstPieces) | ContextMsgs]),
-        det_info_add_error_spec(Spec, !DetInfo),
+        det_info_add_diag_spec(Spec, !DetInfo),
 
         % Code elsewhere relies on the assumption that
         % SolnContext = all_soln => NumSolns \= at_most_many_cc,
@@ -825,7 +825,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 [nl],
             WillNotThrowSpec = spec($pred, severity_error, phase_detism_check,
                 ProcContext, WillNotThrowPieces),
-            det_info_add_error_spec(WillNotThrowSpec, !DetInfo)
+            det_info_add_diag_spec(WillNotThrowSpec, !DetInfo)
         else
             true
         ),
@@ -846,9 +846,9 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 [nl],
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
-            Spec = error_spec($pred, severity_error, phase_detism_check,
+            Spec = diag_spec($pred, severity_error, phase_detism_check,
                 [msg(GoalContext, WrongContextFirstPieces) | ContextMsgs]),
-            det_info_add_error_spec(Spec, !DetInfo),
+            det_info_add_diag_spec(Spec, !DetInfo),
             NumSolns = at_most_many
         else
             NumSolns = NumSolns0
@@ -881,7 +881,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             words("part."), nl],
         Spec = spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
-        det_info_add_error_spec(Spec, !DetInfo),
+        det_info_add_diag_spec(Spec, !DetInfo),
         Detism = detism_erroneous,
         GoalFailingContexts = []
     ).
@@ -986,9 +986,9 @@ det_infer_par_conj(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
             GoalMsgGroups, !DetInfo),
         sort_diag_msg_groups(GoalMsgGroups, SortedGoalMsgGroups),
         SortedGoalMsgs = flatten_diag_msg_groups(SortedGoalMsgGroups),
-        Spec = error_spec($pred, severity_error, phase_detism_check,
+        Spec = diag_spec($pred, severity_error, phase_detism_check,
             [msg(Context, Pieces)] ++ SortedGoalMsgs),
-        det_info_add_error_spec(Spec, !DetInfo)
+        det_info_add_diag_spec(Spec, !DetInfo)
     ).
 
 :- pred det_infer_par_conj_goals(instmap::in, soln_context::in,
@@ -1359,11 +1359,11 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                     quote("promise_equivalent_solution_sets"),
                     words("scope."), nl],
                 NestedSeverity = severity_warning(warn_dodgy_simple_code),
-                NestedSpec = error_spec($pred,
+                NestedSpec = diag_spec($pred,
                     NestedSeverity, phase_detism_check,
                     [msg(Context, NestedPieces),
                     msg(OuterContext, NestedOuterPieces)]),
-                det_info_add_error_spec(NestedSpec, !DetInfo),
+                det_info_add_diag_spec(NestedSpec, !DetInfo),
                 AllVars = set_of_var.list_to_set(OuterVars ++ Vars),
                 MaybePromiseEqvSolutionSets =
                     yes(pess_info(set_of_var.to_sorted_list(AllVars),
@@ -1381,7 +1381,7 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                     words("scope."), nl],
                 ArbitrarySpec = spec($pred, severity_error,
                     phase_detism_check, Context, ArbitraryPieces),
-                det_info_add_error_spec(ArbitrarySpec, !DetInfo)
+                det_info_add_diag_spec(ArbitrarySpec, !DetInfo)
             ;
                 MaybePromiseEqvSolutionSets0 = yes(pess_info(OldVars,
                     PromiseContext)),
@@ -1414,11 +1414,11 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                     OverlapPromisePieces = [words("This is the outer"),
                         quote("promise_equivalent_solution_sets"),
                         words("scope."), nl],
-                    OverlapSpec = error_spec($pred, severity_error,
+                    OverlapSpec = diag_spec($pred, severity_error,
                         phase_detism_check,
                         [msg(Context, OverlapPieces),
                         msg(PromiseContext, OverlapPromisePieces)]),
-                    det_info_add_error_spec(OverlapSpec, !DetInfo)
+                    det_info_add_diag_spec(OverlapSpec, !DetInfo)
                 )
             ),
             MaybePromiseEqvSolutionSets = no,
@@ -1474,7 +1474,7 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                 MissingVarDotPieces ++ [nl],
             MissingSpec = spec($pred, severity_error, phase_detism_check,
                 Context, MissingPieces),
-            det_info_add_error_spec(MissingSpec, !DetInfo)
+            det_info_add_diag_spec(MissingSpec, !DetInfo)
         ),
         % Which vars were listed in the promise_equivalent_solutions
         % but not bound inside the scope?
@@ -1509,7 +1509,7 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                     ExtraVarDotPieces ++ [nl],
                 ExtraSpec = spec($pred, severity_error, phase_detism_check,
                     Context, ExtraPieces),
-                det_info_add_error_spec(ExtraSpec, !DetInfo)
+                det_info_add_diag_spec(ExtraSpec, !DetInfo)
             )
         ),
         det_infer_goal(InstMap0, SolnContextToUse, MaybePromiseEqvSolutionSets,
@@ -1548,7 +1548,7 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
                 color_as_correct([words("cc_multi.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_detism_check,
                 Context, Pieces),
-            det_info_add_error_spec(Spec, !DetInfo)
+            det_info_add_diag_spec(Spec, !DetInfo)
         )
     ;
         ( Reason = exist_quant(_, _)
@@ -1697,7 +1697,7 @@ det_infer_atomic_goal(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
             words("should be det or cc_multi."), nl],
         Spec = spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
-        det_info_add_error_spec(Spec, !DetInfo)
+        det_info_add_diag_spec(Spec, !DetInfo)
     ).
 
 :- pred det_infer_orelse_goals(instmap::in, soln_context::in,
@@ -1771,11 +1771,11 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 words("Figuring out whether there is a solution"),
                 words("to this unification")] ++
                 noncanon_unify_verbose_would_require,
-            Spec = error_spec($pred, severity_error, phase_detism_check,
+            Spec = diag_spec($pred, severity_error, phase_detism_check,
                 [simple_msg(Context,
                     [always(Pieces0 ++ Pieces1),
                     verbose_only(verbose_once, VerbosePieces)])]),
-            det_info_add_error_spec(Spec, !DetInfo)
+            det_info_add_diag_spec(Spec, !DetInfo)
         ;
             CanFail = cannot_fail,
             (
@@ -1808,12 +1808,12 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 det_info_get_module_info(!.DetInfo, ModuleInfo),
                 ContextMsgs = failing_contexts_description(ModuleInfo,
                     VarTable, FailingContextsA ++ FailingContextsB),
-                Spec = error_spec($pred, severity_error, phase_detism_check,
+                Spec = diag_spec($pred, severity_error, phase_detism_check,
                     [simple_msg(Context,
                         [always(Pieces0 ++ Pieces1),
                         verbose_only(verbose_once, VerbosePieces)])]
                     ++ ContextMsgs),
-                det_info_add_error_spec(Spec, !DetInfo)
+                det_info_add_diag_spec(Spec, !DetInfo)
             ;
                 SolnContext = first_soln
             )

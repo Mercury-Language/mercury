@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -238,7 +238,7 @@ maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),
-            Spec = error_spec($pred, severity_warning(warn_dodgy_simple_code),
+            Spec = diag_spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
             simplify_info_add_message(Spec, !Info)
         else
