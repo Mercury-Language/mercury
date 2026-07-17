@@ -10,9 +10,8 @@
 % File: mercury_compile.m.
 % Main authors: fjh, zs.
 %
-% This is the top-level of the Mercury compiler.
+% This module implements the compiler front-end.
 %
-% This module invokes the different passes of the compiler as appropriate.
 % The constraints on pass ordering are documented in
 % compiler/notes/compiler_design.html.
 %
@@ -166,6 +165,11 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+% Part 1 of this file:
+%
+% The code that invokes the various passes in order. This code is split
+% between four predicates in order to keep indentation manageable.
+%---------------------------------------------------------------------------%
 
 frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
         InvalidInstModeSpecs, !FoundError,
@@ -204,6 +208,8 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
             OpModeAugment, InvalidInstModeSpecs, !FoundError,
             !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO)
     ).
+
+%---------------------%
 
 :- pred frontend_pass_after_typeclass_check(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in,
@@ -294,122 +300,7 @@ frontend_pass_after_typeclass_check(ProgressStream, ErrorStream, OpModeAugment,
         )
     ).
 
-:- pred maybe_eliminate_dead_preds(io.text_output_stream::in,
-    io.text_output_stream::in, op_mode_augment::in,
-    bool::in, bool::in, globals::in,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
-
-maybe_eliminate_dead_preds(ProgressStream, ErrorStream, OpModeAugment,
-        Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    ( if
-        ( IntermodOpt = yes
-        ; IntermodAnalysis = yes
-        ; UseOptFiles = yes
-        ),
-        OpModeAugment \= opmau_make_plain_opt
-    then
-        % Eliminate unnecessary clauses from `.opt' files,
-        % to speed up compilation. This must be done after
-        % typeclass instances have been checked, since that
-        % fills in which pred_ids are needed by instance decls.
-        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-            !MaybeWrittenSpecs, !IO),
-        maybe_write_string(ProgressStream, Verbose,
-            "% Eliminating dead predicates... ", !IO),
-        dead_pred_elim(!HLDS),
-        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-            !MaybeWrittenSpecs, !IO),
-        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
-        maybe_report_stats(ProgressStream, Stats, !IO),
-        maybe_dump_hlds(ProgressStream, !.HLDS, 10, "dead_pred_elim",
-            !DumpInfo, !IO)
-    else
-        true
-    ).
-
-:- pred check_insts_for_matching_types(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, globals::in,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
-
-check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
-        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Checking that insts have matching types... ", !IO),
-    globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
-        WarnInstsWithNoMatchingType),
-    check_insts_have_matching_types(WarnInstsWithNoMatchingType,
-        !HLDS, [], MatchSpecs),
-    add_to_be_written_specs(MatchSpecs, !MaybeWrittenSpecs),
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
-    maybe_report_stats(ProgressStream, Stats, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 12,
-        "warn_insts_without_matching_type", !DumpInfo, !IO).
-
-:- pred do_typecheck(io.text_output_stream::in, io.text_output_stream::in,
-    bool::in, bool::in, globals::in, maybe_clause_syntax_errors::out,
-    list(diag_spec)::out, number_of_iterations::out,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
-
-do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
-        FoundSyntaxError, TypeCheckSpecs, NumIterations,
-        !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    % Next typecheck the clauses.
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Type-checking...\n", !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Type-checking clauses...\n", !IO),
-    globals.lookup_bool_option(Globals, type_check_using_constraints,
-        TypeCheckUsingConstraints),
-    (
-        TypeCheckUsingConstraints = yes,
-        globals.lookup_string_option(Globals, experiment, Experiment),
-        ( if Experiment = "old_type_constraints" then
-            old_typecheck_constraints(!HLDS, TypeCheckSpecs)
-        else
-            typecheck_constraints(!HLDS, TypeCheckSpecs)
-        ),
-        % XXX We should teach typecheck_constraints to report syntax errors.
-        FoundSyntaxError = no_clause_syntax_errors,
-        NumIterations = within_iteration_limit
-    ;
-        TypeCheckUsingConstraints = no,
-        prepare_for_typecheck_module(!HLDS, [], PrepareSpecs),
-        add_to_be_written_specs(PrepareSpecs, !MaybeWrittenSpecs),
-        % This dump opportunity is here mostly to allow observation of
-        % the effects of the transformation for regularizing headvar names.
-        maybe_dump_hlds(ProgressStream, !.HLDS, 14, "pre_typecheck",
-            !DumpInfo, !IO),
-        typecheck_module(ProgressStream, !HLDS, TypeCheckSpecs,
-            FoundSyntaxError, NumIterations)
-    ),
-    add_to_be_written_specs(TypeCheckSpecs, !MaybeWrittenSpecs),
-    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
-        !MaybeWrittenSpecs, !IO),
-    FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
-    (
-        FoundTypeError = yes,
-        maybe_write_string(ProgressStream, Verbose,
-            "% Program contains type error(s).\n", !IO)
-    ;
-        FoundTypeError = no,
-        maybe_write_string(ProgressStream, Verbose,
-            "% Program is type-correct.\n", !IO)
-    ),
-    maybe_report_stats(ProgressStream, Stats, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 15, "typecheck", !DumpInfo, !IO).
+%---------------------%
 
 :- pred frontend_pass_after_typecheck(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in, globals::in,
@@ -520,218 +411,7 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
         )
     ).
 
-%---------------------------------------------------------------------------%
-
-:- pred create_and_write_opt_file(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, globals::in,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
-
-create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
-        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    module_info_get_name(!.HLDS, ModuleName),
-    % XXX LEGACY
-    OptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
-    module_name_to_file_name_create_dirs(Globals, $pred, OptExt,
-        ModuleName, OptFileName, _OptFileNameProposed, !IO),
-
-    OptState0 = string.builder.init,
-    format_initial_opt_file(!.HLDS, IntermodInfo, ParseTreePlainOpt0,
-        OptState0, OptState1),
-    % XXX Is this call needed even when the condition of the if-then-else
-    % just below fails?
-    maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
-    % The following passes are only run with `--intermodule-optimisation'
-    % to append their results to the `.opt' file. For `--intermodule-analysis',
-    % analysis results should be recorded using the intermodule analysis
-    % framework instead.
-    % XXX So why is the test "IntermodAnalysis = no", instead of
-    % "IntermodOpt = yes"?
-    %
-    % If intermod_unused_args is being performed, run polymorphism,
-    % mode analysis and determinism analysis before unused_args.
-    ( if
-        IntermodAnalysis = no,
-        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
-        NeedMiddlePassForOptFile = yes
-    then
-        frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS,
-            FoundFrontEndError, !DumpInfo, !MaybeWrittenSpecs, !IO),
-        (
-            FoundFrontEndError = no,
-            middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
-                !MaybeWrittenSpecs, !IO),
-            append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos,
-                ParseTreePlainOpt0, ParseTreePlainOpt, OptState1, OptState)
-        ;
-            FoundFrontEndError = yes,
-            ParseTreePlainOpt = ParseTreePlainOpt0,
-            OptState = OptState1,
-            io.set_exit_status(1, !IO)
-        )
-    else
-        ParseTreePlainOpt = ParseTreePlainOpt0,
-        OptState = OptState1
-    ),
-    OptFileStr = string.builder.to_string(OptState),
-
-    io.read_named_file_as_string(OptFileName, ReadFileResult, !IO),
-    (
-        ReadFileResult = ok(OldOptFileStr),
-        ( if OldOptFileStr = OptFileStr then
-            WriteOpt = bool.no
-        else
-            WriteOpt = bool.yes
-        )
-    ;
-        ReadFileResult = error(_),
-        % It does not matter why we cannot read the old version of the file,
-        % we should try to write out the new version.
-        WriteOpt = bool.yes
-    ),
-
-    (
-        WriteOpt = no,
-        TouchDateFile = yes
-    ;
-        WriteOpt = yes,
-        % XXX Trying to output what we got from format_initial_opt_file above
-        % *even if FoundFrontEndError is yes* preserves behavior from
-        % old versions of this code in which the data gathered by
-        % format_initial_opt_file *was already output* by the time we called
-        % middle_pass_for_opt_file. We should consider more deeply
-        % whether this is a good idea.
-        io.open_output(OptFileName, OpenResult, !IO),
-        (
-            OpenResult = ok(OptStream),
-            io.write_string(OptStream, OptFileStr, !IO),
-            io.close_output(OptStream, !IO),
-            TouchDateFile = yes,
-
-            globals.lookup_bool_option(Globals, experiment5, Experiment5),
-            (
-                Experiment5 = no
-            ;
-                Experiment5 = yes,
-                io.open_output(OptFileName ++ "x", OptXResult, !IO),
-                (
-                    OptXResult = error(_)
-                ;
-                    OptXResult = ok(OptXStream),
-                    Info = init_merc_out_info(Globals, unqualified_item_names,
-                        output_mercury),
-                    OptXState0 = string.builder.init,
-                    mercury_format_parse_tree_plain_opt(Info,
-                        string.builder.handle, ParseTreePlainOpt,
-                        OptXState0, OptXState),
-                    OptXFileStr = string.builder.to_string(OptXState),
-                    io.write_string(OptXStream, OptXFileStr, !IO),
-                    io.close_output(OptXStream, !IO)
-                )
-            )
-        ;
-            OpenResult = error(IOError),
-            TouchDateFile = no,
-            report_cannot_open_file_for_output(ProgressStream, Globals,
-                OptFileName, IOError, !IO)
-        )
-    ),
-
-    (
-        TouchDateFile = no
-    ;
-        TouchDateFile = yes,
-        % We update the .optdate file's timestamp whether or not
-        % we wrote out a new version of the .opt file.
-        OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
-        touch_module_ext_datestamp(ProgressStream, Globals,
-            ModuleName, OptDateExt, _TouchSucceeded, !IO)
-    ).
-
-    % If there is a `.opt' file for this module, then we must mark
-    % the items that would be in the .opt file as opt_exported
-    % even if we are not writing to the .opt file now.
-    %
-:- pred mark_entities_in_opt_file_as_opt_exported(io.text_output_stream::in,
-    bool::in, globals::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-
-mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
-        Globals, !HLDS, !IO) :-
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        IntermodOpt),
-    ( if
-        ( IntermodOpt = yes
-        ; IntermodAnalysis = yes
-        )
-    then
-        UpdateStatus = yes
-    else
-        globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-        (
-            UseOptFiles = yes,
-            SearchWhichDir = search_intermod_dirs,
-            module_info_get_name(!.HLDS, ModuleName),
-            % XXX LEGACY
-            ExtOpt = ext_cur_ngs_gs_max_ngs(
-                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
-            module_name_to_search_file_name(Globals, $pred, ExtOpt, ModuleName,
-                SearchWhichDir, SearchAuthDir,
-                OptFileName, _OptFileNameProposed),
-            search_for_file_returning_dir(SearchAuthDir,
-                OptFileName, _SearchDirs, MaybeDir, !IO),
-            (
-                MaybeDir = ok(_),
-                UpdateStatus = yes
-            ;
-                MaybeDir = error(_),
-                UpdateStatus = no
-            )
-        ;
-            UseOptFiles = no,
-            UpdateStatus = no
-        )
-    ),
-    (
-        UpdateStatus = yes,
-        intermod_mark_exported.maybe_opt_export_entities(ProgressStream, !HLDS)
-    ;
-        UpdateStatus = no
-    ).
-
-:- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
-
-need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
-    globals.get_opt_tuple(Globals, OptTuple),
-    IntermodArgs = OptTuple ^ ot_opt_unused_args_intermod,
-    globals.lookup_bool_option(Globals, termination_enable, Termination),
-    globals.lookup_bool_option(Globals, termination2_enable, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis,
-        SharingAnalysis),
-    globals.lookup_bool_option(Globals, structure_reuse_analysis,
-        ReuseAnalysis),
-    globals.lookup_bool_option(Globals, analyse_exceptions, ExceptionAnalysis),
-    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
-    globals.lookup_bool_option(Globals, analyse_trail_usage, TrailingAnalysis),
-    globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
-    ( if
-        ( IntermodArgs = opt_unused_args_intermod
-        ; Termination = yes
-        ; Termination2 = yes
-        ; ExceptionAnalysis = yes
-        ; TrailingAnalysis = yes
-        ; TablingAnalysis = yes
-        ; ClosureAnalysis = yes
-        ; SharingAnalysis = yes
-        ; ReuseAnalysis = yes
-        )
-    then
-        NeedMiddlePassForOptFile = yes
-    else
-        NeedMiddlePassForOptFile = no
-    ).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred frontend_pass_by_phases(io.text_output_stream::in,
     io.text_output_stream::in, module_info::in, module_info::out, bool::out,
@@ -882,6 +562,12 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+% Part 2 of this file:
+%
+% The code of the various passes the frontend executes during compiler
+% invocations that translate a module to target code.
+% They occur below in the order in which they are invoked by part 1 above.
+%---------------------------------------------------------------------------%
 
 :- pred decide_type_repns_pass(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
@@ -900,6 +586,129 @@ decide_type_repns_pass(ProgressStream, ErrorStream, Verbose, Stats,
     add_to_be_written_info_specs(RepnInfoSpecs, !MaybeWrittenSpecs),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_eliminate_dead_preds(io.text_output_stream::in,
+    io.text_output_stream::in, op_mode_augment::in,
+    bool::in, bool::in, globals::in,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+maybe_eliminate_dead_preds(ProgressStream, ErrorStream, OpModeAugment,
+        Verbose, Stats, Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+    ( if
+        ( IntermodOpt = yes
+        ; IntermodAnalysis = yes
+        ; UseOptFiles = yes
+        ),
+        OpModeAugment \= opmau_make_plain_opt
+    then
+        % Eliminate unnecessary clauses from `.opt' files,
+        % to speed up compilation. This must be done after
+        % typeclass instances have been checked, since that
+        % fills in which pred_ids are needed by instance decls.
+        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+            !MaybeWrittenSpecs, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Eliminating dead predicates... ", !IO),
+        dead_pred_elim(!HLDS),
+        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+            !MaybeWrittenSpecs, !IO),
+        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 10, "dead_pred_elim",
+            !DumpInfo, !IO)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred check_insts_for_matching_types(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in, globals::in,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+check_insts_for_matching_types(ProgressStream, ErrorStream, Verbose, Stats,
+        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Checking that insts have matching types... ", !IO),
+    globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
+        WarnInstsWithNoMatchingType),
+    check_insts_have_matching_types(WarnInstsWithNoMatchingType,
+        !HLDS, [], MatchSpecs),
+    add_to_be_written_specs(MatchSpecs, !MaybeWrittenSpecs),
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 12,
+        "warn_insts_without_matching_type", !DumpInfo, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred do_typecheck(io.text_output_stream::in, io.text_output_stream::in,
+    bool::in, bool::in, globals::in, maybe_clause_syntax_errors::out,
+    list(diag_spec)::out, number_of_iterations::out,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
+        FoundSyntaxError, TypeCheckSpecs, NumIterations,
+        !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    % Next typecheck the clauses.
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Type-checking...\n", !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Type-checking clauses...\n", !IO),
+    globals.lookup_bool_option(Globals, type_check_using_constraints,
+        TypeCheckUsingConstraints),
+    (
+        TypeCheckUsingConstraints = yes,
+        globals.lookup_string_option(Globals, experiment, Experiment),
+        ( if Experiment = "old_type_constraints" then
+            old_typecheck_constraints(!HLDS, TypeCheckSpecs)
+        else
+            typecheck_constraints(!HLDS, TypeCheckSpecs)
+        ),
+        % XXX We should teach typecheck_constraints to report syntax errors.
+        FoundSyntaxError = no_clause_syntax_errors,
+        NumIterations = within_iteration_limit
+    ;
+        TypeCheckUsingConstraints = no,
+        prepare_for_typecheck_module(!HLDS, [], PrepareSpecs),
+        add_to_be_written_specs(PrepareSpecs, !MaybeWrittenSpecs),
+        % This dump opportunity is here mostly to allow observation of
+        % the effects of the transformation for regularizing headvar names.
+        maybe_dump_hlds(ProgressStream, !.HLDS, 14, "pre_typecheck",
+            !DumpInfo, !IO),
+        typecheck_module(ProgressStream, !HLDS, TypeCheckSpecs,
+            FoundSyntaxError, NumIterations)
+    ),
+    add_to_be_written_specs(TypeCheckSpecs, !MaybeWrittenSpecs),
+    maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+        !MaybeWrittenSpecs, !IO),
+    FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
+    (
+        FoundTypeError = yes,
+        maybe_write_string(ProgressStream, Verbose,
+            "% Program contains type error(s).\n", !IO)
+    ;
+        FoundTypeError = no,
+        maybe_write_string(ProgressStream, Verbose,
+            "% Program is type-correct.\n", !IO)
+    ),
+    maybe_report_stats(ProgressStream, Stats, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 15, "typecheck", !DumpInfo, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1096,6 +905,34 @@ maybe_mode_constraints(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         ModeConstraints = no
     ).
 
+:- pred maybe_benchmark_mode_constraints(io.text_output_stream::in,
+    pred(module_info, module_info, io, io)::in(pred(in, out, di, uo) is det),
+    string::in, module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_benchmark_mode_constraints(ProgressStream, Pred, Stage, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
+    (
+        BenchmarkModes = yes,
+        globals.lookup_int_option(Globals, benchmark_modes_repeat, Repeats),
+        io.format(ProgressStream, "%s %d ", [s(Stage), i(Repeats)], !IO),
+        promise_equivalent_solutions [!:HLDS, Time, !:IO] (
+            do_io_benchmark(Pred, Repeats, !.HLDS, !:HLDS - Time, !IO)
+        ),
+        io.format(ProgressStream, "%d ms\n", [i(Time)], !IO)
+    ;
+        BenchmarkModes = no,
+        Pred(!HLDS, !IO)
+    ).
+
+:- pred do_io_benchmark(pred(T1, T2, io, io)::in(pred(in, out, di, uo) is det),
+    int::in, T1::in, pair(T2, int)::out, io::di, io::uo) is cc_multi.
+
+do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
+    benchmark_det_io(Pred, A0, A, !IO, Repeats, Time).
+
+%---------------------------------------------------------------------------%
+
 :- pred modecheck(io.text_output_stream::in, io.text_output_stream::in,
     bool::in, bool::in, module_info::in, module_info::out,
     bool::out, maybe_safe_to_continue::out,
@@ -1144,32 +981,6 @@ modecheck(ProgressStream, ErrorStream, Verbose, Stats, !HLDS,
             "% Program contains mode error(s).\n", !IO)
     ),
     maybe_report_stats(ProgressStream, Stats, !IO).
-
-:- pred maybe_benchmark_mode_constraints(io.text_output_stream::in,
-    pred(module_info, module_info, io, io)::in(pred(in, out, di, uo) is det),
-    string::in, module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_benchmark_mode_constraints(ProgressStream, Pred, Stage, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
-    (
-        BenchmarkModes = yes,
-        globals.lookup_int_option(Globals, benchmark_modes_repeat, Repeats),
-        io.format(ProgressStream, "%s %d ", [s(Stage), i(Repeats)], !IO),
-        promise_equivalent_solutions [!:HLDS, Time, !:IO] (
-            do_io_benchmark(Pred, Repeats, !.HLDS, !:HLDS - Time, !IO)
-        ),
-        io.format(ProgressStream, "%d ms\n", [i(Time)], !IO)
-    ;
-        BenchmarkModes = no,
-        Pred(!HLDS, !IO)
-    ).
-
-:- pred do_io_benchmark(pred(T1, T2, io, io)::in(pred(in, out, di, uo) is det),
-    int::in, T1::in, pair(T2, int)::out, io::di, io::uo) is cc_multi.
-
-do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
-    benchmark_det_io(Pred, A0, A, !IO, Repeats, Time).
 
 %---------------------------------------------------------------------------%
 
@@ -1750,6 +1561,226 @@ maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
                 [s(StatsFileErrorStr)], StatsFileErrorMsg),
             maybe_write_string(ProgressStream, Verbose, StatsFileErrorMsg, !IO)
         )
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Part 3 of this file:
+%
+% The code executed during compiler invocations that create .opt files.
+%---------------------------------------------------------------------------%
+
+:- pred create_and_write_opt_file(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, globals::in,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
+        Globals, !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
+    module_info_get_name(!.HLDS, ModuleName),
+    % XXX LEGACY
+    OptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
+    module_name_to_file_name_create_dirs(Globals, $pred, OptExt,
+        ModuleName, OptFileName, _OptFileNameProposed, !IO),
+
+    OptState0 = string.builder.init,
+    format_initial_opt_file(!.HLDS, IntermodInfo, ParseTreePlainOpt0,
+        OptState0, OptState1),
+    % XXX Is this call needed even when the condition of the if-then-else
+    % just below fails?
+    maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
+    % The following passes are only run with `--intermodule-optimisation'
+    % to append their results to the `.opt' file. For `--intermodule-analysis',
+    % analysis results should be recorded using the intermodule analysis
+    % framework instead.
+    % XXX So why is the test "IntermodAnalysis = no", instead of
+    % "IntermodOpt = yes"?
+    %
+    % If intermod_unused_args is being performed, run polymorphism,
+    % mode analysis and determinism analysis before unused_args.
+    ( if
+        IntermodAnalysis = no,
+        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+        NeedMiddlePassForOptFile = yes
+    then
+        frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS,
+            FoundFrontEndError, !DumpInfo, !MaybeWrittenSpecs, !IO),
+        (
+            FoundFrontEndError = no,
+            middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
+                !MaybeWrittenSpecs, !IO),
+            append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos,
+                ParseTreePlainOpt0, ParseTreePlainOpt, OptState1, OptState)
+        ;
+            FoundFrontEndError = yes,
+            ParseTreePlainOpt = ParseTreePlainOpt0,
+            OptState = OptState1,
+            io.set_exit_status(1, !IO)
+        )
+    else
+        ParseTreePlainOpt = ParseTreePlainOpt0,
+        OptState = OptState1
+    ),
+    OptFileStr = string.builder.to_string(OptState),
+
+    io.read_named_file_as_string(OptFileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldOptFileStr),
+        ( if OldOptFileStr = OptFileStr then
+            WriteOpt = bool.no
+        else
+            WriteOpt = bool.yes
+        )
+    ;
+        ReadFileResult = error(_),
+        % It does not matter why we cannot read the old version of the file,
+        % we should try to write out the new version.
+        WriteOpt = bool.yes
+    ),
+
+    (
+        WriteOpt = no,
+        TouchDateFile = yes
+    ;
+        WriteOpt = yes,
+        % XXX Trying to output what we got from format_initial_opt_file above
+        % *even if FoundFrontEndError is yes* preserves behavior from
+        % old versions of this code in which the data gathered by
+        % format_initial_opt_file *was already output* by the time we called
+        % middle_pass_for_opt_file. We should consider more deeply
+        % whether this is a good idea.
+        io.open_output(OptFileName, OpenResult, !IO),
+        (
+            OpenResult = ok(OptStream),
+            io.write_string(OptStream, OptFileStr, !IO),
+            io.close_output(OptStream, !IO),
+            TouchDateFile = yes,
+
+            globals.lookup_bool_option(Globals, experiment5, Experiment5),
+            (
+                Experiment5 = no
+            ;
+                Experiment5 = yes,
+                io.open_output(OptFileName ++ "x", OptXResult, !IO),
+                (
+                    OptXResult = error(_)
+                ;
+                    OptXResult = ok(OptXStream),
+                    Info = init_merc_out_info(Globals, unqualified_item_names,
+                        output_mercury),
+                    OptXState0 = string.builder.init,
+                    mercury_format_parse_tree_plain_opt(Info,
+                        string.builder.handle, ParseTreePlainOpt,
+                        OptXState0, OptXState),
+                    OptXFileStr = string.builder.to_string(OptXState),
+                    io.write_string(OptXStream, OptXFileStr, !IO),
+                    io.close_output(OptXStream, !IO)
+                )
+            )
+        ;
+            OpenResult = error(IOError),
+            TouchDateFile = no,
+            report_cannot_open_file_for_output(ProgressStream, Globals,
+                OptFileName, IOError, !IO)
+        )
+    ),
+
+    (
+        TouchDateFile = no
+    ;
+        TouchDateFile = yes,
+        % We update the .optdate file's timestamp whether or not
+        % we wrote out a new version of the .opt file.
+        OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
+        touch_module_ext_datestamp(ProgressStream, Globals,
+            ModuleName, OptDateExt, _TouchSucceeded, !IO)
+    ).
+
+%---------------------%
+
+    % If there is a `.opt' file for this module, then we must mark
+    % the items that would be in the .opt file as opt_exported
+    % even if we are not writing to the .opt file now.
+    %
+:- pred mark_entities_in_opt_file_as_opt_exported(io.text_output_stream::in,
+    bool::in, globals::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
+        Globals, !HLDS, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        IntermodOpt),
+    ( if
+        ( IntermodOpt = yes
+        ; IntermodAnalysis = yes
+        )
+    then
+        UpdateStatus = yes
+    else
+        globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+        (
+            UseOptFiles = yes,
+            SearchWhichDir = search_intermod_dirs,
+            module_info_get_name(!.HLDS, ModuleName),
+            % XXX LEGACY
+            ExtOpt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
+            module_name_to_search_file_name(Globals, $pred, ExtOpt, ModuleName,
+                SearchWhichDir, SearchAuthDir,
+                OptFileName, _OptFileNameProposed),
+            search_for_file_returning_dir(SearchAuthDir,
+                OptFileName, _SearchDirs, MaybeDir, !IO),
+            (
+                MaybeDir = ok(_),
+                UpdateStatus = yes
+            ;
+                MaybeDir = error(_),
+                UpdateStatus = no
+            )
+        ;
+            UseOptFiles = no,
+            UpdateStatus = no
+        )
+    ),
+    (
+        UpdateStatus = yes,
+        intermod_mark_exported.maybe_opt_export_entities(ProgressStream, !HLDS)
+    ;
+        UpdateStatus = no
+    ).
+
+%---------------------%
+
+:- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
+
+need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
+    globals.get_opt_tuple(Globals, OptTuple),
+    IntermodArgs = OptTuple ^ ot_opt_unused_args_intermod,
+    globals.lookup_bool_option(Globals, termination_enable, Termination),
+    globals.lookup_bool_option(Globals, termination2_enable, Termination2),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        ReuseAnalysis),
+    globals.lookup_bool_option(Globals, analyse_exceptions, ExceptionAnalysis),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+    globals.lookup_bool_option(Globals, analyse_trail_usage, TrailingAnalysis),
+    globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
+    ( if
+        ( IntermodArgs = opt_unused_args_intermod
+        ; Termination = yes
+        ; Termination2 = yes
+        ; ExceptionAnalysis = yes
+        ; TrailingAnalysis = yes
+        ; TablingAnalysis = yes
+        ; ClosureAnalysis = yes
+        ; SharingAnalysis = yes
+        ; ReuseAnalysis = yes
+        )
+    then
+        NeedMiddlePassForOptFile = yes
+    else
+        NeedMiddlePassForOptFile = no
     ).
 
 %---------------------------------------------------------------------------%
