@@ -846,8 +846,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         add_to_be_written_warn_specs(DepWarnSpecs, !MaybeWrittenSpecs),
         ( if
             MaybeMakeInts = do_make_ints,
-            % XXX DIAG_SPEC
-            contains_errors(Globals0, coerce(DepErrSpecs)) = no
+            DepErrSpecs = []
         then
             deps_make_ints(ProgressStream, Globals0, DepsMap,
                 !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO)

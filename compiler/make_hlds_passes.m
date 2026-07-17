@@ -89,7 +89,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
@@ -360,10 +359,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % (Currently, we discover any such errors when we type and mode check
     % the automatically created unify and compare predicates, whose bodies
     % call the user-specified predicate names.)
-    % XXX DIAG_SPECS
-    InvalidTypesSoFar = contains_errors(Globals, coerce(!.InvalidTypeSpecs)),
     (
-        InvalidTypesSoFar = no,
+        !.InvalidTypeSpecs = [],
         % Add constructors for du types to the HLDS, check subtype definitions,
         % and check that Mercury types defined solely by foreign types have a
         % definition that works for the current target backend.
@@ -377,7 +374,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
             add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
             TypeTable0, !ModuleInfo, !InvalidTypeSpecs, !WarnSpecs)
     ;
-        InvalidTypesSoFar = yes
+        !.InvalidTypeSpecs = [_ | _]
     ),
 
     % A predicate declaration defines the type of the arguments of a predicate,

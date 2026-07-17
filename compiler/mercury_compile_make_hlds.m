@@ -139,7 +139,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     %   in EventSpecMap1, returning EventSpecMap.
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
-    maybe_read_event_set(Globals, EventSetFileName,
+    maybe_read_event_set(EventSetFileName,
         EventSetName, EventSpecMap0, EventSetSpecs, !IO),
     add_to_be_written_err_specs(EventSetSpecs, !MaybeWrittenSpecs),
 
@@ -303,11 +303,11 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
 
 %---------------------%
 
-:- pred maybe_read_event_set(globals::in, string::in,
+:- pred maybe_read_event_set(string::in,
     string::out, event_spec_map::out, list(err_spec)::out,
     io::di, io::uo) is det.
 
-maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
+maybe_read_event_set(EventSetFileName, EventSetName, EventSpecMap,
         EventSetSpecs, !IO) :-
     ( if EventSetFileName = "" then
         EventSetName = "",
@@ -316,14 +316,12 @@ maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
     else
         read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
             EventSetSpecs, !IO),
-        % XXX DIAG_SPEC
-        Errors = contains_errors(Globals, coerce(EventSetSpecs)),
         (
-            Errors = no,
+            EventSetSpecs = [],
             EventSetName = EventSetName0,
             EventSpecMap = EventSpecMap0
         ;
-            Errors = yes,
+            EventSetSpecs = [_ | _],
             EventSetName = "",
             EventSpecMap = map.init
         )
