@@ -261,7 +261,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ;
                 RecoverableSpecs = [HeadSpec | TailSpecs],
                 OoMRecoverableSpecs = one_or_more(HeadSpec, TailSpecs),
-                IOM = iom_item_and_diag_specs(Item, OoMRecoverableSpecs)
+                IOM = iom_item_and_err_specs(Item, OoMRecoverableSpecs)
             ),
             MaybeIOM = ok1(IOM)
         ;
@@ -582,7 +582,7 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
 %---------------------%
 
 :- pred process_du_ctors(list(type_param)::in, varset::in, term::in,
-    list(constructor)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(constructor)::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 process_du_ctors(_Params, _, _, [], !Specs).
 process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
@@ -735,7 +735,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
 
 :- pred check_direct_arg_ctors(list(constructor)::in,
     list(sym_name_arity)::in, term::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_direct_arg_ctors(_Ctors, [], _ErrorTerm, !Specs).
 check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
@@ -804,7 +804,7 @@ find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
     sym_name::in, list(tvar)::in, one_or_more(constructor)::in,
     maybe_canonical::in, maybe(list(sym_name_arity))::in,
     mer_type::in, prog_context::in, type_defn::out,
-    list(diag_spec)::in, list(diag_spec)::out, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out, list(err_spec)::out) is det.
 
 check_subtype(VarSet, Context, TypeSymName, Params, OneOrMoreCtors,
         MaybeCanonical, MaybeDirectArgIs, SuperType, SuperTypeContext,
@@ -861,7 +861,7 @@ check_subtype(VarSet, Context, TypeSymName, Params, OneOrMoreCtors,
 %---------------------%
 
 :- pred check_supertype_vars(list(type_param)::in, varset::in, mer_type::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
     type_vars_in_type(SuperType, VarsInSuperType0),
@@ -1289,7 +1289,7 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
                     [quote("comparison is <<comparison pred name>>"),
                     suffix(".")]) ++
                 [nl_indent_delta(-1)],
-            EndSpec = diag_spec($pred, severity_error, phase_t2pt,
+            EndSpec = gen_spec($pred, severity_error, phase_t2pt,
                 [simple_msg(get_term_context(EndTerm),
                     [always(Pieces),
                     verbose_only(verbose_always, VerbosePieces)])]),
@@ -1699,7 +1699,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         )
     ).
 
-:- func abstract_noncanonical_excludes_others(term) = diag_spec.
+:- func abstract_noncanonical_excludes_others(term) = err_spec.
 
 abstract_noncanonical_excludes_others(Term) = Spec :-
     Pieces = [words("Error:"),
@@ -1830,7 +1830,7 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
     % Check that the type name is available to users.
     %
 :- pred check_user_type_name(sym_name::in, term.context::in,
-    list(diag_spec)::out) is det.
+    list(err_spec)::out) is det.
 
 check_user_type_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
@@ -1851,7 +1851,7 @@ check_user_type_name(SymName, Context, NameSpecs) :-
         NameSpecs = []
     ).
 
-:- func report_reserved_type_name(prog_context, string) = diag_spec.
+:- func report_reserved_type_name(prog_context, string) = err_spec.
 
 report_reserved_type_name(Context, Name) = Spec :-
     Pieces = [words("Error: the type name")] ++
@@ -1865,7 +1865,7 @@ report_reserved_type_name(Context, Name) = Spec :-
     % Return a nonempty list of error specs if some do.
     %
 :- pred check_no_free_body_vars(tvarset::in, list(tvar)::in, mer_type::in,
-    prog_context::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::out) is det.
 
 check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
     % Check that all the variables in the body occur in the head.

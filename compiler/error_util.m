@@ -116,6 +116,12 @@
 
 :- pred add_to_be_written_specs(list(diag_spec)::in,
     maybe_written_specs::in, maybe_written_specs::out) is det.
+:- pred add_to_be_written_err_specs(list(err_spec)::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
+:- pred add_to_be_written_warn_specs(list(warn_spec)::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
+:- pred add_to_be_written_info_specs(list(info_spec)::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
 
 :- func maybe_written_specs_to_specs(maybe_written_specs) = list(diag_spec).
 
@@ -193,7 +199,7 @@ does_spec_print_anything_2(Spec) = Prints :-
         ),
         Prints = yes
     ;
-        Spec = diag_spec(_, _, _, Msgs),
+        Spec = gen_spec(_, _, _, Msgs),
         PrintsList = list.map(does_msg_print_anything, Msgs),
         bool.or_list(PrintsList, Prints)
     ).
@@ -250,7 +256,7 @@ actual_spec_severity(Globals, Spec) = MaybeSeverity :-
     MaybeSeverity = actual_spec_severity_opt_table(OptionTable, Spec).
 
 actual_spec_severity_opt_table(OptionTable, Spec) = MaybeActualSeverity :-
-    ( Spec = diag_spec(_, Severity, _, _)
+    ( Spec = gen_spec(_, Severity, _, _)
     ; Spec = spec(_, Severity, _, _, _)
     ; Spec = no_ctxt_spec(_, Severity, _, _)
     ),
@@ -438,6 +444,21 @@ add_to_be_written_specs(Specs, !MaybeWrittenSpecs) :-
     ToBeWritten = Specs ++ ToBeWritten0,
     !:MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten).
 
+add_to_be_written_err_specs(Specs, !MaybeWrittenSpecs) :-
+    !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten),
+    ToBeWritten = coerce(Specs) ++ ToBeWritten0,
+    !:MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten).
+
+add_to_be_written_warn_specs(Specs, !MaybeWrittenSpecs) :-
+    !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten),
+    ToBeWritten = coerce(Specs) ++ ToBeWritten0,
+    !:MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten).
+
+add_to_be_written_info_specs(Specs, !MaybeWrittenSpecs) :-
+    !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten),
+    ToBeWritten = coerce(Specs) ++ ToBeWritten0,
+    !:MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten).
+
 maybe_written_specs_to_specs(MaybeWrittenSpecs) = Specs :-
     MaybeWrittenSpecs = maybe_written_specs(ToBeWritten, AlreadyWritten),
     Specs = ToBeWritten ++ AlreadyWritten.
@@ -525,7 +546,7 @@ accumulate_diag_specs_for_proc(ProcSpecs, !MaybeSpecs) :-
 
 project_spec_phase(Spec) = Phase :-
     (
-        Spec = diag_spec(_, _, Phase, _)
+        Spec = gen_spec(_, _, Phase, _)
     ;
         Spec = spec(_, _, Phase, _, _)
     ;

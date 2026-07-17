@@ -69,7 +69,7 @@
 
 :- type fact_table_arg_check_result
     --->    fact_table_args_ok(fact_table_gen_info)
-    ;       fact_table_args_not_ok(list(diag_spec)).
+    ;       fact_table_args_not_ok(list(err_spec)).
 
 :- type fact_table_gen_info.
 
@@ -96,7 +96,7 @@
 :- pred fact_table_compile_facts(io.text_output_stream::in, module_info::in,
     string::in, prog_context::in, fact_table_gen_info::in, string::out,
     proc_id::out, pred_info::in, pred_info::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
     % fact_table_generate_c_code_for_proc(ModuleInfo, PredName,
     %   ProcId, PrimaryProcId, ProcInfo, GenInfo, VarSet, PragmaVars,
@@ -401,7 +401,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
     fact_table_proc_map::in, fact_table_proc_map::out,
     list(proc_id)::in, list(proc_id)::out,
     list(proc_id)::in, list(proc_id)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 fact_table_check_proc_modes(_, _, _, [],
         !FactArgInfos, !FactTableProcMap,
@@ -455,7 +455,7 @@ fact_table_check_proc_modes(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
     %
 :- pred init_fact_arg_infos(pred_info::in, list(mer_type)::in,
     list(fact_arg_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 init_fact_arg_infos(_, [], [], !Specs).
 init_fact_arg_infos(PredInfo, [Type | Types], [Info | Infos], !Specs) :-
@@ -498,7 +498,7 @@ init_fact_arg_infos(PredInfo, [Type | Types], [Info | Infos], !Specs) :-
 :- pred check_proc_arg_modes(module_info::in, pred_proc_id::in, proc_info::in,
     int::in, list(mer_type)::in, list(mer_mode)::in, list(fact_table_var)::out,
     prog_varset::in, prog_varset::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_proc_arg_modes(_, _, _, _, [], [], [], !VarSet, !Specs).
 check_proc_arg_modes(_, _, _, _, [], [_ | _], _, !VarSet, !Specs) :-
@@ -539,7 +539,7 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo,
         % so generating an error message here for the user would be redundant.
         % However, we *did* find an error that prevents us from generating
         % fact table code for this procedure, and we have to signal this
-        % by an diag_spec. So we generate and return an empty diag_spec.
+        % by an err_spec. So we generate and return an empty err_spec.
         proc_info_get_context(ProcInfo, Context),
         Spec = spec($pred, severity_error, phase_fact_table_check,
             Context, []),
@@ -647,7 +647,7 @@ fact_table_compile_facts(ProgressStream, ModuleInfo, FactTableFileName,
     int::in, module_info::in, sym_name::in, fact_table_gen_info::in,
     string::out, proc_id::out, maybe(string)::out,
     pred_info::in, pred_info::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 compile_fact_table_in_file(MaybeProgressStream, FileStream, FileName,
         OutputStream, FactTableSize, ModuleInfo, PredSymName, GenInfo,
@@ -873,7 +873,7 @@ infer_procs_determinism_pass_1(GenInfo, [ProcId | ProcIds],
     maybe(io.text_output_stream)::in, int::in, pred_info::in,
     int::in, list(fact_arg_info)::in, list(proc_stream)::in,
     maybe(pair(io.text_output_stream, string))::in, int::in, int::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 read_in_and_compile_facts(FileStream, FileName, MaybeProgressStream,
         FactTableSize, PredInfo, NumFactArgInfos, FactArgInfos,
@@ -920,7 +920,7 @@ read_in_and_compile_facts(FileStream, FileName, MaybeProgressStream,
     maybe(io.text_output_stream)::in, int::in, pred_info::in,
     int::in, list(fact_arg_info)::in, int::in, prog_varset::in, prog_term::in,
     list(proc_stream)::in, maybe(pair(io.text_output_stream, string))::in,
-    list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::out, io::di, io::uo) is det.
 
 check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
         PredInfo, NumFactArgInfos, FactArgInfos, FactNum,
@@ -976,7 +976,7 @@ check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
     pred_info::in, int::in, list(fact_arg_info)::in,
     int::in, prog_varset::in, list(prog_term)::in, prog_context::in,
     list(proc_stream)::in, maybe(pair(io.text_output_stream, string))::in,
-    list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::out, io::di, io::uo) is det.
 
 check_fact_term_args(MaybeProgressStream, FactTableSize, PredInfo,
         NumFactArgInfos, FactArgInfos, FactNum, VarSet, ArgTerms, Context,
@@ -1021,7 +1021,7 @@ check_fact_term_args(MaybeProgressStream, FactTableSize, PredInfo,
     %
 :- pred check_fact_type_and_mode(pred_or_func::in, prog_varset::in,
     list(fact_arg_info)::in, list(prog_term)::in, int::in, list(fact_arg)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_fact_type_and_mode(_, _, [], [], _, [], !Specs).
 check_fact_type_and_mode(_, _, [_ | _], [], _, _, !Specs) :-
@@ -1078,7 +1078,7 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
 
 :- pred report_arg_error(pred_or_func::in, prog_varset::in, int::in,
     prog_term::in, list(prog_term)::in, string::in, string::in, string::in,
-    fact_arg::out, list(diag_spec)::in, list(diag_spec)::out) is det.
+    fact_arg::out, list(err_spec)::in, list(err_spec)::out) is det.
 
 report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, RemainingArgTerms,
         TypeOrMode, AAn, Expected, DummyFactArg, !Specs) :-
@@ -1259,7 +1259,7 @@ struct MR_fact_table_hash_entry_i {
     %
 :- pred open_sort_files(fact_table_proc_map::in,
     list(proc_id)::in, list(proc_stream)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 open_sort_files(_, [], [], !Specs, !IO).
 open_sort_files(ProcMap, [HeadProcId | TailProcIds], ProcStreams,
@@ -1436,7 +1436,7 @@ key_from_chars_loop([Char | Chars], !EscapedCharsCord) :-
 :- pred infer_determinism_pass_2(maybe(io.text_output_stream)::in,
     fact_table_gen_info::in, assoc_list(proc_id, string)::in,
     proc_table::in, proc_table::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 infer_determinism_pass_2(_, _, [], !ProcTable, !Specs, !IO).
 infer_determinism_pass_2(MaybeProgressStream, GenInfo,
@@ -1532,7 +1532,7 @@ infer_determinism_pass_2(MaybeProgressStream, GenInfo,
     fact_table_proc_map::in, string::in, int::in, list(fact_arg_info)::in,
     maybe_write_hash_tables::in, maybe_write_data_table::in,
     string::out, proc_id::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 write_fact_table_arrays(MaybeProgressStream, OutputStream, FactTableSize,
         ModuleInfo, ProcFiles, DataFileName, FactTableProcMap,
@@ -1667,7 +1667,7 @@ write_fact_args(OutputStream, [FactArg | FactArgs], !IO) :-
     % end of the main output file and then delete it.
     %
 :- pred append_data_table(maybe(io.text_output_stream)::in,
-    string::in, string::in, list(diag_spec)::in, list(diag_spec)::out,
+    string::in, string::in, list(err_spec)::in, list(err_spec)::out,
     io::di, io::uo) is det.
 
 append_data_table(MaybeProgressStream, OutputFileName, DataFileName,
@@ -1715,7 +1715,7 @@ append_data_table(MaybeProgressStream, OutputFileName, DataFileName,
     string::in, string::in, string::in, list(fact_arg_info)::in,
     maybe_write_data_table::in, int::in, maybe_create_fact_map::in,
     fact_result::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 write_primary_hash_table(MaybeProgressStream, OutputStream, FactTableSize,
         ModuleInfo, FactTableProcMap, ProcId, FileName, DataFileName,
@@ -1799,7 +1799,7 @@ write_primary_hash_table(MaybeProgressStream, OutputStream, FactTableSize,
     list(fact_arg_info)::in, map(int, int)::in,
     assoc_list(proc_id, string)::in,
     string::in, string::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 write_secondary_hash_tables(_, _, _, _, _, _, _, _, [],
         !HeaderCode, !Specs, !IO).
@@ -1849,7 +1849,7 @@ write_secondary_hash_tables(MaybeProgressStream, OutputStream, FactTableSize,
 :- pred read_sort_file_line(io.text_input_stream::in, string::in,
     list(fact_arg_info)::in, list(fact_table_mode)::in,
     maybe(sort_file_line)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 read_sort_file_line(InputStream, InputFileName,
         FactArgInfos, Modes, MaybeSortFileLine, !Specs, !IO) :-
@@ -2059,7 +2059,7 @@ remove_sort_file_escapes([C0 | Cs0], !RevChars) :-
     list(fact_arg_info)::in, list(fact_table_mode)::in,
     int::in, string::in, int::in, sort_file_line::in, int::in,
     maybe_create_fact_map::in, map(int, int)::in, map(int, int)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 build_hash_table(MaybeProgressStream, InputStream, InputFileName, OutputStream,
         MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
@@ -2085,7 +2085,7 @@ build_hash_table(MaybeProgressStream, InputStream, InputFileName, OutputStream,
     int::in, string::in, int::in, sort_file_line::in, int::in,
     maybe_create_fact_map::in, map(int, int)::in, map(int, int)::out,
     list(hash_entry)::in, list(hash_entry)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 build_hash_table_loop(MaybeProgressStream, InputStream, InputFileName,
         OutputStream, MaybeDataStream, FactTableSize, ModuleInfo,
@@ -2240,7 +2240,7 @@ do_build_hash_table(OutputStream, Globals, IsPrimaryTable, FactMap,
 :- pred top_level_collect_matching_facts(io.text_input_stream::in, string::in,
     list(fact_arg_info)::in, list(fact_table_mode)::in,
     sort_file_line::in, list(sort_file_line)::out, maybe(sort_file_line)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 top_level_collect_matching_facts(InputStream, InputFileName,
         Infos, Modes, Fact, MatchingFacts, MaybeNextFact, !Specs, !IO) :-
@@ -2253,7 +2253,7 @@ top_level_collect_matching_facts(InputStream, InputFileName,
     string::in, list(fact_arg_info)::in, list(fact_table_mode)::in,
     sort_file_line::in, list(sort_file_line)::in, list(sort_file_line)::out,
     maybe(sort_file_line)::out,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 top_level_collect_matching_facts_loop(InputStream, InputFileName,
         Infos, Modes, Fact, !RevMatchingFacts, MaybeNextFact, !Specs, !IO) :-
@@ -3854,7 +3854,7 @@ fact_table_size(Globals, FactTableSize) :-
     % Delete a file. Report an error message if something goes wrong.
     %
 :- pred delete_temporary_file(string::in,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 delete_temporary_file(FileName, !Specs, !IO) :-
     io.file.remove_file(FileName, Result, !IO),
@@ -3867,7 +3867,7 @@ delete_temporary_file(FileName, !Specs, !IO) :-
         Pieces = [fixed(ProgName), suffix(":"), words("error deleting file"),
             quote(FileName), suffix(":"), nl,
             words(ErrorMsg), suffix("."), nl],
-        Spec = diag_spec($pred, severity_error, phase_fact_table_check,
+        Spec = gen_spec($pred, severity_error, phase_fact_table_check,
             [gen_msg(no, treat_based_on_posn, 0u, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
     ).
@@ -3875,7 +3875,7 @@ delete_temporary_file(FileName, !Specs, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_call_system_error(string::in, io.error::in,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
@@ -3883,14 +3883,14 @@ add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
     Pieces = [fixed(ProgName), suffix(":"),
         words("error executing system command"), quote(Cmd), suffix(":"), nl,
         words(ErrorMsg), suffix("."), nl],
-    Spec = diag_spec($pred, severity_error, phase_fact_table_check,
+    Spec = gen_spec($pred, severity_error, phase_fact_table_check,
         [gen_msg(no, treat_based_on_posn, 0u, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 
 :- pred add_file_open_error(maybe(prog_context)::in, string::in, string::in,
-    io.error::in, list(diag_spec)::in, list(diag_spec)::out,
+    io.error::in, list(err_spec)::in, list(err_spec)::out,
     io::di, io::uo) is det.
 
 add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
@@ -3900,7 +3900,7 @@ add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
         words("error opening file"), quote(FileName),
         words("for"), words(InOrOut), suffix(":"), nl,
         words(ErrorMsg), nl],
-    Spec = diag_spec($pred, severity_error, phase_fact_table_check,
+    Spec = gen_spec($pred, severity_error, phase_fact_table_check,
         [gen_msg(MaybeContext, treat_based_on_posn, 0u, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
@@ -3908,7 +3908,7 @@ add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
 
 :- pred add_error_context_and_pieces(prog_context::in,
     list(format_piece)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_error_context_and_pieces(Context, Pieces, !Specs) :-
     Spec = spec($pred, severity_error, phase_fact_table_check,
@@ -3916,7 +3916,7 @@ add_error_context_and_pieces(Context, Pieces, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred add_error_pieces(list(format_piece)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_error_pieces(Pieces, !Specs) :-
     Spec = no_ctxt_spec($pred, severity_error,

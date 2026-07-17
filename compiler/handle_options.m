@@ -2206,7 +2206,7 @@ handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
         ;
             MaybeEnvOptFileMerStdLibDir = error1(EnvOptFileSpecs),
             MaybeChosenStdLibDir = no,
-            !:Specs = EnvOptFileSpecs ++ !.Specs
+            !:Specs = coerce(EnvOptFileSpecs) ++ !.Specs
         )
     ),
     globals.set_option(chosen_stdlib_dir, maybe_string(MaybeChosenStdLibDir),
@@ -3390,7 +3390,7 @@ disable_smart_recompilation(OptionDescr, !Globals, !Specs, !IO) :-
 usage_errors(ProgressStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     io.format(ProgressStream, "%s:\n", [s(ProgName)], !IO),
-    write_error_specs(ProgressStream, Globals, Specs, !IO). % usage msg only
+    write_diag_specs(ProgressStream, Globals, Specs, !IO). % usage msg only
 
 %---------------------------------------------------------------------------%
 :- end_module libs.handle_options.

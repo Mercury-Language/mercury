@@ -1493,7 +1493,7 @@ error_inconsistent_purity_promise(PredInfo, Purity) = Spec :-
         words("no impurity declaration."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = diag_spec($pred, severity_error, phase_purity_check, [Msg]).
+    Spec = gen_spec($pred, severity_error, phase_purity_check, [Msg]).
 
 :- func warn_pred_body_too_pure(module_info, pred_info, pred_id,
     purity, purity) = diag_spec.
@@ -1551,7 +1551,7 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = diag_spec($pred, severity_warning(warn_unneeded_purity_pragma),
+    Spec = gen_spec($pred, severity_warning(warn_unneeded_purity_pragma),
         phase_purity_check, [Msg]).
 
 :- func error_not_pure_enough(module_info, pred_info, pred_id, purity)

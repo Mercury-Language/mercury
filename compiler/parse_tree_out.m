@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2025 The Mercury team.
+% Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -323,7 +323,7 @@ mercury_format_parse_tree_module_src(Info, S, ParseTreeModuleSrc, !U) :-
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        _TypeSpecs, _InstModeSpecs,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadPreds,

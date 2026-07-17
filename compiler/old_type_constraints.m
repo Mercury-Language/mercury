@@ -2212,7 +2212,7 @@ next_min_unsat(Constraint, C, !D, !P, !MinUnsats) :-
     type_constraint_info::out) is det.
 
 add_message_to_spec(ErrMsg, !TCInfo) :-
-    Spec = diag_spec($pred, severity_error, phase_type_check, [ErrMsg]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [ErrMsg]),
     !TCInfo ^ tconstr_diag_specs := [Spec | !.TCInfo ^ tconstr_diag_specs].
 
 :- pred bracket_context_to_string(prog_context::in, string::out) is det.

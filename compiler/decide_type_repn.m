@@ -155,7 +155,7 @@
     type_ctor_checked_map::in,
     map(module_name, direct_int3_spec)::in,
     map(module_name, indirect_int3_spec)::in,
-    type_ctor_repn_map::out, list(diag_spec)::out) is det.
+    type_ctor_repn_map::out, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -772,7 +772,7 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
     set_tree234(type_ctor)::in, simple_du_map::in,
     type_ctor::in, type_ctor_checked_defn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
         WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, CheckedDefn,
@@ -825,7 +825,7 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
     subtype_repn_map::in, set_tree234(type_ctor)::in, simple_du_map::in,
     type_ctor::in, item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
         WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, DuDefn, MaybeDefnCJCs,
@@ -2287,7 +2287,7 @@ is_direct_arg_ctor_for_c(WordAlignedTypeCtorsC, ClassifiedCtor) :-
 :- pred expand_eqv_sub_of_notag_types_in_constructors(type_eqv_map::in,
     subtype_repn_map::in, simple_du_map::in, tvarset::in,
     list(constructor)::in, list(constructor)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 expand_eqv_sub_of_notag_types_in_constructors(_, _, _, _, [], [], !Specs).
 expand_eqv_sub_of_notag_types_in_constructors(EqvMap, SubtypeMap, SimpleDuMap,
@@ -2300,7 +2300,7 @@ expand_eqv_sub_of_notag_types_in_constructors(EqvMap, SubtypeMap, SimpleDuMap,
 :- pred expand_eqv_sub_of_notag_types_in_constructor(type_eqv_map::in,
     subtype_repn_map::in, simple_du_map::in, tvarset::in,
     constructor::in, constructor::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap, SimpleDuMap,
         TVarSet, Ctor0, Ctor, !Specs) :-
@@ -2321,7 +2321,7 @@ expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap, SimpleDuMap,
     subtype_repn_map::in, simple_du_map::in, tvarset::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
     maybe_changed::in, maybe_changed::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 expand_eqv_sub_of_notag_types_in_constructor_args(_, _, _, _, [], [],
         !Changed, !Specs).
@@ -2347,7 +2347,7 @@ expand_eqv_sub_of_notag_types_in_constructor_args(TypeEqvMap, SubtypeMap,
 :- pred expand_eqv_sub_of_notag_type_fixpoint(type_eqv_map::in,
     subtype_repn_map::in, simple_du_map::in, tvarset::in, prog_context::in,
     int::in, mer_type::in, mer_type::out, maybe_changed::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
         TVarSet0, Context, IterationsLeft, Type0, Type, Changed, !Specs) :-

@@ -132,7 +132,7 @@ real_main(!IO) :-
         ArgResult = apr_failure(OptionTable, OoMArgSpecs),
         ArgSpecs = one_or_more_to_list(OoMArgSpecs),
         io.write_string(ProgressStream, "mmc:\n", !IO),
-        write_error_specs_opt_table(ProgressStream, OptionTable,
+        write_diag_specs_opt_table(ProgressStream, OptionTable,
             ArgSpecs, !IO),
         % In most cases, ArgSpecs should contain errors, so the above
         % should have set the exit status to 1. However, in cases such as
@@ -230,8 +230,8 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, ArgPack,
     ;
         OpMode = opm_top_generate_source_file_mapping,
         ArgPack = compiler_arg_pack(_, _, _, Args),
-        source_file_map.write_source_file_map(Args, FileMapSpecs, !IO),
-        add_to_be_written_specs(FileMapSpecs, !MaybeWrittenSpecs)
+        write_source_file_map(Args, FileMapErrSpecs, !IO),
+        add_to_be_written_err_specs(FileMapErrSpecs, !MaybeWrittenSpecs)
     ;
         OpMode = opm_top_generate_standalone_interface(StandaloneIntBasename),
         do_op_mode_standalone_interface(ProgressStream, Globals,
@@ -409,10 +409,10 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         OptionArgs, Args),
     Params = compiler_params(EnvOptFileVariables, EnvVarArgs,
         OptionArgs),
-    maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
+    maybe_check_libraries_are_installed(Globals, LibgradeCheckErrSpecs, !IO),
     io.stderr_stream(StdErr, !IO),
     (
-        LibgradeCheckSpecs = [],
+        LibgradeCheckErrSpecs = [],
         (
             FileNamesFromStdin = yes,
             % Mmc --make does not set --filenames-from-stdin.
@@ -497,7 +497,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
             true
         )
     ;
-        LibgradeCheckSpecs = [_ | _],
+        LibgradeCheckErrSpecs = [_ | _],
         % Print all remaining module-specific diag_specs.
         write_not_yet_written_specs(ErrorStream, Globals,
             !MaybeWrittenSpecs, !IO),
@@ -505,7 +505,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
 
         % Print the diag_specs from the library check, which are
         % not specific to any module.
-        add_to_be_written_specs(LibgradeCheckSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_err_specs(LibgradeCheckErrSpecs, !MaybeWrittenSpecs),
         write_not_yet_written_specs(StdErr, Globals,
             !MaybeWrittenSpecs, !IO)
     ),
@@ -841,11 +841,13 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     (
         OpModeArgs = opma_generate_dependencies(MaybeMakeInts),
         generate_and_write_dep_file_gendep(ProgressStream, Globals0,
-            FileOrModule, DepsMap, DepSpecs, !IO),
-        add_to_be_written_specs(DepSpecs, !MaybeWrittenSpecs),
+            FileOrModule, DepsMap, DepErrSpecs, DepWarnSpecs, !IO),
+        add_to_be_written_err_specs(DepErrSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_warn_specs(DepWarnSpecs, !MaybeWrittenSpecs),
         ( if
             MaybeMakeInts = do_make_ints,
-            contains_errors(Globals0, DepSpecs) = no
+            % XXX DIAG_SPEC
+            contains_errors(Globals0, coerce(DepErrSpecs)) = no
         then
             deps_make_ints(ProgressStream, Globals0, DepsMap,
                 !HaveParseTreeMaps, !MaybeWrittenSpecs, !IO)
@@ -857,8 +859,9 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     ;
         OpModeArgs = opma_generate_dependency_file,
         generate_and_write_d_file_gendep(ProgressStream, Globals0,
-            FileOrModule, _DepsMap, DepSpecs, !IO),
-        add_to_be_written_specs(DepSpecs, !MaybeWrittenSpecs),
+            FileOrModule, _DepsMap, DepErrSpecs, DepWarnSpecs, !IO),
+        add_to_be_written_err_specs(DepErrSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_warn_specs(DepWarnSpecs, !MaybeWrittenSpecs),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -881,8 +884,9 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
                     ParseTreeSrc, _Succeeded, !IO)
             )
         ),
-        Specs = get_read_module_specs(Errors),
-        add_to_be_written_specs(Specs, !MaybeWrittenSpecs),
+        get_read_module_specs(Errors, ErrSpecs, WarnSpecs),
+        add_to_be_written_err_specs(ErrSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_warn_specs(WarnSpecs, !MaybeWrittenSpecs),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1128,25 +1132,28 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
         ReturnTimestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
     (
         HaveReadSrc = have_not_read_module(_FileName, ReadErrors),
-        ReadSpecs = get_read_module_specs(ReadErrors),
-        add_to_be_written_specs(ReadSpecs, !MaybeWrittenSpecs)
+        get_read_module_specs(ReadErrors, ReadErrSpecs, ReadWarnSpecs),
+        add_to_be_written_err_specs(ReadErrSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_warn_specs(ReadWarnSpecs, !MaybeWrittenSpecs)
     ;
         HaveReadSrc = have_module(FileName, ParseTreeSrc, Source),
         have_parse_tree_source_get_maybe_timestamp_errors(Source,
             MaybeTimestamp, ReadErrors),
-        ReadSpecs = get_read_module_specs(ReadErrors),
         ( if halt_at_module_error(Globals, ReadErrors) then
-            add_to_be_written_specs(ReadSpecs, !MaybeWrittenSpecs)
+            get_read_module_specs(ReadErrors, ReadErrSpecs, ReadWarnSpecs),
+            add_to_be_written_err_specs(ReadErrSpecs, !MaybeWrittenSpecs),
+            add_to_be_written_warn_specs(ReadWarnSpecs, !MaybeWrittenSpecs)
         else
             parse_tree_src_to_burdened_module_list(Globals, FileName,
                 ReadErrors, MaybeTimestamp, ParseTreeSrc,
-                SplitSpecs, BurdenedModules),
+                SplitErrSpecs, SplitWarnSpecs, BurdenedModules),
+            SplitSpecs = coerce(SplitErrSpecs) ++ coerce(SplitWarnSpecs),
             % parse_tree_src_to_burdened_module_list includes in SplitSpecs
             % the errors it gets from ReadErrors.
             % ZZZ
             ReadSplitSpecs0 = SplitSpecs,
-            filter_interface_generation_specs(Globals, ReadSplitSpecs0,
-                ReadSplitSpecs),
+            filter_interface_generation_specs(Globals,
+                ReadSplitSpecs0, ReadSplitSpecs),
             add_to_be_written_specs(ReadSplitSpecs, !MaybeWrittenSpecs),
             (
                 InterfaceFile = omif_int0,
@@ -1270,9 +1277,10 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
     read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
         do_return_timestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
     (
-        HaveReadSrc = have_not_read_module(_, Errors),
-        Specs = get_read_module_specs(Errors),
-        add_to_be_written_specs(Specs, !MaybeWrittenSpecs),
+        HaveReadSrc = have_not_read_module(_, ReadModuleErrors),
+        get_read_module_specs(ReadModuleErrors, ErrSpecs, WarnSpecs),
+        add_to_be_written_err_specs(ErrSpecs, !MaybeWrittenSpecs),
+        add_to_be_written_warn_specs(WarnSpecs, !MaybeWrittenSpecs),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1280,8 +1288,9 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         have_parse_tree_source_get_maybe_timestamp_errors(Source,
             MaybeTimestamp, ReadModuleErrors),
         ( if halt_at_module_error(Globals, ReadModuleErrors) then
-            Specs = get_read_module_specs(ReadModuleErrors),
-            add_to_be_written_specs(Specs, !MaybeWrittenSpecs),
+            get_read_module_specs(ReadModuleErrors, ErrSpecs, WarnSpecs),
+            add_to_be_written_err_specs(ErrSpecs, !MaybeWrittenSpecs),
+            add_to_be_written_warn_specs(WarnSpecs, !MaybeWrittenSpecs),
             ModulesToLink = [],
             ExtraObjFiles = []
         else

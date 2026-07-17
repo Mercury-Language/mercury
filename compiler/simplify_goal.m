@@ -238,7 +238,7 @@ maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_warning(warn_dodgy_simple_code),
+            Spec = gen_spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
             simplify_info_add_message(Spec, !Info)
         else

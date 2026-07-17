@@ -86,7 +86,7 @@ standardize_diag_specs(Specs, StdSpecs) :-
 
 standardize_diag_spec(Spec0, StdSpec) :-
     (
-        Spec0 = diag_spec(Id, Severity, Phase, Msgs0),
+        Spec0 = gen_spec(Id, Severity, Phase, Msgs0),
         list.map(standardize_diag_msg, Msgs0, StdMsgs)
     ;
         Spec0 = spec(Id, Severity, Phase, Context0, Pieces0),
@@ -102,7 +102,7 @@ standardize_diag_spec(Spec0, StdSpec) :-
         unexpected($pred, "StdMsgs = []")
     ;
         StdMsgs = [_ | _],
-        StdSpec = diag_spec(Id, Severity, Phase, StdMsgs)
+        StdSpec = gen_spec(Id, Severity, Phase, StdMsgs)
     ).
 
 :- pred standardize_diag_msg(diag_msg::in, std_diag_msg::out) is det.
@@ -177,8 +177,8 @@ sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
     std_diag_spec::in, std_diag_spec::in, comparison_result::out) is det.
 
 compare_std_diag_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
-    SpecA = diag_spec(_, _, _, MsgsA),
-    SpecB = diag_spec(_, _, _, MsgsB),
+    SpecA = gen_spec(_, _, _, MsgsA),
+    SpecB = gen_spec(_, _, _, MsgsB),
     compare_std_diag_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),

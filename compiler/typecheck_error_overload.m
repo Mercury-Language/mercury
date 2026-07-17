@@ -95,7 +95,7 @@ report_warning_too_much_overloading(ClauseContext, Context,
         InitPieces, VerbosePieces),
     LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
         OverloadedSymbolMap),
-    Spec = diag_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
+    Spec = gen_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
         phase_type_check, [FirstMsg | LaterMsgs]).
 
 report_error_too_much_overloading(ClauseContext, Context,
@@ -108,7 +108,7 @@ report_error_too_much_overloading(ClauseContext, Context,
         InitPieces, VerbosePieces),
     LaterMsgs = describe_overloaded_symbols(ClauseContext, Context,
         OverloadedSymbolMap),
-    Spec = diag_spec($pred, severity_error,
+    Spec = gen_spec($pred, severity_error,
         phase_type_check, [FirstMsg | LaterMsgs]).
 
 %---------------------------------------------------------------------------%
@@ -242,7 +242,7 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         LaterMsgs = [VarMsg]
     ),
     Msgs = [FirstMsg | LaterMsgs],
-    Spec = diag_spec($pred, severity_error, phase_type_check, Msgs).
+    Spec = gen_spec($pred, severity_error, phase_type_check, Msgs).
 
 :- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
     prog_var) = list(format_piece).

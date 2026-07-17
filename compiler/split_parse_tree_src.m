@@ -38,7 +38,8 @@
     %
 :- pred split_into_component_modules_perform_checks(globals::in,
     parse_tree_src::in, list(parse_tree_module_src)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -64,7 +65,7 @@
 %---------------------------------------------------------------------------%
 
 split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
-        ParseTreeModuleSrcs, !Specs) :-
+        ParseTreeModuleSrcs, !ErrSpecs, !WarnSpecs) :-
     % This algorithm has two phases.
     %
     % The first phase, split_parse_tree_discover_submodules, builds up
@@ -82,12 +83,13 @@ split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
     % Going from ParseTreeSrc to directly to ParseTreeModuleSrcs would
     % therefore be possible only with excessively-complicated code.
     split_parse_tree_discover_submodules(ParseTreeSrc, ma_no_parent,
-        map.init, SplitModuleMap, map.init, SubModulesMap, !Specs),
+        map.init, SplitModuleMap, map.init, SubModulesMap,
+        !ErrSpecs, !WarnSpecs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     create_component_modules_depth_first(Globals, TopModuleName,
         SplitModuleMap, LeftOverSplitModuleMap,
         SubModulesMap, LeftOverSubModulesMap,
-        cord.init, ParseTreeModuleSrcCord, !Specs),
+        cord.init, ParseTreeModuleSrcCord, !ErrSpecs, !WarnSpecs),
     expect(map.is_empty(LeftOverSplitModuleMap), $pred,
         "LeftOverSplitModuleMap is not empty"),
     expect(map.is_empty(LeftOverSubModulesMap), $pred,
@@ -228,10 +230,11 @@ split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
 :- pred split_parse_tree_discover_submodules(parse_tree_src::in,
     module_ancestors::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
-        !SplitModuleMap, !SubModulesMap, !Specs) :-
+        !SplitModuleMap, !SubModulesMap, !ErrSpecs, !WarnSpecs) :-
     ParseTree = parse_tree_src(ModuleName, Context, ModuleComponentsCord),
     ModuleComponents = cord.list(ModuleComponentsCord),
     % If this module is a submodule, record its relationship to its parent.
@@ -241,7 +244,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
     SubModuleSectionAncestors = sa_parent(ModuleName, ModuleAncestors),
     split_components_discover_submodules(ModuleName, ModuleComponents,
         SubModuleSectionAncestors, !SplitModuleMap, !SubModulesMap,
-        map.init, SubInclInfoMap0, cord.init, ItemBlockCord0, !Specs),
+        map.init, SubInclInfoMap0, cord.init, ItemBlockCord0,
+        !ErrSpecs, !WarnSpecs),
     (
         ModuleAncestors = ma_no_parent,
         ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
@@ -267,9 +271,9 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             ),
             Msg = msg(Context, Pieces),
             OldMsg = msg(OldContext, OldPieces),
-            Spec = diag_spec($pred, severity_error, phase_pt2h,
+            Spec = gen_spec($pred, severity_error, phase_pt2h,
                 [Msg, OldMsg]),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         else
             Entry = split_nested(split_nested_top_module(Context),
                 ItemBlockCord0, SubInclInfoMap0),
@@ -285,10 +289,10 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenInt = no,
             SeenImp = no,
             warn_empty_submodule(ModuleName, Context, ParentModuleName,
-                !Specs),
+                !WarnSpecs),
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
                 report_duplicate_submodule(ModuleName, Context,
-                    dup_empty, ParentModuleName, OldEntry, !Specs)
+                    dup_empty, ParentModuleName, OldEntry, !ErrSpecs)
             else
                 SplitNested = split_nested_empty(Context),
                 Entry = split_nested(SplitNested, ItemBlockCord0,
@@ -316,7 +320,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     ;
                         OldSplitNested = split_nested_empty(EmptyContext),
                         warn_duplicate_of_empty_submodule(ModuleName,
-                            ParentModuleName, Context, EmptyContext, !Specs),
+                            ParentModuleName, Context, EmptyContext,
+                            !WarnSpecs),
                         NewSplitNested = split_nested_only_int(Context),
                         NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                             SubInclInfoMap0),
@@ -327,12 +332,12 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                         ; OldSplitNested = split_nested_int_imp(_, _)
                         ),
                         report_duplicate_submodule(ModuleName, Context,
-                            dup_int_only, ParentModuleName, OldEntry, !Specs)
+                            dup_int_only, ParentModuleName, OldEntry, !ErrSpecs)
                     )
                 ;
                     OldEntry = split_included(_),
                     report_duplicate_submodule(ModuleName, Context,
-                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                        dup_int_only, ParentModuleName, OldEntry, !ErrSpecs),
                     % Record the nested module, to prevent any complaints by
                     % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_only_int(Context),
@@ -367,7 +372,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     ;
                         OldSplitNested = split_nested_empty(EmptyContext),
                         warn_duplicate_of_empty_submodule(ModuleName,
-                            ParentModuleName, Context, EmptyContext, !Specs),
+                            ParentModuleName, Context, EmptyContext,
+                            !WarnSpecs),
                         NewSplitNested = split_nested_only_imp(Context),
                         NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                             SubInclInfoMap0),
@@ -378,12 +384,13 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                         ; OldSplitNested = split_nested_int_imp(_, _)
                         ),
                         report_duplicate_submodule(ModuleName, Context,
-                            dup_imp_only, ParentModuleName, OldEntry, !Specs)
+                            dup_imp_only, ParentModuleName, OldEntry,
+                            !ErrSpecs)
                     )
                 ;
                     OldEntry = split_included(_),
                     report_duplicate_submodule(ModuleName, Context,
-                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                        dup_int_only, ParentModuleName, OldEntry, !ErrSpecs),
                     % Record the nested module, to prevent any complaints by
                     % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_only_imp(Context),
@@ -407,7 +414,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     (
                         OldSplitNested = split_nested_empty(EmptyContext),
                         warn_duplicate_of_empty_submodule(ModuleName,
-                            ParentModuleName, Context, EmptyContext, !Specs),
+                            ParentModuleName, Context, EmptyContext,
+                            !WarnSpecs),
                         NewSplitNested =
                             split_nested_int_imp(Context, Context),
                         NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
@@ -420,12 +428,12 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                         ; OldSplitNested = split_nested_int_imp(_, _)
                         ),
                         report_duplicate_submodule(ModuleName, Context,
-                            dup_int_imp, ParentModuleName, OldEntry, !Specs)
+                            dup_int_imp, ParentModuleName, OldEntry, !ErrSpecs)
                     )
                 ;
                     OldEntry = split_included(_),
                     report_duplicate_submodule(ModuleName, Context,
-                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                        dup_int_only, ParentModuleName, OldEntry, !ErrSpecs),
                     % Record the nested module, to prevent any complaints by
                     % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_int_imp(Context, Context),
@@ -466,20 +474,21 @@ get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
     module_to_submodules_map::in, module_to_submodules_map::out,
     submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 split_components_discover_submodules(_, [],
         _, !SplitModuleMap, !SubModulesMap,
-        !SubInclInfoMap, !RawItemBlockCord, !Specs).
+        !SubInclInfoMap, !RawItemBlockCord, !ErrSpecs, !WarnSpecs).
 split_components_discover_submodules(ModuleName, [Component | Components],
         SectionAncestors, !SplitModuleMap, !SubModulesMap,
-        !SubInclInfoMap, !RawItemBlockCord, !Specs) :-
+        !SubInclInfoMap, !RawItemBlockCord, !ErrSpecs, !WarnSpecs) :-
     split_component_discover_submodules(ModuleName, Component,
         SectionAncestors, !SplitModuleMap, !SubModulesMap,
-        !SubInclInfoMap, !RawItemBlockCord, !Specs),
+        !SubInclInfoMap, !RawItemBlockCord, !ErrSpecs, !WarnSpecs),
     split_components_discover_submodules(ModuleName, Components,
         SectionAncestors, !SplitModuleMap, !SubModulesMap,
-        !SubInclInfoMap, !RawItemBlockCord, !Specs).
+        !SubInclInfoMap, !RawItemBlockCord, !ErrSpecs, !WarnSpecs).
 
 :- pred split_component_discover_submodules(module_name::in,
     module_component::in, section_ancestors::in,
@@ -487,11 +496,12 @@ split_components_discover_submodules(ModuleName, [Component | Components],
     module_to_submodules_map::in, module_to_submodules_map::out,
     submodule_include_info_map::in, submodule_include_info_map::out,
     cord(raw_item_block)::in, cord(raw_item_block)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         !SplitModuleMap, !SubModulesMap, !SubInclInfoMap,
-        !RawItemBlockCord, !Specs) :-
+        !RawItemBlockCord, !ErrSpecs, !WarnSpecs) :-
     (
         Component = mc_section(ComponentModuleName, SectionKind,
             SectionContext, IncludesCord, AvailsCord, FIMsCord, ItemsCord),
@@ -501,7 +511,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         FIMs = cord.list(FIMsCord),
         discover_included_submodules(Includes, SectionAncestors,
             cord.init, OKIncludesCord,
-            !SplitModuleMap, !SubModulesMap, !Specs),
+            !SplitModuleMap, !SubModulesMap, !ErrSpecs, !WarnSpecs),
         OKIncludes = cord.list(OKIncludesCord),
         RawItemBlock = item_block(ComponentModuleName, SectionKind,
             OKIncludes, Avails, FIMs, Items),
@@ -540,7 +550,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     SectionContext, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             )
         )
     ;
@@ -567,7 +577,8 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         NestedModuleAncestors = ma_parent(SectionKind, SectionContext,
             SectionAncestors),
         split_parse_tree_discover_submodules(NestedModuleParseTree,
-            NestedModuleAncestors, !SplitModuleMap, !SubModulesMap, !Specs)
+            NestedModuleAncestors, !SplitModuleMap, !SubModulesMap,
+            !ErrSpecs, !WarnSpecs)
     ).
 
 %---------------------%
@@ -576,12 +587,15 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
     section_ancestors::in, cord(item_include)::in, cord(item_include)::out,
     split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 discover_included_submodules([], _,
-        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap,
+        !ErrSpecs, !WarnSpecs).
 discover_included_submodules([Include | Includes], SectionAncestors,
-        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs) :-
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap,
+        !ErrSpecs, !WarnSpecs) :-
     Include = item_include(InclModuleName, Context, _SeqNum),
     ( if map.search(!.SplitModuleMap, InclModuleName, OldEntry) then
         SectionAncestors = sa_parent(ParentModuleName, _),
@@ -604,8 +618,8 @@ discover_included_submodules([Include | Includes], SectionAncestors,
             words("of that previous declaration."), nl],
         Msg = msg(Context, Pieces1 ++ Pieces2),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]),
-        !:Specs = [Spec | !.Specs]
+        Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]),
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     else
         Entry = split_included(Context),
         map.det_insert(InclModuleName, Entry, !SplitModuleMap),
@@ -614,7 +628,8 @@ discover_included_submodules([Include | Includes], SectionAncestors,
         cord.snoc(Include, !OKIncludesCord)
     ),
     discover_included_submodules(Includes, SectionAncestors,
-        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap,
+        !ErrSpecs, !WarnSpecs).
 
 %---------------------------------------------------------------------------%
 %
@@ -739,10 +754,12 @@ split_nested_info_get_context(SplitNested) = Context :-
     module_name::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
     cord(parse_tree_module_src)::in, cord(parse_tree_module_src)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 create_component_modules_depth_first(Globals, ModuleName,
-        !SplitModuleMap, !SubModulesMap, !ParseTreeModuleSrcCord, !Specs) :-
+        !SplitModuleMap, !SubModulesMap, !ParseTreeModuleSrcCord,
+        !ErrSpecs, !WarnSpecs) :-
     map.det_remove(ModuleName, Entry, !SplitModuleMap),
     (
         Entry = split_included(_),
@@ -767,7 +784,7 @@ create_component_modules_depth_first(Globals, ModuleName,
                     [words("missing its interface section.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ),
 
         % The reason why we do this even for split_nested_empty is that
@@ -783,15 +800,17 @@ create_component_modules_depth_first(Globals, ModuleName,
         RawCompUnit = raw_compilation_unit(ModuleName, Context,
             RawItemBlocks),
         check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
-            ParseTreeModuleSrc, !Specs),
+            ParseTreeModuleSrc, ConvertErrSpecs, ConvertWarnSpecs),
         cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord),
+        !:ErrSpecs = ConvertErrSpecs ++ !.ErrSpecs,
+        !:WarnSpecs = ConvertWarnSpecs ++ !.WarnSpecs,
 
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
             list.sort_and_remove_dups(cord.list(SubModulesCord), SubModules),
-            list.foldl4(
+            list.foldl5(
                 create_component_modules_depth_first(Globals),
                 SubModules, !SplitModuleMap, !SubModulesMap,
-                !ParseTreeModuleSrcCord, !Specs)
+                !ParseTreeModuleSrcCord, !ErrSpecs, !WarnSpecs)
         else
             % ModuleName has no submodules for us to process.
             true
@@ -882,7 +901,7 @@ submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods,
 %---------------------------------------------------------------------------%
 
 :- pred warn_empty_submodule(module_name::in, prog_context::in,
-    module_name::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    module_name::in, list(warn_spec)::in, list(warn_spec)::out) is det.
 
 warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
     Pieces = [words("Warning:")] ++
@@ -899,7 +918,7 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
 
 :- pred warn_duplicate_of_empty_submodule(module_name::in, module_name::in,
     prog_context::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
         Context, EmptyContext, !Specs) :-
@@ -911,7 +930,7 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
     Msg2 = msg(EmptyContext, Pieces2),
-    Spec = diag_spec($pred, severity_warning(warn_nothing_exported),
+    Spec = gen_spec($pred, severity_warning(warn_nothing_exported),
         phase_pt2h, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
@@ -925,7 +944,7 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
 
 :- pred report_duplicate_submodule(module_name::in, prog_context::in,
     duplicated_section::in, module_name::in, split_module_entry::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_duplicate_submodule(ModuleName, Context, DupSection,
         ParentModuleName, OldEntry, !Specs) :-
@@ -943,7 +962,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             words("of that previous declaration."), nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+        Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     ;
         OldEntry = split_nested(SplitNested, _, _),
         (
@@ -959,7 +978,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             OldPieces = [words("That previous declaration was here."), nl],
             Msg = msg(Context, Pieces),
             OldMsg = msg(OldContext, OldPieces),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
         ;
             DupSection = dup_int_only,
             report_duplicate_submodule_one_section(ModuleName, Context,
@@ -998,7 +1017,7 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
 
 :- pred report_duplicate_submodule_one_section(module_name::in,
     prog_context::in, module_section::in, module_name::in,
-    split_nested_info::in, diag_spec::out) is det.
+    split_nested_info::in, err_spec::out) is det.
 
 report_duplicate_submodule_one_section(ModuleName, Context, Section,
         ParentModuleName, SplitNested, Spec) :-
@@ -1054,7 +1073,7 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
 
 :- pred report_duplicate_submodule_one_section_2(module_name::in,
     prog_context::in, string::in, module_name::in, prog_context::in,
-    diag_spec::out) is det.
+    err_spec::out) is det.
 
 report_duplicate_submodule_one_section_2(ModuleName, Context,
         SectionWord, ParentModuleName, OldContext, Spec) :-
@@ -1070,11 +1089,11 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         [nl],
     Msg = msg(Context, Pieces),
     OldMsg = msg(OldContext, OldPieces),
-    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
+    Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
 
 :- pred report_duplicate_submodule_both_sections(module_name::in,
     prog_context::in, module_name::in, prog_context::in, prog_context::in,
-    diag_spec::out) is det.
+    err_spec::out) is det.
 
 report_duplicate_submodule_both_sections(ModuleName, Context,
         ParentModuleName, OldIntContext, OldImpContext, Spec) :-
@@ -1093,7 +1112,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
             [nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldIntContext, OldPieces),
-        Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
+        Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     else
         OldIntPieces = [words("However, its interface"),
             words("was also declared")] ++
@@ -1106,12 +1125,12 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
         Msg = msg(Context, Pieces),
         OldIntMsg = msg(OldIntContext, OldIntPieces),
         OldImpMsg = msg(OldImpContext, OldImpPieces),
-        Spec = diag_spec($pred, severity_error, phase_pt2h,
+        Spec = gen_spec($pred, severity_error, phase_pt2h,
             [Msg, OldIntMsg, OldImpMsg])
     ).
 
 :- pred report_duplicate_submodule_vs_top(module_name::in, prog_context::in,
-    module_name::in, diag_spec::out) is det.
+    module_name::in, err_spec::out) is det.
 
 report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         Spec) :-

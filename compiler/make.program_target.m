@@ -134,7 +134,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
                 LinkedTargetSucceeded, !Info, !Specs, !IO)
         ;
             LibgradeCheckSpecs = [_ | _],
-            !:Specs = LibgradeCheckSpecs ++ !.Specs,
+            !:Specs = coerce(LibgradeCheckSpecs) ++ !.Specs,
             LinkedTargetSucceeded = did_not_succeed
         )
     ).
@@ -654,7 +654,7 @@ link_and_write_error_specs(Globals, ProgressStream,
         Globals, LinkTargetType, ModuleName, ObjectsList,
         Specs, Succeeded, !IO),
     % The errors we can get here are not specific to any Mercury module.
-    write_error_specs(ProgressStream, Globals, Specs, !IO).
+    write_diag_specs(ProgressStream, Globals, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 

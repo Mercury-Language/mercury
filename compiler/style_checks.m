@@ -605,7 +605,7 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         FirstMsg = msg(FirstContext, FirstPieces),
         SecondMsg = msg(SecondContext, SecondPieces),
         Severity = severity_warning(warn_non_contiguous_decls),
-        Spec = diag_spec($pred, Severity, phase_style, [FirstMsg, SecondMsg]),
+        Spec = gen_spec($pred, Severity, phase_style, [FirstMsg, SecondMsg]),
         Specs0 = !.StyleInfo ^ style_decl_gap_specs,
         Specs = [Spec | Specs0],
         !StyleInfo ^ style_decl_gap_specs := Specs
@@ -784,7 +784,7 @@ report_non_contiguous_clauses(ModuleInfo, ItemKind, OtherPredIds, MainPredId,
         ItemKind = clauses_and_foreign_procs,
         WarnOption = warn_non_contiguous_foreign_procs
     ),
-    Spec = diag_spec($pred, severity_warning(WarnOption),
+    Spec = gen_spec($pred, severity_warning(WarnOption),
         phase_type_check, Msgs),
     !:Specs = [Spec | !.Specs].
 

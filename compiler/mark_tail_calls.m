@@ -1246,7 +1246,7 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
         words("this")] ++ color_as_subject([words("self-recursive call")]) ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = diag_spec($pred, Severity, phase_code_gen,
+    Spec = gen_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -1280,7 +1280,7 @@ add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
         [words("to"), unqual_pf_sym_name_pred_form_arity(CalleePFSNA)] ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = diag_spec($pred, Severity, phase_code_gen,
+    Spec = gen_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 

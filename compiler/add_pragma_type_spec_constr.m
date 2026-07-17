@@ -21,7 +21,9 @@
 :- pred add_pragma_type_spec_constr(io.text_output_stream::in,
     decl_pragma_type_spec_constr_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out,
+    list(info_spec)::in, list(info_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -69,7 +71,7 @@
 %---------------------------------------------------------------------------%
 
 add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs) :-
     % The general approach we use to implement type_spec_constrained_preds
     % pragmas is to compute the set of ordinary type_spec pragmas they
     % correspond to, and add *those* to !ModuleInfo.
@@ -150,7 +152,7 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
             Severity =
                 severity_informational(inform_generated_type_spec_pragmas),
             Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:InfoSpecs = [Spec | !.InfoSpecs]
         ),
         % Actually add the generated type_spec pragmas to !ModuleInfo.
         %
@@ -158,11 +160,11 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
         % to !ModuleInfo results in any errors, they are the compiler's fault,
         % not the user's. But for now, we want to report them, because if
         % we ignored them, we would never be alerted to their existence.
-        list.foldl3(add_pragma_type_spec, SortedPragmas,
-            !ModuleInfo, !QualInfo, !Specs)
+        list.foldl4(add_pragma_type_spec, SortedPragmas,
+            !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
     ;
         ClassSpecs = [_ | _],
-        !:Specs = ClassSpecs ++ !.Specs
+        !:ErrSpecs = ClassSpecs ++ !.ErrSpecs
     ).
 
 %---------------------%
@@ -189,10 +191,10 @@ add_pragma_type_spec_constr(ProgressStream, TypeSpecConstr,
 :- pred build_class_constraint_map(io.text_output_stream::in, class_table::in,
     maybe_apply_to_supers::in, tvarset::in, var_or_ground_constraint::in,
     type_spec_constraint_map::in, type_spec_constraint_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
-        PragmaTVarSet, Constraint, !ClassConstraintMap, !Specs) :-
+        PragmaTVarSet, Constraint, !ClassConstraintMap, !ErrSpecs) :-
     Constraint =
         var_or_ground_constraint(ClassSymName, VarOrGroundTypes, Context),
     list.length(VarOrGroundTypes, NumTypes),
@@ -256,7 +258,7 @@ build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
         % XXX Make any code for doing that general enough to handle
         % all other error messages about references to unknown classes.
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
 
     % This predicate does the same job as build_class_constraint_map above,

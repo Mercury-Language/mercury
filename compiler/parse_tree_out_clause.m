@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2020-2024 The Mercury team.
+% Copyright (C) 2015-2017, 2020-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -117,7 +117,7 @@ mercury_format_instance_method_clause(MethodName, ItemClause, S, !U) :-
             FuncArgTerms, ResultTerm, BodyGoal, !U)
     ).
 
-:- pred get_clause_body_goal(maybe2(goal, T)::in, goal::out) is det.
+:- pred get_clause_body_goal(parse_result1(goal)::in, goal::out) is det.
 
 get_clause_body_goal(MaybeBodyGoal, BodyGoal) :-
     (

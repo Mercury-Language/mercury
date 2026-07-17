@@ -116,19 +116,19 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         ),
         !UrInfo ^ ui_varset := VarSet,
         (
-            MaybeBodyGoal0 = ok2(BodyGoal, BodyGoalWarningSpecs),
-            add_unravel_specs(BodyGoalWarningSpecs, !UrInfo),
+            MaybeBodyGoal0 = ok2(BodyGoal, BodyGoalWarnSpecs),
             MaybeBodyGoal = ok1(BodyGoal)
         ;
-            MaybeBodyGoal0 = error2(BodyGoalSpecs),
-            MaybeBodyGoal = error1(BodyGoalSpecs)
-        )
+            MaybeBodyGoal0 = error2({BodyGoalErrSpecs, BodyGoalWarnSpecs}),
+            MaybeBodyGoal = error1(BodyGoalErrSpecs)
+        ),
+        add_unravel_warns(BodyGoalWarnSpecs, !UrInfo)
     ),
     parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
         MaybeLambdaHead, !UrInfo),
     (
         MaybeLambdaHead = error1(LambdaHeadSpecs),
-        add_unravel_oom_specs(LambdaHeadSpecs, !UrInfo),
+        add_unravel_oom_errs(LambdaHeadSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         Expansion = expansion(not_fgti, cord.empty)
     ;
@@ -366,7 +366,7 @@ split_last_two(Element1, Element2, Elements3plus, Main, LastButOne, Last) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_lambda_args_func(term.context::in, list(term)::in, term::in,
-    list(lambda_arg)::out, list(diag_spec)::out, list(diag_spec)::out,
+    list(lambda_arg)::out, list(err_spec)::out, list(err_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
@@ -400,7 +400,7 @@ parse_lambda_args_func(Context, ArgModeTerms, FuncRetArgModeTerm,
     ).
 
 :- pred parse_lambda_args_pred(term.context::in, list(term)::in,
-    list(lambda_arg)::out, list(diag_spec)::out, list(diag_spec)::out,
+    list(lambda_arg)::out, list(err_spec)::out, list(err_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args_pred(Context, ArgModeTerms,
@@ -447,7 +447,7 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
 
 :- pred add_some_not_all_args_have_modes_error(prog_context::in,
     list(lambda_arg)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     AbsentArgPieces =
@@ -464,7 +464,7 @@ add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred add_pred_no_args_have_modes_error(prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_pred_no_args_have_modes_error(Context, !Specs) :-
     % We could use _AbsentArgs to make the error message more detailed.
@@ -541,8 +541,8 @@ project_lambda_var_arg_mode(LambdaArg) = LambdaVar - Mode :-
     %
 :- pred parse_lambda_args(lambda_arg_kind::in,
     list(term)::in, list(lambda_arg)::out, int::in, int::out,
-    list(diag_spec)::in, list(diag_spec)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_args(_Kind, [], [], !ArgNum, !BadModeSpecs, !SVarSpecs, !UrInfo).
@@ -556,8 +556,8 @@ parse_lambda_args(Kind, [HeadArgModeTerm | TailArgModeTerms],
 
 :- pred parse_lambda_arg(lambda_arg_kind::in,
     term::in, lambda_arg::out, int::in, int::out,
-    list(diag_spec)::in, list(diag_spec)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
     unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_arg(Kind, ArgModeTerm, LambdaArg, !ArgNum,
@@ -678,9 +678,9 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
                 ho_groundness,
                 pred_or_func,
                 list(lambda_arg),
-                list(diag_spec),       % Errors about unparseable and/or
+                list(err_spec),         % Errors about unparseable and/or
                                         % missing arg modes.
-                list(diag_spec),       % Errors about !X arguments.
+                list(err_spec),         % Errors about !X arguments.
                 maybe1(determinism)     % The determinism of the lambda expr.
             ).
 
@@ -745,7 +745,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         MaybeDetism = ok1(Detism)
     ;
         MaybeDetism = error1(DetismSpecs),
-        add_unravel_oom_specs(DetismSpecs, !UrInfo),
+        add_unravel_oom_errs(DetismSpecs, !UrInfo),
         % Due to the error, this dummy value won't be used.
         Detism = detism_det
     ),
@@ -753,7 +753,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         MaybeBodyGoal = ok1(BodyGoal)
     ;
         MaybeBodyGoal = error1(BodyGoalSpecs),
-        add_unravel_oom_specs(BodyGoalSpecs, !UrInfo),
+        add_unravel_oom_errs(BodyGoalSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         % Due to the error, this dummy value won't be used.
         BodyGoal = true_expr(Context)
@@ -762,7 +762,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
     ArgSpecs = BadModeSpecs ++ SVarSpecs,
     (
         ArgSpecs = [_ | _],
-        add_unravel_specs(ArgSpecs, !UrInfo),
+        add_unravel_errs(ArgSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         Goal = true_goal_with_context(Context)
     ;
@@ -896,7 +896,7 @@ warn_about_any_inconsistent_inst_vars(InstVarSet, Context, Modes, !UrInfo) :-
             piece_list_to_color_pieces(color_subject, "and", [], VarPieces) ++
             color_as_incorrect([words("are inconsistent.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        add_unravel_spec(Spec, !UrInfo)
+        add_unravel_err(Spec, !UrInfo)
     ).
 
     % Partition the lists of arguments and variables into lists

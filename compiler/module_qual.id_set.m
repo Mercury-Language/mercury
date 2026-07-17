@@ -358,7 +358,7 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName, !Info) :-
             record_used_item(UsedItemType, ItemName0, ItemName), !Info)
     ).
 
-:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in, diag_spec::in,
+:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in, err_spec::in,
     mq_info::in, mq_info::out) is det.
 
 mq_info_record_undef_mq_id(IdType, Id, Spec, !Info) :-

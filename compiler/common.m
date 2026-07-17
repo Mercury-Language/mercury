@@ -1199,7 +1199,7 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 PrevMsg = gen_msg(yes(PrevContext), always_treat_as_first,
                     0u, [always(PrevPieces)]),
                 Severity = severity_warning(warn_duplicate_calls),
-                Spec = diag_spec($pred, Severity,
+                Spec = gen_spec($pred, Severity,
                     phase_simplify(report_in_any_mode), [Msg, PrevMsg]),
                 simplify_info_add_message(Spec, !Info)
             else

@@ -1482,7 +1482,7 @@ report_missing_higher_order_inst(PredInfo, VarTable, Var, Context) = Spec :-
         words("of the generated code in this grade.")],
     Msg = simple_msg(Context, [always(InPieces), always(ErrorPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = diag_spec($pred, severity_error, phase_code_gen, [Msg]).
+    Spec = gen_spec($pred, severity_error, phase_code_gen, [Msg]).
 
 %---------------------------------------------------------------------------%
 

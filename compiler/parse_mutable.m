@@ -397,7 +397,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
     maybe(pair(term, unit))::out,
     maybe(pair(term, unit))::in,
     maybe(pair(term, unit))::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 record_mutable_attributes(_VarSet, [], !LangMap,
         !MaybeTrailed, !MaybeConstant, !MaybeIO, !MaybeLocal, !Specs).
@@ -563,7 +563,7 @@ default_mutable_attributes =
     ).
 
 :- pred report_repeated_or_conflicting_attributes(varset::in, term::in, T::in,
-    term::in, T::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    term::in, T::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
         !Specs) :-
@@ -582,7 +582,7 @@ report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
     ).
 
 :- pred report_conflicting_attributes(varset::in, term::in, term::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
     TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),

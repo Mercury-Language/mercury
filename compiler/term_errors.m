@@ -214,7 +214,7 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
@@ -253,7 +253,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,

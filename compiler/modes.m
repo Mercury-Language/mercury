@@ -506,7 +506,7 @@ modecheck_to_fixpoint(ProgressStream, WhatToCheck, MayChangeCalledProc,
                             DebugStream, !IO),
                         io.write_string(DebugStream,
                             "Inferences by current iteration:\n", !IO),
-                        write_error_specs(DebugStream, Globals,
+                        write_diag_specs(DebugStream, Globals,
                             InferenceSpecs, !IO),
                         io.write_string(DebugStream,
                             "End of inferences.\n", !IO)
@@ -772,7 +772,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                     verbose_only(verbose_once, VerbosePieces)])],
             pred_info_get_context(PredInfo, Context),
             Phase = phase_mode_check(report_in_any_mode),
-            Spec = diag_spec($pred, severity_error, Phase, Msgs),
+            Spec = gen_spec($pred, severity_error, Phase, Msgs),
             Specs = [Spec]
         )
     else
@@ -1016,7 +1016,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
                 WarningSpecs = list.map(mode_warning_info_to_spec(!.ModeInfo),
                     ModeWarnings),
                 ErrorAndWarningSpecs = ErrorSpecs ++ WarningSpecs ++
-                    StateVarWarningSpecs
+                    coerce(StateVarWarningSpecs)
             )
         ),
 
@@ -1838,7 +1838,7 @@ report_eval_method_requires_ground_args(ProcInfo, TabledMethod) = Spec :-
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase, [Msg]).
+    Spec = gen_spec($pred, severity_error, Phase, [Msg]).
 
 :- func report_eval_method_destroys_uniqueness(proc_info, tabled_eval_method)
     = diag_spec.
@@ -1859,7 +1859,7 @@ report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod) = Spec :-
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase, [Msg]).
+    Spec = gen_spec($pred, severity_error, Phase, [Msg]).
 
 :- func report_wrong_mode_for_main(proc_info) = diag_spec.
 

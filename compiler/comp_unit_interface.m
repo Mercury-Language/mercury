@@ -233,7 +233,7 @@ create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3) :-
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        _TypeSpecs, _InstModeSpecs,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
         OrigIntTypeClasses, OrigIntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, _IntDeclMarkers, _IntPromises, _IntBadClauses,
@@ -577,7 +577,8 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
-    GetSpecs = get_read_module_specs(GetErrors),
+    get_read_module_specs(GetErrors, GetErrSpecs, GetWarnSpecs),
+    GetSpecs = coerce(GetErrSpecs) ++ coerce(GetWarnSpecs),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -586,7 +587,10 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
     then
         % Module-qualify the aug_make_int_unit.
         module_qualify_aug_make_int_unit(Globals,
-            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
+            AugMakeIntUnit1, AugMakeIntUnit,
+            [], QualErrSpecs, [], QualWarnSpecs),
+        QualSpecs : list(diag_spec) =
+            coerce(QualErrSpecs) ++ coerce(QualWarnSpecs),
         filter_interface_generation_specs(Globals,
             GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
         (
@@ -616,11 +620,11 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
             GenerateResult = gpti0_error(ModuleName, [], Specs)
         )
     else
+        maybe_add_delayed_messages(AugMakeIntUnit1, GetSpecs, Specs),
         % The negative indent is to let the rest of the diag_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
-        maybe_add_delayed_messages(AugMakeIntUnit1, GetSpecs, Specs),
         GenerateResult = gpti0_error(ModuleName, PrefixPieces, Specs)
     ).
 
@@ -644,7 +648,7 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        _TypeSpecs, _InstModeSpecs,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
@@ -675,7 +679,7 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        [], [],
+        [], [], [], [],
 
         IntTypeClasses, coerce(IntAbsInstances0), IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, set.init,
@@ -711,7 +715,7 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0) :-
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        _TypeSpecs, _InstModeSpecs,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
@@ -769,7 +773,8 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
-    GetSpecs = get_read_module_specs(GetErrors),
+    get_read_module_specs(GetErrors, GetErrSpecs, GetWarnSpecs),
+    GetSpecs = coerce(GetErrSpecs) ++ coerce(GetWarnSpecs),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
@@ -790,7 +795,10 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
         % error messages or foregoing the generation of some non-avalanche
         % error messages. This position of this call makes the latter choice.
         module_qualify_aug_make_int_unit(Globals,
-            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
+            AugMakeIntUnit1, AugMakeIntUnit,
+            [], QualErrSpecs, [], QualWarnSpecs),
+        QualSpecs : list(diag_spec) =
+            coerce(QualErrSpecs) ++ coerce(QualWarnSpecs),
         filter_interface_generation_specs(Globals,
             GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
         (
@@ -883,7 +891,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClausePreds,
@@ -907,7 +915,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses, coerce(IntInstancesAbstract),
         IntPredDecls, IntModeDecls, IntDeclPragmas, IntDeclMarkers,
@@ -1173,7 +1181,7 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
-        _TypeSpecs, _InstModeSpecs,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises0, _IntBadClausePreds,
@@ -1261,13 +1269,17 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         IntInstDefns, _ImpInstDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
-        IntInstDefnMap, map.init, IntInstCtorCheckedMap, !Specs),
+        IntInstDefnMap, map.init, IntInstCtorCheckedMap,
+        [], InstErrSpecs, [], InstWarnSpecs),
+    !:Specs = coerce(InstErrSpecs) ++ coerce(InstWarnSpecs) ++ !.Specs,
 
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap0,
         IntModeDefns, _ImpModeDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
-        IntModeDefnMap, map.init, IntModeCtorCheckedMap, !Specs),
+        IntModeDefnMap, map.init, IntModeCtorCheckedMap,
+        [], ModeErrSpecs, [], ModeWarnSpecs),
+    !:Specs = coerce(ModeErrSpecs) ++ coerce(ModeWarnSpecs) ++ !.Specs,
 
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
@@ -1278,7 +1290,7 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         decide_repns_for_all_types_for_int1(Globals, ModuleName,
             TypeCtorCheckedMap0, DirectIntSpecs, IndirectIntSpecs,
             TypeCtorRepnMap, RepnSpecs),
-        !:Specs = !.Specs ++ RepnSpecs
+        !:Specs = coerce(RepnSpecs) ++ !.Specs
     ),
 
     IntInstances = list.map(check_instance_is_abstract, IntInstances0),

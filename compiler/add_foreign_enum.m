@@ -61,7 +61,7 @@
 :- pred add_pragma_foreign_enum(module_info::in,
     {item_mercury_status, item_foreign_enum_info}::in,
     type_ctor_to_foreign_enums_map::in, type_ctor_to_foreign_enums_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -74,7 +74,7 @@
     %
 :- pred add_pragma_foreign_export_enum(item_foreign_export_enum_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -377,7 +377,7 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
     prog_context::in, foreign_language::in, string::in,
     uppercase_export_enum::in, map(string, string)::in,
     list(constructor_repn)::in, map(string, string)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
         OverrideMap, CtorRepns, NameMap, !Specs) :-
@@ -473,7 +473,7 @@ add_ctor_to_name_map(_Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
     prog_context::in, for_fe_or_fee::in,
     prog_context::in, list(format_piece)::in, list(constructor)::in,
     assoc_list(sym_name, string)::in, bimap(string, string)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 build_mercury_foreign_map(TypeModuleName, TypeCtor, TypeDefnContext, ForWhat,
         Context, ContextPieces, Ctors, Overrides, OverrideMap, !Specs) :-
@@ -518,7 +518,7 @@ find_non_enum_ctors_build_valid_ctor_names([Ctor | Ctors],
 
 :- pred maybe_add_duplicate_foreign_enum_error(type_ctor::in,
     foreign_language::in, type_status::in, prog_context::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 maybe_add_duplicate_foreign_enum_error(TypeCtor, Lang, PragmaStatus,
         OldContext, Context, !Specs) :-
@@ -539,7 +539,7 @@ maybe_add_duplicate_foreign_enum_error(TypeCtor, Lang, PragmaStatus,
             words("was here."), nl],
         CurMsg = msg(Context, CurPieces),
         OldMsg = msg(OldContext, OldPieces),
-        Spec = diag_spec($pred, severity_error, phase_pt2h, [CurMsg, OldMsg]),
+        Spec = gen_spec($pred, severity_error, phase_pt2h, [CurMsg, OldMsg]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -549,7 +549,7 @@ maybe_add_duplicate_foreign_enum_error(TypeCtor, Lang, PragmaStatus,
     % for the builtin atomic types.
     %
 :- pred report_if_builtin_type(prog_context::in, string::in, type_ctor::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_if_builtin_type(Context, DeclName, TypeCtor, !Specs) :-
     TypeCtor = type_ctor(TypeSymName, TypeArity),
@@ -577,7 +577,7 @@ report_if_builtin_type(Context, DeclName, TypeCtor, !Specs) :-
 
 :- pred report_not_enum_type_non_du(for_fe_or_fee::in,
     type_ctor::in, hlds_type_body::in(non_du_type_body), prog_context::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 report_not_enum_type_non_du(ForWhat, TypeCtor, TypeBody, TypeDefnContext,
         EnumContext, !Specs) :-
@@ -604,7 +604,7 @@ report_not_enum_type_non_du(ForWhat, TypeCtor, TypeBody, TypeDefnContext,
         color_as_incorrect([words("there must not be any"),
             pragma_decl(PragmaName), words("declarations for it.")]) ++ [nl],
     TypePieces = [words("That Mercury definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_pt2h,
+    Spec = gen_spec($pred, severity_error, phase_pt2h,
         [msg(EnumContext, EnumPieces), msg(TypeDefnContext, TypePieces)]),
     !:Specs = [Spec | !.Specs].
 

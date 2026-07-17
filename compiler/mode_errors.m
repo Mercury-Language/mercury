@@ -692,7 +692,7 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words("Unifications of polymorphically-typed variables with"),
         words("partially instantiated modes are not allowed.")],
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -921,7 +921,7 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         quote("all [X] call(PredA, X) <=> call(PredB, X)"), suffix(","),
         words("instead of"), quote("PredA = PredB"), suffix("."), nl],
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
@@ -983,7 +983,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         MultiModeMsgs = ConnectMsgs ++ SubMsgs
     ),
     AllMsgs = MainMsgs ++ UniqMsgs ++ MultiModeMsgs,
-    Spec = diag_spec($pred, severity_error, Phase, AllMsgs).
+    Spec = gen_spec($pred, severity_error, Phase, AllMsgs).
 
 :- pred inst_has_uniqueness(mer_inst::in, uniqueness::in) is semidet.
 
@@ -1667,7 +1667,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
             msg(ImpureGoalContext, Pieces2)]
     ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
+    Spec = gen_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
 
 :- func prefix_with_blank_line(prog_context, list(diag_msg)) = list(diag_msg).
 
@@ -1771,7 +1771,7 @@ mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 %---------------------------------------------------------------------------%
@@ -1791,7 +1791,7 @@ mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
         one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 :- func merge_context_to_string(merge_context) = string.
@@ -2120,7 +2120,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
             [nl]
     ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [simple_msg(Context,
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_always, VerbosePieces)])]).
@@ -2281,7 +2281,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             LaterMsgs = start_each_msg_with_blank_line([LaterHead | LaterTail])
         ),
         Phase = phase_mode_check(report_in_any_mode),
-        Spec = diag_spec($pred, severity_error, Phase, [InitMsg | LaterMsgs])
+        Spec = gen_spec($pred, severity_error, Phase, [InitMsg | LaterMsgs])
     ;
         CalleeModeErrors = [],
         unexpected($pred, "no error")
@@ -2321,7 +2321,7 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
                 NonImpliedInitialInst),
         Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces)
     else
-        Spec = diag_spec($pred, severity_informational(report_noop), Phase,
+        Spec = gen_spec($pred, severity_informational(report_noop), Phase,
             [simple_msg(Context, [])])
     ).
 
@@ -2391,7 +2391,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
         words("can be written"),
         quote("any_func(Args) = Result is det :- ..."), suffix("."), nl]),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = diag_spec($pred, severity_error, Phase,
+    Spec = gen_spec($pred, severity_error, Phase,
         [simple_msg(Context, [Always, VerboseOnly])]).
 
 %---------------------------------------------------------------------------%

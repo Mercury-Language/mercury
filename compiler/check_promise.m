@@ -364,7 +364,7 @@ report_assertion_interface_error(ModuleName, Context,
         [words("Either move the promise into the implementation section,"),
         words("or move the definition into the interface."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].
 
@@ -389,7 +389,7 @@ report_assertion_module_error(ModuleName, Context, PredModuleName,
         qual_sym_name(PredModuleName), words("module."),
         words("In most cases, the latter is preferable."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].
 

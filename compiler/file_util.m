@@ -126,9 +126,9 @@
     file_name::in, io.error::in, io::di, io::uo) is det.
 
 :- func construct_spec_for_cannot_open_file_for_input(file_name,
-    maybe(module_file_id), io.error) = diag_spec.
+    maybe(module_file_id), io.error) = err_spec.
 :- func construct_spec_for_cannot_open_file_for_output(file_name, io.error)
-    = diag_spec.
+    = err_spec.
 
 %---------------------------------------------------------------------------%
 

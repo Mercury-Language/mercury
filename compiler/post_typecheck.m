@@ -340,7 +340,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints)
             ConstrainedGoals),
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
     ),
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [MainMsg | ContextMsgs]).
 
 :- func constraint_to_error_pieces(tvarset, prog_constraint)
@@ -728,7 +728,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         words("My apologies.)"), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = diag_spec($pred, severity_warning(warn_unresolved_polymorphism),
+    Spec = gen_spec($pred, severity_warning(warn_unresolved_polymorphism),
         phase_type_check, [Msg | AnonVarMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -986,7 +986,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         color_as_incorrect([words("indistinguishable.")]) ++
         [nl],
     OldPieces = [words("Here is the conflicting mode declaration."), nl],
-    Spec = diag_spec($pred, severity_error,
+    Spec = gen_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),

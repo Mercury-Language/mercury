@@ -1487,7 +1487,10 @@ record_and_report_missing_timestamp(Globals, FileName, IOError,
             words("Smart recompilation will not work."), nl],
         Severity = severity_warning(warn_smart_recompilation),
         Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
-        add_nonfatal_error(rme_cannot_find_modify_time, Spec, !Errors)
+        % XXX DIAG_SPEC This used to be:
+        %   add_nonfatal_error(rme_cannot_find_modify_time, Spec, !Errors)
+        % but this is a warning, not an error.
+        add_warning(Spec, !Errors)
     ;
         Warn = no
     ).

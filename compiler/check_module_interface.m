@@ -30,7 +30,7 @@
     % report a warning.
     %
 :- pred check_module_interface_for_no_exports(globals::in,
-    parse_tree_module_src::in, list(diag_spec)::out) is det.
+    parse_tree_module_src::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -63,7 +63,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, Specs) :-
             _IntFIMs, _ImpFIMs, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
             TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-            TypeSpecs, InstModeSpecs,
+            TypeErrSpecs, _TypeWarnSpecs, InstModeErrSpecs, _InstModeWarnSpecs,
 
             IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
             IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClauses,
@@ -133,8 +133,8 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, Specs) :-
             %   a "no exports" warning or not. This means that the warning
             %   is not really needed *now*; it can be generated later,
             %   once the complained-about invalid definitions are fixed.
-            TypeSpecs = [],
-            InstModeSpecs = [],
+            TypeErrSpecs = [],
+            InstModeErrSpecs = [],
 
             IntTypeClasses = [],
             IntInstances = [],
@@ -164,7 +164,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, Specs) :-
     ;       1.
 
 :- pred generate_no_exports_warning(module_name::in, prog_context::in,
-    int::in(num_int_incls), diag_spec::out) is det.
+    int::in(num_int_incls), warn_spec::out) is det.
 
 generate_no_exports_warning(ModuleName, Context, NumIntIncls, Spec) :-
     AlwaysPieces =
@@ -201,7 +201,7 @@ generate_no_exports_warning(ModuleName, Context, NumIntIncls, Spec) :-
     Msg = simple_msg(Context,
         [always(AlwaysPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = diag_spec($pred, severity_warning(warn_nothing_exported),
+    Spec = gen_spec($pred, severity_warning(warn_nothing_exported),
         phase_t2pt, [Msg]).
 
 %---------------------------------------------------------------------------%

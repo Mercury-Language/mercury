@@ -33,7 +33,7 @@
 
     % create_type_ctor_checked_map(InsistOnDefn,
     %   IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-    %   TypeCtorCheckedMap, !Specs):
+    %   TypeCtorCheckedMap, !ErrSpecs, !WarnSpecs):
     %
     % Given the type definitions in both the interface and implementation
     % sections of a module, and foreign enum definitions in the implementation
@@ -61,10 +61,11 @@
 :- pred create_type_ctor_checked_map(maybe_insist_on_defn::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
     type_ctor_foreign_enum_map::in, type_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
     % report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
-    %   EnumContext, !Specs)
+    %   EnumContext, !ErrSpecs)
     %
     % Report a foreign_enum or foreign_export_enum declaration
     % for a non-enum du type.
@@ -73,21 +74,23 @@
     %
 :- pred report_not_enum_type_du(for_fe_or_fee::in, type_ctor::in,
     prog_context::in, list(sym_name_arity)::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred create_inst_ctor_checked_map(maybe_insist_on_defn::in,
     inst_ctor_defn_map::in, inst_ctor_defn_map::in,
     inst_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred create_mode_ctor_checked_map(maybe_insist_on_defn::in,
     mode_ctor_defn_map::in, mode_ctor_defn_map::in,
     mode_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -120,7 +123,7 @@
 %---------------------------------------------------------------------------%
 
 create_type_ctor_checked_map(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
-        ImpForeignEnumMap, CheckedMap, !Specs) :-
+        ImpForeignEnumMap, CheckedMap, !ErrSpecs, !WarnSpecs) :-
     map.keys_as_set(IntTypeDefnMap, IntDefnTypeCtors),
     map.keys_as_set(ImpTypeDefnMap, ImpDefnTypeCtors),
     % Foreign_enum items are not allowed in interface sections.
@@ -132,24 +135,25 @@ create_type_ctor_checked_map(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
         set.union_list([
             IntDefnTypeCtors, ImpDefnTypeCtors, ImpEnumTypeCtors
         ])),
-    list.foldl2(
+    list.foldl3(
         check_type_ctor_defns(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
             ImpForeignEnumMap),
-        TypeCtors, map.init, CheckedMap, !Specs),
+        TypeCtors, map.init, CheckedMap, !ErrSpecs, !WarnSpecs),
 
     map.foldl(add_type_ctor_to_field_name_map, CheckedMap,
         map.init, FieldNameMap),
-    map.foldl(report_any_duplicate_field_names, FieldNameMap, !Specs).
+    map.foldl(report_any_duplicate_field_names, FieldNameMap, !ErrSpecs).
 
 :- pred check_type_ctor_defns(maybe_insist_on_defn::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
     type_ctor_foreign_enum_map::in, type_ctor::in,
     type_ctor_checked_map::in, type_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 check_type_ctor_defns(InsistOnDefn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        TypeCtor, !TypeCtorCheckedMap, !Specs) :-
+        TypeCtor, !TypeCtorCheckedMap, !ErrSpecs, !WarnSpecs) :-
     % A given type constructor may have more than one definition in a module.
     % These definitions may be consistent with one another (such as a du
     % definition in Mercury and a foreign type definition in C), or
@@ -180,11 +184,11 @@ check_type_ctor_defns(InsistOnDefn,
     % themselves as violations of the "at most one definition of TypeCtor
     % of a given kind in a given module section" rule.
     check_any_type_ctor_defns_for_duplicates(IntTypeDefnMap, TypeCtor,
-        IntMaybeDefn, !Specs),
+        IntMaybeDefn, !ErrSpecs, !WarnSpecs),
     check_any_type_ctor_defns_for_duplicates(ImpTypeDefnMap, TypeCtor,
-        ImpMaybeDefn, !Specs),
+        ImpMaybeDefn, !ErrSpecs, !WarnSpecs),
     check_any_type_ctor_enums_for_duplicates(ImpForeignEnumMap, TypeCtor,
-        ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs, !Specs),
+        ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs, !ErrSpecs),
 
     ( if map.search(ImpForeignEnumMap, TypeCtor, ImpEnumsCJCs) then
         ImpEnumsCJCs = c_java_csharp(ImpEnumsC, ImpEnumsJava, ImpEnumsCsharp),
@@ -267,21 +271,21 @@ check_type_ctor_defns(InsistOnDefn,
 
     report_any_nonabstract_solver_type_in_int(TypeCtor, IntSolverMaybeDefn,
         IntAbstractSolverMaybeDefn0, IntAbstractSolverMaybeDefn,
-        ImpSolverMaybeDefn0, ImpSolverMaybeDefn, !Specs),
+        ImpSolverMaybeDefn0, ImpSolverMaybeDefn, !ErrSpecs),
     ( if
         % Is there a solver type definition (not declaration) in the
         % implementation? There can't be a valid one in the interface.
         ImpSolverMaybeDefn = yes(ImpSolverDefn)
     then
         report_any_redundant_abstract_type_in_imp(TypeCtor, "implementation",
-            ImpAbstractSolverMaybeDefn, !Specs),
+            ImpAbstractSolverMaybeDefn, !WarnSpecs),
         % Print error messages for every Std definition.
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 ImpSolverDefn ^ td_context, "solver type", "implementation",
                 "definition", "declaration"),
             [IntContextAbstractStd, ImpContextAbstractStd],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 ImpSolverDefn ^ td_context, "solver type", "implementation",
@@ -290,11 +294,11 @@ check_type_ctor_defns(InsistOnDefn,
                 IntContextC, IntContextJava, IntContextCsharp,
             ImpContextEqv, ImpContextDu, ImpContextSub,
                 ImpContextC, ImpContextJava, ImpContextCsharp],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
                 ImpSolverDefn ^ td_context, "solver type", "implementation"),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
 
         CheckedSolverDefn = solver_type_full(IntAbstractSolverMaybeDefn,
             ImpSolverDefn),
@@ -338,13 +342,13 @@ check_type_ctor_defns(InsistOnDefn,
         )
     then
         report_any_redundant_abstract_type_in_imp(TypeCtor, EqvWhere,
-            ImpAbstractStdMaybeDefn, !Specs),
+            ImpAbstractStdMaybeDefn, !WarnSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 EqvDefn ^ td_context, "equivalence type", EqvWhere,
                 "definition", "solver type declaration"),
             [IntContextAbstractSolver, ImpContextAbstractSolver],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 EqvDefn ^ td_context, "equivalence type", EqvWhere,
@@ -353,11 +357,11 @@ check_type_ctor_defns(InsistOnDefn,
                 IntContextC, IntContextJava, IntContextCsharp,
             ImpContextDu, ImpContextSub,
                 ImpContextC, ImpContextJava, ImpContextCsharp],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
                 EqvDefn ^ td_context, "equivalence type", EqvWhere),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
         CheckedStdDefn = std_mer_type_eqv(Status, EqvDefn),
         CheckedDefn = checked_defn_std(CheckedStdDefn, SrcDefns),
         map.det_insert(TypeCtor, CheckedDefn, !TypeCtorCheckedMap)
@@ -383,19 +387,19 @@ check_type_ctor_defns(InsistOnDefn,
         )
     then
         report_any_redundant_abstract_type_in_imp(TypeCtor, SubWhere,
-            ImpAbstractStdMaybeDefn, !Specs),
+            ImpAbstractStdMaybeDefn, !WarnSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 SubDefn ^ td_context, "subtype", SubWhere,
                 "definition", "solver type declaration"),
             [IntContextAbstractSolver, ImpContextAbstractSolver],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 SubDefn ^ td_context, "subtype", SubWhere,
                 "definition", "definition"),
             [IntContextDu, ImpContextDu],
-            !Specs),
+            !ErrSpecs),
 
         % A subtype's representation is controlled entirely by the
         % representation of its base type. It cannot have its own
@@ -404,9 +408,9 @@ check_type_ctor_defns(InsistOnDefn,
             IntMaybeDefnJava, ImpMaybeDefnJava,
             IntMaybeDefnCsharp, ImpMaybeDefnCsharp]),
         list.foldl(subtype_report_any_foreign_type(TypeCtor, SubDefn),
-            ForeignDefns, !Specs),
+            ForeignDefns, !ErrSpecs),
         list.foldl(subtype_report_any_foreign_enum(TypeCtor, SubDefn),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
 
         decide_subtype_status(TypeCtor, SubDefn, SubSection,
             IntAbstractStdMaybeDefn, Status, SrcDefnsInt, SrcDefnsImp),
@@ -437,13 +441,13 @@ check_type_ctor_defns(InsistOnDefn,
         )
     then
         report_any_redundant_abstract_type_in_imp(TypeCtor, DuWhere,
-            ImpAbstractStdMaybeDefn, !Specs),
+            ImpAbstractStdMaybeDefn, !WarnSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 DuDefn ^ td_context, "discriminated union type", DuWhere,
                 "definition", "solver type declaration"),
             [IntContextAbstractSolver, ImpContextAbstractSolver],
-            !Specs),
+            !ErrSpecs),
 
         % XXX TYPE_REPN As part of switching over to this new system,
         % we will have to disable users' ability to specify MaybeDirectArgs
@@ -461,7 +465,7 @@ check_type_ctor_defns(InsistOnDefn,
         check_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
             IntAbstractStdMaybeDefn, IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
             Status, ChosenSectionCJCs, ChosenMaybeDefnCJCs,
-            SrcDefnsDuInt, SrcDefnsDuImp, !Specs),
+            SrcDefnsDuInt, SrcDefnsDuImp, !ErrSpecs),
         ( if
             ctor_is_constant(HeadCtor, HeadName0),
             ctors_are_all_constants(TailCtors, TailNames0)
@@ -501,7 +505,7 @@ check_type_ctor_defns(InsistOnDefn,
                 list.foldl(
                     report_not_enum_type_du(for_foreign_enum, TypeCtor,
                         DuDefnContext, NonEnumSNAs),
-                    ImpEnumContexts, !Specs)
+                    ImpEnumContexts, !ErrSpecs)
             ),
             CheckedStdDefn =
                 std_mer_type_du_not_all_plain_constants(Status, DuDefn,
@@ -517,7 +521,7 @@ check_type_ctor_defns(InsistOnDefn,
                 [HeadName | TailNames], ChosenMaybeDefnCJCs,
                 ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs,
                 MaybeDefnOrEnumCJCs, SrcForeignDefns, SrcForeignEnums,
-                !Specs),
+                !ErrSpecs),
             CheckedStdDefn = std_mer_type_du_all_plain_constants(Status,
                 DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCs)
         ),
@@ -567,18 +571,18 @@ check_type_ctor_defns(InsistOnDefn,
                 FirstForeignContext, "foreign type", ForeignWhere,
                 "definition", "solver type declaration"),
             [IntContextAbstractSolver, ImpContextAbstractSolver],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
                 FirstForeignContext, "foreign type", ForeignWhere),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
 
         decide_only_foreign_type_section(TypeCtor,
             IntAbstractSolverMaybeDefn, ImpAbstractSolverMaybeDefn,
             IntAbstractStdMaybeDefn, ImpAbstractStdMaybeDefn,
             IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
             Status, ChosenAbstractStdDefn, ChosenMaybeDefnCJCs, SrcDefns,
-            !Specs),
+            !ErrSpecs),
 
         CheckedStdDefn = std_mer_type_abstract(Status,
             ChosenAbstractStdDefn, ChosenMaybeDefnCJCs),
@@ -610,18 +614,18 @@ check_type_ctor_defns(InsistOnDefn,
         )
     then
         maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor,
-            AbstractSolverDefn, !Specs),
+            AbstractSolverDefn, !ErrSpecs),
         list.foldl(
             report_any_incompatible_type_decl_or_defn(TypeCtor,
                 AbstractSolverDefn ^ td_context, "solver type",
                 AbstractSolverWhere, "declaration", "declaration"),
             [IntContextAbstractStd, ImpContextAbstractStd],
-            !Specs),
+            !ErrSpecs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
                 AbstractSolverDefn ^ td_context, "solver type",
                 AbstractSolverWhere),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
         % XXX Should we report any foreign enums using this code?
         % It would say that TypeCtor is not defined, while the code
         % above says it is a solver type.
@@ -629,7 +633,7 @@ check_type_ctor_defns(InsistOnDefn,
         %   report_any_foreign_enum_for_undefined_type(TypeCtor,
         %       "undefined"),
         %   [ImpMaybeEnumC, ImpMaybeEnumJava, ImpMaybeEnumCsharp],
-        %   !Specs),
+        %   !ErrSpecs),
         CheckedSolverDefn = solver_type_abstract(Status, AbstractSolverDefn),
         SrcDefns = src_defns_solver(SrcDefnsInt, SrcDefnsImp),
         CheckedDefn = checked_defn_solver(CheckedSolverDefn, SrcDefns),
@@ -673,10 +677,10 @@ check_type_ctor_defns(InsistOnDefn,
         )
     then
         maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor,
-            AbstractStdDefn, !Specs),
+            AbstractStdDefn, !ErrSpecs),
         list.foldl(
             report_foreign_enum_for_undefined_type(TypeCtor, "undefined"),
-            ImpEnums, !Specs),
+            ImpEnums, !ErrSpecs),
         MaybeCJCs = c_java_csharp(no, no, no),
         CheckedStdDefn = std_mer_type_abstract(Status,
             AbstractStdDefn, MaybeCJCs),
@@ -690,7 +694,7 @@ check_type_ctor_defns(InsistOnDefn,
         % we can get here is if it has any foreign enum definitions.
         list.foldl(
             report_foreign_enum_for_undefined_type(TypeCtor, "undeclared"),
-            ImpEnums, !Specs)
+            ImpEnums, !ErrSpecs)
         % There is no actual definition to add to !TypeCtorCheckedMap.
     ).
 
@@ -706,12 +710,12 @@ get_maybe_context(yes(TypeDefnInfo)) = yes(TypeDefnInfo ^ td_context).
     c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
     std_du_type_status::out, module_section::out, c_j_cs_maybe_defn::out,
     list(item_type_defn_info)::out, list(item_type_defn_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
         IntAbstractStdMaybeDefn, IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
         Status, ChosenSectionCJCs, ChosenMaybeDefnCJCs,
-        SrcDefnsDuInt, SrcDefnsDuImp, !Specs) :-
+        SrcDefnsDuInt, SrcDefnsDuImp, !ErrSpecs) :-
     IntMaybeDefnCJCs = c_java_csharp(IntMaybeDefnC, IntMaybeDefnJava,
         IntMaybeDefnCsharp),
     ImpMaybeDefnCJCs = c_java_csharp(ImpMaybeDefnC, ImpMaybeDefnJava,
@@ -725,7 +729,7 @@ check_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
         list.foldl(
             report_mer_foreign_section_mismatch(TypeCtor,
                 "definition", "interface", DuDefn),
-            ImpDefnsCJCs, !Specs),
+            ImpDefnsCJCs, !ErrSpecs),
         Status = std_du_type_mer_ft_exported,
         ChosenSectionCJCs = ms_interface,
         ChosenMaybeDefnCJCs = IntMaybeDefnCJCs,
@@ -736,7 +740,7 @@ check_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
         list.foldl(
             report_mer_foreign_section_mismatch(TypeCtor,
                 "definition", "implementation", DuDefn),
-            IntDefnsCJCs, !Specs),
+            IntDefnsCJCs, !ErrSpecs),
         (
             IntAbstractStdMaybeDefn = yes(IntAbstractStdDefn),
             Status = std_du_type_abstract_exported,
@@ -785,13 +789,13 @@ decide_subtype_status(_TypeCtor, SubDefn, SubSection, IntAbstractStdMaybeDefn,
     c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
     std_abs_type_status::out,
     item_type_defn_info_abstract::out, c_j_cs_maybe_defn::out,
-    src_defns_std::out, list(diag_spec)::in, list(diag_spec)::out) is det.
+    src_defns_std::out, list(err_spec)::in, list(err_spec)::out) is det.
 
 decide_only_foreign_type_section(TypeCtor,
         IntAbsSolverMaybeDefn, ImpAbsSolverMaybeDefn,
         IntAbsStdMaybeDefn, ImpAbsStdMaybeDefn,
         IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
-        Status, AbsStdDefn, ChosenMaybeDefnCJCs, SrcDefns, !Specs) :-
+        Status, AbsStdDefn, ChosenMaybeDefnCJCs, SrcDefns, !ErrSpecs) :-
     IntMaybeDefnCJCs = c_java_csharp(IntMaybeDefnC, IntMaybeDefnJava,
         IntMaybeDefnCsharp),
     ImpMaybeDefnCJCs = c_java_csharp(ImpMaybeDefnC, ImpMaybeDefnJava,
@@ -812,7 +816,7 @@ decide_only_foreign_type_section(TypeCtor,
             list.foldl(
                 foreign_int_report_any_foreign_defn_in_imp(TypeCtor,
                     FirstIntContext),
-                ImpDefnsCJCs, !Specs),
+                ImpDefnsCJCs, !ErrSpecs),
             ChosenMaybeDefnCJCs = IntMaybeDefnCJCs,
             SrcDefnsInt = [wrap_abstract_type_defn(IntAbsStdDefn) |
                 list.map(wrap_foreign_type_defn, IntDefnsCJCs)],
@@ -833,7 +837,7 @@ decide_only_foreign_type_section(TypeCtor,
             list.foldl(
                 report_mer_foreign_section_mismatch(TypeCtor,
                     "declaration", "implementation", ImpAbsStdDefn),
-                IntDefnsCJCs, !Specs)
+                IntDefnsCJCs, !ErrSpecs)
         ;
             ImpAbsStdMaybeDefn = no,
             IntImpDefnsCJCs = IntDefnsCJCs ++ ImpDefnsCJCs,
@@ -854,7 +858,7 @@ decide_only_foreign_type_section(TypeCtor,
             else
                 list.foldl(
                     report_any_foreign_type_without_declaration(TypeCtor),
-                    IntImpDefnsCJCs, !Specs)
+                    IntImpDefnsCJCs, !ErrSpecs)
             ),
             % IntImpDefnsCJCs cannot be empty because our caller calls us
             % only if at least one of the foreign language definitions
@@ -883,11 +887,11 @@ decide_only_foreign_type_section(TypeCtor,
     c_j_cs_maybe_enum::in, c_j_cs_enums::in,
     c_j_cs_maybe_defn_or_enum::out,
     list(item_type_defn_info_foreign)::out, list(item_foreign_enum_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
         MaybeDefnCJCs, MaybeEnumCJCs, LeftOverEnumsCJCs,
-        MaybeDefnOrEnumCJCs, SrcForeignDefns, SrcForeignEnums, !Specs) :-
+        MaybeDefnOrEnumCJCs, SrcForeignDefns, SrcForeignEnums, !ErrSpecs) :-
     % If TypeCtor has more than one enum definition for a given foreign
     % language, we pick on to return in MaybeEnumCJCs, but we return
     % all the others as well in LeftOverEnumsCJCs so that our caller
@@ -901,15 +905,15 @@ decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
     decide_du_repn_foreign_only_constants_lang(TypeCtor,
         CtorNames, CtorNamesSet, MaybeDefnC,
         MaybeEnumC, LeftOverEnumsC, MaybeDefnOrEnumC,
-        SrcForeignDefnsC, SrcForeignEnumsC, !Specs),
+        SrcForeignDefnsC, SrcForeignEnumsC, !ErrSpecs),
     decide_du_repn_foreign_only_constants_lang(TypeCtor,
         CtorNames, CtorNamesSet, MaybeDefnJava,
         MaybeEnumJava, LeftOverEnumsJava, MaybeDefnOrEnumJava,
-        SrcForeignDefnsJava, SrcForeignEnumsJava, !Specs),
+        SrcForeignDefnsJava, SrcForeignEnumsJava, !ErrSpecs),
     decide_du_repn_foreign_only_constants_lang(TypeCtor,
         CtorNames, CtorNamesSet, MaybeDefnCsharp,
         MaybeEnumCsharp, LeftOverEnumsCsharp, MaybeDefnOrEnumCsharp,
-        SrcForeignDefnsCsharp, SrcForeignEnumsCsharp, !Specs),
+        SrcForeignDefnsCsharp, SrcForeignEnumsCsharp, !ErrSpecs),
 
     SrcForeignDefns =
         SrcForeignDefnsC ++ SrcForeignDefnsJava ++ SrcForeignDefnsCsharp,
@@ -925,11 +929,11 @@ decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
     maybe(foreign_type_or_enum)::out,
     list(item_type_defn_info_foreign)::out,
     list(item_foreign_enum_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
         MaybeDefn, MaybeEnum, LeftOverEnums, MaybeDefnOrEnum,
-        SrcForeignDefns, SrcForeignEnums, !Specs) :-
+        SrcForeignDefns, SrcForeignEnums, !ErrSpecs) :-
     (
         MaybeEnum = no,
         expect(unify(LeftOverEnums, []), $pred,
@@ -944,7 +948,7 @@ decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
             LeftOverEnums, TailMaybeCFEs),
         pick_first_error_free_enum_if_any([HeadMaybeCFE | TailMaybeCFEs],
             MaybeCheckedForeignEnum, CFESpecs),
-        !:Specs = CFESpecs ++ !.Specs
+        !:ErrSpecs = CFESpecs ++ !.ErrSpecs
     ),
     (
         MaybeDefn = yes(Defn),
@@ -970,7 +974,7 @@ decide_du_repn_foreign_only_constants_lang(TypeCtor, CtorNames, CtorNamesSet,
 
 :- pred pick_first_error_free_enum_if_any(
     list(maybe1(checked_foreign_enum))::in,
-    maybe(checked_foreign_enum)::out, list(diag_spec)::out) is det.
+    maybe(checked_foreign_enum)::out, list(err_spec)::out) is det.
 
 pick_first_error_free_enum_if_any([], no, []).
 pick_first_error_free_enum_if_any([HeadMaybeCFE | TailMaybeCFEs],
@@ -1045,7 +1049,7 @@ find_non_enum_ctors([Ctor | Ctors], !NonEnumSNAs) :-
     find_non_enum_ctors(Ctors, !NonEnumSNAs).
 
 report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
-        EnumContext, !Specs) :-
+        EnumContext, !ErrSpecs) :-
     (
         NonEnumSNAs = [],
         NonEnumCtorPieces = []
@@ -1076,49 +1080,49 @@ report_not_enum_type_du(ForWhat, TypeCtor, TypeDefnContext, NonEnumSNAs,
             pragma_decl(PragmaName), words("declarations for it.")]) ++ [nl],
     TypePieces = [words("That Mercury definition is here."), nl] ++
         NonEnumCtorPieces,
-    Spec = diag_spec($pred, severity_error, phase_pt2h,
+    Spec = gen_spec($pred, severity_error, phase_pt2h,
         [msg(EnumContext, EnumPieces), msg(TypeDefnContext, TypePieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred subtype_report_any_foreign_type(type_ctor::in,
     item_type_defn_info_sub::in, item_type_defn_info_foreign::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
+subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !ErrSpecs) :-
     ForeignPieces = [words("Error:")] ++
         color_as_subject([unqual_type_ctor(TypeCtor)]) ++
         [words("is defined to be a subtype, so")] ++
         color_as_incorrect([words("there must not be any"),
         pragma_decl("foreign_type"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(Foreign ^ td_context, ForeignPieces),
         msg(SubTypeDefn ^ td_context, SubTypePieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred subtype_report_any_foreign_enum(type_ctor::in,
     item_type_defn_info_sub::in, item_foreign_enum_info::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
+subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !ErrSpecs) :-
     EnumPieces = [words("Error:")] ++
         color_as_subject([unqual_type_ctor(TypeCtor)]) ++
         [words("is defined to be a subtype, so")] ++
         color_as_incorrect([words("there must not be any"),
         pragma_decl("foreign_enum"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, EnumPieces),
         msg(SubTypeDefn ^ td_context, SubTypePieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_mer_foreign_section_mismatch(type_ctor::in,
     string::in, string::in,
     item_type_defn_info_general(T)::in, item_type_defn_info_foreign::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
-        ForeignDefn, !Specs) :-
+        ForeignDefn, !ErrSpecs) :-
     ForeignPieces = [words("Error: since the Mercury"), words(DeclOrDefn),
         words("of")] ++ color_as_subject([unqual_type_ctor(TypeCtor)]) ++
         color_as_correct([words("is in the"), words(MerSection),
@@ -1129,16 +1133,17 @@ report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
         [nl],
     DuPieces = [words("That Mercury"), words(DeclOrDefn),
         words("is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(ForeignDefn ^ td_context, ForeignPieces),
         msg(MerDefn ^ td_context, DuPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_any_foreign_type_without_declaration(type_ctor::in,
     item_type_defn_info_foreign::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
+report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn,
+        !ErrSpecs) :-
     Pieces = [words("Error: a"),
         pragma_decl("foreign_type"), words("definition for")] ++
         color_as_subject([unqual_type_ctor(TypeCtor)]) ++
@@ -1147,14 +1152,14 @@ report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
         [words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_type,
         ForeignDefn ^ td_context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred foreign_int_report_any_foreign_defn_in_imp(type_ctor::in,
     prog_context::in, item_type_defn_info_foreign::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
-        ImpForeignDefn, !Specs) :-
+        ImpForeignDefn, !ErrSpecs) :-
     ImpPieces = [words("Error: since some foreign language definition"),
         words("of")] ++ color_as_subject([unqual_type_ctor(TypeCtor)]) ++
         [words("is in the interface section,")] ++
@@ -1163,10 +1168,10 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
         [nl],
     IntPieces = [words("That foreign definition in the interface"),
         words("is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(ImpForeignDefn ^ td_context, ImpPieces),
         msg(IntForeignContext, IntPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_any_nonabstract_solver_type_in_int(type_ctor::in,
     maybe(item_type_defn_info_solver)::in,
@@ -1174,7 +1179,7 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
     maybe(item_type_defn_info_abstract)::out,
     maybe(item_type_defn_info_solver)::in,
     maybe(item_type_defn_info_solver)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
         IntMaybeAbstractDefn0, IntMaybeAbstractDefn,
@@ -1218,7 +1223,7 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
 
 :- pred report_any_redundant_abstract_type_in_imp(type_ctor::in, string::in,
     maybe(item_type_defn_info_abstract)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
         MaybeImpAbstractDefn, !Specs) :-
@@ -1240,7 +1245,7 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
 :- pred report_any_incompatible_type_decl_or_defn(type_ctor::in,
     prog_context::in, string::in, string::in, string::in,
     string::in, maybe(prog_context)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
         SectionDeclOrDefn, DeclOrDefn, MaybeDefnContext, !Specs) :-
@@ -1255,7 +1260,7 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That"), words(SectionDeclOrDefn),
             words("is here."), nl],
-        Spec = diag_spec($pred, severity_error, phase_tim_check_invalid_type,
+        Spec = gen_spec($pred, severity_error, phase_tim_check_invalid_type,
             [msg(DefnContext, MainPieces),
             msg(UsedContext, UsedPieces)]),
         !:Specs = [Spec | !.Specs]
@@ -1263,10 +1268,10 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
 
 :- pred report_incompatible_foreign_enum(type_ctor::in, prog_context::in,
     string::in, string::in, item_foreign_enum_info::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
-        !Specs) :-
+        !ErrSpecs) :-
     MainPieces = [words("Error: this"), pragma_decl("foreign_enum"),
         words("declaration for")] ++
         color_as_subject([unqual_type_ctor(TypeCtor)]) ++
@@ -1274,31 +1279,31 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         [words("with the"), words(Kind), words("definition in the"),
         words(Section), words("section."), nl],
     UsedPieces = [words("That definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, MainPieces),
         msg(UsedContext, UsedPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_foreign_enum_for_undefined_type(type_ctor::in, string::in,
     item_foreign_enum_info::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
-        !Specs) :-
+        !ErrSpecs) :-
     Pieces = [words("Error:"), pragma_decl("foreign_enum"),
         words("declaration for the")] ++
         color_as_incorrect([words(UndefOrUndecl), words("type")]) ++
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check,
         Enum ^ fe_context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred maybe_report_declared_but_undefined_type(maybe_insist_on_defn::in,
     type_ctor::in, item_type_defn_info_abstract::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
-        !Specs) :-
+        !ErrSpecs) :-
     TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
     det_sym_name_get_module_name(TypeCtorSymName, TypeCtorModuleName),
     BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
@@ -1319,7 +1324,7 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
         % XXX should be phase_tim_check_invalid_type
         Spec = spec($pred, severity_error, phase_tim_check,
             AbsTypeDefn ^ td_context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     else
         true
     ).
@@ -1335,27 +1340,30 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
     %
 :- pred check_any_type_ctor_defns_for_duplicates(type_ctor_defn_map::in,
     type_ctor::in, type_ctor_maybe_defn::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
-        MaybeDefn, !Specs) :-
+        MaybeDefn, !ErrSpecs, !WarnSpecs) :-
     ( if map.search(TypeDefnMap, TypeCtor, AllDefns) then
         AllDefns = type_ctor_all_defns(AbsSolverDefns, SolverDefns,
             AbsNonSolverDefns, EqvDefns, DuDefns, SubDefns, ForeignDefns),
         at_most_one_type_decl_or_defn(dd_decl, "abstract solver type",
-            TypeCtor, AbsSolverDefns, AbsSolverMaybeDefn, !Specs),
+            TypeCtor, AbsSolverDefns, AbsSolverMaybeDefn,
+            !ErrSpecs, !WarnSpecs),
         at_most_one_type_decl_or_defn(dd_defn, "solver type",
-            TypeCtor, SolverDefns, SolverMaybeDefn, !Specs),
+            TypeCtor, SolverDefns, SolverMaybeDefn, !ErrSpecs, !WarnSpecs),
         at_most_one_type_decl_or_defn(dd_decl, "abstract type",
-            TypeCtor, AbsNonSolverDefns, AbsNonSolverMaybeDefn, !Specs),
+            TypeCtor, AbsNonSolverDefns, AbsNonSolverMaybeDefn,
+            !ErrSpecs, !WarnSpecs),
         at_most_one_type_decl_or_defn(dd_defn, "equivalence type",
-            TypeCtor, EqvDefns, EqvMaybeDefn, !Specs),
+            TypeCtor, EqvDefns, EqvMaybeDefn, !ErrSpecs, !WarnSpecs),
         at_most_one_type_decl_or_defn(dd_defn, "discriminated union type",
-            TypeCtor, DuDefns, DuMaybeDefn, !Specs),
+            TypeCtor, DuDefns, DuMaybeDefn, !ErrSpecs, !WarnSpecs),
         at_most_one_type_decl_or_defn(dd_defn, "subtype",
-            TypeCtor, SubDefns, SubMaybeDefn, !Specs),
+            TypeCtor, SubDefns, SubMaybeDefn, !ErrSpecs, !WarnSpecs),
         at_most_one_foreign_type_for_all_langs(TypeCtor,
-            ForeignDefns, ForeignMaybeDefn, !Specs),
+            ForeignDefns, ForeignMaybeDefn, !ErrSpecs),
         MaybeDefn = type_ctor_maybe_defn(AbsSolverMaybeDefn, SolverMaybeDefn,
             AbsNonSolverMaybeDefn, EqvMaybeDefn,
             DuMaybeDefn, SubMaybeDefn, ForeignMaybeDefn)
@@ -1371,10 +1379,11 @@ check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
 :- pred at_most_one_type_decl_or_defn(decl_or_defn::in, string::in,
     type_ctor::in, list(item_type_defn_info_general(T))::in,
     maybe(item_type_defn_info_general(T))::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 at_most_one_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
-        TypeDefns, MaybeTypeDefn, !Specs) :-
+        TypeDefns, MaybeTypeDefn, !ErrSpecs, !WarnSpecs) :-
     (
         TypeDefns = [],
         MaybeTypeDefn = no
@@ -1390,37 +1399,37 @@ at_most_one_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         list.sort(CompareTypeDefnsByContext, TypeDefns, SortedTypeDefns),
         list.det_head_tail(SortedTypeDefns, HeadTypeDefn, TailTypeDefns),
         MaybeTypeDefn = yes(HeadTypeDefn),
-        list.foldl(
+        list.foldl2(
             report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
                 HeadTypeDefn),
-            TailTypeDefns, !Specs)
+            TailTypeDefns, !ErrSpecs, !WarnSpecs)
     ).
 
 :- pred at_most_one_foreign_type_for_all_langs(type_ctor::in,
     c_j_cs_defns::in, c_j_cs_maybe_defn::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCs, MaybeDefnCJCs,
-        !Specs) :-
+        !ErrSpecs) :-
     DefnsCJCs = c_java_csharp(DefnsC, DefnsJava, DefnsCsharp),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_c,
-        DefnsC, MaybeDefnC, !Specs),
+        DefnsC, MaybeDefnC, !ErrSpecs),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_java,
-        DefnsJava, MaybeDefnJava, !Specs),
+        DefnsJava, MaybeDefnJava, !ErrSpecs),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_csharp,
-        DefnsCsharp, MaybeDefnCsharp, !Specs),
+        DefnsCsharp, MaybeDefnCsharp, !ErrSpecs),
     MaybeDefnCJCs = c_java_csharp(MaybeDefnC, MaybeDefnJava, MaybeDefnCsharp).
 
 :- pred check_any_type_ctor_enums_for_duplicates(
     type_ctor_foreign_enum_map::in, type_ctor::in,
     c_j_cs_maybe_enum::out, c_j_cs_enums::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
-        MaybeEnumCJCs, LeftOverEnumCJCse, !Specs) :-
+        MaybeEnumCJCs, LeftOverEnumCJCse, !ErrSpecs) :-
     ( if map.search(ForeignEnumMap, TypeCtor, AllEnums) then
         at_most_one_foreign_enum_for_all_langs(TypeCtor,
-            AllEnums, MaybeEnumCJCs, LeftOverEnumCJCse, !Specs)
+            AllEnums, MaybeEnumCJCs, LeftOverEnumCJCse, !ErrSpecs)
     else
         MaybeEnumCJCs = c_java_csharp(no, no, no),
         LeftOverEnumCJCse = c_java_csharp([], [], [])
@@ -1428,17 +1437,17 @@ check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
 
 :- pred at_most_one_foreign_enum_for_all_langs(type_ctor::in,
     c_j_cs_enums::in, c_j_cs_maybe_enum::out, c_j_cs_enums::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
-        MaybeEnumCJCs, LeftOverEnumsCJCs, !Specs) :-
+        MaybeEnumCJCs, LeftOverEnumsCJCs, !ErrSpecs) :-
     AllEnumsCJCs = c_java_csharp(EnumsC, EnumsJava, EnumsCsharp),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_c,
-        EnumsC, MaybeEnumC, LeftOverEnumsC, !Specs),
+        EnumsC, MaybeEnumC, LeftOverEnumsC, !ErrSpecs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_java,
-        EnumsJava, MaybeEnumJava, LeftOverEnumsJava, !Specs),
+        EnumsJava, MaybeEnumJava, LeftOverEnumsJava, !ErrSpecs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_csharp,
-        EnumsCsharp, MaybeEnumCsharp, LeftOverEnumsCsharp, !Specs),
+        EnumsCsharp, MaybeEnumCsharp, LeftOverEnumsCsharp, !ErrSpecs),
     MaybeEnumCJCs = c_java_csharp(MaybeEnumC, MaybeEnumJava, MaybeEnumCsharp),
     LeftOverEnumsCJCs = c_java_csharp(LeftOverEnumsC,
         LeftOverEnumsJava, LeftOverEnumsCsharp).
@@ -1446,20 +1455,19 @@ at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
 :- pred report_duplicate_type_decl_or_defn(decl_or_defn::in, string::in,
     type_ctor::in,
     item_type_defn_info_general(T1)::in, item_type_defn_info_general(T2)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
-        OrigTypeDefn, TypeDefn, !Specs) :-
+        OrigTypeDefn, TypeDefn, !ErrSpecs, !WarnSpecs) :-
     (
         DeclOrDefn = dd_decl,
         DeclOrDefnWord = "declaration",
-        SeverityWord = "Warning",
-        Severity = severity_warning(warn_redundant_code)
+        SeverityWord = "Warning"
     ;
         DeclOrDefn = dd_defn,
         DeclOrDefnWord = "definition",
-        SeverityWord = "Error",
-        Severity = severity_error
+        SeverityWord = "Error"
     ),
     MainPieces = [words(SeverityWord), suffix(":")] ++
         color_as_incorrect([words("duplicate"), words(Kind),
@@ -1468,18 +1476,29 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original"), words(DeclOrDefnWord),
         words("is here."), nl],
-    Spec = diag_spec($pred, Severity, phase_tim_check,
-        [msg(TypeDefn ^ td_context, MainPieces),
-        msg(OrigTypeDefn ^ td_context, LeastPieces)]),
-    !:Specs = [Spec | !.Specs].
+    (
+        DeclOrDefn = dd_decl,
+        Severity = severity_warning(warn_redundant_code),
+        Spec = gen_spec($pred, Severity, phase_tim_check,
+            [msg(TypeDefn ^ td_context, MainPieces),
+            msg(OrigTypeDefn ^ td_context, LeastPieces)]),
+        !:WarnSpecs = [Spec | !.WarnSpecs]
+    ;
+        DeclOrDefn = dd_defn,
+        Severity = severity_error,
+        Spec = gen_spec($pred, Severity, phase_tim_check,
+            [msg(TypeDefn ^ td_context, MainPieces),
+            msg(OrigTypeDefn ^ td_context, LeastPieces)]),
+        !:ErrSpecs = [Spec | !.ErrSpecs]
+    ).
 
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
     list(item_type_defn_info_foreign)::in,
     maybe(item_type_defn_info_foreign)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
-        MaybeTypeDefn, !Specs) :-
+        MaybeTypeDefn, !ErrSpecs) :-
     (
         TypeDefns = [],
         MaybeTypeDefn = no
@@ -1495,7 +1514,7 @@ at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
             set.foldl(
                 report_duplicate_foreign_defn("type", TypeCtor, Lang,
                     LeastContext),
-                OtherContexts, !Specs)
+                OtherContexts, !ErrSpecs)
         else
             unexpected($pred, "nonempty set doesn't have least element")
         )
@@ -1504,10 +1523,10 @@ at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
 :- pred at_most_one_foreign_enum_for_lang(type_ctor::in, foreign_language::in,
     list(item_foreign_enum_info)::in,
     maybe(item_foreign_enum_info)::out, list(item_foreign_enum_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 at_most_one_foreign_enum_for_lang(TypeCtor, Lang, ForeignEnums,
-        MaybeForeignEnum, LeftOverForeignEnums, !Specs) :-
+        MaybeForeignEnum, LeftOverForeignEnums, !ErrSpecs) :-
     list.sort(compare_foreign_enum_infos_by_context,
         ForeignEnums, SortedForeignEnums),
     (
@@ -1529,7 +1548,7 @@ at_most_one_foreign_enum_for_lang(TypeCtor, Lang, ForeignEnums,
         list.foldl(
             report_duplicate_foreign_defn("enum", TypeCtor, Lang,
                 LeastContext),
-            LeftOverContexts, !Specs)
+            LeftOverContexts, !ErrSpecs)
     ).
 
 :- pred compare_foreign_enum_infos_by_context(
@@ -1558,20 +1577,20 @@ get_type_defn_info_context(TypeDefn) = TypeDefn ^ td_context.
 
 :- pred report_duplicate_foreign_defn(string::in,
     type_ctor::in, foreign_language::in, prog_context::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
-        LeastContext, Context, !Specs) :-
+        LeastContext, Context, !ErrSpecs) :-
     MainPieces = [words("Error:")] ++
         color_as_incorrect([words("duplicate foreign"), fixed(TypeOrEnum),
             words("definition in"), fixed(foreign_language_string(Lang))]) ++
         [words("for")] ++
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
         msg(LeastContext, LeastPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- func get_maybe_type_defns(list(maybe(item_type_defn_info_general(T))))
     = list(item_type_defn_info_general(T)).
@@ -1697,9 +1716,9 @@ add_data_ctor_arg_to_field_name_map(TypeCtor, CtorName, CtorArg,
 
 :- pred report_any_duplicate_field_names(field_name_of_type_ctor::in,
     one_or_more(field_name_locn)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !Specs) :-
+report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !ErrSpecs) :-
     FNLocns = one_or_more_to_list(OoMFNLocns),
     list.sort(FNLocns, SortedFNLocns),
     (
@@ -1714,14 +1733,15 @@ report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !Specs) :-
         % The case we are looking for; FieldName is defined *more* than once
         % in the same type.
         list.foldl(report_duplicate_field_name(FieldNameTypeCtor, HeadFNLocn),
-            TailFNLocns, !Specs)
+            TailFNLocns, !ErrSpecs)
     ).
 
 :- pred report_duplicate_field_name(field_name_of_type_ctor::in,
     field_name_locn::in, field_name_locn::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
+report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn,
+        !ErrSpecs) :-
     FieldNameTypeCtor = field_name_of_type_ctor(FieldName, TypeCtor),
     FirstFNLocn = field_name_locn(FirstContext, FirstCtorName),
     FNLocn = field_name_locn(Context, CtorName),
@@ -1741,16 +1761,16 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
         unqual_type_ctor(TypeCtor), suffix("."), nl],
     FirstOccurrencePieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
         msg(FirstContext, FirstOccurrencePieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 create_inst_ctor_checked_map(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap,
-        CheckedMap, !Specs) :-
+        CheckedMap, !ErrSpecs, !WarnSpecs) :-
     map.keys_as_set(IntInstDefnMap, IntDefnInstCtors),
     map.keys_as_set(ImpInstDefnMap, ImpDefnInstCtors),
     % This union operation depends on the type_ctors in all four maps
@@ -1758,21 +1778,22 @@ create_inst_ctor_checked_map(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap,
     % to be all fully qualified or all fully unqualified; we chose the former.
     InstCtors =
         set.to_sorted_list(set.union(IntDefnInstCtors, ImpDefnInstCtors)),
-    list.foldl2(
+    list.foldl3(
         check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap),
-        InstCtors, map.init, CheckedMap, !Specs).
+        InstCtors, map.init, CheckedMap, !ErrSpecs, !WarnSpecs).
 
 :- pred check_inst_ctor_defns(maybe_insist_on_defn::in,
     inst_ctor_defn_map::in, inst_ctor_defn_map::in, inst_ctor::in,
     inst_ctor_checked_map::in, inst_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
-        !CheckedMap, !Specs) :-
+        !CheckedMap, !ErrSpecs, !WarnSpecs) :-
     check_any_inst_ctor_defns_for_duplicates(IntInstDefnMap, InstCtor,
-        IntMaybeAbstractDefn, IntMaybeEqvDefn, !Specs),
+        IntMaybeAbstractDefn, IntMaybeEqvDefn, !ErrSpecs),
     check_any_inst_ctor_defns_for_duplicates(ImpInstDefnMap, InstCtor,
-        ImpMaybeAbstractDefn, ImpMaybeEqvDefn, !Specs),
+        ImpMaybeAbstractDefn, ImpMaybeEqvDefn, !ErrSpecs),
     ( if
         % Does InstCtor have a non-abstract definition ...
         ( if
@@ -1810,7 +1831,7 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
         % which we publicize, and a non-abstract definition in another
         % interface section, which we don't publicize.
         report_any_redundant_abstract_inst_in_imp(InstCtor,
-            "definition", EqvWhere, ImpMaybeAbstractDefn, !Specs),
+            "definition", EqvWhere, ImpMaybeAbstractDefn, !WarnSpecs),
         StdDefn = std_inst_defn(Status, wrap_eqv_inst_defn(EqvDefn)),
         CheckedDefn = checked_defn_inst(StdDefn, SrcDefns),
         map.det_insert(InstCtor, CheckedDefn, !CheckedMap)
@@ -1821,7 +1842,7 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
         (
             IntMaybeAbstractDefn = yes(IntAbstractDefn),
             report_any_redundant_abstract_inst_in_imp(InstCtor,
-                "declaration", "interface", ImpMaybeAbstractDefn, !Specs),
+                "declaration", "interface", ImpMaybeAbstractDefn, !WarnSpecs),
             (
                 InsistOnDefn = do_not_insist_on_defn,
                 Status = std_inst_abstract_exported,
@@ -1834,7 +1855,7 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
             ;
                 InsistOnDefn = do_insist_on_defn,
                 report_declared_but_undefined_inst(InstCtor, IntAbstractDefn,
-                    !Specs)
+                    !ErrSpecs)
             )
         ;
             IntMaybeAbstractDefn = no,
@@ -1852,7 +1873,7 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
                 ;
                     InsistOnDefn = do_insist_on_defn,
                     report_declared_but_undefined_inst(InstCtor,
-                        ImpAbstractDefn, !Specs)
+                        ImpAbstractDefn, !ErrSpecs)
                 )
             ;
                 ImpMaybeAbstractDefn = no,
@@ -1864,16 +1885,16 @@ check_inst_ctor_defns(InsistOnDefn, IntInstDefnMap, ImpInstDefnMap, InstCtor,
 :- pred check_any_inst_ctor_defns_for_duplicates(inst_ctor_defn_map::in,
     inst_ctor::in, maybe(item_inst_defn_info_abstract)::out,
     maybe(item_inst_defn_info_eqv)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_any_inst_ctor_defns_for_duplicates(InstDefnMap, InstCtor,
-        AbstractMaybeDefn, EqvMaybeDefn, !Specs) :-
+        AbstractMaybeDefn, EqvMaybeDefn, !ErrSpecs) :-
     ( if map.search(InstDefnMap, InstCtor, AllDefns) then
         AllDefns = inst_ctor_all_defns(AbstractDefns, EqvDefns),
         at_most_one_inst_defn("abstract inst", InstCtor,
-            AbstractDefns, AbstractMaybeDefn, !Specs),
+            AbstractDefns, AbstractMaybeDefn, !ErrSpecs),
         at_most_one_inst_defn("inst", InstCtor,
-            EqvDefns, EqvMaybeDefn, !Specs)
+            EqvDefns, EqvMaybeDefn, !ErrSpecs)
     else
         AbstractMaybeDefn = no,
         EqvMaybeDefn = no
@@ -1882,9 +1903,9 @@ check_any_inst_ctor_defns_for_duplicates(InstDefnMap, InstCtor,
 :- pred at_most_one_inst_defn(string::in, inst_ctor::in,
     list(item_inst_defn_info_general(T))::in,
     maybe(item_inst_defn_info_general(T))::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !Specs) :-
+at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !ErrSpecs) :-
     (
         InstDefns = [],
         MaybeInstDefn = no
@@ -1902,32 +1923,33 @@ at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !Specs) :-
         MaybeInstDefn = yes(HeadInstDefn),
         list.foldl(
             report_duplicate_inst_defn(Kind, InstCtor, HeadInstDefn),
-            TailInstDefns, !Specs)
+            TailInstDefns, !ErrSpecs)
     ).
 
 :- pred report_duplicate_inst_defn(string::in, inst_ctor::in,
     item_inst_defn_info_general(T1)::in, item_inst_defn_info_general(T2)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
+report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn,
+        !ErrSpecs) :-
     MainPieces = [words("Error")] ++
         color_as_incorrect([words("duplicate"), words(Kind),
             words("definition")]) ++
         [words("for")] ++
         color_as_subject([unqual_inst_ctor(InstCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(InstDefn ^ id_context, MainPieces),
         msg(OrigInstDefn ^ id_context, LeastPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_any_redundant_abstract_inst_in_imp(inst_ctor::in,
     string::in, string::in,
     maybe(item_inst_defn_info_abstract)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
-        MaybeImpAbstractDefn, !Specs) :-
+        MaybeImpAbstractDefn, !WarnSpecs) :-
     (
         MaybeImpAbstractDefn = no
     ;
@@ -1940,27 +1962,27 @@ report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
         Severity = severity_warning(warn_redundant_code),
         Spec = spec($pred, Severity, phase_tim_check,
             ImpAbstractDefn ^ id_context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:WarnSpecs = [Spec | !.WarnSpecs]
     ).
 
 :- pred report_declared_but_undefined_inst(inst_ctor::in,
     item_inst_defn_info_abstract::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_declared_but_undefined_inst(InstCtor, AbsInstDefn, !Specs) :-
+report_declared_but_undefined_inst(InstCtor, AbsInstDefn, !ErrSpecs) :-
     Pieces = [words("Error: the inst")] ++
         color_as_subject([unqual_inst_ctor(InstCtor)]) ++
         [words("has this declaration, but")] ++
         color_as_incorrect([words("it has no definition.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsInstDefn ^ id_context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 create_mode_ctor_checked_map(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap,
-        CheckedMap, !Specs) :-
+        CheckedMap, !ErrSpecs, !WarnSpecs) :-
     map.keys_as_set(IntModeDefnMap, IntDefnModeCtors),
     map.keys_as_set(ImpModeDefnMap, ImpDefnModeCtors),
     % This union operation depends on the type_ctors in all four maps
@@ -1968,21 +1990,22 @@ create_mode_ctor_checked_map(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap,
     % to be all fully qualified or all fully unqualified; we chose the former.
     ModeCtors =
         set.to_sorted_list(set.union(IntDefnModeCtors, ImpDefnModeCtors)),
-    list.foldl2(
+    list.foldl3(
         check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap),
-        ModeCtors, map.init, CheckedMap, !Specs).
+        ModeCtors, map.init, CheckedMap, !ErrSpecs, !WarnSpecs).
 
 :- pred check_mode_ctor_defns(maybe_insist_on_defn::in,
     mode_ctor_defn_map::in, mode_ctor_defn_map::in, mode_ctor::in,
     mode_ctor_checked_map::in, mode_ctor_checked_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
-        !CheckedMap, !Specs) :-
+        !CheckedMap, !ErrSpecs, !WarnSpecs) :-
     check_any_mode_ctor_defns_for_duplicates(IntModeDefnMap, ModeCtor,
-        IntMaybeAbstractDefn, IntMaybeEqvDefn, !Specs),
+        IntMaybeAbstractDefn, IntMaybeEqvDefn, !ErrSpecs),
     check_any_mode_ctor_defns_for_duplicates(ImpModeDefnMap, ModeCtor,
-        ImpMaybeAbstractDefn, ImpMaybeEqvDefn, !Specs),
+        ImpMaybeAbstractDefn, ImpMaybeEqvDefn, !ErrSpecs),
     ( if
         % Does ModeCtor have a non-abstract definition ...
         ( if
@@ -2020,7 +2043,7 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
         % which we publicize, and a non-abstract definition in another
         % interface section, which we don't publicize.
         report_any_redundant_abstract_mode_in_imp(ModeCtor,
-            "definition", EqvWhere, ImpMaybeAbstractDefn, !Specs),
+            "definition", EqvWhere, ImpMaybeAbstractDefn, !WarnSpecs),
         StdDefn = std_mode_defn(Status, wrap_eqv_mode_defn(EqvDefn)),
         CheckedDefn = checked_defn_mode(StdDefn, SrcDefns),
         map.det_insert(ModeCtor, CheckedDefn, !CheckedMap)
@@ -2031,7 +2054,7 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
         (
             IntMaybeAbstractDefn = yes(IntAbstractDefn),
             report_any_redundant_abstract_mode_in_imp(ModeCtor,
-                "declaration", "interface", ImpMaybeAbstractDefn, !Specs),
+                "declaration", "interface", ImpMaybeAbstractDefn, !WarnSpecs),
             (
                 InsistOnDefn = do_not_insist_on_defn,
                 Status = std_mode_abstract_exported,
@@ -2044,7 +2067,7 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
             ;
                 InsistOnDefn = do_insist_on_defn,
                 report_declared_but_undefined_mode(ModeCtor, IntAbstractDefn,
-                    !Specs)
+                    !ErrSpecs)
             )
         ;
             IntMaybeAbstractDefn = no,
@@ -2062,7 +2085,7 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
                 ;
                     InsistOnDefn = do_insist_on_defn,
                     report_declared_but_undefined_mode(ModeCtor,
-                        ImpAbstractDefn, !Specs)
+                        ImpAbstractDefn, !ErrSpecs)
                 )
             ;
                 ImpMaybeAbstractDefn = no,
@@ -2074,16 +2097,16 @@ check_mode_ctor_defns(InsistOnDefn, IntModeDefnMap, ImpModeDefnMap, ModeCtor,
 :- pred check_any_mode_ctor_defns_for_duplicates(mode_ctor_defn_map::in,
     mode_ctor::in, maybe(item_mode_defn_info_abstract)::out,
     maybe(item_mode_defn_info_eqv)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_any_mode_ctor_defns_for_duplicates(ModeDefnMap, ModeCtor,
-        AbstractMaybeDefn, EqvMaybeDefn, !Specs) :-
+        AbstractMaybeDefn, EqvMaybeDefn, !ErrSpecs) :-
     ( if map.search(ModeDefnMap, ModeCtor, AllDefns) then
         AllDefns = mode_ctor_all_defns(AbstractDefns, EqvDefns),
         at_most_one_mode_defn("abstract mode", ModeCtor,
-            AbstractDefns, AbstractMaybeDefn, !Specs),
+            AbstractDefns, AbstractMaybeDefn, !ErrSpecs),
         at_most_one_mode_defn("mode", ModeCtor,
-            EqvDefns, EqvMaybeDefn, !Specs)
+            EqvDefns, EqvMaybeDefn, !ErrSpecs)
     else
         AbstractMaybeDefn = no,
         EqvMaybeDefn = no
@@ -2092,9 +2115,9 @@ check_any_mode_ctor_defns_for_duplicates(ModeDefnMap, ModeCtor,
 :- pred at_most_one_mode_defn(string::in, mode_ctor::in,
     list(item_mode_defn_info_general(T))::in,
     maybe(item_mode_defn_info_general(T))::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !Specs) :-
+at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !ErrSpecs) :-
     (
         ModeDefns = [],
         MaybeModeDefn = no
@@ -2112,32 +2135,33 @@ at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !Specs) :-
         MaybeModeDefn = yes(HeadModeDefn),
         list.foldl(
             report_duplicate_mode_defn(Kind, ModeCtor, HeadModeDefn),
-            TailModeDefns, !Specs)
+            TailModeDefns, !ErrSpecs)
     ).
 
 :- pred report_duplicate_mode_defn(string::in, mode_ctor::in,
     item_mode_defn_info_general(T1)::in, item_mode_defn_info_general(T2)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
+report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn,
+        !ErrSpecs) :-
     MainPieces = [words("Error:")] ++
         color_as_incorrect([words("duplicate"), words(Kind),
             words("definition")]) ++
         [words("for")] ++
         color_as_subject([unqual_mode_ctor(ModeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = diag_spec($pred, severity_error, phase_tim_check,
+    Spec = gen_spec($pred, severity_error, phase_tim_check,
         [msg(ModeDefn ^ md_context, MainPieces),
         msg(OrigModeDefn ^ md_context, LeastPieces)]),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 :- pred report_any_redundant_abstract_mode_in_imp(mode_ctor::in,
     string::in, string::in,
     maybe(item_mode_defn_info_abstract)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
-        MaybeImpAbstractDefn, !Specs) :-
+        MaybeImpAbstractDefn, !WarnSpecs) :-
     (
         MaybeImpAbstractDefn = no
     ;
@@ -2150,21 +2174,21 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
         Severity = severity_warning(warn_redundant_code),
         Spec = spec($pred, Severity, phase_tim_check,
             ImpAbstractDefn ^ md_context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:WarnSpecs = [Spec | !.WarnSpecs]
     ).
 
 :- pred report_declared_but_undefined_mode(mode_ctor::in,
     item_mode_defn_info_abstract::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-report_declared_but_undefined_mode(ModeCtor, AbsModeDefn, !Specs) :-
+report_declared_but_undefined_mode(ModeCtor, AbsModeDefn, !ErrSpecs) :-
     Pieces = [words("Error: the mode")] ++
         color_as_subject([unqual_mode_ctor(ModeCtor)]) ++
         [words("has this declaration, but")] ++
         color_as_incorrect([words("it has no definition.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsModeDefn ^ md_context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    !:ErrSpecs = [Spec | !.ErrSpecs].
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.check_type_inst_mode_defns.

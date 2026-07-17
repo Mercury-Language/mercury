@@ -1037,7 +1037,7 @@ generate_stratify_error(ModuleInfo, PredProcId, Context, Message,
     Msg = simple_msg(Context,
         [always(Preamble ++ MainPieces),
         verbose_only(verbose_once, VerbosePieces)]),
-    Spec = diag_spec($pred, Severity, phase_code_gen, [Msg]).
+    Spec = gen_spec($pred, Severity, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.stratify.

@@ -31,6 +31,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
+:- import_module one_or_more.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -49,14 +50,6 @@
     is_fully_qualified::in, lookup_failure_handling::in, prog_context::in,
     string::in, pred_or_func::in, sym_name::in, user_arity::in, int::in,
     maybe4el(pred_id, proc_id, pred_info, proc_info)::out) is det.
-
-%---------------------%
-
-:- func report_unknown_pred_or_func(spec_severity, string, prog_context,
-    pred_or_func, sym_name, user_arity) = diag_spec.
-
-:- func report_ambiguous_pred_or_func(spec_severity, string, prog_context,
-    pred_or_func, sym_name, user_arity) = diag_spec.
 
 %---------------------%
 
@@ -102,7 +95,8 @@
 
 :- pred check_pragma_status(string::in, pragma_status_class::in,
     item_mercury_status::in, prog_context::in, pred_info::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------%
 
@@ -118,7 +112,8 @@
     pragma_status_class::in, item_mercury_status::in, prog_context::in,
     pred_marker::in, list(pred_marker)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------%
 
@@ -141,7 +136,8 @@
     item_mercury_status::in, prog_context::in,
     add_marker_pred_info::in(add_marker_pred_info),
     list(pred_id)::in, pred_id_table::in, pred_id_table::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------%
 
@@ -152,7 +148,7 @@
 
 :- pred pragma_conflict_error(pred_pfu_name_arity::in, prog_context::in,
     string::in, set(pred_marker)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------%
 
@@ -161,8 +157,8 @@
     ;       require_one_match.
 
 :- type matching_pred_ids_result
-    --->    mpids_ok(pred_id, list(pred_id), list(diag_spec))
-    ;       mpids_error(list(diag_spec)).
+    --->    mpids_ok(pred_id, list(pred_id), list(warn_spec))
+    ;       mpids_error(one_or_more(err_spec), list(warn_spec)).
 
     % Given maybe a pred_or_func, a symname and arity, return all
     % the pred_ids that match. Reasons for the possible return of more than one
@@ -188,7 +184,7 @@
     list(mer_mode)::in, string::in, prog_context::in,
     pred(proc_info, proc_info)::in(pred(in, out) is det),
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -227,11 +223,12 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 UserArity, OtherUserArities),
             DeclPieces = [pragma_decl(PragmaName), words("declaration")],
             report_undefined_pred_or_func_error(yes(PredOrFunc), SymName,
-                UserArity, OtherUserArities, Context, DeclPieces, [], Specs)
+                UserArity, OtherUserArities, Context, DeclPieces, Spec),
+            Specs = [Spec]
         ;
             FailHandling = lfh_internal_error,
-            Spec = report_unknown_pred_or_func(severity_error,
-                PragmaName, Context, PredOrFunc, SymName, UserArity),
+            Spec = report_unknown_pred_or_func(PragmaName, Context,
+                PredOrFunc, SymName, UserArity),
             Specs = [Spec]
         ;
             FailHandling = lfh_ignore,
@@ -243,8 +240,8 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 Specs = []
             ;
                 InformIgnored = yes,
-                Spec = report_unknown_pred_or_func(severity_error,
-                    PragmaName, Context, PredOrFunc, SymName, UserArity),
+                Spec = report_unknown_pred_or_func(PragmaName, Context,
+                    PredOrFunc, SymName, UserArity),
                 Specs = [Spec]
             )
         ),
@@ -278,12 +275,12 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]),
             Specs = [Spec]
         ;
             FailHandling = lfh_internal_error,
-            Spec = report_ambiguous_pred_or_func(severity_error,
-                PragmaName, Context, PredOrFunc, SymName, UserArity),
+            Spec = report_ambiguous_pred_or_func(PragmaName, Context,
+                PredOrFunc, SymName, UserArity),
             Specs = [Spec]
         ;
             FailHandling = lfh_ignore,
@@ -295,10 +292,15 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 Specs = []
             ;
                 InformIgnored = yes,
-                Severity =
-                    severity_informational(inform_ignored_pragma_errors),
-                Spec = report_ambiguous_pred_or_func(Severity, PragmaName,
-                    Context, PredOrFunc, SymName, UserArity),
+                % This Spec used to have this severity:
+                % Severity =
+                %   severity_informational(inform_ignored_pragma_errors),
+                % This would probably be appropriate if a Mercury
+                % implementation that is NOT mmc existed, and had some
+                % pragmas that mmc does not know about. Since there is
+                % no second Mercury implementation, an error is appropriate.
+                Spec = report_ambiguous_pred_or_func(PragmaName, Context,
+                    PredOrFunc, SymName, UserArity),
                 Specs = [Spec]
             )
         ),
@@ -339,30 +341,8 @@ look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified,
 
 %---------------------------------------------------------------------------%
 
-report_unknown_pred_or_func(Severity, PragmaName, Context,
-        PredOrFunc, SymName, UserArity) = Spec :-
-    UserArity = user_arity(UserArityInt),
-    SNA = sym_name_arity(SymName, UserArityInt),
-    Pieces = [words("Internal compiler error:")] ++
-        color_as_incorrect([words("unknown"), p_or_f(PredOrFunc),
-            qual_sym_name_arity(SNA)]) ++
-        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
-    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
-
-report_ambiguous_pred_or_func(Severity, PragmaName, Context,
-        PredOrFunc, SymName, UserArity) = Spec :-
-    UserArity = user_arity(UserArityInt),
-    SNA = sym_name_arity(SymName, UserArityInt),
-    Pieces = [words("Internal compiler error:")] ++
-        color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
-            words("name"), qual_sym_name_arity(SNA)]) ++
-        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
-    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
-
-%---------------------------------------------------------------------------%
-
 check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
-        PredInfo, !Specs) :-
+        PredInfo, !ErrSpecs, !WarnSpecs) :-
     (
         PragmaStatus = item_defined_in_other_module(_)
     ;
@@ -397,7 +377,7 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             )
         ;
             PredExported = yes,
@@ -418,7 +398,7 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                         [nl],
                     Severity = severity_warning(warn_nonexported_pragma),
                     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-                    !:Specs = [Spec | !.Specs]
+                    !:WarnSpecs = [Spec | !.WarnSpecs]
                 ;
                     StatusClass = psc_impl
                 )
@@ -443,7 +423,7 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                         words("is exported."), nl],
                     Spec = spec($pred, severity_error, phase_pt2h,
                         Context, Pieces),
-                    !:Specs = [Spec | !.Specs]
+                    !:ErrSpecs = [Spec | !.ErrSpecs]
                 )
             )
         )
@@ -452,19 +432,19 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
 %---------------------------------------------------------------------------%
 
 add_pred_marker(PredSpec, PragmaName, PragmaStatusClass, PragmaStatus, Context,
-        Marker, ConflictMarkers, !ModuleInfo, !Specs) :-
+        Marker, ConflictMarkers, !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     PredSpec = pred_pfu_name_arity(PFU, PredSymName, UserArity),
     get_matching_pred_ids(!.ModuleInfo, PragmaName, do_not_require_one_match,
         pragma_does_not_allow_modes, Context, PFU, PredSymName, UserArity,
         MatchingPredIdResult),
     (
-        MatchingPredIdResult = mpids_ok(HeadPredId, TailPredIds, WarnSpecs),
+        MatchingPredIdResult = mpids_ok(HeadPredId, TailPredIds, IdWarnSpecs),
         PredIds = [HeadPredId | TailPredIds],
-        !:Specs = WarnSpecs ++ !.Specs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs,
         module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         pragma_add_marker(PragmaName, PragmaStatusClass, PragmaStatus, Context,
             add_marker_pred_info(Marker), PredIds,
-            PredIdTable0, PredIdTable, !Specs),
+            PredIdTable0, PredIdTable, !ErrSpecs, !WarnSpecs),
         module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
         list.map(get_pred_markers(PredIdTable), PredIds, PredMarkerSets),
@@ -475,27 +455,29 @@ add_pred_marker(PredSpec, PragmaName, PragmaStatusClass, PragmaStatus, Context,
             true
         else
             pragma_conflict_error(PredSpec, Context, PragmaName,
-                BadPredMarkers, !Specs)
+                BadPredMarkers, !ErrSpecs)
         )
     ;
-        MatchingPredIdResult = mpids_error(ErrorSpecs),
-        !:Specs = ErrorSpecs ++ !.Specs
+        MatchingPredIdResult = mpids_error(IdErrSpecs, IdWarnSpecs),
+        !:ErrSpecs = one_or_more_to_list(IdErrSpecs) ++ !.ErrSpecs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs
     ).
 
 get_pred_markers(PredIdTable, PredId, Markers) :-
     map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers).
 
-pragma_add_marker(_, _, _, _, _, [], !PredTable, !Specs).
+pragma_add_marker(_, _, _, _, _, [], !PredTable, !ErrSpecs, !WarnSpecs).
 pragma_add_marker(PragmaName, PragmaStatusClass, PragmaStatus, Context,
-        UpdatePredInfo, [PredId | PredIds], !PredTable, !Specs) :-
+        UpdatePredInfo, [PredId | PredIds], !PredTable,
+        !ErrSpecs, !WarnSpecs) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     UpdatePredInfo(PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, !PredTable),
     check_pragma_status(PragmaName, PragmaStatusClass, PragmaStatus, Context,
-        PredInfo, !Specs),
+        PredInfo, !ErrSpecs, !WarnSpecs),
     pragma_add_marker(PragmaName, PragmaStatusClass, PragmaStatus,
-        Context, UpdatePredInfo, PredIds, !PredTable, !Specs).
+        Context, UpdatePredInfo, PredIds, !PredTable, !ErrSpecs, !WarnSpecs).
 
 add_marker_pred_info(Marker, !PredInfo) :-
     pred_info_get_markers(!.PredInfo, Markers0),
@@ -577,8 +559,8 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
             DescPieces = [pragma_decl(Pragma), words("declaration")],
             report_undefined_pred_or_func_error(pfu_to_maybe_pred_or_func(PFU),
                 SymName, UserArity, OtherUserArities, Context, DescPieces,
-                [], NoMatchSpecs),
-            Result = mpids_error(NoMatchSpecs ++ WarnSpecs)
+                NoMatchSpec),
+            Result = mpids_error(one_or_more(NoMatchSpec, []), WarnSpecs)
         ;
             PredIds = [HeadPredId],
             Result = mpids_ok(HeadPredId, [], WarnSpecs)
@@ -631,7 +613,7 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                         [nl],
                 ErrorSpec = spec($pred, severity_error, phase_pt2h,
                     Context, ErrorPieces),
-                Result = mpids_error([ErrorSpec])
+                Result = mpids_error(one_or_more(ErrorSpec, []), [])
             )
         )
     ).
@@ -639,7 +621,7 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
 %---------------------%
 
 transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
-        PragmaName, Context, ProcTransform, !ModuleInfo, !Specs) :-
+        PragmaName, Context, ProcTransform, !ModuleInfo, !ErrSpecs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.to_assoc_list(ProcTable0, ProcList),
@@ -658,8 +640,36 @@ transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
             [words("of"), qual_pf_sym_name_user_arity(PFNameArity),
             suffix("."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func report_unknown_pred_or_func(string, prog_context,
+    pred_or_func, sym_name, user_arity) = err_spec.
+
+report_unknown_pred_or_func(PragmaName, Context,
+        PredOrFunc, SymName, UserArity) = Spec :-
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Internal compiler error:")] ++
+        color_as_incorrect([words("unknown"), p_or_f(PredOrFunc),
+            qual_sym_name_arity(SNA)]) ++
+        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
+
+:- func report_ambiguous_pred_or_func(string, prog_context,
+    pred_or_func, sym_name, user_arity) = err_spec.
+
+report_ambiguous_pred_or_func(PragmaName, Context,
+        PredOrFunc, SymName, UserArity) = Spec :-
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Internal compiler error:")] ++
+        color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
+            words("name"), qual_sym_name_arity(SNA)]) ++
+        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_pragma_util.

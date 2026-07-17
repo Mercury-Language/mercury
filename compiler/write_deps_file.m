@@ -57,7 +57,7 @@
 %---------------------------------------------------------------------------%
 
     % generate_and_write_dep_file_gendep(ProgressStream, Globals,
-    %   FileOrModule, DepsMap, Specs, !IO):
+    %   FileOrModule, DepsMap, ErrSpecs, WarnSpecs, !IO):
     %
     % Generate the per-program makefile dependencies files
     % (`.dep' and `.dv' files) for the program whose top-level module
@@ -72,8 +72,8 @@
     % which is used very frequently.
     %
 :- pred generate_and_write_dep_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(diag_spec)::out,
-    io::di, io::uo) is det.
+    globals::in, file_or_module::in, deps_map::out,
+    list(err_spec)::out, list(warn_spec)::out, io::di, io::uo) is det.
 
     % generate_and_write_d_file_gendep(ProgressStream, Globals, FIleOrModule,
     %   DepsMap, Specs, !IO):
@@ -85,8 +85,8 @@
     % which is almost never used.
     %
 :- pred generate_and_write_d_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(diag_spec)::out,
-    io::di, io::uo) is det.
+    globals::in, file_or_module::in, deps_map::out,
+    list(err_spec)::out, list(warn_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -136,40 +136,46 @@
 %---------------------------------------------------------------------------%
 
 generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
-        DepsMap, !:Specs, !IO) :-
+        DepsMap, !:ErrSpecs, !:WarnSpecs, !IO) :-
     generate_deps_map(ProgressStream, Globals, do_not_search,
-        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
+        FileOrModule, ModuleName, DepsMap, !:ErrSpecs, !:WarnSpecs, !IO),
     do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
     (
         MaybeBurdenedModule = error1(FatalErrorSpecs),
         % The diag_specs in FatalErrorSpecs may already be in !.Specs,
         % but even if we add them again here, they will be printed just once.
-        !:Specs = FatalErrorSpecs ++ !.Specs
+        !:ErrSpecs = FatalErrorSpecs ++ !.ErrSpecs
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
         BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
         generate_and_write_dep_dv_files_gendep(ProgressStream, Globals,
             DepsMap, ModuleName, Baggage, !IO),
         compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName,
-            DepsMap, DepGraphs, BurdenedModules, !Specs, !IO),
+            DepsMap, DepGraphs, BurdenedModules,
+            CdgErrSpecs, CdgWarnSpecs, !IO),
+        !:ErrSpecs = CdgErrSpecs ++ !.ErrSpecs,
+        !:WarnSpecs = CdgWarnSpecs ++ !.WarnSpecs,
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
             DepGraphs, BurdenedModules, !IO)
     ).
 
 generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
-        DepsMap, !:Specs, !IO) :-
+        DepsMap, !:ErrSpecs, !:WarnSpecs, !IO) :-
     generate_deps_map(ProgressStream, Globals, do_search,
-        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
+        FileOrModule, ModuleName, DepsMap, !:ErrSpecs, !:WarnSpecs, !IO),
     do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
     (
         MaybeBurdenedModule = error1(FatalErrorSpecs),
         % The diag_specs in FatalErrorSpecs may already be in !.Specs,
         % but even if we add them again here, they will be printed just once.
-        !:Specs = FatalErrorSpecs ++ !.Specs
+        !:ErrSpecs = FatalErrorSpecs ++ !.ErrSpecs
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
         compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName,
-            DepsMap, DepGraphs, _BurdenedModules, !Specs, !IO),
+            DepsMap, DepGraphs, _BurdenedModules,
+            CdgErrSpecs, CdgWarnSpecs, !IO),
+        !:ErrSpecs = CdgErrSpecs ++ !.ErrSpecs,
+        !:WarnSpecs = CdgWarnSpecs ++ !.WarnSpecs,
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
             DepGraphs, [BurdenedModule], !IO)
     ).
@@ -423,7 +429,7 @@ do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
         Errors = Baggage ^ mb_errors,
         FatalErrors = Errors ^ rm_fatal_errors,
         ( if set.is_non_empty(FatalErrors) then
-            FatalErrorSpecs = Errors ^ rm_fatal_diag_specs,
+            FatalErrorSpecs = Errors ^ rm_fatal_err_specs,
             (
                 FatalErrorSpecs = [],
                 string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",

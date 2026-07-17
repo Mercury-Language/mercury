@@ -68,8 +68,7 @@
 
 :- pred compute_dep_graphs_gendep(io.text_output_stream::in, globals::in,
     module_name::in, deps_map::in, dep_graphs::out, list(burdened_module)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
-    io::di, io::uo) is det.
+    list(err_spec)::out, list(warn_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -195,7 +194,7 @@
 %---------------------------------------------------------------------------%
 
 compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName, DepsMap,
-        DepGraphs, BurdenedModules, !Specs, !IO) :-
+        DepGraphs, BurdenedModules, ErrSpecs, WarnSpecs, !IO) :-
     % Compute the interface and implementation deps graphs from the deps map.
     map.values(DepsMap, DepsList),
     digraph.init(IntDepsGraph0),
@@ -222,7 +221,7 @@ compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName, DepsMap,
 
     compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
         ImpDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptDepsOrdering, !Specs, !IO),
+        TransOptDepsGraph, TransOptDepsOrdering, ErrSpecs, WarnSpecs, !IO),
 
     % Compute the indirect dependencies: they are equal to the composition
     % of the implementation dependencies with the transitive closure of the

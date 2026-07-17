@@ -328,7 +328,7 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
         trace [io(!IO)] (
             module_info_get_globals(ModuleInfo, Globals),
             ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
-            write_error_specs(DebugStream, Globals, ErrorSpecs, !IO)
+            write_diag_specs(DebugStream, Globals, ErrorSpecs, !IO)
         )
     ),
 

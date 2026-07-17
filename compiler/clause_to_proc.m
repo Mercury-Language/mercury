@@ -162,12 +162,12 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
     get_clause_list_for_replacement(ClausesRep0, Clauses),
     select_matching_clauses(PredInfo, ProcId, Clauses, MatchingClauses),
     get_clause_disjuncts_and_warnings(MatchingClauses,
-        cord.init, ClausesDisjunctsCord, [], StateVarWarnings),
+        cord.init, ClausesDisjunctsCord, [], StateVarWarnSpecs),
     (
-        StateVarWarnings = [_ | _],
-        proc_info_set_statevar_warnings(StateVarWarnings, !ProcInfo)
+        StateVarWarnSpecs = [_ | _],
+        proc_info_set_statevar_warnings(StateVarWarnSpecs, !ProcInfo)
     ;
-        StateVarWarnings = []
+        StateVarWarnSpecs = []
         % Do not allocate a new proc_info if we do not need to.
     ),
     ClausesDisjuncts = cord.list(ClausesDisjunctsCord),
@@ -336,11 +336,11 @@ select_matching_nonunify_clauses_acc(ProcId, [Clause | Clauses],
 
 :- pred get_clause_disjuncts_and_warnings(list(clause)::in,
     cord(hlds_goal)::in, cord(hlds_goal)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-get_clause_disjuncts_and_warnings([], !DisjunctCord, !Warnings).
+get_clause_disjuncts_and_warnings([], !DisjunctCord, !WarnSpecs).
 get_clause_disjuncts_and_warnings([HeadClause | TailClauses],
-        !Disjuncts, !Warnings) :-
+        !Disjuncts, !WarnSpecs) :-
     HeadGoal0 = HeadClause ^ clause_body,
     ( if HeadGoal0 = hlds_goal(disj(HeadDisjuncts0), _) then
         cord.snoc_list(HeadDisjuncts0, !Disjuncts)
@@ -348,11 +348,11 @@ get_clause_disjuncts_and_warnings([HeadClause | TailClauses],
         goal_add_feature(feature_was_clause, HeadGoal0, HeadGoal),
         cord.snoc(HeadGoal, !Disjuncts)
     ),
-    HeadWarnings = HeadClause ^ clause_statevar_warnings,
+    HeadWarnSpecs = HeadClause ^ clause_statevar_warnings,
     % The order in which we return the warnings does not matter;
     % they will be printed in context order.
-    !:Warnings = HeadWarnings ++ !.Warnings,
-    get_clause_disjuncts_and_warnings(TailClauses, !Disjuncts, !Warnings).
+    !:WarnSpecs = HeadWarnSpecs ++ !.WarnSpecs,
+    get_clause_disjuncts_and_warnings(TailClauses, !Disjuncts, !WarnSpecs).
 
 %-----------------------------------------------------------------------------%
 

@@ -251,7 +251,7 @@ detect_cse_in_proc(MaybeProgressStream, PassNum, PredId, ProcId,
                     MaybeProgressStream = no
                 ),
                 get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-                write_error_specs(DebugStream, Globals, ModeSpecs, !IO)
+                write_diag_specs(DebugStream, Globals, ModeSpecs, !IO)
             ),
             unexpected($pred, "mode check fails when repeated")
         ;

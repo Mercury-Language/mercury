@@ -22,12 +22,13 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module list.
 :- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
     % parse_item_or_marker(ModuleName, VarSet, Term, SeqNum,
-    %   MaybeItemOrMarker):
+    %   MaybeItemOrMarker, !WarnSpecs):
     %
     % Parse Term as either an item or sequence of items, or as a marker for
     % the start or end of a module, the start of a module section,
@@ -43,7 +44,8 @@
     % to an error1() wrapped around an appropriate set of error messages.
     %
 :- pred parse_item_or_marker(module_name::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
     % parse_clause_term(MaybeDefaultModuleName, VarSet, Term, SeqNum,
     %   MaybeItemOrMarker):
@@ -55,7 +57,7 @@
     % Exported for use by parse_class.m.
     %
 :- pred parse_clause_term(maybe(module_name)::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_clause_info)::out) is det.
+    item_seq_num::in, maybe1(item_clause_info, err_warn_error)::out) is det.
 
     % parse_class_decl(ModuleName, VarSet, Term, MaybeClassDecl):
     %
@@ -68,7 +70,7 @@
     % Exported for use by parse_class.m.
     %
 :- pred parse_class_decl(module_name::in, varset::in, term::in,
-    maybe1(class_decl)::out) is det.
+    parse_result1(class_decl)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -102,7 +104,7 @@
     % Exported for use by parse_class.m.
     %
 :- pred is_the_name_a_variable(varset::in, var_term_kind::in, term::in,
-    diag_spec::out) is semidet.
+    err_spec::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -133,7 +135,6 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
@@ -143,33 +144,36 @@
 
 %---------------------------------------------------------------------------%
 
-parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
+parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM, !WarnSpecs) :-
     ( if Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext) then
         parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
-            SeqNum, MaybeIOM)
+            SeqNum, MaybeIOM, !WarnSpecs)
     else
         parse_clause_term(yes(ModuleName), VarSet, Term, SeqNum, MaybeClause),
         (
             MaybeClause = ok1(ItemClause),
             MaybeIOM = ok1(iom_item(item_clause(ItemClause)))
         ;
-            MaybeClause = error1(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeClause = error1({OoMErrSpecs, ClauseWarnSpecs}),
+            MaybeIOM = error1(OoMErrSpecs),
+            !:WarnSpecs = ClauseWarnSpecs ++ !.WarnSpecs
         )
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred parse_decl_term_item_or_marker(module_name::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is det.
-:- pragma inline(pred(parse_decl_term_item_or_marker/5)).
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+:- pragma inline(pred(parse_decl_term_item_or_marker/7)).
 
-parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
-        SeqNum, MaybeIOM) :-
+parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm, SeqNum,
+        MaybeIOM, !WarnSpecs) :-
     ( if DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context) then
         ( if
             parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-                decl_is_not_in_class, Context, SeqNum, MaybeIOMPrime)
+                decl_is_not_in_class, Context, SeqNum,
+                MaybeIOMPrime, !WarnSpecs)
         then
             MaybeIOM = MaybeIOMPrime
         else
@@ -181,7 +185,7 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
         MaybeIOM = error1(one_or_more(Spec, []))
     ).
 
-:- func decl_is_not_an_atom(varset, term) = diag_spec.
+:- func decl_is_not_an_atom(varset, term) = err_spec.
 
 decl_is_not_an_atom(VarSet, Term) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
@@ -193,7 +197,7 @@ decl_is_not_an_atom(VarSet, Term) = Spec :-
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func decl_functor_is_not_valid(string, prog_context) = diag_spec.
+:- func decl_functor_is_not_valid(string, prog_context) = err_spec.
 
 decl_functor_is_not_valid(Functor, Context) = Spec :-
     Pieces = [words("Error:")] ++
@@ -207,10 +211,11 @@ decl_functor_is_not_valid(Functor, Context) = Spec :-
 
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
     string::in, list(term)::in, decl_in_class::in, prog_context::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is semidet.
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is semidet.
 
 parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-        IsInClass, Context, SeqNum, MaybeIOM) :-
+        IsInClass, Context, SeqNum, MaybeIOM, !WarnSpecs) :-
     require_switch_arms_det [Functor]
     (
         Functor = "module",
@@ -274,23 +279,26 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ; Functor = "all", QuantType = quant_type_univ
         ),
         parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
-            Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
+            Context, SeqNum, QuantType, cord.init, cord.init,
+            MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "=>", QuantType = quant_type_exist
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
             IsInClass, Context, SeqNum, QuantType, cord.init, cord.init,
-            MaybeIOM)
+            MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
         ),
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, Purity, cord.init, cord.init, MaybeIOM)
+            IsInClass, Context, SeqNum, Purity, cord.init, cord.init,
+            MaybeIOM, !WarnSpecs)
     ;
         Functor = "promise",
-        parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM)
+        parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM0),
+        collect_warn_specs(MaybeIOM0, MaybeIOM, !WarnSpecs)
 % The supported form of promise_ex declarations is
 % ":- all [Vars] promise_ex Goal", and it is parsed by
 % parse_attr_decl_item_or_marker.
@@ -307,11 +315,13 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ;
         Functor = "typeclass",
         parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-            MaybeIOM)
+            MaybeIOM0),
+        collect_warn_specs(MaybeIOM0, MaybeIOM, !WarnSpecs)
     ;
         Functor = "instance",
         parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-            MaybeIOM)
+            MaybeIOM0),
+        collect_warn_specs(MaybeIOM0, MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "initialise"
         ; Functor = "initialize"
@@ -337,11 +347,12 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     string::in, list(term)::in, decl_in_class::in,
     prog_context::in, item_seq_num::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is semidet.
+    maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is semidet.
 
 parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         IsInClass, Context, SeqNum, PurityAttrs0, QuantConstrAttrs0,
-        MaybeIOM) :-
+        MaybeIOM, !WarnSpecs) :-
     % By coincidence, the kinds of items that may have purity,
     % quantification and/or constraint attributes on them, i.e.
     % the set item_pred_decl and item_mode_decl, is exactly the
@@ -389,21 +400,21 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ),
         parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
             Context, SeqNum, QuantType, PurityAttrs0, QuantConstrAttrs0,
-            MaybeIOM)
+            MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "=>", QuantType = quant_type_exist
         ; Functor = "<=", QuantType = quant_type_univ
         ),
         parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms,
             IsInClass, Context, SeqNum, QuantType, PurityAttrs0,
-            QuantConstrAttrs0, MaybeIOM)
+            QuantConstrAttrs0, MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "impure", Purity = purity_impure
         ; Functor = "semipure", Purity = purity_semipure
         ),
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
             IsInClass, Context, SeqNum, Purity, PurityAttrs0,
-            QuantConstrAttrs0, MaybeIOM)
+            QuantConstrAttrs0, MaybeIOM, !WarnSpecs)
     ;
         ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
         ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
@@ -411,8 +422,16 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
             PromiseType = promise_type_exclusive_exhaustive
         ),
         parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
-            PromiseType, PurityAttrs0, QuantConstrAttrs0, MaybeIOM)
+            PromiseType, PurityAttrs0, QuantConstrAttrs0, MaybeIOM0),
+        collect_warn_specs(MaybeIOM0, MaybeIOM, !WarnSpecs)
     ).
+
+:- pred collect_warn_specs(maybe1(T, err_warn_error)::in, maybe1(T)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+
+collect_warn_specs(ok1(T), ok1(T), !WarnSpecs).
+collect_warn_specs(error1({T, WS}), error1(T), !WarnSpecs) :-
+    !:WarnSpecs = WS ++ !.WarnSpecs.
 
 %---------------------------------------------------------------------------%
 
@@ -449,10 +468,11 @@ parse_clause_term(MaybeModuleName, VarSet, Term, SeqNum, MaybeClause) :-
 parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     TermContext = get_term_context(Term),
     parse_attributed_decl(ModuleName, VarSet, Term, decl_is_in_class,
-        TermContext, item_no_seq_num, cord.init, cord.init, MaybeIOM),
+        TermContext, item_no_seq_num, cord.init, cord.init,
+        MaybeIOM, [], WarnSpecs),
     (
-        MaybeIOM = error1(Specs),
-        MaybeClassMethod = error1(Specs)
+        MaybeIOM = error1(ErrSpecs),
+        MaybeClassMethod = error2({ErrSpecs, WarnSpecs})
     ;
         MaybeIOM = ok1(IOM),
         ( if IOM = iom_item(item_pred_decl(ItemPredDecl)) then
@@ -464,14 +484,14 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
                 WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
                 ExistQVars, Purity, Constraints, Context),
             ClassDecl = class_decl_pred_or_func(PredOrFuncInfo),
-            MaybeClassMethod = ok1(ClassDecl)
+            MaybeClassMethod = ok2(ClassDecl, WarnSpecs)
         else if IOM = iom_item(item_mode_decl(ItemModeDecl)) then
             ItemModeDecl = item_mode_decl_info(Name, MaybePorF, ArgModes,
                 WithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
             ModeInfo = class_mode_info(Name, MaybePorF, ArgModes,
                 WithInst, MaybeDetism, InstVarSet, Context),
             ClassDecl = class_decl_mode(ModeInfo),
-            MaybeClassMethod = ok1(ClassDecl)
+            MaybeClassMethod = ok2(ClassDecl, WarnSpecs)
         else
             Pieces = [words("Error: only")] ++
                 color_as_correct(
@@ -481,7 +501,7 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
                 [words("in class interfaces."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
-            MaybeClassMethod = error1(one_or_more(Spec, []))
+            MaybeClassMethod = error2({one_or_more(Spec, []), WarnSpecs})
         )
     ).
 
@@ -498,16 +518,18 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     string::in, list(term)::in, decl_in_class::in,
     prog_context::in, item_seq_num::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
-        SeqNum, QuantType, PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+        SeqNum, QuantType, PurityAttrs, !.QuantConstrAttrs,
+        MaybeIOM, !WarnSpecs) :-
     (
         ArgTerms = [VarsTerm, SubTerm],
         QuantAttr = qca_quant_vars(QuantType, VarsTerm),
         cord.snoc(QuantAttr, !QuantConstrAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM, !WarnSpecs)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_]
@@ -527,17 +549,18 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     string::in, list(term)::in, decl_in_class::in,
     prog_context::in, item_seq_num::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         Context, SeqNum, QuantType, PurityAttrs, !.QuantConstrAttrs,
-        MaybeIOM) :-
+        MaybeIOM, !WarnSpecs) :-
     (
         ArgTerms = [SubTerm, ConstraintsTerm],
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
         cord.snoc(ConstrAttr, !QuantConstrAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM, !WarnSpecs)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_]
@@ -557,16 +580,18 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     string::in, list(term)::in, decl_in_class::in,
     prog_context::in, item_seq_num::in,
     purity::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
-        Context, SeqNum, Purity, !.PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
+        Context, SeqNum, Purity, !.PurityAttrs, QuantConstrAttrs,
+        MaybeIOM, !WarnSpecs) :-
     (
         ArgTerms = [SubTerm],
         PurityAttr = purity_attr(Purity),
         cord.snoc(PurityAttr, !PurityAttrs),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, !.PurityAttrs, QuantConstrAttrs, MaybeIOM)
+            SeqNum, !.PurityAttrs, QuantConstrAttrs, MaybeIOM, !WarnSpecs)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_, _ | _]
@@ -584,15 +609,16 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
 :- pred parse_attributed_decl(module_name::in, varset::in, term::in,
     decl_in_class::in, prog_context::in, item_seq_num::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
-        PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
+        PurityAttrs, QuantConstrAttrs, MaybeIOM, !WarnSpecs) :-
     ( if Term = term.functor(term.atom(Functor), ArgTerms, FunctorContext) then
         ( if
             parse_attr_decl_item_or_marker(ModuleName, VarSet,
                 Functor, ArgTerms, IsInClass, FunctorContext, SeqNum,
-                PurityAttrs, QuantConstrAttrs, MaybeIOMPrime)
+                PurityAttrs, QuantConstrAttrs, MaybeIOMPrime, !WarnSpecs)
         then
             MaybeIOM = MaybeIOMPrime
         else if
@@ -891,7 +917,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
 %---------------------------------------------------------------------------%
 
 :- pred parse_clause(maybe(module_name)::in, varset::in, term::in, term::in,
-    term.context::in, item_seq_num::in, maybe1(item_clause_info)::out) is det.
+    term.context::in, item_seq_num::in,
+    maybe1(item_clause_info, err_warn_error)::out) is det.
 
 parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeClause) :-
@@ -994,9 +1021,11 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeClause = ok1(ItemClause)
     ;
         MaybeFunctor = error2(OoMFunctorSpecs),
-        append_one_or_more_list(OoMFunctorSpecs,
-            get_any_errors_warnings2(MaybeBodyGoal), OoMSpecs),
-        MaybeClause = error1(OoMSpecs)
+        get_all_errors_warnings2(MaybeBodyGoal,
+            BodyGoalErrSpecs, BodyGoalWarnSpecs),
+        append_one_or_more_list(OoMFunctorSpecs, BodyGoalErrSpecs,
+            OoMErrSpecs),
+        MaybeClause = error1({OoMErrSpecs, BodyGoalWarnSpecs})
     ).
 
 %---------------------------------------------------------------------------%
@@ -1803,7 +1832,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
 
 :- pred get_class_context_and_inst_constraints_loop(module_name::in,
     varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
-    list(diag_spec)::in, list(diag_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
     cord(var)::in, cord(var)::out, cord(var)::in, cord(var)::out,
     cord(prog_constraint)::in, cord(prog_constraint)::out,
     inst_var_sub::in, inst_var_sub::out,
@@ -1868,7 +1897,8 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
 %---------------------------------------------------------------------------%
 
 :- pred parse_promise_item(varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker, err_warn_error)::out) is det.
 
 parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if ArgTerms = [Term] then
@@ -1876,38 +1906,32 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
         (
-            MaybeGoal0 = ok2(Goal0, GoalWarningSpecs),
+            MaybeGoal0 = ok2(Goal0, GoalWarnSpecs),
+            ( if
+                Goal0 = quant_expr(quant_all, quant_ordinary_vars, _,
+                    UnivVars0, AllGoal)
+            then
+                UnivVars0 = UnivVars,
+                Goal = AllGoal
+            else
+                UnivVars = [],
+                Goal = Goal0
+            ),
             (
-                GoalWarningSpecs = [],
-                ( if
-                    Goal0 = quant_expr(quant_all, quant_ordinary_vars, _,
-                        UnivVars0, AllGoal)
-                then
-                    UnivVars0 = UnivVars,
-                    Goal = AllGoal
-                else
-                    UnivVars = [],
-                    Goal = Goal0
-                ),
+                GoalWarnSpecs = [],
                 ItemPromise = item_promise_info(promise_type_true, Goal,
                     ProgVarSet, UnivVars, Context, SeqNum),
                 Item = item_promise(ItemPromise),
                 MaybeIOM = ok1(iom_item(Item))
             ;
-                GoalWarningSpecs = [HeadSpec | TailSpecs],
-                % We *could* try to preserve any warnings for code
-                % inside Goal0, and add the promise to the parse tree
-                % for later addition to the HLDS even in the presence
-                % of such warnings, but there doesn't seem to be any point
-                % in doing that, because at the moment, the only kind
-                % of construct that generates warning_specs is a
-                % disable_warnings scope, and those should NOT be appearing
-                % in any promise.
-                MaybeIOM = error1(one_or_more(HeadSpec, TailSpecs))
+                GoalWarnSpecs = [_ |  _],
+                ErrWarnError =
+                    report_warning_in_promise(Context, GoalWarnSpecs),
+                MaybeIOM = error1(ErrWarnError)
             )
         ;
-            MaybeGoal0 = error2(Specs),
-            MaybeIOM = error1(Specs)
+            MaybeGoal0 = error2(ErrWarnError),
+            MaybeIOM = error1(ErrWarnError)
         )
     else
         Pieces = [words("Error: a")] ++
@@ -1916,7 +1940,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
                 words("which should be a goal.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error1({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -1924,10 +1948,11 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
 :- pred parse_promise_ex_item(varset::in, string::in, list(term)::in,
     prog_context::in, item_seq_num::in, promise_type::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker, err_warn_error)::out) is det.
 
 parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
-        PromiseType, PurityAttrCord, QuantConstrAttrCord, MaybeIOM) :-
+        PromiseType, PurityAttrCord, QuantConstrAttrCord,
+        MaybeIOM) :-
     ( if ArgTerms = [Term] then
         PurityAttrs = cord.list(PurityAttrCord),
         (
@@ -1971,31 +1996,33 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         ( if
             PuritySpecs = [],
             MaybeUnivVars = ok1(UnivVars),
-            MaybeGoal0 = ok2(Goal, GoalWarningSpecs),
-            % We *could* try to preserve any warnings for code inside Goal,
-            % and add the promise to the parse tree for later addition
-            % to the HLDS even in the presence of such warnings, but
-            % there doesn't seem to be any point in doing that, because
-            % at the moment, the only kind of construct that generates
-            % warning_specs is a disable_warnings scope, and those
-            % should NOT be appearing in any promise.
-            GoalWarningSpecs = []
+            MaybeGoal0 = ok2(Goal, GoalWarnSpecs)
         then
-            UnivProgVars = list.map(term.coerce_var, UnivVars),
-            ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
-                UnivProgVars, Context, SeqNum),
-            Item = item_promise(ItemPromise),
-            MaybeIOM = ok1(iom_item(Item))
+            (
+                GoalWarnSpecs = [],
+                UnivProgVars = list.map(term.coerce_var, UnivVars),
+                ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
+                    UnivProgVars, Context, SeqNum),
+                Item = item_promise(ItemPromise),
+                MaybeIOM = ok1(iom_item(Item))
+            ;
+                GoalWarnSpecs = [_ | _],
+                ErrWarnError =
+                    report_warning_in_promise(Context, GoalWarnSpecs),
+                MaybeIOM = error1(ErrWarnError)
+            )
         else
             (
-                MaybeGoal0 = ok2(_, GoalSpecs)
+                MaybeGoal0 = ok2(_, GoalWarnSpecs),
+                GoalErrSpecs = []
             ;
-                MaybeGoal0 = error2(OoMGoalSpecs),
-                GoalSpecs = one_or_more_to_list(OoMGoalSpecs)
+                MaybeGoal0 = error2({OoMGoalErrSpecs, GoalWarnSpecs}),
+                GoalErrSpecs = one_or_more_to_list(OoMGoalErrSpecs)
             ),
-            Specs = PuritySpecs ++ get_any_errors1(MaybeUnivVars) ++ GoalSpecs,
-            det_list_to_one_or_more(Specs, OoMSpecs),
-            MaybeIOM = error1(OoMSpecs)
+            ErrSpecs = PuritySpecs ++ get_any_errors1(MaybeUnivVars) ++
+                GoalErrSpecs,
+            det_list_to_one_or_more(ErrSpecs, OoMErrSpecs),
+            MaybeIOM = error1({OoMErrSpecs, GoalWarnSpecs})
         )
     else
         Pieces = [words("Error: a")] ++
@@ -2004,8 +2031,21 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
                 words("which should be a goal.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error1({one_or_more(Spec, []), []})
     ).
+
+:- func report_warning_in_promise(prog_context, list(warn_spec))
+    = err_warn_error.
+
+report_warning_in_promise(Context, GoalWarnSpecs) = ErrWarnError :-
+    Pieces = [words("Error: any")] ++
+        color_as_subject([words("warning")]) ++
+        [words("for the code inside a"),
+        decl("promise"), words("declaration"),
+        words("makes that promise")] ++
+        color_as_incorrect([words("invalid.")]) ++ [nl],
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+    ErrWarnError = {one_or_more(Spec, []), GoalWarnSpecs}.
 
 %---------------------------------------------------------------------------%
 
@@ -2245,7 +2285,7 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
 
 %---------------------------------------------------------------------------%
 
-:- func report_with_inst_and_detism(format_piece, term(T)) = diag_spec.
+:- func report_with_inst_and_detism(format_piece, term(T)) = err_spec.
 
 report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
     Pieces = [words("Error: a"), DeclKindPiece, words("declaration"),
@@ -2259,7 +2299,7 @@ report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_inst_no_arg_modes(pred_or_func, term(T)) = diag_spec.
+:- func report_with_inst_no_arg_modes(pred_or_func, term(T)) = err_spec.
 
 report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
     Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
@@ -2271,7 +2311,7 @@ report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_inst_no_with_type(pred_or_func, term(T)) = diag_spec.
+:- func report_with_inst_no_with_type(pred_or_func, term(T)) = err_spec.
 
 report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_type_no_with_inst as possible.
@@ -2285,7 +2325,7 @@ report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_with_type_no_with_inst(pred_or_func, term(T)) = diag_spec.
+:- func report_with_type_no_with_inst(pred_or_func, term(T)) = err_spec.
 
 report_with_type_no_with_inst(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_inst_no_with_type as possible.

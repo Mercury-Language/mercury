@@ -19,7 +19,8 @@
 
 :- pred add_pragma_type_spec(decl_pragma_type_spec_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -74,7 +75,8 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
+add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs) :-
     TypeSpec = decl_pragma_type_spec_info(PFUMM, SymName, _, _, _, _,
         Context, _),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
@@ -102,7 +104,8 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
     ;
         PFUMM = pfumm_unknown(UserArity),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, "type_spec",
-            PFUMM, SymName, Context, !Specs),
+            PFUMM, SymName, Context, UnknownWarnSpecs),
+        !:WarnSpecs = UnknownWarnSpecs ++ !.WarnSpecs,
         MaybePredOrFunc = no,
         predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
             SymName, UserArity, PredIds),
@@ -116,11 +119,12 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
             OtherUserArities),
         report_undefined_pred_or_func_error(MaybePredOrFunc, SymName,
             UserArity, OtherUserArities, Context,
-            [pragma_decl("type_spec"), words("declaration")], !Specs)
+            [pragma_decl("type_spec"), words("declaration")], UndefSpec),
+        !:ErrSpecs = [UndefSpec | !.ErrSpecs]
     ;
         PredIds = [_ | _],
         list.foldl3(add_pragma_type_spec_for_pred(TypeSpec),
-            PredIds, !ModuleInfo, !QualInfo, !Specs)
+            PredIds, !ModuleInfo, !QualInfo, !ErrSpecs)
     ).
 
 %---------------------%
@@ -128,7 +132,7 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
 :- pred add_pragma_type_spec_for_pred(decl_pragma_type_spec_info::in,
     pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_pragma_type_spec_for_pred(TypeSpec, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -556,7 +560,7 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
 %---------------------------------------------------------------------------%
 
 :- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
-    list(tvar)::in, diag_spec::out) is det.
+    list(tvar)::in, err_spec::out) is det.
 
 report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -571,7 +575,7 @@ report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
-    list(tvar)::in, diag_spec::out) is det.
+    list(tvar)::in, err_spec::out) is det.
 
 report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
     OccurOrOccurs =
@@ -585,7 +589,7 @@ report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, diag_spec::out) is det.
+    tvarset::in, list(tvar)::in, err_spec::out) is det.
 
 report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
     HasOrHave = choose_number(MultiSubstVars, "has", "have"),
@@ -598,7 +602,7 @@ report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in, diag_spec::out) is det.
+    tvarset::in, list(tvar)::in, err_spec::out) is det.
 
 report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),

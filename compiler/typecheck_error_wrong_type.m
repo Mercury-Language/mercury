@@ -113,7 +113,7 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, ExpectedType,
     AlwaysPieces = InClauseForPieces ++ GoalContextPieces ++
         ActualExpectedPieces ++ DiffPieces ++ NoSuffixIntegerPieces,
     Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
@@ -141,7 +141,7 @@ report_error_var_has_wrong_type_arg(Info, GoalContext, Context,
         [always(InClauseForPieces), always(GoalContextPieces),
         always(ActualExpectedPieces), always(DiffPieces),
         VerboseComponent]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 

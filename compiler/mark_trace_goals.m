@@ -158,7 +158,7 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace,
                 TraceMsg = msg(Context, TracePieces),
                 LastMsg = msg(context(FileName, LastLineNumber), LastPieces),
                 Severity = severity_warning(warn_moved_trace_goal),
-                Spec = diag_spec($pred, Severity, Phase, [TraceMsg, LastMsg]),
+                Spec = gen_spec($pred, Severity, Phase, [TraceMsg, LastMsg]),
                 !:Specs = [Spec | !.Specs]
             else
                 true

@@ -251,7 +251,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 report_determinism_problem(!.ModuleInfo, PredProcId,
                     "Warning", "could be tighter", [],
                     DeclaredDetism, InferredDetism, ReportMsg),
-                ReportSpec = diag_spec($pred,
+                ReportSpec = gen_spec($pred,
                     severity_warning(warn_det_decls_too_lax),
                     phase_detism_check, [ReportMsg]),
                 !:Specs = [ReportSpec | !.Specs]
@@ -287,7 +287,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
             report_determinism_problem(!.ModuleInfo, PredProcId,
                 "Error", "is not satisfied", ReasonPieces,
                 DeclaredDetism, InferredDetism, ReportMsg),
-            ReportSpec = diag_spec($pred, severity_error, phase_detism_check,
+            ReportSpec = gen_spec($pred, severity_error, phase_detism_check,
                 [ReportMsg | start_each_msg_with_blank_line(DetailMsgs)]),
             !:Specs = [ReportSpec | !.Specs]
         )
@@ -453,7 +453,7 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
             [words("This pragma is valid only for the following"),
             words(choose_number(Detisms, "determinism", "determinisms")),
             suffix(":") | DetismPieces] ++ [nl],
-        ValidSpec = diag_spec($pred, severity_error, phase_detism_check,
+        ValidSpec = gen_spec($pred, severity_error, phase_detism_check,
             [simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)])]),
@@ -698,7 +698,7 @@ report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, InferredDetism)
         color_as_incorrect([quote((InferredDetismStr)), suffix(".")]) ++
         [nl],
     VerbosePieces = func_primary_mode_det_msg,
-    Spec = diag_spec($pred, severity_error, phase_detism_check,
+    Spec = gen_spec($pred, severity_error, phase_detism_check,
         [simple_msg(Context,
             [always(MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).

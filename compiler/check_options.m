@@ -709,7 +709,7 @@ check_color_options(!OptionTable, !Specs, !IO) :-
     then
         record_color_scheme_in_options(Source, ColorScheme, ColorSchemeSpecs,
             !OptionTable, !IO),
-        !:Specs = ColorSchemeSpecs ++ !.Specs
+        !:Specs = coerce(ColorSchemeSpecs) ++ !.Specs
     else
         unexpected($pred, "unexpected value in color_scheme_set_by option")
     ),
@@ -718,7 +718,7 @@ check_color_options(!OptionTable, !Specs, !IO) :-
         MaybeConvertColorSpecs = ok1(_)
     ;
         MaybeConvertColorSpecs = error1(ConvertColorSpecs),
-        !:Specs = one_or_more_to_list(ConvertColorSpecs) ++ !.Specs
+        !:Specs = coerce(one_or_more_to_list(ConvertColorSpecs)) ++ !.Specs
     ).
 
 %---------------------------------------------------------------------------%

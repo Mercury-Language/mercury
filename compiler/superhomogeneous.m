@@ -506,7 +506,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
 %               words("of the form"), quote("<term> " ++ YAtom ++ " <type>"),
 %               suffix("."), nl],
 %           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
-%           Spec = diag_spec(severity_error, phase_pt2h, [Msg]),
+%           Spec = gen_spec(severity_error, phase_pt2h, [Msg]),
 %           !:Specs = [Spec | !.Specs],
 %           qual_info_set_found_syntax_error(yes, !QualInfo),
 %           Expansion = expansion(not_fgti, cord.empty)
@@ -543,7 +543,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
 %               words("of the form"), quote("<term> " ++ YAtom ++ " <term>"),
 %               suffix("."), nl],
 %           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
-%           Spec = diag_spec(severity_error, phase_pt2h, [Msg]),
+%           Spec = gen_spec(severity_error, phase_pt2h, [Msg]),
 %           !:Specs = [Spec | !.Specs],
 %           qual_info_set_found_syntax_error(yes, !QualInfo),
 %           Expansion = expansion(not_fgti, cord.empty)
@@ -595,7 +595,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
 %               words("can be used only in expressions of the form"),
 %               quote("<term> ^ <fieldname>"), suffix("."), nl],
 %           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
-%           Spec = diag_spec(severity_error, phase_pt2h, [Msg]),
+%           Spec = gen_spec(severity_error, phase_pt2h, [Msg]),
 %           !:Specs = [Spec | !.Specs],
 %           qual_info_set_found_syntax_error(yes, !QualInfo),
 %           Expansion = expansion(not_fgti, cord.empty)
@@ -621,7 +621,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
 %               quote("<term> ^ <fieldname> := <newfieldvalueterm>"),
 %               suffix("."), nl],
 %           Msg = simple_msg(YFunctorContext, [always(Pieces)]),
-%           Spec = diag_spec(severity_error, phase_pt2h, [Msg]),
+%           Spec = gen_spec(severity_error, phase_pt2h, [Msg]),
 %           !:Specs = [Spec | !.Specs],
 %           qual_info_set_found_syntax_error(yes, !QualInfo),
 %           Expansion = expansion(not_fgti, cord.empty)
@@ -655,7 +655,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h,
                 YFunctorContext, Pieces),
-            add_unravel_spec(Spec, !UrInfo),
+            add_unravel_err(Spec, !UrInfo),
             record_unravel_found_syntax_error(!UrInfo),
             Expansion = expansion(not_fgti, cord.empty)
         )
@@ -730,12 +730,12 @@ unravel_special_with_type(XVar, RValTerm, DeclTypeTerm0,
             YFunctorContext, QualInfo0, QualInfo, [], TypeQualSpecs),
         !UrInfo ^ ui_qual_info := QualInfo,
         % Note that most of time, TypeQualSpecs will be [].
-        add_unravel_specs(TypeQualSpecs, !UrInfo)
+        add_unravel_errs(TypeQualSpecs, !UrInfo)
     ;
         DeclTypeResult = error1(DeclTypeSpecs),
         % The varset is a prog_varset even though it contains the names
         % of type variables in ErrorTerm, which is a generic term.
-        add_unravel_oom_specs(DeclTypeSpecs, !UrInfo)
+        add_unravel_oom_errs(DeclTypeSpecs, !UrInfo)
     ),
     do_unravel_var_unification(XVar, RValTerm,
         Context, MainContext, SubContext, Purity, Order, Expansion,
@@ -792,7 +792,7 @@ unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
     (
         MaybeVarsCond =
             ok4(Vars, StateVars, CondParseTree, CondWarningSpecs),
-        add_unravel_specs(CondWarningSpecs, !UrInfo),
+        add_unravel_warns(CondWarningSpecs, !UrInfo),
         BeforeSVarState = !.SVarState,
         svar_prepare_for_local_state_vars(Context, StateVars,
             BeforeSVarState, BeforeInsideSVarState, !UrInfo),
@@ -839,8 +839,9 @@ unravel_special_if_then_else(XVar, CondTerm0, ThenTerm0, ElseTerm0,
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Expansion = expansion(not_fgti, cord.singleton(Goal))
     ;
-        MaybeVarsCond = error4(VarsCondSpecs),
-        add_unravel_oom_specs(VarsCondSpecs, !UrInfo),
+        MaybeVarsCond = error4({OoMVarsCondErrSpecs, VarsConsWarnSpecs}),
+        add_unravel_oom_errs(OoMVarsCondErrSpecs, !UrInfo),
+        add_unravel_warns(VarsConsWarnSpecs, !UrInfo),
         Expansion = expansion(not_fgti,
             cord.singleton(true_goal_with_context(Context)))
     ).
@@ -1022,7 +1023,7 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
             MaybeConsId = ok1(ConsId)
         ;
             MaybeConsId = error1(ConsIdSpecs),
-            add_unravel_oom_specs(ConsIdSpecs, !UrInfo),
+            add_unravel_oom_errs(ConsIdSpecs, !UrInfo),
             % This is a dummy.
             ConsId = some_int_const(int_const(0))
         )
@@ -1063,7 +1064,7 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
                 [words("and")] ++
                 color_as_correct([quote("$grade"), suffix(".")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            add_unravel_spec(Spec, !UrInfo),
+            add_unravel_err(Spec, !UrInfo),
             % This is a dummy.
             ConsId = impl_defined_const(idc_line)
         )
@@ -1386,7 +1387,7 @@ perform_occurs_check(AncestorVarMap, Var, !UrInfo) :-
                 [nl],
             Severity = severity_warning(warn_suspected_occurs_check_failure),
             Spec = spec($pred, Severity, phase_pt2h, AncestorContext, Pieces),
-            add_unravel_spec(Spec, !UrInfo)
+            add_unravel_warn(Spec, !UrInfo)
         )
     else
         true

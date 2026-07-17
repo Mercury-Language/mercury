@@ -207,7 +207,7 @@ report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [simple_msg(Context, [always(Pieces1 ++ Pieces2)]) | ReasonMsgs],
     Severity = severity_warning(warn_requested_by_option),
-    Spec = diag_spec($pred, Severity, phase_termination_analysis, Msgs),
+    Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term2_errors(module_info::in, maybe(pred_proc_id)::in,

@@ -302,7 +302,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
     ).
 
 :- func make_field_list_error(prog_varset, term.context, prog_term,
-    list(format_piece)) = diag_spec.
+    list(format_piece)) = err_spec.
 
 make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),

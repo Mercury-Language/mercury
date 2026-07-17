@@ -305,7 +305,7 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         )
     ).
 
-:- func report_unrecognized_pragma_form(prog_context) = diag_spec.
+:- func report_unrecognized_pragma_form(prog_context) = err_spec.
 
 report_unrecognized_pragma_form(Context) = Spec :-
     Pieces = [words("Error: a"), decl("pragma"), words("declaration")] ++
@@ -1052,7 +1052,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
 :- pred parse_pragma_require_tail_recursion_options(varset::in,
     prog_context::in, list(term)::in,
     maybe(warning_or_error)::in, maybe(require_tail_recursion_type)::in,
-    maybe(report_in_which_grades)::in, list(diag_spec)::in,
+    maybe(report_in_which_grades)::in, list(err_spec)::in,
     maybe1(require_tail_recursion)::out) is det.
 
 parse_pragma_require_tail_recursion_options(_VarSet, PragmaContext, [],
@@ -1147,7 +1147,7 @@ parse_pragma_require_tail_recursion_options(VarSet, PragmaContext,
         !.MaybeWarnOrError, !.MaybeType, !.MaybeGrades, !.Specs, MaybeRTR).
 
 :- func conflicting_attributes_error(string, string, prog_context) =
-    diag_spec.
+    err_spec.
 
 conflicting_attributes_error(ThisName, EarlierName, Context) = Spec :-
     Pieces = [words("Error:")] ++
@@ -1160,7 +1160,7 @@ conflicting_attributes_error(ThisName, EarlierName, Context) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func pragma_require_tailrec_unknown_term_error(varset, term, prog_context) =
-    diag_spec.
+    err_spec.
 
 pragma_require_tailrec_unknown_term_error(VarSet, Term, Context) = Spec :-
     TermStr = describe_error_term(VarSet, Term),
@@ -1378,7 +1378,7 @@ parse_pragma_type_spec_constr(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
 %---------------------%
 
 :- pred parse_var_or_ground_constraint_list(set(string)::in, term::in,
-    list(var_or_ground_constraint)::out, list(diag_spec)::out,
+    list(var_or_ground_constraint)::out, list(err_spec)::out,
     counter::in, counter::out, varset::in, varset::out) is det.
 
 parse_var_or_ground_constraint_list(NamedVarNames, Term, Constraints, Specs,
@@ -1425,7 +1425,7 @@ parse_var_or_ground_constraint_list(NamedVarNames, Term, Constraints, Specs,
 
 :- pred parse_var_or_ground_constraint_acc(set(string)::in, term::in,
     cord(var_or_ground_constraint)::in, cord(var_or_ground_constraint)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
     counter::in, counter::out, varset::in, varset::out) is det.
 
 parse_var_or_ground_constraint_acc(NamedVarNames, Term,
@@ -1540,7 +1540,7 @@ parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
     ).
 
 :- pred parse_type_subst_list(set(string)::in, term::in,
-    list(type_subst)::out, list(diag_spec)::out,
+    list(type_subst)::out, list(err_spec)::out,
     counter::in, counter::out, varset::in, varset::out) is det.
 
 parse_type_subst_list(NamedVarNames, Term, TypeSubsts, Specs,
@@ -1590,7 +1590,7 @@ parse_type_subst_list(NamedVarNames, Term, TypeSubsts, Specs,
 
 :- pred parse_type_subst_acc(why_no_ho_inst_info::in, list(format_piece)::in,
     set(string)::in, term::in, cord(type_subst)::in, cord(type_subst)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
     counter::in, counter::out, varset::in, varset::out) is det.
 
 parse_type_subst_acc(WNHII, PrefixPieces, NamedVarNames, Term,
@@ -1754,7 +1754,7 @@ var_or_ground_type_acc_tvars(VoGType, !TVars) :-
     ).
 
 :- pred check_type_substs(tvarset::in, set(tvar)::in, term::in, int::in,
-    list(type_subst)::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(type_subst)::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 check_type_substs(_, _, _, _, [], !TypeSubstTVarSpecs).
 check_type_substs(TVarSet, ConstraintTVars, ErrorTerm,
@@ -1765,7 +1765,7 @@ check_type_substs(TVarSet, ConstraintTVars, ErrorTerm,
         SubstNum + 1, TypeSubsts, !TypeSubstTVarSpecs).
 
 :- pred check_type_subst(tvarset::in, set(tvar)::in, term::in, int::in,
-    type_subst::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    type_subst::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 check_type_subst(TVarSet, ConstraintTVars, ErrorTerm, SubstNum, TypeSubst,
         !Specs) :-
@@ -1778,7 +1778,7 @@ check_type_subst(TVarSet, ConstraintTVars, ErrorTerm, SubstNum, TypeSubst,
     BadRHSTVarList = set.to_sorted_list(BadRHSTVars),
     % If a type_spec_constrained_preds pragma contains N substitutions
     % in its third argument, then the process of checking those substitutions
-    % can generate up to 2N diag_specs: one for each lhs or rhs in those
+    % can generate up to 2N err_specs: one for each lhs or rhs in those
     % N substitutions. We don't have a context for any part of the third
     % argument, just the context of the third argument as a whole (our caller
     % passes us the term containing that argument as ErrorTerm). We want to
@@ -1962,7 +1962,7 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
 
 :- pred parse_tvar_substs(why_no_ho_inst_info::in, list(format_piece)::in,
     varset::in, term::in, list(term)::in, list(tvar_subst)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 parse_tvar_substs(WNHII, ContextPieces, VarSet, HeadTerm, TailTerms,
         TVarSubsts, !Specs) :-
@@ -1976,7 +1976,7 @@ parse_tvar_substs(WNHII, ContextPieces, VarSet, HeadTerm, TailTerms,
 :- pred parse_tvar_subst_acc(why_no_ho_inst_info::in, list(format_piece)::in,
     varset::in, term::in,
     cord(tvar_subst)::in, cord(tvar_subst)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
         !TVarSubstCord, !Specs) :-
@@ -2279,7 +2279,7 @@ string_to_required_feature("conservative_gc",   reqf_conservative_gc).
 
 %---------------------------------------------------------------------------%
 
-:- func report_pragma_arity_error(term(T), string, string) = diag_spec.
+:- func report_pragma_arity_error(term(T), string, string) = err_spec.
 
 report_pragma_arity_error(ErrorTerm, PragmaName, ArgNumsStr) = Spec :-
     ( if

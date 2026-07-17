@@ -209,7 +209,7 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = error1(LookupSpecs),
-        MayBuild = may_not_build(LookupSpecs)
+        MayBuild = may_not_build(oom_err_to_oom_diag(LookupSpecs))
     ;
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         % --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS from the

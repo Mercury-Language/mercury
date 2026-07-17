@@ -23,23 +23,26 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module cord.
-:- import_module list.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
 
+:- type goal_result == parse_result1(goal).
+
+%---------------------------------------------------------------------------%
+
 :- func should_have_no_args(cord(format_piece),
-    term.context, string) = diag_spec.
+    term.context, string) = err_spec.
 :- func should_have_one_goal_prefix(cord(format_piece),
-    term.context, string) = diag_spec.
+    term.context, string) = err_spec.
 :- func should_have_two_terms_infix(cord(format_piece),
-    term.context, string) = diag_spec.
+    term.context, string) = err_spec.
 :- func should_have_two_goals_infix(cord(format_piece),
-    term.context, string) = diag_spec.
+    term.context, string) = err_spec.
 :- func should_have_one_x_one_goal_prefix(cord(format_piece),
-    term.context, string, string) = diag_spec.
+    term.context, string, string) = err_spec.
 :- func should_have_one_call_prefix(cord(format_piece),
-    term.context, string) = diag_spec.
+    term.context, string) = err_spec.
 
     % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
     %   MaybeGoal0, MaybeGoal):
@@ -50,8 +53,7 @@
     % are applicable.
     %
 :- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
-    maybe2(goal, list(warning_spec))::in,
-    maybe2(goal, list(warning_spec))::out) is det.
+    parse_result1(goal)::in, parse_result1(goal)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -62,6 +64,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_misc.
 
+:- import_module list.
 :- import_module maybe.
 :- import_module term_context.
 

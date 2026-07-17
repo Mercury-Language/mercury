@@ -45,7 +45,7 @@
     list(foreign_decl_code)::out, list(foreign_body_code)::out,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -100,7 +100,7 @@ implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
     cord(impl_pragma_fproc_export_info)::in,
         cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 implement_mutables_sec_loop(_ModuleInfo, _UndefInstCtors, [], _DefinedMutables,
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
@@ -166,7 +166,7 @@ implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
     cord(impl_pragma_fproc_export_info)::in,
         cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 implement_mutables_loop(_ModuleInfo, _SectionInfo, _ModuleParams,
         [], !DefinedMutables, !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
@@ -186,7 +186,7 @@ implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
             color_as_incorrect([words("duplicate.")]) ++
             [nl],
         OldPieces = [words("The first definition is here."), nl],
-        Spec = diag_spec($pred, severity_error, phase_pt2h,
+        Spec = gen_spec($pred, severity_error, phase_pt2h,
             [msg(Context, Pieces),
             msg(OldContext, OldPieces)]),
         !:Specs = [Spec | !.Specs]
@@ -211,7 +211,7 @@ implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
 %---------------------------------------------------------------------------%
 
 :- pred check_mutable(module_info::in, module_params::in,
-    item_mutable_info::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    item_mutable_info::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
     ItemMutable = item_mutable_info(_MutableName,
@@ -282,7 +282,7 @@ check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
     %
 :- pred check_mutable_inst(module_info::in, module_params::in,
     prog_context::in, inst_varset::in, list(inst_ctor)::in, mer_inst::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
         ParentInsts, Inst, !Specs) :-
@@ -400,7 +400,7 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
 :- pred check_mutable_bound_functors(module_info::in, module_params::in,
     prog_context::in, inst_varset::in,
     list(inst_ctor)::in, list(bound_functor)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_mutable_bound_functors(_ModuleInfo, _ModuleParams, _Context,
         _InstVarSet, _ParentInsts, [], !Specs).
@@ -414,7 +414,7 @@ check_mutable_bound_functors(ModuleInfo, ModuleParams, Context,
 
 :- pred check_mutable_insts(module_info::in, module_params::in,
     prog_context::in, inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_mutable_insts(_ModuleInfo, _ModuleParams, _Context, _InstVarSet,
         _ParentInsts, [], !Specs).
@@ -429,7 +429,7 @@ check_mutable_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
 
 :- pred check_mutable_inst_uniqueness(module_info::in, prog_context::in,
     inst_varset::in, list(inst_ctor)::in, mer_inst::in, uniqueness::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
         Inst, Uniq, !Specs) :-
@@ -468,7 +468,7 @@ check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
     %
 :- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
     inst_varset::in, list(inst_ctor)::in, mer_inst::in, list(format_piece)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         ProblemPieces, !Specs) :-

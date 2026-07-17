@@ -35,7 +35,8 @@
     pred_or_func::in, list(mer_type)::in, pred_markers::in, term.context::in,
     instance_status::in, clauses_info::out, tvarset::in, tvarset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,7 +69,7 @@
 
 produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         Markers, Context, InstanceStatus, ClausesInfo,
-        !TVarSet, !ModuleInfo, !QualInfo, !Specs) :-
+        !TVarSet, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     PredFormArity = arg_list_arity(ArgTypes),
     (
         % Handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax.
@@ -115,22 +116,23 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         % XXX CIT_TYPES: should be cit_types(ArgTypes)
         clauses_info_init(PredOrFunc, cit_no_types(PredFormArity),
             init_clause_item_numbers_comp_gen, ClausesInfo0),
-        list.foldl5(
+        list.foldl6(
             produce_instance_method_clause(PredOrFunc, Context,
                 InstanceStatus),
             InstanceClauses, !TVarSet, !ModuleInfo, !QualInfo,
-            ClausesInfo0, ClausesInfo, !Specs)
+            ClausesInfo0, ClausesInfo, !ErrSpecs, !WarnSpecs)
     ).
 
 :- pred produce_instance_method_clause(pred_or_func::in,
     prog_context::in, instance_status::in, item_clause_info::in,
     tvarset::in, tvarset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out, clauses_info::in, clauses_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,
-        !ClausesInfo, !Specs) :-
+        !ClausesInfo, !ErrSpecs, !WarnSpecs) :-
     InstanceClause = item_clause_info(ClausePredOrFunc, PredSymName,
         HeadTerms0, ClauseVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
@@ -143,16 +145,20 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         TVarSet = TVarSet0,
         ResultSpec = report_illegal_func_svar_result_raw(StateVarContext,
             ClauseVarSet, StateVar),
-        !:Specs = [ResultSpec | get_any_errors_warnings2(MaybeBodyGoal)] ++
-            !.Specs
+        get_all_errors_warnings2(MaybeBodyGoal,
+            BodyGoalErrSpecs, BodyGoalWarnSpecs),
+        !:ErrSpecs = [ResultSpec | BodyGoalErrSpecs] ++ !.ErrSpecs,
+        !:WarnSpecs = BodyGoalWarnSpecs ++ !.WarnSpecs
     else
         (
-            MaybeBodyGoal = error2(BodyGoalSpecs),
+            MaybeBodyGoal = error2({OoMBodyGoalErrSpecs, BodyGoalWarnSpecs}),
             TVarSet = TVarSet0,
-            !:Specs = one_or_more_to_list(BodyGoalSpecs) ++ !.Specs
+            !:ErrSpecs =
+                one_or_more_to_list(OoMBodyGoalErrSpecs) ++ !.ErrSpecs,
+            !:WarnSpecs = BodyGoalWarnSpecs ++ !.WarnSpecs
         ;
             MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
-            !:Specs = BodyGoalWarningSpecs ++ !.Specs,
+            !:WarnSpecs = BodyGoalWarningSpecs ++ !.WarnSpecs,
             expand_bang_state_pairs_in_terms(HeadTerms0, HeadTerms),
             % AllProcIds is only used when the predicate has foreign procs,
             % which the instance method pred should not have, so this
@@ -165,7 +171,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
                 clause_not_for_promise, PredOrFunc, PredSymName, HeadTerms,
                 Context, item_no_seq_num, BodyGoal, ClauseVarSet,
                 TVarSet0, TVarSet, !ClausesInfo, !ModuleInfo,
-                !QualInfo, !Specs)
+                !QualInfo, !ErrSpecs, !WarnSpecs)
         )
     ).
 

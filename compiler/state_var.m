@@ -83,10 +83,11 @@
                 ui_state_var_store  :: svar_store,
 
                 % The errors and warnings that we definitely want to print.
-                % (The svar_store also contains diag_specs, but we print those
+                % (The svar_store also contains warn_specs, but we print those
                 % only as hints *if and when* we later find certain other kinds
                 % of errors.)
-                ui_diag_specs      :: list(diag_spec)
+                ui_err_specs       :: list(err_spec),
+                ui_warn_specs      :: list(warn_spec)
             ).
 
 %---------------------------------------------------------------------------%
@@ -100,11 +101,16 @@
 :- pred record_unravel_found_syntax_error(
     unravel_info::in, unravel_info::out) is det.
 
-:- pred add_unravel_spec(diag_spec::in,
+:- pred add_unravel_err(err_spec::in,
     unravel_info::in, unravel_info::out) is det.
-:- pred add_unravel_specs(list(diag_spec)::in,
+:- pred add_unravel_errs(list(err_spec)::in,
     unravel_info::in, unravel_info::out) is det.
-:- pred add_unravel_oom_specs(one_or_more(diag_spec)::in,
+:- pred add_unravel_oom_errs(one_or_more(err_spec)::in,
+    unravel_info::in, unravel_info::out) is det.
+
+:- pred add_unravel_warn(warn_spec::in,
+    unravel_info::in, unravel_info::out) is det.
+:- pred add_unravel_warns(list(warn_spec)::in,
     unravel_info::in, unravel_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -200,7 +206,7 @@
 :- pred svar_finish_clause_body(prog_context::in, new_statevar_map::in,
     map(svar, prog_var)::in, svar_state::in, svar_state::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::out,
-    list(diag_spec)::out, unused_statevar_arg_map::out,
+    list(warn_spec)::out, unused_statevar_arg_map::out,
     unravel_info::in, unravel_info::out) is det.
 
     % Finish processing a lambda expression.
@@ -385,12 +391,12 @@
 :- pred report_illegal_func_svar_result(prog_context::in, svar::in,
     unravel_info::in, unravel_info::out) is det.
 :- func report_illegal_func_svar_result_raw(prog_context,
-    prog_varset, svar) = diag_spec.
+    prog_varset, svar) = err_spec.
 
 :- pred report_illegal_bang_svar_lambda_arg(prog_context::in, svar::in,
     unravel_info::in, unravel_info::out) is det.
 :- func report_illegal_bang_svar_lambda_arg_raw(prog_context,
-    prog_varset, svar) = diag_spec.
+    prog_varset, svar) = err_spec.
 
 :- pred report_svar_unify_error(prog_context::in, svar::in,
     svar_state::in, svar_state::out,
@@ -446,25 +452,35 @@ record_unravel_found_syntax_error(!UrInfo) :-
     qual_info_set_found_syntax_error(yes, QualInfo0, QualInfo),
     !UrInfo ^ ui_qual_info := QualInfo.
 
-add_unravel_spec(NewSpec, !UrInfo) :-
-    Specs0 = !.UrInfo ^ ui_diag_specs,
+add_unravel_err(NewSpec, !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_err_specs,
     Specs = [NewSpec | Specs0],
-    !UrInfo ^ ui_diag_specs := Specs.
+    !UrInfo ^ ui_err_specs := Specs.
 
-add_unravel_specs(NewSpecs, !UrInfo) :-
+add_unravel_errs(NewSpecs, !UrInfo) :-
     (
         NewSpecs = []
     ;
         NewSpecs = [_ | _],
-        Specs0 = !.UrInfo ^ ui_diag_specs,
+        Specs0 = !.UrInfo ^ ui_err_specs,
         Specs = NewSpecs ++ Specs0,
-        !UrInfo ^ ui_diag_specs := Specs
+        !UrInfo ^ ui_err_specs := Specs
     ).
 
-add_unravel_oom_specs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
-    Specs0 = !.UrInfo ^ ui_diag_specs,
+add_unravel_oom_errs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_err_specs,
     Specs = [HeadSpec | TailSpecs] ++ Specs0,
-    !UrInfo ^ ui_diag_specs := Specs.
+    !UrInfo ^ ui_err_specs := Specs.
+
+add_unravel_warn(NewSpec, !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_warn_specs,
+    Specs = [NewSpec | Specs0],
+    !UrInfo ^ ui_warn_specs := Specs.
+
+add_unravel_warns(NewSpecs, !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_warn_specs,
+    Specs = NewSpecs ++ Specs0,
+    !UrInfo ^ ui_warn_specs := Specs.
 
 %---------------------------------------------------------------------------%
 %
@@ -570,7 +586,7 @@ add_unravel_oom_specs(one_or_more(HeadSpec, TailSpecs), !UrInfo) :-
                 % As of 2025 feb 20, these messages are all about situations
                 % in which a disjunction or an if-then-else initialises
                 % a state variable in some branches but not in others.
-                store_missing_init_specs    ::  list(diag_spec)
+                store_missing_init_specs    ::  list(warn_spec)
             ).
 
     % Create a new svar_state/store set up to start processing a clause head.
@@ -755,9 +771,10 @@ svar_prepare_for_clause_head(ModuleInfo0, QualInfo0, VarSet0,
     Threshold = OptTuple ^ ot_from_ground_term_threshold,
     !:SVarState = new_svar_state,
     SVarStore0 = new_svar_store,
-    Specs0 = [],
+    ErrSpecs0 = [],
+    WarnSpecs0 = [],
     !:UrInfo = unravel_info(ModuleInfo0, Threshold, QualInfo0, VarSet0,
-        SVarStore0, Specs0),
+        SVarStore0, ErrSpecs0, WarnSpecs0),
     svar_prepare_head_terms(0u, 1u, Args0, Args, map.init, FinalMap,
         !SVarState, init_new_statevar_map, NewSVars, !UrInfo).
 
@@ -1342,7 +1359,7 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
     list(hlds_goal)::in, list(hlds_goal)::out,
     ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 merge_changes_made_by_arms(_, [], _, _,
         !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
@@ -2563,8 +2580,8 @@ report_illegal_state_var_update(Context, RO_Construct, RO_Context,
     Pieces2 = [words("Here is the surrounding context that makes"),
         words("state variable"), quote(Name), words("readonly."), nl],
     Msg2 = msg(RO_Context, Pieces2),
-    Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
-    add_unravel_spec(Spec, !UrInfo).
+    Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
+    add_unravel_err(Spec, !UrInfo).
 
 :- func ro_construct_name(readonly_context_kind) = string.
 
@@ -2575,7 +2592,7 @@ ro_construct_name(roc_lambda) = "lambda expression".
 report_illegal_func_svar_result(Context, StateVar, !UrInfo) :-
     VarSet = !.UrInfo ^ ui_varset,
     Spec = report_illegal_func_svar_result_raw(Context, VarSet, StateVar),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_err(Spec, !UrInfo).
 
 report_illegal_func_svar_result_raw(Context, VarSet, StateVar) = Spec :-
     Name = varset.lookup_name(VarSet, StateVar),
@@ -2593,7 +2610,7 @@ report_illegal_func_svar_result_raw(Context, VarSet, StateVar) = Spec :-
 report_illegal_bang_svar_lambda_arg(Context, StateVar, !UrInfo) :-
     VarSet = !.UrInfo ^ ui_varset,
     Spec = report_illegal_bang_svar_lambda_arg_raw(Context, VarSet, StateVar),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_err(Spec, !UrInfo).
 
 report_illegal_bang_svar_lambda_arg_raw(Context, VarSet, StateVar) = Spec :-
     Name = varset.lookup_name(VarSet, StateVar),
@@ -2618,7 +2635,7 @@ report_non_visible_state_var(DorC, Context, StateVar, !UrInfo) :-
         color_as_incorrect([quote("!" ++ DorC ++ Name)]) ++
         [words("is not visible in this context."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_err(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -2635,7 +2652,7 @@ report_uninitialized_state_var(WarnOption, Context, StateVar, !UrInfo) :-
         [words("yet."), nl],
     Spec = spec($pred, severity_warning(WarnOption), phase_pt2h,
         Context, Pieces),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_warn(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -2649,7 +2666,7 @@ report_repeated_head_state_var(Context, StateVar, !UrInfo) :-
         color_as_incorrect([words("state variable"), quote(Name)]) ++
         [words("more than once."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_err(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -2664,7 +2681,7 @@ report_state_var_shadow(Context, StateVar, !UrInfo) :-
         color_as_incorrect([words("shadows old one.")]) ++ [nl],
     Spec = spec($pred, severity_warning(warn_state_var_shadowing), phase_pt2h,
         Context, Pieces),
-    add_unravel_spec(Spec, !UrInfo).
+    add_unravel_warn(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -2688,7 +2705,7 @@ report_missing_inits_in_ite(Context, NextStateVars,
     !UrInfo ^ ui_state_var_store ^ store_missing_init_specs := Specs.
 
 :- pred report_missing_inits_in_disjunct(prog_context::in, list(string)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
     Pieces = [words("Other disjuncts define")] ++
@@ -2713,7 +2730,7 @@ report_svar_unify_error(Context, StateVar, !SVarState, !UrInfo) :-
         color_as_correct([fixed("!." ++ Name)]) ++ [words("or")] ++
         color_as_correct([fixed("!:" ++ Name), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    add_unravel_spec(Spec, !UrInfo),
+    add_unravel_err(Spec, !UrInfo),
     !.SVarState = svar_state(StatusMap0),
     % If StateVar was not known before, then this is the first occurrence
     % of this state variable, and the user almost certainly intended it
@@ -2820,7 +2837,7 @@ report_unneeded_svar_in_lambda(Context, Modes, ParseTreeGoal, GoalVarSVarNames,
             words("replaced with an ordinary variable."), nl],
         Severity = severity_warning(warn_unneeded_initial_statevars_lambda),
         Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-        add_unravel_spec(Spec, !UrInfo)
+        add_unravel_warn(Spec, !UrInfo)
     ;
         InitOrFinal = init_and_final_arg(_),
         % Please keep this wording in sync with the code of the
@@ -2859,7 +2876,7 @@ report_unneeded_svar_in_lambda(Context, Modes, ParseTreeGoal, GoalVarSVarNames,
                 Severity =
                     severity_warning(warn_unneeded_final_statevars_lambda),
                 Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-                add_unravel_spec(Spec, !UrInfo)
+                add_unravel_warn(Spec, !UrInfo)
             else
                 true
             )
@@ -2878,7 +2895,7 @@ report_unneeded_svar_in_lambda(Context, Modes, ParseTreeGoal, GoalVarSVarNames,
                 words("is always the same as the initial value."), nl],
             Severity = severity_warning(warn_unneeded_final_statevars_lambda),
             Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-            add_unravel_spec(Spec, !UrInfo)
+            add_unravel_warn(Spec, !UrInfo)
         )
     ).
 

@@ -34,11 +34,11 @@
 
 :- pred check_preds_if_field_access_function(module_info::in,
     sec_list(item_pred_decl_info)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 :- pred maybe_check_field_access_function(module_info::in,
     sym_name::in, user_arity::in, pred_status::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -69,7 +69,7 @@ check_preds_if_field_access_function(ModuleInfo, [SecList | SecLists],
 
 :- pred check_pred_if_field_access_function(module_info::in, pred_status::in,
     item_pred_decl_info::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_pred_if_field_access_function(ModuleInfo, PredStatus, ItemPredDecl,
         !Specs) :-
@@ -102,7 +102,7 @@ maybe_check_field_access_function(ModuleInfo, FuncSymName, UserArity,
 :- pred check_field_access_function(prog_context::in,
     sym_name::in, user_arity::in, pred_status::in,
     field_access_type::in, sym_name::in, one_or_more(hlds_ctor_field_defn)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_field_access_function(Context, FuncSymName, UserArity,
         FuncStatus, _AccessType, _FieldName, OoMFieldDefns, !Specs) :-
@@ -127,7 +127,7 @@ check_field_access_function(Context, FuncSymName, UserArity,
     ).
 
 :- pred report_field_status_mismatch(prog_context::in, pf_sym_name_arity::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
     Pieces = [words("In declaration of"),

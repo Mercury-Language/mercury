@@ -129,7 +129,7 @@ report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
             InClauseForComponent = always(InClauseForPieces),
             Msg = simple_msg(Context,
                 [InClauseForComponent | SpecialComponents]),
-            Spec = diag_spec($pred, severity_error, phase_type_check, [Msg])
+            Spec = gen_spec($pred, severity_error, phase_type_check, [Msg])
         ;
             UndefClass = undef_ordinary(MissingImportModules, AddendumPieces,
                 MaySuggestDefiningModules),
@@ -502,7 +502,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         % XXX Should we print SuggestedNamesMsg as well even in this case?
         Msgs = [UndefMsg] ++ KindQualMsgs
     ),
-    Spec = diag_spec($pred, severity_error, phase_type_check, Msgs).
+    Spec = gen_spec($pred, severity_error, phase_type_check, Msgs).
 
 %---------------------%
 
@@ -534,7 +534,7 @@ report_error_undef_non_du_ctor(ClauseContext, GoalContext, Context, ConsId)
         [nl],
     UndefComp = always(UndefPieces),
     Msg = simple_msg(Context, [InitComp, UndefComp]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
             fail
         )
     then
-        Spec = diag_spec($pred, severity_error, phase_type_check,
+        Spec = gen_spec($pred, severity_error, phase_type_check,
             [simple_msg(Context, [ContextComp | FunctorComps])])
     else
         report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp,
@@ -839,7 +839,7 @@ report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
     ),
     FirstMsg = simple_msg(Context,
         [ContextComp | ConsFuncComps] ++ PredFuncComps),
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [FirstMsg | ConsMsgs] ++ SuggestionMsgs).
 
 :- pred return_pred_func_arities(module_info::in, list(pred_id)::in,

@@ -301,17 +301,19 @@
                 ptms_type_defns             :: type_ctor_checked_map,
                 ptms_inst_defns             :: inst_ctor_checked_map,
                 ptms_mode_defns             :: mode_ctor_checked_map,
-                % The error messages generated during the construction
+                % The errors and warnings generated during the construction
                 % of ptms_type_defns. We have found some invalid types if
                 % some of these diag_specs (a) are severity_error, and
                 % (b) are phase_tim_check_invalid_type.
-                ptms_type_specs             :: list(diag_spec),
-                % The error messages generated during the construction
+                ptms_type_err_specs         :: list(err_spec),
+                ptms_type_warn_specs        :: list(warn_spec),
+                % The error s and warnings generated during the construction
                 % of ptms_inst_defns and ptms_mode_defns. We have found
                 % some invalid insts and/or modes if some of these diag_specs
                 % (a) are severity_error, and (b) are
                 % phase_tim_check_invalid_inst_mode.
-                ptms_inst_mode_specs        :: list(diag_spec),
+                ptms_inst_mode_err_specs    :: list(err_spec),
+                ptms_inst_mode_warn_specs   :: list(warn_spec),
 
                 % Items of various kinds in the interface.
                 % All these items are to be treated as being in the

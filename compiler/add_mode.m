@@ -29,23 +29,24 @@
 
 :- pred module_add_inst_defn(inst_status::in, item_inst_defn_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------%
 
 :- pred module_add_mode_defn(mode_status::in, item_mode_defn_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------%
 
 :- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------%
 
 :- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -72,7 +73,8 @@
 
 %---------------------------------------------------------------------------%
 
-module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo, !Specs) :-
+module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
         MaybeAbstractInstDefn, VarSet, Context, _SeqNum),
     (
@@ -85,7 +87,8 @@ module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo, !Specs) :-
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
         inst_table_get_user_insts(InstTable0, UserInstTable0),
         insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn,
-            Context, InstStatus, UserInstTable0, UserInstTable, !Specs),
+            Context, InstStatus, UserInstTable0, UserInstTable,
+            !ErrSpecs, !WarnSpecs),
         inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ).
@@ -93,10 +96,11 @@ module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo, !Specs) :-
 :- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     maybe(type_ctor)::in, inst_defn::in, prog_context::in,
     inst_status::in, user_inst_table::in, user_inst_table::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
-        Context, InstStatus, !UserInstTable, !Specs) :-
+        Context, InstStatus, !UserInstTable, !ErrSpecs, !WarnSpecs) :-
     list.length(InstParams, InstArity),
     InstCtor = inst_ctor(InstSymName, InstArity),
     (
@@ -115,7 +119,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                 Severity =
                     severity_warning(warn_insts_with_functors_without_type),
                 Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:WarnSpecs = [Spec | !.WarnSpecs]
             ;
                 Here = no
             )
@@ -146,7 +150,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                     words("inst.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         else
             true
         )
@@ -168,7 +172,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             OrigContext = OrigInstDefn ^ inst_context,
             report_multiply_defined("inst", InstSymName, user_arity(InstArity),
                 Context, OrigContext, [], DupSpec),
-            !:Specs = [DupSpec | !.Specs]
+            !:ErrSpecs = [DupSpec | !.ErrSpecs]
         )
     ).
 
@@ -192,10 +196,10 @@ module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo, !Specs) :-
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     mode_defn::in, prog_context::in, mode_status::in,
     mode_table::in, mode_table::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
-        !ModeTable, !Specs) :-
+        !ModeTable, !ErrSpecs) :-
     list.length(Params, Arity),
     ModeCtor = mode_ctor(Name, Arity),
     ModeBody = eqv_mode(EqvMode),
@@ -216,7 +220,7 @@ modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
             report_multiply_defined("mode", Name, user_arity(Arity),
                 Context, OrigContext, [], Spec),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ).
 
@@ -409,7 +413,7 @@ check_for_cyclic_mode(ModeDefns, OrigModeCtor, ModeCtor0,
     ;       iom_mode.
 
 :- pred cycle_to_diag_spec(module_info::in, inst_or_mode::in, cycle::in,
-    diag_spec::out) is det.
+    err_spec::out) is det.
 
 cycle_to_diag_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
     (
@@ -480,7 +484,7 @@ cycle_to_diag_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
             ++ CyclePieces ++ ConsequencePieces
     ),
     HeadMsg = msg(HeadContext, HeadPieces),
-    Spec = diag_spec($pred, severity_error, phase_pt2h,
+    Spec = gen_spec($pred, severity_error, phase_pt2h,
         [HeadMsg | ContextMsgs]).
 
 :- pred sna_context_is_for_module(module_name::in,

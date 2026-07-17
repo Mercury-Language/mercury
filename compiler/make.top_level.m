@@ -92,7 +92,7 @@ make_process_compiler_args(ProgressStream, Globals, ArgPack, !IO) :-
     (
         MaybeTargets = error1(Specs),
         io.stderr_stream(StdErr, !IO),
-        write_oom_diag_specs(StdErr, Globals, Specs, !IO)
+        write_oom_error_specs(StdErr, Globals, Specs, !IO)
     ;
         MaybeTargets = ok1(Targets),
         globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
@@ -205,7 +205,7 @@ report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets) :-
         )
     ).
 
-:- func report_target_with_dir_component(string, string) = diag_spec.
+:- func report_target_with_dir_component(string, string) = err_spec.
 
 report_target_with_dir_component(ProgName, Target) = Spec :-
     Pieces = [fixed(ProgName), suffix(":"),
@@ -260,12 +260,12 @@ make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
                 linked_target_file(ModuleName, LinkedTargetType),
             make_linked_target(ProgressStream, Globals, LinkedTargetFile,
                 Succeeded, !Info, [], Specs, !IO),
-            write_error_specs(ErrorStream, Globals, Specs, !IO)
+            write_diag_specs(ErrorStream, Globals, Specs, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
             make_misc_target(ProgressStream, Globals,
                 ModuleName - MiscTargetType, Succeeded, !Info, [], Specs, !IO),
-            write_error_specs(ErrorStream, Globals, Specs, !IO)
+            write_diag_specs(ErrorStream, Globals, Specs, !IO)
         )
     ;
         TrackFlagsSucceeded = did_not_succeed,

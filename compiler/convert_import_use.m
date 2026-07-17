@@ -50,7 +50,7 @@
     module_names_contexts::in, module_names_contexts::out) is det.
 
     % classify_int_imp_import_use_modules(WarnUnsortedAvailBlocks,
-    %   ModuleName, IntAvails, ImpAvails, ImportUseMap, !Specs) :-
+    %   ModuleName, IntAvails, ImpAvails, ImportUseMap, !WarnSpecs) :-
     %
     % The input is item_avails showing which modules are imported and/or used
     % where in the interface and implementation sections. This input
@@ -81,10 +81,10 @@
 :- pred classify_int_imp_import_use_modules(bool::in, module_name::in,
     list(item_avail)::in, list(item_avail)::in,
     section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
     % classify_int_imp_use_modules(ModuleName,
-    %   IntUseContextsMap, ImpUseContextsMap, !:UseMap, !Specs) :-
+    %   IntUseContextsMap, ImpUseContextsMap, !:UseMap, ErrSpecs, WarnSpecs) :-
     %
     % Do the same job as classify_int_imp_import_use_modules above,
     % but for .int and .int2 files, not source files or .int0 files.
@@ -107,7 +107,7 @@
     %
 :- pred classify_int_imp_use_modules(module_name::in,
     module_names_contexts::in, module_names_contexts::in,
-    section_use_map::out, list(diag_spec)::in, list(diag_spec)::out) is det.
+    section_use_map::out, list(err_spec)::out, list(warn_spec)::out) is det.
 
 :- pred import_and_or_use_map_section_to_maybe_implicit(
     section_import_and_or_use_map::in, import_and_or_use_map::out) is det.
@@ -259,31 +259,31 @@ accumulate_imports_uses_maps([Avail | Avails], !ImportMap, !UseMap) :-
 %---------------------%
 
 classify_int_imp_import_use_modules(WarnUnsortedAvailBlocks, ModuleName,
-        IntAvails, ImpAvails, !:ImportUseMap, !Specs) :-
+        IntAvails, ImpAvails, !:ImportUseMap, !WarnSpecs) :-
     get_imports_uses_maps(IntAvails, IntImportContextsMap, IntUseContextsMap),
     get_imports_uses_maps(ImpAvails, ImpImportContextsMap, ImpUseContextsMap),
     map.map_foldl(
         report_any_duplicate_avail_contexts("interface", "import_module"),
-        IntImportContextsMap, IntImportMap, !Specs),
+        IntImportContextsMap, IntImportMap, !WarnSpecs),
     map.map_foldl(
         report_any_duplicate_avail_contexts("interface", "use_module"),
-        IntUseContextsMap, IntUseMap, !Specs),
+        IntUseContextsMap, IntUseMap, !WarnSpecs),
     map.map_foldl(
         report_any_duplicate_avail_contexts("implementation", "import_module"),
-        ImpImportContextsMap, ImpImportMap, !Specs),
+        ImpImportContextsMap, ImpImportMap, !WarnSpecs),
     map.map_foldl(
         report_any_duplicate_avail_contexts("implementation", "use_module"),
-        ImpUseContextsMap, ImpUseMap, !Specs),
+        ImpUseContextsMap, ImpUseMap, !WarnSpecs),
 
     map.init(!:ImportUseMap),
     map.foldl(record_int_import,  IntImportMap, !ImportUseMap),
-    map.foldl2(record_int_use,    IntUseMap,    !ImportUseMap, !Specs),
-    map.foldl2(record_imp_import, ImpImportMap, !ImportUseMap, !Specs),
-    map.foldl2(record_imp_use,    ImpUseMap,    !ImportUseMap, !Specs),
+    map.foldl2(record_int_use,    IntUseMap,    !ImportUseMap, !WarnSpecs),
+    map.foldl2(record_imp_import, ImpImportMap, !ImportUseMap, !WarnSpecs),
+    map.foldl2(record_imp_use,    ImpUseMap,    !ImportUseMap, !WarnSpecs),
 
-    warn_if_avail_for_self(ModuleName, !ImportUseMap, !Specs),
+    warn_if_avail_for_self(ModuleName, !ImportUseMap, !WarnSpecs),
     list.foldl2(warn_if_avail_for_ancestor(ModuleName),
-        get_ancestors(ModuleName), !ImportUseMap, !Specs),
+        get_ancestors(ModuleName), !ImportUseMap, !WarnSpecs),
 
     (
         WarnUnsortedAvailBlocks = no
@@ -294,34 +294,36 @@ classify_int_imp_import_use_modules(WarnUnsortedAvailBlocks, ModuleName,
         % e.g. one import_module declaration in the interface section
         % and another in the implementation section, with a ":- interface"
         % or ":- implementation" marker in between.
-        warn_unsorted_avail_blocks(IntAvails ++ ImpAvails, !Specs)
+        warn_unsorted_avail_blocks(IntAvails ++ ImpAvails, !WarnSpecs)
     ).
 
 classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
-        !:UseMap, !Specs) :-
+        !:UseMap, !:ErrSpecs, !:WarnSpecs) :-
+    !:ErrSpecs = [],
+    !:WarnSpecs = [],
     map.map_foldl(
         report_any_duplicate_avail_contexts("interface", "use_module"),
-        IntUseContextsMap, IntUseMap, !Specs),
+        IntUseContextsMap, IntUseMap, !WarnSpecs),
     map.map_foldl(
         report_any_duplicate_avail_contexts("implementation", "use_module"),
-        ImpUseContextsMap, ImpUseMap, !Specs),
+        ImpUseContextsMap, ImpUseMap, !WarnSpecs),
 
     map.init(!:UseMap),
     map.foldl(record_int_use_only, IntUseMap, !UseMap),
-    map.foldl2(record_imp_use_only, ImpUseMap, !UseMap, !Specs),
+    map.foldl2(record_imp_use_only, ImpUseMap, !UseMap, !WarnSpecs),
 
-    error_if_use_for_self(ModuleName, !UseMap, !Specs),
+    error_if_use_for_self(ModuleName, !UseMap, !ErrSpecs),
     list.foldl2(error_if_use_for_ancestor(ModuleName),
-        get_ancestors(ModuleName), !UseMap, !Specs).
+        get_ancestors(ModuleName), !UseMap, !ErrSpecs).
 
 %---------------------%
 
 :- pred report_any_duplicate_avail_contexts(string::in, string::in,
     module_name::in, one_or_more(prog_context)::in, prog_context::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_any_duplicate_avail_contexts(Section, DeclName,
-        ModuleName, OoMContexts, HeadSortedContext, !Specs) :-
+        ModuleName, OoMContexts, HeadSortedContext, !WarnSpecs) :-
     OoMContexts = one_or_more(HeadContext, TailContexts),
     % The contexts in OoMContexts are not necessarily in sorted order.
     list.sort([HeadContext | TailContexts], SortedContexts),
@@ -337,16 +339,16 @@ report_any_duplicate_avail_contexts(Section, DeclName,
             list.foldl(
                 report_duplicate_avail_context(Section, DeclName,
                     ModuleName, HeadSortedContext),
-                TailSortedContexts, !Specs)
+                TailSortedContexts, !WarnSpecs)
         )
     ).
 
 :- pred report_duplicate_avail_context(string::in, string::in,
     module_name::in, prog_context::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
-        DuplicateContext, !Specs) :-
+        DuplicateContext, !WarnSpecs) :-
     DupPieces = [words("Warning:")] ++
         color_as_incorrect([words("duplicate"), decl(DeclName),
             words("declaration")]) ++
@@ -358,8 +360,8 @@ report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
     DupMsg = msg(DuplicateContext, DupPieces),
     PrevMsg = msg(PrevContext, PrevPieces),
     Severity = severity_warning(warn_redundant_code),
-    Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
-    !:Specs = [Spec | !.Specs].
+    Spec = gen_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+    !:WarnSpecs = [Spec | !.WarnSpecs].
 
 :- pred record_int_import(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out)
@@ -370,9 +372,9 @@ record_int_import(ModuleName, Context, !ImportUseMap) :-
 
 :- pred record_int_use(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
+record_int_use(ModuleName, Context, !ImportUseMap, !WarnSpecs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
         (
             OldEntry = int_import(PrevContext),
@@ -389,8 +391,8 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            !:WarnSpecs = [Spec | !.WarnSpecs]
         ;
             ( OldEntry = int_use(_)
             ; OldEntry = imp_import(_)
@@ -408,9 +410,9 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
 
 :- pred record_imp_import(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
+record_imp_import(ModuleName, Context, !ImportUseMap, !WarnSpecs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
         (
             OldEntry = int_import(PrevContext),
@@ -427,8 +429,8 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            !:WarnSpecs = [Spec | !.WarnSpecs]
         ;
             OldEntry = int_use(IntUseContext),
             map.det_update(ModuleName,
@@ -449,9 +451,9 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
 
 :- pred record_imp_use(module_name::in, prog_context::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
+record_imp_use(ModuleName, Context, !ImportUseMap, !WarnSpecs) :-
     ( if map.search(!.ImportUseMap, ModuleName, OldEntry) then
         (
             ( OldEntry = int_import(_)
@@ -495,8 +497,8 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            !:WarnSpecs = [Spec | !.WarnSpecs]
         ;
             OldEntry = imp_use(_),
             % We haven't yet got around to adding entries of these kinds
@@ -528,9 +530,9 @@ record_int_use_only(ModuleName, Context, !UseMap) :-
 
 :- pred record_imp_use_only(module_name::in, prog_context::in,
     section_use_map::in, section_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
+record_imp_use_only(ModuleName, Context, !UseMap, !WarnSpecs) :-
     ( if map.search(!.UseMap, ModuleName, OldEntry) then
         (
             OldEntry = int_use(PrevContext),
@@ -546,8 +548,8 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Severity = severity_warning(warn_redundant_code),
-            Spec = diag_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, Severity, phase_pt2h, [DupMsg, PrevMsg]),
+            !:WarnSpecs = [Spec | !.WarnSpecs]
         ;
             OldEntry = imp_use(_),
             % We haven't yet got around to adding entries of these kinds
@@ -569,7 +571,7 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
     %
 :- pred warn_if_avail_for_self(module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
     ( if map.remove(ModuleName, ImportOrUse, !SectionImportOrUseMap) then
@@ -582,7 +584,7 @@ warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
             [nl],
         Msg = msg(Context, Pieces),
         Severity = severity_warning(warn_dodgy_simple_code),
-        Spec = diag_spec($pred, Severity, phase_pt2h, [Msg]),
+        Spec = gen_spec($pred, Severity, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -596,10 +598,10 @@ warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
     %
 :- pred warn_if_avail_for_ancestor(module_name::in, module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 warn_if_avail_for_ancestor(ModuleName, AncestorName,
-        !SectionImportOrUseMap, !Specs) :-
+        !SectionImportOrUseMap, !WarnSpecs) :-
     ( if map.remove(AncestorName, ImportOrUse, !SectionImportOrUseMap) then
         section_import_or_use_first_context(ImportOrUse, DeclName, Context),
         MainPieces = [words("Warning: module")] ++
@@ -614,8 +616,8 @@ warn_if_avail_for_ancestor(ModuleName, AncestorName,
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
         Severity = severity_warning(warn_redundant_code),
-        Spec = diag_spec($pred, Severity, phase_pt2h, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        Spec = gen_spec($pred, Severity, phase_pt2h, [Msg]),
+        !:WarnSpecs = [Spec | !.WarnSpecs]
     else
         true
     ).
@@ -657,9 +659,9 @@ section_import_or_use_first_context(ImportOrUse, DeclName, Context) :-
     %
 :- pred error_if_use_for_self(module_name::in,
     section_use_map::in, section_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
+error_if_use_for_self(ModuleName, !UseMap, !ErrSpecs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
         Pieces = [words("Error: module")] ++
             color_as_subject([qual_sym_name(ModuleName)]) ++
@@ -669,7 +671,7 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
             [nl],
         Context = section_use_first_context(Use),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     else
         true
     ).
@@ -682,9 +684,9 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     %
 :- pred error_if_use_for_ancestor(module_name::in, module_name::in,
     section_use_map::in, section_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
+error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !ErrSpecs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
         Pieces = [words("Error: module")] ++
             color_as_subject([qual_sym_name(ModuleName)]) ++
@@ -694,7 +696,7 @@ error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
             [qual_sym_name(AncestorName), suffix("."), nl],
         Context = section_use_first_context(Use),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     else
         true
     ).
@@ -711,12 +713,12 @@ section_use_first_context(Use) = Context :-
 %---------------------%
 
 :- pred warn_unsorted_avail_blocks(list(item_avail)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-warn_unsorted_avail_blocks(Avails, !Specs) :-
+warn_unsorted_avail_blocks(Avails, !WarnSpecs) :-
     build_import_use_file_map(Avails, multi_map.init, FileMap),
     map.foldl(generate_unsorted_avail_block_warnings_for_file,
-        FileMap, !Specs).
+        FileMap, !WarnSpecs).
 
     % Values of this type map a file name to the list of import_module
     % and/or use_module declarations in that file.
@@ -759,10 +761,10 @@ build_import_use_file_map([Avail | Avails], !FileMap) :-
 
 :- pred generate_unsorted_avail_block_warnings_for_file(string::in,
     list(import_use_line)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 generate_unsorted_avail_block_warnings_for_file(FileName, ImportUseLines,
-        !Specs) :-
+        !WarnSpecs) :-
     list.sort(ImportUseLines, SortedImportUseLines),
     (
         SortedImportUseLines = []
@@ -770,16 +772,16 @@ generate_unsorted_avail_block_warnings_for_file(FileName, ImportUseLines,
     ;
         SortedImportUseLines = [FirstLine | LaterLines],
         generate_unsorted_avail_block_warnings(FileName, FirstLine,
-            LaterLines, !Specs)
+            LaterLines, !WarnSpecs)
     ).
 
 :- pred generate_unsorted_avail_block_warnings(string::in,
     import_use_line::in, list(import_use_line)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 generate_unsorted_avail_block_warnings(_FileName, _, [], !Specs).
 generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
-        [ImportUseLine | ImportUseLines], !Specs) :-
+        [ImportUseLine | ImportUseLines], !WarnSpecs) :-
     PrevImportUseLine = import_use_line(PrevLineNum, PrevModuleNameStr,
         PrevAvailDecl),
     ImportUseLine = import_use_line(CurLineNum, CurModuleNameStr,
@@ -795,7 +797,7 @@ generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
         Context = context(FileName, CurLineNum),
         Spec = spec($pred, severity_warning(warn_unsorted_import_blocks),
             phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:WarnSpecs = [Spec | !.WarnSpecs]
     else if
         CurLineNum = PrevLineNum + 1,
         module_names_are_in_order(PrevModuleNameStr, CurModuleNameStr) = no
@@ -810,12 +812,12 @@ generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
         Context = context(FileName, CurLineNum),
         Spec = spec($pred, severity_warning(warn_unsorted_import_blocks),
             phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:WarnSpecs = [Spec | !.WarnSpecs]
     else
         true
     ),
     generate_unsorted_avail_block_warnings(FileName,
-        ImportUseLine, ImportUseLines, !Specs).
+        ImportUseLine, ImportUseLines, !WarnSpecs).
 
 :- func module_names_are_in_order(string, string) = bool.
 

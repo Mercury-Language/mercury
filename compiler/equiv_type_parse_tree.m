@@ -105,7 +105,7 @@
     event_spec_map::in, event_spec_map::out,
     type_eqv_map::out, used_eqv_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    list(diag_spec)::out) is det.
+    list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -118,7 +118,7 @@
     %
 :- pred replace_in_type_repn_eqv(type_eqv_map::in,
     item_type_repn_info_eqv::in, item_type_repn_info_eqv::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -216,7 +216,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
     parse_tree_module_src::in, parse_tree_module_src::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_module_src(Params,
         ParseTreeModuleSrc0, ParseTreeModuleSrc,
@@ -229,7 +229,7 @@ replace_in_parse_tree_module_src(Params,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntDeclMarkers, IntPromises, IntBadPreds,
@@ -292,7 +292,7 @@ replace_in_parse_tree_module_src(Params,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadPreds,
@@ -306,7 +306,7 @@ replace_in_parse_tree_module_src(Params,
     ancestor_int_spec::in, ancestor_int_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_ancestor_int_spec(Params, AncestorIntSpec0, AncestorIntSpec,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -319,7 +319,7 @@ replace_in_ancestor_int_spec(Params, AncestorIntSpec0, AncestorIntSpec,
     direct_int1_spec::in, direct_int1_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_direct_int1_spec(Params, DirectIntSpec0, DirectIntSpec,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -332,7 +332,7 @@ replace_in_direct_int1_spec(Params, DirectIntSpec0, DirectIntSpec,
     indirect_int2_spec::in, indirect_int2_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_indirect_int2_spec(Params, IndirectIntSpec0, IndirectIntSpec,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -345,7 +345,7 @@ replace_in_indirect_int2_spec(Params, IndirectIntSpec0, IndirectIntSpec,
     int_for_opt_spec::in, int_for_opt_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_int_for_opt_spec(Params, IntForOptSpec0, IntForOptSpec,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -372,7 +372,7 @@ replace_in_int_for_opt_spec(Params, IntForOptSpec0, IntForOptSpec,
     parse_tree_int0::in, parse_tree_int0::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_int0(Params, OrigParseTreeInt0, ParseTreeInt0,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -439,7 +439,7 @@ replace_in_parse_tree_int0(Params, OrigParseTreeInt0, ParseTreeInt0,
     parse_tree_int1::in, parse_tree_int1::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_int1(Params, OrigParseTreeInt1, ParseTreeInt1,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -496,7 +496,7 @@ replace_in_parse_tree_int1(Params, OrigParseTreeInt1, ParseTreeInt1,
     parse_tree_int2::in, parse_tree_int2::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_int2(Params, OrigParseTreeInt2, ParseTreeInt2,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -536,7 +536,7 @@ replace_in_parse_tree_int2(Params, OrigParseTreeInt2, ParseTreeInt2,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_plain_opt(Params,
         OrigParseTreePlainOpt, ParseTreePlainOpt,
@@ -585,7 +585,7 @@ replace_in_parse_tree_plain_opt(Params,
     parse_tree_trans_opt::in, parse_tree_trans_opt::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_parse_tree_trans_opt(_Params, ParseTreeTransOpt, ParseTreeTransOpt,
         RecompInfo, RecompInfo, UsedModules, UsedModules, Specs, Specs).
@@ -600,7 +600,7 @@ replace_in_parse_tree_trans_opt(_Params, ParseTreeTransOpt, ParseTreeTransOpt,
     type_ctor_checked_defn::in, type_ctor_checked_defn::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_type_ctor_checked_defn(Params, MaybeRecordInt, MaybeRecordImp,
         CheckedDefn0, CheckedDefn, !RecompInfo, !UsedModules, !Specs) :-
@@ -692,13 +692,13 @@ replace_in_type_ctor_checked_defn(Params, MaybeRecordInt, MaybeRecordImp,
 :- pred replace_in_type_defn_info_general(
     pred(equiv_params, maybe_record_sym_name_use, type_ctor, prog_context,
         T, T, tvarset, tvarset, item_recomp_deps, item_recomp_deps,
-        used_eqv_modules, used_eqv_modules, list(diag_spec))
+        used_eqv_modules, used_eqv_modules, list(err_spec))
     :: in(pred(in, in, in, in, in, out, in, out, in, out, in, out, out)
         is det),
     equiv_params::in, maybe_record_sym_name_use::in,
     item_type_defn_info_general(T)::in, item_type_defn_info_general(T)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn_info_general(ReplaceInTypeDefn, Params, MaybeRecord,
         TypeDefnInfo0, TypeDefnInfo, !RecompInfo, !UsedModules, Specs) :-
@@ -724,7 +724,7 @@ replace_in_type_defn_info_general(ReplaceInTypeDefn, Params, MaybeRecord,
     type_ctor::in, prog_context::in,
     type_defn::in, type_defn::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn(Params, MaybeRecord, TypeCtor, Context,
         TypeDefn0, TypeDefn, !TVarSet, !ItemRecompDeps, !UsedModules, Specs) :-
@@ -766,7 +766,7 @@ replace_in_type_defn(Params, MaybeRecord, TypeCtor, Context,
     maybe_record_sym_name_use::in, type_ctor::in, prog_context::in,
     type_details_eqv::in, type_details_eqv::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn_eqv(Params, MaybeRecord, TypeCtor, Context,
         DetailsEqv0, DetailsEqv,
@@ -791,7 +791,7 @@ replace_in_type_defn_eqv(Params, MaybeRecord, TypeCtor, Context,
     maybe_record_sym_name_use::in, type_ctor::in, prog_context::in,
     type_details_du::in, type_details_du::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn_du(Params, MaybeRecord, _TypeCtor, _Context,
         DetailsDu0, DetailsDu,
@@ -807,7 +807,7 @@ replace_in_type_defn_du(Params, MaybeRecord, _TypeCtor, _Context,
     maybe_record_sym_name_use::in, type_ctor::in, prog_context::in,
     type_details_sub::in, type_details_sub::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn_sub(Params, MaybeRecord, _TypeCtor, _Context,
         DetailsSub0, DetailsSub,
@@ -827,7 +827,7 @@ replace_in_type_defn_sub(Params, MaybeRecord, _TypeCtor, _Context,
     maybe_record_sym_name_use::in, type_ctor::in, prog_context::in,
     type_details_solver::in, type_details_solver::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_type_defn_solver(Params, MaybeRecord, TypeCtor, Context,
         DetailsSolver0, DetailsSolver,
@@ -888,7 +888,7 @@ replace_in_constraint_store(Params, MaybeRecord,
     item_type_repn_info::in, item_type_repn_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_type_repn_info(Params, MaybeRecord, TypeRepnInfo0, TypeRepnInfo,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -977,7 +977,7 @@ replace_in_type_repn_eqv(TypeEqvMap, TypeRepnInfo0, TypeRepnInfo, !Specs) :-
     maybe_record_sym_name_use::in,
     item_pred_decl_info::in, item_pred_decl_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_pred_decl_info(Params, MaybeRecord,
         PredDeclInfo0, PredDeclInfo, !RecompInfo, !UsedModules, Specs) :-
@@ -1015,7 +1015,7 @@ replace_in_pred_decl_info(Params, MaybeRecord,
     maybe_record_sym_name_use::in,
     item_mode_decl_info::in, item_mode_decl_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_mode_decl_info(Params, MaybeRecord,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
@@ -1071,7 +1071,7 @@ replace_in_mode_decl_info(Params, MaybeRecord,
     maybe_record_sym_name_use::in,
     item_typeclass_info::in, item_typeclass_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_typeclass_info(Params, MaybeRecord, TypeClassInfo0, TypeClassInfo,
         !RecompInfo, !UsedModules, Specs) :-
@@ -1106,7 +1106,7 @@ replace_in_typeclass_info(Params, MaybeRecord, TypeClassInfo0, TypeClassInfo,
     maybe_record_sym_name_use::in,
     item_abstract_typeclass_info::in, item_abstract_typeclass_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_abstract_typeclass_info(Params, MaybeRecord,
         TypeClassInfo0, TypeClassInfo, !RecompInfo, !UsedModules, Specs) :-
@@ -1134,7 +1134,7 @@ replace_in_abstract_typeclass_info(Params, MaybeRecord,
     list(class_decl)::in, list(class_decl)::out,
     item_recomp_deps::in, item_recomp_deps::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_class_interface(Params, MaybeRecord,
         ClassInterface0, ClassInterface, !ItemRecompDeps, !UsedModules,
@@ -1147,7 +1147,7 @@ replace_in_class_interface(Params, MaybeRecord,
     class_decl::in, class_decl::out,
     item_recomp_deps::in, item_recomp_deps::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_class_decl(Params, MaybeRecord, Decl0, Decl,
         !ItemRecompDeps, !UsedModules, !Specs) :-
@@ -1204,7 +1204,7 @@ replace_in_class_decl(Params, MaybeRecord, Decl0, Decl,
     maybe_record_sym_name_use::in,
     item_instance_info::in, item_instance_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_instance_info(Params, MaybeRecord, InstanceInfo0, InstanceInfo,
         !RecompInfo, !UsedModules, []) :-
@@ -1255,7 +1255,7 @@ replace_in_instance_info(Params, MaybeRecord, InstanceInfo0, InstanceInfo,
     maybe_record_sym_name_use::in,
     item_abstract_instance_info::in, item_abstract_instance_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_abstract_instance_info(Params, MaybeRecord,
         InstanceInfo0, InstanceInfo, !RecompInfo, !UsedModules, []) :-
@@ -1297,7 +1297,7 @@ replace_in_abstract_instance_info(Params, MaybeRecord,
 %   maybe_record_sym_name_use::in,
 %   instance_method::in, instance_method::out,
 %   maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-%   used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+%   used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 % replace_in_instance_method(Params, MaybeRecord,
 %       InstanceMethod0, InstanceMethod, !RecompInfo, !UsedModules, Specs) :-
@@ -1318,7 +1318,7 @@ replace_in_abstract_instance_info(Params, MaybeRecord,
     maybe_record_sym_name_use::in,
     item_decl_pragma_info::in, item_decl_pragma_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
         !RecompInfo, !UsedModules, Specs) :-
@@ -1350,7 +1350,7 @@ replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
     maybe_record_sym_name_use::in,
     decl_pragma_type_spec_constr_info::in,
         decl_pragma_type_spec_constr_info::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_decl_pragma_type_spec_constr(Params, MaybeRecord,
         TypeSpecInfoConstr0, TypeSpecInfoConstr, !UsedModules, []) :-
@@ -1399,7 +1399,7 @@ replace_in_decl_pragma_type_spec_constr(Params, MaybeRecord,
     maybe_record_sym_name_use::in,
     decl_pragma_type_spec_info::in, decl_pragma_type_spec_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_decl_pragma_type_spec(Params, MaybeRecord,
         TypeSpecInfo0, TypeSpecInfo,
@@ -1527,7 +1527,7 @@ replace_in_var_or_ground_type_location(TypeEqvMap, MaybeRecord,
     maybe_record_sym_name_use::in,
     item_foreign_proc_info::in, item_foreign_proc_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_foreign_proc(Params, MaybeRecord, FPInfo0, FPInfo,
         !RecompInfo, !UsedModules, []) :-
@@ -1632,7 +1632,7 @@ replace_in_unit_selector(TypeEqvMap, MaybeRecord, TVarSet, Sel0, Sel,
     maybe_record_sym_name_use::in,
     item_mutable_info::in, item_mutable_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_mutable_info(Params, MaybeRecord,
         MutableInfo0, MutableInfo, !RecompInfo, !UsedModules, []) :-
@@ -1741,7 +1741,7 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules) :-
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
         PredSymName, PredOrFunc, Context, ClassContext0, ClassContext,
@@ -1800,7 +1800,7 @@ replace_in_pred_types_and_maybe_modes(Params, MaybeRecord,
 :- pred check_and_maybe_add_extra_types_and_modes(pred_or_func::in,
     sym_name::in, prog_context::in, list(mer_type)::in, list(mer_mode)::in,
     types_and_maybe_modes::in, types_and_maybe_modes::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_and_maybe_add_extra_types_and_modes(PredOrFunc, PredSymName, Context,
         ExtraTypes, ExtraModes, TypesAndMaybeModes1, TypesAndMaybeModes,
@@ -1952,7 +1952,7 @@ pair_extra_types_and_modes([Type | Types], [Mode | Modes],
     pred_or_func::in, sym_name::in, prog_context::in,
     maybe(mer_type)::in, list(mer_type)::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_with_type(TypeEqvMap, MaybeRecord, PredOrFunc, PredSymName,
         Context, MaybeWithType0, ExtraTypes,
@@ -2007,7 +2007,7 @@ replace_in_with_type(TypeEqvMap, MaybeRecord, PredOrFunc, PredSymName,
     maybe(mer_inst)::in, maybe(mer_inst)::out, list(mer_mode)::out,
     maybe(determinism)::in, maybe(determinism)::out,
     item_recomp_deps::in, item_recomp_deps::out,
-    used_eqv_modules::in, used_eqv_modules::out, list(diag_spec)::out) is det.
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
 replace_in_with_inst(Params, MaybeRecord, PredSymName, PredFormArity, Context,
         DeclType, MaybePredOrFunc0, MaybePredOrFunc,
@@ -2125,12 +2125,12 @@ replace_in_type_and_mode(TypeEqvMap, MaybeRecord, TypeAndMode0, TypeAndMode,
 :- pred replace_in_maybe(equiv_params::in, maybe_record_sym_name_use::in,
     pred(equiv_params, maybe_record_sym_name_use,
         T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_eqv_modules, used_eqv_modules, list(diag_spec))
+        used_eqv_modules, used_eqv_modules, list(err_spec))
     :: in(pred(in, in, in, out, in, out, in, out, out) is det),
     maybe(T)::in, maybe(T)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_maybe(Params, MaybeRecord, ReplaceInItem, MaybeItem0, MaybeItem,
         !RecompInfo, !UsedModules, !Specs) :-
@@ -2156,12 +2156,12 @@ replace_in_maybe(Params, MaybeRecord, ReplaceInItem, MaybeItem0, MaybeItem,
 :- pred replace_in_list(equiv_params::in, maybe_record_sym_name_use::in,
     pred(equiv_params, maybe_record_sym_name_use,
         T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_eqv_modules, used_eqv_modules, list(diag_spec))
+        used_eqv_modules, used_eqv_modules, list(err_spec))
     :: in(pred(in, in, in, out, in, out, in, out, out) is det),
     list(T)::in, list(T)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_list(Params, MaybeRecord, ReplaceInItem,
         Items0, Items, !RecompInfo, !UsedModules, !Specs) :-
@@ -2172,12 +2172,12 @@ replace_in_list(Params, MaybeRecord, ReplaceInItem,
 :- pred replace_in_list_loop(equiv_params::in, maybe_record_sym_name_use::in,
     pred(equiv_params, maybe_record_sym_name_use,
         T, T, maybe(recompilation_info), maybe(recompilation_info),
-        used_eqv_modules, used_eqv_modules, list(diag_spec))
+        used_eqv_modules, used_eqv_modules, list(err_spec))
     :: in(pred(in, in, in, out, in, out, in, out, out) is det),
     list(T)::in, list(T)::in, list(T)::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 replace_in_list_loop(_Params, _MaybeRecord, _ReplaceInItem,
         [], !RevItems, !RecompInfo, !UsedModules, !Specs).
@@ -2198,7 +2198,7 @@ replace_in_list_loop(Params, MaybeRecord, ReplaceInItem,
 
 %---------------------------------------------------------------------------%
 
-:- func report_circular_eqv_type(type_ctor, prog_context) = diag_spec.
+:- func report_circular_eqv_type(type_ctor, prog_context) = err_spec.
 
 report_circular_eqv_type(TypeCtor, Context) = Spec :-
     Pieces = [words("Error: equivalence type")] ++

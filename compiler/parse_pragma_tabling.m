@@ -517,7 +517,7 @@ parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
 %---------------------------------------------------------------------------%
 
 :- pred require_tabling_fast_loose(cord(format_piece)::in,
-    tabled_eval_method::in, term.context::in, list(diag_spec)::out) is det.
+    tabled_eval_method::in, term.context::in, list(err_spec)::out) is det.
 
 require_tabling_fast_loose(ContextPieces, TabledMethod, Context, Specs) :-
     AllowsFastLoose = eval_method_allows_fast_loose(TabledMethod),
@@ -573,7 +573,7 @@ eval_method_allows_disable_warning_if_ignored(tabled_minimal(_)) = no.
 :- pred update_tabling_attributes(
     assoc_list(term.context, single_tabling_attribute)::in,
     table_attributes::in, table_attributes::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 update_tabling_attributes([], !Attributes, !Specs).
 update_tabling_attributes([Context - Attr | ContextAttrs],
@@ -628,7 +628,7 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
     update_tabling_attributes(ContextAttrs, !Attributes, !Specs).
 
 :- pred report_duplicate_memo_attribute(prog_context::in, string::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_duplicate_memo_attribute(Context, Attr, !Specs) :-
     Pieces = [words("In"), pragma_decl("memo"), words("declaration:"), nl,

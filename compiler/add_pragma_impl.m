@@ -31,22 +31,25 @@
     ims_cord(impl_pragma_tabled_info)::in,
         ims_cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 :- pred add_impl_pragmas_tabled(io.text_output_stream::in,
     ims_list(impl_pragma_tabled_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 :- pred add_pragma_foreign_proc_export(impl_pragma_fproc_export_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------%
 
 :- pred add_impl_markers(ims_list(item_impl_marker_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -87,6 +90,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -97,12 +101,13 @@
 % Adding impl pragmas to the HLDS.
 %
 
-add_impl_pragmas(_, [], !PragmaTabledListCord, !ModuleInfo, !Specs).
+add_impl_pragmas(_, [], !PragmaTabledListCord, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs).
 add_impl_pragmas(ProgressStream, [ImsList | ImsLists],
-        !PragmaTabledListCord, !ModuleInfo, !Specs) :-
+        !PragmaTabledListCord, !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_impl_pragma(ProgressStream, ItemMercuryStatus), Items,
-        cord.init, PragmaTabledCord, !ModuleInfo, !Specs),
+    list.foldl4(add_impl_pragma(ProgressStream, ItemMercuryStatus), Items,
+        cord.init, PragmaTabledCord, !ModuleInfo, !ErrSpecs, !WarnSpecs),
     PragmaTabledList = cord.list(PragmaTabledCord),
     (
         PragmaTabledList = []
@@ -112,17 +117,17 @@ add_impl_pragmas(ProgressStream, [ImsList | ImsLists],
         cord.snoc(SubList, !PragmaTabledListCord)
     ),
     add_impl_pragmas(ProgressStream, ImsLists,
-        !PragmaTabledListCord, !ModuleInfo, !Specs).
+        !PragmaTabledListCord, !ModuleInfo, !ErrSpecs, !WarnSpecs).
 
-add_impl_pragmas_tabled(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas_tabled(_, [], !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(
+    list.foldl4(
         add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus), Items,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     add_impl_pragmas_tabled(ProgressStream, ImsLists,
-        !ModuleInfo, !QualInfo, !Specs).
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 
 %---------------------%
 
@@ -130,10 +135,11 @@ add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
     item_impl_pragma_info::in,
     cord(impl_pragma_tabled_info)::in, cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
-        !ModuleInfo, !Specs) :-
+        !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     (
         Pragma = impl_pragma_foreign_decl(FDInfo),
         % XXX STATUS Check ItemMercuryStatus
@@ -145,37 +151,37 @@ add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
         Pragma = impl_pragma_foreign_code(FCInfo),
         % XXX STATUS Check ItemMercuryStatus
         FCInfo = impl_pragma_foreign_code_info(Lang, BodyCode, Context, _),
-        warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs),
+        warn_suspicious_foreign_code(Lang, BodyCode, Context, !WarnSpecs),
         ForeignBodyCode = foreign_body_code(Lang, BodyCode, Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
         Pragma = impl_pragma_fproc_export(FEInfo),
-        add_pragma_foreign_proc_export(FEInfo, !ModuleInfo, !Specs)
+        add_pragma_foreign_proc_export(FEInfo, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = impl_pragma_external_proc(ExternalInfo),
-        add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs)
+        add_pragma_external_proc(ExternalInfo, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = impl_pragma_fact_table(FTInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus,
-            FTInfo, !ModuleInfo, !Specs)
+            FTInfo, !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         Pragma = impl_pragma_tabled(TabledInfo),
         cord.snoc(TabledInfo, !PragmaTabledCord)
     ;
         Pragma = impl_pragma_req_tail_rec(TailrecWarningPragma),
         add_pragma_require_tail_rec(TailrecWarningPragma,
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         Pragma = impl_pragma_req_feature_set(RFSInfo),
         RFSInfo = impl_pragma_req_feature_set_info(FeatureSet, Context, _),
         check_required_feature_set(!.ModuleInfo, FeatureSet,
-            ItemMercuryStatus, Context, !Specs)
+            ItemMercuryStatus, Context, !ErrSpecs)
     ).
 
 %---------------------%
 
-add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
+add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !ErrSpecs) :-
     FPEInfo = impl_pragma_fproc_export_info(Origin, Lang,
         PredNameModesPF, ExportedName, VarSet, Context, _),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, ArgModes),
@@ -220,7 +226,7 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             else
                 % Only add the foreign export if the specified language matches
                 % one of the foreign languages available for this backend.
@@ -256,7 +262,7 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                     [pragma_decl("foreign_export"), words("declaration")],
                 report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
                     VarSet, ArgModes, DescPieces, Context, Spec),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             ;
                 Origin = item_origin_compiler(_CompilerAttrs)
                 % We do not warn about errors in export pragmas created by
@@ -268,7 +274,7 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
         MaybePredId = error1(Specs),
         (
             Origin = item_origin_user,
-            !:Specs = Specs ++ !.Specs
+            !:ErrSpecs = Specs ++ !.ErrSpecs
         ;
             Origin = item_origin_compiler(_CompilerAttrs)
             % We do not warn about errors in export pragmas created by
@@ -281,9 +287,9 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
 
 :- pred add_pragma_external_proc(impl_pragma_external_proc_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
+add_pragma_external_proc(ExternalInfo, !ModuleInfo, !ErrSpecs) :-
     % XXX STATUS Check ItemMercuryStatus
     ExternalInfo = impl_pragma_external_proc_info(PFNameArity, MaybeBackend,
         Context, _),
@@ -319,7 +325,7 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
         (
             PredIds = [_ | _],
             list.foldl2(mark_pred_as_external(Context), PredIds,
-                !ModuleInfo, !Specs)
+                !ModuleInfo, !ErrSpecs)
         ;
             PredIds = [],
             module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
@@ -327,7 +333,8 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
                 UserArity, OtherUserArities),
             report_undefined_pred_or_func_error(yes(PredOrFunc),
                 SymName, UserArity, OtherUserArities, Context,
-                DeclPieces, !Specs)
+                DeclPieces, UndefErrSpec),
+            !:ErrSpecs = [UndefErrSpec | !.ErrSpecs]
         )
     else
         true
@@ -335,9 +342,9 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
 
 :- pred mark_pred_as_external(prog_context::in, pred_id::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
+mark_pred_as_external(Context, PredId, !ModuleInfo, !ErrSpecs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
@@ -358,7 +365,7 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
             color_as_incorrect([words("it cannot be marked as external.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
 
 %---------------------%
@@ -375,10 +382,11 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
 :- pred add_pragma_fact_table(io.text_output_stream::in,
     item_mercury_status::in, pred_status::in, impl_pragma_fact_table_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
-        !ModuleInfo, !Specs) :-
+        !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     FTInfo = impl_pragma_fact_table_info(PredSpec, FileName, Context, _),
     PredSpec = pred_pfu_name_arity(PFU, PredSymName, UserArity),
     get_matching_pred_ids(!.ModuleInfo, "fact_table", require_one_match,
@@ -391,7 +399,7 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
             CheckResult),
         (
             CheckResult = fact_table_args_not_ok(CheckSpecs),
-            !:Specs = CheckSpecs ++ !.Specs,
+            !:ErrSpecs = CheckSpecs ++ !.ErrSpecs,
             pred_info_get_markers(PredInfo0, PredMarkers0),
             add_marker(marker_fact_table_semantic_errors,
                 PredMarkers0, PredMarkers),
@@ -409,7 +417,7 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
                     semipure io.unsafe_get_io_state(!:IO),
                     fact_table_compile_facts(ProgressStream, !.ModuleInfo,
                         FileName, Context, GenInfo, C_HeaderCode,
-                        PrimaryProcId, PredInfo0, PredInfo1, !Specs, !IO),
+                        PrimaryProcId, PredInfo0, PredInfo1, !ErrSpecs, !IO),
                     impure io.unsafe_set_io_state(!.IO)
                 )
             ),
@@ -436,11 +444,12 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
             % Create foreign_procs to access the table in each mode.
             add_fact_table_procs(ProgressStream, PredOrFunc, PredSymName,
                 ItemMercuryStatus, PredStatus, ProcTable,  PrimaryProcId,
-                Context, GenInfo, ProcIds, !ModuleInfo, !Specs)
+                Context, GenInfo, ProcIds, !ModuleInfo, !ErrSpecs, !WarnSpecs)
         )
     ;
-        MatchingPredIdResult = mpids_error(ErrorSpecs),
-        !:Specs = ErrorSpecs ++ !.Specs
+        MatchingPredIdResult = mpids_error(IdErrSpecs, IdWarnSpecs),
+        !:ErrSpecs = one_or_more_to_list(IdErrSpecs) ++ !.ErrSpecs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs
     ).
 
     % Add a `pragma foreign_proc' for each mode of the fact table lookup
@@ -453,29 +462,32 @@ add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
     sym_name::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_id::in, prog_context::in, fact_table_gen_info::in,
     list(proc_id)::in, module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_fact_table_procs(_, _, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
+add_fact_table_procs(_, _, _, _, _, _, _, _, _, [],
+        !ModuleInfo, !ErrSpecs, !WarnSpecs).
 add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
         ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
-        GenInfo, [ProcId | ProcIds], !ModuleInfo, !Specs) :-
+        GenInfo, [ProcId | ProcIds], !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
         ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
-        GenInfo, ProcId, !ModuleInfo, !Specs),
+        GenInfo, ProcId, !ModuleInfo, !ErrSpecs, !WarnSpecs),
     add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
         ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
-        GenInfo, ProcIds, !ModuleInfo, !Specs).
+        GenInfo, ProcIds, !ModuleInfo, !ErrSpecs, !WarnSpecs).
 
 :- pred add_fact_table_proc(io.text_output_stream::in,
     pred_or_func::in, sym_name::in,
     item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
     prog_context::in, fact_table_gen_info::in, proc_id::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
         ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
-        GenInfo, ProcId, !ModuleInfo, !Specs) :-
+        GenInfo, ProcId, !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
@@ -494,7 +506,7 @@ add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
         Context, item_no_seq_num),
     % XXX Should return this instead.
     add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FCInfo,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     ( if C_ExtraCode = "" then
         true
     else
@@ -508,9 +520,10 @@ add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
 
 :- pred add_pragma_require_tail_rec(impl_pragma_req_tail_rec_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
+add_pragma_require_tail_rec(Pragma, !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     Pragma = impl_pragma_req_tail_rec_info(PredSpec, RequireTailrec,
         Context, _),
     PredSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
@@ -549,7 +562,7 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
                 map.lookup(Procs0, ProcId, Proc),
                 add_pragma_require_tail_rec_proc(RequireTailrec, Context,
                     MaybePredOrFunc, MaybeModes, SNA, ProcId - Proc,
-                    PredInfo0, PredInfo, !Specs)
+                    PredInfo0, PredInfo, !ErrSpecs)
             else
                 PredInfo = PredInfo0,
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -565,29 +578,30 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             )
         ;
             MaybeModes = no,
             list.foldl2(
                 add_pragma_require_tail_rec_proc(RequireTailrec, Context,
                     MaybePredOrFunc, MaybeModes, SNA),
-                Procs, PredInfo0, PredInfo, !Specs)
+                Procs, PredInfo0, PredInfo, !ErrSpecs)
         ),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
-        MatchingPredIdResult = mpids_error(ErrorSpecs),
-        !:Specs = ErrorSpecs ++ !.Specs
+        MatchingPredIdResult = mpids_error(IdErrSpecs, IdWarnSpecs),
+        !:ErrSpecs = one_or_more_to_list(IdErrSpecs) ++ !.ErrSpecs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs
     ).
 
 :- pred add_pragma_require_tail_rec_proc(require_tail_recursion::in,
     prog_context::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     sym_name_arity::in, pair(proc_id, proc_info)::in,
     pred_info::in, pred_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
-        MaybeModes, SNA, ProcId - ProcInfo0, !PredInfo, !Specs) :-
+        MaybeModes, SNA, ProcId - ProcInfo0, !PredInfo, !ErrSpecs) :-
     proc_info_get_maybe_require_tailrec_info(ProcInfo0,
         MaybeRequireTailrecOrig),
     (
@@ -616,10 +630,10 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
         ( RequireTailrecOrig = disable_nontailrec_reports(ContextOrig)
         ; RequireTailrecOrig = enable_nontailrec_reports(_, _, _, ContextOrig)
         ),
-        Spec = diag_spec($pred, severity_error, phase_pt2h,
+        Spec = gen_spec($pred, severity_error, phase_pt2h,
             [msg(Context, MainPieces),
             msg(ContextOrig, OrigPieces)]),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ;
         MaybeRequireTailrecOrig = no,
         proc_info_set_require_tailrec_info(RequireTailrec,
@@ -631,10 +645,10 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
 
 :- pred check_required_feature_set(module_info::in, set(required_feature)::in,
     item_mercury_status::in, prog_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 check_required_feature_set(ModuleInfo, FeatureSet, ItemMercuryStatus, Context,
-        !Specs) :-
+        !ErrSpecs) :-
     (
         ItemMercuryStatus = item_defined_in_other_module(_),
         % `require_feature_set' pragmas are not included in interface files
@@ -643,14 +657,15 @@ check_required_feature_set(ModuleInfo, FeatureSet, ItemMercuryStatus, Context,
     ;
         ItemMercuryStatus = item_defined_in_this_module(_),
         module_info_get_globals(ModuleInfo, Globals),
-        set.fold(check_required_feature(Globals, Context), FeatureSet, !Specs)
+        set.fold(check_required_feature(Globals, Context), FeatureSet,
+            !ErrSpecs)
     ).
 
 :- pred check_required_feature(globals::in,
     prog_context::in, required_feature::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-check_required_feature(Globals, Context, Feature, !Specs) :-
+check_required_feature(Globals, Context, Feature, !ErrSpecs) :-
     (
         Feature = reqf_concurrency,
         current_grade_supports_concurrency(Globals, IsConcurrencySupported),
@@ -661,7 +676,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                     words("supports concurrent execution.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             IsConcurrencySupported = yes
         )
@@ -680,8 +695,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]),
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             SinglePrecFloat = yes
         )
@@ -700,8 +715,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]),
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             SinglePrecFloat = no
         )
@@ -716,7 +731,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                     words("supports memoisation.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             IsTablingSupported = yes
         )
@@ -730,7 +745,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                     words("supports executing conjuntions in parallel.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             IsParConjSupported = yes
         )
@@ -747,8 +762,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("the grade modifier"), quote("tr"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
-            !:Specs = [Spec | !.Specs]
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]),
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             UseTrail = yes
         )
@@ -769,7 +784,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                     words("sequential semantics.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Feature = reqf_conservative_gc,
@@ -792,7 +807,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                     words("uses conservative garbage collection.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ).
 
@@ -801,17 +816,19 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 :- pred add_impl_pragma_tabled(io.text_output_stream::in,
     item_mercury_status::in, impl_pragma_tabled_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, type_layout, TypeLayout),
     (
         TypeLayout = yes,
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         module_add_pragma_tabled(ProgressStream, Tabled,
-            ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs)
+            ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo,
+            !ErrSpecs, !WarnSpecs)
     ;
         TypeLayout = no,
         Tabled = impl_pragma_tabled_info(TabledMethod, _, _, Context, _),
@@ -823,7 +840,7 @@ add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
                 [words("requires type_ctor_layout structures.")]) ++
             [words("Don't use --no-type-layout to disable them."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -831,20 +848,22 @@ add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
 % Adding impl markers to the HLDS.
 %
 
-add_impl_markers([], !ModuleInfo, !Specs).
-add_impl_markers([ImsList | ImsLists], !ModuleInfo, !Specs) :-
+add_impl_markers([], !ModuleInfo, !ErrSpecs, !WarnSpecs).
+add_impl_markers([ImsList | ImsLists], !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl2(add_impl_marker(ItemMercuryStatus), Items,
-        !ModuleInfo, !Specs),
-    add_impl_markers(ImsLists, !ModuleInfo, !Specs).
+    list.foldl3(add_impl_marker(ItemMercuryStatus), Items,
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
+    add_impl_markers(ImsLists, !ModuleInfo, !ErrSpecs, !WarnSpecs).
 
 %---------------------%
 
 :- pred add_impl_marker(item_mercury_status::in, item_impl_marker_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo, !Specs) :-
+add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs) :-
     ImplMarker = item_impl_marker_info(MarkerKind, PFUNameArity, Context, _),
     (
         MarkerKind = ipmk_inline,
@@ -853,22 +872,22 @@ add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo, !Specs) :-
         add_pred_marker(PFUNameArity, "inline", psc_impl,
             ItemMercuryStatus, Context, marker_user_marked_inline,
             [marker_user_marked_no_inline, marker_mode_check_clauses],
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_no_inline,
         add_pred_marker(PFUNameArity, "no_inline", psc_impl,
             ItemMercuryStatus, Context, marker_user_marked_no_inline,
-            [marker_user_marked_inline], !ModuleInfo, !Specs)
+            [marker_user_marked_inline], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_consider_used,
         add_pred_marker(PFUNameArity, "consider_used", psc_impl,
             ItemMercuryStatus, Context, marker_consider_used,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_mode_check_clauses,
         add_pred_marker(PFUNameArity, "mode_check_clauses", psc_impl,
             ItemMercuryStatus, Context, marker_mode_check_clauses,
-            [], !ModuleInfo, !Specs),
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs),
         % Allowing the predicate to be inlined could lead to code generator
         % aborts. This is because the caller that inlines this predicate may
         % then push other code into the disjunction or switch's branches,
@@ -876,33 +895,33 @@ add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo, !Specs) :-
         % marker prevents the recomputation of.
         add_pred_marker(PFUNameArity, "mode_check_clauses", psc_impl,
             ItemMercuryStatus, Context, marker_mmc_marked_no_inline,
-            [marker_user_marked_inline], !ModuleInfo, !Specs)
+            [marker_user_marked_inline], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_no_detism_warning,
         add_pred_marker(PFUNameArity, "no_determinism_warning", psc_impl,
             ItemMercuryStatus, Context, marker_no_detism_warning,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_promise_pure,
         add_pred_marker(PFUNameArity, "promise_pure", psc_impl,
             ItemMercuryStatus, Context, marker_promised_pure,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_promise_semipure,
         add_pred_marker(PFUNameArity, "promise_semipure", psc_impl,
             ItemMercuryStatus, Context, marker_promised_semipure,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_promise_eqv_clauses,
         add_pred_marker(PFUNameArity, "promise_equivalent_clauses", psc_impl,
             ItemMercuryStatus, Context, marker_promised_equivalent_clauses,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = ipmk_req_sw_arms_type_order,
         add_pred_marker(PFUNameArity,
             "require_switch_arms_in_type_order", psc_impl,
             ItemMercuryStatus, Context, marker_req_sw_arms_type_order,
-            [], !ModuleInfo, !Specs)
+            [], !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ).
 
 %---------------------------------------------------------------------------%

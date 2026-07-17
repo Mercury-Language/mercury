@@ -313,7 +313,7 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
                 verbose_only(verbose_once, VerbosePieces)]),
             Msgs = [InMsg | WarnMsgs] ++ [EnsureSuppressMsg],
             Severity = severity_warning(warn_accumulator_swaps),
-            Spec = diag_spec($pred, Severity, phase_accumulator_intro, Msgs),
+            Spec = gen_spec($pred, Severity, phase_accumulator_intro, Msgs),
 
             det_univ_to_type(!.Cookie, Specs0),
             Specs = [Spec | Specs0] : list(diag_spec),

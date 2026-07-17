@@ -35,7 +35,8 @@
 :- pred module_add_clause(io.text_output_stream::in, pred_status::in,
     clause_type::in, item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
     % This predicate is exported for use by instance_method_clauses.m.
     %
@@ -45,7 +46,8 @@
     prog_context::in, item_seq_num::in, goal::in, prog_varset::in,
     tvarset::in, tvarset::out, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -104,7 +106,7 @@
 %-----------------------------------------------------------------------------%
 
 module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     ClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms0,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum),
     (
@@ -141,7 +143,8 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
             add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
-                IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
+                IllegalSVarResult, !ModuleInfo, !QualInfo,
+                !ErrSpecs, !WarnSpecs)
         else if PredName = ",", Arity = 2 then
             SNA = sym_name_arity(unqualified(","), 2),
             Pieces =
@@ -153,7 +156,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                     words("a period instead of a comma")]) ++
                 [words("at the end of the preceding line."), nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         else
             % A promise will not have a corresponding pred declaration.
             (
@@ -170,27 +173,29 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                 add_implicit_pred_decl_report_error(PredOrFunc,
                     PredModuleName, PredName, PredFormArity, PredStatus,
                     is_not_a_class_method, Context, Origin,
-                    [words("clause")], PredId, !ModuleInfo, !Specs)
+                    [words("clause")], PredId, !ModuleInfo, !ErrSpecs)
             ),
             add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
-                IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
+                IllegalSVarResult, !ModuleInfo, !QualInfo,
+                !ErrSpecs, !WarnSpecs)
         )
     ).
 
 :- pred add_clause_to_hlds(io.text_output_stream::in,
     pred_status::in, clause_type::in, pred_id::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in, pred_form_arity::in,
-    prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
+    prog_varset::in, parse_result1(goal)::in, prog_context::in,
     item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
         PredOrFunc, PredSymName, MaybeAnnotatedArgTerms, PredFormArity,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     some [!PredInfo, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
         % clauses_info in the pred_info, if there are no modes add an
@@ -229,31 +234,35 @@ add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
         maybe_add_default_func_mode(!.ModuleInfo, !PredInfo, _),
         (
             !.PredSpecs = [_ | _ ],
-            !:Specs = !.PredSpecs ++
-                get_any_errors_warnings2(MaybeBodyGoal) ++ !.Specs
+            get_all_errors_warnings2(MaybeBodyGoal,
+                BodyGoalErrSpecs, BodyGoalWarnSpecs),
+            !:ErrSpecs = !.PredSpecs ++ BodyGoalErrSpecs ++ !.ErrSpecs,
+            !:WarnSpecs = BodyGoalWarnSpecs ++ !.WarnSpecs
         ;
             !.PredSpecs = [],
             (
-                MaybeBodyGoal = error2(BodyGoalSpecs),
-                !:Specs = one_or_more_to_list(BodyGoalSpecs) ++ !.Specs,
+                MaybeBodyGoal = error2({BodyGoalErrSpecs, BodyGoalWarnSpecs}),
+                !:ErrSpecs =
+                    one_or_more_to_list(BodyGoalErrSpecs) ++ !.ErrSpecs,
+                !:WarnSpecs = BodyGoalWarnSpecs ++ !.WarnSpecs,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 Clauses = Clauses0 ^ cli_had_syntax_errors :=
                     some_clause_syntax_errors,
                 pred_info_set_clauses_info(Clauses, !PredInfo)
             ;
                 MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
-                !:Specs = BodyGoalWarningSpecs ++ !.Specs,
+                !:WarnSpecs = BodyGoalWarningSpecs ++ !.WarnSpecs,
                 pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
                 pred_info_get_typevarset(!.PredInfo, TVarSet0),
                 select_applicable_modes(!.ModuleInfo, MaybeAnnotatedArgTerms,
                     ClauseVarSet, PredStatus, Context, PredId, !.PredInfo,
                     ArgTerms, ProcIdsForThisClause, AllProcIds,
-                    !QualInfo, !Specs),
+                    !QualInfo, !ErrSpecs, !WarnSpecs),
                 add_clause_to_clauses_info(ProcIdsForThisClause, AllProcIds,
                     PredStatus, ClauseType, PredOrFunc, PredSymName,
                     ArgTerms, Context, SeqNum, BodyGoal, ClauseVarSet,
                     TVarSet0, TVarSet, ClausesInfo0, ClausesInfo,
-                    !ModuleInfo, !QualInfo, !Specs),
+                    !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 (
                     ClauseType = clause_for_promise(_PromiseType)
@@ -320,7 +329,7 @@ add_clause_progress_msg(ProgressStream, ModuleInfo, PredInfo,
 
 :- pred maybe_add_error_for_field_access_function(module_info::in,
     pred_status::in, pred_or_func::in, sym_name::in, pred_form_arity::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         PredOrFunc, PredSymName, PredFormArity, Context, !Specs) :-
@@ -352,7 +361,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         FieldAccessMsg = simple_msg(Context,
             [always(FieldAccessMainPieces),
             verbose_only(verbose_always, FieldAccessVerbosePieces)]),
-        FieldAccessSpec = diag_spec($pred, severity_error, phase_pt2h,
+        FieldAccessSpec = gen_spec($pred, severity_error, phase_pt2h,
             [FieldAccessMsg]),
         !:Specs = [FieldAccessSpec | !.Specs]
     else
@@ -360,7 +369,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
     ).
 
 :- pred maybe_add_error_for_builtin(module_info::in, pred_info::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     ( if pred_info_is_builtin(PredInfo) then
@@ -397,11 +406,12 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     pred_id::in, pred_info::in, list(prog_term)::out,
     clause_applicable_modes::out, list(proc_id)::out,
     qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
         PredStatus, Context, PredId, PredInfo, ArgTerms,
-        ApplProcIds, AllProcIds, !QualInfo, !Specs) :-
+        ApplProcIds, AllProcIds, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     AllProcIds = pred_info_all_proc_ids(PredInfo),
     PredIdStr = pred_id_to_user_string(ModuleInfo, PredId),
     ContextPieces = cord.from_list([words("In the head of a clause for"),
@@ -410,7 +420,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
         ArgTerms, ArgModes0, ArgsWithoutModes, ModeAnnotationSpecs),
     (
         ModeAnnotationSpecs = [_ | _],
-        !:Specs = ModeAnnotationSpecs ++ !.Specs,
+        !:ErrSpecs = ModeAnnotationSpecs ++ !.ErrSpecs,
         % Apply the clause to all modes.
         % XXX Would it be better to apply it to none?
         ApplProcIds = selected_modes(AllProcIds)
@@ -485,7 +495,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
                         Severity = severity_warning(warn_redundant_code),
                         Spec = spec($pred, Severity, phase_pt2h,
                             Context, Pieces),
-                        !:Specs = [Spec | !.Specs]
+                        !:WarnSpecs = [Spec | !.WarnSpecs]
                     ;
                         Warn = no
                     )
@@ -495,7 +505,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
             else
                 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo,
                     VarSet, ArgModes, [words("clause")], Context, UndefSpec),
-                !:Specs = [UndefSpec | !.Specs],
+                !:ErrSpecs = [UndefSpec | !.ErrSpecs],
                 % Apply the clause to all modes.
                 % XXX Would it be better to apply it to none?
                 ApplProcIds = selected_modes(AllProcIds)
@@ -517,7 +527,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
                     [suffix(".")], ArgsWithoutModePieces) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs],
+            !:ErrSpecs = [Spec | !.ErrSpecs],
 
             % Apply the clause to all modes.
             % XXX Would it be better to apply it to none?
@@ -531,7 +541,7 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
     %
 :- pred get_mode_annotations(prog_varset::in, cord(format_piece)::in,
     int::in, list(prog_term)::in, list(prog_term)::out,
-    list(mer_mode)::out, list(int)::out, list(diag_spec)::out) is det.
+    list(mer_mode)::out, list(int)::out, list(err_spec)::out) is det.
 
 get_mode_annotations(_, _, _, [], [], [], [], []).
 get_mode_annotations(VarSet, ContextPieces, ArgNum, [MAArgTerm | MAArgTerms],
@@ -598,7 +608,7 @@ get_mode_annotation(VarSet, ContextPieces, ArgNum, MaybeAnnotatedArgTerm,
 add_clause_to_clauses_info(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         PredOrFunc, PredSymName, ArgTerms, Context, SeqNum, BodyGoal,
         ClauseVarSet, TVarSet0, TVarSet,
-        !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
+        !ClausesInfo, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
         VarTable0, RttiVarMaps0, TVarNameMap0, ArgVector, ClausesRep0,
         ItemNumbers0, HasForeignClauses0, HadSyntaxError0),
@@ -640,7 +650,7 @@ add_clause_to_clauses_info(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms, Context, ClauseType, BodyGoal, Goal0,
         VarSet1, VarSet2, QuantWarnings, StateVarWarnings, UnusedSVarArgMap,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
     qual_info_get_found_syntax_error(!.QualInfo, FoundSyntaxError),
     (
@@ -662,10 +672,10 @@ add_clause_to_clauses_info(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
             WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
                 PredFormArity),
             warn_singletons_in_clause_body(!.ModuleInfo, WarnPFSymNameArity,
-                VarSet2, Goal0, SeenQuant, !Specs),
+                VarSet2, Goal0, SeenQuant, !WarnSpecs),
             % Warn about variables with overlapping scopes.
             add_quant_warnings(!.ModuleInfo, WarnPFSymNameArity, VarSet,
-                QuantWarnings, !Specs),
+                QuantWarnings, !WarnSpecs),
             (
                 SeenQuant = have_not_seen_quant,
                 % Even though we told the call to add_clause_transform above
@@ -804,15 +814,16 @@ should_we_do_singleton_and_quant_warnings(ModuleInfo, PredStatus, ClausesInfo,
     pred_or_func::in, sym_name::in, list(prog_var)::in,
     list(prog_term)::in, prog_context::in, clause_type::in,
     goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    list(quant_warning)::out, list(diag_spec)::out,
+    list(quant_warning)::out, list(warn_spec)::out,
     unused_statevar_arg_map::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms0, Context, ClauseType, ParseTreeBodyGoal, Goal,
         !VarSet, QuantWarnings, StateVarWarningSpecs, UnusedSVarArgMap,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     some [!SVarState, !UrInfo] (
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms0, ArgTerms1),
@@ -858,8 +869,10 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
             InitialSVarState, FinalSVarState, HeadUnificationsGoal, BodyGoal,
             Goal0, StateVarWarningSpecs, UnusedSVarArgMap, !UrInfo),
         !.UrInfo = unravel_info(!:ModuleInfo, _FgtThreshold,
-            !:QualInfo, !:VarSet, _SVarStore, UnravelSpecs),
-        !:Specs = UnravelSpecs ++ !.Specs,
+            !:QualInfo, !:VarSet, _SVarStore,
+            ErrUnravelSpecs, WarnUnravelSpecs),
+        !:ErrSpecs = ErrUnravelSpecs ++ !.ErrSpecs,
+        !:WarnSpecs = WarnUnravelSpecs ++ !.WarnSpecs,
 
         trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
             module_info_get_globals(!.ModuleInfo, Globals),

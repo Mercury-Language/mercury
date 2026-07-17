@@ -742,7 +742,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
     %
 :- type type_defn_prev_errors
     --->    type_defn_no_prev_errors
-    ;       type_defn_prev_errors(diag_spec).
+    ;       type_defn_prev_errors(err_spec).
 
     % An `hlds_type_body' holds the body of a type definition:
     % du = discriminated union, eqv_type = equivalence type (a type defined

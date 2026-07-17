@@ -29,38 +29,44 @@
 :- pred add_decl_pragmas(io.text_output_stream::in,
     ims_list(item_decl_pragma_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out,
+    list(info_spec)::in, list(info_spec)::out) is det.
 
 :- pred add_decl_pragmas_type_spec_constr(io.text_output_stream::in,
     list(decl_pragma_type_spec_constr_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out,
+    list(info_spec)::in, list(info_spec)::out) is det.
 
 :- pred add_decl_pragmas_type_spec(list(decl_pragma_type_spec_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 :- pred add_decl_pragmas_termination(list(decl_pragma_termination_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 :- pred add_decl_pragmas_termination2(list(decl_pragma_termination2_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 :- pred add_decl_pragmas_sharing(list(decl_pragma_struct_sharing_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 :- pred add_decl_pragmas_reuse(list(decl_pragma_struct_reuse_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------%
 
 :- pred add_decl_markers(ims_list(item_decl_marker_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -102,101 +108,110 @@
 % Adding decl pragmas to the HLDS.
 %
 
-add_decl_pragmas(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas(_, [], !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs, !InfoSpecs).
 add_decl_pragmas(ProgressStream, [ImsList | ImsLists],
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_decl_pragma(ProgressStream, ItemMercuryStatus), Items,
-        !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    list.foldl5(add_decl_pragma(ProgressStream, ItemMercuryStatus), Items,
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs),
+    add_decl_pragmas(ProgressStream, ImsLists, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs, !InfoSpecs).
 
-add_decl_pragmas_type_spec_constr(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas_type_spec_constr(_, [],
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs).
 add_decl_pragmas_type_spec_constr(ProgressStream, [Pragma | Pragmas],
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs) :-
     add_pragma_type_spec_constr(ProgressStream, Pragma,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs),
     add_decl_pragmas_type_spec_constr(ProgressStream, Pragmas,
-        !ModuleInfo, !QualInfo, !Specs).
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs).
 
-add_decl_pragmas_type_spec([], !ModuleInfo, !QualInfo, !Specs).
-add_decl_pragmas_type_spec([Pragma | Pragmas],
-        !ModuleInfo, !QualInfo, !Specs) :-
-    add_pragma_type_spec(Pragma, !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas_type_spec(Pragmas, !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas_type_spec([], !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
+add_decl_pragmas_type_spec([Pragma | Pragmas], !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs) :-
+    add_pragma_type_spec(Pragma, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs),
+    add_decl_pragmas_type_spec(Pragmas, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs).
 
-add_decl_pragmas_termination([], !ModuleInfo, !Specs).
-add_decl_pragmas_termination([Pragma | Pragmas], !ModuleInfo, !Specs) :-
-    add_pragma_termination(Pragma, !ModuleInfo, !Specs),
-    add_decl_pragmas_termination(Pragmas, !ModuleInfo, !Specs).
+add_decl_pragmas_termination([], !ModuleInfo, !ErrSpecs).
+add_decl_pragmas_termination([Pragma | Pragmas], !ModuleInfo, !ErrSpecs) :-
+    add_pragma_termination(Pragma, !ModuleInfo, !ErrSpecs),
+    add_decl_pragmas_termination(Pragmas, !ModuleInfo, !ErrSpecs).
 
-add_decl_pragmas_termination2([], !ModuleInfo, !Specs).
-add_decl_pragmas_termination2([Pragma | Pragmas], !ModuleInfo, !Specs) :-
-    add_pragma_termination2(Pragma, !ModuleInfo, !Specs),
-    add_decl_pragmas_termination2(Pragmas, !ModuleInfo, !Specs).
+add_decl_pragmas_termination2([], !ModuleInfo, !ErrSpecs).
+add_decl_pragmas_termination2([Pragma | Pragmas], !ModuleInfo, !ErrSpecs) :-
+    add_pragma_termination2(Pragma, !ModuleInfo, !ErrSpecs),
+    add_decl_pragmas_termination2(Pragmas, !ModuleInfo, !ErrSpecs).
 
-add_decl_pragmas_sharing([], !ModuleInfo, !Specs).
-add_decl_pragmas_sharing([Pragma | Pragmas], !ModuleInfo, !Specs) :-
-    add_pragma_struct_sharing(Pragma, !ModuleInfo, !Specs),
-    add_decl_pragmas_sharing(Pragmas, !ModuleInfo, !Specs).
+add_decl_pragmas_sharing([], !ModuleInfo, !ErrSpecs).
+add_decl_pragmas_sharing([Pragma | Pragmas], !ModuleInfo, !ErrSpecs) :-
+    add_pragma_struct_sharing(Pragma, !ModuleInfo, !ErrSpecs),
+    add_decl_pragmas_sharing(Pragmas, !ModuleInfo, !ErrSpecs).
 
-add_decl_pragmas_reuse([], !ModuleInfo, !Specs).
-add_decl_pragmas_reuse([Pragma | Pragmas], !ModuleInfo, !Specs) :-
-    add_pragma_struct_reuse(Pragma, !ModuleInfo, !Specs),
-    add_decl_pragmas_reuse(Pragmas, !ModuleInfo, !Specs).
+add_decl_pragmas_reuse([], !ModuleInfo, !ErrSpecs).
+add_decl_pragmas_reuse([Pragma | Pragmas], !ModuleInfo, !ErrSpecs) :-
+    add_pragma_struct_reuse(Pragma, !ModuleInfo, !ErrSpecs),
+    add_decl_pragmas_reuse(Pragmas, !ModuleInfo, !ErrSpecs).
 
 %---------------------%
 
 :- pred add_decl_pragma(io.text_output_stream::in,
     item_mercury_status::in, item_decl_pragma_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out,
+    list(info_spec)::in, list(info_spec)::out) is det.
 
 add_decl_pragma(ProgressStream, ItemMercuryStatus, Pragma,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs) :-
     (
         Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
         mark_pred_as_obsolete(ObsoletePredInfo, ItemMercuryStatus,
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         Pragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
         mark_proc_as_obsolete(ObsoleteProcInfo, ItemMercuryStatus,
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         Pragma = decl_pragma_format_call(FormatCallInfo),
         mark_pred_as_format_call(FormatCallInfo, ItemMercuryStatus,
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         Pragma = decl_pragma_type_spec_constr(TypeSpecConstrInfo),
         add_pragma_type_spec_constr(ProgressStream, TypeSpecConstrInfo,
-            !ModuleInfo, !QualInfo, !Specs)
+            !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
-        add_pragma_type_spec(TypeSpecInfo, !ModuleInfo, !QualInfo, !Specs)
+        add_pragma_type_spec(TypeSpecInfo, !ModuleInfo, !QualInfo,
+            !ErrSpecs, !WarnSpecs)
     ;
         Pragma = decl_pragma_oisu(OISUInfo),
-        add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs)
+        add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_termination(TermInfo),
-        add_pragma_termination(TermInfo, !ModuleInfo, !Specs)
+        add_pragma_termination(TermInfo, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_termination2(Term2Info),
-        add_pragma_termination2(Term2Info, !ModuleInfo, !Specs)
+        add_pragma_termination2(Term2Info, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_struct_sharing(SharingInfo),
-        add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !Specs)
+        add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_struct_reuse(ReuseInfo),
-        add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !Specs)
+        add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !ErrSpecs)
     ).
 
 %---------------------%
 
 :- pred mark_pred_as_obsolete(decl_pragma_obsolete_pred_info::in,
     item_mercury_status::in, module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus,
-        !ModuleInfo, !Specs) :-
+        !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     ObsoletePredInfo = decl_pragma_obsolete_pred_info(PredSpec,
         ObsoleteInFavourOf, Context, _),
     PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
@@ -204,29 +219,31 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus,
         pragma_does_not_allow_modes, Context, PFU, SymName, UserArity,
         MatchingPredIdResult),
     (
-        MatchingPredIdResult = mpids_ok(HeadPredId, TailPredIds, WarnSpecs),
+        MatchingPredIdResult = mpids_ok(HeadPredId, TailPredIds, IdWarnSpecs),
         PredIds = [HeadPredId | TailPredIds],
-        !:Specs = WarnSpecs ++ !.Specs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs,
         module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, Context,
-            PredIds, PredIdTable0, PredIdTable, !Specs),
+            PredIds, PredIdTable0, PredIdTable, !ErrSpecs, !WarnSpecs),
         module_info_set_pred_id_table(PredIdTable, !ModuleInfo)
     ;
-        MatchingPredIdResult = mpids_error(ErrorSpecs),
-        !:Specs = ErrorSpecs ++ !.Specs
+        MatchingPredIdResult = mpids_error(IdErrSpecs, IdWarnSpecs),
+        !:ErrSpecs = one_or_more_to_list(IdErrSpecs) ++ !.ErrSpecs,
+        !:WarnSpecs = IdWarnSpecs ++ !.WarnSpecs
     ).
 
 :- pred mark_pred_ids_as_obsolete(list(sym_name_arity)::in,
     item_mercury_status::in, prog_context::in, list(pred_id)::in,
     pred_id_table::in, pred_id_table::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-mark_pred_ids_as_obsolete(_, _, _, [], !PredTable, !Specs).
+mark_pred_ids_as_obsolete(_, _, _, [], !PredTable, !ErrSpecs, !WarnSpecs).
 mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, Context,
-        [PredId | PredIds], !PredTable, !Specs) :-
+        [PredId | PredIds], !PredTable, !ErrSpecs, !WarnSpecs) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     check_pragma_status("obsolete", psc_decl, PragmaStatus, Context,
-        PredInfo0, !Specs),
+        PredInfo0, !ErrSpecs, !WarnSpecs),
     pred_info_get_obsolete_in_favour_of(PredInfo0, MaybeObsoleteInFavourOf0),
     (
         MaybeObsoleteInFavourOf0 = no,
@@ -240,15 +257,17 @@ mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, Context,
         PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, !PredTable),
     mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, Context,
-        PredIds, !PredTable, !Specs).
+        PredIds, !PredTable, !ErrSpecs, !WarnSpecs).
 
 %---------------------%
 
 :- pred mark_proc_as_obsolete(decl_pragma_obsolete_proc_info::in,
     item_mercury_status::in, module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, !ModuleInfo, !Specs) :-
+mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs) :-
     ObsoleteProcInfo = decl_pragma_obsolete_proc_info(PredNameModesPF,
         ObsoleteInFavourOf, Context, _),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
@@ -262,7 +281,7 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, !ModuleInfo, !Specs) :-
         MaybePredId = ok1(PredId),
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
         check_pragma_status("obsolete_proc", psc_decl, PragmaStatus, Context,
-            PredInfo0, !Specs),
+            PredInfo0, !ErrSpecs, !WarnSpecs),
         PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
         ProcTransform =
             ( pred(ProcInfo0::in, ProcInfo::out) is det :-
@@ -280,19 +299,21 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, !ModuleInfo, !Specs) :-
                     ProcInfo0, ProcInfo)
             ),
         transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
-            "obsolete_proc", Context, ProcTransform, !ModuleInfo, !Specs)
+            "obsolete_proc", Context, ProcTransform, !ModuleInfo, !ErrSpecs)
     ;
-        MaybePredId = error1(Specs),
-        !:Specs = Specs ++ !.Specs
+        MaybePredId = error1(IdErrSpecs),
+        !:ErrSpecs = IdErrSpecs ++ !.ErrSpecs
     ).
 
 %---------------------%
 
 :- pred mark_pred_as_format_call(decl_pragma_format_call_info::in,
     item_mercury_status::in, module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
+mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs) :-
     FormatCallInfo =
         decl_pragma_format_call_info(PredSpec, OoMArgSpecs, Context, _),
     PredSpec = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
@@ -300,14 +321,14 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
         lfh_user_error, Context, "format_call",
         PredOrFunc, SymName, UserArity, MaybePredId),
     (
-        MaybePredId = error1(PredIdSpecs),
-        !:Specs = PredIdSpecs ++ !.Specs
+        MaybePredId = error1(IdErrSpecs),
+        !:ErrSpecs = IdErrSpecs ++ !.ErrSpecs
     ;
         MaybePredId = ok1(PredId),
         module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         map.lookup(PredIdTable0, PredId, PredInfo0),
         check_pragma_status("format_call", psc_decl, PragmaStatus, Context,
-            PredInfo0, !Specs),
+            PredInfo0, !ErrSpecs, !WarnSpecs),
         pred_info_get_format_call_info(PredInfo0, MaybeFormatCall0),
         (
             MaybeFormatCall0 = no,
@@ -336,9 +357,9 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
                 pragma_decl("format_call"), words("declaration"),
                 words("was here."), nl],
             SecondMsg = msg(OldContext, SecondPieces),
-            Spec = diag_spec($pred, severity_error, phase_pt2h,
+            Spec = gen_spec($pred, severity_error, phase_pt2h,
                 [FirstMsg, SecondMsg]),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ).
 
@@ -346,9 +367,9 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
 
 :- pred add_pragma_oisu(decl_pragma_oisu_info::in, item_mercury_status::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
+add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !ErrSpecs) :-
     OISUInfo = decl_pragma_oisu_info(TypeCtor, Creators, Mutators, Destructors,
         Context, _),
     some [!OISUSpecs] (
@@ -386,7 +407,7 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
 %               TypePieces = [words("The type in this"), quote("pragma oisu"),
 %                   words("declaration is undefined."), nl],
 %               TypeMsg = simple_msg(Context, [always(TypePieces)]),
-%               TypeSpec = diag_spec(severity_error, phase_pt2h, [TypeMsg]),
+%               TypeSpec = gen_spec(severity_error, phase_pt2h, [TypeMsg]),
 %               !:OISUSpecs = [TypeSpec | !.OISUSpecs]
                 % Module qualification will already have reported the error.
                 % Any message we could generate here would be a duplicate.
@@ -418,20 +439,20 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
                     suffix("."), nl],
                 DupSpec = spec($pred, severity_error, phase_pt2h,
                     Context, DupPieces),
-                !:Specs = [DupSpec | !.Specs]
+                !:ErrSpecs = [DupSpec | !.ErrSpecs]
             )
         ;
             !.OISUSpecs = [_ | _],
-            !:Specs = !.OISUSpecs ++ !.Specs
+            !:ErrSpecs = !.OISUSpecs ++ !.ErrSpecs
         )
     ).
 
 :- pred find_unique_pred_for_oisu(module_info::in, prog_context::in,
     type_ctor::in, string::in, pred_pf_name_arity::in, pred_id::out,
-    int::in, int::out, list(diag_spec)::in, list(diag_spec)::out) is det.
+    int::in, int::out, list(err_spec)::in, list(err_spec)::out) is det.
 
 find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
-        PredSpec, PredId, !SeqNum, !Specs) :-
+        PredSpec, PredId, !SeqNum, !ErrSpecs) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredSpec = pred_pf_name_arity(PredOrFunc, PredName, UserArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
@@ -483,7 +504,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 words("expected arity is")] ++ ExpArities ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces)
         ),
-        !:Specs = [Spec | !.Specs],
+        !:ErrSpecs = [Spec | !.ErrSpecs],
         PredId = invalid_pred_id
     ;
         PredIds = [PredId]
@@ -499,7 +520,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             qual_sym_name_arity(sym_name_arity(PredName, UserArityInt)),
             suffix("."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
+        !:ErrSpecs = [Spec | !.ErrSpecs],
         PredId = invalid_pred_id
     ),
     !:SeqNum = !.SeqNum + 1.
@@ -516,9 +537,9 @@ lookup_pred_orig_arity(ModuleInfo, PredId, Piece) :-
 
 :- pred add_pragma_termination(decl_pragma_termination_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_termination(TermInfo, !ModuleInfo, !Specs) :-
+add_pragma_termination(TermInfo, !ModuleInfo, !ErrSpecs) :-
     TermInfo = decl_pragma_termination_info(PredNameModesPF,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo, Context, _),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
@@ -544,7 +565,7 @@ add_pragma_termination(TermInfo, !ModuleInfo, !Specs) :-
                     ProcInfo1, ProcInfo)
             ),
         transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
-            "termination_info", Context, ProcTransform, !ModuleInfo, !Specs)
+            "termination_info", Context, ProcTransform, !ModuleInfo, !ErrSpecs)
     ;
         MaybePredId = error1(_Specs)
     ).
@@ -553,9 +574,9 @@ add_pragma_termination(TermInfo, !ModuleInfo, !Specs) :-
 
 :- pred add_pragma_termination2(decl_pragma_termination2_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_termination2(Term2Info, !ModuleInfo, !Specs) :-
+add_pragma_termination2(Term2Info, !ModuleInfo, !ErrSpecs) :-
     Term2Info = decl_pragma_termination2_info(PredNameModesPF,
         MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
         MaybePragmaTerminationInfo, Context, _),
@@ -587,7 +608,8 @@ add_pragma_termination2(Term2Info, !ModuleInfo, !Specs) :-
                 )
             ),
         transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
-            "termination2_info", Context, ProcTransform, !ModuleInfo, !Specs)
+            "termination2_info", Context, ProcTransform,
+            !ModuleInfo, !ErrSpecs)
     ;
         MaybePredId = error1(_Specs)
     ).
@@ -596,9 +618,9 @@ add_pragma_termination2(Term2Info, !ModuleInfo, !Specs) :-
 
 :- pred add_pragma_struct_sharing(decl_pragma_struct_sharing_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !Specs):-
+add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !ErrSpecs):-
     SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
         HeadVars, Types, _VarSet, _TVarSet, MaybeSharingDomain, Context, _),
     (
@@ -619,15 +641,15 @@ add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !Specs):-
                 Types, SharingDomain),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
                 "structure_sharing", Context, ProcTransform,
-                !ModuleInfo, !Specs)
+                !ModuleInfo, !ErrSpecs)
         ;
-            MaybePredId = error1(Specs),
+            MaybePredId = error1(IdErrSpecs),
             % XXX There used to be a comment here which said:
             %   XXX lfh_ignore:
             %   This happens in .trans_opt files sometimes, so just ignore it.
             % This was probably because the original code writing out these
             % pragmas was writing Modes with output_debug, not output_mercury.
-            !:Specs = Specs ++ !.Specs
+            !:ErrSpecs = IdErrSpecs ++ !.ErrSpecs
         )
     ).
 
@@ -635,9 +657,9 @@ add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !Specs):-
 
 :- pred add_pragma_struct_reuse(decl_pragma_struct_reuse_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !Specs):-
+add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !ErrSpecs):-
     ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
         HeadVars, Types, _VarSet, _TVarSet, MaybeReuseDomain, Context, _),
     (
@@ -657,7 +679,8 @@ add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !Specs):-
             ProcTransform = proc_info_set_imported_structure_reuse(HeadVars,
                 Types, ReuseDomain),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
-                "structure_reuse", Context, ProcTransform, !ModuleInfo, !Specs)
+                "structure_reuse", Context, ProcTransform, !ModuleInfo,
+                !ErrSpecs)
         ;
             MaybePredId = error1(Specs),
             % XXX There used to be a comment here which said:
@@ -665,7 +688,7 @@ add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !Specs):-
             %   This happens in .trans_opt files sometimes, so just ignore it.
             % This was probably because the original code writing out these
             % pragmas was writing Modes with output_debug, not output_mercury.
-            !:Specs = Specs ++ !.Specs
+            !:ErrSpecs = Specs ++ !.ErrSpecs
         )
     ).
 
@@ -674,38 +697,41 @@ add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !Specs):-
 % Adding decl markers to the HLDS.
 %
 
-add_decl_markers([], !ModuleInfo, !Specs).
-add_decl_markers([ImsList | ImsLists], !ModuleInfo, !Specs) :-
+add_decl_markers([], !ModuleInfo, !ErrSpecs, !WarnSpecs).
+add_decl_markers([ImsList | ImsLists], !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl2(add_decl_marker(ItemMercuryStatus), Items,
-        !ModuleInfo, !Specs),
-    add_decl_markers(ImsLists, !ModuleInfo, !Specs).
+    list.foldl3(add_decl_marker(ItemMercuryStatus), Items,
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
+    add_decl_markers(ImsLists, !ModuleInfo, !ErrSpecs, !WarnSpecs).
 
 %---------------------%
 
 :- pred add_decl_marker(item_mercury_status::in, item_decl_marker_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_decl_marker(ItemMercuryStatus, DeclMarker, !ModuleInfo, !Specs) :-
+add_decl_marker(ItemMercuryStatus, DeclMarker, !ModuleInfo,
+        !ErrSpecs, !WarnSpecs) :-
     DeclMarker = item_decl_marker_info(MarkerKind, PFUNameArity, Context, _),
     (
         MarkerKind = dpmk_terminates,
         add_pred_marker(PFUNameArity, "terminates", psc_decl,
             ItemMercuryStatus, Context, marker_terminates,
             [marker_check_termination, marker_does_not_terminate],
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = dpmk_does_not_terminate,
         add_pred_marker(PFUNameArity, "does_not_terminate", psc_decl,
             ItemMercuryStatus, Context, marker_does_not_terminate,
-            [marker_check_termination, marker_terminates], !ModuleInfo, !Specs)
+            [marker_check_termination, marker_terminates],
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ;
         MarkerKind = dpmk_check_termination,
         add_pred_marker(PFUNameArity, "check_termination", psc_decl,
             ItemMercuryStatus, Context, marker_check_termination,
             [marker_terminates, marker_does_not_terminate],
-            !ModuleInfo, !Specs)
+            !ModuleInfo, !ErrSpecs, !WarnSpecs)
     ).
 
 %---------------------------------------------------------------------------%

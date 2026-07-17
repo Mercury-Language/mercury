@@ -520,7 +520,7 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
         % XXX MAKE This predicate, build_object_code, is invoked only as the
         % top call in a newly-spawned-off process. We cannot return Specs
         % to our caller, because our caller is in a separate process.
-        write_error_specs(ErrorStream, Globals, Specs, !IO)
+        write_diag_specs(ErrorStream, Globals, Specs, !IO)
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.text_output_stream::in,

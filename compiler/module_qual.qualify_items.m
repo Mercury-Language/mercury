@@ -46,11 +46,12 @@
 :- pred module_qualify_aug_comp_unit(globals::in,
     aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
-    set_tree234(module_name)::out, map(module_name, diag_spec)::out) is det.
+    set_tree234(module_name)::out, map(module_name, warn_spec)::out) is det.
 
 :- pred module_qualify_aug_make_int_unit(globals::in,
     aug_make_int_unit::in, aug_make_int_unit::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
     % module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
     %   !Specs):
@@ -60,7 +61,7 @@
     %
 :- pred module_qualify_parse_tree_int3(globals::in,
     parse_tree_int3::in, parse_tree_int3::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -175,7 +176,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 %---------------------%
 
 module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
-        !Specs) :-
+        !ErrSpecs, !WarnSpecs) :-
     AugMakeIntUnit0 = aug_make_int_unit(ParseTreeModuleSrc0, DelayedSpecs0,
         AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
         ModuleVersionNumbers),
@@ -193,10 +194,10 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
-        get_diag_specs_in_mq_info(!.Info,
+        get_err_specs_in_mq_info(!.Info,
             InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
-        !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
-            NonBlockingUndefSpecs ++ !.Specs,
+        !:ErrSpecs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
+            NonBlockingUndefSpecs ++ !.ErrSpecs,
 
         globals.lookup_bool_option(Globals, warn_unused_interface_imports,
             WarnInterfaceImports),
@@ -208,7 +209,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
             map.map_values(warn_unused_interface_import(ModuleName),
                 UnusedImportsContextsMap, UnusedImportsSpecsMap),
             map.values(UnusedImportsSpecsMap, UnusedImportsSpecs),
-            !:Specs = UnusedImportsSpecs ++ !.Specs
+            !:WarnSpecs = UnusedImportsSpecs ++ !.WarnSpecs
         )
     ).
 
@@ -259,17 +260,17 @@ get_unused_imports_map(Info, UnusedImportsMap) :-
 %---------------------%
 
 module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
-        !Specs) :-
+        !ErrSpecs) :-
     ModuleName = OrigParseTreeInt3 ^ pti3_module_name,
     init_mq_info(Globals, ModuleName, should_not_report_errors, Info0),
     collect_mq_info_in_parse_tree_int3(int3_as_src, OrigParseTreeInt3,
         Info0, Info1),
     qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         Info1, Info),
-    get_diag_specs_in_mq_info(Info,
+    get_err_specs_in_mq_info(Info,
         InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
-    !:Specs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
-        NonBlockingUndefSpecs ++ !.Specs.
+    !:ErrSpecs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
+        NonBlockingUndefSpecs ++ !.ErrSpecs.
 
 %---------------------------------------------------------------------------%
 
@@ -286,7 +287,7 @@ qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntDeclMarkers0, IntPromises0, IntBadPreds,
@@ -348,7 +349,7 @@ qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers0, IntPromises, IntBadPreds,

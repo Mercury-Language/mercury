@@ -32,7 +32,7 @@
     --->    iom_item(item)
             % The term contains an item.
 
-    ;       iom_item_and_diag_specs(item, one_or_more(diag_spec))
+    ;       iom_item_and_err_specs(item, one_or_more(err_spec))
             % The term contains an item. This item has errors that we want
             % to report, but from which we have recovered in a useful
             % though probably not perfect manner.
@@ -74,7 +74,7 @@
             % and sequence number of the declaration.
 
     ;       iom_handled_no_error
-    ;       iom_handled_error(one_or_more(diag_spec)).
+    ;       iom_handled_error(one_or_more(err_spec)).
             % The term was completely dealt with during parsing.
             % If there was an error, one or more messages for it are attached.
             %
@@ -93,7 +93,7 @@
 iom_desc_pieces(IOM) = Pieces :-
     (
         ( IOM = iom_item(Item)
-        ; IOM = iom_item_and_diag_specs(Item, _Specs)
+        ; IOM = iom_item_and_err_specs(Item, _Specs)
         ),
         Pieces = item_desc_pieces(Item)
     ;

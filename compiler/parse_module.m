@@ -233,7 +233,7 @@ peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
         MaybeResult = error2(_PartialFileString, _FileStringLen, ErrorCode),
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
-        io_error_to_diag_spec(phase_find_files(SourceFileName0, no),
+        io_error_to_err_spec(phase_find_files(SourceFileName0, no),
             ErrorMsg, Spec, !IO),
         MaybeModuleName = error1(one_or_more(Spec, []))
     ).
@@ -255,9 +255,10 @@ parse_int0_file(Globals, FileName, FileStr, FileStrLen,
     ;
         MaybeParseTreeInt = yes(ParseTreeInt),
         check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0,
-            [], ConvertSpecs),
+            [], ConvertErrSpecs, [], ConvertWarnSpecs),
         MaybeParseTreeInt0 = yes(ParseTreeInt0),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        maybe_add_convert_specs(Globals, ConvertErrSpecs, ConvertWarnSpecs,
+            Errors0, Errors)
     ).
 
 parse_int1_file(Globals, FileName, FileStr, FileStrLen,
@@ -275,9 +276,10 @@ parse_int1_file(Globals, FileName, FileStr, FileStrLen,
     ;
         MaybeParseTreeInt = yes(ParseTreeInt),
         check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1,
-            [], ConvertSpecs),
+            [], ConvertErrSpecs, [], ConvertWarnSpecs),
         MaybeParseTreeInt1 = yes(ParseTreeInt1),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        maybe_add_convert_specs(Globals, ConvertErrSpecs, ConvertWarnSpecs,
+            Errors0, Errors)
     ).
 
 parse_int2_file(Globals, FileName, FileStr, FileStrLen,
@@ -295,9 +297,10 @@ parse_int2_file(Globals, FileName, FileStr, FileStrLen,
     ;
         MaybeParseTreeInt = yes(ParseTreeInt),
         check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2,
-            [], ConvertSpecs),
+            [], ConvertErrSpecs, [], ConvertWarnSpecs),
         MaybeParseTreeInt2 = yes(ParseTreeInt2),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        maybe_add_convert_specs(Globals, ConvertErrSpecs, ConvertWarnSpecs,
+            Errors0, Errors)
     ).
 
 parse_int3_file(Globals, FileName, FileStr, FileStrLen,
@@ -315,9 +318,10 @@ parse_int3_file(Globals, FileName, FileStr, FileStrLen,
     ;
         MaybeParseTreeInt = yes(ParseTreeInt),
         check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3,
-            [], ConvertSpecs),
+            [], ConvertErrSpecs, [], ConvertWarnSpecs),
         MaybeParseTreeInt3 = yes(ParseTreeInt3),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        maybe_add_convert_specs(Globals, ConvertErrSpecs, ConvertWarnSpecs,
+            Errors0, Errors)
     ).
 
 %---------------------%
@@ -359,31 +363,33 @@ parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
     ;
         MaybeParseTreeOpt = yes(ParseTreeOpt),
         check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
-            ParseTreeTransOpt, [], ConvertSpecs),
+            ParseTreeTransOpt, [], ConvertErrSpecs),
         MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
-        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+        add_any_nec_errors(ConvertErrSpecs, Errors0, Errors)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_convert_specs(globals::in, list(diag_spec)::in,
+:- pred maybe_add_convert_specs(globals::in,
+    list(err_spec)::in, list(warn_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
 
-maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
+maybe_add_convert_specs(Globals, ConvertErrSpecs, ConvertWarnSpecs, !Errors) :-
     globals.lookup_bool_option(Globals, halt_at_invalid_interface,
         HaltAtInvalidInterface),
     (
         HaltAtInvalidInterface = no
     ;
         HaltAtInvalidInterface = yes,
-        add_any_nec_errors(ConvertSpecs, !Errors)
+        add_any_nec_errors(ConvertErrSpecs, !Errors),
+        add_warnings(ConvertWarnSpecs, !Errors)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred report_module_has_unexpected_name(file_name::in,
     module_name::in, list(prog_context)::in,
-    module_name::in, maybe(term.context)::in, diag_spec::out) is det.
+    module_name::in, maybe(term.context)::in, err_spec::out) is det.
 
 report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         ActualName, MaybeActualContext, Spec) :-
@@ -410,7 +416,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     list.map(expectation_context_to_msg, SortedExpectationContexts, SubMsgs),
     % We only get invoked if the module *has* an expected name.
     % When invoked as "mmc -f", it doesn't have one.
-    Spec = diag_spec($pred, severity_error, phase_module_name,
+    Spec = gen_spec($pred, severity_error, phase_module_name,
         [MainMsg | SubMsgs]).
 
 :- pred expectation_context_to_msg(prog_context::in, diag_msg::out) is det.
@@ -531,7 +537,7 @@ parse_int_file(IntFileKind, SourceFileName, FileString, FileStringLen,
 
 :- type version_number_result
     --->    vnr_ok(maybe_version_numbers)
-    ;       vnr_error(diag_spec, nonfatal_read_module_error).
+    ;       vnr_error(err_spec, nonfatal_read_module_error).
 
 :- pred parse_any_version_number_item(string::in, int::in,
     module_name::in, file_name::in, maybe_lookahead::in, maybe_lookahead::out,
@@ -560,7 +566,7 @@ parse_any_version_number_item(FileString, FileStringLen,
         FinalLookAhead = no_lookahead,
         VersionNumberResult = vnr_error(ItemSpec, rme_could_not_read_term)
     ;
-        ReadIOMResult = read_iom_parse_item_errors(_, _, _),
+        ReadIOMResult = read_iom_parse_item_errors(_, _, _, _),
         % Ignore the errors; our caller will compute them again,
         % and record them, if and when it parses FinalLookAhead again.
         FinalLookAhead = lookahead(ReadIOMResult),
@@ -583,7 +589,7 @@ parse_any_version_number_item(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_diag_specs(_, _)
+            ; IOM = iom_item_and_err_specs(_, _)
             % The reasoning for read_iom_parse_item_errors also applies
             % to iom_item_and_specs.
             ; IOM = iom_handled_no_error
@@ -709,8 +715,10 @@ parse_int_file_section(FileString, FileStringLen,
             add_nonfatal_error(rme_could_not_read_term, ItemSpec, !Errors)
         ;
             ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, _IOMTerm,
-                ItemSpecs),
-            add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs, !Errors)
+                OoMErrSpecs, WarnSpecs),
+            add_nonfatal_errors(rme_could_not_parse_item, OoMErrSpecs,
+                !Errors),
+            add_warnings(WarnSpecs, !Errors)
         ),
         MaybeRawItemBlock = no,
         FinalLookAhead = no_lookahead
@@ -738,9 +746,9 @@ parse_int_file_section(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            % The fact that IOM is not a section marker trumps any diag_specs
-            % in iom_item_and_diag_specs, and in iom_handled_error.
-            ; IOM = iom_item_and_diag_specs(_, _)
+            % The fact that IOM is not a section marker trumps any err_specs
+            % in iom_item_and_err_specs, and in iom_handled_error.
+            ; IOM = iom_item_and_err_specs(_, _)
             ; IOM = iom_handled_no_error
             ; IOM = iom_handled_error(_)
             ),
@@ -874,7 +882,7 @@ parse_src_file_components(FileString, FileStringLen,
             !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
         ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, IOMTerm,
-            _Specs),
+            _OoMErrSpecs, _WarnSpecs),
         % Generate an error for the missing section marker.
         % Leave the term in the lookahead, but otherwise handle the term
         % as it were an unexpected but perfectly parseable term, i.e. follow
@@ -972,7 +980,7 @@ parse_src_file_components(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_diag_specs(_, _)
+            ; IOM = iom_item_and_err_specs(_, _)
             ; IOM = iom_handled_no_error
             ; IOM = iom_handled_error(_)
             ),
@@ -992,7 +1000,7 @@ parse_src_file_components(FileString, FileStringLen,
                     IOM = iom_handled_error(ItemSpecs),
                     add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ;
-                    IOM = iom_item_and_diag_specs(_, ItemSpecs),
+                    IOM = iom_item_and_err_specs(_, ItemSpecs),
                     add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
                 ),
                 (
@@ -1244,7 +1252,7 @@ parse_module_header(FileString, FileStringLen,
 
                 % A message for the error. The error category is
                 % always rme_no_module_decl_at_start.
-                diag_spec
+                err_spec
             )
     ;       wrong_module_decl_present(
                 % The name in the ":- module" decl, and its context.
@@ -1253,7 +1261,7 @@ parse_module_header(FileString, FileStringLen,
 
                 % A message for the error, which may be conditional.
                 % The category is always rme_unexpected_module_name.
-                diag_spec
+                err_spec
             )
     ;       right_module_decl_present(
                 % The name in the ":- module" decl, and its context.
@@ -1295,7 +1303,7 @@ parse_first_module_decl(FileString, FileStringLen,
     % - there are only two kinds of item_or_markers that we do not return
     %   for reprocessing, src file pragmas and ":- module" declarations, and
     % - these contain neither sym_names to be module qualified, nor
-    %   any diag_specs that may contain the module name.
+    %   any err_specs that may contain the module name.
     DummyDefaultModuleName = unqualified(""),
     read_term_to_iom_result(DummyDefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
@@ -1345,10 +1353,10 @@ parse_first_module_decl(FileString, FileStringLen,
             ; FirstIOM = iom_marker_avail(_)
             ; FirstIOM = iom_marker_fim(_)
             ; FirstIOM = iom_item(_)
-            % Ignore the diag_specs.
-            ; FirstIOM = iom_item_and_diag_specs(_, _)
+            % Ignore the err_specs.
+            ; FirstIOM = iom_item_and_err_specs(_, _)
             ; FirstIOM = iom_handled_no_error
-            % Ignore the diag_specs.
+            % Ignore the err_specs.
             ; FirstIOM = iom_handled_error(_)
             ),
             FirstLookAhead = lookahead(MaybeFirstIOM),
@@ -1358,7 +1366,7 @@ parse_first_module_decl(FileString, FileStringLen,
                 report_missing_module_start(FirstContext))
         )
     ;
-        MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _),
+        MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _, _),
         LookAhead = lookahead(MaybeFirstIOM),
         FirstContext = get_term_context(FirstTerm),
         ModuleDeclPresent = no_module_decl_present(LookAhead, FirstContext,
@@ -1439,9 +1447,11 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 add_nonfatal_error(rme_could_not_read_term, ItemSpec,
                     !Errors)
             ;
-                ReadIOMResult = read_iom_parse_item_errors(_, _, ItemSpecs),
-                add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs,
-                    !Errors)
+                ReadIOMResult = read_iom_parse_item_errors(_, _,
+                    OoMErrSpecs, WarnSpecs),
+                add_nonfatal_errors(rme_could_not_parse_item, OoMErrSpecs,
+                    !Errors),
+                add_warnings(WarnSpecs, !Errors)
             ),
             parse_next_item_or_marker(!.SourceFileName,
                 FileString, FileStringLen, ModuleName, NextReadIOMResult,
@@ -1491,9 +1501,9 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_item(Item),
                     cord.snoc(Item, !ItemsCord)
                 ;
-                    IOM = iom_item_and_diag_specs(Item, ItemSpecs),
+                    IOM = iom_item_and_err_specs(Item, OoMErrSpecs),
                     cord.snoc(Item, !ItemsCord),
-                    add_nonfatal_errors(rme_nec, ItemSpecs, !Errors)
+                    add_nonfatal_errors(rme_nec, OoMErrSpecs, !Errors)
                 ;
                     IOM = iom_handled_no_error
                 ;
@@ -1551,11 +1561,12 @@ parse_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
 :- type read_iom_result
     --->    read_iom_eof
             % We have reached end-of-file.
-    ;       read_iom_parse_term_error(diag_spec)
+    ;       read_iom_parse_term_error(err_spec)
             % The call to mercury_term_parser.read_term_from_linestr
             % has failed, which means that what we found in the file string
             % is not a valid term.
-    ;       read_iom_parse_item_errors(varset, term, one_or_more(diag_spec))
+    ;       read_iom_parse_item_errors(varset, term,
+                one_or_more(err_spec), list(warn_spec))
             % We have successfully read a term from the file string,
             % but could not parse it as an item or marker.
             % The error category is implicitly rme_could_not_parse_item.
@@ -1583,13 +1594,15 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         ReadTermResult = term(VarSet, Term),
         counter.allocate(SeqNum, !SeqNumCounter),
         parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
-            MaybeItemOrMarker),
+            MaybeItemOrMarker, [], WarnSpecs),
         (
             MaybeItemOrMarker = ok1(ItemOrMarker),
+            % XXX DIAG_SPEC This ignores WarnSpecs.
             ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
         ;
-            MaybeItemOrMarker = error1(Specs),
-            ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs)
+            MaybeItemOrMarker = error1(OoMErrSpecs),
+            ReadIOMResult = read_iom_parse_item_errors(VarSet, Term,
+                OoMErrSpecs, WarnSpecs)
         )
     ).
 
@@ -1624,7 +1637,7 @@ line_to_pieces(Line, Pieces) :-
 
 %---------------------------------------------------------------------------%
 
-:- func report_missing_module_start(prog_context) = diag_spec.
+:- func report_missing_module_start(prog_context) = err_spec.
 
 report_missing_module_start(FirstContext) = Spec :-
     Pieces = [invis_order_default_start(0, ""),
@@ -1635,7 +1648,7 @@ report_missing_module_start(FirstContext) = Spec :-
     Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
 :- func report_wrong_module_start(prog_context, module_name, module_name)
-    = diag_spec.
+    = err_spec.
 
 report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
     Pieces = [words("Error: module starts with a"), decl("module"),
@@ -1677,8 +1690,10 @@ check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         IOMResult = read_iom_parse_term_error(ItemSpec),
         add_nonfatal_error(rme_could_not_read_term, ItemSpec, !Errors)
     ;
-        IOMResult = read_iom_parse_item_errors(_VarSet, Term, ItemSpecs),
-        add_nonfatal_errors(rme_could_not_parse_item, ItemSpecs, !Errors),
+        IOMResult = read_iom_parse_item_errors(_VarSet, Term,
+            OoMErrSpecs, WarnSpecs),
+        add_nonfatal_errors(rme_could_not_parse_item, OoMErrSpecs, !Errors),
+        add_warnings(WarnSpecs, !Errors),
         report_unexpected_term_at_end(FileKind, Term, !Errors)
     ;
         IOMResult = read_iom_ok(_IOMVarSet, IOMTerm, _IOM),

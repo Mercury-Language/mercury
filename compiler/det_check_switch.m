@@ -499,7 +499,7 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
     (
         MaybeSeverityComponents = yes({Severity, SpecComponents}),
         Msg = simple_msg(Context, SpecComponents),
-        Spec = diag_spec($pred, Severity, phase_detism_check, [Msg]),
+        Spec = gen_spec($pred, Severity, phase_detism_check, [Msg]),
         det_info_add_diag_spec(Spec, !DetInfo)
     ;
         MaybeSeverityComponents = no
@@ -761,7 +761,7 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
         Msg = msg(Context, Pieces),
         det_diagnose_goal_get_msgs(InstMap0, RequiredDetism, Goal,
             SubMsgs, !DetInfo),
-        Spec = diag_spec($pred, severity_error, phase_detism_check,
+        Spec = gen_spec($pred, severity_error, phase_detism_check,
             [Msg | SubMsgs]),
         det_info_add_diag_spec(Spec, !DetInfo)
     ).

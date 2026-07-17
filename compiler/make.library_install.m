@@ -613,7 +613,7 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
             OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
-        write_oom_diag_specs(ProgressStream, Globals, LookupSpecs, !IO),
+        write_oom_error_specs(ProgressStream, Globals, LookupSpecs, !IO),
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),
@@ -699,7 +699,7 @@ make_and_install_grade_specific_files_for_grades(ProgressStream, Globals,
         LibSucceeded = did_not_succeed,
         % XXX MAKE_STREAM
         io.output_stream(ErrorStream, !IO),
-        write_error_specs(ErrorStream, Globals, Specs, !IO),
+        write_diag_specs(ErrorStream, Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 

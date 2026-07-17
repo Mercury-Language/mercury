@@ -175,7 +175,7 @@
     % field of the relevent member of Conflicts.
     %
 :- pred report_any_conflicts(prog_context::in, string::in,
-    list(conflict(T))::in, list(T)::in, list(diag_spec)::out) is det.
+    list(conflict(T))::in, list(T)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -668,7 +668,7 @@ parse_list_elements(Where, What, Pred, VarSet, Term, Result) :-
     ).
 
 :- pred make_expected_got_spec(cord(format_piece)::in, varset::in, string::in,
-    term::in, diag_spec::out) is det.
+    term::in, err_spec::out) is det.
 
 make_expected_got_spec(Where, VarSet, What, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
@@ -691,7 +691,7 @@ report_any_conflicts(Context, ConflictingWhatInWhat, Conflicts, Specified,
 
 :- pred accumulate_conflict_specs(prog_context::in, string::in,
     list(T)::in, conflict(T)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
         Conflict, !Specs) :-
@@ -861,7 +861,7 @@ terms_to_one_or_more_distinct_vars(VarSet, AAn, Kind, ConjTerm,
 
 :- pred terms_to_distinct_vars_loop(varset(T)::in, string::in, string::in,
     set(var(T))::in, list(term(T))::in,
-    list(var(T))::out, list(diag_spec)::out) is det.
+    list(var(T))::out, list(err_spec)::out) is det.
 
 terms_to_distinct_vars_loop(_, _, _, _, [], [], []).
 terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, [Term | Terms],
@@ -887,7 +887,7 @@ terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, [Term | Terms],
     ).
 
 :- func report_nonvar_parameter(varset(T), string, string, term(T))
-    = diag_spec.
+    = err_spec.
 
 report_nonvar_parameter(VarSet, AAn, Kind, Term) = Spec :-
     TermStr = describe_error_term(VarSet, Term),
@@ -899,7 +899,7 @@ report_nonvar_parameter(VarSet, AAn, Kind, Term) = Spec :-
     TermContext = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces).
 
-:- func report_repeated_parameter(varset(T), string, term(T)) = diag_spec.
+:- func report_repeated_parameter(varset(T), string, term(T)) = err_spec.
 
 report_repeated_parameter(VarSet, Kind, Term) = Spec :-
     TermStr = describe_error_term(VarSet, Term),

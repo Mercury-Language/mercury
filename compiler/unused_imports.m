@@ -347,7 +347,7 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
             color_as_incorrect([words("redundant.")]) ++
             [nl],
         MainMsg = msg(Context, MainPieces),
-        Spec = diag_spec($pred, severity_informational(warn_unused_imports),
+        Spec = gen_spec($pred, severity_informational(warn_unused_imports),
             phase_code_gen, [MainMsg | PrevMsgs]),
         !:Specs = [Spec | !.Specs]
     ),
@@ -451,7 +451,7 @@ generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
             ),
         ModuleMsgs = list.map(UnusedAvailToMsg,
             [HeadUnusedAvail | TailUnusedAvails]),
-        Spec = diag_spec($pred, severity_warning(warn_unused_imports),
+        Spec = gen_spec($pred, severity_warning(warn_unused_imports),
             phase_code_gen, [MainMsg | ModuleMsgs])
     ),
     !:Specs = [Spec | !.Specs].

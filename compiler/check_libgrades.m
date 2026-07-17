@@ -102,7 +102,7 @@
     % enabled. If --libgrade-install-check is *not* enabled, we always return
     % an empty list of errors.
     %
-:- pred maybe_check_libraries_are_installed(globals::in, list(diag_spec)::out,
+:- pred maybe_check_libraries_are_installed(globals::in, list(err_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -323,7 +323,7 @@ report_detected_libgrade(Stream, Grade, !IO) :-
                 check_libraries_inputs,
 
                 % ... and result was this.
-                list(diag_spec)
+                list(err_spec)
             ).
 
 :- type check_libraries_inputs
@@ -380,7 +380,7 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
     % is the Mercury standard library installed?
     %
 :- pred check_stdlib_is_installed(check_libraries_inputs::in,
-    list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::out, io::di, io::uo) is det.
 
 check_stdlib_is_installed(Inputs, Specs, !IO) :-
     MaybeChosenStdLibDir = Inputs ^ cli_chosen_stdlib_dir,
@@ -435,7 +435,7 @@ check_stdlib_is_installed(Inputs, Specs, !IO) :-
     %
 :- pred check_named_libraries_are_installed(globals::in,
     check_libraries_inputs::in, list(string)::in,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 check_named_libraries_are_installed(_, _, [], !Specs, !IO).
 check_named_libraries_are_installed(Globals, Inputs, [LibName | LibNames],
@@ -447,7 +447,7 @@ check_named_libraries_are_installed(Globals, Inputs, [LibName | LibNames],
 
 :- pred check_named_library_is_installed(globals::in,
     check_libraries_inputs::in, string::in,
-    list(diag_spec)::in, list(diag_spec)::out, io::di, io::uo) is det.
+    list(err_spec)::in, list(err_spec)::out, io::di, io::uo) is det.
 
 check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
     % NOTE This predicate must not use Globals for any purpose except

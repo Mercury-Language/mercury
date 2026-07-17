@@ -75,7 +75,7 @@
 :- pred check_import_accessibility(parse_tree_module_src::in,
     import_accessibility_info::in,
     list(module_name)::out, list(module_name)::out,
-    list(diag_spec)::out, list(diag_spec)::out) is det.
+    list(err_spec)::out, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -263,7 +263,7 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         !SrcIntImportUseMap, !SrcImpImportUseMap) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
         InclMap, ImportUseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     map.foldl(record_include(non_abstract_section, yes(non_abstract_section)),
@@ -820,7 +820,7 @@ update_iu_and_least_context(IoUC, !ImportAndOrUse, !LeastContext) :-
 :- pred report_missing_ancestor(module_name::in,
     missing_where::in, module_name::in, missing_ancestor_info::in,
     list(module_name)::in, list(module_name)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_missing_ancestor(ModuleName, MissingWhere,
         MissingModuleName, MissingAncestorInfo, !ModulesToAdd, !Specs) :-
@@ -886,7 +886,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
     else
         Msgs = [MainMsg]
     ),
-    Spec = diag_spec($pred, severity_error, phase_pt2h, Msgs),
+    Spec = gen_spec($pred, severity_error, phase_pt2h, Msgs),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -894,7 +894,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
 :- pred report_any_missing_includes_for_imports(set(module_name)::in,
     seen_includes::in, module_inclusion_map::in,
     module_name::in, one_or_more(import_or_use_context)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_any_missing_includes_for_imports(ReadModules, SeenIncludes, InclMap,
         ModuleName, IoUCs, !Specs) :-
@@ -915,7 +915,7 @@ report_any_missing_includes_for_imports(ReadModules, SeenIncludes, InclMap,
 :- pred report_any_missing_includes(set(module_name)::in,
     seen_includes::in, module_inclusion_map::in,
     module_name::in, list(term_context)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
         Module, Contexts, !Specs) :-
@@ -966,7 +966,7 @@ report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
     ).
 
 :- pred report_abstract_include(module_name::in, string::in, term_context::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
     Pieces = [words("Error:"),
@@ -980,7 +980,7 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_missing_include(seen_includes::in, module_name::in, string::in,
-    term_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    term_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 report_missing_include(SeenIncludes, ParentModule, SubModule, Context,
         !Specs) :-

@@ -581,7 +581,7 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
 %---------------------%
 
 :- pred parse_du_functors(varset::in, list(term)::in,
-    list(gen_du_functor_repn)::out, list(diag_spec)::out) is det.
+    list(gen_du_functor_repn)::out, list(err_spec)::out) is det.
 
 parse_du_functors(_, [], [], []).
 parse_du_functors(VarSet, [Term | Terms], !:DuFunctors, !:Specs) :-
@@ -1263,7 +1263,7 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
 %-----------------------------------------------------------------------------e
 
 :- pred parse_local_arg_repns(varset::in, list(term)::in,
-    list(local_arg_repn)::out, list(diag_spec)::out) is det.
+    list(local_arg_repn)::out, list(err_spec)::out) is det.
 
 parse_local_arg_repns(_VarSet, [], [], []).
 parse_local_arg_repns(VarSet, [HeadTerm | TailTerms], LocalArgRepns, Specs) :-
@@ -1356,7 +1356,7 @@ parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
 %-----------------------------------------------------------------------------e
 
 :- pred parse_remote_arg_repns(varset::in, list(term)::in,
-    list(remote_arg_repn)::out, list(diag_spec)::out) is det.
+    list(remote_arg_repn)::out, list(err_spec)::out) is det.
 
 parse_remote_arg_repns(_VarSet, [], [], []).
 parse_remote_arg_repns(VarSet, [HeadTerm | TailTerms],
@@ -1500,7 +1500,7 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
                 quote("dw_uint64"), suffix("."), nl],
             DwSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArgTerm3), DwPieces),
-            MaybeDW = error1([DwSpec])
+            MaybeDW = error1(one_or_more(DwSpec, []))
         ),
         ( if
             MaybeArgOnlyOffset = ok1(ArgOnlyOffset),
@@ -1513,7 +1513,8 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
         else
             Specs =
                 get_any_errors1(MaybeArgOnlyOffset) ++
-                get_any_errors1(MaybeCellOffset),
+                get_any_errors1(MaybeCellOffset) ++
+                get_any_errors1(MaybeDW),
             det_list_to_one_or_more(Specs, OoMSpecs),
             MaybeRemoteArgRepn = error1(OoMSpecs)
         )
@@ -2311,7 +2312,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
 %-----------------------------------------------------------------------------e
 
 :- pred parse_strings(list(format_piece)::in, int::in, varset::in,
-    list(term)::in, list(string)::out, list(diag_spec)::out) is det.
+    list(term)::in, list(string)::out, list(err_spec)::out) is det.
 
 parse_strings(_, _, _, [], [], []).
 parse_strings(DescPieces, Nth, VarSet, [Term | Terms], !:Strs, !:Specs) :-

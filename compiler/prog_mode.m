@@ -235,7 +235,7 @@
     list(type_and_mode)::in, list(inst_var)::out) is det.
 
 :- pred report_inconsistent_constrained_inst_vars(string::in, term.context::in,
-    inst_varset::in, inst_var::in, list(inst_var)::in, diag_spec::out) is det.
+    inst_varset::in, inst_var::in, list(inst_var)::in, err_spec::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

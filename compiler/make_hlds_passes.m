@@ -37,8 +37,9 @@
 
     % parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals,
     %   DumpBaseFileName, MQInfo0, TypeEqvMap,
-    %   UsedEqvModules, UnusedInterfaceImports,
-    %   QualInfo, HLDS, InvalidTypeSpecs, InvalidInstModeSpecs, Specs):
+    %   UsedEqvModules, UnusedInterfaceImports, QualInfo, HLDS,
+    %   InvalidTypeSpecs, InvalidInstModeSpecs,
+    %   ErrSpecs, WarnSpecs, InfoSpecs):
     %
     % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
     % (both returned by equiv_type.m), convert AugCompUnit to HLDS.
@@ -53,8 +54,8 @@
     globals::in, string::in, mq_info::in, type_eqv_map::in,
     used_eqv_modules::in, set_tree234(module_name)::in,
     qual_info::out, module_info::out,
-    list(diag_spec)::out, list(diag_spec)::out,
-    list(diag_spec)::out) is det.
+    list(err_spec)::out, list(err_spec)::out, list(err_spec)::out,
+    list(warn_spec)::out, list(info_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -122,9 +123,10 @@
 parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedEqvModules, UnusedInterfaceImports,
         !:QualInfo, !:ModuleInfo, !:InvalidTypeSpecs, !:InvalidInstModeSpecs,
-        !:Specs) :-
+        !:ErrSpecs, !:WarnSpecs, !:InfoSpecs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-    maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, InclSpecs),
+    maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc,
+        !:WarnSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
     get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
@@ -157,22 +159,26 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         )
     ),
 
-    TypeSpecs = ParseTreeModuleSrc ^ ptms_type_specs,
-    InstModeSpecs = ParseTreeModuleSrc ^ ptms_inst_mode_specs,
-    !:Specs = InclSpecs ++ TypeSpecs ++ InstModeSpecs,
+    TypeErrSpecs =      ParseTreeModuleSrc ^ ptms_type_err_specs,
+    TypeWarnSpecs =     ParseTreeModuleSrc ^ ptms_type_warn_specs,
+    InstModeErrSpecs =  ParseTreeModuleSrc ^ ptms_inst_mode_err_specs,
+    InstModeWarnSpecs = ParseTreeModuleSrc ^ ptms_inst_mode_warn_specs,
+    !:ErrSpecs = TypeErrSpecs ++ InstModeErrSpecs,
+    !:WarnSpecs = TypeWarnSpecs ++ InstModeWarnSpecs ++ !.WarnSpecs,
 
     IsInvalidTypeSpec =
         ( pred(Spec::in) is semidet :-
-            extract_spec_phase(Spec, Phase),
+            extract_spec_phase(coerce(Spec), Phase),
             Phase = phase_tim_check_invalid_type
         ),
     IsInvalidInstModeSpec =
         ( pred(Spec::in) is semidet :-
-            extract_spec_phase(Spec, Phase),
+            extract_spec_phase(coerce(Spec), Phase),
             Phase = phase_tim_check_invalid_inst_mode
         ),
-    list.filter(IsInvalidTypeSpec, TypeSpecs, !:InvalidTypeSpecs),
-    list.filter(IsInvalidInstModeSpec, InstModeSpecs, !:InvalidInstModeSpecs),
+    list.filter(IsInvalidTypeSpec, TypeErrSpecs, !:InvalidTypeSpecs),
+    list.filter(IsInvalidInstModeSpec, InstModeErrSpecs,
+        !:InvalidInstModeSpecs),
 
     % We used to add items to the HLDS in three passes.
     % Roughly,
@@ -256,14 +262,14 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         % while usually returning abstract types, sometimes returns Mercury
         % types.
         add_type_defns(TypeDefnsAbstract,
-            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
-            !SolverForeignProcCord, !SolverMutableCord),
+            !ModuleInfo, !SolverPredDeclCord, !SolverForeignProcCord,
+            !SolverMutableCord, !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs),
         add_type_defns(TypeDefnsMercury,
-            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
-            !SolverForeignProcCord, !SolverMutableCord),
+            !ModuleInfo, !SolverPredDeclCord, !SolverForeignProcCord,
+            !SolverMutableCord, !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs),
         add_type_defns(TypeDefnsForeign,
-            !ModuleInfo, !InvalidTypeSpecs, !Specs, !SolverPredDeclCord,
-            !SolverForeignProcCord, !SolverMutableCord),
+            !ModuleInfo, !SolverPredDeclCord, !SolverForeignProcCord,
+            !SolverMutableCord, !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs),
         % We use cords to record new predicate declarations, foreign_procs
         % and mutables. This preserves order without quadratic behavior.
         % Preserving order can be important, because if e.g. a pred decl
@@ -305,7 +311,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % that do not check for infinite recursion. Any circularity we miss here
     % is thus very likely to cause a later pass to enter an infinite loop.
     add_inst_defns(InstDefns,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     check_inst_defns(!.ModuleInfo, InstDefns,
         !InvalidInstModeSpecs),
 
@@ -313,7 +319,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % seen all inst definitions, we could check whether the newly defined
     % mode refers to an undefined inst, but we do not (yet) do so.
     add_mode_defns(ModeDefns,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     check_mode_defns(!.ModuleInfo, ModeDefns,
         !InvalidInstModeSpecs),
 
@@ -354,7 +360,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % (Currently, we discover any such errors when we type and mode check
     % the automatically created unify and compare predicates, whose bodies
     % call the user-specified predicate names.)
-    InvalidTypesSoFar = contains_errors(Globals, !.InvalidTypeSpecs),
+    % XXX DIAG_SPECS
+    InvalidTypesSoFar = contains_errors(Globals, coerce(!.InvalidTypeSpecs)),
     (
         InvalidTypesSoFar = no,
         % Add constructors for du types to the HLDS, check subtype definitions,
@@ -368,7 +375,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         module_info_get_type_table(!.ModuleInfo, TypeTable0),
         foldl3_over_type_ctor_defns(
             add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
-            TypeTable0, !ModuleInfo, !InvalidTypeSpecs, !Specs)
+            TypeTable0, !ModuleInfo, !InvalidTypeSpecs, !WarnSpecs)
     ;
         InvalidTypesSoFar = yes
     ),
@@ -379,9 +386,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % defined predicate refers to an undefined type, inst, or mode, but
     % we do not (yet) do so.
     add_pred_decls(PredDecls,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     add_pred_decls(SolverPredDecls,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % We need to process the mode declaration of a predicate
     % after we have seen the (type) declaration of the predicate.
@@ -392,7 +399,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % Note that mode declarations embedded in predmode declarations
     % have already been added to the HLDS by add_pred_decl.
     add_mode_decls(ModeDecls,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % Every mutable has its own set of access predicates. Declare them
     % (using predmode declarations, which specify their types, modes and
@@ -411,15 +418,15 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     implement_mutables_if_local(!.ModuleInfo, MQUndefInsts0, AllMutables,
         MutablePredDecls, MutableClauses, MutableForeignProcs,
         MutableForeignDeclCodes, MutableForeignBodyCodes, FPEInfosCord1,
-        InitPredTargetNames0, InitPredTargetNames1, !Specs),
+        InitPredTargetNames0, InitPredTargetNames1, !ErrSpecs),
     add_pred_decls(MutablePredDecls,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % Record the definitions of typeclasses.
     % This will add the pred and mode declarations of the methods inside them
     % to the HLDS.
     add_typeclass_defns(Typeclasses,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % The old pass 2.
 
@@ -436,7 +443,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
 
     % Record instance definitions.
     add_instance_defns(Instances,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % Implement several kinds of pragmas, the ones in the subtype
     % defined by the pragma_pass_2 inst.
@@ -466,14 +473,14 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
 
     % Add clauses to their predicates.
     add_clauses(ProgressStream, Clauses,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     % Add clauses that define the auxiliary predicates
     % that implement some of the auxiliary predicates of mutables.
     add_clauses(ProgressStream, MutableClauses,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     % Add clauses that record promises.
     add_promises(ProgressStream, Promises,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
 
     % Remember attempts to define predicates in the interface.
     module_info_set_int_bad_clauses(IntBadClauses, !ModuleInfo),
@@ -488,9 +495,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % may for part of the specification that the actual implementation
     % can be compared against.
     add_decl_markers(DeclMarkers,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     add_impl_markers(ImplMarkers,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
 
     % Add foreign proc definitions from the program, as well as
     % - for the auxiliary predicates that implement solver types, and
@@ -503,11 +510,11 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % a predicate/function that is local for one backend and external
     % for the other.
     add_foreign_procs(ProgressStream, ForeignProcs,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     add_foreign_procs(ProgressStream, SolverForeignProcs,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     add_foreign_procs(ProgressStream, MutableForeignProcs,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
 
     % Check that the predicates listed in `:- initialise' and `:- finalise'
     % declarations exist and have the correct signature, construct
@@ -521,10 +528,10 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         FinalPredTargetNames1),
     add_initialises(!.ModuleInfo, Initialises,
         FPEInfosCord1, FPEInfosCord2,
-        InitPredTargetNames1, InitPredTargetNames, !Specs),
+        InitPredTargetNames1, InitPredTargetNames, !ErrSpecs),
     add_finalises(!.ModuleInfo, Finalises,
         FPEInfosCord2, FPEInfosCord,
-        FinalPredTargetNames1, FinalPredTargetNames, !Specs),
+        FinalPredTargetNames1, FinalPredTargetNames, !ErrSpecs),
     module_info_set_user_init_pred_target_names(InitPredTargetNames,
         !ModuleInfo),
     module_info_set_user_final_pred_target_names(FinalPredTargetNames,
@@ -557,20 +564,21 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
+    !:InfoSpecs = [],
     add_decl_pragmas(ProgressStream, DeclPragmas,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs),
     add_decl_pragmas_type_spec_constr(ProgressStream, DeclTypeSpecConstr,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs, !InfoSpecs),
     add_decl_pragmas_type_spec(DeclTypeSpec,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     add_decl_pragmas_termination(DeclTermination,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     add_decl_pragmas_termination2(DeclTermination2,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     add_decl_pragmas_sharing(DeclSharing,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     add_decl_pragmas_reuse(DeclReuse,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % Tabling pragmas are not compatible with some other pragmas.
     % We used to delay their processing until after other impl pragmas
@@ -585,14 +593,14 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % pred_infos don't have a marker to say "defined using a fact table".
     % and without this, we cannot know when to generate such a warning.
     add_impl_pragmas(ProgressStream, ImplPragmas, cord.init, PragmaTabledCord,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
     PragmasTabled = cord.list(PragmaTabledCord),
     add_impl_pragmas_tabled(ProgressStream, PragmasTabled,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
 
     FPEInfos = cord.list(FPEInfosCord),
     list.foldl2(add_pragma_foreign_proc_export, FPEInfos,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     list.foldl(module_add_foreign_decl_code_aux, MutableForeignDeclCodes,
         !ModuleInfo),
@@ -600,43 +608,44 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         !ModuleInfo),
 
     list.foldl2(add_gen_pragma_unused_args, GenUnusedArgs,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     list.foldl2(add_gen_pragma_exceptions, GenExceptions,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     list.foldl2(add_gen_pragma_trailing, GenTrailing,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
     list.foldl2(add_gen_pragma_mm_tabling, GenMMTabling,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, !ErrSpecs),
 
     % Check that the declarations for field extraction and update functions
     % are sensible, and generate error messages for the ones that aren't.
     % We can do this only after we have processed every predicate declaration,
     % as well as everything that affects either the type table or the
     % constructor table.
-    check_preds_if_field_access_function(!.ModuleInfo, PredDecls, !Specs),
+    check_preds_if_field_access_function(!.ModuleInfo, PredDecls, !ErrSpecs),
 
     ModuleItemVersionNumbers = AugCompUnit ^ acu_item_version_map,
     map.foldl(add_module_item_version_numbers, ModuleItemVersionNumbers,
         !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
-    get_diag_specs_in_mq_info(MQInfo,
+    get_err_specs_in_mq_info(MQInfo,
         MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs),
     !:InvalidTypeSpecs = MQInvalidTypeSpecs ++ !.InvalidTypeSpecs,
     !:InvalidInstModeSpecs = MQInvalidInstModeSpecs ++ !.InvalidInstModeSpecs,
-    !:Specs = MQNonBlockingUndefSpecs ++ !.Specs.
+    !:ErrSpecs = MQNonBlockingUndefSpecs ++ !.ErrSpecs.
 
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_include_and_non_include(globals::in,
-    parse_tree_module_src::in, list(diag_spec)::out) is det.
+    parse_tree_module_src::in, list(warn_spec)::out) is det.
 
 maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, Specs) :-
     globals.lookup_bool_option(Globals, warn_include_and_non_include,
         WarnIncludeAndNonInclude),
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _MNC, InclMap,
         ImportUseMap, IntFIMs, ImpFIMs, IntSelfFIMLangs, ImpSelfFIMLangs,
-        TypeDefnMap, InstDefnMap, ModeDefnMap, _TypeSpecs, _InstModeSpecs,
+        TypeDefnMap, InstDefnMap, ModeDefnMap,
+        _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClauses,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
@@ -698,7 +707,8 @@ maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, Specs) :-
             words("Moving those entities to other modules can reduce"),
             words("the number of modules needing to be recompiled"),
             words("after a change."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Severity = severity_warning(warn_include_and_non_include),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
         Specs = [Spec]
     else
         Specs = []
@@ -825,38 +835,42 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
 
 :- pred add_type_defns(sec_list(item_type_defn_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
         ims_cord(item_foreign_proc_info)::out,
-    sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
+    sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_type_defns([], !ModuleInfo, !InvalidTypeSpecs, !Specs,
-        !PredDeclCord, !ForeignProcCord, !MutableCord).
-add_type_defns([SecList | SecLists], !ModuleInfo, !InvalidTypeSpecs, !Specs,
-        !PredDeclCord, !ForeignProcCord, !MutableCord) :-
+add_type_defns([], !ModuleInfo, !PredDeclCord, !ForeignProcCord, !MutableCord,
+        !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs).
+add_type_defns([SecList | SecLists], !ModuleInfo,
+        !PredDeclCord, !ForeignProcCord, !MutableCord,
+        !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs) :-
     SecList = sec_sub_list(SectionInfo, TypeDefns),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
     item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
-    list.foldl6(add_type_defn(SectionInfo, TypeStatus), TypeDefns,
-        !ModuleInfo, !InvalidTypeSpecs, !Specs,
-        !PredDeclCord, !ForeignProcCord, !MutableCord),
-    add_type_defns(SecLists, !ModuleInfo, !InvalidTypeSpecs, !Specs,
-        !PredDeclCord, !ForeignProcCord, !MutableCord).
+    list.foldl7(add_type_defn(SectionInfo, TypeStatus), TypeDefns,
+        !ModuleInfo, !PredDeclCord, !ForeignProcCord, !MutableCord,
+        !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs),
+    add_type_defns(SecLists, !ModuleInfo,
+        !PredDeclCord, !ForeignProcCord, !MutableCord,
+        !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs).
 
 :- pred add_type_defn(sec_info::in, type_status::in, item_type_defn_info::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out,
-    list(diag_spec)::in, list(diag_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_foreign_proc_info)::in,
         ims_cord(item_foreign_proc_info)::out,
-    sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
+    sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
-        !ModuleInfo, !InvalidTypeSpecs, !Specs,
-        !PredDeclCord, !ForeignProcCord, !MutableCord) :-
+        !ModuleInfo, !PredDeclCord, !ForeignProcCord, !MutableCord,
+        !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs) :-
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     TypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
@@ -904,67 +918,69 @@ add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
         )
     ),
     module_add_type_defn(TypeStatus, NeedQual, TypeDefnInfo,
-        !ModuleInfo, !InvalidTypeSpecs, !Specs).
+        !ModuleInfo, !InvalidTypeSpecs, !ErrSpecs, !WarnSpecs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_inst_defns(ims_list(item_inst_defn_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_inst_defns([], !ModuleInfo, !Specs).
-add_inst_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+add_inst_defns([], !ModuleInfo, !ErrSpecs, !WarnSpecs).
+add_inst_defns([ImsSubList | ImsSubLists],
+        !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, InstDefns),
     item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus),
-    list.foldl2(module_add_inst_defn(InstStatus), InstDefns,
-        !ModuleInfo, !Specs),
-    add_inst_defns(ImsSubLists, !ModuleInfo, !Specs).
+    list.foldl3(module_add_inst_defn(InstStatus), InstDefns,
+        !ModuleInfo, !ErrSpecs, !WarnSpecs),
+    add_inst_defns(ImsSubLists, !ModuleInfo, !ErrSpecs, !WarnSpecs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_mode_defns(ims_list(item_mode_defn_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_mode_defns([], !ModuleInfo, !Specs).
-add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+add_mode_defns([], !ModuleInfo, !ErrSpecs).
+add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !ErrSpecs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, ModeDefns),
     item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus),
     list.foldl2(module_add_mode_defn(ModeStatus), ModeDefns,
-        !ModuleInfo, !Specs),
-    add_mode_defns(ImsSubLists, !ModuleInfo, !Specs).
+        !ModuleInfo, !ErrSpecs),
+    add_mode_defns(ImsSubLists, !ModuleInfo, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_pred_decls(sec_list(item_pred_decl_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pred_decls([], !ModuleInfo, !Specs).
-add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
+add_pred_decls([], !ModuleInfo, !ErrSpecs).
+add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !ErrSpecs) :-
     SecSubList = sec_sub_list(SectionInfo, PredDecls),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
     list.map_foldl2(
         module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual),
-        PredDecls, _MaybePredProcIds, !ModuleInfo, !Specs),
-    add_pred_decls(SecSubLists, !ModuleInfo, !Specs).
+        PredDecls, _MaybePredProcIds, !ModuleInfo, !ErrSpecs),
+    add_pred_decls(SecSubLists, !ModuleInfo, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_mode_decls(ims_list(item_mode_decl_info)::in,
     module_info::in, module_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-add_mode_decls([], !ModuleInfo, !Specs).
-add_mode_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
+add_mode_decls([], !ModuleInfo, !ErrSpecs).
+add_mode_decls([SecSubList | SecSubLists], !ModuleInfo, !ErrSpecs) :-
     SecSubList = ims_sub_list(ItemMercuryStatus, ModeDecls),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
     list.map_foldl2(
         module_add_mode_decl(not_part_of_predmode, is_not_a_class_method,
             ItemMercuryStatus, PredStatus),
-        ModeDecls, _PredProcIds, !ModuleInfo, !Specs),
-    add_mode_decls(SecSubLists, !ModuleInfo, !Specs).
+        ModeDecls, _PredProcIds, !ModuleInfo, !ErrSpecs),
+    add_mode_decls(SecSubLists, !ModuleInfo, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
@@ -1019,42 +1035,47 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
 
 :- pred add_clauses(io.text_output_stream::in, ims_list(item_clause_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_clauses(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_clauses(_, [], !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 add_clauses(ProgressStream, [ImsList | ImsLists],
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
     ClauseType = clause_not_for_promise,
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl3(
+    list.foldl4(
         module_add_clause(ProgressStream, PredStatus, ClauseType), Items,
-        !ModuleInfo, !QualInfo, !Specs),
-    add_clauses(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
+    add_clauses(ProgressStream, ImsLists, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_promises(io.text_output_stream::in,
     ims_list(item_promise_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-add_promises(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_promises(_, [], !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 add_promises(ProgressStream, [ImsList | ImsLists],
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl3(add_promise(ProgressStream, PredStatus), Items,
-        !ModuleInfo, !QualInfo, !Specs),
-    add_promises(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    list.foldl4(add_promise(ProgressStream, PredStatus), Items,
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
+    add_promises(ProgressStream, ImsLists, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs).
 
 :- pred add_promise(io.text_output_stream::in,
     pred_status::in, item_promise_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 add_promise(ProgressStream, PredStatus, PromiseInfo,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     PromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
         Context, SeqNum),
     % Promise declarations are recorded as a predicate with a goal_type
@@ -1083,7 +1104,7 @@ add_promise(ProgressStream, PredStatus, PromiseInfo,
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
         % Extra error checking for promise ex declarations.
-        check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs)
+        check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !ErrSpecs)
     ;
         PromiseType = promise_type_true
     ),
@@ -1114,7 +1135,7 @@ add_promise(ProgressStream, PredStatus, PromiseInfo,
     ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName,
         HeadVarTerms, VarSet, ok2(Goal, []), Context, SeqNum),
     module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
-        !ModuleInfo, !QualInfo, !Specs).
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 
 %---------------------------------------------------------------------------%
 
@@ -1122,7 +1143,7 @@ add_promise(ProgressStream, PredStatus, PromiseInfo,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_initialises(_, [], !PragmaFPEInfoCord, !PredTargetNames, !Specs).
 add_initialises(ModuleInfo, [ImsList | ImsLists],
@@ -1138,7 +1159,7 @@ add_initialises(ModuleInfo, [ImsList | ImsLists],
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
         !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-
@@ -1165,7 +1186,7 @@ add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_finalises(_, [], !PragmaFPEInfoCord, !PredTargetNames, !Specs).
 add_finalises(ModuleInfo, [ImsList | ImsLists],
@@ -1181,7 +1202,7 @@ add_finalises(ModuleInfo, [ImsList | ImsLists],
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
         !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-
@@ -1215,7 +1236,7 @@ add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
     cord(impl_pragma_fproc_export_info)::in,
     cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
         Context, SeqNum, !PragmaFPEInfoCord, !PredTargetNames, !Specs) :-

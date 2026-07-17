@@ -244,7 +244,8 @@
     %
 :- pred parse_tree_src_to_burdened_module_list(globals::in, file_name::in,
     read_module_errors::in, maybe(timestamp)::in, parse_tree_src::in,
-    list(diag_spec)::out, list(burdened_module)::out) is det.
+    list(err_spec)::out, list(warn_spec)::out, list(burdened_module)::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -292,10 +293,10 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 
 parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-        !:Specs, BurdenedModules) :-
-    !:Specs = get_read_module_specs(ReadModuleErrors),
+        !:ErrSpecs, !:WarnSpecs, BurdenedModules) :-
+    get_read_module_specs(ReadModuleErrors, !:ErrSpecs, !:WarnSpecs),
     split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
-        ParseTreeModuleSrcs, !Specs),
+        ParseTreeModuleSrcs, !ErrSpecs, !WarnSpecs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     AllModuleNames = set.list_to_set(
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),

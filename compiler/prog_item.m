@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,7 +34,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -289,8 +288,7 @@
                 cl_predname                     :: sym_name,
                 cl_head_args                    :: list(prog_term),
                 cl_varset                       :: prog_varset,
-                cl_body                         :: maybe2(goal,
-                                                    list(warning_spec)),
+                cl_body                         :: parse_result1(goal),
                 cl_context                      :: prog_context,
                 cl_seq_num                      :: item_seq_num
             ).
@@ -2429,6 +2427,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_util.
 
 :- import_module term.

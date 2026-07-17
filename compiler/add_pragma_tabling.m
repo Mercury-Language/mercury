@@ -22,7 +22,8 @@
 :- pred module_add_pragma_tabled(io.text_output_stream::in,
     impl_pragma_tabled_info::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -75,7 +76,8 @@
 :- import_module varset.
 
 module_add_pragma_tabled(ProgressStream, TabledInfo,
-        ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
+        ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs) :-
     TabledInfo = impl_pragma_tabled_info(TabledMethod, PredOrProcSpec,
         MaybeAttributes, Context, _SeqNum),
     PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
@@ -118,7 +120,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             add_implicit_pred_decl_report_error(PredOrFunc,
                 PredModuleName, PredName, PredFormArity, PredStatus,
                 is_not_a_class_method, Context, Origin, DescPieces,
-                PredId, !ModuleInfo, !Specs),
+                PredId, !ModuleInfo, !ErrSpecs),
             PredIds = [PredId]
         ;
             MaybePredId = yes(PredId),
@@ -128,7 +130,8 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         PFUMM = pfumm_unknown(UserArity),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
-            PredSymName, Context, !Specs),
+            PredSymName, Context, PFUMMSpecs),
+        !:WarnSpecs = PFUMMSpecs ++ !.WarnSpecs,
         predicate_table_lookup_m_n_a(PredicateTable0, is_fully_qualified,
             PredModuleName, PredName, UserArity, PredIds0),
         (
@@ -143,7 +146,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             add_implicit_pred_decl_report_error(pf_predicate,
                 PredModuleName, PredName, PredFormArity, PredStatus,
                 is_not_a_class_method, Context, Origin,
-                DescPieces, PredId, !ModuleInfo, !Specs),
+                DescPieces, PredId, !ModuleInfo, !ErrSpecs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -172,7 +175,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     words("would have an ambiguous name too."), nl],
                 StatsSpec = spec($pred, severity_error, phase_pt2h,
                     Context, StatsPieces),
-                !:Specs = [StatsSpec | !.Specs]
+                !:ErrSpecs = [StatsSpec | !.ErrSpecs]
             ;
                 Statistics = table_do_not_gather_statistics
             ),
@@ -188,7 +191,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     words("would have an ambiguous name too."), nl],
                 ResetSpec = spec($pred, severity_error, phase_pt2h,
                     Context, ResetPieces),
-                !:Specs = [ResetSpec | !.Specs]
+                !:ErrSpecs = [ResetSpec | !.ErrSpecs]
             ;
                 AllowReset = table_do_not_allow_reset
             )
@@ -196,11 +199,11 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
     ;
         MaybeAttributes = no
     ),
-    list.foldl3(
+    list.foldl4(
         module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod, PFUMM,
             PredModuleName, PredName, MaybeAttributes, Context,
             ItemMercuryStatus, PredStatus),
-        PredIds, !ModuleInfo, !QualInfo, !Specs).
+        PredIds, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 
 :- pred module_add_pragma_tabled_for_pred(io.text_output_stream::in,
     tabled_eval_method::in,
@@ -208,12 +211,13 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
     maybe(table_attributes)::in, prog_context::in,
     item_mercury_status::in, pred_status::in, pred_id::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         PredModuleName, PredName, MaybeAttributes, Context,
         ItemMercuryStatus, PredStatus, PredId,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( if TabledMethod0 = tabled_minimal(_) then
         globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
@@ -284,7 +288,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         Severity = severity_warning(warn_table_with_inline),
         InlineWarningSpec = spec($pred, Severity, phase_pt2h,
             Context, InlineWarningPieces),
-        !:Specs = [InlineWarningSpec | !.Specs]
+        !:WarnSpecs = [InlineWarningSpec | !.WarnSpecs]
     else
         true
     ),
@@ -299,7 +303,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     else
         % Do we have to make sure the tabled preds are stratified?
         NeedsStrat = tabled_eval_method_needs_stratification(TabledMethod),
@@ -325,7 +329,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
                     ProcId, ProcInfo0, is_single_proc, Context, TabledMethod,
                     MaybeAttributes, ItemMercuryStatus, PredStatus,
-                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
+                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
+                    !ErrSpecs, !WarnSpecs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             else
@@ -340,7 +345,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             )
         ;
             MaybeModes = no,
@@ -359,7 +364,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             ;
                 ExistingProcs = [_ | ExistingProcsTail],
                 (
@@ -374,7 +379,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     ExistingProcs, SingleProc, Context,
                     TabledMethod, MaybeAttributes,
                     ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
-                    !ModuleInfo, !QualInfo, !Specs),
+                    !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             )
@@ -406,23 +411,24 @@ tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
     item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 set_eval_method_create_aux_preds_list(_, _, _, _, _, _, [], _, _, _, _, _, _,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity,
         [ProcId - ProcInfo0 | ProcIdsInfos], SingleProc, Context,
         TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, ProcInfo0, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs),
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
     set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcIdsInfos, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 
 :- pred set_eval_method_create_aux_preds(io.text_output_stream::in,
     pred_info::in, pred_or_func::in, module_name::in, string::in,
@@ -432,12 +438,13 @@ set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
     item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, ProcInfo0, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     PredSymName = qualified(PredModuleName, PredName),
     PFSymNameArity = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
@@ -458,7 +465,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 color_as_incorrect([words("no declared modes.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
             MaybeDeclaredArgModes = yes(DeclaredArgModes),
             pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -498,7 +505,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                     suffix(":"), nl | ArgErrorPieces],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             ),
             EvalMethod = eval_tabled(TabledMethod),
             proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo1),
@@ -520,7 +527,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 create_tabling_statistics_pred(ProgressStream, PredOrFunc,
                     PredModuleName, PredName, UserArity, ProcId, SingleProc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
-                    !ModuleInfo, !QualInfo, !Specs)
+                    !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
             ;
                 Statistics = table_do_not_gather_statistics
             ),
@@ -529,7 +536,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 create_tabling_reset_pred(ProgressStream, PredOrFunc,
                     PredModuleName, PredName, UserArity, ProcId, SingleProc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
-                    !ModuleInfo, !QualInfo, !Specs)
+                    !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
             ;
                 AllowReset = table_do_not_allow_reset
             )
@@ -560,7 +567,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 ++ [nl]
         ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
 
 :- pred create_tabling_statistics_pred(io.text_output_stream::in,
@@ -568,12 +575,13 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 create_tabling_statistics_pred(ProgressStream, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, SingleProc, Context,
         IsTablingSupported, ItemMercuryStatus, PredStatus,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_statistics,
         SingleProc, proc_id_to_int(ProcId)),
     make_transformed_pred_name(PredName, Transform, StatsPredName),
@@ -603,7 +611,7 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
         Context, item_no_seq_num),
     module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
-        PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
+        PredDecl, _MaybePredProcId, !ModuleInfo, !ErrSpecs),
 
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
@@ -638,7 +646,7 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
                 !.VarSet, InstVarSet, StatsImpl, Context, item_no_seq_num),
             % XXX Should return this instead.
             add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus,
-                StatsFCInfo, !ModuleInfo, !Specs)
+                StatsFCInfo, !ModuleInfo, !ErrSpecs, !WarnSpecs)
         ;
             IsTablingSupported = no,
             DummyStatsFuncSymName = qualified(mercury_table_statistics_module,
@@ -660,7 +668,7 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
             ClauseType = clause_not_for_promise,
             % XXX Should return this instead.
             module_add_clause(ProgressStream, PredStatus, ClauseType,
-                StatsClauseInfo, !ModuleInfo, !QualInfo, !Specs)
+                StatsClauseInfo, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
         )
     ).
 
@@ -669,11 +677,13 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         UserArity, ProcId, SingleProc, Context, IsTablingSupported,
-        ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
+        ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo,
+        !ErrSpecs, !WarnSpecs) :-
     Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_reset,
         SingleProc, proc_id_to_int(ProcId)),
     make_transformed_pred_name(PredName, Transform, ResetPredName),
@@ -698,7 +708,7 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
         Context, item_no_seq_num),
     module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
-        PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
+        PredDecl, _MaybePredProcId, !ModuleInfo, !ErrSpecs),
 
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
@@ -728,7 +738,7 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
                 !.VarSet, InstVarSet, ResetImpl, Context, item_no_seq_num),
             % XXX Should return this instead.
             add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus,
-                ResetFCInfo, !ModuleInfo, !Specs)
+                ResetFCInfo, !ModuleInfo, !ErrSpecs, !WarnSpecs)
         ;
             IsTablingSupported = no,
             Args = [variable(IO0, Context), variable(IO, Context)],
@@ -739,7 +749,7 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
             ClauseType = clause_not_for_promise,
             % XXX Should return this instead.
             module_add_clause(ProgressStream, PredStatus, ClauseType,
-                ResetClauseInfo, !ModuleInfo, !QualInfo, !Specs)
+                ResetClauseInfo, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
         )
     ).
 

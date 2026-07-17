@@ -42,7 +42,7 @@
     --->    undef_is_blocking
     ;       undef_is_not_blocking.
 
-:- type undef_specs(T) == one_or_more_map(T, diag_spec).
+:- type undef_specs(T) == one_or_more_map(T, err_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -80,7 +80,7 @@
 :- pred mq_info_get_is_undef_blocking(mq_info::in,
     is_undef_blocking::out) is det.
 :- pred mq_info_get_nonblocking_undef_specs(mq_info::in,
-    list(diag_spec)::out) is det.
+    list(err_spec)::out) is det.
 :- pred mq_info_get_should_report_errors(mq_info::in,
     maybe_should_report_errors::out) is det.
 
@@ -115,7 +115,7 @@
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_is_undef_blocking(is_undef_blocking::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_nonblocking_undef_specs(list(diag_spec)::in,
+:- pred mq_info_set_nonblocking_undef_specs(list(err_spec)::in,
     mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -170,12 +170,11 @@
 
 %---------------------------------------------------------------------------%
 
-    % get_diag_specs_in_mq_info(Info,
+    % get_err_specs_in_mq_info(Info,
     %   InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs)
     %
-:- pred get_diag_specs_in_mq_info(mq_info::in,
-    list(diag_spec)::out, list(diag_spec)::out, list(diag_spec)::out)
-    is det.
+:- pred get_err_specs_in_mq_info(mq_info::in,
+    list(err_spec)::out, list(err_spec)::out, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -243,12 +242,12 @@
                 mqsi_undef_typeclasses          :: undef_specs(sym_name_arity),
 
                 % When we find undefined type, inst, mode or typeclass,
-                % do we want to record is blocking (meaning we record it
+                % do we want to record it as blocking (meaning we record it
                 % in one of the four fields above, where its presence will
-                % prevent the compiler to proceeding to some passes),
+                % prevent the compiler from proceeding to some passes),
                 % or as nonblocking (meaning we record it in the field below).
                 mqsi_is_undef_blocking          :: is_undef_blocking,
-                mqsi_nonblocking_undef_specs    :: list(diag_spec),
+                mqsi_nonblocking_undef_specs    :: list(err_spec),
 
                 % Do we want to report errors.
                 mqsi_should_report_errors       :: maybe_should_report_errors,
@@ -458,7 +457,7 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-get_diag_specs_in_mq_info(Info,
+get_err_specs_in_mq_info(Info,
         InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs) :-
     mq_info_get_undef_types(Info, UndefTypesMap),
     mq_info_get_undef_insts(Info, UndefInstsMap),

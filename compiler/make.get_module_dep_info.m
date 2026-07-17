@@ -556,7 +556,7 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         % warnings from errors, but without some test cases targeting
         % this kind of error, I cannot know for certain that removing
         % the next line does not have any effect.
-        ReadModuleErrors = ReadModuleErrors0 ^ rm_warning_specs := [],
+        ReadModuleErrors = ReadModuleErrors0 ^ rm_warn_specs := [],
         cannot_write_module_dep_files(Globals, ProgressStream,
             ModuleName, ReadModuleErrors, !Info, !IO)
     ).
@@ -579,10 +579,11 @@ report_cannot_read_src_to_generate_module_dep(ProgressStream, SourceFileName,
 
 cannot_write_module_dep_files(Globals, ProgressStream, ModuleName,
         ReadModuleErrors, !Info, !IO) :-
-    Specs0 = get_read_module_specs(ReadModuleErrors),
+    get_read_module_specs(ReadModuleErrors, ErrSpecs0, WarnSpecs0),
+    Specs0 = coerce(ErrSpecs0) ++ coerce(WarnSpecs0),
     % XXX ProgressStream may not be stdout.
     with_locked_stdout(!.Info,
-        write_error_specs(ProgressStream, Globals, Specs0),
+        write_diag_specs(ProgressStream, Globals, Specs0),
         !IO),
 
     ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
@@ -602,7 +603,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
         MaybeTimestamp, ParseTreeSrc, !Info, !IO) :-
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-        Specs, BurdenedModules),
+        ErrSpecs, WarnSpecs, BurdenedModules),
     ParseTreeModuleSrcs = list.map((func(burdened_module(_, PTMS)) = PTMS),
         BurdenedModules),
     SubModuleNames = list.map(parse_tree_module_src_project_name,
@@ -610,7 +611,8 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
 
     % XXX Why are we ignoring all previously reported errors?
     io.set_exit_status(0, !IO),
-    write_error_specs(ErrorStream, Globals, Specs, !IO),
+    Specs = coerce(ErrSpecs) ++ coerce(WarnSpecs),
+    write_diag_specs(ErrorStream, Globals, Specs, !IO),
 
     list.foldl(make_info_add_burdened_module_as_dep, BurdenedModules, !Info),
 
@@ -694,7 +696,7 @@ make_int3_files(ProgressStream, ErrorStream, Globals,
             do_not_add_new_to_hptm),
         BurdenedModules, Succeededs, SpecsList,
         init_have_parse_tree_maps, _HaveParseTreeMaps, !IO),
-    list.foldl(write_error_specs(ErrorStream, Globals), SpecsList, !IO),
+    list.foldl(write_diag_specs(ErrorStream, Globals), SpecsList, !IO),
     Succeeded = and_list(Succeededs).
 
 :- pred cleanup_int3_files(io.text_output_stream::in, globals::in,

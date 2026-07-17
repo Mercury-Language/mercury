@@ -79,16 +79,20 @@
     %
 :- pred check_convert_parse_tree_int_to_int0(
     parse_tree_int::in, parse_tree_int0::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int1(
     parse_tree_int::in, parse_tree_int1::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int2(
     parse_tree_int::in, parse_tree_int2::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 :- pred check_convert_parse_tree_int_to_int3(
     parse_tree_int::in, parse_tree_int3::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -114,10 +118,10 @@
     %
 :- pred check_convert_parse_tree_opt_to_plain_opt(
     parse_tree_opt::in, parse_tree_plain_opt::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 :- pred check_convert_parse_tree_opt_to_trans_opt(
     parse_tree_opt::in, parse_tree_trans_opt::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -147,7 +151,7 @@
 
 :- pred check_convert_raw_comp_unit_to_module_src(globals::in,
     raw_compilation_unit::in, parse_tree_module_src::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::out, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -183,16 +187,19 @@
 
 %---------------------------------------------------------------------------%
 
-check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
+check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0,
+        !ErrSpecs, !WarnSpecs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
     expect(unify(IntFileKind, ifk_int0), $pred,
         "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
 
-    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, InclMap, [], InclErrSpecs),
+    !:ErrSpecs = InclErrSpecs ++ !.ErrSpecs,
     classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
-        SectionImportUseMap, !Specs),
+        SectionImportUseMap, [], ImportWarnSpecs),
+    !:WarnSpecs = ImportWarnSpecs ++ !.WarnSpecs,
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -202,7 +209,8 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
         [], _IntForeignEnums, [], IntDeclPragmas0, [], IntDeclMarkers0,
-        [], IntPromises0, !Specs),
+        [], IntPromises0, [], ClassifyIntErrSpecs),
+    !:ErrSpecs = ClassifyIntErrSpecs ++ !.ErrSpecs,
     % XXX ITEM_LIST Should we report any misplaced foreign enums in
     % _IntForeignEnums now, or wait until code generation? For now,
     % we do the latter.
@@ -222,7 +230,8 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         [], ImpTypeClasses0, [], ImpInstances0,
         [], ImpPredDecls0, [], RevImpModeDecls,
         [], ImpForeignEnums, [], ImpDeclPragmas0, [], ImpDeclMarkers0,
-        [], ImpPromises0, !Specs),
+        [], ImpPromises0, [], ClassifyImpErrSpecs),
+    !:ErrSpecs = ClassifyImpErrSpecs ++ !.ErrSpecs,
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
     ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
     ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
@@ -237,11 +246,13 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
 
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        TypeCtorCheckedMap, !Specs),
+        TypeCtorCheckedMap, !ErrSpecs, !WarnSpecs),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
-        IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap, !Specs),
+        IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap,
+        !ErrSpecs, !WarnSpecs),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
-        IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap, !Specs),
+        IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap,
+        !ErrSpecs, !WarnSpecs),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, InclMap,
@@ -265,15 +276,15 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_int0_items_int_or_imp([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !ErrSpecs).
 classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs) :-
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -301,7 +312,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
             Pieces = [words("A .int0 file may not contain"),
                 words("concrete instance declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_pred_decl(ItemPredDecl),
@@ -337,26 +348,30 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
             items_desc_pieces(Item) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
     classify_int0_items_int_or_imp(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
-check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
+check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1,
+        !ErrSpecs, !WarnSpecs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
     expect(unify(IntFileKind, ifk_int1), $pred,
         "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
 
-    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, InclMap, [], InclErrSpecs),
+    !:ErrSpecs = InclErrSpecs ++ !.ErrSpecs,
     classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
-        SectionImportUseMap, !Specs),
+        SectionImportUseMap, [], ImportWarnSpecs),
+    !:WarnSpecs = ImportWarnSpecs ++ !.WarnSpecs,
     map.foldl2(restrict_to_section_use_map_entry(".int"),
-        SectionImportUseMap, map.init, SectionUseMap, !Specs),
+        SectionImportUseMap, map.init, SectionUseMap, [], RestrictErrSpecs),
+    !:ErrSpecs = RestrictErrSpecs ++ !.ErrSpecs,
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -366,7 +381,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
         [], _IntForeignEnums, [], IntDeclPragmas0, [], IntDeclMarkers,
-        [], IntPromises0, [], IntTypeRepns, !Specs),
+        [], IntPromises0, [], IntTypeRepns, [], ClassifyIntErrSpecs),
+    !:ErrSpecs = ClassifyIntErrSpecs ++ !.ErrSpecs,
     % XXX ITEM_LIST Should we report any misplaced foreign enums in
     % _IntForeignEnums now, or wait until code generation? For now,
     % we do the latter.
@@ -382,20 +398,23 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
 
     classify_int1_items_imp(ImpItems, [], ImpTypeDefns0,
-        [], ImpForeignEnums0, [], ImpTypeClasses0, !Specs),
+        [], ImpForeignEnums0, [], ImpTypeClasses0, [], ClassifyImpErrSpecs),
+    !:ErrSpecs = ClassifyImpErrSpecs ++ !.ErrSpecs,
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
     ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums0),
     list.sort(ImpTypeClasses0, ImpTypeClasses),
 
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        IntTypeCheckedMap, !Specs),
+        IntTypeCheckedMap, !ErrSpecs, !WarnSpecs),
     map.init(ImpInstDefnMap),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
-        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap,
+        !ErrSpecs, !WarnSpecs),
     map.init(ImpModeDefnMap),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
-        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap,
+        !ErrSpecs, !WarnSpecs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, InclMap, SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
@@ -418,16 +437,16 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_int1_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
         !ForeignEnums, !DeclPragmas, !DeclMarkers,
-        !Promises, !TypeRepns, !Specs).
+        !Promises, !TypeRepns, !ErrSpecs).
 classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
         !ForeignEnums, !DeclPragmas, !DeclMarkers,
-        !Promises, !TypeRepns, !Specs) :-
+        !Promises, !TypeRepns, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -456,7 +475,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
                 words("concrete instance declarations"),
                 words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_type_repn(ItemTypeRepn),
@@ -491,7 +510,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
                 items_desc_pieces(Item) ++
                 [words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         ( Item = item_clause(_)
@@ -509,23 +528,24 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
     classify_int1_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
         !ForeignEnums, !DeclPragmas, !DeclMarkers,
-        !Promises, !TypeRepns, !Specs).
+        !Promises, !TypeRepns, !ErrSpecs).
 
 :- pred classify_int1_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_abstract_typeclass_info)::in,
         list(item_abstract_typeclass_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-classify_int1_items_imp([], !TypeDefns, !ForeignEnums, !TypeClasses, !Specs).
+classify_int1_items_imp([], !TypeDefns, !ForeignEnums,
+        !TypeClasses, !ErrSpecs).
 classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
-        !TypeClasses, !Specs) :-
+        !TypeClasses, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -544,7 +564,7 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
             Pieces = [words("A .int file may not contain"),
                 words("concrete typeclass declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_foreign_enum(ItemForeignEnum),
@@ -574,14 +594,15 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
             [words("in its implementation section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
     classify_int1_items_imp(Items, !TypeDefns, !ForeignEnums,
-        !TypeClasses, !Specs).
+        !TypeClasses, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
-check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
+check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2,
+        !ErrSpecs, !WarnSpecs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
@@ -598,22 +619,27 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
             words("in its implementation section."), nl],
         ImpInclSpec = spec($pred, severity_error, phase_t2pt,
             FirstImpIncl ^ incl_context, ImpInclPieces),
-        !:Specs = [ImpInclSpec | !.Specs]
+        !:ErrSpecs = [ImpInclSpec | !.ErrSpecs]
     ),
-    classify_include_modules(IntIncls, [], InclMap, !Specs),
+    classify_include_modules(IntIncls, [], InclMap, [], InclErrSpecs),
     map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
+    !:ErrSpecs = InclErrSpecs ++ !.ErrSpecs,
 
     classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
-        SectionImportUseMap, !Specs),
+        SectionImportUseMap, [], ImportWarnSpecs),
+    !:WarnSpecs = ImportWarnSpecs ++ !.WarnSpecs,
     map.foldl2(restrict_to_section_use_map_entry(".int2"),
-        SectionImportUseMap, map.init, SectionUseMap, !Specs),
+        SectionImportUseMap, map.init, SectionUseMap, [], RestrictErrSpecs),
+    !:ErrSpecs = RestrictErrSpecs ++ !.ErrSpecs,
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
 
     classify_int2_items_int(IntItems, [], IntTypeDefns0,
         [], IntInstDefns0, [], IntModeDefns0,
-        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0, !Specs),
+        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0,
+        [], ClassifyIntErrSpecs),
+    !:ErrSpecs = ClassifyIntErrSpecs ++ !.ErrSpecs,
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns0),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns0),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns0),
@@ -621,19 +647,23 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns0),
 
-    classify_int2_items_imp(ImpItems, [], ImpTypeDefns0, !Specs),
+    classify_int2_items_imp(ImpItems, [], ImpTypeDefns0,
+        [], ClassifyImpErrSpecs),
+    !:ErrSpecs = ClassifyImpErrSpecs ++ !.ErrSpecs,
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
 
     map.init(ImpForeignEnumMap),
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        IntTypeCheckedMap, !Specs),
+        IntTypeCheckedMap, !ErrSpecs, !WarnSpecs),
     map.init(ImpInstDefnMap),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
-        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap,
+        !ErrSpecs, !WarnSpecs),
     map.init(ImpModeDefnMap),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
-        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap,
+        !ErrSpecs, !WarnSpecs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap,
@@ -649,12 +679,12 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     list(item_abstract_instance_info)::in,
         list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_int2_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs).
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs).
 classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs) :-
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -683,7 +713,7 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
                 words("concrete instance declarations"),
                 words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_type_repn(ItemTypeRepn),
@@ -710,17 +740,17 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
     classify_int2_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs).
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs).
 
 :- pred classify_int2_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
-classify_int2_items_imp([], !TypeDefns, !Specs).
-classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
+classify_int2_items_imp([], !TypeDefns, !ErrSpecs).
+classify_int2_items_imp([Item | Items], !TypeDefns, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -751,13 +781,14 @@ classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
             [words("in its implementation section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
-    classify_int2_items_imp(Items, !TypeDefns, !Specs).
+    classify_int2_items_imp(Items, !TypeDefns, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
-check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
+check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3,
+        !ErrSpecs, !WarnSpecs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
@@ -774,16 +805,19 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         % MaybeVersionNumbers itself contains no context information.
         VNSpec = spec($pred, severity_error, phase_t2pt,
             ModuleNameContext, VNPieces),
-        !:Specs = [VNSpec | !.Specs]
+        !:ErrSpecs = [VNSpec | !.ErrSpecs]
     ),
 
-    classify_include_modules(IntIncls, [], InclMap, !Specs),
+    classify_include_modules(IntIncls, [], InclMap, [], InclErrSpecs),
     map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
+    !:ErrSpecs = InclErrSpecs ++ !.ErrSpecs,
 
     classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
-        SectionImportUseMap, !Specs),
+        SectionImportUseMap, [], ImportWarnSpecs),
+    !:WarnSpecs = ImportWarnSpecs ++ !.WarnSpecs,
     map.foldl2(restrict_to_int_import_map_entry(".int3"),
-        SectionImportUseMap, map.init, IntImportMap, !Specs),
+        SectionImportUseMap, map.init, IntImportMap, [], RestrictErrSpecs),
+    !:ErrSpecs = RestrictErrSpecs ++ !.ErrSpecs,
 
     (
         IntFIMs = []
@@ -793,12 +827,14 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
             pragma_decl("foreign_import_module"), words("declarations."), nl],
         IntFIMSpec = spec($pred, severity_error, phase_t2pt,
             FirstIntFIM ^ fim_context, IntFIMPieces),
-        !:Specs = [IntFIMSpec | !.Specs]
+        !:ErrSpecs = [IntFIMSpec | !.ErrSpecs]
     ),
 
     classify_int3_items_int(IntItems, [], IntTypeDefns0,
         [], IntInstDefns0, [], IntModeDefns0,
-        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0, !Specs),
+        [], IntTypeClasses0, [], IntInstances0, [], IntTypeRepns0,
+        [], ClassifyErrSpecs),
+    !:ErrSpecs = ClassifyErrSpecs ++ !.ErrSpecs,
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns0),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns0),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns0),
@@ -810,13 +846,15 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     map.init(ImpForeignEnumMap),
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        IntTypeCheckedMap, !Specs),
+        IntTypeCheckedMap, !ErrSpecs, !WarnSpecs),
     map.init(ImpInstDefnMap),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
-        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap,
+        !ErrSpecs, !WarnSpecs),
     map.init(ImpModeDefnMap),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
-        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap,
+        !ErrSpecs, !WarnSpecs),
 
     some [!ImpContexts]
     (
@@ -854,7 +892,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
                 words("an implementation section."), nl],
             ImpItemSpec = spec($pred, severity_error, phase_t2pt,
                 FirstImpContext, ImpItemPieces),
-            !:Specs = [ImpItemSpec | !.Specs]
+            !:ErrSpecs = [ImpItemSpec | !.ErrSpecs]
         )
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
@@ -871,12 +909,12 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     list(item_abstract_instance_info)::in,
         list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_int3_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs).
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs).
 classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs) :-
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -907,7 +945,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
                         nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         Context, Pieces),
-                    !:Specs = [Spec | !.Specs]
+                    !:ErrSpecs = [Spec | !.ErrSpecs]
                 )
             ;
                 Supers = [_ | _],
@@ -923,14 +961,14 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
                     [suffix("."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
-                !:Specs = [Spec | !.Specs]
+                !:ErrSpecs = [Spec | !.ErrSpecs]
             )
         ;
             Interface = class_interface_concrete(_),
             Pieces = [words("A .int3 file may not contain"),
                 words("concrete typeclass declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_instance(ItemInstance),
@@ -947,7 +985,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
             Pieces = [words("A .int3 file may not contain"),
                 words("concrete instance declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         )
     ;
         Item = item_type_repn(ItemTypeRepn),
@@ -974,10 +1012,10 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        !:ErrSpecs = [Spec | !.ErrSpecs]
     ),
     classify_int3_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
-        !TypeClasses, !Instances, !TypeRepns, !Specs).
+        !TypeClasses, !Instances, !TypeRepns, !ErrSpecs).
 
 %---------------------------------------------------------------------------%
 
@@ -1060,7 +1098,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         list(decl_pragma_struct_sharing_info)::out,
     list(decl_pragma_struct_reuse_info)::in,
         list(decl_pragma_struct_reuse_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_plain_opt_items([], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
@@ -1344,7 +1382,7 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         list(decl_pragma_struct_sharing_info)::out,
     list(decl_pragma_struct_reuse_info)::in,
         list(decl_pragma_struct_reuse_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_trans_opt_items([], !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
@@ -1430,7 +1468,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
 %---------------------------------------------------------------------------%
 
 check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
-        ParseTreeModuleSrc, !Specs) :-
+        ParseTreeModuleSrc, !:ErrSpecs, !:WarnSpecs) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         ItemBlocks),
 
@@ -1466,9 +1504,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         ImpImplicitAvailNeeds0, ImpImplicitAvailNeeds,
         set.init, ImpSelfFIMLangs,
 
-        !Specs),
+        [], !:ErrSpecs, [], !:WarnSpecs),
 
-    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, InclMap, !ErrSpecs),
 
     list.reverse(RevIntTypeDefns, IntTypeDefns),
     list.reverse(RevIntInstDefns, IntInstDefns),
@@ -1520,17 +1558,17 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
     create_type_ctor_checked_map(do_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        TypeCtorCheckedMap, [], TypeSpecs),
+        TypeCtorCheckedMap, [], TypeErrSpecs, [], TypeWarnSpecs),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
     create_inst_ctor_checked_map(do_insist_on_defn,
         IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap,
-        [], InstSpecs),
+        [], InstErrSpecs, [], InstWarnSpecs),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
     ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
     create_mode_ctor_checked_map(do_insist_on_defn,
         IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap,
-        InstSpecs, InstModeSpecs),
+        InstErrSpecs, InstModeErrSpecs, InstWarnSpecs, InstModeWarnSpecs),
 
     % classify_src_items_in_blocks has already generated an error message
     % for each impl pragma in the interface section. However, we then treat
@@ -1554,7 +1592,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     globals.lookup_bool_option(Globals, warn_unsorted_import_blocks,
         WarnUnsortedImportBlocks),
     classify_int_imp_import_use_modules(WarnUnsortedImportBlocks, ModuleName,
-        IntAvails, ImpAvails, SectionImportUseMap, !Specs),
+        IntAvails, ImpAvails, SectionImportUseMap, !WarnSpecs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap0),
     extend_import_and_or_use_map_with_implicits(Globals,
@@ -1566,14 +1604,14 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         map.keys_as_set(ImpFIMSpecMap1),
         IntImpFIMSpecs),
     set.foldl2(report_int_imp_fim(IntFIMSpecMap), IntImpFIMSpecs,
-        ImpFIMSpecMap1, ImpFIMSpecMap, !Specs),
+        ImpFIMSpecMap1, ImpFIMSpecMap, !WarnSpecs),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        TypeSpecs, InstModeSpecs,
+        TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClausePreds,
@@ -1630,9 +1668,9 @@ split_concrete_int_instances_acc([IntInstance | IntInstances],
 :- pred report_int_imp_fim(map(fim_spec, prog_context)::in,
     fim_spec::in,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
-report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
+report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !WarnSpecs) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     map.det_remove(FIMSpec, ImpContext, !ImpFIMSpecMap),
     map.lookup(IntFIMSpecMap, FIMSpec, IntContext),
@@ -1649,8 +1687,8 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     ImpMsg = msg(ImpContext, ImpPieces),
     IntMsg = msg(IntContext, IntPieces),
     Severity = severity_warning(warn_redundant_code),
-    Spec = diag_spec($pred, Severity, phase_pt2h, [ImpMsg, IntMsg]),
-    !:Specs = [Spec | !.Specs].
+    Spec = gen_spec($pred, Severity, phase_pt2h, [ImpMsg, IntMsg]),
+    !:WarnSpecs = [Spec | !.WarnSpecs].
 
 %---------------------------------------------------------------------------%
 
@@ -1701,7 +1739,8 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 classify_src_items_in_blocks([],
         !IntIncls, !IntAvails, !IntFIMSpecMap,
@@ -1721,7 +1760,7 @@ classify_src_items_in_blocks([],
         !RevImpDeclPragmas, !RevImpDeclMarkers,
         !RevImpImplPragmas, !RevImpImplMarkers,
         !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
+        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !ErrSpecs, !WarnSpecs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
@@ -1740,14 +1779,14 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpDeclPragmas, !RevImpDeclMarkers,
         !RevImpImplPragmas, !RevImpImplMarkers,
         !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs) :-
+        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !ErrSpecs, !WarnSpecs) :-
     ItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
     (
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ Incls,
         !:IntAvails = !.IntAvails ++ Avails,
         list.foldl2(classify_foreign_import_module, FIMs, !IntFIMSpecMap,
-            !Specs),
+            !WarnSpecs),
         classify_src_items_int(Items,
             !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
             !RevIntTypeClasses, !RevIntInstances,
@@ -1756,13 +1795,13 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevIntImplPragmas, !RevIntImplMarkers,
             !IntBadClausePreds, !RevIntPromises,
             !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
-            !IntImplicitAvailNeeds, !IntSelfFIMLangs, !Specs)
+            !IntImplicitAvailNeeds, !IntSelfFIMLangs, !ErrSpecs)
     ;
         Section = ms_implementation,
         !:ImpIncls = !.ImpIncls ++ Incls,
         !:ImpAvails = !.ImpAvails ++ Avails,
         list.foldl2(classify_foreign_import_module, FIMs, !ImpFIMSpecMap,
-            !Specs),
+            !WarnSpecs),
         classify_src_items_imp(Items,
             !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
             !RevImpTypeClasses, !RevImpInstances,
@@ -1772,7 +1811,8 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevImpDeclPragmas, !RevImpDeclMarkers,
             !RevImpImplPragmas, !RevImpImplMarkers,
             !RevImpPromises, !RevImpInitialises, !RevImpFinalises,
-            !RevImpMutables, !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs)
+            !RevImpMutables, !ImpImplicitAvailNeeds, !ImpSelfFIMLangs,
+            !ErrSpecs)
     ),
     classify_src_items_in_blocks(ItemBlocks,
         !IntIncls, !IntAvails, !IntFIMSpecMap,
@@ -1792,11 +1832,11 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpDeclPragmas, !RevImpDeclMarkers,
         !RevImpImplPragmas, !RevImpImplMarkers,
         !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
+        !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !ErrSpecs, !WarnSpecs).
 
 :- pred classify_foreign_import_module(item_fim::in,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     ItemFIM = item_fim(Lang, ModuleName, Context, _SeqNum),
@@ -1818,7 +1858,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
             words("is here."), nl],
         PrevMsg = msg(PrevContext, PrevPieces),
         Severity = severity_warning(warn_redundant_code),
-        Spec = diag_spec($pred, Severity, phase_pt2h, [MainMsg, PrevMsg]),
+        Spec = gen_spec($pred, Severity, phase_pt2h, [MainMsg, PrevMsg]),
         !:Specs = [Spec | !.Specs]
     else
         map.det_insert(FIMSpec, Context, !FIMSpecMap)
@@ -1843,7 +1883,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_src_items_int([],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -1914,7 +1954,7 @@ classify_src_items_int([Item | Items],
             Msg = simple_msg(ItemInstanceInfo ^ ci_context,
                 [always(AlwaysPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
-            Spec = diag_spec($pred, severity_error, phase_pt2h, [Msg]),
+            Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ),
         !:RevInstances = [ItemInstanceInfo | !.RevInstances]
@@ -2079,7 +2119,7 @@ classify_src_items_int([Item | Items],
     list(item_mutable_info)::in, list(item_mutable_info)::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_src_items_imp([],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -2266,7 +2306,7 @@ acc_implicit_avail_needs_in_promise(ItemPromiseInfo, !ImplicitAvailNeeds) :-
 %---------------------------------------------------------------------------%
 
 :- pred error_item_is_exported(item::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 error_item_is_exported(Item, !Specs) :-
     error_is_exported(get_item_context(Item), items_desc_pieces(Item), !Specs).
@@ -2275,7 +2315,7 @@ error_item_is_exported(Item, !Specs) :-
     % a module interface.
     %
 :- pred error_is_exported(prog_context::in, list(format_piece)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 error_is_exported(Context, DescPieces, !Specs) :-
     Pieces = [words("Error:")] ++
@@ -2302,7 +2342,7 @@ accumulate_uses_maps([Use | Uses], !UseMap) :-
 :- pred restrict_to_section_use_map_entry(string::in,
     module_name::in, section_import_and_or_use::in,
     section_use_map::in, section_use_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 restrict_to_section_use_map_entry(Extension, ModuleName, SectionImportAndOrUse,
         !SectionUseMap, !Specs) :-
@@ -2326,7 +2366,7 @@ restrict_to_section_use_map_entry(Extension, ModuleName, SectionImportAndOrUse,
 :- pred restrict_to_int_import_map_entry(string::in,
     module_name::in, section_import_and_or_use::in,
     int_import_map::in, int_import_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 restrict_to_int_import_map_entry(Extension, ModuleName, SectionImportAndOrUse,
         !IntImportMap, !Specs) :-
@@ -2354,7 +2394,7 @@ restrict_to_int_import_map_entry(Extension, ModuleName, SectionImportAndOrUse,
 %---------------------%
 
 :- pred report_forbidden_avail(string::in, string::in, maybe(string)::in,
-    prog_context::in, list(diag_spec)::in, list(diag_spec)::out) is det.
+    prog_context::in, list(err_spec)::in, list(err_spec)::out) is det.
 
 report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
     (
@@ -2371,7 +2411,7 @@ report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_forbidden_item_in_src(item::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(err_spec)::in, list(err_spec)::out) is det.
 
 report_forbidden_item_in_src(Item, !Specs) :-
     Pieces = [words("A Mercury source file")] ++

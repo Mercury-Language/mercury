@@ -22,7 +22,7 @@
 
 :- pred warn_about_any_unread_modules_with_read_ancestors(
     set_tree234(module_name)::in, set_tree234(module_name)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 

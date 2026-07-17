@@ -32,6 +32,7 @@
 :- import_module edit_seq.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module set.
 :- import_module term.
 :- import_module varset.
@@ -39,7 +40,7 @@
 %---------------------------------------------------------------------------%
 
 % Every distinct problem should generate a single error specification,
-% whose general form is diag_spec(Id, Severity, Phase, Msgs).
+% whose general form is gen_spec(Id, Severity, Phase, Msgs).
 % The second, third and fourth fields of this term state respectively
 %
 % - the severity of the problem (so that we can update the exit status
@@ -57,11 +58,11 @@
 % message giving the original declaration's context.
 %
 % spec(Id, Severity, Phase, Context, Pieces) is a shorthand for
-% (and equivalent in every respect to) diag_spec(Id, Severity, Phase,
+% (and equivalent in every respect to) gen_spec(Id, Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
 %
 % no_ctxt_spec(Id, Severity, Phase, Pieces) is shorthand for
-% (and equivalent in every respect to) diag_spec(Id, Severity, Phase,
+% (and equivalent in every respect to) gen_spec(Id, Severity, Phase,
 % error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
 %
 % The Id field, which is present in all these alternatives, is totally
@@ -97,24 +98,89 @@
                 ncs_spec_phase          :: spec_phase,
                 ncs_spec_pieces         :: list(format_piece)
             )
-    ;       diag_spec(
-                ds_id                   :: string,
-                ds_severity             :: spec_severity,
-                ds_phase                :: spec_phase,
-                ds_msgs                 :: list(diag_msg)
+    ;       gen_spec(
+                gs_id                   :: string,
+                gs_severity             :: spec_severity,
+                gs_phase                :: spec_phase,
+                gs_msgs                 :: list(diag_msg)
             ).
 
-    % An diag_spec that is *intended* to contain a warning,
-    % XXX We can now enforce that intention using subtypes.
-    %
-:- type warning_spec == diag_spec.
+:- type err_spec =< diag_spec
+    --->    spec(
+                s_id                    :: string,
+                s_spec_severity         :: spec_severity_err,
+                s_spec_phase            :: spec_phase,
+                s_spec_context          :: prog_context,
+                s_spec_pieces           :: list(format_piece)
+            )
+    ;       no_ctxt_spec(
+                ncs_id                  :: string,
+                ncs_spec_severity       :: spec_severity_err,
+                ncs_spec_phase          :: spec_phase,
+                ncs_spec_pieces         :: list(format_piece)
+            )
+    ;       gen_spec(
+                gs_id                   :: string,
+                gs_severity             :: spec_severity_err,
+                gs_phase                :: spec_phase,
+                gs_msgs                 :: list(diag_msg)
+            ).
+
+:- type warn_spec =< diag_spec
+    --->    spec(
+                s_id                    :: string,
+                s_spec_severity         :: spec_severity_warn,
+                s_spec_phase            :: spec_phase,
+                s_spec_context          :: prog_context,
+                s_spec_pieces           :: list(format_piece)
+            )
+    ;       no_ctxt_spec(
+                ncs_id                  :: string,
+                ncs_spec_severity       :: spec_severity_warn,
+                ncs_spec_phase          :: spec_phase,
+                ncs_spec_pieces         :: list(format_piece)
+            )
+    ;       gen_spec(
+                gs_id                   :: string,
+                gs_severity             :: spec_severity_warn,
+                gs_phase                :: spec_phase,
+                gs_msgs                 :: list(diag_msg)
+            ).
+
+:- type info_spec =< diag_spec
+    --->    spec(
+                s_id                    :: string,
+                s_spec_severity         :: spec_severity_info,
+                s_spec_phase            :: spec_phase,
+                s_spec_context          :: prog_context,
+                s_spec_pieces           :: list(format_piece)
+            )
+    ;       no_ctxt_spec(
+                ncs_id                  :: string,
+                ncs_spec_severity       :: spec_severity_info,
+                ncs_spec_phase          :: spec_phase,
+                ncs_spec_pieces         :: list(format_piece)
+            )
+    ;       gen_spec(
+                gs_id                   :: string,
+                gs_severity             :: spec_severity_info,
+                gs_phase                :: spec_phase,
+                gs_msgs                 :: list(diag_msg)
+            ).
+
+:- type errs_warns
+    --->    errs_warns(list(err_spec), list(warn_spec)).
+
+:- pred record_err_spec(err_spec::in, errs_warns::in, errs_warns::out) is det.
+:- pred record_warn_spec(warn_spec::in, errs_warns::in, errs_warns::out)
+    is det.
 
 :- type std_diag_spec =< diag_spec
-    --->    diag_spec(
-                ds_id                   :: string,
-                ds_severity             :: spec_severity,
-                ds_phase                :: spec_phase,
-                ds_msgs                 :: list(std_diag_msg)
+    --->    gen_spec(
+                gs_id                   :: string,
+                gs_severity             :: spec_severity,
+                gs_phase                :: spec_phase,
+                gs_msgs                 :: list(std_diag_msg)
             ).
 
     % Many operations in the compiler may either succeed or fail.
@@ -126,6 +192,8 @@
 % :- type maybe_diag_specs(T)
 %   --->    ok_no_spec(T)
 %   ;       diag_specs(diag_spec, list(diag_spec)).
+
+:- func oom_err_to_oom_diag(one_or_more(err_spec)) = one_or_more(diag_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -141,6 +209,13 @@
 
     ;       severity_informational(option).
             % Don't set the exit status to indicate an error.
+
+:- type spec_severity_err =< spec_severity
+    --->    severity_error.
+:- type spec_severity_warn =< spec_severity
+    --->    severity_warning(option).
+:- type spec_severity_info =< spec_severity
+    --->    severity_informational(option).
 
 :- type actual_severity
     --->    actual_severity_error
@@ -814,6 +889,24 @@
 
 %---------------------------------------------------------------------------%
 
+record_err_spec(Err, ErrsWarns0, ErrsWarns) :-
+    ErrsWarns0 = errs_warns(Errs0, Warns0),
+    Errs = [Err | Errs0],
+    ErrsWarns  = errs_warns(Errs, Warns0).
+
+record_warn_spec(Warn, ErrsWarns0, ErrsWarns) :-
+    ErrsWarns0 = errs_warns(Errs0, Warns0),
+    Warns = [Warn | Warns0],
+    ErrsWarns  = errs_warns(Errs0, Warns).
+
+%---------------------------------------------------------------------------%
+
+oom_err_to_oom_diag(OoMErrSpecs) = OoMDiagSpecs :-
+    OoMErrSpecs = one_or_more(HeadErrSpec, TailErrSpecs),
+    OoMDiagSpecs = one_or_more(coerce(HeadErrSpec), coerce(TailErrSpecs)).
+
+%---------------------------------------------------------------------------%
+
 string_to_words_piece(Str) = words(Str).
 
 var_to_quote_piece(VarSet, Var) =
@@ -998,7 +1091,7 @@ extract_spec_phase(Spec, Phase) :-
     ;
         Spec = no_ctxt_spec(_, _, Phase, _)
     ;
-        Spec = diag_spec(_, _, Phase, _)
+        Spec = gen_spec(_, _, Phase, _)
     ).
 
 extract_spec_severity(Spec, Severity) :-
@@ -1007,7 +1100,7 @@ extract_spec_severity(Spec, Severity) :-
     ;
         Spec = no_ctxt_spec(_, Severity, _, _)
     ;
-        Spec = diag_spec(_, Severity, _, _)
+        Spec = gen_spec(_, Severity, _, _)
     ).
 
 accumulate_contexts(Spec, !Contexts) :-
@@ -1017,7 +1110,7 @@ accumulate_contexts(Spec, !Contexts) :-
     ;
         Spec = no_ctxt_spec(_, _, _, _)
     ;
-        Spec = diag_spec(_, _, _, Msgs),
+        Spec = gen_spec(_, _, _, Msgs),
         list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
     ).
 
@@ -1043,7 +1136,7 @@ extract_spec_msgs_and_id(Spec, Msgs, Id) :-
         Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
         Msgs = [no_ctxt_msg(Pieces)]
     ;
-        Spec = diag_spec(Id, _Severity, _Phase, Msgs)
+        Spec = gen_spec(Id, _Severity, _Phase, Msgs)
     ).
 
 %---------------------------------------------------------------------------%

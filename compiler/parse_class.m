@@ -33,12 +33,14 @@
     % Parse a typeclass declaration.
     %
 :- pred parse_typeclass_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker, err_warn_error)::out) is det.
 
     % Parse an instance declaration.
     %
 :- pred parse_instance_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker, err_warn_error)::out) is det.
 
     % Parse constraints on a pred or func declaration, or on an existentially
     % quantified type definition. Currently all such constraints must be
@@ -94,17 +96,24 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [NameTerm, MethodsTerm], _)
         then
             parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
-                Context, SeqNum, MaybeItemTypeClassInfo)
+                Context, SeqNum, MaybeItemTypeClassInfo),
+            (
+                MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo),
+                MaybeIOM = ok1(iom_item(item_typeclass(ItemTypeClassInfo)))
+            ;
+                MaybeItemTypeClassInfo = error1(ErrWarnError),
+                MaybeIOM = error1(ErrWarnError)
+            )
         else
             parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
-                MaybeItemTypeClassInfo)
-        ),
-        (
-            MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo),
-            MaybeIOM = ok1(iom_item(item_typeclass(ItemTypeClassInfo)))
-        ;
-            MaybeItemTypeClassInfo = error1(Specs),
-            MaybeIOM = error1(Specs)
+                MaybeItemTypeClassInfo),
+            (
+                MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo),
+                MaybeIOM = ok1(iom_item(item_typeclass(ItemTypeClassInfo)))
+            ;
+                MaybeItemTypeClassInfo = error1(OoMErrSpecs),
+                MaybeIOM = error1({OoMErrSpecs, []})
+            )
         )
     else
         Pieces =
@@ -119,12 +128,12 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 suffix(".")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error1({one_or_more(Spec, []), []})
     ).
 
 :- pred parse_non_empty_class(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, item_seq_num::in, maybe1(item_typeclass_info)::out)
-    is det.
+    prog_context::in, item_seq_num::in,
+    maybe1(item_typeclass_info, err_warn_error)::out) is det.
 
 parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
         Context, SeqNum, MaybeItemTypeClassInfo) :-
@@ -141,10 +150,11 @@ parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
             ^ tc_varset := TVarSet),
         MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo)
     else
-        Specs = get_any_errors1(MaybeItemTypeClassInfo0) ++
-            get_any_errors1(MaybeClassDecls),
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeItemTypeClassInfo = error1(OoMSpecs)
+        InfoErrSpecs = get_any_errors1(MaybeItemTypeClassInfo0),
+        get_all_errors_warnings1(MaybeClassDecls,
+            DeclErrSpecs, DeclWarnSpecs),
+        det_list_to_one_or_more(InfoErrSpecs ++ DeclErrSpecs, OoMErrSpecs),
+        MaybeItemTypeClassInfo = error1({OoMErrSpecs, DeclWarnSpecs})
     ).
 
 :- pred parse_class_head(module_name::in, varset::in, term::in,
@@ -326,7 +336,7 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
 :- pred collect_superclass_constraints(varset::in,
     list(arbitrary_constraint)::in,
     list(prog_constraint)::out, list(prog_fundep)::out,
-    list(diag_spec)::out) is det.
+    list(err_spec)::out) is det.
 
 collect_superclass_constraints(_, [], [], [], []).
 collect_superclass_constraints(VarSet, [Constraint | Constraints],
@@ -433,12 +443,12 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     ).
 
 :- pred parse_class_decls(module_name::in, varset::in, term::in,
-    maybe1(list(class_decl))::out) is det.
+    maybe1(list(class_decl), err_warn_error)::out) is det.
 
 parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
     ( if list_term_to_term_list(DeclsTerm, DeclTerms) then
         list.map(parse_class_decl(ModuleName, VarSet), DeclTerms, MaybeDecls),
-        find_errors(MaybeDecls, MaybeClassDecls)
+        find_errors_pr2(MaybeDecls, MaybeClassDecls)
     else
         DeclsTermStr = describe_error_term(VarSet, DeclsTerm),
         Pieces = [words("Error: expected a")] ++
@@ -448,37 +458,7 @@ parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(DeclsTerm), Pieces),
-        MaybeClassDecls = error1(one_or_more(Spec, []))
-    ).
-
-    % From a list of maybe1s, search them for errors.
-    % If some errors are found, return error1(their union).
-    % If no error is found, return ok1(the original elements).
-    %
-:- pred find_errors(list(maybe1(T))::in, maybe1(list(T))::out) is det.
-
-find_errors(Xs, Result) :-
-    find_errors_loop(Xs, [], Results, [], Specs),
-    (
-        Specs = [],
-        Result = ok1(Results)
-    ;
-        Specs = [HeadSpec | TailSpec],
-        Result = error1(one_or_more(HeadSpec, TailSpec))
-    ).
-
-:- pred find_errors_loop(list(maybe1(T))::in, list(T)::in, list(T)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-find_errors_loop([], !Results, !Specs).
-find_errors_loop([X | Xs], !Results, !Specs) :-
-    find_errors_loop(Xs, !Results, !Specs),
-    (
-        X = ok1(CurResult),
-        !:Results = [CurResult | !.Results]
-    ;
-        X = error1(CurSpecs),
-        !:Specs = one_or_more_to_list(CurSpecs) ++ !.Specs
+        MaybeClassDecls = error1({one_or_more(Spec, []), []})
     ).
 
 %---------------------------------------------------------------------------%
@@ -492,17 +472,24 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 [NameTerm, MethodsTerm], _)
         then
             parse_non_empty_instance(ModuleName, VarSet, TVarSet,
-                NameTerm, MethodsTerm, Context, SeqNum, MaybeItemInstanceInfo)
+                NameTerm, MethodsTerm, Context, SeqNum, MaybeItemInstanceInfo),
+            (
+                MaybeItemInstanceInfo = ok1(ItemInstanceInfo),
+                MaybeIOM = ok1(iom_item(item_instance(ItemInstanceInfo)))
+            ;
+                MaybeItemInstanceInfo = error1(ErrWarnError),
+                MaybeIOM = error1(ErrWarnError)
+            )
         else
             parse_instance_name(ModuleName, TVarSet, ArgTerm,
-                Context, SeqNum, MaybeItemInstanceInfo)
-        ),
-        (
-            MaybeItemInstanceInfo = ok1(ItemInstanceInfo),
-            MaybeIOM = ok1(iom_item(item_instance(ItemInstanceInfo)))
-        ;
-            MaybeItemInstanceInfo = error1(Specs),
-            MaybeIOM = error1(Specs)
+                Context, SeqNum, MaybeItemInstanceInfo),
+            (
+                MaybeItemInstanceInfo = ok1(ItemInstanceInfo),
+                MaybeIOM = ok1(iom_item(item_instance(ItemInstanceInfo)))
+            ;
+                MaybeItemInstanceInfo = error1(OoMErrSpecs),
+                MaybeIOM = error1({OoMErrSpecs, []})
+            )
         )
     else
         Pieces =
@@ -519,7 +506,7 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 suffix(".")]) ++
             [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeIOM = error1(one_or_more(Spec, []))
+        MaybeIOM = error1({one_or_more(Spec, []), []})
     ).
 
 :- pred parse_instance_name(module_name::in, tvarset::in, term::in,
@@ -609,7 +596,7 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
 
 :- pred parse_non_empty_instance(module_name::in, varset::in, tvarset::in,
     term::in, term::in, prog_context::in, item_seq_num::in,
-    maybe1(item_instance_info)::out) is det.
+    maybe1(item_instance_info, err_warn_error)::out) is det.
 
 parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
         Context, SeqNum, MaybeItemInstanceInfo) :-
@@ -628,20 +615,21 @@ parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
             MaybeCheckSpec),
         (
             MaybeCheckSpec = yes(Spec),
-            MaybeItemInstanceInfo = error1(one_or_more(Spec, []))
+            MaybeItemInstanceInfo = error1({one_or_more(Spec, []), []})
         ;
             MaybeCheckSpec = no,
             MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
         )
     else
-        Specs = get_any_errors1(MaybeItemInstanceInfo0) ++
-            get_any_errors1(MaybeInstanceMethods),
-        det_list_to_one_or_more(Specs, OoMSpecs),
-        MaybeItemInstanceInfo = error1(OoMSpecs)
+        InfoErrSpecs = get_any_errors1(MaybeItemInstanceInfo0),
+        get_all_errors_warnings1(MaybeInstanceMethods,
+            MethodsErrSpecs, MethodsWarnSpecs),
+        det_list_to_one_or_more(InfoErrSpecs ++ MethodsErrSpecs, OoMErrSpecs),
+        MaybeItemInstanceInfo = error1({OoMErrSpecs, MethodsWarnSpecs})
     ).
 
 :- pred check_tvars_in_instance_constraint(item_instance_info::in,
-    term::in, maybe(diag_spec)::out) is det.
+    term::in, maybe(err_spec)::out) is det.
 
 check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     ItemInstanceInfo = item_instance_info(_Name, Types, _OriginalTypes,
@@ -676,13 +664,13 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     ).
 
 :- pred parse_instance_methods(module_name::in, varset::in, term::in,
-    maybe1(list(instance_method))::out) is det.
+    maybe1(list(instance_method), err_warn_error)::out) is det.
 
 parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
     ( if list_term_to_term_list(MethodsTerm, MethodList) then
         list.map(term_to_instance_method(ModuleName, VarSet),
             MethodList, Interface),
-        find_errors(Interface, Result)
+        find_errors_m1(Interface, Result)
     else
         MethodsTermStr = describe_error_term(VarSet, MethodsTerm),
         Pieces = [words("Error: expected a")] ++
@@ -692,13 +680,13 @@ parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MethodsTerm), Pieces),
-        Result = error1(one_or_more(Spec, []))
+        Result = error1({one_or_more(Spec, []), []})
     ).
 
     % Turn the term into a method instance.
     %
 :- pred term_to_instance_method(module_name::in, varset::in, term::in,
-    maybe1(instance_method)::out) is det.
+    maybe1(instance_method, err_warn_error)::out) is det.
 
 term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         MaybeInstanceMethod) :-
@@ -740,7 +728,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
-                MaybeInstanceMethod = error1(one_or_more(Spec, []))
+                MaybeInstanceMethod = error1({one_or_more(Spec, []), []})
             )
         else if
             ClassMethodTerm = term.functor(term.atom("func"), [SlashTerm], _),
@@ -773,7 +761,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
-                MaybeInstanceMethod = error1(one_or_more(Spec, []))
+                MaybeInstanceMethod = error1({one_or_more(Spec, []), []})
             )
         else
             MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -794,12 +782,12 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(MethodTerm), Pieces),
-            MaybeInstanceMethod = error1(one_or_more(Spec, []))
+            MaybeInstanceMethod = error1({one_or_more(Spec, []), []})
         )
     else
         ( if MethodTerm = term.functor(term.atom(":-"), [_], _) then
             Spec = report_unexpected_method_term(VarSet, MethodTerm),
-            MaybeInstanceMethod = error1(one_or_more(Spec, []))
+            MaybeInstanceMethod = error1({one_or_more(Spec, []), []})
         else
             % For the clauses in an instance declaration, the default
             % module name for the clause heads is the module name of the class
@@ -827,13 +815,13 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 InstanceMethod = instance_method(MethodName, ProcDef, Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             ;
-                MaybeClause = error1(Specs),
-                MaybeInstanceMethod = error1(Specs)
+                MaybeClause = error1(ErrWarnError),
+                MaybeInstanceMethod = error1(ErrWarnError)
             )
         )
     ).
 
-:- func report_unexpected_method_term(varset, term) = diag_spec.
+:- func report_unexpected_method_term(varset, term) = err_spec.
 
 report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
     MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -1158,6 +1146,84 @@ classify_types_as_var_ground_or_neither(TVarSet, [Type0 | Types0],
         !:VarOrGroundTypes = [ground_type(GroundType) | !.VarOrGroundTypes]
     else
         !:NonVarNonGroundTypes = [Type | !.NonVarNonGroundTypes]
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % From a list of parse_result1s, search them for errors.
+    % If some errors are found, return error1 wrapped around
+    % all the errors and warnings.
+    % If no error is found, return ok1 wrapped around the original elements.
+    %
+:- pred find_errors_pr2(list(parse_result1(T))::in,
+    maybe1(list(T), err_warn_error)::out) is det.
+
+find_errors_pr2(Xs, Result) :-
+    find_errors_pr2_loop(Xs, [], Results, [], ErrSpecs, [], WarnSpecs),
+    (
+        ErrSpecs = [],
+        % We add to WarnSpecs *only* when we add at least one ErrSpec.
+        expect(unify(WarnSpecs, []), $pred, "WarnSpecs != []"),
+        Result = ok1(Results)
+    ;
+        ErrSpecs = [HeadErrSpec | TailErrSpec],
+        Result = error1({one_or_more(HeadErrSpec, TailErrSpec), WarnSpecs})
+    ).
+
+:- pred find_errors_pr2_loop(list(parse_result1(T))::in,
+    list(T)::in, list(T)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+
+find_errors_pr2_loop([], !Results, !ErrSpecs, !WarnSpecs).
+find_errors_pr2_loop([X | Xs], !Results, !ErrSpecs, !WarnSpecs) :-
+    find_errors_pr2_loop(Xs, !Results, !ErrSpecs, !WarnSpecs),
+    (
+        X = ok2(CurResult, CurWarnSpecs),
+        !:Results = [CurResult | !.Results]
+    ;
+        X = error2({CurErrSpecs, CurWarnSpecs}),
+        !:ErrSpecs = one_or_more_to_list(CurErrSpecs) ++ !.ErrSpecs
+    ),
+    !:WarnSpecs = CurWarnSpecs ++ !.WarnSpecs.
+
+%---------------------------------------------------------------------------%
+
+    % From a list of maybe1s, search them for errors.
+    % If some errors are found, return error1 wrapped around
+    % all the errors and warnings.
+    % If no error is found, return ok1 wrapped around the original elements.
+    %
+:- pred find_errors_m1(list(maybe1(T, err_warn_error))::in,
+    maybe1(list(T), err_warn_error)::out) is det.
+
+find_errors_m1(Xs, Result) :-
+    find_errors_m1_loop(Xs, [], Results, [], ErrSpecs, [], WarnSpecs),
+    (
+        ErrSpecs = [],
+        % We add to WarnSpecs *only* when we add at least one ErrSpec.
+        expect(unify(WarnSpecs, []), $pred, "WarnSpecs != []"),
+        Result = ok1(Results)
+    ;
+        ErrSpecs = [HeadErrSpec | TailErrSpec],
+        Result = error1({one_or_more(HeadErrSpec, TailErrSpec), WarnSpecs})
+    ).
+
+:- pred find_errors_m1_loop(list(maybe1(T, err_warn_error))::in,
+    list(T)::in, list(T)::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+
+find_errors_m1_loop([], !Results, !ErrSpecs, !WarnSpecs).
+find_errors_m1_loop([X | Xs], !Results, !ErrSpecs, !WarnSpecs) :-
+    find_errors_m1_loop(Xs, !Results, !ErrSpecs, !WarnSpecs),
+    (
+        X = ok1(CurResult),
+        !:Results = [CurResult | !.Results]
+    ;
+        X = error1({CurErrSpecs, CurWarnSpecs}),
+        !:ErrSpecs = one_or_more_to_list(CurErrSpecs) ++ !.ErrSpecs,
+        !:WarnSpecs = CurWarnSpecs ++ !.WarnSpecs
     ).
 
 %---------------------------------------------------------------------------%

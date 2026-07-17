@@ -1250,7 +1250,9 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
 
     produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         Markers, Context, InstanceStatus, ClausesInfo,
-        TVarSet2, TVarSet, !ModuleInfo, !QualInfo, !Specs),
+        TVarSet2, TVarSet, !ModuleInfo, !QualInfo,
+        [], ErrSpecs, [], WarnSpecs),
+    !:Specs = coerce(ErrSpecs) ++ coerce(WarnSpecs) ++ !.Specs,
 
     % Fill in some information in the pred_info which is used by polymorphism
     % to make sure the type-infos and typeclass-infos are added in the correct
@@ -2530,7 +2532,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
     FirstMsg = msg(FirstContext, FirstPieces),
     LaterPieces = [words("Later definition appears here."), nl],
     LaterMsg = msg(LaterContext, LaterPieces),
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [HeaderMsg, FirstMsg, LaterMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2642,7 +2644,7 @@ report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
     MsgA = msg(ContextA, PiecesA),
     PiecesB = [words("... and the other is here."), nl],
     MsgB = msg(ContextB, PiecesB),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_duplicate_instance_defns_in_category(class_id::in,
@@ -2680,7 +2682,7 @@ report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
     LaterMsg = msg(LaterContext, LaterPieces),
     FirstPieces = [words("Previous instance declaration was here."), nl],
     FirstMsg = msg(FirstContext, FirstPieces),
-    Spec = diag_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
+    Spec = gen_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_abstract_concrete_constraints_mismatch(class_id::in,
@@ -2701,7 +2703,7 @@ report_abstract_concrete_constraints_mismatch(ClassId,
     ConcretePieces = [words("The corresponding"),
         words("concrete instance declaration is here."), nl],
     ConcreteMsg = msg(ConcreteContext, ConcretePieces),
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [AbstractMsg, ConcreteMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2746,7 +2748,7 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
     NonLocalPieces = [words("The other instance declaration is here."), nl],
     NonLocalContext = NonLocalInstance ^ instdefn_context,
     NonLocalMsg = msg(NonLocalContext, NonLocalPieces),
-    Spec = diag_spec($pred, severity_error, phase_type_check,
+    Spec = gen_spec($pred, severity_error, phase_type_check,
         [LocalMsg, NonLocalMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2814,7 +2816,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     MsgA = msg(ContextA, PiecesA),
     MsgB = gen_msg(yes(ContextB), always_treat_as_first, 0u,
         [always(PiecesB)]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2877,7 +2879,7 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     Msg = simple_msg(Context,
         [always(Pieces),
         verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_bad_class_ids_in_pred_decl(module_info::in, pred_info::in,
@@ -2971,7 +2973,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     Msg = simple_msg(Context,
         [always(Pieces),
         verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]),
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_bad_class_ids_in_data_ctor(type_ctor::in,

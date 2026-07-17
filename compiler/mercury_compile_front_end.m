@@ -40,7 +40,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred frontend_pass(io.text_output_stream::in, io.text_output_stream::in,
-    op_mode_augment::in, qual_info::in, list(diag_spec)::in,
+    op_mode_augment::in, qual_info::in, list(err_spec)::in,
     bool::in, bool::out, module_info::in, module_info::out,
     dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
@@ -207,7 +207,7 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
 
 :- pred frontend_pass_after_typeclass_check(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in,
-    list(diag_spec)::in, bool::in, bool::out,
+    list(err_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -413,7 +413,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
 
 :- pred frontend_pass_after_typecheck(io.text_output_stream::in,
     io.text_output_stream::in, op_mode_augment::in, globals::in,
-    bool::in, bool::in, list(diag_spec)::in, bool::in, bool::out,
+    bool::in, bool::in, list(err_spec)::in, bool::in, bool::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
@@ -895,8 +895,9 @@ decide_type_repns_pass(ProgressStream, ErrorStream, Verbose, Stats,
         !MaybeWrittenSpecs, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Deciding type representations...\n", !IO),
-    decide_type_repns(!HLDS, [], RepnSpecs, !IO),
-    add_to_be_written_specs(RepnSpecs, !MaybeWrittenSpecs),
+    decide_type_repns(!HLDS, RepnErrSpecs, RepnInfoSpecs, !IO),
+    add_to_be_written_err_specs(RepnErrSpecs, !MaybeWrittenSpecs),
+    add_to_be_written_info_specs(RepnInfoSpecs, !MaybeWrittenSpecs),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 

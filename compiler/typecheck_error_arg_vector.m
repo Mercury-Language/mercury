@@ -108,7 +108,7 @@ report_error_wrong_types_in_arg_vector(Info, Context,
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
         always(ArgErrorPieces ++ InvisIntPieces), VerboseComponent]),
-    Spec = diag_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = gen_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
     list(arg_vector_type_error)::in,

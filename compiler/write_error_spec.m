@@ -106,6 +106,7 @@
 
     % write_error_spec(Stream, Globals, Spec, !IO):
     % write_error_specs(Stream, Globals, Specs, !IO):
+    % write_oom_error_specs(Stream, Globals, Specs, !IO):
     %
     % Write out the error message(s) specified by Spec or Specs, minus the
     % parts whose conditions are false.
@@ -123,13 +124,20 @@
     % that something should have been printed out.
     %
 :- pred write_error_spec(io.text_output_stream::in, globals::in,
-    diag_spec::in, io::di, io::uo) is det.
+    err_spec::in, io::di, io::uo) is det.
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
+    list(err_spec)::in, io::di, io::uo) is det.
+:- pred write_oom_error_specs(io.text_output_stream::in, globals::in,
+    one_or_more(err_spec)::in, io::di, io::uo) is det.
+
+:- pred write_diag_spec(io.text_output_stream::in, globals::in,
+    diag_spec::in, io::di, io::uo) is det.
+:- pred write_diag_specs(io.text_output_stream::in, globals::in,
     list(diag_spec)::in, io::di, io::uo) is det.
 :- pred write_oom_diag_specs(io.text_output_stream::in, globals::in,
     one_or_more(diag_spec)::in, io::di, io::uo) is det.
 
-:- pred write_error_specs_opt_table(io.text_output_stream::in,
+:- pred write_diag_specs_opt_table(io.text_output_stream::in,
     option_table::in, list(diag_spec)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -275,44 +283,56 @@ maybe_write_not_yet_written_specs(Stream, Globals, Verbose,
 
 write_not_yet_written_specs(Stream, Globals, !MaybeWrittenSpecs, !IO) :-
     !.MaybeWrittenSpecs = maybe_written_specs(ToBeWritten0, AlreadyWritten0),
-    write_error_specs(Stream, Globals, ToBeWritten0, !IO),
+    write_diag_specs(Stream, Globals, ToBeWritten0, !IO),
     AlreadyWritten = ToBeWritten0 ++ AlreadyWritten0,
     !:MaybeWrittenSpecs = maybe_written_specs([], AlreadyWritten).
 
 %---------------------------------------------------------------------------%
 
 write_error_spec(Stream, Globals, Spec, !IO) :-
-    write_error_specs(Stream, Globals, [Spec], !IO).
+    write_diag_spec(Stream, Globals, coerce(Spec), !IO).
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
+    write_diag_specs(Stream, Globals, coerce(Specs0), !IO).
+
+write_oom_error_specs(Stream, Globals, OoMSpecs, !IO) :-
+    Specs = one_or_more_to_list(OoMSpecs),
+    write_diag_specs(Stream, Globals, coerce(Specs), !IO).
+
+%---------------------------------------------------------------------------%
+
+write_diag_spec(Stream, Globals, Spec, !IO) :-
+    write_diag_specs(Stream, Globals, [Spec], !IO).
+
+write_diag_specs(Stream, Globals, Specs0, !IO) :-
     standardize_diag_specs(Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+    sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO).
 
 write_oom_diag_specs(Stream, Globals, OoMSpecs, !IO) :-
-    write_error_specs(Stream, Globals, one_or_more_to_list(OoMSpecs), !IO).
+    write_diag_specs(Stream, Globals, one_or_more_to_list(OoMSpecs), !IO).
 
 %---------------------%
 
-write_error_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
+write_diag_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
     standardize_diag_specs(Specs, StdSpecs),
     getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContexts),
     % There is nothing we can usefully do about _BadOptions.
     convert_limit_error_contexts(LimitErrorContexts, _BadOptions,
         LimitErrorContextsMap),
-    sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+    sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred sort_and_write_error_specs(io.text_output_stream::in, option_table::in,
-    limit_error_contexts_map::in, list(std_diag_spec)::in,
+:- pred sort_and_write_std_diag_specs(io.text_output_stream::in,
+    option_table::in, limit_error_contexts_map::in, list(std_diag_spec)::in,
     io::di, io::uo) is det.
 
-sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+sort_and_write_std_diag_specs(Stream, OptionTable, LimitErrorContextsMap,
         StdSpecs, !IO) :-
     sort_std_diag_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs),
     ColorDb = init_color_db(OptionTable),
@@ -332,21 +352,21 @@ sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
     % write_error_specs, in practice, this won't happen.
     set.init(AlreadyPrintedVerbose0),
     list.foldl2(
-        do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap,
+        do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap,
             ColorDb, MaybeMaxWidth),
         SortedStdSpecs, AlreadyPrintedVerbose0, _AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred do_write_error_spec(io.text_output_stream::in, option_table::in,
+:- pred do_write_diag_spec(io.text_output_stream::in, option_table::in,
     limit_error_contexts_map::in, color_db::in, maybe(int)::in,
     std_diag_spec::in,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
+do_write_diag_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
         MaybeMaxWidth, StdSpec, !AlreadyPrintedVerbose, !IO) :-
-    StdSpec = diag_spec(Id, Severity, _Phase, StdMsgs1),
+    StdSpec = gen_spec(Id, Severity, _Phase, StdMsgs1),
     severity_to_maybe_actual_severity(OptionTable, Severity,
         MaybeActualSeverity),
     (
@@ -2552,7 +2572,7 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
         WroteSomething = no
     ;
         WroteSomething = yes,
-        write_error_specs(ErrorStream, Globals, BadColorSchemeSpecs, !IO)
+        write_diag_specs(ErrorStream, Globals, BadColorSchemeSpecs, !IO)
     ),
 
     % If we suppressed the printing of some errors, then tell the user
