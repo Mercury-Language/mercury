@@ -1,47 +1,70 @@
+### Basic tests ###
+0
+0
+0
+1
+1
+-1
 999
 999
 no
 no
---------
+### Decimal boundary values for 32-bit ints ###
 2147483647
 2147483648
 -2147483648
 -2147483649
---------
+### Decimal boundary values for 64-bit ints ###
 9223372036854775807
 no
 -9223372036854775808
 no
---------
+### Hexadecimal boundary values for 32-bit ints ###
 2147483647
 2147483648
 -2147483648
 -2147483649
---------
+### Hexadecimal boundary values for 64-bit ints ###
 9223372036854775807
 no
 -9223372036854775808
 no
---------
+### Octal boundary values for 32-bit ints ###
 2147483647
 2147483648
 -2147483648
 -2147483649
---------
+### Octal boundary values for 64-bit ints ###
 9223372036854775807
 no
 -9223372036854775808
 no
---------
+### Binary boundary values for 32-bit ints ###
+2147483647
+2147483648
+-2147483648
+-2147483649
+### Binary boundary values for 64-bit ints ###
+9223372036854775807
 no
+-9223372036854775808
 no
+### Base-36 boundary values for 32-bit ints ###
+2147483647
+2147483648
+-2147483648
+-2147483649
+### Base-36 boundary values for 64-bit ints ###
+9223372036854775807
 no
+-9223372036854775808
 no
+### Explicit plus sign ###
+2147483647
+2147483648
+9223372036854775807
 no
-no
-no
-no
---------
+### Overflow regression tests for 32-bit ints ###
 5368709120
 -5368709120
 5368709120
@@ -50,6 +73,23 @@ no
 -5368709120
 4474497024
 -4474497024
---------
+### Overflow regression tests for 64-bit ints ###
+no
+no
+no
+no
+no
+no
+no
+no
+### Test truncating division is used in overflow checks ###
 no
 -2147483650
+### Leading zero tests ###
+1
+2147483647
+9223372036854775807
+no
+-2147483648
+-9223372036854775808
+no

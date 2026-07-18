@@ -1,21 +1,56 @@
+### Basic tests ###
 0u
 1u
 999u
 no
---------
+### Decimal boundary values for 32-bit uints ###
 4294967294u
 4294967295u
 no
---------
+### Decimal boundary values for 64-bit uints ###
 no
 no
 no
---------
+### Hexadecimal boundary values for 32-bit uints ###
+4294967294u
+4294967295u
+no
+### Hexadecimal boundary values for 64-bit uints ###
+no
+no
+no
+### Octal boundary values for 32-bit uints ###
+4294967294u
+4294967295u
+no
+### Octal boundary values for 64-bit uints ###
+no
+no
+no
+### Binary boundary values for 32-bit uints ###
+4294967294u
+4294967295u
+no
+### Binary boundary values for 64-bit uints ###
+no
+no
+no
+### Base-36 boundary values for 32-bit uints ###
+4294967294u
+4294967295u
+no
+### Base-36 boundary values for 64-bit uints ###
+no
+no
+no
+### Overflow regression tests for 32-bit uints ###
 no
 no
 no
 no
---------
+no
+### Overflow regression tests for 64-bit uints ###
+no
 no
 no
 no
