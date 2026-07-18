@@ -6016,29 +6016,29 @@ base_positive_int_accumulator(Base) = Pred :-
     % The redundant closures will also need to be deleted by unused argument
     % elimination.
     ( if Base = 10 then
-        Pred = accumulate_int(10)
+        Pred = accumulate_positive_int(10)
     else if Base = 16 then
-        Pred = accumulate_int(16)
+        Pred = accumulate_positive_int(16)
     else if Base = 8 then
-        Pred = accumulate_int(8)
+        Pred = accumulate_positive_int(8)
     else if Base = 2 then
-        Pred = accumulate_int(2)
+        Pred = accumulate_positive_int(2)
     else if 2 =< Base, Base =< 36 then
-        Pred = accumulate_int(Base)
+        Pred = accumulate_positive_int(Base)
     else
         string.format("the base must be between 2 and 36; %d is not",
             [i(Base)], Msg),
         unexpected($pred, Msg)
     ).
 
-:- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
+:- pred accumulate_positive_int(int::in, char::in, int::in, int::out) is semidet.
 
-accumulate_int(Base, Char, N0, N) :-
+accumulate_positive_int(Base, Char, N0, N) :-
     char.unsafe_base_digit_to_int(Base, Char, M),
-    N = (Base * N0) + M,
-    % Fail on overflow.
-    % XXX depends on undefined behaviour
-    N0 =< N.
+    % Fail if Base * N0 + M would exceed max_int.
+    % The division is safe since our caller sets Base to be in 2..36.
+    N0 =< (max_int - M) `unchecked_quotient` Base,
+    N = (Base * N0) + M.
 
 :- func base_negative_int_accumulator(int) = pred(char, int, int).
 :- mode base_negative_int_accumulator(in) = out(pred(in, in, out) is semidet)
@@ -6067,10 +6067,13 @@ base_negative_int_accumulator(Base) = Pred :-
 
 accumulate_negative_int(Base, Char, N0, N) :-
     char.unsafe_base_digit_to_int(Base, Char, M),
-    N = (Base * N0) - M,
-    % Fail on overflow.
-    % XXX depends on undefined behaviour
-    N =< N0.
+    % Fail if Base * N0 - M would be less than min_int.
+    % We must use truncating division in the following check.
+    % Flooring division (i.e. div) causes the test to succeed
+    % for values of N0 for which the multiplication overflows.
+    % The division is safe since our caller sets Base to be in 2..36.
+    N0 >= (min_int + M) `unchecked_quotient` Base,
+    N = (Base * N0) - M.
 
 %---------------------%
 
@@ -6124,10 +6127,11 @@ base_uint_accumulator(Base) = Pred :-
 
 accumulate_uint(Base, BaseInt, Char, N0, N) :-
     char.unsafe_base_digit_to_int(BaseInt, Char, M),
-    N = (Base * N0) + uint.det_from_int(M),
-    % Fail on overflow.
-    % XXX depends on undefined behaviour
-    N0 =< N.
+    MU = uint.det_from_int(M),
+    % Fail if Base * N0 + MU would exceed max_uint.
+    % The division is safe since our caller sets Base to be in 2..36.
+    N0 =< (max_uint - MU) `unchecked_quotient` Base,
+    N = (Base * N0) + MU.
 
 %---------------------%
 

@@ -436,6 +436,7 @@ ORDINARY_PROGS = \
 	string_switch_3 \
 	string_switch_4 \
 	string_to_float_overflow \
+	string_to_uint_overflow \
 	string_various \
 	string_well_formed \
 	string_well_formed_utf8 \
