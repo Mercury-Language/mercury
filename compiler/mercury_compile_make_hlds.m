@@ -214,120 +214,130 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_warn_about_stdlib_shadowing(globals::in,
-    parse_tree_module_src::in,
-    maybe_written_specs::in, maybe_written_specs::out) is det.
+:- pred maybe_grab_plain_and_trans_opt_files(io.text_output_stream::in,
+    globals::in, op_mode_augment::in,
+    bool::in, maybe(list(module_name))::in, list(err_spec)::out,
+    module_baggage::in, module_baggage::out,
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
 
-maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc,
-        !MaybeWrittenSpecs) :-
-    globals.lookup_bool_option(Globals, warn_stdlib_shadowing, WarnShadowing),
+maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals, OpModeAugment,
+        Verbose, MaybeDFileTransOptDeps, BlockingSpecs, !Baggage,
+        !AugCompUnit, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    ( if
+        ( UseOptInt = yes
+        ; IntermodOpt = yes
+        ; IntermodAnalysis = yes
+        ),
+        OpModeAugment \= opmau_make_plain_opt
+    then
+        maybe_write_string(ProgressStream, Verbose,
+            "% Reading .opt files...\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
+            PlainOptBlockingSpecs,
+            !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
+    else
+        PlainOptBlockingSpecs = []
+    ),
     (
-        WarnShadowing = no
-    ;
-        WarnShadowing = yes,
-        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-        ModuleNameStr = sym_name_to_string(ModuleName),
-        ( if
-            stdlib_module_doc_undoc(ModuleNameStr, DocUndoc)
-        then
-            Pieces0 = [words("Warning: this module,"),
-                qual_sym_name(ModuleName), suffix(","),
-                words("has the same name"),
-                words("as a module in the Mercury standard library."),
-                words("A third module cannot import both,"),
-                words("and you will likely have problems where"),
-                words("a third module will want to import one"),
-                words("but will get the other."), nl],
-            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
-            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
-            Severity = severity_warning(warn_stdlib_shadowing),
-            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
-            add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
-        else if
-            GetStdlibModules =
-                ( pred(LibModuleName::out) is multi :-
-                    library.stdlib_module_doc_undoc(LibModuleNameStr,
-                        _DocUndoc),
-                    LibModuleName = string_to_sym_name(LibModuleNameStr)
-                ),
-            solutions.solutions(GetStdlibModules, LibModuleNames),
-            IsShadowed =
-                ( pred(LibModuleName::in) is semidet :-
-                    partial_sym_name_is_part_of_full(LibModuleName, ModuleName)
-                ),
-            list.find_first_match(IsShadowed, LibModuleNames,
-                ShadowedLibModuleName),
-            ShadowedLibModuleNameStr =
-                sym_name_to_string(ShadowedLibModuleName),
-            stdlib_module_doc_undoc(ShadowedLibModuleNameStr, DocUndoc)
-        then
-            Pieces0 = [words("Warning: the name of this module,"),
-                qual_sym_name(ModuleName), suffix(","),
-                words("contains the name of a module,"),
-                qual_sym_name(ShadowedLibModuleName), suffix(","),
-                words("in the Mercury standard library."),
-                words("A reference to the standard library in a third module"),
-                words("will therefore be a (not fully qualified) reference"),
-                words("to this module, which means that"),
-                words("you will likely have problems where,"),
-                words("especially in the absence of needed"),
-                decl("import_module"), words("declarations,"),
-                words("a reference intended to refer to"),
-                words("the standard library module"),
-                words("will be taken as a reference to this module,"),
-                words("and vice versa."), nl],
-            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
-            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
-            Severity = severity_warning(warn_stdlib_shadowing),
-            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
-            add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
-        else
-            true
+        OpModeAugment = opmau_make_trans_opt,
+        (
+            MaybeDFileTransOptDeps = yes(DFileTransOptDeps),
+            % When creating the trans_opt file, only import the
+            % trans_opt files which are listed as dependencies of the
+            % trans_opt_deps rule in the `.d' file.
+            grab_trans_opt_files(ProgressStream, Globals, DFileTransOptDeps,
+                TransOptBlockingSpecs,
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
+        ;
+            MaybeDFileTransOptDeps = no,
+            TransOptBlockingSpecs = [],
+            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
+            ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+            globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
+                WarnNoTransOptDeps),
+            (
+                WarnNoTransOptDeps = yes,
+                Pieces = [words("Warning: cannot read trans-opt dependencies"),
+                    words("for module"), qual_sym_name(ModuleName),
+                    suffix("."), nl,
+                    words("You need to remake the dependencies."), nl],
+                Severity = severity_warning(warn_missing_trans_opt_deps),
+                Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
+                add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
+            ;
+                WarnNoTransOptDeps = no
+            )
         )
-    ).
-
-:- pred maybe_mention_undoc(doc_or_undoc::in,
-    list(format_piece)::in, list(format_piece)::out) is det.
-
-maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
-    (
-        DocUndoc = doc,
-        Pieces = Pieces0
     ;
-        DocUndoc = undoc,
-        Pieces = Pieces0 ++
-            [words("The Mercury standard library module in question"),
-            words("is part of the Mercury implementation,"),
-            words("and is not publicly documented."), nl]
-    ).
+        OpModeAugment = opmau_make_plain_opt,
+        % If we are making the `.opt' file, then we cannot read any
+        % `.trans_opt' files, since `.opt' files aren't allowed to depend on
+        % `.trans_opt' files.
+        TransOptBlockingSpecs = []
+    ;
+        ( OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ; OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_front_and_middle(_)
+        ),
+        (
+            TransOpt = yes,
+            % If transitive optimization is enabled, but we are not creating
+            % the .opt or .trans opt file, then import the trans_opt files
+            % for all the modules that are imported (or used), and for all
+            % ancestor modules.
+            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
+            ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+            Ancestors = get_ancestors_set(ModuleName),
+            Deps0 = map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map),
+            % Some builtin modules can implicitly depend on themselves.
+            % (For example, we consider every module to depend on both
+            % builtin.m and private_builtin.m, so they "depend" on themselves.)
+            % For those, we don't want to read in their .trans_opt file,
+            % since we already have their .m file.
+            set.delete(ModuleName, Deps0, Deps),
+            TransOptFilesSet = set.union_list([Ancestors, Deps]),
+            set.to_sorted_list(TransOptFilesSet, TransOptFiles),
+            grab_trans_opt_files(ProgressStream, Globals, TransOptFiles,
+                TransOptBlockingSpecs,
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
+        ;
+            TransOpt = no,
+            TransOptBlockingSpecs = []
+        )
+    ),
+    BlockingSpecs = PlainOptBlockingSpecs ++ TransOptBlockingSpecs.
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-:- pred maybe_read_event_set(string::in,
-    string::out, event_spec_map::out, list(err_spec)::out,
+:- pred maybe_read_trans_opt_deps(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_write_d_file::in, maybe(list(module_name))::out,
     io::di, io::uo) is det.
 
-maybe_read_event_set(EventSetFileName, EventSetName, EventSpecMap,
-        EventSetSpecs, !IO) :-
-    ( if EventSetFileName = "" then
-        EventSetName = "",
-        EventSpecMap = map.init,
-        EventSetSpecs = []
-    else
-        read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
-            EventSetSpecs, !IO),
-        (
-            EventSetSpecs = [],
-            EventSetName = EventSetName0,
-            EventSpecMap = EventSpecMap0
-        ;
-            EventSetSpecs = [_ | _],
-            EventSetName = "",
-            EventSpecMap = map.init
-        )
+maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
+        WriteDFile, MaybeDFileTransOptDeps, !IO) :-
+    (
+        WriteDFile = do_not_write_d_file,
+        MaybeDFileTransOptDeps = no
+    ;
+        WriteDFile = write_d_file,
+        % We need the MaybeDFileTransOptDeps when creating the .trans_opt file.
+        % However, we *also* need the MaybeDFileTransOptDeps when writing out
+        % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
+        % a .d file that does not include the trans_opt_deps mmake rule,
+        % which will require an "mmake depend" before the next rebuild.
+        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
+            ModuleName, MaybeDFileTransOptDeps, !IO)
     ).
-
-%---------------------%
 
     % maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream,
     %   Globals, ModuleName, MaybeDFileTransOptDeps, !IO):
@@ -446,112 +456,210 @@ read_d_file_get_modules(InStream, TransOptDeps, !IO) :-
         TransOptDeps = []
     ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-:- pred maybe_grab_plain_and_trans_opt_files(io.text_output_stream::in,
-    globals::in, op_mode_augment::in,
-    bool::in, maybe(list(module_name))::in, list(err_spec)::out,
-    module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+:- type maybe_write_d_file
+    --->    do_not_write_d_file
+    ;       write_d_file.
 
-maybe_grab_plain_and_trans_opt_files(ProgressStream, Globals, OpModeAugment,
-        Verbose, MaybeDFileTransOptDeps, BlockingSpecs, !Baggage,
-        !AugCompUnit, !HaveReadModuleMaps, !MaybeWrittenSpecs, !IO) :-
-    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
-    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
-    ( if
-        ( UseOptInt = yes
-        ; IntermodOpt = yes
-        ; IntermodAnalysis = yes
-        ),
-        OpModeAugment \= opmau_make_plain_opt
-    then
-        maybe_write_string(ProgressStream, Verbose,
-            "% Reading .opt files...\n", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
-            PlainOptBlockingSpecs,
-            !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
-        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
-    else
-        PlainOptBlockingSpecs = []
-    ),
+:- pred should_we_write_d_file(op_mode_augment::in,
+    op_mode_invoked_by_mmc_make::in, maybe_write_d_file::out) is det.
+
+should_we_write_d_file(OpModeAugment, InvokedByMMCMake, WriteDFile) :-
     (
-        OpModeAugment = opmau_make_trans_opt,
-        (
-            MaybeDFileTransOptDeps = yes(DFileTransOptDeps),
-            % When creating the trans_opt file, only import the
-            % trans_opt files which are listed as dependencies of the
-            % trans_opt_deps rule in the `.d' file.
-            grab_trans_opt_files(ProgressStream, Globals, DFileTransOptDeps,
-                TransOptBlockingSpecs,
-                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
-        ;
-            MaybeDFileTransOptDeps = no,
-            TransOptBlockingSpecs = [],
-            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
-            ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-            globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
-                WarnNoTransOptDeps),
-            (
-                WarnNoTransOptDeps = yes,
-                Pieces = [words("Warning: cannot read trans-opt dependencies"),
-                    words("for module"), qual_sym_name(ModuleName),
-                    suffix("."), nl,
-                    words("You need to remake the dependencies."), nl],
-                Severity = severity_warning(warn_missing_trans_opt_deps),
-                Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
-                add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
-            ;
-                WarnNoTransOptDeps = no
-            )
-        )
+        ( OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
+        ),
+        % If we are only typechecking or error checking, then we should not
+        % modify any files; this includes writing to .d files.
+        WriteDFile = do_not_write_d_file
     ;
         OpModeAugment = opmau_make_plain_opt,
-        % If we are making the `.opt' file, then we cannot read any
-        % `.trans_opt' files, since `.opt' files aren't allowed to depend on
-        % `.trans_opt' files.
-        TransOptBlockingSpecs = []
+        % Don't write the `.d' file when making the `.opt' file because
+        % we can't work out the full transitive implementation dependencies.
+        WriteDFile = do_not_write_d_file
     ;
-        ( OpModeAugment = opmau_make_analysis_registry
-        ; OpModeAugment = opmau_make_xml_documentation
-        ; OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_front_and_middle(_)
+        (
+            OpModeAugment = opmau_make_trans_opt
+        ;
+            OpModeAugment = opmau_make_analysis_registry
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_make_xml_documentation
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_front_and_middle(OpModeFAM),
+            ( OpModeFAM = opfam_target_code_only
+            ; OpModeFAM = opfam_target_and_object_code_only
+            ; OpModeFAM = opfam_target_object_and_executable
+            )
         ),
         (
-            TransOpt = yes,
-            % If transitive optimization is enabled, but we are not creating
-            % the .opt or .trans opt file, then import the trans_opt files
-            % for all the modules that are imported (or used), and for all
-            % ancestor modules.
-            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
-            ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-            Ancestors = get_ancestors_set(ModuleName),
-            Deps0 = map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map),
-            % Some builtin modules can implicitly depend on themselves.
-            % (For example, we consider every module to depend on both
-            % builtin.m and private_builtin.m, so they "depend" on themselves.)
-            % For those, we don't want to read in their .trans_opt file,
-            % since we already have their .m file.
-            set.delete(ModuleName, Deps0, Deps),
-            TransOptFilesSet = set.union_list([Ancestors, Deps]),
-            set.to_sorted_list(TransOptFilesSet, TransOptFiles),
-            grab_trans_opt_files(ProgressStream, Globals, TransOptFiles,
-                TransOptBlockingSpecs,
-                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
+            WriteDFile = do_not_write_d_file
         ;
-            TransOpt = no,
-            TransOptBlockingSpecs = []
+            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make,
+            WriteDFile = write_d_file
         )
-    ),
-    BlockingSpecs = PlainOptBlockingSpecs ++ TransOptBlockingSpecs.
+    ).
 
-%---------------------%
+:- pred maybe_write_d_file(io.text_output_stream::in, globals::in,
+    module_baggage::in, aug_compilation_unit::in, module_info::in,
+    maybe_write_d_file::in, maybe(list(module_name))::in,
+    io::di, io::uo) is det.
+
+maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
+        HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO) :-
+    (
+        WriteDFile = do_not_write_d_file
+    ;
+        WriteDFile = write_d_file,
+        % The original Baggage0 will do just fine for
+        % generate_and_write_d_file_hlds, since it accesses only the parts
+        % of Baggage0 that identify the properties of the source file
+        % containing the module.
+        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
+        module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
+        (
+            MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
+            set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
+            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
+            MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo)
+        ;
+            MaybeDFileTransOptDeps = no,
+            MaybeInclTransOptRule = do_not_include_trans_opt_rule
+        ),
+        generate_and_write_d_file_hlds(ProgressStream, Globals,
+            BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO),
+        globals.lookup_bool_option(Globals,
+            generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
+        (
+            OutputMMCMakeDeps = yes,
+            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+            BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
+            make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
+                BurdenedModule0, !IO)
+        ;
+            OutputMMCMakeDeps = no
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_warn_about_stdlib_shadowing(globals::in,
+    parse_tree_module_src::in,
+    maybe_written_specs::in, maybe_written_specs::out) is det.
+
+maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc,
+        !MaybeWrittenSpecs) :-
+    globals.lookup_bool_option(Globals, warn_stdlib_shadowing, WarnShadowing),
+    (
+        WarnShadowing = no
+    ;
+        WarnShadowing = yes,
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        ( if
+            stdlib_module_doc_undoc(ModuleNameStr, DocUndoc)
+        then
+            Pieces0 = [words("Warning: this module,"),
+                qual_sym_name(ModuleName), suffix(","),
+                words("has the same name"),
+                words("as a module in the Mercury standard library."),
+                words("A third module cannot import both,"),
+                words("and you will likely have problems where"),
+                words("a third module will want to import one"),
+                words("but will get the other."), nl],
+            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
+            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
+            Severity = severity_warning(warn_stdlib_shadowing),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
+            add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
+        else if
+            GetStdlibModules =
+                ( pred(LibModuleName::out) is multi :-
+                    library.stdlib_module_doc_undoc(LibModuleNameStr,
+                        _DocUndoc),
+                    LibModuleName = string_to_sym_name(LibModuleNameStr)
+                ),
+            solutions.solutions(GetStdlibModules, LibModuleNames),
+            IsShadowed =
+                ( pred(LibModuleName::in) is semidet :-
+                    partial_sym_name_is_part_of_full(LibModuleName, ModuleName)
+                ),
+            list.find_first_match(IsShadowed, LibModuleNames,
+                ShadowedLibModuleName),
+            ShadowedLibModuleNameStr =
+                sym_name_to_string(ShadowedLibModuleName),
+            stdlib_module_doc_undoc(ShadowedLibModuleNameStr, DocUndoc)
+        then
+            Pieces0 = [words("Warning: the name of this module,"),
+                qual_sym_name(ModuleName), suffix(","),
+                words("contains the name of a module,"),
+                qual_sym_name(ShadowedLibModuleName), suffix(","),
+                words("in the Mercury standard library."),
+                words("A reference to the standard library in a third module"),
+                words("will therefore be a (not fully qualified) reference"),
+                words("to this module, which means that"),
+                words("you will likely have problems where,"),
+                words("especially in the absence of needed"),
+                decl("import_module"), words("declarations,"),
+                words("a reference intended to refer to"),
+                words("the standard library module"),
+                words("will be taken as a reference to this module,"),
+                words("and vice versa."), nl],
+            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
+            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
+            Severity = severity_warning(warn_stdlib_shadowing),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
+            add_to_be_written_specs([Spec], !MaybeWrittenSpecs)
+        else
+            true
+        )
+    ).
+
+:- pred maybe_mention_undoc(doc_or_undoc::in,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
+    (
+        DocUndoc = doc,
+        Pieces = Pieces0
+    ;
+        DocUndoc = undoc,
+        Pieces = Pieces0 ++
+            [words("The Mercury standard library module in question"),
+            words("is part of the Mercury implementation,"),
+            words("and is not publicly documented."), nl]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_read_event_set(string::in,
+    string::out, event_spec_map::out, list(err_spec)::out,
+    io::di, io::uo) is det.
+
+maybe_read_event_set(EventSetFileName, EventSetName, EventSpecMap,
+        EventSetSpecs, !IO) :-
+    ( if EventSetFileName = "" then
+        EventSetName = "",
+        EventSpecMap = map.init,
+        EventSetSpecs = []
+    else
+        read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
+            EventSetSpecs, !IO),
+        (
+            EventSetSpecs = [],
+            EventSetName = EventSetName0,
+            EventSpecMap = EventSpecMap0
+        ;
+            EventSetSpecs = [_ | _],
+            EventSetName = "",
+            EventSpecMap = map.init
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred maybe_write_definitions(io.text_output_stream::in,
     bool::in, bool::in, module_info::in, io::di, io::uo) is det.
@@ -640,114 +748,6 @@ maybe_write_definition_extents(ProgressStream, Verbose, Stats, HLDS, !IO) :-
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         Extents = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- type maybe_write_d_file
-    --->    do_not_write_d_file
-    ;       write_d_file.
-
-:- pred should_we_write_d_file(op_mode_augment::in,
-    op_mode_invoked_by_mmc_make::in, maybe_write_d_file::out) is det.
-
-should_we_write_d_file(OpModeAugment, InvokedByMMCMake, WriteDFile) :-
-    (
-        ( OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
-        ),
-        % If we are only typechecking or error checking, then we should not
-        % modify any files; this includes writing to .d files.
-        WriteDFile = do_not_write_d_file
-    ;
-        OpModeAugment = opmau_make_plain_opt,
-        % Don't write the `.d' file when making the `.opt' file because
-        % we can't work out the full transitive implementation dependencies.
-        WriteDFile = do_not_write_d_file
-    ;
-        (
-            OpModeAugment = opmau_make_trans_opt
-        ;
-            OpModeAugment = opmau_make_analysis_registry
-            % XXX We should insist on do_not_write_d_file for these.
-        ;
-            OpModeAugment = opmau_make_xml_documentation
-            % XXX We should insist on do_not_write_d_file for these.
-        ;
-            OpModeAugment = opmau_front_and_middle(OpModeFAM),
-            ( OpModeFAM = opfam_target_code_only
-            ; OpModeFAM = opfam_target_and_object_code_only
-            ; OpModeFAM = opfam_target_object_and_executable
-            )
-        ),
-        (
-            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
-            WriteDFile = do_not_write_d_file
-        ;
-            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make,
-            WriteDFile = write_d_file
-        )
-    ).
-
-:- pred maybe_read_trans_opt_deps(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_write_d_file::in, maybe(list(module_name))::out,
-    io::di, io::uo) is det.
-
-maybe_read_trans_opt_deps(ProgressStream, Globals, ModuleName,
-        WriteDFile, MaybeDFileTransOptDeps, !IO) :-
-    (
-        WriteDFile = do_not_write_d_file,
-        MaybeDFileTransOptDeps = no
-    ;
-        WriteDFile = write_d_file,
-        % We need the MaybeDFileTransOptDeps when creating the .trans_opt file.
-        % However, we *also* need the MaybeDFileTransOptDeps when writing out
-        % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
-        % a .d file that does not include the trans_opt_deps mmake rule,
-        % which will require an "mmake depend" before the next rebuild.
-        maybe_read_d_file_for_trans_opt_deps(ProgressStream, Globals,
-            ModuleName, MaybeDFileTransOptDeps, !IO)
-    ).
-
-:- pred maybe_write_d_file(io.text_output_stream::in, globals::in,
-    module_baggage::in, aug_compilation_unit::in, module_info::in,
-    maybe_write_d_file::in, maybe(list(module_name))::in,
-    io::di, io::uo) is det.
-
-maybe_write_d_file(ProgressStream, Globals, Baggage0, AugCompUnit,
-        HLDS0, WriteDFile, MaybeDFileTransOptDeps, !IO) :-
-    (
-        WriteDFile = do_not_write_d_file
-    ;
-        WriteDFile = write_d_file,
-        % The original Baggage0 will do just fine for
-        % generate_and_write_d_file_hlds, since it accesses only the parts
-        % of Baggage0 that identify the properties of the source file
-        % containing the module.
-        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
-        module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
-        (
-            MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
-            set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
-            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
-            MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo)
-        ;
-            MaybeDFileTransOptDeps = no,
-            MaybeInclTransOptRule = do_not_include_trans_opt_rule
-        ),
-        generate_and_write_d_file_hlds(ProgressStream, Globals,
-            BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO),
-        globals.lookup_bool_option(Globals,
-            generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
-        (
-            OutputMMCMakeDeps = yes,
-            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-            BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
-            make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
-                BurdenedModule0, !IO)
-        ;
-            OutputMMCMakeDeps = no
-        )
     ).
 
 %---------------------------------------------------------------------------%
