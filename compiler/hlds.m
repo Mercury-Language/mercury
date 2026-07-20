@@ -109,6 +109,7 @@
 :- include_module mode_util.
 :- include_module passes_aux.
 :- include_module pred_name.
+:- include_module type_rename.
 :- include_module type_util.
 :- include_module var_origins.
 :- include_module var_table_hlds.

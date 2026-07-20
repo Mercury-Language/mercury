@@ -30,9 +30,11 @@
 :- import_module maybe.
 :- import_module set.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module hlds.type_util.
+:- import_module hlds.type_rename.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 

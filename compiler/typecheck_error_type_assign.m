@@ -141,7 +141,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
-:- import_module hlds.type_util.
+:- import_module hlds.type_rename.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.

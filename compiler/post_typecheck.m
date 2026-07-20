@@ -91,6 +91,7 @@
 :- import_module hlds.inst_mode_type_prop.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
+:- import_module hlds.type_rename.
 :- import_module hlds.type_util.
 :- import_module hlds.var_origins.
 :- import_module hlds.var_table_hlds.

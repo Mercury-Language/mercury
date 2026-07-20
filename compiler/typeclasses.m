@@ -90,7 +90,7 @@
 :- import_module check_hlds.typecheck_debug.
 :- import_module check_hlds.typecheck_errors.
 :- import_module hlds.hlds_module.
-:- import_module hlds.type_util.
+:- import_module hlds.type_rename.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
