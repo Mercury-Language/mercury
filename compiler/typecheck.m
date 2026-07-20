@@ -1007,7 +1007,8 @@ report_coercion(TypeAssign, Coercion, !Info) :-
     % XXX When inferring types for a predicate/function with no declared type,
     % we should not report coercions as invalid until the argument types have
     % been inferred.
-    Coercion = coerce_constraint(FromType0, ToType0, Context, FromVar, Status),
+    Coercion = coerce_constraint(FromType0, ToType0, Context, FromVar,
+        Status, Fails),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     apply_rec_subst_to_type(TypeBindings, FromType0, FromType),
@@ -1019,7 +1020,7 @@ report_coercion(TypeAssign, Coercion, !Info) :-
     ;
         Status = unsatisfiable,
         Spec = report_invalid_coerce_from_to(ClauseContext, Context, FromVar,
-            TVarSet, FromType, ToType)
+            TVarSet, FromType, ToType, Fails)
     ;
         Status = not_yet_resolved,
         Spec = report_unresolved_coerce_from_to(ClauseContext, Context,

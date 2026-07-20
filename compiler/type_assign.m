@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,6 +26,7 @@
 :- import_module parse_tree.vartypes.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 %
@@ -59,11 +60,14 @@
 :- type coerce_constraint
     --->    coerce_constraint(
                 % One or both sides should contain a type variable.
-                coerce_from     :: mer_type,
-                coerce_to       :: mer_type,
-                coerce_context  :: prog_context,
-                coerce_var      :: prog_var,
-                coerce_status   :: coerce_constraint_status
+                coerce_from             :: mer_type,
+                coerce_to               :: mer_type,
+                coerce_context          :: prog_context,
+                coerce_var              :: prog_var,
+                coerce_status           :: coerce_constraint_status,
+                % This list should be nonempty for the status values
+                % unsatisfiable and not_yet_resolved.
+                coerce_fails            :: list(coerce_fail)
             ).
 
 :- type coerce_constraint_status
@@ -71,6 +75,86 @@
     ;       unsatisfiable
     ;       not_yet_resolved
     ;       satisfied_but_redundant.
+
+    % The purpose of this type is let report_invalid_coerce_from_to
+    % describe *in specific detail* the cause of the coercion failure.
+    %
+    % Each function symbol in this list represents one point
+    % in the operation of the typecheck_coerce_between_types predicate
+    % and its subcontractors where it could fail.
+    %
+    % XXX While the current set of failure points works for typechecking
+    % I don't think this is the ideal set for explaining coercion failures
+    % to users. Specifically, at the moment we check whether both types
+    % are du types quite late; I think we should check this VERY early.
+    %
+    % NOTE: there is no point in discussing the details of what we
+    % record for each kind of failure until we decide on what set of failures
+    % we want.
+    %
+    % XXX I (zs) am not sure whether all these kinds of coerce fails
+    % can actually reach report_invalid_coerce_from_to. This is because
+    % I cannot rule out either of the following the possibilities.
+    %
+    % - A failure point lower down in the call tree will never be reached
+    %   because some code higher up in the call tree will find a related
+    %   but not identical failure point first, preventing execution from
+    %   reaching the lower failure point.
+    %
+    % - Some coercion failures may occur during typechecking while the
+    %   specific types bound to some type variables are not yet known,
+    %   but they will go away once the bindings of those type variables
+    %   become known.
+    %
+    % XXX Also, I am not sure that these names are the ones that
+    % best describe each kind of coercion failure.
+:- type coerce_fail
+    --->    different_base_types(
+                % The two base type_ctors must be different.
+                dbt_from_type           :: mer_type,
+                dbt_from_base_type_ctor :: type_ctor,
+                dbt_to_type             :: mer_type,
+                dbt_to_base_type_ctor   :: type_ctor
+            )
+    ;       unknown_or_nonground_type(
+                existq_tvars            :: list(tvar),
+                % If both these arguments are yes(...), then
+                % type_is_ground_except_vars must fail for at least one
+                % of the wrapped types, when that predicate is passed
+                % the value in the existq_tvars field.
+                maybe_from_type         :: maybe(mer_type),
+                maybe_to_type           :: maybe(mer_type)
+            )
+    ;       incompatible_types(
+                % The two types have different principal function symbols.
+                it_from_type            :: mer_type,
+                it_to_type              :: mer_type
+            )
+    ;       cannot_coerce_type_vars(
+                % At least one of these must be a type_var.
+                cctv_from_type          :: mer_type,
+                cctv_to_type            :: mer_type
+            )
+    ;       cannot_unify_type_vars(
+                cutv_from_type          :: mer_type,
+                cutv_to_type            :: mer_type
+            )
+    ;       non_du_type_ctor(
+                % The from-type and the to-type have the same base type_ctor,
+                % but this base type_ctor is not a du type.
+                ndtc_from_type          :: mer_type,
+                ndtc_to_type            :: mer_type
+            )
+    ;       should_be_invariant_arg(
+                % The from-type and to-type are different, even though
+                % they should be identical.
+                %
+                % XXX We *really* need some extra info here
+                % that we use to explain to users the *reason*
+                % these should be identical.
+                sbia_from_type          :: mer_type,
+                sbia_to_type            :: mer_type
+            ).
 
 :- pred type_assign_get_var_types(type_assign::in,
     vartypes::out) is det.

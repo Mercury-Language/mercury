@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,6 +30,9 @@
 
 %---------------------------------------------------------------------------%
 
+:- inst defined_type for mer_type/0
+    --->    defined_type(ground, ground, ground).
+
     % Given a non-variable type, return its type_ctor and argument types.
     % Fail if the type is a variable.
     %
@@ -41,6 +44,11 @@
     %
 :- pred type_to_ctor_and_args_det(mer_type::in, type_ctor::out,
     list(mer_type)::out) is det.
+
+    % Given a defined type, return its type_ctor and argument types.
+    %
+:- pred defined_type_to_ctor_and_args(mer_type::in(defined_type),
+    type_ctor::out, list(mer_type)::out) is det.
 
     % Given a non-variable type, return its type_ctor.
     % Fail if the type is a variable.
@@ -231,9 +239,8 @@ type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
         Type = type_variable(_, _),
         fail
     ;
-        Type = defined_type(SymName, ArgTypes, _),
-        Arity = list.length(ArgTypes),
-        TypeCtor = type_ctor(SymName, Arity)
+        Type = defined_type(_SymName, _ArgTypes, _),
+        defined_type_to_ctor_and_args(Type, TypeCtor, ArgTypes)
     ;
         Type = builtin_type(BuiltinType),
         builtin_type_name(BuiltinType, Name),
@@ -285,6 +292,11 @@ type_to_ctor_and_args_det(Type, TypeCtor, ArgTypes) :-
     else
         unexpected($pred, "type_to_ctor_and_args failed: " ++ string(Type))
     ).
+
+defined_type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
+    Type = defined_type(SymName, ArgTypes, _),
+    Arity = list.length(ArgTypes),
+    TypeCtor = type_ctor(SymName, Arity).
 
 type_to_ctor(Type, TypeCtor) :-
     % This should be subject to unused argument elimination.

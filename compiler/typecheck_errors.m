@@ -23,13 +23,15 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 
 :- func report_unsatisfiable_constraints(type_error_clause_context,
     prog_context, type_assign_set) = diag_spec.
 
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
-    prog_var, tvarset, mer_type, mer_type) = diag_spec.
+    prog_var, tvarset, mer_type, mer_type, list(coerce_fail)) = diag_spec.
 
 :- func report_unresolved_coerce_from_to(type_error_clause_context,
     prog_context, prog_var, tvarset, mer_type, mer_type) = diag_spec.
@@ -57,7 +59,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
 
-:- import_module list.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -174,7 +175,7 @@ wrap_quote(Str) = [quote(Str)].
 %---------------------------------------------------------------------------%
 
 report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
-        FromType, ToType) = Spec :-
+        FromType, ToType, Fails) = Spec :-
     % XXX TYPECHECK_ERRORS
     % This code can generate some less-than-helpful diagnostics.
     %
@@ -189,66 +190,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
-    OnlyDuPieces = [words("You can only coerce"),
-        words("from one discriminated union type to another, and")],
-    ( if FromTypeStr = ToTypeStr then
-        describe_if_non_du_type(FromType, FromTypeNonDuPieces),
-        (
-            FromTypeNonDuPieces = [],
-            % We shouldn't get here. FromType and ToType must be the same du
-            % type, but a coercion from one du type to the same du type must be
-            % type-correct. However, throwing an exception would only punish an
-            % innocent user.
-            CausePieces = []
-        ;
-            FromTypeNonDuPieces = [_ | _],
-            CausePieces = OnlyDuPieces ++
-                [quote(FromTypeStr), words("is a")] ++
-                color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")])
-        )
-    else
-        describe_if_non_du_type(FromType, FromTypeNonDuPieces),
-        describe_if_non_du_type(ToType, ToTypeNonDuPieces),
-        (
-            FromTypeNonDuPieces = [],
-            (
-                ToTypeNonDuPieces = [],
-                % Either FromTypeNonDuPieces or ToTypeNonDuPieces should be
-                % nonempty, so we shouldn't get here. However, throwing
-                % an exception would only punish an innocent user.
-                CausePieces = []
-            ;
-                ToTypeNonDuPieces = [_ | _],
-                CausePieces = OnlyDuPieces ++
-                    [quote(ToTypeStr), words("is a")] ++
-                    color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
-            )
-        ;
-            FromTypeNonDuPieces = [_ | _],
-            (
-                ToTypeNonDuPieces = [],
-                CausePieces = OnlyDuPieces ++
-                    [quote(FromTypeStr), words("is a")] ++
-                    color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")])
-            ;
-                ToTypeNonDuPieces = [_ | _],
-                ( if FromTypeNonDuPieces = ToTypeNonDuPieces then
-                    CausePieces = OnlyDuPieces ++
-                        [quote(FromTypeStr), words("and"), quote(ToTypeStr),
-                        words("are")] ++
-                        color_as_incorrect(FromTypeNonDuPieces ++
-                            [suffix("s.")])
-                else
-                    CausePieces = OnlyDuPieces ++
-                        [quote(FromTypeStr), words("is a")] ++
-                        color_as_incorrect(FromTypeNonDuPieces ++
-                            [suffix(",")]) ++
-                        [words("while"), quote(ToTypeStr), words("is a")] ++
-                        color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
-                )
-            )
-        )
-    ),
+    CausePieceLists = list.map(describe_coerce_fail(TVarSet), Fails),
+    list.condense(CausePieceLists, CausePieces),
     ( if strip_kind_annotation(FromType) = strip_kind_annotation(ToType) then
         RedundantPieces =
             [words("Also, the type conversion would be redundant anyway.")]
@@ -262,6 +205,94 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
         CausePieces ++ RedundantPieces ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
+
+:- func describe_coerce_fail(tvarset, coerce_fail) = list(format_piece).
+
+describe_coerce_fail(TVarSet, Fail) = Pieces :-
+    % XXX Generate descriptions for ALL kinds of coerce failures.
+    (
+        Fail = different_base_types(_FromType, _FromBaseTypeCtor,
+            _ToType, _ToBaseTypeCtor),
+        Pieces = []
+    ;
+        Fail = unknown_or_nonground_type(_, _, _),
+        Pieces = []
+    ;
+        Fail = incompatible_types(_, _),
+        Pieces = []
+    ;
+        Fail = cannot_coerce_type_vars(_, _),
+        Pieces = []
+    ;
+        Fail = cannot_unify_type_vars(_, _),
+        Pieces = []
+    ;
+        Fail = non_du_type_ctor(FromType, ToType),
+        Pieces = describe_coerce_fail_non_du_type_ctor(TVarSet,
+            FromType, ToType)
+    ;
+        Fail = should_be_invariant_arg(_, _),
+        Pieces = []
+    ).
+
+:- func describe_coerce_fail_non_du_type_ctor(tvarset, mer_type, mer_type)
+    = list(format_piece).
+
+describe_coerce_fail_non_du_type_ctor(TVarSet, FromType, ToType) = Pieces :-
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
+    OnlyDuPieces = [words("You can only coerce"),
+        words("from one discriminated union type to another, and")],
+    describe_if_non_du_type(FromType, FromTypeNonDuPieces),
+    describe_if_non_du_type(ToType, ToTypeNonDuPieces),
+    (
+        FromTypeNonDuPieces = [],
+        (
+            ToTypeNonDuPieces = [],
+            % Either FromTypeNonDuPieces or ToTypeNonDuPieces should be
+            % nonempty, so we shouldn't get here. However, throwing
+            % an exception would only punish an innocent user.
+            Pieces = []
+        ;
+            ToTypeNonDuPieces = [_ | _],
+            Pieces = OnlyDuPieces ++
+                [quote(ToTypeStr), words("is a")] ++
+                color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
+        )
+    ;
+        FromTypeNonDuPieces = [_ | _],
+        (
+            ToTypeNonDuPieces = [],
+            Pieces = OnlyDuPieces ++
+                [quote(FromTypeStr), words("is a")] ++
+                color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")])
+        ;
+            ToTypeNonDuPieces = [_ | _],
+            ( if FromTypeNonDuPieces = ToTypeNonDuPieces then
+                ( if FromTypeStr = ToTypeStr then
+                    Pieces = OnlyDuPieces ++
+                        [quote(FromTypeStr), words("is a")] ++
+                        color_as_incorrect(FromTypeNonDuPieces ++
+                        [suffix(".")])
+                else
+                    Pieces = OnlyDuPieces ++
+                        [quote(FromTypeStr), words("and"), quote(ToTypeStr),
+                        words("are")] ++
+                        color_as_incorrect(FromTypeNonDuPieces ++
+                            [suffix("s.")])
+                )
+            else
+                Pieces = OnlyDuPieces ++
+                    [quote(FromTypeStr), words("is a")] ++
+                    color_as_incorrect(FromTypeNonDuPieces ++
+                        [suffix(",")]) ++
+                    [words("while"), quote(ToTypeStr), words("is a")] ++
+                    color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
+            )
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 report_unresolved_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
         FromType, ToType) = Spec :-
@@ -277,6 +308,8 @@ report_unresolved_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
         quote(ToTypeStr), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
+
+%---------------------------------------------------------------------------%
 
 report_redundant_coerce(ClauseContext, Context, FromVar, TVarSet, FromType) =
         Spec :-
