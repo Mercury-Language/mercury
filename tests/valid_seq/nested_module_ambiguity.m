@@ -30,6 +30,8 @@ main(!IO) :-
 
     :- interface.
 
+    :- import_module list.
+
     :- pred parse_tokens(string::in, list(int)::in, list(int)::out) is det.
 
     :- implementation.

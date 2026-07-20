@@ -86,7 +86,9 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     mq_info_get_modules(!.Info, Modules0),
-    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+    map.foldl(
+        collect_mq_info_in_included_module_info(IntPermissions,
+            ImpPermissions),
         InclMap, Modules0, Modules),
     mq_info_set_modules(Modules, !Info),
 
@@ -241,7 +243,9 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
         _ImpDeclPragmas, _ImpDeclMarkers, ImpPromises),
 
     mq_info_get_modules(!.Info, Modules0),
-    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+    map.foldl(
+        collect_mq_info_in_included_module_info(IntPermissions,
+            ImpPermissions),
         InclMap, Modules0, Modules),
     mq_info_set_modules(Modules, !Info),
 
@@ -286,19 +290,27 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
 
 collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     (
-        ReadWhy1 = rwi1_int_import,
+        ( ReadWhy1 = rwi1_ancestor_int_import
+        ; ReadWhy1 = rwi1_int_import
+        ),
         IntPermInInt = may_use_in_int(may_be_unqualified),
         IntPermInImp = may_use_in_imp(may_be_unqualified)
     ;
-        ReadWhy1 = rwi1_imp_import,
+        ( ReadWhy1 = rwi1_ancestor_imp_import
+        ; ReadWhy1 = rwi1_imp_import
+        ),
         IntPermInInt = may_not_use_in_int,
         IntPermInImp = may_use_in_imp(may_be_unqualified)
     ;
-        ReadWhy1 = rwi1_int_use,
+        ( ReadWhy1 = rwi1_ancestor_int_use
+        ; ReadWhy1 = rwi1_int_use
+        ),
         IntPermInInt = may_use_in_int(must_be_qualified),
         IntPermInImp = may_use_in_imp(must_be_qualified)
     ;
-        ReadWhy1 = rwi1_imp_use,
+        ( ReadWhy1 = rwi1_ancestor_imp_use
+        ; ReadWhy1 = rwi1_imp_use
+        ),
         IntPermInInt = may_not_use_in_int,
         IntPermInImp = may_use_in_imp(must_be_qualified)
     ;
@@ -330,7 +342,8 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
         _ImpTypeClasses),
 
     mq_info_get_modules(!.Info, Modules0),
-    map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
+    map.foldl(
+        collect_mq_info_in_included_module_info_interface_only(IntPermissions),
         InclMap, Modules0, Modules),
     mq_info_set_modules(Modules, !Info),
 
@@ -602,24 +615,27 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     ;
         Role = int3_as_direct_int(ReadWhy3),
         (
-            ( ReadWhy3 = rwi3_direct_ancestor_import
+            ( ReadWhy3 = rwi3_direct_ancestor_int_import
             ; ReadWhy3 = rwi3_direct_int_import
             ),
             PermInInt = may_use_in_int(may_be_unqualified),
             PermInImp = may_use_in_imp(may_be_unqualified)
         ;
-            ( ReadWhy3 = rwi3_direct_ancestor_use
+            ( ReadWhy3 = rwi3_direct_ancestor_int_use
             ; ReadWhy3 = rwi3_direct_int_use
             ; ReadWhy3 = rwi3_indirect_int_use
             ),
             PermInInt = may_use_in_int(must_be_qualified),
             PermInImp = may_use_in_imp(must_be_qualified)
         ;
-            ReadWhy3 = rwi3_direct_imp_import,
+            ( ReadWhy3 = rwi3_direct_ancestor_imp_import
+            ; ReadWhy3 = rwi3_direct_imp_import
+            ),
             PermInInt = may_not_use_in_int,
             PermInImp = may_use_in_imp(may_be_unqualified)
         ;
-            ( ReadWhy3 = rwi3_direct_imp_use
+            ( ReadWhy3 = rwi3_direct_ancestor_imp_use
+            ; ReadWhy3 = rwi3_direct_imp_use
             ; ReadWhy3 = rwi3_indirect_imp_use
             ),
             PermInInt = may_not_use_in_int,
@@ -689,13 +705,12 @@ mode_ctor_to_mq_id(ModeCtor) = Id :-
 %---------------------------------------------------------------------------%
 
 :- pred collect_mq_info_in_included_module_info(module_permissions::in,
-    module_name::in, include_module_info::in,
+    module_permissions::in, module_name::in, include_module_info::in,
     module_id_set::in, module_id_set::out) is det.
 
-collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
-        !Modules) :-
+collect_mq_info_in_included_module_info(IntPermissions, ImpPermissions,
+        ModuleName, InclInfo, !Modules) :-
     InclInfo = include_module_info(Section, _Context),
-    % XXX Why do we test Section if we do the same thing for both int and imp?
     (
         Section = ms_interface,
         Arity = 0,
@@ -703,7 +718,22 @@ collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
     ;
         Section = ms_implementation,
         Arity = 0,
+        id_set_insert(ImpPermissions, mq_id(ModuleName, Arity), !Modules)
+    ).
+
+:- pred collect_mq_info_in_included_module_info_interface_only(
+    module_permissions::in, module_name::in, include_module_info::in,
+    module_id_set::in, module_id_set::out) is det.
+
+collect_mq_info_in_included_module_info_interface_only(IntPermissions,
+        ModuleName, InclInfo, !Modules) :-
+    InclInfo = include_module_info(Section, _Context),
+    (
+        Section = ms_interface,
+        Arity = 0,
         id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules)
+    ;
+        Section = ms_implementation
     ).
 
 :- pred collect_mq_info_in_int_incl_context(module_permissions::in,

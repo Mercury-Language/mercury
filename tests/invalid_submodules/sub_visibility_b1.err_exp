@@ -1,0 +1,4 @@
+sub_visibility_b1.m:008: In module `sub_visibility_b1':
+sub_visibility_b1.m:008:   warning: module [38;5;87m`sub_visibility_b1.sub2'[39;49m is imported
+sub_visibility_b1.m:008:   in the interface, but it is [38;5;203mnot used in the[39;49m
+sub_visibility_b1.m:008:   [38;5;203minterface.[39;49m

@@ -188,7 +188,7 @@
 grab_unqual_imported_modules_make_int(ProgressStream, Globals,
         ParseTreeModuleSrc0, !:AugMakeIntUnit,
         !Baggage, !HaveParseTreeMaps, !IO) :-
-    % The predicates grab_imported_modules_augment and
+    % The predicates grab_qual_imported_modules_augment and
     % grab_unqual_imported_modules_make_int have quite similar tasks.
     % Please keep the corresponding parts of these two predicates in sync.
     %
@@ -234,17 +234,39 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
         % Get the .int0 files of the ancestor modules.
         Ancestors = get_ancestors(ModuleName),
         grab_module_int0_files_for_amiu(ProgressStream, Globals,
-            "unqual_ancestors",
-            Ancestors, set.init, AncestorImports, set.init, AncestorUses,
+            "unqual_ancestors", Ancestors,
+            set.init, AncestorIntImports0, set.init, AncestorImpImports0,
+            set.init, AncestorIntUses0, set.init, AncestorImpUses0,
             !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO),
+
+        % Any modules that are explicitly imported or used by declarations in
+        % the current module have visibility determined by those declarations,
+        % instead of inheriting their visibility from ancestor modules.
+        import_and_or_use_map_to_item_avails(do_not_include_implicit,
+            ImportAndOrUseMap0, ExplicitIntAvails, ExplicitImpAvails),
+        avail_module_names(ExplicitIntAvails ++ ExplicitImpAvails,
+            ExplicitAvailModules),
+        set.difference(AncestorIntImports0, ExplicitAvailModules,
+            AncestorIntImports),
+        set.difference(AncestorImpImports0, ExplicitAvailModules,
+            AncestorImpImports),
+        set.difference(AncestorIntUses0, ExplicitAvailModules,
+            AncestorIntUses),
+        set.difference(AncestorImpUses0, ExplicitAvailModules,
+            AncestorImpUses),
 
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
         set.init(!:ImpIndirectImported),
         grab_module_int3_files(ProgressStream, Globals,
-            "unqual_parent_imported", rwi3_direct_ancestor_import,
-            set.to_sorted_list(AncestorImports),
+            "unqual_parent_int_imported", rwi3_direct_ancestor_int_import,
+            set.to_sorted_list(AncestorIntImports),
             !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_parent_imp_imported", rwi3_direct_ancestor_imp_import,
+            set.to_sorted_list(AncestorImpImports),
+            !ImpIndirectImported, !HaveParseTreeMaps,
             !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(ProgressStream, Globals,
             "unqual_int_imported", rwi3_direct_int_import,
@@ -259,9 +281,14 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
 
         % Get the .int3 files of the modules imported using `use_module'.
         grab_module_int3_files(ProgressStream, Globals,
-            "unqual_parent_used", rwi3_direct_ancestor_use,
-            set.to_sorted_list(AncestorUses),
+            "unqual_parent_int_used", rwi3_direct_ancestor_int_use,
+            set.to_sorted_list(AncestorIntUses),
             !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_parent_imp_used", rwi3_direct_ancestor_imp_use,
+            set.to_sorted_list(AncestorImpUses),
+            !ImpIndirectImported, !HaveParseTreeMaps,
             !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(ProgressStream, Globals,
             "unqual_int_used", rwi3_direct_int_use,
@@ -415,7 +442,7 @@ add_missing_imp_module(ModuleName, !ImportAndOrUseMap) :-
 grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
         ParseTreeModuleSrc0, !:AugCompUnit, !Baggage,
         !HaveParseTreeMaps, !IO) :-
-    % The predicates grab_imported_modules_augment and
+    % The predicates grab_qual_imported_modules_augment and
     % grab_unqual_imported_modules_make_int have quite similar tasks.
     % Please keep the corresponding parts of these two predicates in sync.
     %
@@ -464,10 +491,10 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
         import_and_or_use_map_to_module_name_contexts(ImportUseMap,
             IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
             IntUseImpImportMap),
-        map.keys_as_set(IntImportMap, IntImports0),
-        map.keys_as_set(IntUseMap, IntUses0),
-        ImpImports = map.sorted_keys(ImpImportMap),
-        ImpUses = map.sorted_keys(ImpUseMap),
+        map.keys_as_set(IntImportMap, IntImports),
+        map.keys_as_set(IntUseMap, IntUses),
+        map.keys_as_set(ImpImportMap, ImpImports),
+        map.keys_as_set(ImpUseMap, ImpUses),
         IntUseImpImports = map.sorted_keys(IntUseImpImportMap),
 
         % Get the .int0 files of the ancestor modules.
@@ -479,9 +506,26 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
         % AncestorUsed slightly differently from !.IntImported and !.IntUsed.
         Ancestors = get_ancestors(ModuleName),
         grab_module_int0_files_for_acu(ProgressStream, Globals,
-            "ancestors", rwi0_section,
-            Ancestors, IntImports0, IntImports, IntUses0, IntUses,
+            "ancestors", rwi0_section, Ancestors,
+            set.init, AncestorIntImports0, set.init, AncestorIntUses0,
+            set.init, AncestorImpImports0, set.init, AncestorImpUses0,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+
+        % Any modules that are explicitly imported or used by declarations in
+        % the current module have visibility determined by those declarations,
+        % instead of inheriting their visibility from ancestor modules.
+        import_and_or_use_map_to_item_avails(do_not_include_implicit,
+            ImportUseMap, ExplicitIntAvails, ExplicitImpAvails),
+        avail_module_names(ExplicitIntAvails ++ ExplicitImpAvails,
+            ExplicitAvailModules),
+        set.difference(AncestorIntImports0, ExplicitAvailModules,
+            AncestorIntImports),
+        set.difference(AncestorImpImports0, ExplicitAvailModules,
+            AncestorImpImports),
+        set.difference(AncestorIntUses0, ExplicitAvailModules,
+            AncestorIntUses),
+        set.difference(AncestorImpUses0, ExplicitAvailModules,
+            AncestorImpUses),
 
         % Get the .int files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -489,17 +533,37 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
         set.init(!:IntImpIndirectImported),
         set.init(!:ImpImpIndirectImported),
         grab_module_int1_files(ProgressStream, Globals,
+            "ancestor_int_imported", rwi1_ancestor_int_import,
+            set.to_sorted_list(AncestorIntImports),
+            !IntIndirectImported, !IntImpIndirectImported,
+            !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+        grab_module_int1_files(ProgressStream, Globals,
+            "ancestor_imp_imported", rwi1_ancestor_imp_import,
+            set.to_sorted_list(AncestorImpImports),
+            !ImpIndirectImported, !ImpImpIndirectImported,
+            !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+        grab_module_int1_files(ProgressStream, Globals,
             "int_imported", rwi1_int_import,
             set.to_sorted_list(IntImports),
             !IntIndirectImported, !IntImpIndirectImported,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
         grab_module_int1_files(ProgressStream, Globals,
             "imp_imported", rwi1_imp_import,
-            ImpImports,
+            set.to_sorted_list(ImpImports),
             !ImpIndirectImported, !ImpImpIndirectImported,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
 
         % Get the .int files of the modules imported using `use_module'.
+        grab_module_int1_files(ProgressStream, Globals,
+            "ancestor_int_used", rwi1_ancestor_int_use,
+            set.to_sorted_list(AncestorIntUses),
+            !IntIndirectImported, !IntImpIndirectImported,
+            !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+        grab_module_int1_files(ProgressStream, Globals,
+            "ancestor_imp_used", rwi1_ancestor_imp_use,
+            set.to_sorted_list(AncestorImpUses),
+            !ImpIndirectImported, !ImpImpIndirectImported,
+            !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
         grab_module_int1_files(ProgressStream, Globals,
             "int_used", rwi1_int_use,
             set.to_sorted_list(IntUses),
@@ -507,7 +571,7 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
         grab_module_int1_files(ProgressStream, Globals,
             "imp_used", rwi1_imp_use,
-            ImpUses,
+            set.to_sorted_list(ImpUses),
             !ImpIndirectImported, !ImpImpIndirectImported,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
 
@@ -663,8 +727,13 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, Globals,
     grab_module_int0_files_for_acu(ProgressStream, Globals,
         "opt_int0s", rwi0_opt,
         set.to_sorted_list(OptOnlyModuleAncestors),
-        set.init, OptAncestorImports, set.init, OptAncestorUses,
+        set.init, OptAncestorIntImports, set.init, OptAncestorIntUses,
+        set.init, OptAncestorImpImports, set.init, OptAncestorImpUses,
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+    set.union(OptAncestorIntImports, OptAncestorImpImports,
+        OptAncestorImports),
+    set.union(OptAncestorIntUses, OptAncestorImpUses,
+        OptAncestorUses),
 
     % Figure out which .int files are implicitly needed by the .opt files.
     combine_implicit_needs(cord.list(ImplicitNeedsCord), AllImplicitNeeds),
@@ -812,16 +881,20 @@ grab_module_int3_files_transitively(ProgressStream, Globals, Why, ReadWhy3,
     string::in, read_why_int0::in, list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-grab_module_int0_files_for_acu(_ProgressStream, _Globals, _Why, _ReadWhy0, [],
-        !DirectImports, !DirectUses,
+grab_module_int0_files_for_acu(_ProgressStream, _Globals, _Why, _ReadWhy0,
+        [], !DirectIntImports, !DirectIntUses,
+        !DirectImpImports, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO).
 grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
-        [ModuleName | ModuleNames], !DirectImports, !DirectUses,
+        [ModuleName | ModuleNames], !DirectIntImports, !DirectIntUses,
+        !DirectImpImports, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
@@ -829,20 +902,24 @@ grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
         grab_module_int0_file_for_acu(ProgressStream, Globals, ReadWhy0,
             ModuleName, IntImports, ImpImports, IntUses, ImpUses,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
-        set.union(IntImports, !DirectImports),
-        set.union(ImpImports, !DirectImports),
-        set.union(IntUses, !DirectUses),
-        set.union(ImpUses, !DirectUses)
+        set.union(IntImports, !DirectIntImports),
+        set.union(ImpImports, !DirectImpImports),
+        set.union(IntUses, !DirectIntUses),
+        set.union(ImpUses, !DirectImpUses)
     else
         maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
             ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
-        ModuleNames, !DirectImports, !DirectUses,
+        ModuleNames,
+        !DirectIntImports, !DirectIntUses,
+        !DirectImpImports, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO).
 
 :- pred grab_module_int0_files_for_amiu(io.text_output_stream::in, globals::in,
     string::in, list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -851,10 +928,11 @@ grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
     io::di, io::uo) is det.
 
 grab_module_int0_files_for_amiu(_ProgressStream, _Globals, _Why, [],
-        !DirectImports, !DirectUses,
+        !DirectIntImports, !DirectImpImports, !DirectIntUses, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO).
 grab_module_int0_files_for_amiu(ProgressStream, Globals, Why,
-        [ModuleName | ModuleNames], !DirectImports, !DirectUses,
+        [ModuleName | ModuleNames],
+        !DirectIntImports, !DirectImpImports, !DirectIntUses, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     ReadWhy0 = rwi0_section,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
@@ -863,16 +941,16 @@ grab_module_int0_files_for_amiu(ProgressStream, Globals, Why,
         grab_module_int0_file_for_amiu(ProgressStream, Globals, ModuleName,
             IntImports, ImpImports, IntUses, ImpUses,
             !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO),
-        set.union(IntImports, !DirectImports),
-        set.union(ImpImports, !DirectImports),
-        set.union(IntUses, !DirectUses),
-        set.union(ImpUses, !DirectUses)
+        set.union(IntImports, !DirectIntImports),
+        set.union(ImpImports, !DirectImpImports),
+        set.union(IntUses, !DirectIntUses),
+        set.union(ImpUses, !DirectImpUses)
     else
         maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
             ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int0_files_for_amiu(ProgressStream, Globals, Why, ModuleNames,
-        !DirectImports, !DirectUses,
+        !DirectIntImports, !DirectImpImports, !DirectIntUses, !DirectImpUses,
         !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO).
 
 :- pred grab_module_int1_files(io.text_output_stream::in, globals::in,
@@ -1099,16 +1177,24 @@ grab_module_int1_file(ProgressStream, Globals, ReadWhy1, ModuleName,
         module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
         (
             (
-                ReadWhy1 = rwi1_int_import,
+                ( ReadWhy1 = rwi1_ancestor_int_import
+                ; ReadWhy1 = rwi1_int_import
+                ),
                 RecompAvail = recomp_avail_int_import
             ;
-                ReadWhy1 = rwi1_int_use,
+                ( ReadWhy1 = rwi1_ancestor_int_use
+                ; ReadWhy1 = rwi1_int_use
+                ),
                 RecompAvail = recomp_avail_int_use
             ;
-                ReadWhy1 = rwi1_imp_import,
+                ( ReadWhy1 = rwi1_ancestor_imp_import
+                ; ReadWhy1 = rwi1_imp_import
+                ),
                 RecompAvail = recomp_avail_imp_import
             ;
-                ReadWhy1 = rwi1_imp_use,
+                ( ReadWhy1 = rwi1_ancestor_imp_use
+                ; ReadWhy1 = rwi1_imp_use
+                ),
                 RecompAvail = recomp_avail_imp_use
             ;
                 ReadWhy1 = rwi1_int_use_imp_import,
@@ -1212,22 +1298,24 @@ grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
         module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
         (
             (
-                ReadWhy3 = rwi3_direct_ancestor_import,
+                ( ReadWhy3 = rwi3_direct_ancestor_int_import
+                ; ReadWhy3 = rwi3_direct_int_import
+                ),
                 RecompAvail = recomp_avail_int_import
             ;
-                ReadWhy3 = rwi3_direct_int_import,
-                RecompAvail = recomp_avail_int_import
-            ;
-                ReadWhy3 = rwi3_direct_imp_import,
+                ( ReadWhy3 = rwi3_direct_ancestor_imp_import
+                ; ReadWhy3 = rwi3_direct_imp_import
+                ),
                 RecompAvail = recomp_avail_imp_import
             ;
-                ReadWhy3 = rwi3_direct_ancestor_use,
+                ( ReadWhy3 = rwi3_direct_ancestor_int_use
+                ; ReadWhy3 = rwi3_direct_int_use
+                ),
                 RecompAvail = recomp_avail_int_use
             ;
-                ReadWhy3 = rwi3_direct_int_use,
-                RecompAvail = recomp_avail_int_use
-            ;
-                ReadWhy3 = rwi3_direct_imp_use,
+                ( ReadWhy3 = rwi3_direct_ancestor_imp_use
+                ; ReadWhy3 = rwi3_direct_imp_use
+                ),
                 RecompAvail = recomp_avail_imp_use
             ;
                 ReadWhy3 = rwi3_direct_int_use_imp_import,

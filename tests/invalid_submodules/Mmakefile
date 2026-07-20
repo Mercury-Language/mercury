@@ -30,6 +30,27 @@ MAKE_DEP_ONLY_PROGS = \
 	func_class \
 	nested_impl_in_int
 
+BUG584_PROGS = \
+	bug584
+
+SUB_VISIBILITY_PROGS = \
+	sub_visibility_a1 \
+	sub_visibility_a2 \
+	sub_visibility_a3 \
+	sub_visibility_a4 \
+	sub_visibility_b1 \
+	sub_visibility_b2 \
+	sub_visibility_b3 \
+	sub_visibility_b4 \
+	sub_visibility_c1 \
+	sub_visibility_c2 \
+	sub_visibility_c3 \
+	sub_visibility_c4 \
+	sub_visibility_d1 \
+	sub_visibility_d2 \
+	sub_visibility_d3 \
+	sub_visibility_d4
+
 # XXX The test cases import_in_parent and subtype_submodule are
 # currently disabled, because
 #
@@ -45,11 +66,15 @@ MAKE_DEP_ONLY_PROGS = \
 
 #-----------------------------------------------------------------------------#
 
-PROGS = $(STD_PROGS) $(MAKE_DEP_ONLY_PROGS)
+PROGS = $(STD_PROGS) $(MAKE_DEP_ONLY_PROGS) $(BUG584_PROGS) \
+	$(SUB_VISIBILITY_PROGS)
 # For the MAKE_DEP_ONLY_PROGS, we want to make the dependencies
 # using our own rule below, not the usual rule, which is why we disable
 # the usual rule for them via the -nodepend suffix.
-TESTS = $(sort $(STD_PROGS) $(MAKE_DEP_ONLY_PROGS:%=%-nodepend))
+TESTS = $(sort $(STD_PROGS) \
+		$(MAKE_DEP_ONLY_PROGS:%=%-nodepend) \
+		$(BUG584_PROGS:%=%-nodepend) \
+		$(SUB_VISIBILITY_PROGS:%=%-nodepend))
 include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
@@ -96,6 +121,27 @@ $(MAKE_DEP_ONLY_PROGS:%=%.err): %.err: %.m
 	then false; \
 	else true; \
 	fi
+
+# For this test case, the bug is caught when generating the interface for the
+# helper module.
+bug584.err: %.err: %.m
+	$(MC) --make-short-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		bug584_helper_1
+	$(MC) --make-private-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		bug584_helper_1
+	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		bug584_helper_1 > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+$(SUB_VISIBILITY_PROGS:%=%.err): %.err: %.m
+	{ \
+	$(MC) --make-short-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $< && \
+	$(MC) --make-private-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $< && \
+	$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $< && \
+	$(MC) -C $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $<; \
+	} > $@ 2>&1 || true
 
 $(dates_subdir)undef_mod_qual.date: $(int0s_subdir)undef_mod_qual.int0
 

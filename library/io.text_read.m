@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module bitmap.
+:- import_module char.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -58,7 +59,6 @@
 :- implementation.
 
 :- import_module array.
-:- import_module char.
 :- import_module int.
 :- import_module int64.
 :- import_module io.primitives_read.

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018, 2024-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2024-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -27,6 +27,7 @@
 :- module bit_buffer.write.
 :- interface.
 
+:- import_module bool.
 :- import_module io.
 
 :- type write_buffer(Stream, State).

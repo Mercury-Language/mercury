@@ -7,7 +7,9 @@
 :- module parent_t2.parent_t2_helper_1.
 :- interface.
 
-% module `io' is imported in parent_t2
+% module `io' is imported in the implementation section of parent_t2
+% but that is no longer enough.
+:- import_module io.
 
 :- type t1 == foo.
 :- type t2 == parent_t2.foo.

@@ -1,0 +1,12 @@
+sub_visibility_d3.m:016: In the first argument of function symbol `int_uq' of
+sub_visibility_d3.m:016:   the type `int_uq'/0:
+sub_visibility_d3.m:016:   error: the type [38;5;87m`foo'/0[39;49m is [38;5;203mundefined.[39;49m
+sub_visibility_d3.m:016:   (The module [38;5;87m`sub_visibility_d3.sub2'[39;49m [38;5;203mhas not been[39;49m
+sub_visibility_d3.m:016:   [38;5;203mimported in the interface.)[39;49m
+sub_visibility_d3.m:017: In the first argument of function symbol `int_fq' of
+sub_visibility_d3.m:017:   the type `int_fq'/0:
+sub_visibility_d3.m:017:   error: the type [38;5;87m`sub_visibility_d3.sub2.foo'/0[39;49m is
+sub_visibility_d3.m:017:   [38;5;203mundefined.[39;49m
+sub_visibility_d3.m:017:   (The module [38;5;87m`sub_visibility_d3.sub2'[39;49m [38;5;203mhas not been[39;49m
+sub_visibility_d3.m:017:   [38;5;203mimported in the interface.)[39;49m
+`sub_visibility_d3.sub1.int' and `sub_visibility_d3.sub1.int2' not written.

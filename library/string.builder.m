@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -32,6 +32,7 @@
 :- interface.
 
 :- import_module char.
+:- import_module list.
 :- import_module stream.
 
 %---------------------------------------------------------------------------%
@@ -112,7 +113,6 @@
 :- implementation.
 
 :- import_module int.
-:- import_module list.
 
 %---------------------------------------------------------------------------%
 

@@ -389,7 +389,11 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     (
-        ( ReadWhyInt1 = rwi1_int_import
+        ( ReadWhyInt1 = rwi1_ancestor_int_import
+        ; ReadWhyInt1 = rwi1_ancestor_int_use
+        ; ReadWhyInt1 = rwi1_ancestor_imp_import
+        ; ReadWhyInt1 = rwi1_ancestor_imp_use
+        ; ReadWhyInt1 = rwi1_int_import
         ; ReadWhyInt1 = rwi1_imp_import
         ; ReadWhyInt1 = rwi1_int_use
         ; ReadWhyInt1 = rwi1_imp_use

@@ -188,25 +188,27 @@
 
 :- type recomp_avail
     --->    recomp_avail_src
-            % The module is the souurce module.
+            % The module is the source module.
     ;       recomp_avail_int_import
             % There was an ":- import_module" in the interface section,
-            % or in an ancestor module. In either case, references to
-            % items defined by the read-in module may be made anywhere
-            % in the source module.
+            % or in the interface section of an ancestor module. In either
+            % case, references to items defined by the read-in module may be
+            % made anywhere in the source module.
     ;       recomp_avail_imp_import
             % There was an ":- import_module" in the implementation section,
-            % or in an optimization file. In either case, references to
+            % or in the implementation section of an ancestor module,
+            % or in an optimization file. In all three cases, references to
             % items defined by the read-in module may be made only in
             % in the implementation section of the source module.
     ;       recomp_avail_int_use
             % There was an ":- use_module" in the interface section,
-            % or in an ancestor module. In either case, references to
-            % items defined by the read-in module may be made anywhere
-            % in the source module.
+            % or in the interface section of an ancestor module. In either
+            % case, references to items defined by the read-in module may be
+            % made anywhere in the source module.
     ;       recomp_avail_imp_use
             % There was an ":- use_module" in the implementation section,
-            % or in an optimization file. In either case, references to
+            % or in the implementation section of an ancestor module,
+            % or in an optimization file. In all three cases, references to
             % items defined by the read-in module may be made only in
             % in the implementation section of the source module.
     ;       recomp_avail_int_use_imp_import.

@@ -37,6 +37,7 @@
 :- interface.
 
 :- import_module bitmap.
+:- import_module bool.
 :- import_module io.
 
 :- type read_buffer(Stream, State, Error).

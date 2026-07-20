@@ -136,7 +136,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     % the errors not from the current version !.Info, but from the version
     % that parse_tree_to_hlds has built on top of !.Info by adding all
     % the contents of AugCompUnit to the HLDS. Therefore that call
-    % will occur at the end of the body of inparse_tree_to_hlds.
+    % will occur at the end of the body of parse_tree_to_hlds.
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
@@ -185,6 +185,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
         init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
         collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
+        % XXX rwi0_section doesn't distinguish the import location
         list.foldl(collect_mq_info_in_parse_tree_int0(rwi0_section),
             map.values(AncestorInt0s), !Info),
         list.foldl(collect_mq_info_in_direct_int3_spec,
@@ -200,11 +201,11 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
             NonBlockingUndefSpecs ++ !.ErrSpecs,
 
         globals.lookup_bool_option(Globals, warn_unused_interface_imports,
-            WarnInterfaceImports),
+            WarnUnusedInterfaceImports),
         (
-            WarnInterfaceImports = no
+            WarnUnusedInterfaceImports = no
         ;
-            WarnInterfaceImports = yes,
+            WarnUnusedInterfaceImports = yes,
             get_unused_imports_map(!.Info, UnusedImportsContextsMap),
             map.map_values(warn_unused_interface_import(ModuleName),
                 UnusedImportsContextsMap, UnusedImportsSpecsMap),

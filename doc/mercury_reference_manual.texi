@@ -6804,7 +6804,7 @@ A module may not contain more than one submodule with the same name.
 @menu
 * Nested submodules::
 * Separate submodules::
-* Visibility rules::
+* Submodule visibility rules::
 * Implementation bugs and limitations::
 @end menu
 
@@ -6937,30 +6937,56 @@ is equivalent to
 :- end_module x.
 @end example
 
-@node Visibility rules
-@subsection Visibility rules
+@node Submodule visibility rules
+@subsection Submodule visibility rules
 
 Any declarations in the parent module,
 including those in the parent module's implementation section,
 are visible in the parent's submodules,
 including indirect submodules (i.e.@: sub-submodules, etc.).
-Similarly, declarations in the interfaces of any modules
-imported using an @samp{:- import_module} or a @samp{:- use_module}
-in the parent module
-are visible in the parent's submodules, including indirect submodules.
 
-Declarations in a child module are not visible in the parent module,
+Declarations in a submodule are not visible
+in the submodule's ancestor modules,
 or in ``sibling'' modules (other children of the same parent),
-or in other unrelated modules
-unless the child is explicitly imported using
+or in other unrelated modules,
+unless the submodule is explicitly imported using
 an @samp{:- import_module} or @samp{:- use_module} declaration.
-It is an error to import a module without importing all of its parent modules.
+It is an error to import a module without importing all of its
+ancestor modules.
 
-Note that a submodule for which
+A submodule for which
 the @samp{:- module} or @samp{:- include_module} declaration
 occurs only in the implementation section of the parent module
 may only be imported or used by its parent module
 or by submodules of its parent module.
+@c Note: we do not prevent a submodule declared in the implementation section
+@c from being imported in an interface section. One use for this is to
+@c have submodules that present a public interface to unrelated modules,
+@c but share a private interface amongst themselves.
+
+If a submodule contains
+@samp{:- import_module} or @samp{:- use_module} declarations
+for a module @samp{x},
+then the entities exported by @samp{x}
+are visible in the submodule in the usual way.
+
+Otherwise,
+if a submodule does not import or use @samp{x} directly,
+but @samp{x} is imported by one or more of its ancestor modules through
+@samp{:- import_module} or @samp{:- use_module} declarations,
+then the submodule inherits visibility of
+the entities exported by @samp{x}
+as follows:
+@itemize
+@item
+if @samp{x} is imported in an ancestor module's interface section,
+then the entities exported by @samp{x} are visible to
+both sections of the submodule;
+@item
+if @samp{x} is imported in an ancestor module's implementation section,
+then the entities exported by @samp{x} are visible to
+the implementation section of the submodule.
+@end itemize
 
 As mentioned previously,
 all @samp{:- import_module} and @samp{:- use_module} declarations

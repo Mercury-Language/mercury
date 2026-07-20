@@ -175,6 +175,8 @@
 :- pred avail_imports_uses(list(item_avail)::in,
     list(avail_import_info)::out, list(avail_use_info)::out) is det.
 
+:- pred avail_module_names(list(item_avail)::in, set(module_name)::out) is det.
+
     % Return "import_module" or "use_module", depending on the argument.
     %
 :- func import_or_use_decl_name(import_or_use) = string.
@@ -1363,6 +1365,19 @@ avail_imports_uses([Avail | Avails], !:Imports, !:Uses) :-
     ;
         Avail = avail_use(AvailUseInfo),
         !:Uses = [AvailUseInfo | !.Uses]
+    ).
+
+avail_module_names(Avails, ModuleNamesSet) :-
+    list.map(avail_module_name, Avails, ModuleNames),
+    set.list_to_set(ModuleNames, ModuleNamesSet).
+
+:- pred avail_module_name(item_avail::in, module_name::out) is det.
+
+avail_module_name(Avail, ModuleName) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, _Context, _SN))
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, _Context, _SN))
     ).
 
 import_or_use_decl_name(import_decl) = "import_module".

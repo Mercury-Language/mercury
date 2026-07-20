@@ -685,6 +685,20 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
 acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     (
         (
+            ( ReadWhy1 = rwi1_ancestor_int_import
+            ; ReadWhy1 = rwi1_ancestor_imp_import
+            ),
+            % XXX import_locn does not distinguish where
+            % the ancestor did the import
+            IntImportLocn = import_locn_import_by_ancestor,
+            IntNeedQual = may_be_unqualified
+        ;
+            ( ReadWhy1 = rwi1_ancestor_int_use
+            ; ReadWhy1 = rwi1_ancestor_imp_use
+            ),
+            IntImportLocn = import_locn_import_by_ancestor,
+            IntNeedQual = must_be_qualified
+        ;
             ReadWhy1 = rwi1_int_import,
             IntImportLocn = import_locn_interface,
             IntNeedQual = may_be_unqualified

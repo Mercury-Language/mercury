@@ -161,7 +161,7 @@
     % was *made* available. If a module had redundant import_module
     % and/or use_module declarations, each of these has had a warning
     % generated for it and was then discarded. One of these declarations
-    % can be made redundant redundant not only by another declaration
+    % can be made redundant not only by another declaration
     % of the same kind in the same section, but also by more permissive
     % declarations; import_module declarations grant more permissions
     % than use_module declarations, and declarations in the interface
@@ -885,30 +885,44 @@
             % Add the parse tree to the set of read-int-for-opt interfaces.
 
 :- type read_why_int1
-    --->    rwi1_int_import
+    --->    rwi1_ancestor_int_import
+    ;       rwi1_int_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_import as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_int_import, yet).
+
+    ;       rwi1_ancestor_int_use
     ;       rwi1_int_use
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_int_use, yet).
+
+    ;       rwi1_ancestor_imp_import
     ;       rwi1_imp_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_import as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_imp_import, yet).
+
+    ;       rwi1_ancestor_imp_use
     ;       rwi1_imp_use
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_imp_use, yet).
+
     ;       rwi1_int_use_imp_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use_imp_import as recompilation reason.
+
     ;       rwi1_opt
             % Add the parse tree to the set of read-int-for-opt interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
+
     ;       rwi1_type_repn.
             % The only items that should be paid attention to from this
             % .int file are the type_repn items. They don't need any
@@ -936,41 +950,45 @@
             % XXX TYPE_REPN Do we need a rwi2_type_repn?
 
 :- type read_why_int3
-    --->    rwi3_direct_ancestor_import
-            % Add the parse tree to the set of directly-read interfaces.
-            %
-            % Record recomp_avail_int_import as recompilation reason.
-            % (Since there is no recomp_avail_ancestor_import, yet).
+    --->    rwi3_direct_ancestor_int_import
     ;       rwi3_direct_int_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_import as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_int_import, yet).
+
+    ;       rwi3_direct_ancestor_imp_import
     ;       rwi3_direct_imp_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_import as recompilation reason.
-    ;       rwi3_direct_ancestor_use
-            % Add the parse tree to the set of directly-read interfaces.
-            %
-            % Record recomp_avail_int_use as recompilation reason.
-            % (Since there is no recomp_avail_ancestor_use, yet).
+            % (Since there is no recomp_avail_ancestor_imp_import, yet).
+
+    ;       rwi3_direct_ancestor_int_use
     ;       rwi3_direct_int_use
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_int_use, yet).
+
+    ;       rwi3_direct_ancestor_imp_use
     ;       rwi3_direct_imp_use
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
+            % (Since there is no recomp_avail_ancestor_imp_use, yet).
+
     ;       rwi3_direct_int_use_imp_import
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use_imp_import as recompilation reason.
+
     ;       rwi3_indirect_int_use
             % Add the parse tree to the set of indirectly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
             % (Since there is no recomp_avail_indirect_use_int, yet).
+
     ;       rwi3_indirect_imp_use.
             % Add the parse tree to the set of indirectly-read interfaces.
             %

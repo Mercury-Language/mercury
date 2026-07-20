@@ -17,6 +17,7 @@ MAYBE_J1 = -j1
 SUB_MODULE_PROGS = \
 	accessibility_t1 \
 	accessibility_t2 \
+	accessibility_t3 \
 	backquoted_qualified_ops \
 	class \
 	daf_bug \
