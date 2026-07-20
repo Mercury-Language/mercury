@@ -51,6 +51,8 @@
 :- pred type_ctor_module_name_arity(type_ctor::in,
     module_name::out, string::out, arity::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % Succeed iff type is an "atomic" type - one which can be unified
     % using a simple_test rather than a complicated_unify.
     %
@@ -187,6 +189,8 @@
 :- pred type_ctor_has_hand_defined_rtti(type_ctor::in, hlds_type_body::in)
     is semidet.
 
+%-----------------------------------------------------------------------------%
+
     % Return the base type constructor for a given type constructor.
     % This predicate must only be called with a type constructor that is known
     % to be a subtype or supertype type constructor, not with arbitrary type
@@ -195,11 +199,31 @@
 :- pred get_base_type_ctor(type_table::in, type_ctor::in, type_ctor::out)
     is semidet.
 
+%-----------------------------------------------------------------------------%
+
+:- pred type_ctor_is_du_type(type_table::in, type_ctor::in,
+    hlds_type_defn::out, type_body_du::out) is semidet.
+
+    % get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
+    %   SuperType0, SuperType):
+    %
+    % Return the supertype of a known subtype.
+    % This will substitute the type's arguments into its declared supertype,
+    % which the caller must pass as SuperType0.
+    %
+:- pred get_supertype_of_subtype(tvarset::in,
+    type_ctor::in, list(mer_type)::in, hlds_type_defn::in,
+    mer_type::in, mer_type::out) is det.
+
+    % get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType):
+    %
     % Return the supertype of a type, if any.
     % This will substitute the type's arguments into its declared supertype.
     %
 :- pred get_supertype(type_table::in, tvarset::in, type_ctor::in,
     list(mer_type)::in, mer_type::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
     % Given a type, determine what category its principal constructor
     % falls into.
@@ -221,6 +245,8 @@
     %
 :- func classify_type_defn_body(hlds_type_body) = type_ctor_category.
 
+%-----------------------------------------------------------------------------%
+
     % Report whether it is OK to include a value of the given time
     % in a heap cell allocated with GC_malloc_atomic.
     %
@@ -237,11 +263,15 @@
 :- pred update_type_may_use_atomic_alloc(module_info::in, mer_type::in,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % If the type is a du type or a tuple type, return the list of its
     % constructors.
     %
 :- pred type_constructors(module_info::in, mer_type::in,
     list(constructor)::out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
     % Given a type on which it is possible to have a complete switch, return
     % the number of alternatives. (It is possible to have a complete switch on
@@ -253,6 +283,8 @@
     %
 :- pred switch_type_num_functors(module_info::in, mer_type::in, int::out)
     is semidet.
+
+%-----------------------------------------------------------------------------%
 
     % Work out the types of the arguments of a functor, given the cons_id
     % and type of the functor. Aborts if the functor is existentially typed.
@@ -338,6 +370,8 @@
 :- pred cons_id_is_existq_cons(module_info::in, mer_type::in,
     du_ctor::in) is semidet.
 
+%-----------------------------------------------------------------------------%
+
     % Check whether a type is a no_tag type (i.e. one with only one
     % constructor, and whose one constructor has only one argument).
     %
@@ -349,6 +383,8 @@
 :- pred type_is_no_tag_type(module_info::in, mer_type::in, sym_name::out,
     mer_type::out) is semidet.
 
+%-----------------------------------------------------------------------------%
+
     % du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor):
     %
     % Returns the number of arguments of the specified constructor id,
@@ -356,6 +392,8 @@
     % inserted by polymorphism.m for existentially typed constructors.
     %
 :- func du_ctor_adjusted_arity(module_info, mer_type, du_ctor) = int.
+
+%-----------------------------------------------------------------------------%
 
     % Check if (values/program terms of) the type is NOT allocated in a
     % region in region-based memory management.
@@ -1054,23 +1092,29 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
 
 %-----------------------------------------------------------------------------%
 
-get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
+type_ctor_is_du_type(TypeTable, TypeCtor, TypeDefn, TypeBodyDu) :-
     hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(TypeBodyDu),
-    TypeBodyDu = type_body_du(_, _, subtype_of(SuperType0), _, _, _),
-    require_det (
-        % Create substitution from type parameters to ArgTypes.
-        hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
-        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
-        tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
-        apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
-        map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
+    TypeBody = hlds_du_type(TypeBodyDu).
 
-        % Apply substitution to the declared supertype.
-        apply_renaming_to_type(Renaming, SuperType0, SuperType1),
-        apply_rec_subst_to_type(TSubst, SuperType1, SuperType)
-    ).
+get_supertype_of_subtype(TVarSet, _TypeCtor, ArgTypes, TypeDefn,
+        SuperType0, SuperType) :-
+    % Create substitution from type parameters to ArgTypes.
+    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
+    tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
+    apply_renaming_to_tvars(Renaming, TypeParams0, TypeParams),
+    map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
+
+    % Apply substitution to the declared supertype.
+    apply_renaming_to_type(Renaming, SuperType0, SuperType1),
+    apply_rec_subst_to_type(TSubst, SuperType1, SuperType).
+
+get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
+    type_ctor_is_du_type(TypeTable, TypeCtor, TypeDefn, TypeBodyDu),
+    TypeBodyDu = type_body_du(_, _, subtype_of(SuperType0), _, _, _),
+    get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
+        SuperType0, SuperType).
 
 %-----------------------------------------------------------------------------%
 
