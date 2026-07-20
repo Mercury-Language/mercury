@@ -425,8 +425,6 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
 after_front_end_passes(ProgressStream, ErrorStream, Globals,
         OpModeFrontAndMiddle, MaybeTopModule, MaybeTimestampMap, !.HLDS,
         ExtraObjFiles, !DumpInfo, !MaybeWrittenSpecs, !IO) :-
-    globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
     middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
         !HLDS, !DumpInfo, !MaybeWrittenSpecs, !IO),
 
@@ -524,6 +522,8 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         Succeeded = did_not_succeed
         % An error should have been reported earlier.
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred execute_mlds_java_backend(io.text_output_stream::in, globals::in,
     op_mode_codegen::in, module_name::in, module_info::in,
@@ -640,6 +640,8 @@ execute_llds_c_backend(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
         ExtraObjFiles = []
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred update_recompilation_used_file(io.text_output_stream::in, globals::in,
     module_name::in, maybe_top_module::in, maybe(module_timestamp_map)::in,
     module_info::in, io::di, io::uo) is det.
@@ -661,37 +663,6 @@ update_recompilation_used_file(ProgressStream, Globals, ModuleName,
         TimestampFile, !IO),
     touch_file_datestamp(ProgressStream, Globals, TimestampFile,
         _Succeeded, !IO).
-
-%---------------------%
-
-    % Outputs the file <module_name>.prof, which contains the static
-    % call graph in terms of label names, if the profiling flag is enabled.
-    %
-:- pred maybe_output_prof_call_graph(io.text_output_stream::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
-    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
-    ( if
-        ( ProfileCalls = yes
-        ; ProfileTime = yes
-        )
-    then
-        module_info_get_name(!.HLDS, ModuleName),
-        % XXX LEGACY
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_misc_call_graph_for_prof), ModuleName,
-            ProfFileName, _ProfFileNameProposed, !IO),
-        prof_dependency_graph_to_string(DepGraphStr, !HLDS),
-        write_string_to_file(ProgressStream, Globals,
-            "Writing profiling call graph", ProfFileName, DepGraphStr,
-            _Succeeded, !IO),
-        maybe_report_stats(ProgressStream, Stats, !IO)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_augment.

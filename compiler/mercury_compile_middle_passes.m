@@ -54,6 +54,7 @@
 :- import_module analysis.operations.
 :- import_module backend_libs.
 :- import_module backend_libs.type_ctor_info.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_static_terms.
 :- import_module libs.file_util.
@@ -132,10 +133,11 @@
 
 middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
         !HLDS, !DumpInfo, !.Specs, Specs, !IO) :-
-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
+
+    maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
 
     maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO),
 
@@ -657,6 +659,37 @@ output_analysis_file(ProgressStream, !.HLDS, !DumpInfo,
 % The various component passes of the middle pass.
 % Please keep these predicates in the order of their (first) invocation.
 %
+
+%---------------------------------------------------------------------------%
+
+    % Outputs the file <module_name>.prof, which contains the static
+    % call graph in terms of label names, if the profiling flag is enabled.
+    %
+:- pred maybe_output_prof_call_graph(io.text_output_stream::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
+    ( if
+        ( ProfileCalls = yes
+        ; ProfileTime = yes
+        )
+    then
+        module_info_get_name(!.HLDS, ModuleName),
+        % XXX LEGACY
+        module_name_to_file_name_create_dirs(Globals, $pred,
+            ext_cur_ngs(ext_cur_ngs_misc_call_graph_for_prof), ModuleName,
+            ProfFileName, _ProfFileNameProposed, !IO),
+        prof_dependency_graph_to_string(DepGraphStr, !HLDS),
+        write_string_to_file(ProgressStream, Globals,
+            "Writing profiling call graph", ProfFileName, DepGraphStr,
+            _Succeeded, !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 
