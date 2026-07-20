@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2010-2011 The University of Melbourne.
-% Copyright (C) 2017-2019, 2023, 2025 The Mercury team.
+% Copyright (C) 2017-2019, 2023, 2025-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % A lexeme combines a token with a regexp. The lexer compiles lexemes
@@ -26,6 +26,9 @@
 :- import_module bool.
 :- import_module bitmap.
 :- import_module char.
+:- import_module list.
+
+:- import_module lex.automata.
 
 %---------------------------------------------------------------------------%
 
@@ -76,11 +79,9 @@
 
 :- implementation.
 
-:- import_module lex.automata.
 :- import_module lex.regexp.
 :- import_module lex.convert_NFA_to_DFA.
 
-:- import_module list.
 :- import_module set.
 
 %---------------------------------------------------------------------------%

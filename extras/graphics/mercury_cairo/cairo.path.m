@@ -18,6 +18,8 @@
 :- module cairo.path.
 :- interface.
 
+:- import_module cairo.text.
+
 %---------------------------------------------------------------------------%
 
     % copy_path(Context, Path, !IO):
