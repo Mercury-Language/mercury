@@ -2702,6 +2702,7 @@
 
 :- implementation.
 
+:- import_module hlds.type_classify.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.builtin_lib_types.

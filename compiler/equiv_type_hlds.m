@@ -45,6 +45,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.type_classify.
 :- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.maybe_util.

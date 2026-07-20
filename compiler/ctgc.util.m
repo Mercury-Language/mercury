@@ -102,7 +102,7 @@
 :- implementation.
 
 :- import_module hlds.status.
-:- import_module hlds.type_util.
+:- import_module hlds.type_classify.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.

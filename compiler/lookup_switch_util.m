@@ -147,7 +147,7 @@
 :- implementation.
 
 :- import_module backend_libs.string_encoding.
-:- import_module hlds.type_util.
+:- import_module hlds.type_classify.
 :- import_module libs.
 :- import_module libs.globals.
 

@@ -170,7 +170,7 @@
 
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.type_util.
+:- import_module hlds.type_classify.
 :- import_module libs.optimization_options.
 :- import_module parse_tree.prog_type.
 

@@ -110,6 +110,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.type_classify.
 :- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.file_util.

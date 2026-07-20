@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 2018, 2020, 2022-2025 The Mercury team.
+% Copyright (C) 2018, 2020, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.type_util.
+:- import_module hlds.type_classify.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
