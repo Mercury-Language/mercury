@@ -60,12 +60,8 @@
     %
 :- pred type_to_type_defn(module_info::in, mer_type::in, hlds_type_defn::out)
     is semidet.
-:- pred type_to_type_defn_from_type_table(type_table::in, mer_type::in,
-    hlds_type_defn::out) is semidet.
 
 :- pred type_to_type_defn_body(module_info::in, mer_type::in,
-    hlds_type_body::out) is semidet.
-:- pred type_to_type_defn_body_from_type_table(type_table::in, mer_type::in,
     hlds_type_body::out) is semidet.
 
     % Succeed iff there was either a `where equality is <predname>' or a
@@ -85,15 +81,6 @@
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
     hlds_type_body::in, noncanonical::out) is semidet.
 
-    % Succeed iff the type (not just the principal type constructor) is known
-    % to not have user-defined equality or comparison predicates.
-    %
-    % If the type is a type variable, or is abstract, etc., make the
-    % conservative approximation and fail.
-    %
-:- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
-    mer_type::in) is semidet.
-
 :- pred var_is_or_may_contain_solver_type(module_info::in, var_table::in,
     prog_var::in) is semidet.
 
@@ -109,22 +96,12 @@
 :- pred type_is_or_may_contain_solver_type(module_info::in, mer_type::in)
     is semidet.
 
-:- pred type_has_solver_type_details(module_info::in, mer_type::in,
-    solver_type_details::out) is semidet.
-
-:- pred type_body_has_solver_type_details(module_info::in,
-    hlds_type_body::in, solver_type_details::out) is semidet.
-
 :- pred type_is_solver_type(module_info::in, mer_type::in) is semidet.
-:- pred type_is_solver_type_from_type_table(type_table::in, mer_type::in)
-    is semidet.
 
     % Succeed if the type body is for a solver type.
     %
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
     is semidet.
-:- pred type_body_is_solver_type_from_type_table(type_table::in,
-    hlds_type_body::in) is semidet.
 
     % Succeeds iff one or more of the type constructors for a given
     % type is existentially quantified.
@@ -434,16 +411,8 @@ type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     type_to_ctor(Type, TypeCtor),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
-type_to_type_defn_from_type_table(TypeTable, Type, TypeDefn) :-
-    type_to_ctor(Type, TypeCtor),
-    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
-
 type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
     type_to_type_defn(ModuleInfo, Type, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody).
-
-type_to_type_defn_body_from_type_table(TypeTable, Type, TypeBody) :-
-    type_to_type_defn_from_type_table(TypeTable, Type, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody).
 
 type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
@@ -481,101 +450,6 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, NonCanonical) :-
         fail
     ).
 
-type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type) :-
-    type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type,
-        set.init, _).
-
-:- pred type_definitely_has_no_user_defined_eq_pred_2(module_info::in,
-    mer_type::in, set(mer_type)::in, set(mer_type)::out) is semidet.
-
-type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type, !SeenTypes) :-
-    ( if set.contains(!.SeenTypes, Type) then
-        % Don't loop on recursive types.
-        true
-    else
-        set.insert(Type, !SeenTypes),
-        require_complete_switch [Type]
-        (
-            Type = builtin_type(_)
-        ;
-            Type = tuple_type(Args, _Kind),
-            types_definitely_have_no_user_defined_eq_pred(ModuleInfo,
-                Args, !SeenTypes)
-        ;
-            ( Type = defined_type(_, _, _)
-            ; Type = higher_order_type(_, _, _, _)
-            ; Type = apply_n_type(_, _, _)
-            ; Type = kinded_type(_, _)
-            ),
-            type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-            type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo,
-                Type, TypeBody, !SeenTypes),
-            type_to_ctor_and_args_det(Type, _, Args),
-            types_definitely_have_no_user_defined_eq_pred(ModuleInfo,
-                Args, !SeenTypes)
-        ;
-            Type = type_variable(_, _),
-            fail
-        )
-    ).
-
-:- pred types_definitely_have_no_user_defined_eq_pred(module_info::in,
-    list(mer_type)::in, set(mer_type)::in, set(mer_type)::out) is semidet.
-
-types_definitely_have_no_user_defined_eq_pred(ModuleInfo, Types, !SeenTypes) :-
-    list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
-        Types, !SeenTypes).
-
-:- pred type_body_definitely_has_no_user_defined_equality_pred(module_info::in,
-    mer_type::in, hlds_type_body::in, set(mer_type)::in, set(mer_type)::out)
-    is semidet.
-
-type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
-        TypeBody, !SeenTypes) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        TypeBody = hlds_du_type(TypeBodyDu),
-        ( if
-            TypeBodyDu ^ du_type_is_foreign_type = yes(ForeignTypeBody),
-            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
-        then
-            not foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
-                ForeignTypeBody, _)
-        else
-            TypeBodyDu ^ du_type_canonical = canon,
-            % type_constructors does substitution of types variables.
-            type_constructors(ModuleInfo, Type, Ctors),
-            list.foldl(ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo),
-                Ctors, !SeenTypes)
-        )
-    ;
-        TypeBody = hlds_eqv_type(EqvType),
-        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, EqvType)
-    ;
-        TypeBody = hlds_foreign_type(ForeignTypeBody),
-        not foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo,
-            ForeignTypeBody, _)
-    ;
-        TypeBody = hlds_solver_type(DetailsSolver),
-        DetailsSolver = type_details_solver(_, canon)
-    ;
-        TypeBody = hlds_abstract_type(_),
-        fail
-    ).
-
-:- pred ctor_definitely_has_no_user_defined_eq_pred(module_info::in,
-    constructor::in, set(mer_type)::in, set(mer_type)::out) is semidet.
-
-ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
-    % There must not be any existentially quantified type variables.
-    Ctor = ctor(_, no_exist_constraints, _, Args, _, _),
-    % The data constructor argument types must not have user-defined equality
-    % or comparison predicates.
-    ArgTypes = list.map((func(A) = A ^ arg_type), Args),
-    list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
-        ArgTypes, !SeenTypes).
-
 var_is_or_may_contain_solver_type(ModuleInfo, VarTable, Var) :-
     lookup_var_type(VarTable, Var, Type),
     type_is_or_may_contain_solver_type(ModuleInfo, Type).
@@ -595,28 +469,6 @@ type_is_or_may_contain_solver_type(ModuleInfo, Type) :-
         )
     ).
 
-type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    type_body_has_solver_type_details(ModuleInfo, TypeBody,
-        SolverTypeDetails).
-
-type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
-    require_complete_switch [Type]
-    (
-        Type = hlds_solver_type(DetailsSolver),
-        DetailsSolver =
-            type_details_solver(SolverTypeDetails, _MaybeUserEqComp)
-    ;
-        Type = hlds_eqv_type(EqvType),
-        type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
-    ;
-        ( Type = hlds_du_type(_)
-        ; Type = hlds_foreign_type(_)
-        ; Type = hlds_abstract_type(_)
-        ),
-        fail
-    ).
-
 type_is_solver_type(ModuleInfo, Type) :-
     % XXX We can't assume that type variables refer to solver types
     % because otherwise the compiler will try to construct initialisation
@@ -630,11 +482,6 @@ type_is_solver_type(ModuleInfo, Type) :-
     % Type_to_type_defn_body also fails for type variables.
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     type_body_is_solver_type(ModuleInfo, TypeBody).
-
-type_is_solver_type_from_type_table(TypeTable, Type) :-
-    % XXX The comment in type_is_solver_type applies here as well.
-    type_to_type_defn_body_from_type_table(TypeTable, Type, TypeBody),
-    type_body_is_solver_type_from_type_table(TypeTable, TypeBody).
 
 type_body_is_solver_type(ModuleInfo, TypeBody) :-
     % Please keep in sync with get_body_is_solver_type in add_type.m.
@@ -673,41 +520,6 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
         IsSolverType = non_solver_type
     ),
     IsSolverType = solver_type.
-
-type_body_is_solver_type_from_type_table(TypeTable, TypeBody) :-
-    require_complete_switch [TypeBody]
-    (
-        TypeBody = hlds_solver_type(_),
-        IsSolverType = yes
-    ;
-        TypeBody = hlds_abstract_type(AbstractType),
-        require_complete_switch [AbstractType]
-        (
-            AbstractType = abstract_solver_type,
-            IsSolverType = yes
-        ;
-            ( AbstractType = abstract_type_general
-            ; AbstractType = abstract_dummy_type
-            ; AbstractType = abstract_notag_type
-            ; AbstractType = abstract_type_fits_in_n_bits(_)
-            ; AbstractType = abstract_subtype(_)
-            ),
-            IsSolverType = no
-        )
-    ;
-        TypeBody = hlds_eqv_type(Type),
-        ( if type_is_solver_type_from_type_table(TypeTable, Type) then
-            IsSolverType = yes
-        else
-            IsSolverType = no
-        )
-    ;
-        ( TypeBody = hlds_du_type(_)
-        ; TypeBody = hlds_foreign_type(_)
-        ),
-        IsSolverType = no
-    ),
-    IsSolverType = yes.
 
 type_is_existq_type(ModuleInfo, Type) :-
     type_constructors(ModuleInfo, Type, Constructors),
