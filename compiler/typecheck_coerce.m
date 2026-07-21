@@ -79,23 +79,14 @@ typecheck_coerce(Info, Context, Args, TypeAssignSet0, TypeAssignSet) :-
     else
         unexpected($pred, "coerce requires two arguments")
     ),
-    list.foldl(typecheck_coerce_2(Info, Context, FromVar, ToVar),
-        TypeAssignSet0, [], TypeAssignSet1),
-    ( if
-        TypeAssignSet1 = [],
-        TypeAssignSet0 = [_ | _]
-    then
-        TypeAssignSet = TypeAssignSet0
-    else
-        TypeAssignSet = TypeAssignSet1
-    ).
+    list.map(typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar),
+        TypeAssignSet0, TypeAssignSet).
 
-:- pred typecheck_coerce_2(typecheck_info::in, prog_context::in,
-    prog_var::in, prog_var::in, type_assign::in,
-    type_assign_set::in, type_assign_set::out) is det.
+:- pred typecheck_coerce_in_type_assign(typecheck_info::in, prog_context::in,
+    prog_var::in, prog_var::in, type_assign::in, type_assign::out) is det.
 
-typecheck_coerce_2(Info, Context, FromVar, ToVar, TypeAssign0,
-        !TypeAssignSet) :-
+typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
+        TypeAssign0, TypeAssign) :-
     type_assign_get_var_types(TypeAssign0, VarTypes),
     type_assign_get_typevarset(TypeAssign0, TVarSet),
     type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
@@ -139,8 +130,7 @@ typecheck_coerce_2(Info, Context, FromVar, ToVar, TypeAssign0,
             Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
                 unsatisfiable, CoerceFails),
             add_coerce_constraint(Coercion, TypeAssign0, TypeAssign)
-        ),
-        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        )
     else
         % One or both of the types is not known yet. Add a coercion constraint
         % on the type assignment to be checked after typechecking the clause.
@@ -170,8 +160,7 @@ typecheck_coerce_2(Info, Context, FromVar, ToVar, TypeAssign0,
             MaybeFromType, MaybeToType),
         Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
             need_to_check, [CoerceFail]),
-        add_coerce_constraint(Coercion, TypeAssign2, TypeAssign),
-        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        add_coerce_constraint(Coercion, TypeAssign2, TypeAssign)
     ).
 
 :- pred is_same_type_after_subst(tsubst::in, mer_type::in, mer_type::in)
