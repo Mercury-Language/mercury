@@ -51,9 +51,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.options.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type_subst.
@@ -221,30 +218,28 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
         Fail = incompatible_types(_, _),
         Pieces = []
     ;
-        Fail = cannot_coerce_type_vars(_, _),
-        Pieces = []
-    ;
         Fail = cannot_unify_type_vars(_, _),
         Pieces = []
     ;
-        Fail = non_du_type_ctor(FromType, ToType),
+        Fail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ToTypeDesc),
         Pieces = describe_coerce_fail_non_du_type_ctor(TVarSet,
-            FromType, ToType)
+            FromType, FromTypeDesc, ToType, ToTypeDesc)
     ;
         Fail = should_be_invariant_arg(_, _),
         Pieces = []
     ).
 
-:- func describe_coerce_fail_non_du_type_ctor(tvarset, mer_type, mer_type)
-    = list(format_piece).
+:- func describe_coerce_fail_non_du_type_ctor(tvarset,
+    mer_type, string, mer_type, string) = list(format_piece).
 
-describe_coerce_fail_non_du_type_ctor(TVarSet, FromType, ToType) = Pieces :-
+describe_coerce_fail_non_du_type_ctor(TVarSet, FromType, FromTypeDesc,
+        ToType, ToTypeDesc) = Pieces :-
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
     OnlyDuPieces = [words("You can only coerce"),
         words("from one discriminated union type to another, and")],
-    describe_if_non_du_type(FromType, FromTypeNonDuPieces),
-    describe_if_non_du_type(ToType, ToTypeNonDuPieces),
+    describe_if_non_du_type(FromTypeDesc, FromTypeNonDuPieces),
+    describe_if_non_du_type(ToTypeDesc, ToTypeNonDuPieces),
     (
         FromTypeNonDuPieces = [],
         (
@@ -292,6 +287,15 @@ describe_coerce_fail_non_du_type_ctor(TVarSet, FromType, ToType) = Pieces :-
         )
     ).
 
+:- pred describe_if_non_du_type(string::in, list(format_piece)::out) is det.
+
+describe_if_non_du_type(NonDuDesc, DescPieces) :-
+    ( if NonDuDesc = "" then
+        DescPieces = []
+    else
+        DescPieces = [words(NonDuDesc)]
+    ).
+
 %---------------------------------------------------------------------------%
 
 report_unresolved_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
@@ -324,43 +328,6 @@ report_redundant_coerce(ClauseContext, Context, FromVar, TVarSet, FromType) =
     Severity = severity_warning(warn_redundant_coerce),
     Spec = spec($pred, Severity, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
-
-    % If the given type is du type, return the empty list. Otherwise,
-    % return a description of what kind of non-du type it is.
-    %
-:- pred describe_if_non_du_type(mer_type::in, list(format_piece)::out) is det.
-
-describe_if_non_du_type(Type, DescPieces) :-
-    % Our caller can the article "a" in front of the text we return,
-    % and the plural suffix "s" after the text.
-    (
-        Type = type_variable(_, _),
-        DescPieces = [words("type variable")]
-    ;
-        Type = defined_type(_, _, _),
-        DescPieces = []
-    ;
-        Type = builtin_type(_),
-        DescPieces = [words("builtin type")]
-    ;
-        Type = tuple_type(_, _),
-        DescPieces = [words("tuple type")]
-    ;
-        Type = higher_order_type(PorF, _, _, _),
-        (
-            PorF = pf_function,
-            DescPieces = [words("function type")]
-        ;
-            PorF = pf_predicate,
-            DescPieces = [words("predicate type")]
-        )
-    ;
-        Type = apply_n_type(_, _, _),
-        DescPieces = [words("function type")]
-    ;
-        Type = kinded_type(SubType, _),
-        describe_if_non_du_type(SubType, DescPieces)
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

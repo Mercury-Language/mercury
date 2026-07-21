@@ -130,20 +130,19 @@
                 it_from_type            :: mer_type,
                 it_to_type              :: mer_type
             )
-    ;       cannot_coerce_type_vars(
-                % At least one of these must be a type_var.
-                cctv_from_type          :: mer_type,
-                cctv_to_type            :: mer_type
-            )
     ;       cannot_unify_type_vars(
                 cutv_from_type          :: mer_type,
                 cutv_to_type            :: mer_type
             )
     ;       non_du_type_ctor(
-                % The from-type and the to-type have the same base type_ctor,
-                % but this base type_ctor is not a du type.
+                % At least one of these types is not a du type.
+                % For any non-du type, the description will state
+                % what kind of non-du type it is, such as "builtin type".
+                % For any du type, the description will be the empty string.
                 ndtc_from_type          :: mer_type,
-                ndtc_to_type            :: mer_type
+                ndtc_from_type_desc     :: string,
+                ndtc_to_type            :: mer_type,
+                ndtc_to_type_desc       :: string
             )
     ;       should_be_invariant_arg(
                 % The from-type and to-type are different, even though
