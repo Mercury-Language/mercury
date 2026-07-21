@@ -399,9 +399,9 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
     ;
         FromMaybeDuType = is_du_type(FromDuTypeInfo),
         ToMaybeDuType =   is_du_type(ToDuTypeInfo),
-        compute_base_type_if_du_type(TypeTable, TVarSet,
+        compute_base_type_of_du_type(TypeTable, TVarSet,
             FromDuTypeInfo, FromBaseTypeInfo),
-        compute_base_type_if_du_type(TypeTable, TVarSet,
+        compute_base_type_of_du_type(TypeTable, TVarSet,
             ToDuTypeInfo, ToBaseTypeInfo),
         FromBaseTypeInfo = du_type_info(FromBaseTypeCtor, FromBaseTypeArgTypes,
             FromBaseTypeDefn, FromBaseTypeBodyDu),
@@ -421,8 +421,8 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
             hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
             compute_which_type_params_must_be_invariant(TypeTable,
                 BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars),
-            are_type_params_as_related_as_needed(TypeTable, TVarSet,
-                InvariantTVars, BaseTypeParams,
+            are_actual_param_type_pairs_as_related_as_needed(TypeTable,
+                TVarSet, InvariantTVars, BaseTypeParams,
                 FromBaseTypeArgTypes, ToBaseTypeArgTypes,
                 !TypeAssign, [], CoerceFails)
         else
@@ -515,10 +515,10 @@ classify_is_du_type(TypeTable, Type, MaybeDuType) :-
 
 %---------------------%
 
-:- pred compute_base_type_if_du_type(type_table::in, tvarset::in,
+:- pred compute_base_type_of_du_type(type_table::in, tvarset::in,
     du_type_info::in, du_type_info::out) is det.
 
-compute_base_type_if_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
+compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
     DuTypeInfo = du_type_info(TypeCtor, ArgTypes, TypeDefn, TypeBodyDu),
     MaybeSuperType = TypeBodyDu ^ du_type_supertype,
     (
@@ -540,7 +540,7 @@ compute_base_type_if_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
             MaybeSuperDuType = is_not_du_type(_),
             unexpected($pred, "MaybeSuperDuType != is_du_type")
         ),
-        compute_base_type_if_du_type(TypeTable, TVarSet,
+        compute_base_type_of_du_type(TypeTable, TVarSet,
             SuperDuTypeInfo, BaseTypeInfo)
     ).
 
@@ -594,9 +594,9 @@ acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams, Ctor,
 acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor,
         BaseTypeParams, CtorArg, !InvariantTVars) :-
     CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
-    % Since acc_invariant_tvars_in_ctor_rhs_type is recursive,
+    % Since acc_invariant_tvars_in_ctor_arg_type is recursive,
     % we cannot inline it here.
-    acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor,
+    acc_invariant_tvars_in_ctor_arg_type(TypeTable, BaseTypeCtor,
         BaseTypeParams, CtorArgType, !InvariantTVars).
 
     % We have to scan pretty much all the types that occur
@@ -610,11 +610,11 @@ acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor,
     %
     % - they definitely *will* be identical (as with recursive types).
     %
-:- pred acc_invariant_tvars_in_ctor_rhs_type(type_table::in,
+:- pred acc_invariant_tvars_in_ctor_arg_type(type_table::in,
     type_ctor::in, list(tvar)::in, mer_type::in,
     invariant_tvars::in, invariant_tvars::out) is det.
 
-acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
+acc_invariant_tvars_in_ctor_arg_type(TypeTable, BaseTypeCtor, BaseTypeParams,
         RhsType, !InvariantTVars) :-
     (
         RhsType = builtin_type(_)
@@ -678,7 +678,7 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
                 hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
                 map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
                 apply_subst_to_type(TSubst, EqvType0, EqvType),
-                acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+                acc_invariant_tvars_in_ctor_arg_type(TypeTable,
                     BaseTypeCtor, BaseTypeParams, EqvType, !InvariantTVars)
             )
         else
@@ -687,7 +687,7 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
     ;
         RhsType = tuple_type(ArgTypes, _Kind),
         list.foldl(
-            acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+            acc_invariant_tvars_in_ctor_arg_type(TypeTable,
                 BaseTypeCtor, BaseTypeParams),
             ArgTypes, !InvariantTVars)
     ;
@@ -705,14 +705,14 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
         sorry($pred, "apply_n_type")
     ;
         RhsType = kinded_type(CtorArgType1, _Kind),
-        acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+        acc_invariant_tvars_in_ctor_arg_type(TypeTable,
             BaseTypeCtor, BaseTypeParams, CtorArgType1, !InvariantTVars)
     ).
 
 %---------------------------------------------------------------------------%
 
-    % are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
-    %   TypeParams, FromArgTypes, ToArgTypes, !TypeAssign):
+    % are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
+    %   InvariantTVars, TypeParams, FromArgTypes, ToArgTypes, !TypeAssign):
     %
     % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
     % in the from-type and to-type of the coercion respectively.
@@ -730,14 +730,15 @@ acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
     % the from-type and the to-type do not need to be in a subtype-supertype
     % relationship.
     %
-:- pred are_type_params_as_related_as_needed(type_table::in, tvarset::in,
-    invariant_tvars::in, list(tvar)::in,
-    list(mer_type)::in, list(mer_type)::in,
+:- pred are_actual_param_type_pairs_as_related_as_needed(type_table::in,
+    tvarset::in, invariant_tvars::in,
+    list(tvar)::in, list(mer_type)::in, list(mer_type)::in,
     type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
-are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
-        TypeParams, FromArgTypes, ToArgTypes, !TypeAssign, !CoerceFails) :-
+are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
+        InvariantTVars, TypeParams, FromArgTypes, ToArgTypes,
+        !TypeAssign, !CoerceFails) :-
     ( if
         TypeParams = [],
         FromArgTypes = [],
@@ -749,10 +750,10 @@ are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         FromArgTypes = [HeadFromArgType | TailFromArgTypes],
         ToArgTypes = [HeadToArgType | TailToArgTypes]
     then
-        is_type_param_pair_as_related_as_needed(TypeTable, TVarSet,
+        are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
             InvariantTVars, HeadTypeParam, HeadFromArgType, HeadToArgType,
             !TypeAssign, !CoerceFails),
-        are_type_params_as_related_as_needed(TypeTable, TVarSet,
+        are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
             InvariantTVars, TailTypeParams, TailFromArgTypes, TailToArgTypes,
             !TypeAssign, !CoerceFails)
     else
@@ -763,13 +764,14 @@ are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         unexpected($pred, "length mismatch")
     ).
 
-:- pred is_type_param_pair_as_related_as_needed(type_table::in, tvarset::in,
-    invariant_tvars::in, tvar::in, mer_type::in, mer_type::in,
+:- pred are_actual_param_type_pair_as_related_as_needed(type_table::in,
+    tvarset::in, invariant_tvars::in, tvar::in, mer_type::in, mer_type::in,
     type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
-is_type_param_pair_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
-        TypeVar, FromType, ToType, !TypeAssign, !CoerceFails) :-
+are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
+        InvariantTVars, TypeVar, FromType, ToType,
+        !TypeAssign, !CoerceFails) :-
     ( if set.contains(InvariantTVars, TypeVar) then
         types_compare_as_given(TypeTable, TVarSet, compare_equal,
             FromType, ToType, !TypeAssign, !CoerceFails)
@@ -889,11 +891,15 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgTypesA, _HOInstInfoA, Purity),
-        ( if TypeB = higher_order_type(PredOrFunc, ArgTypesB, _HO, Purity) then
-            % We do not allow subtyping in higher order argument types.
+        TypeA = higher_order_type(PredOrFunc, ArgTypesA, _IA, Purity),
+        % XXX We should return specific coerce_fails for Purity mismatches.
+        % XXX We probably should NOT ignore the higher order inst infos.
+        ( if TypeB = higher_order_type(PredOrFunc, ArgTypesB, _IB, Purity) then
+            % We do not allow subtyping in higher order argument types, so we
+            % pass compare_equal here EVEN IF Comparison is compare_equal_lt.
+            SubComparison = compare_equal,
             corresponding_types_compare_as_given(TypeTable, TVarSet,
-                compare_equal, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
+                SubComparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
         else
             CoerceFail = incompatible_types(TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
