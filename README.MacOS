@@ -17,8 +17,8 @@ Contents
 Mercury on Intel Macs
 ----------------------
 
-Mercury should build and install "out-of-the-box" on Intel Macs using Mac OS X
-10.9 onwards.
+Mercury should build and install "out-of-the-box" on Intel and Apple Silicon
+Macs using Mac OS X 10.9 onwards.
 
 The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
 and only when using GCC version 4.3 or later as the C compiler.
