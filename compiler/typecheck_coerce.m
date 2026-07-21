@@ -87,19 +87,19 @@ typecheck_coerce(Info, Context, Args, TypeAssignSet0, TypeAssignSet) :-
 
 typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
         TypeAssign0, TypeAssign) :-
-    type_assign_get_var_types(TypeAssign0, VarTypes),
-    type_assign_get_typevarset(TypeAssign0, TVarSet),
-    type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
-    type_assign_get_type_bindings(TypeAssign0, TypeBindings),
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    type_assign_get_typevarset(TypeAssign0, TVarSet0),
+    type_assign_get_existq_tvars(TypeAssign0, ExistQTVars0),
+    type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 
-    ( if search_var_type(VarTypes, FromVar, FromType0) then
-        apply_rec_subst_to_type(TypeBindings, FromType0, FromType1),
+    ( if search_var_type(VarTypes0, FromVar, FromType0) then
+        apply_rec_subst_to_type(TypeBindings0, FromType0, FromType1),
         MaybeFromType = yes(FromType1)
     else
         MaybeFromType = no
     ),
-    ( if search_var_type(VarTypes, ToVar, ToType0) then
-        apply_rec_subst_to_type(TypeBindings, ToType0, ToType1),
+    ( if search_var_type(VarTypes0, ToVar, ToType0) then
+        apply_rec_subst_to_type(TypeBindings0, ToType0, ToType1),
         MaybeToType = yes(ToType1)
     else
         MaybeToType = no
@@ -108,12 +108,15 @@ typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
     ( if
         MaybeFromType = yes(FromType),
         MaybeToType = yes(ToType),
-        type_is_ground_except_vars(FromType, ExistQTVars),
-        type_is_ground_except_vars(ToType, ExistQTVars)
+        type_is_ground_except_vars(ExistQTVars0, FromType),
+        type_is_ground_except_vars(ExistQTVars0, ToType)
     then
         % We can compare the types on both sides immediately.
         typecheck_info_get_type_table(Info, TypeTable),
-        typecheck_coerce_between_types(TypeTable, TVarSet,
+        % NOTE The following block of code has a near-duplicate below
+        % in check_coerce_constraint_if_ready, though the two places differ
+        % in how they handle both resolved and not-yet-resolved constraints.
+        typecheck_coerce_between_types(TypeTable, TVarSet0,
             FromType, ToType, TypeAssign0, TypeAssign1, CoerceFails),
         (
             CoerceFails = [],
@@ -156,7 +159,7 @@ typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
                     TypeAssign1, TypeAssign2)
             )
         ),
-        CoerceFail = unknown_or_nonground_type(ExistQTVars,
+        CoerceFail = unknown_or_nonground_type(ExistQTVars0,
             MaybeFromType, MaybeToType),
         Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
             need_to_check, [CoerceFail]),
@@ -795,8 +798,8 @@ check_pending_coerce_constraints_to_fixpoint(TypeTable, Coercions0, Coercions,
     ;
         MadeProgress = yes,
         check_pending_coerce_constraints_to_fixpoint(TypeTable,
-            DelayedCoercions, Coercions2, !TypeAssign),
-        Coercions = KeepCoercions ++ Coercions2
+            DelayedCoercions, Coercions1, !TypeAssign),
+        Coercions = KeepCoercions ++ Coercions1
     ).
 
 :- pred check_pending_coerce_constraints_loop(type_table::in,
@@ -843,13 +846,17 @@ check_coerce_constraint_if_ready(TypeTable, Coercion0, Action, !TypeAssign) :-
     (
         Status0 = need_to_check,
         TypeAssign0 = !.TypeAssign,
-        type_assign_get_typevarset(TypeAssign0, TVarSet),
-        type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
+        type_assign_get_typevarset(TypeAssign0, TVarSet0),
+        type_assign_get_existq_tvars(TypeAssign0, ExistQTVars0),
         type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
         apply_rec_subst_to_type(TypeBindings0, FromType0, FromType),
         apply_rec_subst_to_type(TypeBindings0, ToType0, ToType),
-        ( if type_is_ground_except_vars(FromType, ExistQTVars) then
-            typecheck_coerce_between_types(TypeTable, TVarSet,
+        ( if type_is_ground_except_vars(ExistQTVars0, FromType) then
+            % NOTE The following block of code has a near-duplicate above
+            % in typecheck_coerce_in_type_assign, though the two places differ
+            % in how they handle both resolved and not-yet-resolved
+            % constraints.
+            typecheck_coerce_between_types(TypeTable, TVarSet0,
                 FromType, ToType, TypeAssign0, TypeAssign1, CoerceFails),
             (
                 CoerceFails = [],
@@ -908,6 +915,20 @@ coerce_constraint_is_satisfied(Coercion) :-
         ; Status = not_yet_resolved
         ),
         fail
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Succeeds iff the given type contains no type variables except
+    % for those in the given list.
+    %
+:- pred type_is_ground_except_vars(list(tvar)::in, mer_type::in) is semidet.
+
+type_is_ground_except_vars(Except, Type) :-
+    all [TVar] (
+        type_contains_var(Type, TVar)
+    =>
+        list.contains(Except, TVar)
     ).
 
 %---------------------------------------------------------------------------%

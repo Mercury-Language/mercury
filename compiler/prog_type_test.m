@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -69,11 +69,6 @@
     %
 :- pred type_is_ground(mer_type::in) is semidet.
 :- pred type_is_ground(mer_type::in, ground_type::out) is semidet.
-
-    % Succeeds iff the given type contains no type variables except
-    % for those in the given list.
-    %
-:- pred type_is_ground_except_vars(mer_type::in, list(tvar)::in) is semidet.
 
     % Succeeds iff the given type is not ground.
     %
@@ -206,13 +201,6 @@ types_are_ground([], []).
 types_are_ground([Type | Types], [GroundType | GroundTypes]) :-
     type_is_ground(Type, GroundType),
     types_are_ground(Types, GroundTypes).
-
-type_is_ground_except_vars(Type, Except) :-
-    all [TVar] (
-        type_contains_var(Type, TVar)
-    =>
-        list.contains(Except, TVar)
-    ).
 
 type_is_nonground(Type) :-
     type_contains_var(Type, _).
