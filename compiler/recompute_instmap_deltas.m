@@ -114,18 +114,89 @@ recompute_instmap_delta(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
 recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        GoalExpr0 = switch(Var, Det, Cases0),
-        ( if
-            goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)
-        then
-            Cases = Cases0,
-            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
-        else
-            NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-            recompute_instmap_delta_switch(Params, Var, NonLocals0, InstMap0,
-                InstMapDelta1, Cases0, Cases, !RI)
+        GoalExpr0 = unify(LHS, RHS0, UniMode0, Uni, Context),
+        (
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
+                ArgVarsModes, Det, SubGoal0),
+            ModuleInfo0 = !.RI ^ ri_module_info,
+            instmap.pre_lambda_update(ModuleInfo0, ArgVarsModes,
+                InstMap0, InstMap),
+            recompute_instmap_delta_1(Params, InstMap, _,
+                SubGoal0, SubGoal, !RI),
+            RHS = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
+                ArgVarsModes, Det, SubGoal)
+        ;
+            ( RHS0 = rhs_var(_)
+            ; RHS0 = rhs_functor(_, _, _)
+            ),
+            RHS = RHS0
         ),
-        GoalExpr = switch(Var, Det, Cases)
+        Params = recompute_params(RecomputeAtomic, _),
+        (
+            RecomputeAtomic = no_recomp_atomics,
+            UniMode = UniMode0,
+            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
+        ;
+            RecomputeAtomic = recomp_atomics,
+            recompute_instmap_delta_unify(Params, Uni, UniMode0, UniMode,
+                GoalInfo0, InstMap0, InstMapDelta1, !RI)
+        ),
+        GoalExpr = unify(LHS, RHS, UniMode, Uni, Context)
+    ;
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, _BI, _UC, _Name),
+        Params = recompute_params(RecomputeAtomic, _),
+        (
+            RecomputeAtomic = no_recomp_atomics,
+            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
+        ;
+            RecomputeAtomic = recomp_atomics,
+            recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
+                InstMap0, InstMapDelta1, !RI)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = generic_call(_Details, Vars, Modes, _, Detism),
+        Params = recompute_params(RecomputeAtomic, _),
+        (
+            RecomputeAtomic = no_recomp_atomics,
+            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
+        ;
+            RecomputeAtomic = recomp_atomics,
+            ( if determinism_components(Detism, _, at_most_zero) then
+                instmap_delta_init_unreachable(InstMapDelta1)
+            else
+                ModuleInfo = !.RI ^ ri_module_info,
+                instmap_delta_from_mode_list(ModuleInfo, Vars, Modes,
+                    InstMapDelta1)
+            )
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = call_foreign_proc(_Attr, PredId, ProcId, Args, ExtraArgs,
+            _MTRC, _Impl),
+        Params = recompute_params(RecomputeAtomic, _),
+        (
+            RecomputeAtomic = no_recomp_atomics,
+            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
+        ;
+            RecomputeAtomic = recomp_atomics,
+            ArgVars = list.map(foreign_arg_var, Args),
+            recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
+                InstMap0, InstMapDelta0, !RI),
+            (
+                ExtraArgs = [],
+                InstMapDelta1 = InstMapDelta0
+            ;
+                ExtraArgs = [_ | _],
+                OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
+                ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
+                instmap_delta_restrict(set_of_var.list_to_set(ExtraArgVars),
+                    OldInstMapDelta, ExtraArgsInstMapDelta),
+                instmap_delta_apply_instmap_delta(InstMapDelta0,
+                    ExtraArgsInstMapDelta, large_base, InstMapDelta1)
+            )
+        ),
+        GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
         recompute_instmap_delta_conj(Params, InstMap0, InstMapDelta1,
@@ -144,6 +215,19 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
                 InstMapDelta1, Disjuncts0, Disjuncts, !RI)
         ),
         GoalExpr = disj(Disjuncts)
+    ;
+        GoalExpr0 = switch(Var, Det, Cases0),
+        ( if
+            goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)
+        then
+            Cases = Cases0,
+            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
+        else
+            NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+            recompute_instmap_delta_switch(Params, Var, NonLocals0, InstMap0,
+                InstMapDelta1, Cases0, Cases, !RI)
+        ),
+        GoalExpr = switch(Var, Det, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
@@ -196,90 +280,6 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
                 SubGoal0, SubGoal, !RI)
         ),
         GoalExpr = scope(Reason, SubGoal)
-    ;
-        GoalExpr0 = generic_call(_Details, Vars, Modes, _, Detism),
-        Params = recompute_params(RecomputeAtomic, _),
-        (
-            RecomputeAtomic = no_recomp_atomics,
-            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
-        ;
-            RecomputeAtomic = recomp_atomics,
-            ( if determinism_components(Detism, _, at_most_zero) then
-                instmap_delta_init_unreachable(InstMapDelta1)
-            else
-                ModuleInfo = !.RI ^ ri_module_info,
-                instmap_delta_from_mode_list(ModuleInfo, Vars, Modes,
-                    InstMapDelta1)
-            )
-        ),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, _BI, _UC, _Name),
-        Params = recompute_params(RecomputeAtomic, _),
-        (
-            RecomputeAtomic = no_recomp_atomics,
-            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
-        ;
-            RecomputeAtomic = recomp_atomics,
-            recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
-                InstMap0, InstMapDelta1, !RI)
-        ),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = unify(LHS, RHS0, UniMode0, Uni, Context),
-        (
-            RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
-                ArgVarsModes, Det, SubGoal0),
-            ModuleInfo0 = !.RI ^ ri_module_info,
-            instmap.pre_lambda_update(ModuleInfo0, ArgVarsModes,
-                InstMap0, InstMap),
-            recompute_instmap_delta_1(Params, InstMap, _,
-                SubGoal0, SubGoal, !RI),
-            RHS = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
-                ArgVarsModes, Det, SubGoal)
-        ;
-            ( RHS0 = rhs_var(_)
-            ; RHS0 = rhs_functor(_, _, _)
-            ),
-            RHS = RHS0
-        ),
-        Params = recompute_params(RecomputeAtomic, _),
-        (
-            RecomputeAtomic = no_recomp_atomics,
-            UniMode = UniMode0,
-            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
-        ;
-            RecomputeAtomic = recomp_atomics,
-            recompute_instmap_delta_unify(Params, Uni, UniMode0, UniMode,
-                GoalInfo0, InstMap0, InstMapDelta1, !RI)
-        ),
-        GoalExpr = unify(LHS, RHS, UniMode, Uni, Context)
-    ;
-        GoalExpr0 = call_foreign_proc(_Attr, PredId, ProcId, Args, ExtraArgs,
-            _MTRC, _Impl),
-        Params = recompute_params(RecomputeAtomic, _),
-        (
-            RecomputeAtomic = no_recomp_atomics,
-            InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
-        ;
-            RecomputeAtomic = recomp_atomics,
-            ArgVars = list.map(foreign_arg_var, Args),
-            recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
-                InstMap0, InstMapDelta0, !RI),
-            (
-                ExtraArgs = [],
-                InstMapDelta1 = InstMapDelta0
-            ;
-                ExtraArgs = [_ | _],
-                OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-                ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
-                instmap_delta_restrict(set_of_var.list_to_set(ExtraArgVars),
-                    OldInstMapDelta, ExtraArgsInstMapDelta),
-                instmap_delta_apply_instmap_delta(InstMapDelta0,
-                    ExtraArgsInstMapDelta, large_base, InstMapDelta1)
-            )
-        ),
-        GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
