@@ -926,7 +926,7 @@ origin_user_to_user_dev_string(UserOrDev, OriginUser) = Str :-
         )
     ;
         OriginUser = user_made_lambda(FileName, LineNumber, SeqNum),
-        string.format("lambda expression #%d at %s/%d",
+        string.format("lambda expression #%d at %s:%d",
             [i(SeqNum), s(FileName), i(LineNumber)], Str)
     ;
         OriginUser = user_made_class_method(ClassId, MethodId),
