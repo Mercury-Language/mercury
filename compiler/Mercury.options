@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2002-2009 The University of Melbourne.
-# Copyright (C) 2013, 2015-2025 The Mercury team.
+# Copyright (C) 2013, 2015-2026 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -102,6 +102,8 @@ MCFLAGS-check_hlds.ordering_mode_constraints += --no-warn-obsolete
 MCFLAGS-check_hlds.prop_mode_constraints += --no-warn-obsolete
 
 # Bug workarounds.
+
+MCFLAGS-hlds.make_hlds.make_hlds_passes  += --no-deforestation
 
 # XXX work around a bug that sometimes appears at -O4 and above.
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
