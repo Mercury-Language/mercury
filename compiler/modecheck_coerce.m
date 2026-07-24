@@ -298,31 +298,6 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, ConsExistQTVars,
         )
     ).
 
-:- func uniqueness_for_coerce_result(is_live, uniqueness) = uniqueness.
-
-uniqueness_for_coerce_result(LiveX, UniqX) = UniqY :-
-    (
-        UniqX = shared,
-        UniqY = shared
-    ;
-        ( UniqX = unique
-        ; UniqX = mostly_unique
-        ),
-        (
-            LiveX = is_live,
-            UniqY = shared
-        ;
-            LiveX = is_dead,
-            UniqY = UniqX
-        )
-    ;
-        ( UniqX = clobbered
-        ; UniqX = mostly_clobbered
-        ),
-        % We know that the input must not be clobbered.
-        unexpected($pred, "clobbered")
-    ).
-
 :- pred is_user_inst(inst_name::in) is semidet.
 
 is_user_inst(InstName) :-
@@ -463,7 +438,7 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
             % so BoundFunctorX is acceptable for the result term as well.
             % The only thing we do is to remove uniqueness in the result inst
             % if the input remains live (might not be strictly necessary).
-            copy_bound_functor_for_coerce_result(LiveX,
+            update_bound_functor_uniqueness_for_coerce_result(LiveX,
                 BoundFunctorX, BoundFunctorY),
             MaybeBoundFunctorY = bfoe_ok(BoundFunctorY)
         else
@@ -967,18 +942,20 @@ existq_tvars_contains(ExistQTVars, Type) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred copy_bound_functor_for_coerce_result(is_live::in,
+:- pred update_bound_functor_uniqueness_for_coerce_result(is_live::in,
     bound_functor::in, bound_functor::out) is det.
 
-copy_bound_functor_for_coerce_result(LiveX, BoundFunctorX, BoundFunctorY) :-
+update_bound_functor_uniqueness_for_coerce_result(LiveX,
+        BoundFunctorX, BoundFunctorY) :-
     BoundFunctorX = bound_functor(ConsId, ArgInstsX),
-    list.map(copy_inst_for_coerce_result(LiveX), ArgInstsX, ArgInstsY),
+    list.map(update_inst_uniqueness_for_coerce_result(LiveX),
+        ArgInstsX, ArgInstsY),
     BoundFunctorY = bound_functor(ConsId, ArgInstsY).
 
-:- pred copy_inst_for_coerce_result(is_live::in, mer_inst::in, mer_inst::out)
-    is det.
+:- pred update_inst_uniqueness_for_coerce_result(is_live::in,
+    mer_inst::in, mer_inst::out) is det.
 
-copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
+update_inst_uniqueness_for_coerce_result(LiveX, InstX, InstY) :-
     (
         InstX = ground(UniqX, HOInstInfo),
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
@@ -986,7 +963,7 @@ copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
     ;
         InstX = bound(UniqX, InstResults, BoundFunctorsX),
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
-        list.map(copy_bound_functor_for_coerce_result(LiveX),
+        list.map(update_bound_functor_uniqueness_for_coerce_result(LiveX),
             BoundFunctorsX, BoundFunctorsY),
         InstY = bound(UniqY, InstResults, BoundFunctorsY)
     ;
@@ -994,7 +971,7 @@ copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
         InstY = defined_inst(InstName)
     ;
         InstX = constrained_inst_vars(InstVars, SubInstX),
-        copy_inst_for_coerce_result(LiveX, SubInstX, SubInstY),
+        update_inst_uniqueness_for_coerce_result(LiveX, SubInstX, SubInstY),
         InstY = constrained_inst_vars(InstVars, SubInstY)
     ;
         InstX = not_reached,
@@ -1008,6 +985,31 @@ copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
     ;
         InstX = inst_var(_),
         unexpected($pred, "uninstantiated inst parameter")
+    ).
+
+:- func uniqueness_for_coerce_result(is_live, uniqueness) = uniqueness.
+
+uniqueness_for_coerce_result(LiveX, UniqX) = UniqY :-
+    (
+        UniqX = shared,
+        UniqY = shared
+    ;
+        ( UniqX = unique
+        ; UniqX = mostly_unique
+        ),
+        (
+            LiveX = is_live,
+            UniqY = shared
+        ;
+            LiveX = is_dead,
+            UniqY = UniqX
+        )
+    ;
+        ( UniqX = clobbered
+        ; UniqX = mostly_clobbered
+        ),
+        % We know that the input must not be clobbered.
+        unexpected($pred, "clobbered")
     ).
 
 %---------------------------------------------------------------------------%
