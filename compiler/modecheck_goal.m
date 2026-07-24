@@ -320,8 +320,8 @@ modecheck_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info::in, mode_info::out) is det.
 
 modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
-    GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
-        _Detism),
+    GoalExpr0 = generic_call(GenericCall, ArgVars0, Modes0,
+        _MaybeArgRegs, _Detism),
     mode_checkpoint(enter, "generic_call", GoalInfo0, !ModeInfo),
     CallId = mode_call_generic(GenericCall),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
@@ -329,14 +329,14 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     (
         GenericCall = higher_order(PredVar, _, _, _, _),
-        modecheck_higher_order_call(GenericCall, Args0, Args, Modes,
-            Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 =
-            generic_call(GenericCall, Args, Modes, arg_reg_types_unset, Det),
-        AllArgs0 = [PredVar | Args0],
-        AllArgs = [PredVar | Args],
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
-            InstMap0, GoalExpr, !ModeInfo)
+        modecheck_higher_order_call(GenericCall, ArgVars0, ArgVars, Modes,
+            Detism, ExtraGoals, !ModeInfo),
+        GoalExpr1 = generic_call(GenericCall, ArgVars, Modes,
+            arg_reg_types_unset, Detism),
+        AllArgVars0 = [PredVar | ArgVars0],
+        AllArgVars = [PredVar | ArgVars],
+        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0,
+            AllArgVars0, AllArgVars, InstMap0, GoalExpr, !ModeInfo)
     ;
         % Class method calls are added by polymorphism.m.
         % XXX We should probably fill this in so that
@@ -355,61 +355,62 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             % and not let compilation of this predicate proceed any further.
             unexpected($pred, "unknown event")
         ),
-        modecheck_event_call(Modes, Args0, Args, !ModeInfo),
-        GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            detism_det)
+        modecheck_event_call(Modes, ArgVars0, ArgVars, !ModeInfo),
+        GoalExpr = generic_call(GenericCall, ArgVars, Modes,
+            arg_reg_types_unset, detism_det)
     ;
         GenericCall = cast(CastType),
-        ( CastType = unsafe_type_cast
-        ; CastType = unsafe_type_inst_cast
-        ; CastType = equiv_type_cast
-        ; CastType = exists_cast
-        ),
         ( if
-            goal_info_has_feature(GoalInfo0, feature_keep_constant_binding),
-            mode_info_get_instmap(!.ModeInfo, InstMap),
-            ( if
-                Args0 = [Arg1Prime, _Arg2Prime],
-                Modes0 = [Mode1Prime, Mode2Prime]
-            then
-                Arg1 = Arg1Prime,
-                Mode1 = Mode1Prime,
-                Mode2 = Mode2Prime
-            else
-                unexpected($pred, "bad cast")
-            ),
-            is_in_mode(Mode1, _Mode1ArgInsts),
-            is_out_mode(Mode2, _Mode2ArgInsts),
-            instmap_lookup_var(InstMap, Arg1, Inst1),
-            Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
-            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            ConsId = du_data_ctor(DuCtor),
-            get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepn),
-            ConsRepn ^ cr_tag = shared_local_tag_no_args(_, LocalSectag, _)
+            ArgVars0 = [X0, Y0],
+            Modes0 = [ModeX0, ModeY0]
         then
-            LocalSectag = local_sectag(_, PrimSec, _),
-            SectagWholeWord = uint.cast_to_int(PrimSec),
-            SectagConsId = some_int_const(int_const(SectagWholeWord)),
-            BoundFunctor = bound_functor(SectagConsId, []),
-            BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
-            NewMode2 = from_to_mode(free, BoundInst),
-            Modes = [Mode1, NewMode2]
+            (
+                ( CastType = unsafe_type_cast
+                ; CastType = unsafe_type_inst_cast
+                ; CastType = equiv_type_cast
+                ; CastType = exists_cast
+                ),
+                ( if
+                    goal_info_has_feature(GoalInfo0,
+                        feature_keep_constant_binding),
+                    is_in_mode(ModeX0, _ModeX0ArgInsts),
+                    is_out_mode(ModeY0, _ModeY0ArgInsts),
+                    mode_info_get_instmap(!.ModeInfo, InstMap),
+                    instmap_lookup_var(InstMap, X0, Inst1),
+                    Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
+                    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+                    ConsId = du_data_ctor(DuCtor),
+                    get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepn),
+                    ConsRepn ^ cr_tag =
+                        shared_local_tag_no_args(_, LocalSectag, _)
+                then
+                    LocalSectag = local_sectag(_, PrimSec, _),
+                    SectagWholeWord = uint.cast_to_int(PrimSec),
+                    SectagConsId = some_int_const(int_const(SectagWholeWord)),
+                    BoundFunctor = bound_functor(SectagConsId, []),
+                    BoundInst = bound(Unique, inst_test_results_fgtc,
+                        [BoundFunctor]),
+                    ModeY = from_to_mode(free, BoundInst),
+                    Modes = [ModeX0, ModeY]
+                else
+                    Modes = Modes0
+                ),
+                modecheck_builtin_cast(Modes, ArgVars0, ArgVars, Detism,
+                    ExtraGoals, !ModeInfo)
+            ;
+                CastType = subtype_coerce,
+                modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
+                    Detism, ExtraGoals, !ModeInfo),
+                ArgVars = [X, Y],
+                Modes = [ModeX, ModeY]
+            ),
+            GoalExpr1 = generic_call(GenericCall, ArgVars, Modes,
+                arg_reg_types_unset, Detism),
+            handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0,
+                ArgVars0, ArgVars, InstMap0, GoalExpr, !ModeInfo)
         else
-            Modes = Modes0
-        ),
-        modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
-            InstMap0, GoalExpr, !ModeInfo)
-    ;
-        GenericCall = cast(subtype_coerce),
-        modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals,
-            !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
-            InstMap0, GoalExpr, !ModeInfo)
+            unexpected($pred, "cast with unexpected arity")
+        )
     ),
 
     mode_info_unset_call_context(!ModeInfo),

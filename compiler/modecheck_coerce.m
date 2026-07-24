@@ -21,11 +21,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
-
-:- pred modecheck_coerce(list(prog_var)::in, list(prog_var)::out,
-    list(mer_mode)::in, list(mer_mode)::out, determinism::out,
-    extra_goals::out, mode_info::in, mode_info::out) is det.
+:- pred modecheck_coerce(
+    prog_var::in, prog_var::in, prog_var::out, prog_var::out,
+    mer_mode::in, mer_mode::in, mer_mode::out, mer_mode::out,
+    determinism::out, extra_goals::out, mode_info::in, mode_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -55,6 +54,7 @@
 :- import_module parse_tree.var_table.
 
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -63,10 +63,14 @@
 :- import_module term.
 :- import_module varset.
 
+%---------------------------------------------------------------------------%
+
 :- type modecheck_coerce_result
     --->    coerce_mode_ok(
-                list(prog_var),
-                list(mer_mode),
+                prog_var,   % X
+                prog_var,   % Y
+                mer_mode,   % ModeX
+                mer_mode,   % ModeY
                 extra_goals
             )
     ;       coerce_mode_error.
@@ -77,66 +81,69 @@
 
 %---------------------------------------------------------------------------%
 
-modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals, !ModeInfo) :-
-    ( if Args0 = [X, Y] then
-        mode_info_get_instmap(!.ModeInfo, InstMap),
-        ( if instmap_is_reachable(InstMap) then
-            mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-            mode_info_get_var_table(!.ModeInfo, VarTable),
-            lookup_var_type(VarTable, X, TypeX),
-            lookup_var_type(VarTable, Y, TypeY),
-            instmap_lookup_var(InstMap, X, InstX),
-            instmap_lookup_var(InstMap, Y, InstY),
-            ( if
-                inst_is_ground(ModuleInfo0, TypeX, InstX),
-                not inst_is_clobbered(ModuleInfo0, InstX)
-            then
-                modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY,
-                    InstX, InstY, Result, !ModeInfo),
-                (
-                    Result = coerce_mode_ok(Args, Modes, ExtraGoals),
-                    Det = detism_det
-                ;
-                    Result = coerce_mode_error,
-                    Args = [X, Y],
-                    Modes = Modes0,
-                    Det = detism_erroneous,
-                    ExtraGoals = no_extra_goals
-                )
-            else
-                WaitingVars = set_of_var.make_singleton(X),
-                Reason = input_inst_not_ground(InstX),
-                Error = coerce_error([], TypeX, TypeY, Reason),
-                ModeError = mode_error_coerce_error([Error]),
-                mode_info_error(WaitingVars, ModeError, !ModeInfo),
-                Args = [X, Y],
-                Modes = Modes0,
+modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
+        Det, ExtraGoals, !ModeInfo) :-
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    ( if instmap_is_reachable(InstMap) then
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        lookup_var_type(VarTable, X0, TypeX),
+        lookup_var_type(VarTable, Y0, TypeY),
+        instmap_lookup_var(InstMap, X0, InstX0),
+        instmap_lookup_var(InstMap, Y0, InstY0),
+        ( if
+            inst_is_ground(ModuleInfo0, TypeX, InstX0),
+            not inst_is_clobbered(ModuleInfo0, InstX0)
+        then
+            modecheck_coerce_vars(ModuleInfo0, X0, Y0, TypeX, TypeY,
+                InstX0, InstY0, Result, !ModeInfo),
+            (
+                Result = coerce_mode_ok(X, Y, ModeX, ModeY, ExtraGoals),
+                Det = detism_det
+            ;
+                Result = coerce_mode_error,
+                X = X0,
+                Y = Y0,
+                ModeX = ModeX0,
+                ModeY = ModeY0,
                 Det = detism_erroneous,
                 ExtraGoals = no_extra_goals
             )
         else
-            Args = Args0,
-            Modes = Modes0,
+            WaitingVars = set_of_var.make_singleton(X0),
+            Reason = input_inst_not_ground(InstX0),
+            Error = coerce_error([], TypeX, TypeY, Reason),
+            ModeError = mode_error_coerce_error([Error]),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo),
+            X = X0,
+            Y = Y0,
+            ModeX = ModeX0,
+            ModeY = ModeY0,
             Det = detism_erroneous,
             ExtraGoals = no_extra_goals
         )
     else
-        unexpected($pred, "bad coerce")
+        X = X0,
+        Y = Y0,
+        ModeX = ModeX0,
+        ModeY = ModeY0,
+        Det = detism_erroneous,
+        ExtraGoals = no_extra_goals
     ).
 
 :- pred modecheck_coerce_vars(module_info::in, prog_var::in, prog_var::in,
     mer_type::in, mer_type::in, mer_inst::in, mer_inst::in,
     modecheck_coerce_result::out, mode_info::in, mode_info::out) is det.
 
-modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
-        !ModeInfo) :-
+modecheck_coerce_vars(ModuleInfo0, X0, Y0, TypeX, TypeY, InstX0, InstY0,
+        Result, !ModeInfo) :-
     mode_info_get_pred_id(!.ModeInfo, PredId),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
 
-    mode_info_var_is_live(!.ModeInfo, X, LiveX),
-    mode_info_var_is_live(!.ModeInfo, Y, LiveY),
-    ( if LiveX = is_live, LiveY = is_live then
+    mode_info_var_is_live(!.ModeInfo, X0, LiveX0),
+    mode_info_var_is_live(!.ModeInfo, Y0, LiveY0),
+    ( if LiveX0 = is_live, LiveY0 = is_live then
         BothLive = is_live
     else
         BothLive = is_dead
@@ -145,12 +152,12 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
     ExistQTVars = [],
     RevTermPath0 = [],
     set.init(ExpandedInsts0),
-    modecheck_coerce_make_inst(ModuleInfo0, TVarSet, LiveX, ExistQTVars,
-        RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX, MaybeFinalInstY),
+    modecheck_coerce_make_inst(ModuleInfo0, TVarSet, LiveX0, ExistQTVars,
+        RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX0, MaybeFinalInstY),
     (
         MaybeFinalInstY = ok1(FinalInstY),
         ( if
-            abstractly_unify_inst(TypeX, BothLive, real_unify, InstX,
+            abstractly_unify_inst(TypeX, BothLive, real_unify, InstX0,
                 ground_inst, UnifyInstX, _Det, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
@@ -159,24 +166,22 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
             unexpected($pred, "abstractly_unify_inst failed")
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        modecheck_set_var_inst(X, FinalInstX, no, !ModeInfo),
-        ModeX = from_to_mode(InstX, FinalInstX),
-        ( if inst_is_free(ModuleInfo, InstY) then
-            % Y is free, so bind the coercion result to Y.
-            modecheck_set_var_inst(Y, FinalInstY, no, !ModeInfo),
-            ModeY = from_to_mode(InstY, FinalInstY),
-            Result = coerce_mode_ok([X, Y], [ModeX, ModeY], no_extra_goals)
+        modecheck_set_var_inst(X0, FinalInstX, no, !ModeInfo),
+        ModeX = from_to_mode(InstX0, FinalInstX),
+        ( if inst_is_free(ModuleInfo, InstY0) then
+            % Y0 is free, so bind the coercion result to Y0.
+            modecheck_set_var_inst(Y0, FinalInstY, no, !ModeInfo),
+            ModeY = from_to_mode(InstY0, FinalInstY),
+            Result = coerce_mode_ok(X0, Y0, ModeX, ModeY, no_extra_goals)
         else
-            % Y is bound so bind the coercion result to a fresh variable
-            % YPrime, then unify Y = YPrime.
-            modecheck_info_create_fresh_var(TypeY, YPrime, !ModeInfo),
-            create_var_var_unification(Y, YPrime, TypeY, !.ModeInfo,
-                ExtraGoal),
+            % Y0 is bound, so bind the coercion result to a fresh variable
+            % Y, and then unify Y = Y0.
+            modecheck_info_create_fresh_var(TypeY, Y, !ModeInfo),
+            create_var_var_unification(Y0, Y, TypeY, !.ModeInfo, ExtraGoal),
             ExtraGoals = extra_goals([], [ExtraGoal]),
-            modecheck_set_var_inst(YPrime, FinalInstY, no, !ModeInfo),
+            modecheck_set_var_inst(Y, FinalInstY, no, !ModeInfo),
             ModeYPrime = from_to_mode(free_inst, FinalInstY),
-            Result = coerce_mode_ok([X, YPrime], [ModeX, ModeYPrime],
-                ExtraGoals)
+            Result = coerce_mode_ok(X0, Y, ModeX, ModeYPrime, ExtraGoals)
         )
     ;
         MaybeFinalInstY = error1(Errors),
