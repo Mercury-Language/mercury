@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2021-2025 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -271,15 +271,16 @@
 :-  pred rtti_varmaps_rtti_prog_vars(rtti_varmaps::in, list(prog_var)::out)
     is det.
 
-    % apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst,
+    % apply_renamings_and_subst_to_rtti_varmaps(TRenaming, TSubst, Renaming,
     %   !RttiVarMaps):
     %
     % Apply substitutions to the rtti_varmaps data. First apply TRenaming
-    % to all types, then apply TSubst to all types. Apply Subst to all
+    % to all types, then apply TSubst to all types. Apply Renaming to all
     % prog_vars.
     %
-:- pred apply_substitutions_to_rtti_varmaps(tvar_renaming::in, tsubst::in,
-    prog_var_renaming::in, rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred apply_renamings_and_subst_to_rtti_varmaps(tvar_renaming::in,
+    tsubst::in, prog_var_renaming::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % rtti_varmaps_transform_types(Pred, !RttiVarMaps):
     %
@@ -683,7 +684,8 @@ rtti_varmaps_rtti_prog_vars(RttiVarMaps, Vars) :-
     map.keys(RttiVarMaps ^ rv_tci_constraint_map, TCIVars),
     list.append(TIVars, TCIVars, Vars).
 
-apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
+apply_renamings_and_subst_to_rtti_varmaps(TRenaming, TSubst, Subst,
+        !RttiVarMaps) :-
     ( if
         % Optimize the simple case.
         map.is_empty(Subst),

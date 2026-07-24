@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1347,7 +1347,18 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     ;           free
 
     ;           bound(uniqueness, inst_test_results, list(bound_functor))
-                % The list(bound_functor) must be sorted.
+                % The list(bound_functor) must be sorted, as with list.sort.
+                % This includes the cons_ids inside the bound_functors
+                % being compared lexicographically.
+                %
+                % We cannot compare the cons_ids using their declaration
+                % order in their shared type because we are not (yet)
+                % guaranteed to know what that type is. And even if we could
+                % rely on knowing that, there would be no point.
+                % As far as I (zs) know as of 2026 Jul 23, the only reason
+                % we require sortedness is to allow intersections and unions
+                % between two bound insts to be done in linear time
+                % instead of N log N or quadratic time.
 
     ;           defined_inst(inst_name)
                 % A defined_inst is possibly recursive inst whose value is

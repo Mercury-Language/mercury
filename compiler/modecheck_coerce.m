@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021, 2024-2025 The Mercury team.
+% Copyright (C) 2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
         modecheck_set_var_inst(X, FinalInstX, no, !ModeInfo),
         ModeX = from_to_mode(InstX, FinalInstX),
         ( if inst_is_free(ModuleInfo, InstY) then
-            % Y is free so bind the coercion result to Y.
+            % Y is free, so bind the coercion result to Y.
             modecheck_set_var_inst(Y, FinalInstY, no, !ModeInfo),
             ModeY = from_to_mode(InstY, FinalInstY),
             Result = coerce_mode_ok([X, Y], [ModeX, ModeY], no_extra_goals)
@@ -376,7 +376,8 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
                 inst_result_contains_types_unknown,
                 inst_result_no_type_ctor_propagated
             ),
-            InstY = bound(UniqY, InstResults, BoundFunctorsY),
+            list.sort(BoundFunctorsY, SortedBoundFunctorsY),
+            InstY = bound(UniqY, InstResults, SortedBoundFunctorsY),
             Result = ok1(InstY)
         ;
             DeeperErrors = [_ | _],
@@ -836,7 +837,8 @@ modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
         inst_result_contains_types_unknown,
         inst_result_no_type_ctor_propagated
     ),
-    InstY = bound(UniqY, InstResults, BoundFunctorsY).
+    list.sort(BoundFunctorsY, SortedBoundFunctorsY),
+    InstY = bound(UniqY, InstResults, SortedBoundFunctorsY).
 
 :- pred modecheck_coerce_from_ground_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,

@@ -1108,7 +1108,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     % rtti_varmaps, and apply the type substitution to the var_table.
     list.append(FirstOldNew, LaterOldNew, OldNew),
     map.from_assoc_list(OldNew, OldNewMap),
-    apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
+    apply_renamings_and_subst_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
     rename_vars_in_var_table(Renaming, VarTable0, VarTable),
 

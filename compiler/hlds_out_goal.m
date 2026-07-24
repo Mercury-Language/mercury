@@ -971,7 +971,7 @@ format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
         MaybeWidth = yes(Width),
         WidthStr = " " ++ Width
     ),
-    string.builder.format("%s%%\t%s\t-> %s%s\n",
+    string.builder.format("%s%% %s -> %s%s\n",
         [s(IndentStr), s(VarStr), s(LocnStr), s(WidthStr)], !State),
     format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
         VarLocs, !State).

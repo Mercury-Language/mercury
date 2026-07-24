@@ -62,9 +62,11 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_abstract_type(_)
     then
-        % We expect the builtin types character, float, int, uint and string to
-        % have abstract declarations with no definitions. The following types
-        % from the type_desc module also only have abstract declarations:
+        % We expect the builtin types character, float, int, uint and string
+        % to have abstract declarations with no definitions.
+        %
+        % The following types from the type_desc module also only have
+        % abstract declarations:
         %
         %   - type_desc/0
         %   - pseudo_type_desc/0
@@ -80,7 +82,7 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
             sym_name_get_module_name(SymName, ModuleName),
             not any_mercury_builtin_module(ModuleName),
 
-            % Several of the type defineds in type_desc do not have
+            % Several of the types defined in type_desc do not have
             % Mercury definitions.
             not ModuleName = unqualified("type_desc"),
             not list.member(TypeCtor, BuiltinTypeCtors),

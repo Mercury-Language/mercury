@@ -594,7 +594,7 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
     map.init(EmptyVarRenaming),
 
     % XXX1 See a XXX2 comment below about why this call is here.
-    apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn,
+    apply_renamings_and_subst_to_rtti_varmaps(TypeRenaming, TypeSubn,
         EmptyVarRenaming, RttiVarMaps0, RttiVarMaps1),
 
     % Add entries in the typeinfo_varmap for the extra typeinfos.

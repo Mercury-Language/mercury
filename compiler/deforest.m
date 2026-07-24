@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -128,10 +128,11 @@ deforest_module(ProgressStream, !ModuleInfo) :-
     % cost improvement of new versions a little more accurate and
     % also to avoid redoing optimizations.
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
-    DepList = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
+    BottomUpPredProcIds =
+        dependency_info_get_condensed_bottom_up_sccs(DepInfo),
 
     pd_info_init(ProgressStream, !.ModuleInfo, ProcArgInfo, PDInfo0),
-    list.foldl(deforest_proc, DepList, PDInfo0, PDInfo),
+    list.foldl(deforest_proc, BottomUpPredProcIds, PDInfo0, PDInfo),
     pd_info_get_module_info(PDInfo, !:ModuleInfo),
     module_info_clobber_dependency_info(!ModuleInfo),
     pd_info_get_versions(PDInfo, VersionIndex),
@@ -210,6 +211,8 @@ deforest_proc(PredProcId, !PDInfo) :-
 
 deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
     some [!ModuleInfo, !PredInfo, !ProcInfo, !Goal] (
+        PredProcId = proc(PredId, ProcId),
+        pd_info_enter_pred(PredId, !PDInfo),
         pd_info_get_progress_stream(!.PDInfo, ProgressStream),
         pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
         trace [io(!IO)] (
@@ -232,6 +235,10 @@ deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
                 "after constraints\n", !.Goal, !IO)
         ),
         deforest_goal(!Goal, !PDInfo),
+        trace [io(!IO)] (
+            pd_debug_output_goal(!.PDInfo, "deforest_proc_deltas",
+                "after deforest_goal\n", !.Goal, !IO)
+        ),
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
         proc_info_set_goal(!.Goal, !ProcInfo),
         pd_info_get_changed(!.PDInfo, Changed),
@@ -241,11 +248,19 @@ deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
             pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
             requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
+            trace [io(!IO)] (
+                pd_debug_output_goal(!.PDInfo, "deforest_proc_deltas",
+                    "after requantify\n", !.Goal, !IO)
+            ),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
             proc_info_get_var_table(!.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(recomp_atomics, VarTable, InstVarSet,
                 InstMap0, !Goal, !ModuleInfo),
+            trace [io(!IO)] (
+                pd_debug_output_goal(!.PDInfo, "deforest_proc_deltas",
+                    "after instmap deltas\n", !.Goal, !IO)
+            ),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
@@ -255,7 +270,6 @@ deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
 
             (
                 RerunDet = yes,
-                PredProcId = proc(PredId, ProcId),
                 % If the determinism of some sub-goals has changed,
                 % then we re-run determinism analysis. As with inlining.m,
                 % this avoids problems with inlining erroneous procedures.

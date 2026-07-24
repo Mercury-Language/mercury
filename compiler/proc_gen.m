@@ -124,7 +124,12 @@ generate_module_code(ProgressStream, ModuleInfo, CProcs, !GlobalData) :-
     % Check if we want to use parallel code generation.
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose0),
+    globals.lookup_bool_option(Globals, very_verbose_pred_ids,
+        VeryVerbosePredIds),
+    ( VeryVerbosePredIds = no,  VeryVerbose = VeryVerbose0
+    ; VeryVerbosePredIds = yes, VeryVerbose = yes
+    ),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
 
     (
@@ -151,21 +156,25 @@ generate_module_code(ProgressStream, ModuleInfo, CProcs, !GlobalData) :-
         generate_module_code_par(ProgressStream, ModuleInfo, ConstStructMap,
             PredIds, CProcsCord, !GlobalData)
     else
-        generate_module_code_seq(ProgressStream, VeryVerbose, Statistics,
+        generate_module_code_seq(ProgressStream,
+            VeryVerbose, VeryVerbosePredIds, Statistics,
             ModuleInfo, ConstStructMap, PredIds, CProcsCord, !GlobalData)
     ),
     CProcs = cord.list(CProcsCord).
 
 %---------------------%
 
-:- pred generate_module_code_seq(io.text_output_stream::in, bool::in, bool::in,
+:- pred generate_module_code_seq(io.text_output_stream::in,
+    bool::in, bool::in, bool::in,
     module_info::in, const_struct_map::in, list(pred_id)::in,
     cord(c_procedure)::out, global_data::in, global_data::out) is det.
 
-generate_module_code_seq(ProgressStream, VeryVerbose, Statistics,
+generate_module_code_seq(ProgressStream,
+        VeryVerbose, VeryVerbosePredIds, Statistics,
         ModuleInfo, ConstStructMap, PredIds, CProcsCord, !GlobalData) :-
     list.foldl2(
-        generate_code_for_pred(ProgressStream, VeryVerbose, Statistics,
+        generate_code_for_pred(ProgressStream,
+            VeryVerbose, VeryVerbosePredIds, Statistics,
             ModuleInfo, ConstStructMap),
         PredIds, cord.init, CProcsCord, !GlobalData).
 
@@ -208,7 +217,7 @@ generate_module_code_par(ProgressStream, ModuleInfo, ConstStructMap,
     (
         list.condense(ListsOfPredIdsA, PredIdsA),
         list.foldl2(
-            generate_code_for_pred(ProgressStream, no, no,
+            generate_code_for_pred(ProgressStream, no, no, no,
                 ModuleInfo, ConstStructMap),
             PredIdsA, cord.init, CProcsCordA, GlobalData0, GlobalDataA)
     % XXX the following should be a parallel conjunction
@@ -216,7 +225,7 @@ generate_module_code_par(ProgressStream, ModuleInfo, ConstStructMap,
         list.condense(ListsOfPredIdsB, PredIdsB),
         bump_type_num_counter(type_num_skip, GlobalData0, GlobalData1),
         list.foldl2(
-            generate_code_for_pred(ProgressStream, no, no,
+            generate_code_for_pred(ProgressStream, no, no, no,
                 ModuleInfo, ConstStructMap),
             PredIdsB, cord.init, CProcsCordB0, GlobalData1, GlobalDataB)
     ),
@@ -249,12 +258,14 @@ interleave_loop([H | T], RevAs0, RevAs, RevBs0, RevBs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_code_for_pred(io.text_output_stream::in, bool::in, bool::in,
+:- pred generate_code_for_pred(io.text_output_stream::in,
+    bool::in, bool::in, bool::in,
     module_info::in, const_struct_map::in, pred_id::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_code_for_pred(ProgressStream, VeryVerbose, Statistics, ModuleInfo,
+generate_code_for_pred(ProgressStream,
+        VeryVerbose, VeryVerbosePredIds, Statistics, ModuleInfo,
         ConstStructMap, PredId, !CProcsCord, !GlobalData) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_will_codegen_proc_ids(PredInfo),
@@ -265,8 +276,18 @@ generate_code_for_pred(ProgressStream, VeryVerbose, Statistics, ModuleInfo,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.format(ProgressStream, "%% Generating code for %s\n",
-                    [s(pred_id_to_user_string(ModuleInfo, PredId))], !IO)
+                (
+                    VeryVerbosePredIds = no,
+                    io.format(ProgressStream,
+                        "%% Generating code for %s\n",
+                        [s(pred_id_to_user_string(ModuleInfo, PredId))], !IO)
+                ;
+                    VeryVerbosePredIds = yes,
+                    io.format(ProgressStream,
+                        "%% Generating code for %s (%d)\n",
+                        [s(pred_id_to_user_string(ModuleInfo, PredId)),
+                        i(pred_id_to_int(PredId))], !IO)
+                )
             ),
             (
                 TailProcIds = [],

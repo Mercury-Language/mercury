@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2025 The Mercury team.
+% Copyright (C) 2021-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -221,12 +221,19 @@ format_instance_defn(Info, InstanceDefn, !State) :-
             !State)
     ),
 
-    ConstraintStrs =
-        list.map(mercury_constraint_to_string(TVarSet, VarNamePrint),
-        Constraints),
-    ConstraintsStr = string.join_list(", ", ConstraintStrs),
-    string.builder.format("%s%% Constraints: %s\n",
-        [s(IndentStr), s(ConstraintsStr)], !State),
+    (
+        Constraints = [],
+        string.builder.format("%s%% Constraints: none\n",
+            [s(IndentStr)], !State)
+    ;
+        Constraints = [_ | _],
+        ConstraintStrs =
+            list.map(mercury_constraint_to_string(TVarSet, VarNamePrint),
+            Constraints),
+        ConstraintsStr = string.join_list(", ", ConstraintStrs),
+        string.builder.format("%s%% Constraints: %s\n",
+            [s(IndentStr), s(ConstraintsStr)], !State)
+    ),
 
     (
         Body = instance_body_abstract,

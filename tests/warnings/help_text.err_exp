@@ -771,6 +771,13 @@ Verbosity options
     --very-verbose
         Output very verbose progress messages.
 
+    PRIVATE OPTION
+    --very-verbose-pred-ids
+        Output very verbose progress messages, including pred ids, when
+        generating LLDS target code. This can be helpful when a problem occurs
+        when generating code for a compiler transformed predicate, whose names
+        are not fully printed with -V.
+
     -S
     --statistics
         Output messages about the compiler's time/space usage at the boundaries
@@ -3921,9 +3928,21 @@ Options for developers only
         higher_order.m.
 
     PRIVATE OPTION
+    --debug-inline-pred-id <predid>
+    --no-debug-inline-pred-id
+        Output detailed debugging traces of the inlining process, but only for
+        the given pred id.
+
+    PRIVATE OPTION
     --debug-pd
         Output detailed debugging traces of the partial deduction and
         deforestation process.
+
+    PRIVATE OPTION
+    --debug-pd-pred-id <predid>
+    --no-debug-pd-pred-id
+        Output detailed debugging traces of the partial deduction and
+        deforestation process, but only for the given pred id.
 
     PRIVATE OPTION
     --debug-indirect-reuse

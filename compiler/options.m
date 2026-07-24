@@ -374,6 +374,7 @@
 % Verbosity options
     ;       verbose
     ;       very_verbose
+    ;       very_verbose_pred_ids
     ;       statistics
     ;       verbose_make
     ;       output_compile_error_lines
@@ -1135,7 +1136,9 @@
     ;       debug_term          % term = constraint termination analysis
     ;       debug_dead_proc_elim
     ;       debug_higher_order_specialization
+    ;       debug_inline_pred_id
     ;       debug_pd            % pd = partial deduction/deforestation
+    ;       debug_pd_pred_id
     ;       debug_indirect_reuse
     ;       debug_trail_usage
     ;       debug_unneeded_code
@@ -2321,6 +2324,15 @@ optdb(oc_verbosity, verbose,                           bool(no),
 optdb(oc_verbosity, very_verbose,                      bool(no),
     short_help('V', "very-verbose", [], [
         w("Output very verbose progress messages.")])).
+optdb(oc_verbosity, very_verbose_pred_ids,             bool(no),
+    priv_help("very-verbose-pred-ids", [
+        w("Output very verbose progress messages, including"),
+        % So far, there has been no need for this with MLDS target code,
+        % but it could be easily added.
+        w("pred ids, when generating LLDS target code."),
+        w("This can be helpful when a problem occurs"),
+        w("when generating code for a compiler transformed predicate,"),
+        w("whose names are not fully printed with -V.")])).
 optdb(oc_verbosity, statistics,                        bool(no),
     short_help('S', "statistics", [], [
         w("Output messages about the compiler's time/space usage"),
@@ -5839,10 +5851,18 @@ optdb(oc_dev_verb,  debug_higher_order_specialization, bool(no),
     priv_help("debug-higher-order-specialization", [
         w("Output messages about the procedure specializations done"),
         w("by higher_order.m.")])).
+optdb(oc_dev_verb,  debug_inline_pred_id,              maybe_int(no),
+    priv_arg_help("debug-inline-pred-id", "predid", [
+        w("Output detailed debugging traces of the inlining process,"),
+        w("but only for the given pred id.")])).
 optdb(oc_dev_verb,  debug_pd,                          bool(no),
     priv_help("debug-pd", [
         w("Output detailed debugging traces of the partial deduction"),
         w("and deforestation process.")])).
+optdb(oc_dev_verb,  debug_pd_pred_id,                  maybe_int(no),
+    priv_arg_help("debug-pd-pred-id", "predid", [
+        w("Output detailed debugging traces of the partial deduction"),
+        w("and deforestation process, but only for the given pred id.")])).
 optdb(oc_dev_verb,  debug_indirect_reuse,              bool(no),
     priv_help("debug-indirect-reuse", [
         w("Output detailed debugging traces of the indirect reuse pass"),

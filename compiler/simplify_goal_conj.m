@@ -977,7 +977,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
         simplify_info_set_var_table(VarTable, !Info),
 
         simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
+        apply_renamings_and_subst_to_rtti_varmaps(map.init, map.init, Subn,
             RttiVarMaps0, RttiVarMaps),
         simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -179,7 +179,19 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         mercury_format_uniqueness(Uniq, "bound", S, !U),
         add_string("(", S, !U),
         mercury_format_bound_functors(Lang, InstVarSet, BoundFunctors, S, !U),
-        add_string(")", S, !U)
+        add_string(")", S, !U),
+        ( if
+            Lang = output_debug,
+            list.sort(BoundFunctors, SortedBoundFunctors),
+            BoundFunctors \= SortedBoundFunctors
+        then
+            add_string("\nSHOULD HAVE BEEN SORTED AS (", S, !U),
+            mercury_format_bound_functors(Lang, InstVarSet,
+                SortedBoundFunctors, S, !U),
+            add_string(")", S, !U)
+        else
+            true
+        )
     ;
         Inst = ground(Uniq, HOInstInfo),
         (

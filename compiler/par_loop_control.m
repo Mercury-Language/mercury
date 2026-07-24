@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2023, 2025 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1364,7 +1364,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
 
         % Fix rtti varmaps.
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarmaps0),
-        apply_substitutions_to_rtti_varmaps(map.init, map.init, Remap,
+        apply_renamings_and_subst_to_rtti_varmaps(map.init, map.init, Remap,
             RttiVarmaps0, RttiVarmaps),
         proc_info_set_rtti_varmaps(RttiVarmaps, !ProcInfo),
 

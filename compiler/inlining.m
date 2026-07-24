@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2023, 2025 The Mercury Team.
+% Copyright (C) 2014-2023, 2025-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,9 +32,9 @@
 % It will not inline procedures which have a `:- pragma no_inline(name/arity).'
 %
 % If inlining a procedure takes the total number of variables over a given
-% threshold (from a command-line option), then the procedure is not inlined
-% - note that this means that some calls to a procedure may inlined while
-% others are not.
+% threshold (from a command-line option), then the procedure is not inlined.
+% Note that this means that some calls to a procedure may be inlined
+% while others are not.
 %
 % It builds the call-graph (if necessary) works from the bottom of the
 % call-graph towards the top, first performing inlining on a procedure,
@@ -93,12 +93,13 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
 :- pred inline_in_module(io.text_output_stream::in,
     module_info::in, module_info::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % This heuristic is used for both local and intermodule inlining.
     % XXX No, it isn't; it is not used in this module.
@@ -110,29 +111,32 @@
 
 :- pred is_simple_goal(hlds_goal::in, int::in) is semidet.
 
+%---------------------------------------------------------------------------%
+
     % do_inline_call(ModuleInfo, UnivQVars, Context,
-    %   CalleePredInfo, CalleeProcInfo, Args, Goal,
+    %   CalleePredInfo, CalleeProcInfo, ArgVars, Goal,
     %   !TVarSet, !VarTable, !RttiVarMaps):
     %
     % Given the universally quantified type variables in the caller's type,
     % the pred_info and proc_info for the called procedure, the context
     % and arguments to the call, and various information about the variables
-    % and types in the procedure currently being analysed, rename the goal
-    % for the called procedure so that it can be inlined.
-    % ZZZ
+    % and types in the procedure currently being analysed, return the
+    % body goal of the callee in a form where
+    % - its head variables have been replaced by ArgVars,
+    % - its variables have been renamed apart from the caller's variables,
+    % - the new variables been entered into the caller's TVarSet, VarTable,
+    %   and RttiVarMaps.
+    % In other words, the returned Goal is the result of inlining
+    % the call to CalleeProcInfo with ArgVars.
+    %
+    % This predicate is exported to deforestation.m.
     %
 :- pred do_inline_call(module_info::in, list(tvar)::in, prog_context::in,
     pred_info::in, proc_info::in, list(prog_var)::in, hlds_goal::out,
     tvarset::in, tvarset::out, var_table::in, var_table::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
-    % rename_goal(CalledProcHeadVars, CallArgs,
-    %   CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
-    %   VarRenaming, CalledGoal, RenamedGoal).
-    %
-:- pred rename_goal(list(prog_var)::in, list(prog_var)::in,
-    var_table::in, var_table::in, var_table::out,
-    map(prog_var, prog_var)::out, hlds_goal::in, hlds_goal::out) is det.
+%---------------------------------------------------------------------------%
 
 :- type may_inline_purity_promised_pred
     --->    may_not_inline_purity_promised_pred
@@ -142,6 +146,8 @@
     %   InlinePromisedPure):
     %
     % Determine whether a call to the given predicate can be inlined.
+    %
+    % This predicate is exported to deforestation.m.
     %
 :- pred can_inline_proc(module_info::in, pred_id::in, proc_id::in,
     builtin_state::in, may_inline_purity_promised_pred::in) is semidet.
@@ -159,6 +165,9 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
@@ -171,21 +180,25 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
 
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -195,9 +208,11 @@
     % inlining process. Most (but not all) of these fields hold the
     % values of compiler invocation options.
     %
+    % After construction, the whole inline_params structure is read-only.
 :- type inline_params
     --->    inline_params(
                 ip_progress_stream              :: io.text_output_stream,
+                ip_debug_pred_id                :: maybe(int),
                 ip_simple                       :: maybe_inline_simple,
                 ip_single_use                   :: maybe_inline_single_use,
 
@@ -301,10 +316,12 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     % - the threshold for determining whether to inline the simple conj's
     % - the upper limit on the number of variables we want in procedures;
     %   if inlining a procedure would cause the number of variables to exceed
-    %   this threshold then we don't inline it.
-    % - whether we're in an MLDS grade
+    %   this threshold then we do not inline it.
+    % - whether we are in an MLDS grade
 
     module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_maybe_int_option(Globals, debug_inline_pred_id,
+        MaybeDebugPredId),
     globals.get_opt_tuple(Globals, OptTuple),
     Simple = OptTuple ^ ot_inline_simple,
     SingleUse = OptTuple ^ ot_inline_single_use,
@@ -325,13 +342,14 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     else
         map.init(NeededMap)
     ),
-    Params = inline_params(ProgressStream, Simple, SingleUse, HighLevelCode,
+    Params = inline_params(ProgressStream, MaybeDebugPredId,
+        Simple, SingleUse, HighLevelCode,
         CallCost, CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
 
     % Build the call graph and extract the list of SCCs. We process
     % SCCs bottom up, so that if a caller wants to inline a callee
     % in a lower SCC, it gets the *already optimized* version of the callee.
-    % We don't try to do anything special about calls where the callee
+    % We do not try to do anything special about calls where the callee
     % is in the *same* SCC as the caller.
 
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
@@ -470,7 +488,7 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
         Needed = maybe_eliminable(NumUses),
         NumUses = 1
     ),
-    % Don't inline directly recursive predicates unless explicitly requested.
+    % Do not inline directly recursive predicates unless explicitly requested.
     not goal_calls(CalledGoal, PredProcId),
 
     pred_info_get_origin(PredInfo, Origin),
@@ -487,7 +505,7 @@ is_simple_clause_list(Clauses, SimpleThreshold) :-
 
         % For flat goals, we are more likely to be able to optimize stuff away,
         % so we use a higher threshold.
-        % XXX This should be a separate option, we shouldn't hardcode
+        % XXX This should be a separate option, we should not hardcode
         % the number `3' (which is just a guess).
 
         is_flat_simple_goal(Goal)
@@ -500,7 +518,7 @@ is_simple_goal(CalledGoal, SimpleThreshold) :-
     ;
         % For flat goals, we are more likely to be able to optimize stuff away,
         % so we use a higher threshold.
-        % XXX this should be a separate option, we shouldn't hardcode
+        % XXX this should be a separate option, we should not hardcode
         % the number `3' (which is just a guess).
 
         Size < SimpleThreshold * 3,
@@ -574,8 +592,23 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
 
         PredProcId = proc(PredId, ProcId),
 
+        MaybeDebugPredId = Params ^ ip_debug_pred_id,
+        ( if
+            MaybeDebugPredId = yes(DebugPredId),
+            pred_id_to_int(PredId) = DebugPredId
+        then
+            MaybeDebugStream = yes(Params ^ ip_progress_stream)
+        else
+            MaybeDebugStream = no
+        ),
+
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         pred_info_proc_info(!.PredInfo, ProcId, !:ProcInfo),
+
+        trace [io(!IO)] (
+            maybe_dump_proc_goal(MaybeDebugStream, "start", yes(PredId),
+                !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
+        ),
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
@@ -602,6 +635,11 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
 
+        trace [io(!IO)] (
+            maybe_dump_proc_goal(MaybeDebugStream, "inlined", no,
+                !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
+        ),
+
         (
             InlinedParallel = we_have_inlined_parallel_conj,
             proc_info_set_has_parallel_conj(has_parallel_conj, !ProcInfo)
@@ -619,7 +657,12 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             % generate those caller variables can be optimized away.
             requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(recomp_atomics,
-                !ProcInfo, !ModuleInfo)
+                !ProcInfo, !ModuleInfo),
+
+            trace [io(!IO)] (
+                maybe_dump_proc_goal(MaybeDebugStream, "instmap_deltas", no,
+                    !.ModuleInfo, !.PredInfo, !.ProcInfo, !IO)
+            )
         ;
             DidInlining = we_have_not_inlined
         ),
@@ -628,7 +671,13 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
 
         (
             PurityChanged = have_changed_purity,
-            repuritycheck_proc(!.ModuleInfo, PredProcId, !PredInfo)
+            repuritycheck_proc(!.ModuleInfo, PredProcId, !PredInfo),
+
+            trace [io(!IO)] (
+                pred_info_proc_info(!.PredInfo, ProcId, PurityProcInfo),
+                maybe_dump_proc_goal(MaybeDebugStream, "repuritycheck", no,
+                    !.ModuleInfo, !.PredInfo, PurityProcInfo, !IO)
+            )
         ;
             PurityChanged = have_not_changed_purity
         ),
@@ -642,10 +691,47 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             DetChanged = may_have_changed_detism,
             ProgressStream = Params ^ ip_progress_stream,
             det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId,
-                !ModuleInfo)
+                !ModuleInfo),
+
+            trace [io(!IO)] (
+                module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+                    DetPredInfo, DetProcInfo),
+                maybe_dump_proc_goal(MaybeDebugStream, "det_infer_proc", no,
+                    !.ModuleInfo, DetPredInfo, DetProcInfo, !IO)
+            )
         ;
             DetChanged = have_not_changed_detism
         )
+    ).
+
+:- pred maybe_dump_proc_goal(maybe(io.text_output_stream)::in, string::in,
+    maybe(pred_id)::in, module_info::in, pred_info::in, proc_info::in,
+    io::di, io::uo) is det.
+
+maybe_dump_proc_goal(MaybeDebugStream, Desc, MaybePredId, ModuleInfo,
+        PredInfo, ProcInfo, !IO) :-
+    (
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
+        (
+            MaybePredId = no,
+            io.format(DebugStream, "\n%s:\n", [s(Desc)], !IO)
+        ;
+            MaybePredId = yes(PredId),
+            io.format(DebugStream, "\n%s for pred id %d:\n",
+                [s(Desc), i(pred_id_to_int(PredId))], !IO)
+        ),
+        module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals, output_debug),
+        proc_info_get_var_table(ProcInfo, VarTable),
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        proc_info_get_goal(ProcInfo, Goal),
+        write_goal_nl(OutInfo, DebugStream, ModuleInfo,
+            vns_var_table(VarTable), print_name_and_num, TVarSet, InstVarSet,
+            1u, "\n", Goal, !IO),
+        io.flush_output(DebugStream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -928,10 +1014,10 @@ do_inline_call(ModuleInfo, ExternalTypeParams, CallContext,
     % either for the caller or callee, since for any type vars in the
     % callee which get bound to type vars in the caller, the type_info
     % location will be given by the entry in the caller's type_info
-    % locations map (and vice versa).  It doesn't matter if the final
+    % locations map (and vice versa). It does not matter if the final
     % type_info locations map contains some entries for type variables
     % which have been substituted away, because those entries simply
-    % won't be used.
+    % will not be used.
 
     lookup_var_types(CalleeVarTable1, HeadVars, HeadTypes),
     lookup_var_types(VarTable0, ArgVars, ArgTypes),
@@ -956,26 +1042,34 @@ do_inline_call(ModuleInfo, ExternalTypeParams, CallContext,
     ),
 
     % Now rename apart the variables in the called goal.
-    rename_goal(HeadVars, ArgVars, VarTable1, CalleeVarTable, VarTable,
-        Subn, CalleeBodyGoal, Goal0),
+    rename_vars_in_goal(HeadVars, ArgVars, VarTable1, CalleeVarTable, VarTable,
+        Renaming, CalleeBodyGoal, Goal0),
     goal_set_context(CallContext, Goal0, Goal),
 
-    apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn, Subn,
+    apply_renamings_and_subst_to_rtti_varmaps(TypeRenaming, TypeSubn, Renaming,
         CalleeRttiVarMaps0, CalleeRttiVarMaps1),
 
     % Prefer the type_info_locn from the caller.
     % The type_infos or typeclass_infos passed to the callee may have been
     % produced by extracting type_infos or typeclass_infos from
-    % typeclass_infos in the caller, so they won't necessarily be the same.
+    % typeclass_infos in the caller, so they will not necessarily be the same.
     rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
 
-rename_goal(HeadVars, ArgVars, VarTable0, CalleeVarTable, VarTable,
-        Renaming, CalledGoal, Goal) :-
+    % rename_vars_in_goal(CalledProcHeadVars, CallArgs,
+    %   CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
+    %   VarRenaming, CalledGoal, RenamedGoal).
+    %
+:- pred rename_vars_in_goal(list(prog_var)::in, list(prog_var)::in,
+    var_table::in, var_table::in, var_table::out,
+    prog_var_renaming::out, hlds_goal::in, hlds_goal::out) is det.
+
+rename_vars_in_goal(HeadVars, ArgVars, VarTable0, CalleeVarTable, VarTable,
+        Renaming, CalleeBodyGoal, Goal) :-
     map.from_corresponding_lists(HeadVars, ArgVars, Renaming0),
     var_table_vars(CalleeVarTable, CalleeListOfVars),
     clone_variables(CalleeListOfVars, CalleeVarTable,
         VarTable0, VarTable, Renaming0, Renaming),
-    must_rename_vars_in_goal(Renaming, CalledGoal, Goal).
+    must_rename_vars_in_goal(Renaming, CalleeBodyGoal, Goal).
 
 %---------------------------------------------------------------------------%
 
@@ -994,7 +1088,7 @@ rename_goal(HeadVars, ArgVars, VarTable0, CalleeVarTable, VarTable,
     % Check to see if we should inline the callee at a call site.
     %
     % Returns should_not_inline if the called predicate cannot be inlined,
-    % e.g. because it is a builtin, we don't have code for it, etc,
+    % e.g. because it is a builtin, we do not have code for it, etc,
     % or if the callee is simply not in the set of procedures
     % that we have earlier decided we should inline.
     %
@@ -1048,6 +1142,8 @@ should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
         ShouldInline = should_not_inline
     ).
 
+%---------------------------------------------------------------------------%
+
 can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
         MayInlinePromisedPure) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -1061,11 +1157,11 @@ can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
 
 can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
         MayInlinePurityPromisedPred) :-
-    % Don't inline builtins, the code generator will handle them.
+    % Do not inline builtins; the code generator will handle them.
     BuiltinState = not_builtin,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
 
-    % Don't try to inline imported predicates, since we don't
+    % Do not try to inline imported predicates, since we do not
     % have the code for them.
     not pred_info_is_imported(PredInfo),
 
@@ -1077,15 +1173,15 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
     ),
 
     % Only try to inline procedures which are evaluated using normal
-    % evaluation. Currently we can't inline procs evaluated using any of the
+    % evaluation. Currently we cannot inline procs evaluated using any of the
     % other methods because the code generator for the methods can only handle
     % whole procedures not code fragments.
     proc_info_get_eval_method(ProcInfo, eval_normal),
 
-    % Don't inline anything we have been specifically requested not to inline.
+    % Do not inline anything we have been specifically requested not to inline.
     not pred_info_requested_no_inlining(PredInfo),
 
-    % Don't inline any procedure whose complexity we are trying to determine,
+    % Do not inline any procedure whose complexity we are trying to determine,
     % since the complexity transformation can't transform *part* of a
     % procedure.
     module_info_get_maybe_complexity_proc_map(ModuleInfo,
@@ -1114,7 +1210,7 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
             ok_to_inline_language(ForeignLanguage, Target)
         ),
 
-        % Don't inline a foreign_proc if it is has been marked with the
+        % Do not inline a foreign_proc if it is has been marked with the
         % attribute that requests the code not be duplicated.
         (
             MaybeMayDuplicate = get_may_duplicate(ForeignAttributes)
@@ -1143,7 +1239,7 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
     (
         MayInlinePurityPromisedPred = may_inline_purity_promised_pred
     ;
-        % For some optimizations (such as deforestation) we don't want to
+        % For some optimizations (such as deforestation) we do not want to
         % inline predicates which are promised pure because the extra impurity
         % propagated through the goal will defeat any attempts at optimization.
         %
