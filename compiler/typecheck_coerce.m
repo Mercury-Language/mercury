@@ -417,12 +417,14 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
             % definitions and their bodies must be the same as well.
             BaseTypeDefn = FromBaseTypeDefn,
             BaseTypeBodyDu = FromBaseTypeBodyDu,
-            % Check the variance of type arguments.
-            hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
+            hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeCtorParams),
+            % Check the variance of type parameters, in the sense of
+            % https://en.wikipedia.org/wiki/Type_variance.
             compute_which_type_params_must_be_invariant(TypeTable,
-                BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars),
+                BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu,
+                InvariantTVars),
             are_actual_param_type_pairs_as_related_as_needed(TypeTable,
-                TVarSet, InvariantTVars, BaseTypeParams,
+                TVarSet, InvariantTVars, BaseTypeCtorParams,
                 FromBaseTypeArgTypes, ToBaseTypeArgTypes,
                 !TypeAssign, [], CoerceFails)
         else
@@ -563,41 +565,48 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
     % fall into into the first category; the others fall into the second.
     %
 :- pred compute_which_type_params_must_be_invariant(type_table::in,
-    type_ctor::in, type_body_du::in, list(tvar)::in,
+    type_ctor::in, list(tvar)::in, type_body_du::in,
     invariant_tvars::out) is det.
 
 compute_which_type_params_must_be_invariant(TypeTable,
-        BaseTypeCtor, BaseTypeBodyDu, BaseTypeParams, InvariantTVars) :-
+        BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu, InvariantTVars) :-
+    % NOTE If the base type_ctor has arity zero (meaning it has no parameters),
+    % we could shortcut this and just return an empty set as InvariantTVars,
+    % IF we knew that none of its data constructors had existentially
+    % typed arguments. This is because the InvariantTVars we return
+    % are guaranteed to be a subset of the type_ctor's type parameters,
+    % EXCEPT in the presence of such arguments.
     BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
         _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
     Ctors = one_or_more_to_list(OoMCtors),
     list.foldl(
-        acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams),
+        acc_invariant_tvars_in_ctor(TypeTable,
+            BaseTypeCtor, BaseTypeCtorParams),
         Ctors, set.init, InvariantTVars).
 
 :- pred acc_invariant_tvars_in_ctor(type_table::in,
     type_ctor::in, list(tvar)::in, constructor::in,
     invariant_tvars::in, invariant_tvars::out) is det.
 
-acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams, Ctor,
+acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeCtorParams, Ctor,
         !InvariantTVars) :-
     Ctor = ctor(_Ordinal, _MaybeExist, _CtorName, CtorArgs, _Arity, _Context),
     list.foldl(
         acc_invariant_tvars_in_ctor_arg(TypeTable,
-            BaseTypeCtor, BaseTypeParams),
+            BaseTypeCtor, BaseTypeCtorParams),
         CtorArgs, !InvariantTVars).
 
 :- pred acc_invariant_tvars_in_ctor_arg(type_table::in,
     type_ctor::in, list(tvar)::in, constructor_arg::in,
     invariant_tvars::in, invariant_tvars::out) is det.
 
-acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor,
-        BaseTypeParams, CtorArg, !InvariantTVars) :-
+acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor, BaseTypeCtorParams,
+        CtorArg, !InvariantTVars) :-
     CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
     % Since acc_invariant_tvars_in_ctor_arg_type is recursive,
     % we cannot inline it here.
-    acc_invariant_tvars_in_ctor_arg_type(TypeTable, BaseTypeCtor,
-        BaseTypeParams, CtorArgType, !InvariantTVars).
+    acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+        BaseTypeCtor, BaseTypeCtorParams, CtorArgType, !InvariantTVars).
 
     % We have to scan pretty much all the types that occur
     % on the right hand side of BaseTypeCtor's definition, whether they occur
@@ -614,84 +623,81 @@ acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor,
     type_ctor::in, list(tvar)::in, mer_type::in,
     invariant_tvars::in, invariant_tvars::out) is det.
 
-acc_invariant_tvars_in_ctor_arg_type(TypeTable, BaseTypeCtor, BaseTypeParams,
-        RhsType, !InvariantTVars) :-
+acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+        BaseTypeCtor, BaseTypeCtorParams, CtorArgType, !InvariantTVars) :-
     (
-        RhsType = builtin_type(_)
+        CtorArgType = builtin_type(_)
     ;
-        RhsType = type_variable(_TypeVar, _Kind)
+        CtorArgType = type_variable(_TypeVar, _Kind)
     ;
-        RhsType = defined_type(SymName, ArgTypes, _Kind),
+        CtorArgType = defined_type(SymName, ArgTypes, _Kind),
         list.length(ArgTypes, NumArgTypes),
         TypeCtor = type_ctor(SymName, NumArgTypes),
-        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            require_complete_switch [TypeBody]
-            (
-                TypeBody = hlds_du_type(_),
-                % Given a supertype t and a subtype ts, the condition
-                % and then-part allows programs to coerce from list(ts)
-                % to list(t). However, when trying to coerce from
-                % one_or_more(ts) to one_or_more(T), examining the
-                % one_or_more function symbol's second arg, whose type
-                % is list(ts), the condition fails, and the else-part
-                % prevents coercion from list(ts) to list(t).
-                %
-                % XXX If coercion from list(ts) to list(t) is allowed
-                % at the top level, why is it not allowed in an argument?
-                %
-                % It should be sufficient for TypeCtor and ArgTypes
-                % to match ONE of the types among our ancestors;
-                % the match shouldn't be restricted to the very top ancestor.
-                ( if
-                    TypeCtor = BaseTypeCtor,
-                    type_list_to_var_list(ArgTypes, ArgTypeVars),
-                    ArgTypeVars = BaseTypeParams
-                then
-                    % A type in the RHS that matches exactly the base type
-                    % does not impose any restrictions on its type params.
-                    % Any difference that occurs between the from-type and
-                    % the to-type must by definition occur somewhere else
-                    % (i.e. outside RhsType) as well.
-                    true
-                else
-                    type_vars_in_types(ArgTypes, TypeVars),
-                    set.insert_list(TypeVars, !InvariantTVars)
-                )
-            ;
-                ( TypeBody = hlds_foreign_type(_)
-                ; TypeBody = hlds_abstract_type(_)
-                ; TypeBody = hlds_solver_type(_)
-                ),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        require_complete_switch [TypeBody]
+        (
+            TypeBody = hlds_du_type(_),
+            % Given a supertype t and a subtype ts, the condition
+            % and then-part allows programs to coerce from list(ts)
+            % to list(t). However, when trying to coerce from
+            % one_or_more(ts) to one_or_more(T), examining the
+            % one_or_more function symbol's second arg, whose type
+            % is list(ts), the condition fails, and the else-part
+            % prevents coercion from list(ts) to list(t).
+            %
+            % XXX If coercion from list(ts) to list(t) is allowed
+            % at the top level, why is it not allowed in an argument?
+            %
+            % It should be sufficient for TypeCtor and ArgTypes
+            % to match ONE of the types among our ancestors;
+            % the match shouldn't be restricted to the very top ancestor.
+            ( if
+                TypeCtor = BaseTypeCtor,
+                type_list_to_var_list(ArgTypes, ArgTypeVars),
+                ArgTypeVars = BaseTypeCtorParams
+            then
+                % A type in the RHS that matches exactly the base type
+                % does not impose any restrictions on its type params.
+                % Any difference that occurs between the from-type and
+                % the to-type must by definition occur somewhere else
+                % (i.e. outside CtorArgType) as well.
+                true
+            else
                 type_vars_in_types(ArgTypes, TypeVars),
                 set.insert_list(TypeVars, !InvariantTVars)
-            ;
-                TypeBody = hlds_eqv_type(EqvType0),
-                % This a equivalence type was not expanded out by
-                % equiv_type.m, so the source of the equivalence must be
-                % outside the set of type definitions that equiv_type.m
-                % pays attention to, such as in the implementation section
-                % of an imported module.
-                %
-                % In these cases, expand out the type and process the result
-                % as if the equivalence *had* been expanded out.
-                hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-                map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
-                apply_subst_to_type(TSubst, EqvType0, EqvType),
-                acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-                    BaseTypeCtor, BaseTypeParams, EqvType, !InvariantTVars)
             )
-        else
-            unexpected($pred, "undefined type")
+        ;
+            ( TypeBody = hlds_foreign_type(_)
+            ; TypeBody = hlds_abstract_type(_)
+            ; TypeBody = hlds_solver_type(_)
+            ),
+            type_vars_in_types(ArgTypes, TypeVars),
+            set.insert_list(TypeVars, !InvariantTVars)
+        ;
+            TypeBody = hlds_eqv_type(EqvType0),
+            % This a equivalence type was not expanded out by
+            % equiv_type.m, so the source of the equivalence must be
+            % outside the set of type definitions that equiv_type.m
+            % pays attention to, such as in the implementation section
+            % of an imported module.
+            %
+            % In these cases, expand out the type and process the result
+            % as if the equivalence *had* been expanded out.
+            hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+            map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
+            apply_subst_to_type(TSubst, EqvType0, EqvType),
+            acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+                BaseTypeCtor, BaseTypeCtorParams, EqvType, !InvariantTVars)
         )
     ;
-        RhsType = tuple_type(ArgTypes, _Kind),
+        CtorArgType = tuple_type(ArgTypes, _Kind),
         list.foldl(
             acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-                BaseTypeCtor, BaseTypeParams),
+                BaseTypeCtor, BaseTypeCtorParams),
             ArgTypes, !InvariantTVars)
     ;
-        RhsType = higher_order_type(_PoF, ArgTypes, _HOInstInfo, _Purity),
+        CtorArgType = higher_order_type(_PoF, ArgTypes, _HOInstInfo, _Purity),
         % We do not support any subtyping of higher order types.
         % Therefore the higher order components on the right-hand side of a
         % type definition must be identical in the from-type and the to-type,
@@ -701,12 +707,12 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable, BaseTypeCtor, BaseTypeParams,
         type_vars_in_types(ArgTypes, TypeVars),
         set.insert_list(TypeVars, !InvariantTVars)
     ;
-        RhsType = apply_n_type(_, _, _),
+        CtorArgType = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
-        RhsType = kinded_type(CtorArgType1, _Kind),
+        CtorArgType = kinded_type(SubCtorArgType, _Kind),
         acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-            BaseTypeCtor, BaseTypeParams, CtorArgType1, !InvariantTVars)
+            BaseTypeCtor, BaseTypeCtorParams, SubCtorArgType, !InvariantTVars)
     ).
 
 %---------------------------------------------------------------------------%
