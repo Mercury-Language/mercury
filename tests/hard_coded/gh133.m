@@ -6,11 +6,11 @@
 %
 % This is a test case for a rare bug in the LLDS optimizer.
 % The symptom was a compiler abort when processing the is_bar predicate,
-% which is a switch that cover all the barN function symbols of the foo type.
+% which is a switch that covers all the barN function symbols of the foo type.
 %
 % The bug happened because of the following sequence of events.
 %
-% - The code generator generates a computed goto for on the primary tag
+% - The code generator generates a computed goto for one of the primary tags
 %   of the one input arg, with one of the labels leading to another computed
 %   goto on the remote secondary tag.
 %
