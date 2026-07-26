@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module check_hlds.type_assign.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -79,6 +80,34 @@
     %
 :- pred general_higher_order_func_type(purity::in, int::in,
     tvarset::out, mer_type::out, list(mer_type)::out, mer_type::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_du_type
+    --->    is_du_type(du_type_info)
+            % The type is a du type, with the given info.
+    ;       is_not_du_type(string).
+            % The type is not a du type. The string describes
+            % what kind of type it is. The description allows code
+            % that generates diagnostics to add the article "a" in front
+            % of these pieces, and the plural suffix "s" after them.
+
+:- type du_type_info
+    --->    du_type_info(type_ctor, list(mer_type),
+                hlds_type_defn, type_body_du).
+            % This du type has the given type_ctor and argument types.
+            % The last two arguments give the whole, and the du body part,
+            % of the definition of the type_ctor.
+
+    % If the given type is a du type, return its du_type_info.
+    % Otherwise, return a description of what kind of non-du type it is.
+    %
+    % This predicate is called from both typecheck_coerce.m, and
+    % typecheck_errors.m (which constructs diagnostics for the errors
+    % discovered by typecheck_coerce.m.)
+    %
+:- pred classify_is_du_type(type_table::in, mer_type::in,
+    maybe_du_type::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -184,6 +213,66 @@ general_higher_order_func_type(Purity, Arity,
     prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     RetType = type_variable(RetTypeVar, kind_star),
     construct_higher_order_func_type(Purity, ArgTypes, RetType, FuncType).
+
+%---------------------------------------------------------------------------%
+
+classify_is_du_type(TypeTable, Type, MaybeDuType) :-
+    (
+        Type = type_variable(_, _),
+        MaybeDuType = is_not_du_type("type variable")
+    ;
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        list.length(ArgTypes, Arity),
+        TypeCtor = type_ctor(SymName, Arity),
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            get_type_defn_body(TypeDefn, TypeBody),
+            (
+                TypeBody = hlds_du_type(TypeBodyDu),
+                DuType = du_type_info(TypeCtor, ArgTypes,
+                    TypeDefn, TypeBodyDu),
+                MaybeDuType = is_du_type(DuType)
+            ;
+                TypeBody = hlds_eqv_type(_),
+                MaybeDuType = is_not_du_type("equivalence type")
+            ;
+                TypeBody = hlds_foreign_type(_),
+                MaybeDuType = is_not_du_type("foreign type")
+            ;
+                TypeBody = hlds_solver_type(_),
+                MaybeDuType = is_not_du_type("solver type")
+            ;
+                TypeBody = hlds_abstract_type(_),
+                MaybeDuType = is_not_du_type("abstract type")
+            )
+        else
+            MaybeDuType = is_not_du_type("unknown type")
+        )
+    ;
+        Type = builtin_type(_),
+        MaybeDuType = is_not_du_type("builtin type")
+    ;
+        Type = tuple_type(_, _),
+        % XXX This code preserves old behavior, but it prevents programs
+        % from coercing one tuple type to another, even if the tuple's
+        % argument types are coerceable.
+        MaybeDuType = is_not_du_type("tuple type")
+    ;
+        Type = higher_order_type(PorF, _, _, _),
+        (
+            PorF = pf_function,
+            MaybeDuType = is_not_du_type("function type")
+        ;
+            PorF = pf_predicate,
+            MaybeDuType = is_not_du_type("predicate type")
+        )
+    ;
+        Type = apply_n_type(_, _, _),
+        MaybeDuType = is_not_du_type("function type")
+    ;
+        Type = kinded_type(SubType, _),
+        classify_is_du_type(TypeTable, SubType, MaybeDuType)
+    ).
+
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_util.

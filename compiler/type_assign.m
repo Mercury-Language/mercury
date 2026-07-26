@@ -20,6 +20,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -125,12 +126,24 @@
                 maybe_from_type         :: maybe(mer_type),
                 maybe_to_type           :: maybe(mer_type)
             )
-    ;       incompatible_types(
+    ;       different_type_categories(
+                dtc_type_table          :: type_table,
                 % The two types have different principal function symbols.
-                it_from_type            :: mer_type,
-                it_to_type              :: mer_type
+                dtc_from_type           :: mer_type,
+                dtc_to_type             :: mer_type
+            )
+    ;       different_builtin_types(
+                % Both types are builtin types, but different builtin types.
+                dbit_from_type          :: builtin_type,
+                dbti_to_type            :: builtin_type
+            )
+    ;       different_tuple_arities(
+                % Both types are tuple types, but with different arities.
+                dta_from_type           :: arity,
+                dta_to_type             :: arity
             )
     ;       cannot_unify_type_vars(
+                % One or both of these will be a type_variable.
                 cutv_from_type          :: mer_type,
                 cutv_to_type            :: mer_type
             )

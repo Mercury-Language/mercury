@@ -436,100 +436,19 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_du_type
-    --->    is_du_type(du_type_info)
-            % The type is a du type, with the given info.
-    ;       is_not_du_type(string).
-            % The type is not a du type. The string describes
-            % what kind of type it is. The description allows code
-            % that generates diagnostics to add the article "a" in front
-            % of these pieces, and the plural suffix "s" after them.
-
-:- type du_type_info
-    --->    du_type_info(type_ctor, list(mer_type),
-                hlds_type_defn, type_body_du).
-            % This du type has the given type_ctor and argument types.
-            % The last two arguments give the whole, and the du body part,
-            % of the definition of the type_ctor.
-
-    % If the given type is du type, return the empty list. Otherwise,
-    % return a description of what kind of non-du type it is.
-    %
-:- pred classify_is_du_type(type_table::in, mer_type::in,
-    maybe_du_type::out) is det.
-
-classify_is_du_type(TypeTable, Type, MaybeDuType) :-
-    (
-        Type = type_variable(_, _),
-        MaybeDuType = is_not_du_type("type variable")
-    ;
-        Type = defined_type(SymName, ArgTypes, _Kind),
-        list.length(ArgTypes, Arity),
-        TypeCtor = type_ctor(SymName, Arity),
-        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-            get_type_defn_body(TypeDefn, TypeBody),
-            (
-                TypeBody = hlds_du_type(TypeBodyDu),
-                DuType = du_type_info(TypeCtor, ArgTypes,
-                    TypeDefn, TypeBodyDu),
-                MaybeDuType = is_du_type(DuType)
-            ;
-                TypeBody = hlds_eqv_type(_),
-                MaybeDuType = is_not_du_type("equivalence type")
-            ;
-                TypeBody = hlds_foreign_type(_),
-                MaybeDuType = is_not_du_type("foreign type")
-            ;
-                TypeBody = hlds_solver_type(_),
-                MaybeDuType = is_not_du_type("solver type")
-            ;
-                TypeBody = hlds_abstract_type(_),
-                MaybeDuType = is_not_du_type("abstract type")
-            )
-        else
-            MaybeDuType = is_not_du_type("unknown type")
-        )
-    ;
-        Type = builtin_type(_),
-        MaybeDuType = is_not_du_type("builtin type")
-    ;
-        Type = tuple_type(_, _),
-        % XXX This code preserves old behavior, but it prevents programs
-        % from coercing one tuple type to another, even if the tuple's
-        % argument types are coerceable.
-        MaybeDuType = is_not_du_type("tuple type")
-    ;
-        Type = higher_order_type(PorF, _, _, _),
-        (
-            PorF = pf_function,
-            MaybeDuType = is_not_du_type("function type")
-        ;
-            PorF = pf_predicate,
-            MaybeDuType = is_not_du_type("predicate type")
-        )
-    ;
-        Type = apply_n_type(_, _, _),
-        MaybeDuType = is_not_du_type("function type")
-    ;
-        Type = kinded_type(SubType, _),
-        classify_is_du_type(TypeTable, SubType, MaybeDuType)
-    ).
-
-%---------------------%
-
 :- pred compute_base_type_of_du_type(type_table::in, tvarset::in,
     du_type_info::in, du_type_info::out) is det.
 
-compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
+compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
     DuTypeInfo = du_type_info(TypeCtor, ArgTypes, TypeDefn, TypeBodyDu),
     MaybeSuperType = TypeBodyDu ^ du_type_supertype,
     (
         MaybeSuperType = not_a_subtype,
-        BaseTypeInfo = DuTypeInfo
+        BaseDuTypeInfo = DuTypeInfo
     ;
         MaybeSuperType = subtype_of(SuperType0),
-        get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes,
-            TypeDefn, SuperType0, SuperType),
+        get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
+            SuperType0, SuperType),
         classify_is_du_type(TypeTable, SuperType, MaybeSuperDuType),
         % The invocations of add_du_ctors_check_subtype_check_foreign_type
         % in make_hlds_passes.m should have already checked that
@@ -543,7 +462,7 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseTypeInfo) :-
             unexpected($pred, "MaybeSuperDuType != is_du_type")
         ),
         compute_base_type_of_du_type(TypeTable, TVarSet,
-            SuperDuTypeInfo, BaseTypeInfo)
+            SuperDuTypeInfo, BaseDuTypeInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -765,7 +684,7 @@ are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
     else
         % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
         % in the from-type and to-type of the coercion respectively.
-        % If their length do not match, then some earlier compiler pass
+        % If their lengths do not match, then some earlier compiler pass
         % screwed up really badly.
         unexpected($pred, "length mismatch")
     ).
@@ -776,9 +695,9 @@ are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
 are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
-        InvariantTVars, TypeVar, FromType, ToType,
+        InvariantTVars, TypeParam, FromType, ToType,
         !TypeAssign, !CoerceFails) :-
-    ( if set.contains(InvariantTVars, TypeVar) then
+    ( if set.contains(InvariantTVars, TypeParam) then
         types_compare_as_given(TypeTable, TVarSet, compare_equal,
             FromType, ToType, !TypeAssign, !CoerceFails)
     else
@@ -840,11 +759,16 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
         TypeA, TypeB, !TypeAssign, !CoerceFails) :-
     require_complete_switch [TypeA]
     (
-        TypeA = builtin_type(BuiltinType),
-        ( if TypeB = builtin_type(BuiltinType) then
+        TypeA = builtin_type(BuiltinTypeA),
+        ( if TypeB = builtin_type(BuiltinTypeA) then
             true
         else
-            CoerceFail = incompatible_types(TypeA, TypeB),
+            ( if TypeB = builtin_type(BuiltinTypeB) then
+                CoerceFail =
+                    different_builtin_types(BuiltinTypeA, BuiltinTypeB)
+            else
+                CoerceFail = different_type_categories(TypeTable, TypeA, TypeB)
+            ),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
@@ -877,23 +801,32 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
                         % is either
                         % - not a du type definition, or
                         % - it is a du type, but not a subtype type definition.
-                        % XXX We should return a differnt fail for each.
-                        CoerceFail = incompatible_types(TypeA, TypeB),
+                        % XXX We should return a different fail for each.
+                        CoerceFail = different_type_categories(TypeTable,
+                            TypeA, TypeB),
                         !:CoerceFails = [CoerceFail | !.CoerceFails]
                     )
                 )
             )
         else
-            CoerceFail = incompatible_types(TypeA, TypeB),
+            CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
         TypeA = tuple_type(ArgTypesA, Kind),
         ( if TypeB = tuple_type(ArgTypesB, Kind) then
-            corresponding_types_compare_as_given(TypeTable, TVarSet,
-                Comparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
+            list.length(ArgTypesA, NumArgTypesA),
+            list.length(ArgTypesB, NumArgTypesB),
+            ( if NumArgTypesA = NumArgTypesB then
+                corresponding_types_compare_as_given(TypeTable, TVarSet,
+                    Comparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
+            else
+                CoerceFail =
+                    different_tuple_arities(NumArgTypesA, NumArgTypesB),
+                !:CoerceFails = [CoerceFail | !.CoerceFails]
+            )
         else
-            CoerceFail = incompatible_types(TypeA, TypeB),
+            CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
@@ -907,7 +840,7 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
             corresponding_types_compare_as_given(TypeTable, TVarSet,
                 SubComparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
         else
-            CoerceFail = incompatible_types(TypeA, TypeB),
+            CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
@@ -923,7 +856,7 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
             types_compare_as_given(TypeTable, TVarSet, Comparison,
                 TypeA1, TypeB1, !TypeAssign, !CoerceFails)
         else
-            CoerceFail = incompatible_types(TypeA, TypeB),
+            CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ).

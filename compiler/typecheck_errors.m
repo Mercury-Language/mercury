@@ -45,12 +45,16 @@
 :- implementation.
 
 :- import_module check_hlds.typecheck_error_util.
+:- import_module check_hlds.typecheck_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type_subst.
@@ -208,18 +212,43 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
 describe_coerce_fail(TVarSet, Fail) = Pieces :-
     % XXX Generate descriptions for ALL kinds of coerce failures.
     (
-        Fail = different_base_types(_FromType, _FromBaseTypeCtor,
-            _ToType, _ToBaseTypeCtor),
-        Pieces = []
+        Fail = different_base_types(FromType, FromBaseTypeCtor,
+            ToType, ToBaseTypeCtor),
+        Pieces = describe_coerce_fail_different_base_types(TVarSet,
+            FromType, FromBaseTypeCtor, ToType, ToBaseTypeCtor)
     ;
         Fail = unknown_or_nonground_type(_, _, _),
+        % We can and do generate this kind of coerce_fail during typechecking,
+        % but as of 2026 jul 26, I (zs) cannot
+        %
+        % - either construct a test case in which one of these coerce_fails
+        %   survives the final prune coerce constraints pass,
+        %
+        % - or construct a correctness argument for the proposition that
+        %   these coerce_fails *cannot* survive the final prune coerce
+        %   constraints pass.
+        %
+        % In the absence of the former, which could serve as motivating
+        % example, I cannot design a good error message, and in the absence
+        % of the latter, I cannot replace the next line with a call to
+        % "unexpected".
         Pieces = []
     ;
-        Fail = incompatible_types(_, _),
-        Pieces = []
+        Fail = different_type_categories(TypeTable, FromType, ToType),
+        Pieces = describe_coerce_fail_different_type_categories(TypeTable,
+            FromType, ToType)
     ;
-        Fail = cannot_unify_type_vars(_, _),
-        Pieces = []
+        Fail = different_builtin_types(FromBuiltinType, ToBuiltinType),
+        Pieces = describe_coerce_fail_different_builtin_types(TVarSet,
+            FromBuiltinType, ToBuiltinType)
+    ;
+        Fail = different_tuple_arities(FromArity, ToArity),
+        Pieces = describe_coerce_fail_different_tuple_arities(
+            FromArity, ToArity)
+    ;
+        Fail = cannot_unify_type_vars(FromType, ToType),
+        Pieces = describe_coerce_fail_cannot_unify_type_vars(TVarSet,
+            FromType, ToType)
     ;
         Fail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ToTypeDesc),
         Pieces = describe_coerce_fail_non_du_type_ctor(TVarSet,
@@ -228,6 +257,139 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
         Fail = should_be_invariant_arg(_, _),
         Pieces = []
     ).
+
+:- func describe_coerce_fail_different_base_types(tvarset,
+    mer_type, type_ctor, mer_type, type_ctor) = list(format_piece).
+
+describe_coerce_fail_different_base_types(_TVarSet,
+        _FromType, FromBaseTypeCtor, _ToType, ToBaseTypeCtor) = Pieces :-
+    FromBaseTypeCtor = type_ctor(FromSymName, _),
+    ToBaseTypeCtor = type_ctor(ToSymName, _),
+    % Print the module qualifiers on the type_ctors only if it is relevant.
+    ( if
+        FromSymName = qualified(ModuleName, _),
+        ToSymName = qualified(ModuleName, _)
+    then
+        FromBaseCtorPiece = unqual_type_ctor(FromBaseTypeCtor),
+        ToBaseCtorPiece = unqual_type_ctor(ToBaseTypeCtor)
+    else
+        FromBaseCtorPiece = qual_type_ctor(FromBaseTypeCtor),
+        ToBaseCtorPiece = qual_type_ctor(ToBaseTypeCtor)
+    ),
+    Pieces = [words("The base type constructor of the coerce-from type is")] ++
+        color_as_inconsistent([FromBaseCtorPiece, suffix(",")]) ++
+        [words("while for the coerce-to type it is")] ++
+        color_as_inconsistent([ToBaseCtorPiece, suffix(".")]) ++
+        [nl].
+% XXX A possible alternative wording.
+    % FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    % ToTypeStr =   mercury_type_to_string(TVarSet, print_num_only, ToType),
+%   Pieces = [words("You can coerce"),
+%       words("from one discriminated union type to another"),
+%       words("only if they have the same base type constructor,"),
+%       words("meaning that following the chain of supertypes from both"),
+%       % XXX Should this be included?
+%       % words("the from-type and the to-type"),
+%       words("ends up at the same type constructor."),
+%       words("In this case, the base type constructor of the from-type")] ++
+%       color_as_subject([words(FromTypeStr)]) ++
+%       [words("is")] ++
+%       color_as_inconsistent([FromBaseCtorPiece, suffix(",")]) ++
+%       [words("while the base type constructor of the to-type")] ++
+%       color_as_subject([words(ToTypeStr)]) ++
+%       [words("is")] ++
+%       color_as_inconsistent([ToBaseCtorPiece, suffix(".")]) ++
+%       [nl].
+
+:- func describe_coerce_fail_different_type_categories(type_table,
+    mer_type, mer_type) = list(format_piece).
+
+describe_coerce_fail_different_type_categories(TypeTable,
+        FromType, ToType) = Pieces :-
+    classify_is_du_type(TypeTable, FromType, FromMaybeDuType),
+    classify_is_du_type(TypeTable, ToType, ToMaybeDuType),
+    (
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        Pieces =
+            color_as_subject(
+                [upper_case_next, words(FromTypeDesc), suffix("s")]) ++
+            [words("and")] ++
+            color_as_subject([words(ToTypeDesc), suffix("s")]) ++
+            [words("cannot be either coerced from, or coerced to."), nl]
+    ;
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_du_type(_),
+        Pieces =
+            color_as_subject(
+                [upper_case_next, words(FromTypeDesc), suffix("s")]) ++
+            [words("cannot be either coerced from, or coerced to."), nl]
+    ;
+        FromMaybeDuType = is_du_type(_),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        Pieces =
+            color_as_subject(
+                [upper_case_next, words(ToTypeDesc), suffix("s")]) ++
+            [words("cannot be either coerced from, or coerced to."), nl]
+    ;
+        FromMaybeDuType = is_du_type(_),
+        ToMaybeDuType =   is_du_type(_),
+        % We should generate a different coerce_fail for the situation
+        % in which we now generate this one.
+        Pieces = []
+    ).
+
+:- func describe_coerce_fail_different_builtin_types(tvarset,
+    builtin_type, builtin_type) = list(format_piece).
+
+describe_coerce_fail_different_builtin_types(TVarSet,
+        FromBuiltinType, ToBuiltinType) = Pieces :-
+    FromType = builtin_type(FromBuiltinType),
+    ToType =   builtin_type(ToBuiltinType),
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ToTypeStr =   mercury_type_to_string(TVarSet, print_num_only, ToType),
+    Pieces = [words("Builtin types such as")] ++
+        color_as_subject([words(FromTypeStr)]) ++ [words("and")] ++
+        color_as_subject([words(ToTypeStr)]) ++
+        [words("cannot be either coerced from, or coerced to."), nl].
+
+:- func describe_coerce_fail_different_tuple_arities(arity, arity)
+    = list(format_piece).
+
+describe_coerce_fail_different_tuple_arities(FromArity, ToArity) = Pieces :-
+    Pieces = [words("You cannot coerce from a tuple type of")] ++
+        color_as_inconsistent([words("arity"), int_fixed(FromArity)]) ++
+        [words("to a tuple type of")] ++
+        color_as_inconsistent([words("arity"), int_fixed(ToArity),
+            suffix(".")]) ++
+        [nl].
+
+:- func describe_coerce_fail_cannot_unify_type_vars(tvarset,
+    mer_type, mer_type) = list(format_piece).
+
+describe_coerce_fail_cannot_unify_type_vars(TVarSet, FromType, ToType)
+        = Pieces :-
+    FromTypeStr = mercury_type_to_string(TVarSet, print_name_only, FromType),
+    ToTypeStr =   mercury_type_to_string(TVarSet, print_name_only, ToType),
+    ( if FromType = type_variable(_, _) then
+        ( if ToType = type_variable(_, _) then
+            TypeVarOrVarsStr = "Type variables",
+            TVarPieces = color_as_subject([fixed(FromTypeStr)]) ++
+                [words("and")] ++ color_as_subject([fixed(ToTypeStr)])
+        else
+            TypeVarOrVarsStr = "Type variable",
+            TVarPieces = color_as_subject([fixed(FromTypeStr)])
+        )
+    else
+        ( if ToType = type_variable(_, _) then
+            TypeVarOrVarsStr = "Type variable",
+            TVarPieces = color_as_subject([fixed(ToTypeStr)])
+        else
+            unexpected($pred, "neither FromType nor ToType is a variable")
+        )
+    ),
+    Pieces = [words(TypeVarOrVarsStr), words("such as")] ++ TVarPieces ++
+        [words("cannot be either coerced from, or coerced to."), nl].
 
 :- func describe_coerce_fail_non_du_type_ctor(tvarset,
     mer_type, string, mer_type, string) = list(format_piece).

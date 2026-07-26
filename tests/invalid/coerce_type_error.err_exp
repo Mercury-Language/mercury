@@ -2,10 +2,15 @@ coerce_type_error.m:045: In clause for predicate `bad_unrelated'/2:
 coerce_type_error.m:045:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:045:   [38;5;171m`coerce_type_error.orange_non_fruit'[39;49m to
 coerce_type_error.m:045:   [38;5;171m`coerce_type_error.citrus'.[39;49m
+coerce_type_error.m:045:   The base type constructor of the coerce-from type is
+coerce_type_error.m:045:   [38;5;171m`orange_non_fruit'/0,[39;49m while for the coerce-to type
+coerce_type_error.m:045:   it is [38;5;171m`fruit'/0.[39;49m
 coerce_type_error.m:070: In clause for predicate `bad_phantom'/2:
 coerce_type_error.m:070:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:070:   [38;5;171m`coerce_type_error.phantom(int)'[39;49m to
 coerce_type_error.m:070:   [38;5;171m`coerce_type_error.phantom(float)'.[39;49m
+coerce_type_error.m:070:   Builtin types such as [38;5;87mfloat[39;49m and [38;5;87mint[39;49m cannot be either
+coerce_type_error.m:070:   coerced from, or coerced to.
 coerce_type_error.m:091: In clause for predicate `bad_higher_order'/2:
 coerce_type_error.m:091:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:091:   [38;5;171m`coerce_type_error.wrap_ho(coerce_type_error.citrus)'[39;49m
