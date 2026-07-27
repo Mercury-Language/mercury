@@ -400,7 +400,7 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             ;
                 CastType = subtype_coerce,
                 modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
-                    Detism, ExtraGoals, !ModeInfo),
+                    ExtraGoals, Detism, !ModeInfo),
                 ArgVars = [X, Y],
                 Modes = [ModeX, ModeY]
             ),

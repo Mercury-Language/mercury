@@ -21,10 +21,41 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+    % modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
+    %   ExtraGoals, Detism, !ModeInfo):
+    %
+    % Modecheck the goal "Y0 = coerce(X0)" where the initial modes
+    % of X0 and Y0 are ModeX0 and ModeY0 respectively.
+    %
+    % If Y0 is initially not free, then this may require replacing
+    % that coerce goal with "Y = coerce(X0), Y = Y0", the extra goal
+    % unifying the result of the coercion with the initial value of Y0.
+    % In this case, we will return a new variable as Y, and the Y = Y0 goal
+    % as ExtraGoals.
+    %
+    % If Y0 is initially free, we will return Y0 as Y, and the empty list
+    % as ExtraGoals.
+    %
+    % We always return X0 as X.
+    %
+    % Detism will be detism_det in the expected case where the coercion works.
+    % However, it will be detism_erroneous if the coercion cannot work.
+    % This usually happens because X0's initial inst is not compatible
+    % with the expectation established by Y0's type, though it can also happen
+    % for other reasons as well (such as the program point before
+    % coercion operation itself not being reachable).
+    %
+    % Alongside Detism = detism_det, we will return valid values for
+    % ModeX and ModeY, as the modes of X and Y. Alongside Detism =
+    % detism_erroneous, we will return ModeX0 and ModeY0 instead.
+    % Note that ModeX0 and ModeY0 are effectively placeholder values
+    % put into generic_calls by unravel_special_coerce; they are NOT
+    % the result of any mode analysis.
+    %
 :- pred modecheck_coerce(
     prog_var::in, prog_var::in, prog_var::out, prog_var::out,
     mer_mode::in, mer_mode::in, mer_mode::out, mer_mode::out,
-    determinism::out, extra_goals::out, mode_info::in, mode_info::out) is det.
+    extra_goals::out, determinism::out, mode_info::in, mode_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -82,7 +113,7 @@
 %---------------------------------------------------------------------------%
 
 modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
-        Det, ExtraGoals, !ModeInfo) :-
+        ExtraGoals, Detism, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     ( if instmap_is_reachable(InstMap) then
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
@@ -99,15 +130,15 @@ modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
                 InstX0, InstY0, Result, !ModeInfo),
             (
                 Result = coerce_mode_ok(X, Y, ModeX, ModeY, ExtraGoals),
-                Det = detism_det
+                Detism = detism_det
             ;
                 Result = coerce_mode_error,
                 X = X0,
                 Y = Y0,
                 ModeX = ModeX0,
                 ModeY = ModeY0,
-                Det = detism_erroneous,
-                ExtraGoals = no_extra_goals
+                ExtraGoals = no_extra_goals,
+                Detism = detism_erroneous
             )
         else
             WaitingVars = set_of_var.make_singleton(X0),
@@ -119,16 +150,16 @@ modecheck_coerce(X0, Y0, X, Y, ModeX0, ModeY0, ModeX, ModeY,
             Y = Y0,
             ModeX = ModeX0,
             ModeY = ModeY0,
-            Det = detism_erroneous,
-            ExtraGoals = no_extra_goals
+            ExtraGoals = no_extra_goals,
+            Detism = detism_erroneous
         )
     else
         X = X0,
         Y = Y0,
         ModeX = ModeX0,
         ModeY = ModeY0,
-        Det = detism_erroneous,
-        ExtraGoals = no_extra_goals
+        ExtraGoals = no_extra_goals,
+        Detism = detism_erroneous
     ).
 
 :- pred modecheck_coerce_vars(module_info::in, prog_var::in, prog_var::in,
@@ -158,7 +189,7 @@ modecheck_coerce_vars(ModuleInfo0, X0, Y0, TypeX, TypeY, InstX0, InstY0,
         MaybeFinalInstY = ok1(FinalInstY),
         ( if
             abstractly_unify_inst(TypeX, BothLive, real_unify, InstX0,
-                ground_inst, UnifyInstX, _Det, ModuleInfo0, ModuleInfo1)
+                ground_inst, UnifyInstX, _Detism, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
             FinalInstX = UnifyInstX
