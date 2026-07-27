@@ -506,19 +506,25 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
 
 compute_which_type_params_must_be_invariant(TypeTable,
         BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu, InvariantTVars) :-
-    % NOTE If the base type_ctor has arity zero (meaning it has no parameters),
-    % we could shortcut this and just return an empty set as InvariantTVars,
-    % IF we knew that none of its data constructors had existentially
-    % typed arguments. This is because the InvariantTVars we return
-    % are guaranteed to be a subset of the type_ctor's type parameters,
-    % EXCEPT in the presence of such arguments.
-    BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
-        _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
-    Ctors = one_or_more_to_list(OoMCtors),
-    list.foldl(
-        acc_invariant_tvars_in_ctor(TypeTable,
-            BaseTypeCtor, BaseTypeCtorParams),
-        Ctors, set.init, InvariantTVars).
+    (
+        BaseTypeCtorParams = [],
+        % The computation in the other branch can return two kinds of tvars
+        % in InvariantTVars: tvars that occur in BaseTypeCtorParams, and
+        % existentially quantified tvars in data constructors. However,
+        % the only thing we ever use InvariantTVars for is to test whether
+        % an element of BaseTypeCtorParams occurs in it. This is what
+        % justifies returning the empty set here.
+        set.init(InvariantTVars)
+    ;
+        BaseTypeCtorParams = [_ | _],
+        BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
+            _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
+        Ctors = one_or_more_to_list(OoMCtors),
+        list.foldl(
+            acc_invariant_tvars_in_ctor(TypeTable,
+                BaseTypeCtor, BaseTypeCtorParams),
+            Ctors, set.init, InvariantTVars)
+    ).
 
 :- pred acc_invariant_tvars_in_ctor(type_table::in,
     type_ctor::in, list(tvar)::in, constructor::in,
