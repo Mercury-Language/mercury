@@ -60,6 +60,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
 
+:- import_module int.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -176,7 +177,7 @@ wrap_quote(Str) = [quote(Str)].
 %---------------------------------------------------------------------------%
 
 report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
-        FromType, ToType, Fails) = Spec :-
+        FromType, ToType, Fails0) = Spec :-
     % XXX TYPECHECK_ERRORS
     % This code can generate some less-than-helpful diagnostics.
     %
@@ -191,7 +192,28 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
+
+    % The code of are_actual_param_type_pair_as_related_as_needed,
+    % when given a pair of types in an argument position that does not
+    % have to be invariant, tries out coercions in *both* directions.
+    % This means that if are_actual_param_type_pair_as_related_as_needed
+    % can return a specific coerce_fail, it can also return its mirror
+    % image, meaning it can also return a coerce_fail that is identical
+    % except for the exchange of roles between the from-type and the to-type.
+    %
+    % By imposing a standard order on each coerce_fails, we allow the
+    % call to sort_and_remove_dups to replace each mirror image
+    % with just coerce_fail.
+    %
+    % XXX are_actual_param_type_pair_as_related_as_needed could instead
+    % just arbitrarily always return either
+    % - the coerce_fails from the original comparison direction, or
+    % - the coerce_fails from the reverse comparison direction.
+    % Neither this nor that method seems universally superior.
+    Fails1 = list.map(standardize_coerce_fail, Fails0),
+    list.sort_and_remove_dups(Fails1, Fails),
     CausePieceLists = list.map(describe_coerce_fail(TVarSet), Fails),
+
     list.condense(CausePieceLists, CausePieces),
     ( if strip_kind_annotation(FromType) = strip_kind_annotation(ToType) then
         RedundantPieces =
@@ -207,6 +229,62 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
+:- func standardize_coerce_fail(coerce_fail) = coerce_fail.
+
+standardize_coerce_fail(Fail0) = Fail :-
+    (
+        Fail0 = different_base_types(_, _, _, _),
+        Fail = Fail0
+    ;
+        Fail0 = unknown_or_nonground_type(_, _, _),
+        Fail = Fail0
+    ;
+        Fail0 = different_type_categories(TypeTable, FromType, ToType),
+        ( if compare((>), FromType, ToType) then
+            Fail = different_type_categories(TypeTable, ToType, FromType)
+        else
+            Fail = Fail0
+        )
+    ;
+        Fail0 = different_builtin_types(FromBuiltinType, ToBuiltinType),
+        ( if compare((>), FromBuiltinType, ToBuiltinType) then
+            Fail = different_builtin_types(ToBuiltinType, FromBuiltinType)
+        else
+            Fail = Fail0
+        )
+    ;
+        Fail0 = different_tuple_arities(FromArity, ToArity),
+        ( if FromArity > ToArity then
+            Fail = different_tuple_arities(ToArity, FromArity)
+        else
+            Fail = Fail0
+        )
+    ;
+        Fail0 = du_type_is_not_subtype(_),
+        Fail = Fail0
+    ;
+        Fail0 = cannot_unify_type_vars(FromType, ToType),
+        ( if compare((>), FromType, ToType) then
+            Fail = cannot_unify_type_vars(ToType, FromType)
+        else
+            Fail = Fail0
+        )
+    ;
+        Fail0 = non_du_type_ctor(FromType, FromTypeDesc, ToType, ToTypeDesc),
+        ( if compare((>), FromTypeDesc, ToTypeDesc) then
+            Fail = non_du_type_ctor(ToType, ToTypeDesc, FromType, FromTypeDesc)
+        else
+            Fail = Fail0
+        )
+    ;
+        Fail0 = should_be_invariant_arg(FromType, ToType),
+        ( if compare((>), FromType, ToType) then
+            Fail = should_be_invariant_arg(ToType, FromType)
+        else
+            Fail = Fail0
+        )
+    ).
+
 :- func describe_coerce_fail(tvarset, coerce_fail) = list(format_piece).
 
 describe_coerce_fail(TVarSet, Fail) = Pieces :-
@@ -218,20 +296,6 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
             FromType, FromBaseTypeCtor, ToType, ToBaseTypeCtor)
     ;
         Fail = unknown_or_nonground_type(_, _, _),
-        % We can and do generate this kind of coerce_fail during typechecking,
-        % but as of 2026 jul 26, I (zs) cannot
-        %
-        % - either construct a test case in which one of these coerce_fails
-        %   survives the final prune coerce constraints pass,
-        %
-        % - or construct a correctness argument for the proposition that
-        %   these coerce_fails *cannot* survive the final prune coerce
-        %   constraints pass.
-        %
-        % In the absence of the former, which could serve as motivating
-        % example, I cannot design a good error message, and in the absence
-        % of the latter, I cannot replace the next line with a call to
-        % "unexpected".
         Pieces = []
     ;
         Fail = different_type_categories(TypeTable, FromType, ToType),
@@ -245,6 +309,9 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
         Fail = different_tuple_arities(FromArity, ToArity),
         Pieces = describe_coerce_fail_different_tuple_arities(
             FromArity, ToArity)
+    ;
+        Fail = du_type_is_not_subtype(TypeCtor),
+        Pieces = describe_coerce_fail_du_type_is_not_subtype(TypeCtor)
     ;
         Fail = cannot_unify_type_vars(FromType, ToType),
         Pieces = describe_coerce_fail_cannot_unify_type_vars(TVarSet,
@@ -276,6 +343,10 @@ describe_coerce_fail_different_base_types(_TVarSet,
         FromBaseCtorPiece = qual_type_ctor(FromBaseTypeCtor),
         ToBaseCtorPiece = qual_type_ctor(ToBaseTypeCtor)
     ),
+    % The use of coerce-from and coerce-to terminology here works
+    % because the comparison of base types is NOT subject to reversal
+    % by are_actual_param_type_pair_as_related_as_needed, since it happens
+    % above that predicate in the call tree.
     Pieces = [words("The base type constructor of the coerce-from type is")] ++
         color_as_inconsistent([FromBaseCtorPiece, suffix(",")]) ++
         [words("while for the coerce-to type it is")] ++
@@ -357,20 +428,27 @@ describe_coerce_fail_different_builtin_types(TVarSet,
     = list(format_piece).
 
 describe_coerce_fail_different_tuple_arities(FromArity, ToArity) = Pieces :-
-    Pieces = [words("You cannot coerce from a tuple type of")] ++
+    Pieces = [words("You cannot coerce between a tuple type of")] ++
         color_as_inconsistent([words("arity"), int_fixed(FromArity)]) ++
-        [words("to a tuple type of")] ++
+        [words("and a tuple type of")] ++
         color_as_inconsistent([words("arity"), int_fixed(ToArity),
             suffix(".")]) ++
         [nl].
+
+:- func describe_coerce_fail_du_type_is_not_subtype(type_ctor)
+    = list(format_piece).
+
+describe_coerce_fail_du_type_is_not_subtype(TypeCtor) = Pieces :-
+    Pieces = [qual_type_ctor(TypeCtor), words("is")] ++
+        color_as_incorrect([words("not a subtype.")]) ++ [nl].
 
 :- func describe_coerce_fail_cannot_unify_type_vars(tvarset,
     mer_type, mer_type) = list(format_piece).
 
 describe_coerce_fail_cannot_unify_type_vars(TVarSet, FromType, ToType)
         = Pieces :-
-    FromTypeStr = mercury_type_to_string(TVarSet, print_name_only, FromType),
-    ToTypeStr =   mercury_type_to_string(TVarSet, print_name_only, ToType),
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ToTypeStr =   mercury_type_to_string(TVarSet, print_num_only, ToType),
     ( if FromType = type_variable(_, _) then
         ( if ToType = type_variable(_, _) then
             TypeVarOrVarsStr = "Type variables",

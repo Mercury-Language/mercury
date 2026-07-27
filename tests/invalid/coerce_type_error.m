@@ -118,3 +118,10 @@ bad_abs_type(X, Y) :-
     Y = coerce(X).
 
 %---------------------------------------------------------------------------%
+
+:- pred non_subtypes(list(fruit)::in, list(orange_non_fruit)::out) is det.
+
+non_subtypes(Fruits, Oranges) :-
+    Oranges = coerce(Fruits).
+
+%---------------------------------------------------------------------------%

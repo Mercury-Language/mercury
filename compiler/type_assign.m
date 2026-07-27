@@ -142,6 +142,11 @@
                 dta_from_type           :: arity,
                 dta_to_type             :: arity
             )
+    ;       du_type_is_not_subtype(
+                % The type is a du type with this type_ctor, but this type
+                % is not a subtype of anything.
+                ns_type_ctor            :: type_ctor
+            )
     ;       cannot_unify_type_vars(
                 % One or both of these will be a type_variable.
                 cutv_from_type          :: mer_type,

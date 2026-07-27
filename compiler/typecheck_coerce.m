@@ -65,6 +65,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
@@ -380,25 +381,13 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
     % Type bindings must have been applied to FromType and ToType already.
     classify_is_du_type(TypeTable, FromType, FromMaybeDuType),
     classify_is_du_type(TypeTable, ToType, ToMaybeDuType),
+    are_both_types_du(FromType, ToType, FromMaybeDuType, ToMaybeDuType,
+        MaybeBoth),
     (
-        FromMaybeDuType = is_not_du_type(FromTypeDesc),
-        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
-        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc,
-            ToType, ToTypeDesc),
+        MaybeBoth = error2(CoerceFail),
         CoerceFails = [CoerceFail]
     ;
-        FromMaybeDuType = is_not_du_type(FromTypeDesc),
-        ToMaybeDuType =   is_du_type(_),
-        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ""),
-        CoerceFails = [CoerceFail]
-    ;
-        FromMaybeDuType = is_du_type(_),
-        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
-        CoerceFail = non_du_type_ctor(FromType, "", ToType, ToTypeDesc),
-        CoerceFails = [CoerceFail]
-    ;
-        FromMaybeDuType = is_du_type(FromDuTypeInfo),
-        ToMaybeDuType =   is_du_type(ToDuTypeInfo),
+        MaybeBoth = ok2(FromDuTypeInfo, ToDuTypeInfo),
         compute_base_type_of_du_type(TypeTable, TVarSet,
             FromDuTypeInfo, FromBaseTypeInfo),
         compute_base_type_of_du_type(TypeTable, TVarSet,
@@ -432,6 +421,34 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
                 ToType, ToBaseTypeCtor),
             CoerceFails = [CoerceFail]
         )
+    ).
+
+:- pred are_both_types_du(mer_type::in, mer_type::in,
+    maybe_du_type::in, maybe_du_type::in,
+    maybe2(du_type_info, du_type_info, coerce_fail)::out) is det.
+
+are_both_types_du(FromType, ToType, FromMaybeDuType, ToMaybeDuType,
+        MaybeBoth) :-
+    (
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc,
+            ToType, ToTypeDesc),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_du_type(_),
+        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ""),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_du_type(_),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        CoerceFail = non_du_type_ctor(FromType, "", ToType, ToTypeDesc),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_du_type(FromDuTypeInfo),
+        ToMaybeDuType =   is_du_type(ToDuTypeInfo),
+        MaybeBoth = ok2(FromDuTypeInfo, ToDuTypeInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -710,7 +727,22 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
         ;
             FromToCoerceFails = [_ | _],
             types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
-                ToType, FromType, !TypeAssign, !CoerceFails)
+                ToType, FromType, !.TypeAssign, ToFromTypeAssign,
+                [], ToFromCoerceFails),
+            (
+                ToFromCoerceFails = [],
+                !:TypeAssign = ToFromTypeAssign
+            ;
+                ToFromCoerceFails = [_ | _],
+                % NOTE Adding both FromToCoerceFails and ToFromCoerceFails
+                % to !CoerceFails can report the same issue twice, with
+                % the roles of coerce-from type and coerce-to type reversed
+                % for any symmetrical problem that types_compare_as_given
+                % can report. This is ok, because report_invalid_coerce_from_to
+                % will ensure that we report just one copy in each such pair.
+                !:CoerceFails = FromToCoerceFails ++ ToFromCoerceFails
+                    ++ !.CoerceFails
+            )
         )
     ).
 
@@ -757,6 +789,8 @@ types_compare_as_given(TypeTable, TVarSet, Comparison, TypeA, TypeB,
 
 types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
         TypeA, TypeB, !TypeAssign, !CoerceFails) :-
+    % Several of the kinds of coerce_fails that the code below can generate
+    % are NOT TESTED by any test case in the test suite.
     require_complete_switch [TypeA]
     (
         TypeA = builtin_type(BuiltinTypeA),
@@ -780,31 +814,67 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
             defined_type_to_ctor_and_args(TypeA, TypeCtorA, ArgTypesA),
             defined_type_to_ctor_and_args(TypeB, TypeCtorB, ArgTypesB),
             ( if TypeCtorA = TypeCtorB then
+                % Checking for TypeCtorA = TypeCtorB before checking whether
+                % TypeA and TypeB are du types allows this code to succeed for
+                %
+                % - equivalence type
+                % - foreign types
+                % - solver types
+                % - abstract types
+                % - undefined type_ctors (ones that are not in the type table)
+                %
+                % Equivalence types should have been expanded out by now,
+                % so they pose no problem. (If they did appear here, we
+                % would have to expand them out, because without that,
+                % we cannot check for co- versus contra-variance.)
+                %
+                % The other kinds of types can all occur in the input
+                % of this code. Most of the time, their argument lists
+                % are the empty list, but they can contain type parameters,
+                % such as the ones we use to distinguish e.g. prog_vars
+                % from tvars. These are known as "phantom type parameters".
+                %
+                % I (zs) do not know whether type parameters on solver types
+                % (a) are ever useful, or (b) can cause issues with respect to
+                % co- versus contra-variance.
                 corresponding_types_compare_as_given(TypeTable, TVarSet,
                     Comparison, ArgTypesA, ArgTypesB,
                     !TypeAssign, !CoerceFails)
             else
+                classify_defined_type_is_du_type(TypeTable,
+                    TypeCtorA, ArgTypesA, MaybeDuTypeA),
+                classify_defined_type_is_du_type(TypeTable,
+                    TypeCtorB, ArgTypesB, MaybeDuTypeB),
+                are_both_types_du(TypeA, TypeB, MaybeDuTypeA, MaybeDuTypeB,
+                    MaybeBoth),
                 (
-                    Comparison = compare_equal,
-                    CoerceFail = should_be_invariant_arg(TypeA, TypeB),
+                    MaybeBoth = error2(CoerceFail),
+                    % A non-du type constructor cannot be a subtype.
                     !:CoerceFails = [CoerceFail | !.CoerceFails]
                 ;
-                    Comparison = compare_equal_lt,
-                    ( if
-                        get_supertype(TypeTable, TVarSet, TypeCtorA, ArgTypesA,
-                            SuperTypeA)
-                    then
-                        types_compare_as_given(TypeTable, TVarSet, Comparison,
-                            SuperTypeA, TypeB, !TypeAssign, !CoerceFails)
-                    else
-                        % get_supertype fails only if TypeCtorA's definition
-                        % is either
-                        % - not a du type definition, or
-                        % - it is a du type, but not a subtype type definition.
-                        % XXX We should return a different fail for each.
-                        CoerceFail = different_type_categories(TypeTable,
-                            TypeA, TypeB),
+                    MaybeBoth = ok2(DuTypeInfoA, _DuTypeInfoB),
+                    (
+                        Comparison = compare_equal,
+                        CoerceFail = should_be_invariant_arg(TypeA, TypeB),
                         !:CoerceFails = [CoerceFail | !.CoerceFails]
+                    ;
+                        Comparison = compare_equal_lt,
+                        DuTypeInfoA =
+                            du_type_info(_, _, TypeDefnA, TypeBodyDuA),
+                        MaybeSuperTypeA = TypeBodyDuA ^ du_type_supertype,
+                        (
+                            MaybeSuperTypeA = subtype_of(SuperTypeA0),
+                            get_supertype_of_subtype(TVarSet,
+                                TypeCtorA, ArgTypesA, TypeDefnA,
+                                SuperTypeA0, SuperTypeA),
+                            types_compare_as_given(TypeTable, TVarSet,
+                                Comparison, SuperTypeA, TypeB,
+                                !TypeAssign, !CoerceFails)
+                        ;
+                            MaybeSuperTypeA = not_a_subtype,
+                            CoerceFail = du_type_is_not_subtype(TypeCtorA),
+                            !:CoerceFails = [CoerceFail | !.CoerceFails]
+                        )
                     )
                 )
             )

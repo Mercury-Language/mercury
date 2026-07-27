@@ -9,7 +9,7 @@ coerce_type_error.m:070: In clause for predicate `bad_phantom'/2:
 coerce_type_error.m:070:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:070:   [38;5;171m`coerce_type_error.phantom(int)'[39;49m to
 coerce_type_error.m:070:   [38;5;171m`coerce_type_error.phantom(float)'.[39;49m
-coerce_type_error.m:070:   Builtin types such as [38;5;87mfloat[39;49m and [38;5;87mint[39;49m cannot be either
+coerce_type_error.m:070:   Builtin types such as [38;5;87mint[39;49m and [38;5;87mfloat[39;49m cannot be either
 coerce_type_error.m:070:   coerced from, or coerced to.
 coerce_type_error.m:091: In clause for predicate `bad_higher_order'/2:
 coerce_type_error.m:091:   error: cannot coerce [38;5;87m`X'[39;49m from
@@ -26,3 +26,10 @@ coerce_type_error.m:118:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:118:   [38;5;171m`coerce_type_error.wrap_abs(coerce_type_error.citrus)'[39;49m
 coerce_type_error.m:118:   to
 coerce_type_error.m:118:   [38;5;171m`coerce_type_error.wrap_abs(coerce_type_error.fruit)'.[39;49m
+coerce_type_error.m:125: In clause for predicate `non_subtypes'/2:
+coerce_type_error.m:125:   error: cannot coerce [38;5;87m`Fruits'[39;49m from
+coerce_type_error.m:125:   [38;5;171m`list.list(coerce_type_error.fruit)'[39;49m to
+coerce_type_error.m:125:   [38;5;171m`list.list(coerce_type_error.orange_non_fruit)'.[39;49m
+coerce_type_error.m:125:   `coerce_type_error.fruit'/0 is [38;5;203mnot a subtype.[39;49m
+coerce_type_error.m:125:   `coerce_type_error.orange_non_fruit'/0 is [38;5;203mnot a[39;49m
+coerce_type_error.m:125:   [38;5;203msubtype.[39;49m

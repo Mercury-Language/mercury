@@ -109,6 +109,12 @@
 :- pred classify_is_du_type(type_table::in, mer_type::in,
     maybe_du_type::out) is det.
 
+    % Do the same job as above, but for a type that is known to be
+    % a defined_type.
+    %
+:- pred classify_defined_type_is_du_type(type_table::in,
+    type_ctor::in, list(mer_type)::in, maybe_du_type::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -224,29 +230,8 @@ classify_is_du_type(TypeTable, Type, MaybeDuType) :-
         Type = defined_type(SymName, ArgTypes, _Kind),
         list.length(ArgTypes, Arity),
         TypeCtor = type_ctor(SymName, Arity),
-        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-            get_type_defn_body(TypeDefn, TypeBody),
-            (
-                TypeBody = hlds_du_type(TypeBodyDu),
-                DuType = du_type_info(TypeCtor, ArgTypes,
-                    TypeDefn, TypeBodyDu),
-                MaybeDuType = is_du_type(DuType)
-            ;
-                TypeBody = hlds_eqv_type(_),
-                MaybeDuType = is_not_du_type("equivalence type")
-            ;
-                TypeBody = hlds_foreign_type(_),
-                MaybeDuType = is_not_du_type("foreign type")
-            ;
-                TypeBody = hlds_solver_type(_),
-                MaybeDuType = is_not_du_type("solver type")
-            ;
-                TypeBody = hlds_abstract_type(_),
-                MaybeDuType = is_not_du_type("abstract type")
-            )
-        else
-            MaybeDuType = is_not_du_type("unknown type")
-        )
+        classify_defined_type_is_du_type(TypeTable, TypeCtor, ArgTypes,
+            MaybeDuType)
     ;
         Type = builtin_type(_),
         MaybeDuType = is_not_du_type("builtin type")
@@ -273,6 +258,29 @@ classify_is_du_type(TypeTable, Type, MaybeDuType) :-
         classify_is_du_type(TypeTable, SubType, MaybeDuType)
     ).
 
+classify_defined_type_is_du_type(TypeTable, TypeCtor, ArgTypes, MaybeDuType) :-
+    ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+        get_type_defn_body(TypeDefn, TypeBody),
+        (
+            TypeBody = hlds_du_type(TypeBodyDu),
+            DuType = du_type_info(TypeCtor, ArgTypes, TypeDefn, TypeBodyDu),
+            MaybeDuType = is_du_type(DuType)
+        ;
+            TypeBody = hlds_eqv_type(_),
+            MaybeDuType = is_not_du_type("equivalence type")
+        ;
+            TypeBody = hlds_foreign_type(_),
+            MaybeDuType = is_not_du_type("foreign type")
+        ;
+            TypeBody = hlds_solver_type(_),
+            MaybeDuType = is_not_du_type("solver type")
+        ;
+            TypeBody = hlds_abstract_type(_),
+            MaybeDuType = is_not_du_type("abstract type")
+        )
+    else
+        MaybeDuType = is_not_du_type("unknown type")
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_util.
