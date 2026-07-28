@@ -451,23 +451,29 @@ describe_coerce_fail_cannot_unify_type_vars(TVarSet, FromType, ToType)
     ToTypeStr =   mercury_type_to_string(TVarSet, print_num_only, ToType),
     ( if FromType = type_variable(_, _) then
         ( if ToType = type_variable(_, _) then
-            TypeVarOrVarsStr = "Type variables",
+            TypeVarOrVarsStr = "Unconstrained type variables",
             TVarPieces = color_as_subject([fixed(FromTypeStr)]) ++
-                [words("and")] ++ color_as_subject([fixed(ToTypeStr)])
+                [words("and")] ++ color_as_subject([fixed(ToTypeStr)]),
+            ItIsTheyAre = "they are"
         else
-            TypeVarOrVarsStr = "Type variable",
-            TVarPieces = color_as_subject([fixed(FromTypeStr)])
+            TypeVarOrVarsStr = "An unconstrained type variable",
+            TVarPieces = color_as_subject([fixed(FromTypeStr)]),
+            ItIsTheyAre = "it is"
         )
     else
         ( if ToType = type_variable(_, _) then
-            TypeVarOrVarsStr = "Type variable",
-            TVarPieces = color_as_subject([fixed(ToTypeStr)])
+            TypeVarOrVarsStr = "An unconstrained type variable",
+            TVarPieces = color_as_subject([fixed(ToTypeStr)]),
+            ItIsTheyAre = "it is"
         else
             unexpected($pred, "neither FromType nor ToType is a variable")
         )
     ),
     Pieces = [words(TypeVarOrVarsStr), words("such as")] ++ TVarPieces ++
-        [words("cannot be either coerced from, or coerced to."), nl].
+        [words("cannot be either coerced from, or coerced to,"),
+        words("because"), words(ItIsTheyAre), words("not known either"),
+        words("to be equal to any type, or to be in a"),
+        words("subtype relationship with any type."), nl].
 
 :- func describe_coerce_fail_non_du_type_ctor(tvarset,
     mer_type, string, mer_type, string) = list(format_piece).
