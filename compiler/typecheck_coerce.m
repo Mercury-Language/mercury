@@ -762,6 +762,10 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
     % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
     % by subtype definitions.
     %
+    % NOTE We use TypeA and TypeB as names instead of FromType and ToType
+    % because are_actual_param_type_pair_as_related_as_needed can pass
+    % *either* FromType as TypeA and ToType as TypeB, *or* vice versa.
+    %
     % Note: changes here may need to be made also to types_compare_as_given_mc
     % in modecheck_coerce.m.
     %
