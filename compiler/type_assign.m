@@ -27,7 +27,6 @@
 :- import_module parse_tree.vartypes.
 
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 %
@@ -117,14 +116,13 @@
                 dbt_to_type             :: mer_type,
                 dbt_to_base_type_ctor   :: type_ctor
             )
-    ;       unknown_or_nonground_type(
+    ;       nonground_type(
                 existq_tvars            :: list(tvar),
-                % If both these arguments are yes(...), then
                 % type_is_ground_except_vars must fail for at least one
-                % of the wrapped types, when that predicate is passed
-                % the value in the existq_tvars field.
-                maybe_from_type         :: maybe(mer_type),
-                maybe_to_type           :: maybe(mer_type)
+                % of these types, when that predicate is passed the value
+                % in the type_assign's existq_tvars field.
+                ngt_from_type           :: mer_type,
+                ngt_to_type             :: mer_type
             )
     ;       different_type_categories(
                 dtc_type_table          :: type_table,

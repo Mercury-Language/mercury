@@ -236,7 +236,7 @@ standardize_coerce_fail(Fail0) = Fail :-
         Fail0 = different_base_types(_, _, _, _),
         Fail = Fail0
     ;
-        Fail0 = unknown_or_nonground_type(_, _, _),
+        Fail0 = nonground_type(_, _, _),
         Fail = Fail0
     ;
         Fail0 = different_type_categories(TypeTable, FromType, ToType),
@@ -295,7 +295,8 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
         Pieces = describe_coerce_fail_different_base_types(TVarSet,
             FromType, FromBaseTypeCtor, ToType, ToBaseTypeCtor)
     ;
-        Fail = unknown_or_nonground_type(_, _, _),
+        Fail = nonground_type(_, _, _),
+        % This coerce_fail does not occur in our test suite.
         Pieces = []
     ;
         Fail = different_type_categories(TypeTable, FromType, ToType),

@@ -108,21 +108,27 @@ typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
     type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 
     ( if search_var_type(VarTypes0, FromVar, FromType0) then
-        apply_rec_subst_to_type(TypeBindings0, FromType0, FromType1),
-        MaybeFromType = yes(FromType1)
+        apply_rec_subst_to_type(TypeBindings0, FromType0, FromType),
+        TypeAssign1 = TypeAssign0
     else
-        MaybeFromType = no
+        type_assign_fresh_type_var(FromVar, FromType,
+            TypeAssign0, TypeAssign1)
     ),
     ( if search_var_type(VarTypes0, ToVar, ToType0) then
-        apply_rec_subst_to_type(TypeBindings0, ToType0, ToType1),
-        MaybeToType = yes(ToType1)
+        apply_rec_subst_to_type(TypeBindings0, ToType0, ToType),
+        TypeAssign2 = TypeAssign1
     else
-        MaybeToType = no
+        % Handle X = coerce(X).
+        ( if ToVar = FromVar then
+            ToType = FromType,
+            TypeAssign2 = TypeAssign1
+        else
+            type_assign_fresh_type_var(ToVar, ToType,
+                TypeAssign1, TypeAssign2)
+        )
     ),
 
     ( if
-        MaybeFromType = yes(FromType),
-        MaybeToType = yes(ToType),
         type_is_ground_except_vars(ExistQTVars0, FromType),
         type_is_ground_except_vars(ExistQTVars0, ToType)
     then
@@ -132,50 +138,27 @@ typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
         % in check_coerce_constraint_if_ready, though the two places differ
         % in how they handle both resolved and not-yet-resolved constraints.
         typecheck_coerce_between_types(TypeTable, TVarSet0,
-            FromType, ToType, TypeAssign0, TypeAssign1, CoerceFails),
+            FromType, ToType, TypeAssign2, TypeAssign3, CoerceFails),
         (
             CoerceFails = [],
-            type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
+            type_assign_get_type_bindings(TypeAssign3, TypeBindings1),
             ( if is_same_type_after_subst(TypeBindings1, FromType, ToType) then
                 Coercion = coerce_constraint(FromType, ToType, Context,
                     FromVar, satisfied_but_redundant, []),
-                add_coerce_constraint(Coercion, TypeAssign1, TypeAssign)
+                add_coerce_constraint(Coercion, TypeAssign3, TypeAssign)
             else
-                TypeAssign = TypeAssign1
+                TypeAssign = TypeAssign3
             )
         ;
             CoerceFails = [_HeadCoerceFail | _TailCoerceFails],
             Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
                 unsatisfiable, CoerceFails),
-            add_coerce_constraint(Coercion, TypeAssign0, TypeAssign)
+            add_coerce_constraint(Coercion, TypeAssign2, TypeAssign)
         )
     else
         % One or both of the types is not known yet. Add a coercion constraint
         % on the type assignment to be checked after typechecking the clause.
-        (
-            MaybeFromType = yes(FromType),
-            TypeAssign1 = TypeAssign0
-        ;
-            MaybeFromType = no,
-            type_assign_fresh_type_var(FromVar, FromType,
-                TypeAssign0, TypeAssign1)
-        ),
-        (
-            MaybeToType = yes(ToType),
-            TypeAssign2 = TypeAssign1
-        ;
-            MaybeToType = no,
-            % Handle X = coerce(X).
-            ( if ToVar = FromVar then
-                ToType = FromType,
-                TypeAssign2 = TypeAssign1
-            else
-                type_assign_fresh_type_var(ToVar, ToType,
-                    TypeAssign1, TypeAssign2)
-            )
-        ),
-        CoerceFail = unknown_or_nonground_type(ExistQTVars0,
-            MaybeFromType, MaybeToType),
+        CoerceFail = nonground_type(ExistQTVars0, FromType, ToType),
         Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
             need_to_check, [CoerceFail]),
         add_coerce_constraint(Coercion, TypeAssign2, TypeAssign)
