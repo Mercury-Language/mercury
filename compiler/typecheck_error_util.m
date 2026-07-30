@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2025 The Mercury team.
+% Copyright (C) 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -117,6 +117,21 @@
 :- pred identical_types(mer_type::in, mer_type::in) is semidet.
 
 %---------------------------------------------------------------------------%
+
+    % delete_identical_qualifications(TypeA0, TypeB0, TypeA, TypeB):
+    %
+    % Where defined_types in TypeA0 and TypeB0 occur in the same positions
+    % with identical module qualifications, delete those qualifications.
+    % Keep every other part of those types unchanged. Return the resulting
+    % types as TypeA and TypeB.
+    %
+    % NOTE The resulting types are NOT usable for ANY purpose other than
+    % conversion into diagnostic text.
+    %
+:- pred delete_identical_qualifications(mer_type::in, mer_type::in,
+    mer_type::out, mer_type::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -129,7 +144,9 @@
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.var_db.
 
+:- import_module assoc_list.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module term.
 :- import_module varset.
@@ -436,6 +453,123 @@ identical_types(Type1, Type2) :-
     map.init(TypeSubst0),
     type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
     TypeSubst = TypeSubst0.
+
+%---------------------------------------------------------------------------%
+
+delete_identical_qualifications(TypeA0, TypeB0, TypeA, TypeB) :-
+    (
+        ( TypeA0 = builtin_type(_)
+        ; TypeA0 = type_variable(_TypeVar, _Kind)
+        ),
+        TypeA = TypeA0,
+        TypeB = TypeB0
+    ;
+        TypeA0 = defined_type(SymNameA0, ArgTypesA0, Kind),
+        ( if
+            TypeB0 = defined_type(SymNameB0, ArgTypesB0, Kind),
+            maybe_from_corresponding_lists(ArgTypesA0, ArgTypesB0,
+                ArgTypesAB0)
+        then
+            (
+                SymNameA0 = unqualified(_NameA),
+                SymNameB0 = unqualified(_NameB),
+                SymNameA = SymNameA0,
+                SymNameB = SymNameB0
+            ;
+                SymNameA0 = unqualified(_NameA),
+                SymNameB0 = qualified(_ModuleNameB, _NameB),
+                SymNameA = SymNameA0,
+                SymNameB = SymNameB0
+            ;
+                SymNameA0 = qualified(_ModuleNameA, _NameA),
+                SymNameB0 = unqualified(_NameB),
+                SymNameA = SymNameA0,
+                SymNameB = SymNameB0
+            ;
+                SymNameA0 = qualified(ModuleNameA, NameA),
+                SymNameB0 = qualified(ModuleNameB, NameB),
+                ( if ModuleNameA = ModuleNameB then
+                    SymNameA = unqualified(NameA),
+                    SymNameB = unqualified(NameB)
+                else
+                    SymNameA = SymNameA0,
+                    SymNameB = SymNameB0
+                )
+            ),
+            delete_identical_qualifications_al(ArgTypesAB0, ArgTypesAB),
+            keys_and_values(ArgTypesAB, ArgTypesA, ArgTypesB),
+            TypeA = defined_type(SymNameA, ArgTypesA, Kind),
+            TypeB = defined_type(SymNameB, ArgTypesB, Kind)
+        else
+            TypeA = TypeA0,
+            TypeB = TypeB0
+        )
+    ;
+        TypeA0 = tuple_type(ArgTypesA0, Kind),
+        ( if
+            TypeB0 = tuple_type(ArgTypesB0, Kind),
+            maybe_from_corresponding_lists(ArgTypesA0, ArgTypesB0,
+                ArgTypesAB0)
+        then
+            delete_identical_qualifications_al(ArgTypesAB0, ArgTypesAB),
+            keys_and_values(ArgTypesAB, ArgTypesA, ArgTypesB),
+            TypeA = tuple_type(ArgTypesA, Kind),
+            TypeB = tuple_type(ArgTypesB, Kind)
+        else
+            TypeA = TypeA0,
+            TypeB = TypeB0
+        )
+    ;
+        TypeA0 = higher_order_type(PoF, ArgTypesA0, HOInstInfoA, Purity),
+        ( if
+            TypeB0 = higher_order_type(PoF, ArgTypesB0, HOInstInfoB, Purity),
+            maybe_from_corresponding_lists(ArgTypesA0, ArgTypesB0,
+                ArgTypesAB0)
+        then
+            delete_identical_qualifications_al(ArgTypesAB0, ArgTypesAB),
+            keys_and_values(ArgTypesAB, ArgTypesA, ArgTypesB),
+            TypeA = higher_order_type(PoF, ArgTypesA, HOInstInfoA, Purity),
+            TypeB = higher_order_type(PoF, ArgTypesB, HOInstInfoB, Purity)
+        else
+            TypeA = TypeA0,
+            TypeB = TypeB0
+        )
+    ;
+        TypeA0 = apply_n_type(TVar, ArgTypesA0, Kind),
+        ( if
+            TypeB0 = apply_n_type(TVar, ArgTypesB0, Kind),
+            maybe_from_corresponding_lists(ArgTypesA0, ArgTypesB0,
+                ArgTypesAB0)
+        then
+            delete_identical_qualifications_al(ArgTypesAB0, ArgTypesAB),
+            keys_and_values(ArgTypesAB, ArgTypesA, ArgTypesB),
+            TypeA = apply_n_type(TVar, ArgTypesA, Kind),
+            TypeB = apply_n_type(TVar, ArgTypesB, Kind)
+        else
+            TypeA = TypeA0,
+            TypeB = TypeB0
+        )
+    ;
+        TypeA0 = kinded_type(SubTypeA0, Kind),
+        ( if TypeB0 = kinded_type(SubTypeB0, Kind) then
+            delete_identical_qualifications(SubTypeA0, SubTypeB0,
+                SubTypeA, SubTypeB),
+            TypeA = kinded_type(SubTypeA, Kind),
+            TypeB = kinded_type(SubTypeB, Kind)
+        else
+            TypeA = TypeA0,
+            TypeB = TypeB0
+        )
+    ).
+
+:- pred delete_identical_qualifications_al(assoc_list(mer_type, mer_type)::in,
+    assoc_list(mer_type, mer_type)::out) is det.
+
+delete_identical_qualifications_al([], []).
+delete_identical_qualifications_al([TypeA0 - TypeB0 | TypesAB0],
+        [TypeA - TypeB | TypesAB]) :-
+    delete_identical_qualifications(TypeA0, TypeB0, TypeA, TypeB),
+    delete_identical_qualifications_al(TypesAB0, TypesAB).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_error_util.

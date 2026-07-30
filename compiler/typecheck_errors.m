@@ -178,7 +178,7 @@ wrap_quote(Str) = [quote(Str)].
 %---------------------------------------------------------------------------%
 
 report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
-        FromType, ToType, Fails0) = Spec :-
+        FromType0, ToType0, Fails0) = Spec :-
     % XXX TYPECHECK_ERRORS
     % This code can generate some less-than-helpful diagnostics.
     %
@@ -191,6 +191,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     VarSet = ClauseContext ^ tecc_varset,
     FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
+
+    delete_identical_qualifications(FromType0, ToType0, FromType, ToType),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
 
