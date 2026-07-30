@@ -3,3 +3,10 @@ coerce_typecheck_eqv.m:039:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_typecheck_eqv.m:039:   [38;5;171m`coerce_typecheck_eqv.bad(coerce_typecheck_eqv.citrus)'[39;49m
 coerce_typecheck_eqv.m:039:   to
 coerce_typecheck_eqv.m:039:   [38;5;171m`coerce_typecheck_eqv.bad(coerce_typecheck_eqv.fruit)'.[39;49m
+coerce_typecheck_eqv.m:039:   The only parameter of the type constructor
+coerce_typecheck_eqv.m:039:   `bad'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_typecheck_eqv.m:039:   be bound to the same type in the coerced-from and
+coerce_typecheck_eqv.m:039:   coerced-to types) because it occurs in the type
+coerce_typecheck_eqv.m:039:   of the first argument of the `bad'/1 data
+coerce_typecheck_eqv.m:039:   constructor, which has a type constructor other
+coerce_typecheck_eqv.m:039:   than `bad'/1, namely `list'/1.

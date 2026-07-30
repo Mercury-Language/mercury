@@ -110,7 +110,7 @@ bad_foreign_type(X, Y) :-
 :- import_module set.
 
 :- type wrap_abs(T)
-    --->    wrap_abs(set(T)).
+    --->    wrap_abs(set(T)). % We disable intermod opt to keep set abstract.
 
 :- pred bad_abs_type(wrap_abs(citrus)::in, wrap_abs(fruit)::out) is det.
 
@@ -123,5 +123,15 @@ bad_abs_type(X, Y) :-
 
 non_subtypes(Fruits, Oranges) :-
     Oranges = coerce(Fruits).
+
+%---------------------------------------------------------------------------%
+
+:- import_module one_or_more.
+
+:- pred nested_du_type(one_or_more(citrus)::in, one_or_more(fruit)::out)
+    is det.
+
+nested_du_type(OoMCitrus, OoMFruit) :-
+    OoMFruit = coerce(OoMCitrus).
 
 %---------------------------------------------------------------------------%

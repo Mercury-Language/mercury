@@ -27,6 +27,7 @@
 :- import_module parse_tree.vartypes.
 
 :- import_module list.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 %
@@ -161,15 +162,45 @@
                 ndtc_to_type_desc       :: string
             )
     ;       should_be_invariant_arg(
+                sbia_base_tc            :: type_ctor,
+                sbia_base_tc_arg_num    :: uint,
+                % The reason why this paramater must have the same type
+                % bound to it in the from-type and the to-type.
+                sbia_reason             :: invariant_reason,
                 % The from-type and to-type are different, even though
                 % they should be identical.
-                %
-                % XXX We *really* need some extra info here
-                % that we use to explain to users the *reason*
-                % these should be identical.
                 sbia_from_type          :: mer_type,
                 sbia_to_type            :: mer_type
             ).
+
+:- type invariant_reason
+    --->    ir_base_type_ctor(one_or_more(ctor_arg_posn))
+            % The reason for the invariance requirement lies in
+            % the nature of one or more data constructor arguments
+            % (in the base type_ctor's du type definition) in which
+            % the type parameter occurs.
+    ;       ir_higher_order.
+            % The reason for the invariance requirement lies in
+            % the fact that the type bound to the type parameter in either
+            % the from-type or the to-type is a higher order type.
+
+:- type ctor_arg_posn
+    --->    ctor_arg_posn(du_or_tuple_cons_id, uint, posn_invariant_reason).
+
+:- type du_or_tuple_cons_id =< cons_id
+    --->    du_data_ctor(du_ctor)
+    ;       tuple_cons(arity).
+
+:- type posn_invariant_reason
+    --->    pir_du_nonrec(type_ctor, type_ctor)
+            % The base type_ctor, and the type_ctor
+            % of the data constructor's argument type.
+    ;       pir_foreign
+    ;       pir_solver
+    ;       pir_abstract
+    ;       pir_higher_order.
+
+%---------------------------------------------------------------------------%
 
 :- pred type_assign_get_var_types(type_assign::in,
     vartypes::out) is det.

@@ -61,6 +61,7 @@
 :- import_module parse_tree.prog_type_test.
 
 :- import_module int.
+:- import_module one_or_more.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -229,6 +230,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
+%---------------------------------------------------------------------------%
+
 :- func standardize_coerce_fail(coerce_fail) = coerce_fail.
 
 standardize_coerce_fail(Fail0) = Fail :-
@@ -277,13 +280,17 @@ standardize_coerce_fail(Fail0) = Fail :-
             Fail = Fail0
         )
     ;
-        Fail0 = should_be_invariant_arg(FromType, ToType),
+        Fail0 = should_be_invariant_arg(BaseTypeCtor, ArgNum, Reason,
+            FromType, ToType),
         ( if compare((>), FromType, ToType) then
-            Fail = should_be_invariant_arg(ToType, FromType)
+            Fail = should_be_invariant_arg(BaseTypeCtor, ArgNum, Reason,
+                ToType, FromType)
         else
             Fail = Fail0
         )
     ).
+
+%---------------------------------------------------------------------------%
 
 :- func describe_coerce_fail(tvarset, coerce_fail) = list(format_piece).
 
@@ -322,9 +329,13 @@ describe_coerce_fail(TVarSet, Fail) = Pieces :-
         Pieces = describe_coerce_fail_non_du_type_ctor(TVarSet,
             FromType, FromTypeDesc, ToType, ToTypeDesc)
     ;
-        Fail = should_be_invariant_arg(_, _),
-        Pieces = []
+        Fail = should_be_invariant_arg(BaseTypeCtor, ArgNum, Reason,
+            FromType, ToType),
+        Pieces = describe_coerce_fail_should_be_invariant_arg(TVarSet,
+            BaseTypeCtor, ArgNum, Reason, FromType, ToType)
     ).
+
+%---------------------%
 
 :- func describe_coerce_fail_different_base_types(tvarset,
     mer_type, type_ctor, mer_type, type_ctor) = list(format_piece).
@@ -373,6 +384,8 @@ describe_coerce_fail_different_base_types(_TVarSet,
 %       color_as_inconsistent([ToBaseCtorPiece, suffix(".")]) ++
 %       [nl].
 
+%---------------------%
+
 :- func describe_coerce_fail_different_type_categories(type_table,
     mer_type, mer_type) = list(format_piece).
 
@@ -411,6 +424,8 @@ describe_coerce_fail_different_type_categories(TypeTable,
         Pieces = []
     ).
 
+%---------------------%
+
 :- func describe_coerce_fail_different_builtin_types(tvarset,
     builtin_type, builtin_type) = list(format_piece).
 
@@ -425,6 +440,8 @@ describe_coerce_fail_different_builtin_types(TVarSet,
         color_as_subject([words(ToTypeStr)]) ++
         [words("cannot be either coerced from, or coerced to."), nl].
 
+%---------------------%
+
 :- func describe_coerce_fail_different_tuple_arities(arity, arity)
     = list(format_piece).
 
@@ -436,12 +453,16 @@ describe_coerce_fail_different_tuple_arities(FromArity, ToArity) = Pieces :-
             suffix(".")]) ++
         [nl].
 
+%---------------------%
+
 :- func describe_coerce_fail_du_type_is_not_subtype(type_ctor)
     = list(format_piece).
 
 describe_coerce_fail_du_type_is_not_subtype(TypeCtor) = Pieces :-
     Pieces = [qual_type_ctor(TypeCtor), words("is")] ++
         color_as_incorrect([words("not a subtype.")]) ++ [nl].
+
+%---------------------%
 
 :- func describe_coerce_fail_cannot_unify_type_vars(tvarset,
     mer_type, mer_type) = list(format_piece).
@@ -475,6 +496,8 @@ describe_coerce_fail_cannot_unify_type_vars(TVarSet, FromType, ToType)
         words("because"), words(ItIsTheyAre), words("not known either"),
         words("to be equal to any type, or to be in a"),
         words("subtype relationship with any type."), nl].
+
+%---------------------%
 
 :- func describe_coerce_fail_non_du_type_ctor(tvarset,
     mer_type, string, mer_type, string) = list(format_piece).
@@ -541,6 +564,110 @@ describe_if_non_du_type(NonDuDesc, DescPieces) :-
         DescPieces = []
     else
         DescPieces = [words(NonDuDesc)]
+    ).
+
+%---------------------%
+
+:- func describe_coerce_fail_should_be_invariant_arg(tvarset, type_ctor, uint,
+    invariant_reason, mer_type, mer_type) = list(format_piece).
+
+describe_coerce_fail_should_be_invariant_arg(_TVarSet, BaseTypeCtor, ArgNum,
+        Reason, _FromType, _ToType) = Pieces :-
+    % XXX Should we print _FromType and _ToType?
+    % In the usual case where BaseTypeCtor has a low arity, they will be
+    % obvious from the names of the coerce-from and coerce-to types.
+    (
+        Reason = ir_higher_order,
+        Pieces = [words("The type parameter that these types are bound to"),
+            words("occurs in a higher order type."),
+            words("Normally, it would be ok for the input arguments"),
+            words("of higher order types to be co-variant,"),
+            words("the Mercury type checker does not know"),
+            words("which arguments are input."),
+            words("It ensures soundness by requiring all arguments"),
+            words("of higher order types to be invariant,"),
+            words("meaning they must be the same in the"),
+            words("coerced-from and coerced-to types.")]
+    ;
+        Reason = ir_base_type_ctor(OoMCtorArgPosns),
+        BaseTypeCtor = type_ctor(_, BaseTypeCtorArity),
+        ( if
+            BaseTypeCtorArity = 1,
+            ArgNum = 1u
+        then
+            ArgNumPieces = [words("only parameter")]
+        else
+            ArgNumPieces = [unth_fixed(ArgNum), words("parameter")]
+        ),
+        FrontPieces = [words("The")] ++ ArgNumPieces ++
+            [words("of the type constructor"), unqual_type_ctor(BaseTypeCtor),
+            words("must be")] ++ color_as_correct([words("invariant")]) ++
+            [words("(meaning that it must be bound to the same type"),
+            words("in the coerced-from and coerced-to types)"),
+            words("because it occurs in")],
+        OoMCtorArgPosns = one_or_more(HeadCtorArgPosn, TailCtorArgPosns),
+        HeadCtorArgPosnPieces = ctor_arg_posn_to_pieces(HeadCtorArgPosn),
+        (
+            TailCtorArgPosns = [],
+            Pieces = FrontPieces ++
+                HeadCtorArgPosnPieces ++ [suffix("."), nl]
+        ;
+            TailCtorArgPosns = [_ | _],
+            TailCtorArgPosnPieces =
+                list.map(ctor_arg_posn_to_pieces, TailCtorArgPosns),
+            CtorArgPosnPiecesLists =
+                [HeadCtorArgPosnPieces | TailCtorArgPosnPieces],
+            list.intersperse_list_last([[suffix(","), nl]],
+                [[suffix(","), words("and"), nl]], CtorArgPosnPiecesLists,
+                AllCtorArgPosnPiecesLists),
+            list.condense(AllCtorArgPosnPiecesLists, AllCtorArgPosnPieces),
+            Pieces = FrontPieces ++
+                [nl_indent_delta(1)] ++
+                AllCtorArgPosnPieces ++
+                [suffix("."), nl_indent_delta(-1)]
+        )
+    ).
+
+:- func ctor_arg_posn_to_pieces(ctor_arg_posn) = list(format_piece).
+
+ctor_arg_posn_to_pieces(CtorArgPosn) = Pieces :-
+    CtorArgPosn = ctor_arg_posn(DuOrTupleConsId, ArgNum, PosnReason),
+    Pieces = [words("the type of the"),
+        unth_fixed(ArgNum), words("argument of the"),
+        unqual_cons_id_and_maybe_arity(coerce(DuOrTupleConsId)),
+        words("data constructor, which")] ++
+        posn_invariant_reason_to_pieces(PosnReason).
+
+:- func posn_invariant_reason_to_pieces(posn_invariant_reason)
+    = list(format_piece).
+
+posn_invariant_reason_to_pieces(PosnReason) = Pieces :-
+    % XXX These should be color_as_incorrect, but to be consistent,
+    % we could need the color to include any comma suffix.
+    (
+        PosnReason = pir_du_nonrec(BaseTypeCtor, TypeCtor),
+        ( if BaseTypeCtor = TypeCtor then
+            Pieces = [words("applies the base type constructor"),
+                unqual_type_ctor(BaseTypeCtor),
+                words("to a different list of type parameters")]
+        else
+            % This should be a temporary limitation.
+            Pieces = [words("has a type constructor other than"),
+                unqual_type_ctor(BaseTypeCtor), suffix(","),
+                words("namely"), unqual_type_ctor(TypeCtor)]
+        )
+    ;
+        PosnReason = pir_foreign,
+        Pieces = [words("is a foreign type")]
+    ;
+        PosnReason = pir_solver,
+        Pieces = [words("is a solver type")]
+    ;
+        PosnReason = pir_abstract,
+        Pieces = [words("is an abstract type")]
+    ;
+        PosnReason = pir_higher_order,
+        Pieces = [words("is a higher order type")]
     ).
 
 %---------------------------------------------------------------------------%

@@ -44,6 +44,7 @@ MCFLAGS-bug487                  += --no-warn-unneeded-final-statevars
 MCFLAGS-children                += --no-intermodule-optimization
 MCFLAGS-coerce_implied_mode     += --halt-at-warn
 MCFLAGS-coerce_infer            += --infer-all
+MCFLAGS-coerce_type_error       += --no-intermodule-optimization
 MCFLAGS-coerce_typecheck_eqv    += --no-intermodule-optimization
 MCFLAGS-coerce_typecheck_eqv_helper_1 += --no-intermodule-optimization
 MCFLAGS-coerce_void             += --halt-at-warn

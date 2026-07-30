@@ -76,9 +76,10 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module require.
-:- import_module set.
 :- import_module term_context.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -396,9 +397,9 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
                 BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu,
                 InvariantTVars),
             are_actual_param_type_pairs_as_related_as_needed(TypeTable,
-                TVarSet, InvariantTVars, BaseTypeCtorParams,
-                FromBaseTypeArgTypes, ToBaseTypeArgTypes,
-                !TypeAssign, [], CoerceFails)
+                TVarSet, InvariantTVars, BaseTypeCtor,
+                BaseTypeCtorParams, FromBaseTypeArgTypes, ToBaseTypeArgTypes,
+                1u, _, !TypeAssign, [], CoerceFails)
         else
             CoerceFail = different_base_types(FromType, FromBaseTypeCtor,
                 ToType, ToBaseTypeCtor),
@@ -467,7 +468,7 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- type invariant_tvars == set(tvar).
+:- type invariant_tvars == one_or_more_map(tvar, ctor_arg_posn).
 
     % compute_which_type_params_must_be_invariant(TypeTable,
     %     BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars):
@@ -497,7 +498,7 @@ compute_which_type_params_must_be_invariant(TypeTable,
         % the only thing we ever use InvariantTVars for is to test whether
         % an element of BaseTypeCtorParams occurs in it. This is what
         % justifies returning the empty set here.
-        set.init(InvariantTVars)
+        one_or_more_map.init(InvariantTVars)
     ;
         BaseTypeCtorParams = [_ | _],
         BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
@@ -506,7 +507,7 @@ compute_which_type_params_must_be_invariant(TypeTable,
         list.foldl(
             acc_invariant_tvars_in_ctor(TypeTable,
                 BaseTypeCtor, BaseTypeCtorParams),
-            Ctors, set.init, InvariantTVars)
+            Ctors, one_or_more_map.init, InvariantTVars)
     ).
 
 :- pred acc_invariant_tvars_in_ctor(type_table::in,
@@ -515,23 +516,27 @@ compute_which_type_params_must_be_invariant(TypeTable,
 
 acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeCtorParams, Ctor,
         !InvariantTVars) :-
-    Ctor = ctor(_Ordinal, _MaybeExist, _CtorName, CtorArgs, _Arity, _Context),
-    list.foldl(
+    Ctor = ctor(_Ordinal, _MaybeExist, CtorSymName, CtorArgs, Arity, _Context),
+    DuCtor = du_ctor(CtorSymName, Arity, BaseTypeCtor),
+    ConsId = du_data_ctor(DuCtor),
+    list.foldl2(
         acc_invariant_tvars_in_ctor_arg(TypeTable,
-            BaseTypeCtor, BaseTypeCtorParams),
-        CtorArgs, !InvariantTVars).
+            BaseTypeCtor, BaseTypeCtorParams, ConsId),
+        CtorArgs, 1u, _, !InvariantTVars).
 
 :- pred acc_invariant_tvars_in_ctor_arg(type_table::in,
-    type_ctor::in, list(tvar)::in, constructor_arg::in,
+    type_ctor::in, list(tvar)::in, du_or_tuple_cons_id::in,
+    constructor_arg::in, uint::in, uint::out,
     invariant_tvars::in, invariant_tvars::out) is det.
 
 acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor, BaseTypeCtorParams,
-        CtorArg, !InvariantTVars) :-
+        DuCtor, CtorArg, !ArgNum, !InvariantTVars) :-
     CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
     % Since acc_invariant_tvars_in_ctor_arg_type is recursive,
     % we cannot inline it here.
     acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-        BaseTypeCtor, BaseTypeCtorParams, CtorArgType, !InvariantTVars).
+        BaseTypeCtor, BaseTypeCtorParams, DuCtor, CtorArgType,
+        !ArgNum, !InvariantTVars).
 
     % We have to scan pretty much all the types that occur
     % on the right hand side of BaseTypeCtor's definition, whether they occur
@@ -545,11 +550,12 @@ acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor, BaseTypeCtorParams,
     % - they definitely *will* be identical (as with recursive types).
     %
 :- pred acc_invariant_tvars_in_ctor_arg_type(type_table::in,
-    type_ctor::in, list(tvar)::in, mer_type::in,
-    invariant_tvars::in, invariant_tvars::out) is det.
+    type_ctor::in, list(tvar)::in, du_or_tuple_cons_id::in, mer_type::in,
+    uint::in, uint::out, invariant_tvars::in, invariant_tvars::out) is det.
 
 acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-        BaseTypeCtor, BaseTypeCtorParams, CtorArgType, !InvariantTVars) :-
+        BaseTypeCtor, BaseTypeCtorParams, ConsId, CtorArgType,
+        !ArgNum, !InvariantTVars) :-
     (
         CtorArgType = builtin_type(_)
     ;
@@ -589,38 +595,47 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
                 % (i.e. outside CtorArgType) as well.
                 true
             else
+                PosnReason = pir_du_nonrec(BaseTypeCtor, TypeCtor),
+                CtorArgPosn = ctor_arg_posn(ConsId, !.ArgNum, PosnReason),
                 type_vars_in_types(ArgTypes, TypeVars),
-                set.insert_list(TypeVars, !InvariantTVars)
+                list.foldl(one_or_more_map.reverse_add(CtorArgPosn), TypeVars,
+                    !InvariantTVars)
             )
         ;
-            ( TypeBody = hlds_foreign_type(_)
-            ; TypeBody = hlds_abstract_type(_)
-            ; TypeBody = hlds_solver_type(_)
+            ( TypeBody = hlds_foreign_type(_),  PosnReason = pir_foreign
+            ; TypeBody = hlds_solver_type(_),   PosnReason = pir_solver
+            ; TypeBody = hlds_abstract_type(_), PosnReason = pir_abstract
             ),
+            CtorArgPosn = ctor_arg_posn(ConsId, !.ArgNum, PosnReason),
             type_vars_in_types(ArgTypes, TypeVars),
-            set.insert_list(TypeVars, !InvariantTVars)
+            list.foldl(one_or_more_map.reverse_add(CtorArgPosn), TypeVars,
+                !InvariantTVars)
         ;
             TypeBody = hlds_eqv_type(EqvType0),
-            % This a equivalence type was not expanded out by
-            % equiv_type.m, so the source of the equivalence must be
-            % outside the set of type definitions that equiv_type.m
-            % pays attention to, such as in the implementation section
-            % of an imported module.
+            % This equivalence type was not expanded out by equiv_type.m,
+            % so the source of the equivalence must be outside the set of
+            % type definitions that equiv_type.m pays attention to,
+            % such as in the implementation section of an imported module.
             %
             % In these cases, expand out the type and process the result
             % as if the equivalence *had* been expanded out.
             hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
             map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
             apply_subst_to_type(TSubst, EqvType0, EqvType),
+            % We ignore the updated !:ArgNum, because we do not want to
+            % increment !.ArgNum BOTH here AND at clause end.
             acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-                BaseTypeCtor, BaseTypeCtorParams, EqvType, !InvariantTVars)
+                BaseTypeCtor, BaseTypeCtorParams, ConsId, EqvType,
+                !.ArgNum, _, !InvariantTVars)
         )
     ;
         CtorArgType = tuple_type(ArgTypes, _Kind),
-        list.foldl(
+        list.length(ArgTypes, Arity),
+        TupleCtor = tuple_cons(Arity),
+        list.foldl2(
             acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-                BaseTypeCtor, BaseTypeCtorParams),
-            ArgTypes, !InvariantTVars)
+                BaseTypeCtor, BaseTypeCtorParams, TupleCtor),
+            ArgTypes, 1u, _, !InvariantTVars)
     ;
         CtorArgType = higher_order_type(_PoF, ArgTypes, _HOInstInfo, _Purity),
         % We do not support any subtyping of higher order types.
@@ -629,21 +644,26 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
         % which means that all type parameters that occur in such
         % higher order types must be bound to the exact same value
         % in the from-type and to-type.
+        CtorArgPosn = ctor_arg_posn(ConsId, !.ArgNum, pir_higher_order),
         type_vars_in_types(ArgTypes, TypeVars),
-        set.insert_list(TypeVars, !InvariantTVars)
+        list.foldl(one_or_more_map.reverse_add(CtorArgPosn), TypeVars,
+            !InvariantTVars)
     ;
         CtorArgType = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
         CtorArgType = kinded_type(SubCtorArgType, _Kind),
         acc_invariant_tvars_in_ctor_arg_type(TypeTable,
-            BaseTypeCtor, BaseTypeCtorParams, SubCtorArgType, !InvariantTVars)
-    ).
+            BaseTypeCtor, BaseTypeCtorParams, ConsId, SubCtorArgType,
+            !ArgNum, !InvariantTVars)
+    ),
+    !:ArgNum = !.ArgNum + 1u.
 
 %---------------------------------------------------------------------------%
 
     % are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
-    %   InvariantTVars, TypeParams, FromArgTypes, ToArgTypes, !TypeAssign):
+    %   InvariantTVars, BaseTypeCtor, BaseTypeParams, FromArgTypes, ToArgTypes,
+    %   !ArgNume, !TypeAssign, !CoerceFails):
     %
     % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
     % in the from-type and to-type of the coercion respectively.
@@ -662,31 +682,33 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
     % relationship.
     %
 :- pred are_actual_param_type_pairs_as_related_as_needed(type_table::in,
-    tvarset::in, invariant_tvars::in,
+    tvarset::in, invariant_tvars::in, type_ctor::in,
     list(tvar)::in, list(mer_type)::in, list(mer_type)::in,
-    type_assign::in, type_assign::out,
+    uint::in, uint::out, type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
 are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
-        InvariantTVars, TypeParams, FromArgTypes, ToArgTypes,
-        !TypeAssign, !CoerceFails) :-
+        InvariantTVars, BaseTypeCtor, BaseTypeCtorParams,
+        FromArgTypes, ToArgTypes, !ArgNum, !TypeAssign, !CoerceFails) :-
     ( if
-        TypeParams = [],
+        BaseTypeCtorParams = [],
         FromArgTypes = [],
         ToArgTypes = []
     then
         true
     else if
-        TypeParams = [HeadTypeParam | TailTypeParams],
+        BaseTypeCtorParams = [HeadBaseTypeCtorParam | TailBaseTypeCtorParams],
         FromArgTypes = [HeadFromArgType | TailFromArgTypes],
         ToArgTypes = [HeadToArgType | TailToArgTypes]
     then
         are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
-            InvariantTVars, HeadTypeParam, HeadFromArgType, HeadToArgType,
-            !TypeAssign, !CoerceFails),
+            InvariantTVars, BaseTypeCtor,
+            HeadBaseTypeCtorParam, HeadFromArgType, HeadToArgType,
+            !ArgNum, !TypeAssign, !CoerceFails),
         are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
-            InvariantTVars, TailTypeParams, TailFromArgTypes, TailToArgTypes,
-            !TypeAssign, !CoerceFails)
+            InvariantTVars, BaseTypeCtor,
+            TailBaseTypeCtorParams, TailFromArgTypes, TailToArgTypes,
+            !ArgNum, !TypeAssign, !CoerceFails)
     else
         % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
         % in the from-type and to-type of the coercion respectively.
@@ -696,28 +718,30 @@ are_actual_param_type_pairs_as_related_as_needed(TypeTable, TVarSet,
     ).
 
 :- pred are_actual_param_type_pair_as_related_as_needed(type_table::in,
-    tvarset::in, invariant_tvars::in, tvar::in, mer_type::in, mer_type::in,
-    type_assign::in, type_assign::out,
+    tvarset::in, invariant_tvars::in, type_ctor::in,
+    tvar::in, mer_type::in, mer_type::in,
+    uint::in, uint::out, type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
 are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
-        InvariantTVars, TypeParam, FromType, ToType,
-        !TypeAssign, !CoerceFails) :-
-    ( if set.contains(InvariantTVars, TypeParam) then
-        types_compare_as_given(TypeTable, TVarSet, compare_equal,
-            FromType, ToType, !TypeAssign, !CoerceFails)
+        InvariantTVars, BaseTypeCtor, BaseTypeCtorParam, FromType, ToType,
+        !ArgNum, !TypeAssign, !CoerceFails) :-
+    ( if map.search(InvariantTVars, BaseTypeCtorParam, OoMCtorArgPosn) then
+        Comparison = compare_equal(ir_base_type_ctor(OoMCtorArgPosn)),
+        types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
+            Comparison, FromType, ToType, !TypeAssign, !CoerceFails)
     else
-        types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
-            FromType, ToType, !.TypeAssign, FromToTypeAssign,
-            [], FromToCoerceFails),
+        types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
+            compare_equal_lt, FromType, ToType,
+            !.TypeAssign, FromToTypeAssign, [], FromToCoerceFails),
         (
             FromToCoerceFails = [],
             !:TypeAssign = FromToTypeAssign
         ;
             FromToCoerceFails = [_ | _],
-            types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
-                ToType, FromType, !.TypeAssign, ToFromTypeAssign,
-                [], ToFromCoerceFails),
+            types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
+                compare_equal_lt, ToType, FromType,
+                !.TypeAssign, ToFromTypeAssign, [], ToFromCoerceFails),
             (
                 ToFromCoerceFails = [],
                 !:TypeAssign = ToFromTypeAssign
@@ -733,12 +757,13 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
                     ++ !.CoerceFails
             )
         )
-    ).
+    ),
+    !:ArgNum = !.ArgNum + 1u.
 
 %---------------------------------------------------------------------------%
 
 :- type types_comparison
-    --->    compare_equal
+    --->    compare_equal(invariant_reason)
     ;       compare_equal_lt.
 
     % Succeed if TypeA unifies with TypeB (possibly binding type vars).
@@ -753,12 +778,12 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
     % in modecheck_coerce.m.
     %
 :- pred types_compare_as_given(type_table::in, tvarset::in,
-    types_comparison::in, mer_type::in, mer_type::in,
+    type_ctor::in, uint::in, types_comparison::in, mer_type::in, mer_type::in,
     type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
-types_compare_as_given(TypeTable, TVarSet, Comparison, TypeA, TypeB,
-        !TypeAssign, !CoerceFails) :-
+types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+        Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails) :-
     ( if
         ( TypeA = type_variable(_, _)
         ; TypeB = type_variable(_, _)
@@ -771,17 +796,17 @@ types_compare_as_given(TypeTable, TVarSet, Comparison, TypeA, TypeB,
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     else
-        types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
-            TypeA, TypeB, !TypeAssign, !CoerceFails)
+        types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+            Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails)
     ).
 
 :- pred types_compare_as_given_nonvar(type_table::in, tvarset::in,
-    types_comparison::in, mer_type::in, mer_type::in,
+    type_ctor::in, uint::in, types_comparison::in, mer_type::in, mer_type::in,
     type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
-types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
-        TypeA, TypeB, !TypeAssign, !CoerceFails) :-
+types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+        Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails) :-
     % Several of the kinds of coerce_fails that the code below can generate
     % are NOT TESTED by any test case in the test suite.
     require_complete_switch [TypeA]
@@ -831,7 +856,7 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
                 % (a) are ever useful, or (b) can cause issues with respect to
                 % co- versus contra-variance.
                 corresponding_types_compare_as_given(TypeTable, TVarSet,
-                    Comparison, ArgTypesA, ArgTypesB,
+                    BaseTypeCtor, ArgNum, Comparison, ArgTypesA, ArgTypesB,
                     !TypeAssign, !CoerceFails)
             else
                 classify_defined_type_is_du_type(TypeTable,
@@ -847,8 +872,9 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
                 ;
                     MaybeBoth = ok2(DuTypeInfoA, _DuTypeInfoB),
                     (
-                        Comparison = compare_equal,
-                        CoerceFail = should_be_invariant_arg(TypeA, TypeB),
+                        Comparison = compare_equal(Reason),
+                        CoerceFail = should_be_invariant_arg(BaseTypeCtor,
+                            ArgNum, Reason, TypeA, TypeB),
                         !:CoerceFails = [CoerceFail | !.CoerceFails]
                     ;
                         Comparison = compare_equal_lt,
@@ -861,8 +887,8 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
                                 TypeCtorA, ArgTypesA, TypeDefnA,
                                 SuperTypeA0, SuperTypeA),
                             types_compare_as_given(TypeTable, TVarSet,
-                                Comparison, SuperTypeA, TypeB,
-                                !TypeAssign, !CoerceFails)
+                                BaseTypeCtor, ArgNum, Comparison,
+                                SuperTypeA, TypeB, !TypeAssign, !CoerceFails)
                         ;
                             MaybeSuperTypeA = not_a_subtype,
                             CoerceFail = du_type_is_not_subtype(TypeCtorA),
@@ -882,7 +908,8 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
             list.length(ArgTypesB, NumArgTypesB),
             ( if NumArgTypesA = NumArgTypesB then
                 corresponding_types_compare_as_given(TypeTable, TVarSet,
-                    Comparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
+                    BaseTypeCtor, ArgNum, Comparison, ArgTypesA, ArgTypesB,
+                    !TypeAssign, !CoerceFails)
             else
                 CoerceFail =
                     different_tuple_arities(NumArgTypesA, NumArgTypesB),
@@ -899,9 +926,10 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
         ( if TypeB = higher_order_type(PredOrFunc, ArgTypesB, _IB, Purity) then
             % We do not allow subtyping in higher order argument types, so we
             % pass compare_equal here EVEN IF Comparison is compare_equal_lt.
-            SubComparison = compare_equal,
+            SubComparison = compare_equal(ir_higher_order),
             corresponding_types_compare_as_given(TypeTable, TVarSet,
-                SubComparison, ArgTypesA, ArgTypesB, !TypeAssign, !CoerceFails)
+                BaseTypeCtor, ArgNum, SubComparison, ArgTypesA, ArgTypesB,
+                !TypeAssign, !CoerceFails)
         else
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
@@ -916,8 +944,8 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
         % *without* requiring it to be a kinded type. However, that will matter
         % only once we start using kinded types.
         ( if TypeB = kinded_type(TypeB1, Kind) then
-            types_compare_as_given(TypeTable, TVarSet, Comparison,
-                TypeA1, TypeB1, !TypeAssign, !CoerceFails)
+            types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+                Comparison, TypeA1, TypeB1, !TypeAssign, !CoerceFails)
         else
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
@@ -925,22 +953,25 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
     ).
 
 :- pred corresponding_types_compare_as_given(type_table::in, tvarset::in,
-    types_comparison::in, list(mer_type)::in, list(mer_type)::in,
-    type_assign::in, type_assign::out,
+    type_ctor::in, uint::in, types_comparison::in,
+    list(mer_type)::in, list(mer_type)::in, type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
-corresponding_types_compare_as_given(_TypeTable, _TVarSet, _Comparison,
+corresponding_types_compare_as_given(_, _, _, _, _,
         [], [], !TypeAssign, !CoerceFails).
-corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
-        [TypeA | TypesA], [TypeB | TypesB], !TypeAssign, !CoerceFails) :-
-    types_compare_as_given(TypeTable, TVarSet, Comparison,
-        TypeA, TypeB, !TypeAssign, !CoerceFails),
-    corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
-        TypesA, TypesB, !TypeAssign, !CoerceFails).
-corresponding_types_compare_as_given(_TypeTable, _TVarSet, _Comparison,
+corresponding_types_compare_as_given(TypeTable, TVarSet,
+        BaseTypeCtor, ArgNum, Comparison, [TypeA | TypesA], [TypeB | TypesB],
+        !TypeAssign, !CoerceFails) :-
+    types_compare_as_given(TypeTable, TVarSet,
+        BaseTypeCtor, ArgNum, Comparison, TypeA, TypeB,
+        !TypeAssign, !CoerceFails),
+    corresponding_types_compare_as_given(TypeTable, TVarSet,
+        BaseTypeCtor, ArgNum, Comparison, TypesA, TypesB,
+        !TypeAssign, !CoerceFails).
+corresponding_types_compare_as_given(_, _, _, _, _,
         [_ | _], [], !TypeAssign, !CoerceFails) :-
     unexpected($pred, "length mismatch").
-corresponding_types_compare_as_given(_TypeTable, _TVarSet, _Comparison,
+corresponding_types_compare_as_given(_, _, _, _, _,
         [], [_ | _], !TypeAssign, !CoerceFails) :-
     unexpected($pred, "length mismatch").
 

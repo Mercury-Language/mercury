@@ -16,16 +16,34 @@ coerce_type_error.m:091:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:091:   [38;5;171m`coerce_type_error.wrap_ho(coerce_type_error.citrus)'[39;49m
 coerce_type_error.m:091:   to
 coerce_type_error.m:091:   [38;5;171m`coerce_type_error.wrap_ho(coerce_type_error.fruit)'.[39;49m
+coerce_type_error.m:091:   The only parameter of the type constructor
+coerce_type_error.m:091:   `wrap_ho'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_type_error.m:091:   be bound to the same type in the coerced-from and
+coerce_type_error.m:091:   coerced-to types) because it occurs in the type of
+coerce_type_error.m:091:   the first argument of the `wrap_ho'/1 data
+coerce_type_error.m:091:   constructor, which is a higher order type.
 coerce_type_error.m:106: In clause for predicate `bad_foreign_type'/2:
 coerce_type_error.m:106:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:106:   [38;5;171m`coerce_type_error.wrap_ft(coerce_type_error.citrus)'[39;49m
 coerce_type_error.m:106:   to
 coerce_type_error.m:106:   [38;5;171m`coerce_type_error.wrap_ft(coerce_type_error.fruit)'.[39;49m
+coerce_type_error.m:106:   The only parameter of the type constructor
+coerce_type_error.m:106:   `wrap_ft'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_type_error.m:106:   be bound to the same type in the coerced-from and
+coerce_type_error.m:106:   coerced-to types) because it occurs in the type of
+coerce_type_error.m:106:   the first argument of the `wrap_ft'/1 data
+coerce_type_error.m:106:   constructor, which is a foreign type.
 coerce_type_error.m:118: In clause for predicate `bad_abs_type'/2:
 coerce_type_error.m:118:   error: cannot coerce [38;5;87m`X'[39;49m from
 coerce_type_error.m:118:   [38;5;171m`coerce_type_error.wrap_abs(coerce_type_error.citrus)'[39;49m
 coerce_type_error.m:118:   to
 coerce_type_error.m:118:   [38;5;171m`coerce_type_error.wrap_abs(coerce_type_error.fruit)'.[39;49m
+coerce_type_error.m:118:   The only parameter of the type constructor
+coerce_type_error.m:118:   `wrap_abs'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_type_error.m:118:   be bound to the same type in the coerced-from and
+coerce_type_error.m:118:   coerced-to types) because it occurs in the type of
+coerce_type_error.m:118:   the first argument of the `wrap_abs'/1 data
+coerce_type_error.m:118:   constructor, which is an abstract type.
 coerce_type_error.m:125: In clause for predicate `non_subtypes'/2:
 coerce_type_error.m:125:   error: cannot coerce [38;5;87m`Fruits'[39;49m from
 coerce_type_error.m:125:   [38;5;171m`list.list(coerce_type_error.fruit)'[39;49m to
@@ -33,3 +51,15 @@ coerce_type_error.m:125:   [38;5;171m`list.list(coerce_type_error.orange_non_fr
 coerce_type_error.m:125:   `coerce_type_error.fruit'/0 is [38;5;203mnot a subtype.[39;49m
 coerce_type_error.m:125:   `coerce_type_error.orange_non_fruit'/0 is [38;5;203mnot a[39;49m
 coerce_type_error.m:125:   [38;5;203msubtype.[39;49m
+coerce_type_error.m:135: In clause for predicate `nested_du_type'/2:
+coerce_type_error.m:135:   error: cannot coerce [38;5;87m`OoMCitrus'[39;49m from
+coerce_type_error.m:135:   [38;5;171m`one_or_more.one_or_more(coerce_type_error.citrus)'[39;49m
+coerce_type_error.m:135:   to
+coerce_type_error.m:135:   [38;5;171m`one_or_more.one_or_more(coerce_type_error.fruit)'.[39;49m
+coerce_type_error.m:135:   The only parameter of the type constructor
+coerce_type_error.m:135:   `one_or_more'/1 must be [38;5;40minvariant[39;49m (meaning that it
+coerce_type_error.m:135:   must be bound to the same type in the coerced-from
+coerce_type_error.m:135:   and coerced-to types) because it occurs in the type
+coerce_type_error.m:135:   of the second argument of the `one_or_more'/2 data
+coerce_type_error.m:135:   constructor, which has a type constructor other than
+coerce_type_error.m:135:   `one_or_more'/1, namely `list'/1.
