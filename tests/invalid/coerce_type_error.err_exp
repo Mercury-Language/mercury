@@ -42,13 +42,3 @@ coerce_type_error.m:125:   [38;5;171m`list(orange_non_fruit)'.[39;49m
 coerce_type_error.m:125:   `coerce_type_error.fruit'/0 is [38;5;203mnot a subtype.[39;49m
 coerce_type_error.m:125:   `coerce_type_error.orange_non_fruit'/0 is [38;5;203mnot a[39;49m
 coerce_type_error.m:125:   [38;5;203msubtype.[39;49m
-coerce_type_error.m:135: In clause for predicate `nested_du_type'/2:
-coerce_type_error.m:135:   error: cannot coerce [38;5;87m`OoMCitrus'[39;49m from
-coerce_type_error.m:135:   [38;5;171m`one_or_more(citrus)'[39;49m to [38;5;171m`one_or_more(fruit)'.[39;49m
-coerce_type_error.m:135:   The only parameter of the type constructor
-coerce_type_error.m:135:   `one_or_more'/1 must be [38;5;40minvariant[39;49m (meaning that it
-coerce_type_error.m:135:   must be bound to the same type in the coerced-from
-coerce_type_error.m:135:   and coerced-to types) because it occurs in the type
-coerce_type_error.m:135:   of the second argument of the `one_or_more'/2 data
-coerce_type_error.m:135:   constructor, which has a type constructor other than
-coerce_type_error.m:135:   `one_or_more'/1, namely `list'/1.

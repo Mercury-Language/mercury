@@ -138,8 +138,10 @@ typecheck_coerce_in_type_assign(Info, Context, FromVar, ToVar,
         % NOTE The following block of code has a near-duplicate below
         % in check_coerce_constraint_if_ready, though the two places differ
         % in how they handle both resolved and not-yet-resolved constraints.
+        % XXX Should we make invariant_tparams_map part of typecheck_info?
         typecheck_coerce_between_types(TypeTable, TVarSet0,
-            FromType, ToType, TypeAssign2, TypeAssign3, CoerceFails),
+            FromType, ToType, TypeAssign2, TypeAssign3,
+            init_invariant_tparams_map, _InvariantTParamsMap, CoerceFails),
         (
             CoerceFails = [],
             type_assign_get_type_bindings(TypeAssign3, TypeBindings1),
@@ -290,7 +292,8 @@ check_coerce_constraint_if_ready(TypeTable, Coercion0, Action, !TypeAssign) :-
             % in how they handle both resolved and not-yet-resolved
             % constraints.
             typecheck_coerce_between_types(TypeTable, TVarSet0,
-                FromType, ToType, TypeAssign0, TypeAssign1, CoerceFails),
+                FromType, ToType, TypeAssign0, TypeAssign1,
+                init_invariant_tparams_map, _InvariantTParamsMap, CoerceFails),
             (
                 CoerceFails = [],
                 type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
@@ -356,12 +359,37 @@ coerce_constraint_is_satisfied(Coercion) :-
 % Part 3.
 %
 
-:- pred typecheck_coerce_between_types(type_table::in, tvarset::in,
-    mer_type::in, mer_type::in, type_assign::in, type_assign::out,
+    % The type_ctors that we are currently trying to add to
+    % invariant_tparams_map.
+    %
+:- type active_type_ctors == list(type_ctor).
+
+    % The set of type_ctors for which we know which of their
+    % type parameters must be invariant.
+    %
+    % Currently, both typecheck_coerce_in_type_assign and
+    % check_coerce_constraint_if_ready start with a fresh
+    % invariant_tparams_map, and then throw away the invariant_tparams_map
+    % they build up. IF AND WHEN the recomputation of the entries in those
+    % throw-away maps becomes a performance problem, we should add a slot
+    % to the typecheck_sub_info structure to hold that map. They would
+    % require moving this type to typecheck_info.m.
+    %
+:- type invariant_tparams_map == map(type_ctor, invariant_tvars).
+
+:- func init_invariant_tparams_map = invariant_tparams_map.
+
+init_invariant_tparams_map = map.init.
+
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_coerce_between_types(type_table::in,
+    tvarset::in, mer_type::in, mer_type::in, type_assign::in, type_assign::out,
+    invariant_tparams_map::in, invariant_tparams_map::out,
     list(coerce_fail)::out) is det.
 
-typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
-        !TypeAssign, CoerceFails) :-
+typecheck_coerce_between_types(TypeTable, TVarSet,
+        FromType, ToType, !TypeAssign, !InvariantTParamsMap, CoerceFails) :-
     % Type bindings must have been applied to FromType and ToType already.
     classify_is_du_type(TypeTable, FromType, FromMaybeDuType),
     classify_is_du_type(TypeTable, ToType, ToMaybeDuType),
@@ -393,9 +421,9 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
             hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeCtorParams),
             % Check the variance of type parameters, in the sense of
             % https://en.wikipedia.org/wiki/Type_variance.
-            compute_which_type_params_must_be_invariant(TypeTable,
+            compute_which_type_params_must_be_invariant(TypeTable, [],
                 BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu,
-                InvariantTVars),
+                InvariantTVars, !InvariantTParamsMap),
             are_actual_param_type_pairs_as_related_as_needed(TypeTable,
                 TVarSet, InvariantTVars, BaseTypeCtor,
                 BaseTypeCtorParams, FromBaseTypeArgTypes, ToBaseTypeArgTypes,
@@ -470,8 +498,9 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
 
 :- type invariant_tvars == one_or_more_map(tvar, ctor_arg_posn).
 
-    % compute_which_type_params_must_be_invariant(TypeTable,
-    %     BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars):
+    % compute_which_type_params_must_be_invariant(TypeTable, ActiveTypeCtors,
+    %   BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars,
+    %   !InvariantTParamsMap):
     %
     % Our caller has checked that the from-type and the to-type
     % in the coerce operation have the same base type, BaseTypeCtor.
@@ -485,11 +514,13 @@ compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
     % fall into into the first category; the others fall into the second.
     %
 :- pred compute_which_type_params_must_be_invariant(type_table::in,
-    type_ctor::in, list(tvar)::in, type_body_du::in,
-    invariant_tvars::out) is det.
+    active_type_ctors::in,
+    type_ctor::in, list(tvar)::in, type_body_du::in, invariant_tvars::out,
+    invariant_tparams_map::in, invariant_tparams_map::out) is det.
 
-compute_which_type_params_must_be_invariant(TypeTable,
-        BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu, InvariantTVars) :-
+compute_which_type_params_must_be_invariant(TypeTable, ActiveTypeCtors,
+        BaseTypeCtor, BaseTypeCtorParams, BaseTypeBodyDu, InvariantTVars,
+        !InvariantTParamsMap) :-
     (
         BaseTypeCtorParams = [],
         % The computation in the other branch can return two kinds of tvars
@@ -504,39 +535,43 @@ compute_which_type_params_must_be_invariant(TypeTable,
         BaseTypeBodyDu = type_body_du(OoMCtors, _OoMAlphaSortedCtors,
             _MaybeSuperType, _MaybeCanon, _MaybeTypeRepn, _IsForeignType),
         Ctors = one_or_more_to_list(OoMCtors),
-        list.foldl(
-            acc_invariant_tvars_in_ctor(TypeTable,
+        list.foldl2(
+            acc_invariant_tvars_in_ctor(TypeTable, ActiveTypeCtors,
                 BaseTypeCtor, BaseTypeCtorParams),
-            Ctors, one_or_more_map.init, InvariantTVars)
+            Ctors, one_or_more_map.init, InvariantTVars, !InvariantTParamsMap)
     ).
 
-:- pred acc_invariant_tvars_in_ctor(type_table::in,
+:- pred acc_invariant_tvars_in_ctor(type_table::in, active_type_ctors::in,
     type_ctor::in, list(tvar)::in, constructor::in,
-    invariant_tvars::in, invariant_tvars::out) is det.
+    invariant_tvars::in, invariant_tvars::out,
+    invariant_tparams_map::in, invariant_tparams_map::out) is det.
 
-acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeCtorParams, Ctor,
-        !InvariantTVars) :-
+acc_invariant_tvars_in_ctor(TypeTable, ActiveTypeCtors,
+        BaseTypeCtor, BaseTypeCtorParams, Ctor,
+        !InvariantTVars, !InvariantTParamsMap) :-
     Ctor = ctor(_Ordinal, _MaybeExist, CtorSymName, CtorArgs, Arity, _Context),
     DuCtor = du_ctor(CtorSymName, Arity, BaseTypeCtor),
     ConsId = du_data_ctor(DuCtor),
-    list.foldl2(
-        acc_invariant_tvars_in_ctor_arg(TypeTable,
+    list.foldl3(
+        acc_invariant_tvars_in_ctor_arg(TypeTable, ActiveTypeCtors,
             BaseTypeCtor, BaseTypeCtorParams, ConsId),
-        CtorArgs, 1u, _, !InvariantTVars).
+        CtorArgs, 1u, _, !InvariantTVars, !InvariantTParamsMap).
 
-:- pred acc_invariant_tvars_in_ctor_arg(type_table::in,
+:- pred acc_invariant_tvars_in_ctor_arg(type_table::in, active_type_ctors::in,
     type_ctor::in, list(tvar)::in, du_or_tuple_cons_id::in,
     constructor_arg::in, uint::in, uint::out,
-    invariant_tvars::in, invariant_tvars::out) is det.
+    invariant_tvars::in, invariant_tvars::out,
+    invariant_tparams_map::in, invariant_tparams_map::out) is det.
 
-acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor, BaseTypeCtorParams,
-        DuCtor, CtorArg, !ArgNum, !InvariantTVars) :-
+acc_invariant_tvars_in_ctor_arg(TypeTable, ActiveTypeCtors,
+        BaseTypeCtor, BaseTypeCtorParams, DuCtor, CtorArg,
+        !ArgNum, !InvariantTVars, !InvariantTParamsMap) :-
     CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
     % Since acc_invariant_tvars_in_ctor_arg_type is recursive,
     % we cannot inline it here.
-    acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+    acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
         BaseTypeCtor, BaseTypeCtorParams, DuCtor, CtorArgType,
-        !ArgNum, !InvariantTVars).
+        !ArgNum, !InvariantTVars, !InvariantTParamsMap).
 
     % We have to scan pretty much all the types that occur
     % on the right hand side of BaseTypeCtor's definition, whether they occur
@@ -550,12 +585,14 @@ acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor, BaseTypeCtorParams,
     % - they definitely *will* be identical (as with recursive types).
     %
 :- pred acc_invariant_tvars_in_ctor_arg_type(type_table::in,
-    type_ctor::in, list(tvar)::in, du_or_tuple_cons_id::in, mer_type::in,
-    uint::in, uint::out, invariant_tvars::in, invariant_tvars::out) is det.
+    active_type_ctors::in, type_ctor::in, list(tvar)::in,
+    du_or_tuple_cons_id::in, mer_type::in,
+    uint::in, uint::out, invariant_tvars::in, invariant_tvars::out,
+    invariant_tparams_map::in, invariant_tparams_map::out) is det.
 
-acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
         BaseTypeCtor, BaseTypeCtorParams, ConsId, CtorArgType,
-        !ArgNum, !InvariantTVars) :-
+        !ArgNum, !InvariantTVars, !InvariantTParamsMap) :-
     (
         CtorArgType = builtin_type(_)
     ;
@@ -568,7 +605,7 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         require_complete_switch [TypeBody]
         (
-            TypeBody = hlds_du_type(_),
+            TypeBody = hlds_du_type(TypeBodyDu),
             % Given a supertype t and a subtype ts, the condition
             % and then-part allows programs to coerce from list(ts)
             % to list(t). However, when trying to coerce from
@@ -595,11 +632,24 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
                 % (i.e. outside CtorArgType) as well.
                 true
             else
-                PosnReason = pir_du_nonrec(BaseTypeCtor, TypeCtor),
-                CtorArgPosn = ctor_arg_posn(ConsId, !.ArgNum, PosnReason),
-                type_vars_in_types(ArgTypes, TypeVars),
-                list.foldl(one_or_more_map.reverse_add(CtorArgPosn), TypeVars,
-                    !InvariantTVars)
+                does_type_ctor_have_invariant_tparams(TypeTable,
+                    ActiveTypeCtors, TypeCtor, TypeDefn, TypeBodyDu,
+                    MaybeInvariantTParams, !InvariantTParamsMap),
+                (
+                    MaybeInvariantTParams = known_no_invariant_params
+                ;
+                    MaybeInvariantTParams = may_have_invariant_params,
+                    % XXX Is pir_du_nonrec still an appropriate name
+                    % for this coerce_fail? And what about the text of
+                    % the diagnostic we generate for it?
+                    PosnReason = pir_du_nonrec(BaseTypeCtor, TypeCtor),
+                    CtorArgPosn = ctor_arg_posn(ConsId, !.ArgNum, PosnReason),
+                    % This is a safe approximation, since we do not know
+                    % *which* of TypeCtor's params have to be invariant.
+                    type_vars_in_types(ArgTypes, TypeVars),
+                    list.foldl(one_or_more_map.reverse_add(CtorArgPosn),
+                        TypeVars, !InvariantTVars)
+                )
             )
         ;
             ( TypeBody = hlds_foreign_type(_),  PosnReason = pir_foreign
@@ -624,18 +674,18 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
             apply_subst_to_type(TSubst, EqvType0, EqvType),
             % We ignore the updated !:ArgNum, because we do not want to
             % increment !.ArgNum BOTH here AND at clause end.
-            acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+            acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
                 BaseTypeCtor, BaseTypeCtorParams, ConsId, EqvType,
-                !.ArgNum, _, !InvariantTVars)
+                !.ArgNum, _, !InvariantTVars, !InvariantTParamsMap)
         )
     ;
         CtorArgType = tuple_type(ArgTypes, _Kind),
         list.length(ArgTypes, Arity),
         TupleCtor = tuple_cons(Arity),
-        list.foldl2(
-            acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+        list.foldl3(
+            acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
                 BaseTypeCtor, BaseTypeCtorParams, TupleCtor),
-            ArgTypes, 1u, _, !InvariantTVars)
+            ArgTypes, 1u, _, !InvariantTVars, !InvariantTParamsMap)
     ;
         CtorArgType = higher_order_type(_PoF, ArgTypes, _HOInstInfo, _Purity),
         % We do not support any subtyping of higher order types.
@@ -653,11 +703,52 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable,
         sorry($pred, "apply_n_type")
     ;
         CtorArgType = kinded_type(SubCtorArgType, _Kind),
-        acc_invariant_tvars_in_ctor_arg_type(TypeTable,
+        acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
             BaseTypeCtor, BaseTypeCtorParams, ConsId, SubCtorArgType,
-            !ArgNum, !InvariantTVars)
+            !ArgNum, !InvariantTVars, !InvariantTParamsMap)
     ),
     !:ArgNum = !.ArgNum + 1u.
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_invariant_params
+    --->    known_no_invariant_params
+    ;       may_have_invariant_params.
+
+:- pred does_type_ctor_have_invariant_tparams(type_table::in,
+    active_type_ctors::in, type_ctor::in, hlds_type_defn::in, type_body_du::in,
+    maybe_invariant_params::out,
+    invariant_tparams_map::in, invariant_tparams_map::out) is det.
+
+does_type_ctor_have_invariant_tparams(TypeTable, ActiveTypeCtors0,
+        TypeCtor, TypeDefn, TypeBodyDu, MaybeInvariantParams,
+        !InvariantTParamsMap) :-
+    ( if list.member(TypeCtor, ActiveTypeCtors0) then
+        % This happens in the case of mutually recursive types.
+        %
+        % We currently do not keep track of type parameter substitutions
+        % between mutually recursive types. With this limited machinery,
+        % this is the only safe approximation.
+        MaybeInvariantParams = may_have_invariant_params
+    else
+        ( if
+            map.search(!.InvariantTParamsMap, TypeCtor, InvariantTVarsPrime)
+        then
+            InvariantTVars = InvariantTVarsPrime
+        else
+            ActiveTypeCtors1 = [TypeCtor | ActiveTypeCtors0],
+            hlds_data.get_type_defn_tparams(TypeDefn, TypeCtorParams),
+            compute_which_type_params_must_be_invariant(TypeTable,
+                ActiveTypeCtors1, TypeCtor, TypeCtorParams, TypeBodyDu,
+                InvariantTVars, !InvariantTParamsMap),
+            map.det_insert(TypeCtor, InvariantTVars, !InvariantTParamsMap)
+        ),
+        ( if map.is_empty(InvariantTVars) then
+            MaybeInvariantParams = known_no_invariant_params
+        else
+            MaybeInvariantParams = may_have_invariant_params
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

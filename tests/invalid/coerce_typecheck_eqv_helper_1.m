@@ -13,4 +13,6 @@
 
 :- import_module list.
 
-:- type second(T, U) == list(U).
+:- type second(T, U)
+    --->    second_base
+    ;       second_rec(T, second(U, T)).

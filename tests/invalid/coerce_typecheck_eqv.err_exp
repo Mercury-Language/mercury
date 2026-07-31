@@ -1,10 +1,18 @@
-coerce_typecheck_eqv.m:039: In clause for predicate `test2'/2:
-coerce_typecheck_eqv.m:039:   error: cannot coerce [38;5;87m`X'[39;49m from [38;5;171m`bad(citrus)'[39;49m to
-coerce_typecheck_eqv.m:039:   [38;5;171m`bad(fruit)'.[39;49m
-coerce_typecheck_eqv.m:039:   The only parameter of the type constructor
-coerce_typecheck_eqv.m:039:   `bad'/1 must be [38;5;40minvariant[39;49m (meaning that it must
-coerce_typecheck_eqv.m:039:   be bound to the same type in the coerced-from and
-coerce_typecheck_eqv.m:039:   coerced-to types) because it occurs in the type
-coerce_typecheck_eqv.m:039:   of the first argument of the `bad'/1 data
-coerce_typecheck_eqv.m:039:   constructor, which has a type constructor other
-coerce_typecheck_eqv.m:039:   than `bad'/1, namely `list'/1.
+coerce_typecheck_eqv.m:030: In clause for predicate `test1'/2:
+coerce_typecheck_eqv.m:030:   error: cannot coerce [38;5;87m`X'[39;49m from [38;5;171m`foo(citrus)'[39;49m to
+coerce_typecheck_eqv.m:030:   [38;5;171m`foo(fruit)'.[39;49m
+coerce_typecheck_eqv.m:030:   The only parameter of the type constructor
+coerce_typecheck_eqv.m:030:   `foo'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_typecheck_eqv.m:030:   be bound to the same type in the coerced-from and
+coerce_typecheck_eqv.m:030:   coerced-to types) because it occurs in the type
+coerce_typecheck_eqv.m:030:   of the first argument of the `foo'/1 data
+coerce_typecheck_eqv.m:030:   constructor, which is an abstract type.
+coerce_typecheck_eqv.m:035: In clause for predicate `test2'/2:
+coerce_typecheck_eqv.m:035:   error: cannot coerce [38;5;87m`X'[39;49m from [38;5;171m`bar(citrus)'[39;49m to
+coerce_typecheck_eqv.m:035:   [38;5;171m`bar(fruit)'.[39;49m
+coerce_typecheck_eqv.m:035:   The only parameter of the type constructor
+coerce_typecheck_eqv.m:035:   `bar'/1 must be [38;5;40minvariant[39;49m (meaning that it must
+coerce_typecheck_eqv.m:035:   be bound to the same type in the coerced-from and
+coerce_typecheck_eqv.m:035:   coerced-to types) because it occurs in the type
+coerce_typecheck_eqv.m:035:   of the first argument of the `bar'/1 data
+coerce_typecheck_eqv.m:035:   constructor, which is an abstract type.
