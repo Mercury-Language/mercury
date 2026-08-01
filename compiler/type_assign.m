@@ -128,18 +128,18 @@
     ;       different_type_categories(
                 dtc_type_table          :: type_table,
                 % The two types have different principal function symbols.
-                dtc_from_type           :: mer_type,
-                dtc_to_type             :: mer_type
+                dtc_type_a              :: mer_type,
+                dtc_type_b              :: mer_type
             )
     ;       different_builtin_types(
                 % Both types are builtin types, but different builtin types.
-                dbit_from_type          :: builtin_type,
-                dbti_to_type            :: builtin_type
+                dbit_type_a             :: builtin_type,
+                dbti_type_b             :: builtin_type
             )
     ;       different_tuple_arities(
                 % Both types are tuple types, but with different arities.
-                dta_from_type           :: arity,
-                dta_to_type             :: arity
+                dta_type_a              :: arity,
+                dta_type_b              :: arity
             )
     ;       du_type_is_not_subtype(
                 % The type is a du type with this type_ctor, but this type
@@ -148,8 +148,8 @@
             )
     ;       cannot_unify_type_vars(
                 % One or both of these will be a type_variable.
-                cutv_from_type          :: mer_type,
-                cutv_to_type            :: mer_type
+                cutv_type_a             :: mer_type,
+                cutv_type_b             :: mer_type
             )
     ;       non_du_type_ctor(
                 % At least one of these types is not a du type.
@@ -169,8 +169,8 @@
                 sbia_reason             :: invariant_reason,
                 % The from-type and to-type are different, even though
                 % they should be identical.
-                sbia_from_type          :: mer_type,
-                sbia_to_type            :: mer_type
+                sbia_type_a             :: mer_type,
+                sbia_type_b             :: mer_type
             ).
 
 :- type invariant_reason
