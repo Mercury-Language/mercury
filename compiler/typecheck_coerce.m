@@ -435,65 +435,6 @@ typecheck_coerce_between_types(TypeTable, TVarSet,
         )
     ).
 
-:- pred are_both_types_du(mer_type::in, mer_type::in,
-    maybe_du_type::in, maybe_du_type::in,
-    maybe2(du_type_info, du_type_info, coerce_fail)::out) is det.
-
-are_both_types_du(FromType, ToType, FromMaybeDuType, ToMaybeDuType,
-        MaybeBoth) :-
-    (
-        FromMaybeDuType = is_not_du_type(FromTypeDesc),
-        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
-        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc,
-            ToType, ToTypeDesc),
-        MaybeBoth = error2(CoerceFail)
-    ;
-        FromMaybeDuType = is_not_du_type(FromTypeDesc),
-        ToMaybeDuType =   is_du_type(_),
-        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ""),
-        MaybeBoth = error2(CoerceFail)
-    ;
-        FromMaybeDuType = is_du_type(_),
-        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
-        CoerceFail = non_du_type_ctor(FromType, "", ToType, ToTypeDesc),
-        MaybeBoth = error2(CoerceFail)
-    ;
-        FromMaybeDuType = is_du_type(FromDuTypeInfo),
-        ToMaybeDuType =   is_du_type(ToDuTypeInfo),
-        MaybeBoth = ok2(FromDuTypeInfo, ToDuTypeInfo)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred compute_base_type_of_du_type(type_table::in, tvarset::in,
-    du_type_info::in, du_type_info::out) is det.
-
-compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
-    DuTypeInfo = du_type_info(TypeCtor, ArgTypes, TypeDefn, TypeBodyDu),
-    MaybeSuperType = TypeBodyDu ^ du_type_supertype,
-    (
-        MaybeSuperType = not_a_subtype,
-        BaseDuTypeInfo = DuTypeInfo
-    ;
-        MaybeSuperType = subtype_of(SuperType0),
-        get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
-            SuperType0, SuperType),
-        classify_is_du_type(TypeTable, SuperType, MaybeSuperDuType),
-        % The invocations of add_du_ctors_check_subtype_check_foreign_type
-        % in make_hlds_passes.m should have already checked that
-        % each declared supertype is in fact a du type, and if any
-        % of those checks failed, execution should not have been allowed
-        % to proceed to the typechecking pass.
-        (
-            MaybeSuperDuType = is_du_type(SuperDuTypeInfo)
-        ;
-            MaybeSuperDuType = is_not_du_type(_),
-            unexpected($pred, "MaybeSuperDuType != is_du_type")
-        ),
-        compute_base_type_of_du_type(TypeTable, TVarSet,
-            SuperDuTypeInfo, BaseDuTypeInfo)
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- type invariant_tvars == one_or_more_map(tvar, ctor_arg_posn).
@@ -920,74 +861,9 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
     ;
         TypeA = defined_type(_, _, _),
         ( if TypeB = defined_type(_, _, _) then
-            defined_type_to_ctor_and_args(TypeA, TypeCtorA, ArgTypesA),
-            defined_type_to_ctor_and_args(TypeB, TypeCtorB, ArgTypesB),
-            ( if TypeCtorA = TypeCtorB then
-                % Checking for TypeCtorA = TypeCtorB before checking whether
-                % TypeA and TypeB are du types allows this code to succeed for
-                %
-                % - equivalence type
-                % - foreign types
-                % - solver types
-                % - abstract types
-                % - undefined type_ctors (ones that are not in the type table)
-                %
-                % Equivalence types should have been expanded out by now,
-                % so they pose no problem. (If they did appear here, we
-                % would have to expand them out, because without that,
-                % we cannot check for co- versus contra-variance.)
-                %
-                % The other kinds of types can all occur in the input
-                % of this code. Most of the time, their argument lists
-                % are the empty list, but they can contain type parameters,
-                % such as the ones we use to distinguish e.g. prog_vars
-                % from tvars. These are known as "phantom type parameters".
-                %
-                % I (zs) do not know whether type parameters on solver types
-                % (a) are ever useful, or (b) can cause issues with respect to
-                % co- versus contra-variance.
-                corresponding_types_compare_as_given(TypeTable, TVarSet,
-                    BaseTypeCtor, ArgNum, Comparison, ArgTypesA, ArgTypesB,
-                    !TypeAssign, !CoerceFails)
-            else
-                classify_defined_type_is_du_type(TypeTable,
-                    TypeCtorA, ArgTypesA, MaybeDuTypeA),
-                classify_defined_type_is_du_type(TypeTable,
-                    TypeCtorB, ArgTypesB, MaybeDuTypeB),
-                are_both_types_du(TypeA, TypeB, MaybeDuTypeA, MaybeDuTypeB,
-                    MaybeBoth),
-                (
-                    MaybeBoth = error2(CoerceFail),
-                    % A non-du type constructor cannot be a subtype.
-                    !:CoerceFails = [CoerceFail | !.CoerceFails]
-                ;
-                    MaybeBoth = ok2(DuTypeInfoA, _DuTypeInfoB),
-                    (
-                        Comparison = compare_equal(Reason),
-                        CoerceFail = should_be_invariant_arg(BaseTypeCtor,
-                            ArgNum, Reason, TypeA, TypeB),
-                        !:CoerceFails = [CoerceFail | !.CoerceFails]
-                    ;
-                        Comparison = compare_equal_lt,
-                        DuTypeInfoA =
-                            du_type_info(_, _, TypeDefnA, TypeBodyDuA),
-                        MaybeSuperTypeA = TypeBodyDuA ^ du_type_supertype,
-                        (
-                            MaybeSuperTypeA = subtype_of(SuperTypeA0),
-                            get_supertype_of_subtype(TVarSet,
-                                TypeCtorA, ArgTypesA, TypeDefnA,
-                                SuperTypeA0, SuperTypeA),
-                            types_compare_as_given(TypeTable, TVarSet,
-                                BaseTypeCtor, ArgNum, Comparison,
-                                SuperTypeA, TypeB, !TypeAssign, !CoerceFails)
-                        ;
-                            MaybeSuperTypeA = not_a_subtype,
-                            CoerceFail = du_type_is_not_subtype(TypeCtorA),
-                            !:CoerceFails = [CoerceFail | !.CoerceFails]
-                        )
-                    )
-                )
-            )
+            defined_types_compare_as_given(TypeTable, TVarSet,
+                BaseTypeCtor, ArgNum, Comparison, TypeA, TypeB,
+                !TypeAssign, !CoerceFails)
         else
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
@@ -1043,6 +919,99 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         )
     ).
 
+:- pred defined_types_compare_as_given(type_table::in, tvarset::in,
+    type_ctor::in, uint::in, types_comparison::in,
+    mer_type::in(defined_type), mer_type::in(defined_type),
+    type_assign::in, type_assign::out,
+    list(coerce_fail)::in, list(coerce_fail)::out) is det.
+
+defined_types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+        Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails) :-
+    defined_type_to_ctor_and_args(TypeA, TypeCtorA, ArgTypesA),
+    defined_type_to_ctor_and_args(TypeB, TypeCtorB, ArgTypesB),
+    ( if TypeCtorA = TypeCtorB then
+        % Checking for TypeCtorA = TypeCtorB before checking whether
+        % TypeA and TypeB are du types allows this code to succeed for
+        %
+        % - equivalence type
+        % - foreign types
+        % - solver types
+        % - abstract types
+        % - undefined type_ctors (ones that are not in the type table)
+        %
+        % Equivalence types should have been expanded out by now,
+        % so they pose no problem. (If they did appear here, we
+        % would have to expand them out, because without that,
+        % we cannot check for co- versus contra-variance.)
+        %
+        % The other kinds of types can all occur in the input
+        % of this code. Most of the time, their argument lists
+        % are the empty list, but they can contain type parameters,
+        % such as the ones we use to distinguish e.g. prog_vars
+        % from tvars. These are known as "phantom type parameters".
+        %
+        % I (zs) do not know whether type parameters on solver types
+        % (a) are ever useful, or (b) can cause issues with respect to
+        % co- versus contra-variance.
+        corresponding_types_compare_as_given(TypeTable, TVarSet,
+            BaseTypeCtor, ArgNum, Comparison, ArgTypesA, ArgTypesB,
+            !TypeAssign, !CoerceFails)
+    else
+        classify_defined_type_is_du_type(TypeTable,
+            TypeCtorA, ArgTypesA, MaybeDuTypeA),
+        classify_defined_type_is_du_type(TypeTable,
+            TypeCtorB, ArgTypesB, MaybeDuTypeB),
+        are_both_types_du(TypeA, TypeB, MaybeDuTypeA, MaybeDuTypeB,
+            MaybeBoth),
+        (
+            MaybeBoth = error2(CoerceFail),
+            % A non-du type constructor cannot be a subtype.
+            !:CoerceFails = [CoerceFail | !.CoerceFails]
+        ;
+            MaybeBoth = ok2(DuTypenfoA, DuTypenfoB),
+            du_types_compare_as_given(TypeTable, TVarSet,
+                BaseTypeCtor, ArgNum, Comparison,
+                TypeA, TypeCtorA, ArgTypesA, DuTypenfoA,
+                TypeB, TypeCtorB, ArgTypesB, DuTypenfoB,
+                !TypeAssign, !CoerceFails)
+        )
+    ).
+
+:- pred du_types_compare_as_given(type_table::in, tvarset::in,
+    type_ctor::in, uint::in, types_comparison::in,
+    mer_type::in, type_ctor::in, list(mer_type)::in, du_type_info::in,
+    mer_type::in, type_ctor::in, list(mer_type)::in, du_type_info::in,
+    type_assign::in, type_assign::out,
+    list(coerce_fail)::in, list(coerce_fail)::out) is det.
+
+du_types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum, Comparison,
+        TypeA, TypeCtorA, ArgTypesA, DuTypeInfoA,
+        TypeB, _TypeCtorB, _ArgTypesB, _DuTypeInfoB,
+        !TypeAssign, !CoerceFails) :-
+    (
+        Comparison = compare_equal(Reason),
+        CoerceFail = should_be_invariant_arg(BaseTypeCtor,
+            ArgNum, Reason, TypeA, TypeB),
+        !:CoerceFails = [CoerceFail | !.CoerceFails]
+    ;
+        Comparison = compare_equal_lt,
+        DuTypeInfoA = du_type_info(_, _, TypeDefnA, TypeBodyDuA),
+        MaybeSuperTypeA = TypeBodyDuA ^ du_type_supertype,
+        (
+            MaybeSuperTypeA = subtype_of(SuperTypeA0),
+            get_supertype_of_subtype(TVarSet,
+                TypeCtorA, ArgTypesA, TypeDefnA,
+                SuperTypeA0, SuperTypeA),
+            types_compare_as_given(TypeTable, TVarSet,
+                BaseTypeCtor, ArgNum, Comparison,
+                SuperTypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            MaybeSuperTypeA = not_a_subtype,
+            CoerceFail = du_type_is_not_subtype(TypeCtorA),
+            !:CoerceFails = [CoerceFail | !.CoerceFails]
+        )
+    ).
+
 :- pred corresponding_types_compare_as_given(type_table::in, tvarset::in,
     type_ctor::in, uint::in, types_comparison::in,
     list(mer_type)::in, list(mer_type)::in, type_assign::in, type_assign::out,
@@ -1065,6 +1034,67 @@ corresponding_types_compare_as_given(_, _, _, _, _,
 corresponding_types_compare_as_given(_, _, _, _, _,
         [], [_ | _], !TypeAssign, !CoerceFails) :-
     unexpected($pred, "length mismatch").
+
+%---------------------------------------------------------------------------%
+
+:- pred are_both_types_du(mer_type::in, mer_type::in,
+    maybe_du_type::in, maybe_du_type::in,
+    maybe2(du_type_info, du_type_info, coerce_fail)::out) is det.
+
+are_both_types_du(FromType, ToType, FromMaybeDuType, ToMaybeDuType,
+        MaybeBoth) :-
+    (
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc,
+            ToType, ToTypeDesc),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_not_du_type(FromTypeDesc),
+        ToMaybeDuType =   is_du_type(_),
+        CoerceFail = non_du_type_ctor(FromType, FromTypeDesc, ToType, ""),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_du_type(_),
+        ToMaybeDuType =   is_not_du_type(ToTypeDesc),
+        CoerceFail = non_du_type_ctor(FromType, "", ToType, ToTypeDesc),
+        MaybeBoth = error2(CoerceFail)
+    ;
+        FromMaybeDuType = is_du_type(FromDuTypeInfo),
+        ToMaybeDuType =   is_du_type(ToDuTypeInfo),
+        MaybeBoth = ok2(FromDuTypeInfo, ToDuTypeInfo)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred compute_base_type_of_du_type(type_table::in, tvarset::in,
+    du_type_info::in, du_type_info::out) is det.
+
+compute_base_type_of_du_type(TypeTable, TVarSet, DuTypeInfo, BaseDuTypeInfo) :-
+    DuTypeInfo = du_type_info(TypeCtor, ArgTypes, TypeDefn, TypeBodyDu),
+    MaybeSuperType = TypeBodyDu ^ du_type_supertype,
+    (
+        MaybeSuperType = not_a_subtype,
+        BaseDuTypeInfo = DuTypeInfo
+    ;
+        MaybeSuperType = subtype_of(SuperType0),
+        get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
+            SuperType0, SuperType),
+        classify_is_du_type(TypeTable, SuperType, MaybeSuperDuType),
+        % The invocations of add_du_ctors_check_subtype_check_foreign_type
+        % in make_hlds_passes.m should have already checked that
+        % each declared supertype is in fact a du type, and if any
+        % of those checks failed, execution should not have been allowed
+        % to proceed to the typechecking pass.
+        (
+            MaybeSuperDuType = is_du_type(SuperDuTypeInfo)
+        ;
+            MaybeSuperDuType = is_not_du_type(_),
+            unexpected($pred, "MaybeSuperDuType != is_du_type")
+        ),
+        compute_base_type_of_du_type(TypeTable, TVarSet,
+            SuperDuTypeInfo, BaseDuTypeInfo)
+    ).
 
 %---------------------------------------------------------------------------%
 
