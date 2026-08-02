@@ -1197,7 +1197,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 :- type instance_method
     --->    instance_method(
-                instance_method_pf_name_arity   :: pred_pf_name_arity,
+                instance_method_pf_name_arity   :: pf_sym_name_user_arity,
                 instance_method_proc_def        :: instance_proc_def,
 
                 % The context of the instance declaration.
@@ -2091,14 +2091,12 @@ valid_trace_grade_name(GradeName) :-
 :- type sym_name_pred_form_arity
     --->    sym_name_pred_form_arity(sym_name, pred_form_arity).
 
-:- type pf_sym_name_arity
-    --->    pf_sym_name_arity(pred_or_func, sym_name, pred_form_arity).
+:- type pf_sym_name_pred_form_arity
+    --->    pf_sym_name_pred_form_arity(pred_or_func, sym_name,
+                pred_form_arity).
 
-    % This type is part of a family of related types, the rest of which are
-    % in prog_item.m. Its name fits in with those types.
-    %
-:- type pred_pf_name_arity
-    --->    pred_pf_name_arity(pred_or_func, sym_name, user_arity).
+:- type pf_sym_name_user_arity
+    --->    pf_sym_name_user_arity(pred_or_func, sym_name, user_arity).
 
     % XXX ARITY While the concept of arity seems simple, it is not, because
     % the compiler has to juggle several different notions of arity.

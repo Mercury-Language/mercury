@@ -456,11 +456,11 @@
 :- pred mode_info_add_warning(mode_warning_info::in,
     mode_info::in, mode_info::out) is det.
 
-    % Find the pf_sym_name_arity to use in error messages
+    % Find the pf_sym_name_pred_form_arity to use in error messages
     % for the given pred_id.
     %
-:- pred mode_info_get_pf_sym_name_arity(mode_info::in, pred_id::in,
-    pf_sym_name_arity::out) is det.
+:- pred mode_info_get_pf_sym_name_pred_form_arity(mode_info::in, pred_id::in,
+    pf_sym_name_pred_form_arity::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1321,10 +1321,10 @@ mode_info_add_warning(ModeWarningInfo, !ModeInfo) :-
     list.append(Warnings0, [ModeWarningInfo], Warnings),
     mode_info_set_warnings(Warnings, !ModeInfo).
 
-mode_info_get_pf_sym_name_arity(ModeInfo, PredId, CallId) :-
+mode_info_get_pf_sym_name_pred_form_arity(ModeInfo, PredId, CallId) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_pf_sym_name_arity(PredInfo, CallId).
+    pred_info_get_pf_sym_name_pred_form_arity(PredInfo, CallId).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.mode_info.

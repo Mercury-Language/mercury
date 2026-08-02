@@ -1108,7 +1108,8 @@ mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
 mode_call_id_to_call_id(ModeInfo, ModeCallId) = CallId :-
     (
         ModeCallId = mode_call_plain(PredId),
-        mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
+        mode_info_get_pf_sym_name_pred_form_arity(ModeInfo, PredId,
+            PFSymNameArity),
         CallId = plain_call_id(PFSymNameArity)
     ;
         ModeCallId = mode_call_generic(GenericCall),

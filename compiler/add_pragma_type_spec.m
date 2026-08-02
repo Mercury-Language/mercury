@@ -629,8 +629,8 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
     Name = pred_info_name(PredInfo),
     PredFormArity = pred_info_pred_form_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PFSymNameArity =
-        pf_sym_name_arity(PredOrFunc, qualified(Module, Name), PredFormArity),
+    PFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc,
+        qualified(Module, Name), PredFormArity),
     Pieces = [words("In"), pragma_decl("type_spec"),
         words("declaration for"),
         qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl].

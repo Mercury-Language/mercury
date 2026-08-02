@@ -455,7 +455,7 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             BaseName = unqualify_name(SymName),
             FullSymName = qualified(ModuleName, BaseName),
             ( if partial_sym_name_is_part_of_full(SymName, FullSymName) then
-                PFNameArity = pred_pf_name_arity(PorF, FullSymName,
+                PFNameArity = pf_sym_name_user_arity(PorF, FullSymName,
                     user_arity(Arity)),
                 External = impl_pragma_external_proc_info(PFNameArity,
                     MaybeBackend, Context, SeqNum),
@@ -743,7 +743,7 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [PredSpecTerm, FormatCallTerm],
-        parse_pred_pf_name_arity(ModuleName, "format_call",
+        parse_pf_sym_name_user_arity(ModuleName, "format_call",
             VarSet, PredSpecTerm, MaybePredSpec),
         ( if
             maybe_parse_format_string_values(VarSet, FormatCallTerm,
@@ -1293,7 +1293,7 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
    ).
 
 :- pred parse_oisu_preds_term(module_name::in, varset::in, string::in,
-    string::in, term::in, maybe1(list(pred_pf_name_arity))::out) is det.
+    string::in, term::in, maybe1(list(pf_sym_name_user_arity))::out) is det.
 
 parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
         MaybePredSpecs) :-
@@ -1305,7 +1305,7 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
         ContextPieces = cord.init,
         parse_list_elements(ContextPieces,
             "list of predicate or function names/arities",
-            parse_pred_pf_name_arity(ModuleName, "oisu"), VarSet,
+            parse_pf_sym_name_user_arity(ModuleName, "oisu"), VarSet,
             ArgTerm, MaybePredSpecs)
     else
         Pieces = [words("Error:"), words(ArgNum), words("argument of"),

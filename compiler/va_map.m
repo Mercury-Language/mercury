@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2022 YesLogic Pty. Ltd.
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 2022, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,8 +17,8 @@
 % Like a plain version array, it provides O(1) indexing and update when
 % accessing the latest version of the data structure.
 %
-% Unlike a plain version array, the data structure will grow to accommodate keys
-% outside of the existing bounds. This is more like a map.
+% Unlike a plain version array, the data structure will grow to accommodate
+% keys outside of the existing bounds. This is more like a map.
 %
 % Unlike a map, keys that were not explicitly set are implicitly associated
 % with a default value. This is more like an array.

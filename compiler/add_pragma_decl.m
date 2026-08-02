@@ -282,7 +282,7 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, !ModuleInfo,
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
         check_pragma_status("obsolete_proc", psc_decl, PragmaStatus, Context,
             PredInfo0, !ErrSpecs, !WarnSpecs),
-        PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         ProcTransform =
             ( pred(ProcInfo0::in, ProcInfo::out) is det :-
                 proc_info_get_obsolete_in_favour_of(ProcInfo0,
@@ -316,7 +316,7 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo,
         !ErrSpecs, !WarnSpecs) :-
     FormatCallInfo =
         decl_pragma_format_call_info(PredSpec, OoMArgSpecs, Context, _),
-    PredSpec = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    PredSpec = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
     look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
         lfh_user_error, Context, "format_call",
         PredOrFunc, SymName, UserArity, MaybePredId),
@@ -448,13 +448,13 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !ErrSpecs) :-
     ).
 
 :- pred find_unique_pred_for_oisu(module_info::in, prog_context::in,
-    type_ctor::in, string::in, pred_pf_name_arity::in, pred_id::out,
+    type_ctor::in, string::in, pf_sym_name_user_arity::in, pred_id::out,
     int::in, int::out, list(err_spec)::in, list(err_spec)::out) is det.
 
 find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
         PredSpec, PredId, !SeqNum, !ErrSpecs) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    PredSpec = pred_pf_name_arity(PredOrFunc, PredName, UserArity),
+    PredSpec = pf_sym_name_user_arity(PredOrFunc, PredName, UserArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
         PredOrFunc, PredName, PredFormArity, PredIds),
@@ -552,7 +552,7 @@ add_pragma_termination(TermInfo, !ModuleInfo, !ErrSpecs) :-
         PredOrFunc, SymName, UserArity, MaybePredId),
     (
         MaybePredId = ok1(PredId),
-        PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         add_context_to_arg_size_info(MaybePragmaArgSizeInfo, Context,
             MaybeArgSizeInfo),
         add_context_to_termination_info(MaybePragmaTerminationInfo, Context,
@@ -590,7 +590,7 @@ add_pragma_termination2(Term2Info, !ModuleInfo, !ErrSpecs) :-
         PredOrFunc, SymName, UserArity, MaybePredId),
     (
         MaybePredId = ok1(PredId),
-        PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         ProcTransform =
             ( pred(ProcInfo0::in, ProcInfo::out) is det :-
                 add_context_to_constr_termination_info(
@@ -636,7 +636,8 @@ add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !ErrSpecs):-
             PredOrFunc, SymName, UserArity, MaybePredId),
         (
             MaybePredId = ok1(PredId),
-            PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+            PFNameArity =
+                pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
             ProcTransform = proc_info_set_imported_structure_sharing(HeadVars,
                 Types, SharingDomain),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
@@ -675,7 +676,8 @@ add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !ErrSpecs):-
             PredOrFunc, SymName, UserArity, MaybePredId),
         (
             MaybePredId = ok1(PredId),
-            PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+            PFNameArity =
+                pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
             ProcTransform = proc_info_set_imported_structure_reuse(HeadVars,
                 Types, ReuseDomain),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,

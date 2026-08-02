@@ -260,8 +260,8 @@ format_instance_defn(Info, InstanceDefn, !State) :-
 format_instance_methods(_, [], _, !State).
 format_instance_methods(IndentStr, [Method | Methods], CurMethodNum, !State) :-
     Method = instance_method(MethodName, _Defn, _Context),
-    MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
-    UserArity = user_arity(UserArityInt),
+    MethodName = pf_sym_name_user_arity(PredOrFunc,
+        MethodSymName, user_arity(UserArityInt)),
     string.builder.format("%s%%   method %d, %s %s/%d\n",
         [s(IndentStr), i(CurMethodNum), s(pred_or_func_to_str(PredOrFunc)),
         s(sym_name_to_string(MethodSymName)), i(UserArityInt)], !State),

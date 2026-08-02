@@ -535,7 +535,9 @@ detect_cse_in_disj_loop_over_vars(InstMap0, Goals0, GoalInfo0, Vars,
                 FirstOldNew, LaterOldNew, Goals0, Goals, !CseInfo)
         then
             instmap_lookup_var(InstMap0, HeadVar, HeadVarInst0),
-            ( if may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId) then
+            ( if
+                may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId)
+            then
                 maybe_update_existential_data_structures(UnifyGoal,
                     FirstOldNew, LaterOldNew, !CseInfo),
                 GoalExpr = conj(plain_conj,
@@ -590,7 +592,9 @@ detect_cse_in_cases_loop_over_vars(InstMap0, SwitchVar, CanFail, Cases0,
                 ConsId, FirstOldNew, LaterOldNew, Cases)
         then
             instmap_lookup_var(InstMap0, HeadVar, HeadVarInst0),
-            ( if may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId) then
+            ( if
+                may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId)
+            then
                 maybe_update_existential_data_structures(UnifyGoal,
                     FirstOldNew, LaterOldNew, !CseInfo),
                 SwitchGoalExpr = switch(SwitchVar, CanFail, Cases),
@@ -653,7 +657,9 @@ detect_cse_in_ite_loop_over_vars(InstMap0, QVars, Cond0, Then0, Else0,
                 unexpected($pred, "common_deconstruct changes number of goals")
             ),
             instmap_lookup_var(InstMap0, HeadVar, HeadVarInst0),
-            ( if may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId) then
+            ( if
+                may_pull_lhs_inst_cons_id(!.CseInfo, HeadVarInst0, ConsId)
+            then
                 maybe_update_existential_data_structures(UnifyGoal,
                     FirstOldNew, LaterOldNew, !CseInfo),
                 IfGoalExpr = if_then_else(QVars, Cond0, Then, Else),
@@ -668,7 +674,8 @@ detect_cse_in_ite_loop_over_vars(InstMap0, QVars, Cond0, Then0, Else0,
                 % variable concerned didn't stop us.
                 record_pull_decline(UnifyGoal, !CseInfo),
                 detect_cse_in_ite_loop_over_vars(InstMap0, QVars,
-                    Cond0, Then0, Else0, GoalInfo, TailVars, GoalExpr, !CseInfo)
+                    Cond0, Then0, Else0, GoalInfo, TailVars, GoalExpr,
+                    !CseInfo)
             )
         else
             detect_cse_in_ite_loop_over_vars(InstMap0, QVars,

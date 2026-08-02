@@ -775,7 +775,7 @@ explain_var_origin(ModuleInfo, VarTable, Var, Origin, [Msg]) :-
             )
         ;
             GenericCall = class_method(_, _, _, PfSNA),
-            PfSNA = pf_sym_name_arity(PredOrFunc, SymName,
+            PfSNA = pf_sym_name_pred_form_arity(PredOrFunc, SymName,
                 pred_form_arity(NumArgs)),
             ArgNumDescPieces =
                 arg_num_description(PredOrFunc, NumArgs, ArgNum),

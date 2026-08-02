@@ -946,9 +946,11 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.CaseChange,
             Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
         ;
             Piece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
-            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
+            PFSymNameArity0 =
+                pf_sym_name_pred_form_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
+            PFSymNameArity =
+                pf_sym_name_pred_form_arity(PF, SymName, PredFormArity)
         ),
         WordsStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
         break_into_words(WordsStr, !CaseChange, !WordsCord)
@@ -957,9 +959,9 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.CaseChange,
             Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
         ;
             Piece = unqual_pf_sym_name_user_arity(PFSymNameArity0),
-            PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
+            PFSymNameArity0 = pf_sym_name_user_arity(PF, SymName0, UserArity),
             SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
+            PFSymNameArity = pf_sym_name_user_arity(PF, SymName, UserArity)
         ),
         WordsStr = pf_sym_name_user_arity_to_string(PFSymNameArity),
         break_into_words(WordsStr, !CaseChange, !WordsCord)

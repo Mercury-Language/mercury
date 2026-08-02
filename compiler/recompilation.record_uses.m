@@ -380,7 +380,8 @@ gather_item_recomp_dep(DepItemId, !MaybeGatheredItemDeps) :-
             true
         else
             set.insert(DepItemId, GatheredDeps0, GatheredDeps),
-            !:MaybeGatheredItemDeps = item_recomp_deps(ModuleName, GatheredDeps)
+            !:MaybeGatheredItemDeps =
+                item_recomp_deps(ModuleName, GatheredDeps)
         )
     ).
 

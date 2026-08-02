@@ -669,8 +669,8 @@ add_clause_to_clauses_info(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         ;
             ShouldWarn = should_warn,
             PredFormArity = arg_list_arity(HeadVars),
-            WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
-                PredFormArity),
+            WarnPFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc,
+                PredSymName, PredFormArity),
             warn_singletons_in_clause_body(!.ModuleInfo, WarnPFSymNameArity,
                 VarSet2, Goal0, SeenQuant, !WarnSpecs),
             % Warn about variables with overlapping scopes.

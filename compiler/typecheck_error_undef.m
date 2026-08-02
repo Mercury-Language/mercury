@@ -1356,7 +1356,7 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     UserArity = pred_info_user_arity(PredInfo),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
     SymName = qualified(ModuleName, PredName),
-    Id = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    Id = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
     pred_info_get_markers(PredInfo, PredMarkers),
     ( if
         ( set.contains(IntBadClauses, Id)

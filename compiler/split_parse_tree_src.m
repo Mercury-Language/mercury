@@ -332,7 +332,8 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                         ; OldSplitNested = split_nested_int_imp(_, _)
                         ),
                         report_duplicate_submodule(ModuleName, Context,
-                            dup_int_only, ParentModuleName, OldEntry, !ErrSpecs)
+                            dup_int_only, ParentModuleName, OldEntry,
+                            !ErrSpecs)
                     )
                 ;
                     OldEntry = split_included(_),

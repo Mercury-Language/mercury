@@ -1191,8 +1191,8 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
     CallerPredOrFunc = pred_info_is_pred_or_func(CallerPredInfo),
     CallerName = pred_info_name(CallerPredInfo),
     CallerPredFormArity = pred_info_pred_form_arity(CallerPredInfo),
-    CallerPFSNA = pf_sym_name_arity(CallerPredOrFunc, unqualified(CallerName),
-        CallerPredFormArity),
+    CallerPFSNA = pf_sym_name_pred_form_arity(CallerPredOrFunc,
+        unqualified(CallerName), CallerPredFormArity),
     pred_info_get_proc_table(CallerPredInfo, CallerProcTable),
     map.count(CallerProcTable, CallerNumProcs),
     ( if CallerNumProcs > 1 then
@@ -1210,7 +1210,7 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         CalleeName = qualified(pred_info_module(CalleePredInfo),
             pred_info_name(CalleePredInfo)),
         CalleePredFormArity = pred_info_pred_form_arity(CalleePredInfo),
-        CalleePFSNA = pf_sym_name_arity(CalleePredOrFunc, CalleeName,
+        CalleePFSNA = pf_sym_name_pred_form_arity(CalleePredOrFunc, CalleeName,
             CalleePredFormArity),
         add_message_for_nontail_mutual_recursive_call(CallerPFSNA,
             MaybeCallerProcId, CalleePFSNA, Context, Reason,
@@ -1227,10 +1227,10 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
     % at Context is not *tail* recursive. Set its severity based on
     % WarnOrError.
     %
-:- pred add_message_for_nontail_self_recursive_call(pf_sym_name_arity::in,
-    maybe(proc_id)::in, prog_context::in, nontail_rec_call_reason::in,
-    report_requested_by::in, warning_or_error::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+:- pred add_message_for_nontail_self_recursive_call(
+    pf_sym_name_pred_form_arity::in, maybe(proc_id)::in, prog_context::in,
+    nontail_rec_call_reason::in, report_requested_by::in,
+    warning_or_error::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
         Context, Reason, RequestBy, WarnOrError, !Specs) :-
@@ -1259,8 +1259,9 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
     % CallerProcId (if specified) at Context is not *tail* recursive.
     % Set its severity based on WarnOrError.
     %
-:- pred add_message_for_nontail_mutual_recursive_call(pf_sym_name_arity::in,
-    maybe(proc_id)::in, pf_sym_name_arity::in, prog_context::in,
+:- pred add_message_for_nontail_mutual_recursive_call(
+    pf_sym_name_pred_form_arity::in, maybe(proc_id)::in,
+    pf_sym_name_pred_form_arity::in, prog_context::in,
     nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
@@ -1452,21 +1453,22 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
             pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
             pred_info_get_name(PredInfo, PredName),
             PredFormArity = pred_info_pred_form_arity(PredInfo),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc,
+            PFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc,
                 unqualified(PredName), PredFormArity),
             report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
                 WarnOrError, warn_requested_by_code, !Specs)
         )
     ).
 
-:- pred report_no_tail_or_nontail_recursive_calls(pf_sym_name_arity::in,
-    prog_context::in, warning_or_error::in, option::in,
+:- pred report_no_tail_or_nontail_recursive_calls(
+    pf_sym_name_pred_form_arity::in, prog_context::in,
+    warning_or_error::in, option::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
         WarnOrError, Option, !Specs) :-
     woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _),
+    PFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc, _, _),
     Pieces = [WarnOrErrorWord,
         words("in"), pragma_decl("require_tail_recursion"), words("for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,

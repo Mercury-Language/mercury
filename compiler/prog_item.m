@@ -243,7 +243,7 @@
     ;       compiler_origin_finalise
     ;       compiler_origin_class_method(
                 cm_class_id                     :: class_id,
-                cm_method                       :: pred_pf_name_arity
+                cm_method                       :: pf_sym_name_user_arity
             )
     ;       compiler_origin_solver_repn(
                 cosr_type_ctor                  :: type_ctor,
@@ -255,7 +255,7 @@
                 com_aux_pred_kind               :: mutable_pred_kind
             )
     ;       compiler_origin_tabling(
-                cot_pred_spec                   :: pred_pf_name_arity,
+                cot_pred_spec                   :: pf_sym_name_user_arity,
                 cot_aux_pred_kind               :: tabling_aux_pred_kind
             ).
 
@@ -1561,7 +1561,7 @@
 
 :- type decl_pragma_format_call_info
     --->    decl_pragma_format_call_info(
-                format_pred             :: pred_pf_name_arity,
+                format_pred             :: pf_sym_name_user_arity,
                 format_values           :: one_or_more(format_string_values),
                 format_context          :: prog_context,
                 format_seq_num          :: item_seq_num
@@ -1700,9 +1700,9 @@
 :- type decl_pragma_oisu_info
     --->    decl_pragma_oisu_info(
                 oisu_type_ctor          :: type_ctor,
-                oisu_creator_preds      :: list(pred_pf_name_arity),
-                oisu_transformer_preds  :: list(pred_pf_name_arity),
-                oisu_destroyer_preds    :: list(pred_pf_name_arity),
+                oisu_creator_preds      :: list(pf_sym_name_user_arity),
+                oisu_transformer_preds  :: list(pf_sym_name_user_arity),
+                oisu_destroyer_preds    :: list(pf_sym_name_user_arity),
                 oisu_context            :: prog_context,
                 oisu_seq_num            :: item_seq_num
             ).
@@ -1886,7 +1886,7 @@
                 % The specified procedure(s) is/are implemented outside
                 % of Mercury code, for the named backend if there is one,
                 % or if there isn't a named backend, then for all backends.
-                external_name           :: pred_pf_name_arity,
+                external_name           :: pf_sym_name_user_arity,
                 external_maybe_backend  :: maybe(backend),
                 external_context        :: prog_context,
                 external_seq_num        :: item_seq_num

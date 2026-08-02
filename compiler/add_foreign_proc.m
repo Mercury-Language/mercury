@@ -94,7 +94,8 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
     FPInfo = item_foreign_proc_info(Attributes0, PredSymName, PredOrFunc,
         PragmaVars, ProgVarSet, _InstVarset, PragmaImpl, Context, SeqNum),
     PredFormArity = arg_list_arity(PragmaVars),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -172,14 +173,15 @@ add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FPInfo,
     % If it is not there, generate an error message, and insert
     % a dummy declaration for the predicate.
     %
-:- pred add_implicit_pred_decl_if_needed(pf_sym_name_arity::in,
+:- pred add_implicit_pred_decl_if_needed(pf_sym_name_pred_form_arity::in,
     pred_status::in, prog_context::in, pred_id::out,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 add_implicit_pred_decl_if_needed(PFSymNameArity, PredStatus, Context, PredId,
         !ModuleInfo, !ErrSpecs) :-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     det_sym_name_get_module_name_and_name(PredSymName,
         PredModuleName, PredName),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -280,8 +282,9 @@ is_foreign_proc_for_this_backend(Globals, Attributes, ForThisBackend) :-
     % if the procedure it is for actually exists.
     %
 :- pred compute_intended_proc_id(module_info::in, pred_info::in,
-    pf_sym_name_arity::in, list(pragma_var)::in, foreign_proc_attributes::in,
-    prog_context::in, maybe_error(proc_id, err_spec)::out) is det.
+    pf_sym_name_pred_form_arity::in, list(pragma_var)::in,
+    foreign_proc_attributes::in, prog_context::in,
+    maybe_error(proc_id, err_spec)::out) is det.
 
 compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
         PragmaVars, Attributes, Context, MaybeProcId) :-
@@ -312,15 +315,15 @@ compute_intended_proc_id(ModuleInfo, PredInfo, PFSymNameArity,
     % if the procedure it is for actually exists.
     %
 :- pred add_nonimported_foreign_proc(pred_id::in, pred_info::in, proc_id::in,
-    pf_sym_name_arity::in, foreign_proc_attributes::in, list(pragma_var)::in,
-    pragma_foreign_proc_impl::in, prog_context::in,
+    pf_sym_name_pred_form_arity::in, foreign_proc_attributes::in,
+    list(pragma_var)::in, pragma_foreign_proc_impl::in, prog_context::in,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 add_nonimported_foreign_proc(PredId, !.PredInfo, ProcId, PFSymNameArity,
         Attributes, PragmaVars, PragmaImpl, Context, !ModuleInfo, !ErrSpecs) :-
     PFSymNameArity =
-        pf_sym_name_arity(PredOrFunc, PredSymName, _PredFormArity),
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, _PredFormArity),
     det_sym_name_get_module_name_and_name(PredSymName,
         PredModuleName, PredName),
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
@@ -640,7 +643,7 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
     % Perform all the checks on a foreign_proc that we can.
     %
 :- pred check_foreign_proc(module_info::in, pred_info::in,
-    pf_sym_name_arity::in, maybe_error(proc_id, err_spec)::in,
+    pf_sym_name_pred_form_arity::in, maybe_error(proc_id, err_spec)::in,
     prog_varset::in, list(pragma_var)::in, foreign_proc_attributes::in,
     pragma_foreign_proc_impl::in, prog_context::in,
     maybe_allowed_to_add_foreign_proc::out,
@@ -792,14 +795,15 @@ report_if_fproc_is_for_builtin(ModuleInfo, PredInfo, Lang, Context,
 
 %---------------------%
 
-:- func report_fproc_for_undeclared_mode(pf_sym_name_arity,
+:- func report_fproc_for_undeclared_mode(pf_sym_name_pred_form_arity,
     foreign_proc_attributes, prog_context) = err_spec.
 
 report_fproc_for_undeclared_mode(PFSymNameArity, Attributes, Context)
         = ErrSpec :-
     Lang = get_foreign_language(Attributes),
     LangStr = foreign_language_string(Lang),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(PredSymName, UserArityInt),
@@ -820,7 +824,8 @@ report_fproc_for_undeclared_mode(PFSymNameArity, Attributes, Context)
 report_duplicate_foreign_proc(PredOrFunc, PredModuleName, PredName,
         PredFormArity, Lang, FirstClauseContext, NewContext, !ErrSpecs) :-
     PredSymName = qualified(PredModuleName, PredName),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     LangStr = foreign_language_string(Lang),
     PiecesA = [words("Error:")] ++
         color_as_incorrect([words("duplicate"), words(LangStr),
@@ -907,9 +912,10 @@ check_foreign_proc_purity(PredInfo, Attributes, Lang, Context, !ErrSpecs) :-
             true
         else
             LangStr = foreign_language_string(Lang),
-            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
-            PFSymNameArity =
-                pf_sym_name_arity(PredOrFunc, _PredSymName, _PredFormArity),
+            pred_info_get_pf_sym_name_pred_form_arity(PredInfo,
+                PFSymNameArity),
+            PFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc,
+                _PredSymName, _PredFormArity),
             purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
             purity_name(PredPurity, PredPurityStr),
             Pieces = [words("Error: this"), words(LangStr),
@@ -978,9 +984,9 @@ check_typeinfo_for_existq_tvar(PredInfo, TypeVarSet, Lang, Identifiers,
 
     % Check for arguments occurring more than once.
     %
-:- pred check_foreign_proc_arg_list(pf_sym_name_arity::in, prog_varset::in,
-    list(prog_var)::in, foreign_language::in, prog_context::in,
-    list(err_spec)::out) is det.
+:- pred check_foreign_proc_arg_list(pf_sym_name_pred_form_arity::in,
+    prog_varset::in, list(prog_var)::in, foreign_language::in,
+    prog_context::in, list(err_spec)::out) is det.
 
 check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
         ErrSpecs) :-
@@ -1030,8 +1036,8 @@ check_foreign_proc_arg_list(PFSymNameArity, ProgVarSet, ArgVars, Lang, Context,
     % Mercury variable names into identifiers for that foreign language).
     %
 :- pred warn_singletons_in_pragma_foreign_proc(pred_info::in,
-    pf_sym_name_arity::in, foreign_language::in, list(pragma_var)::in,
-    set(string)::in, prog_context::in,
+    pf_sym_name_pred_form_arity::in, foreign_language::in,
+    list(pragma_var)::in, set(string)::in, prog_context::in,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
 warn_singletons_in_pragma_foreign_proc(PredInfo, PFSymNameArity,
@@ -1086,7 +1092,7 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
 %---------------------%
 
 :- pred check_fp_body_for_success_indicator(pred_info::in,
-    pf_sym_name_arity::in, proc_id::in, foreign_language::in,
+    pf_sym_name_pred_form_arity::in, proc_id::in, foreign_language::in,
     set(string)::in, prog_context::in,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
@@ -1152,8 +1158,8 @@ check_fp_body_for_success_indicator(PredInfo, PFSymNameArity, ProcId, Lang,
     % Check to see if a foreign_proc body contains a return statement
     % (or whatever the foreign language equivalent is).
     %
-:- pred check_fp_body_for_return(pf_sym_name_arity::in, foreign_language::in,
-    set(string)::in, prog_context::in,
+:- pred check_fp_body_for_return(pf_sym_name_pred_form_arity::in,
+    foreign_language::in, set(string)::in, prog_context::in,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
 check_fp_body_for_return(PFSymNameArity, Lang, Identifiers, Context,

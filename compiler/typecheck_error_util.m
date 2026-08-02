@@ -258,14 +258,15 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                         arg_vector_plain_pred_call(SymNamePredFormArity),
                     SymNamePredFormArity =
                         sym_name_pred_form_arity(SymName, PredFormArity),
-                    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName,
-                        PredFormArity),
+                    PFSymNameArity = pf_sym_name_pred_form_arity(pf_predicate,
+                        SymName, PredFormArity),
                     CallId = plain_call_id(PFSymNameArity)
                 ;
                     ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
                     ModuleInfo = ClauseContext ^ tecc_module_info,
                     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                    pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+                    pred_info_get_pf_sym_name_pred_form_arity(PredInfo,
+                        PFSymNameArity),
                     CallId = plain_call_id(PFSymNameArity)
                 ;
                     ArgVectorKind = arg_vector_generic_call(GenericCall),
@@ -371,14 +372,15 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
             ArgVectorKind = arg_vector_plain_pred_call(SymNamePredFormArity),
             SymNamePredFormArity =
                 sym_name_pred_form_arity(SymName, PredFormArity),
-            PFSymNameArity =
-                pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
+            PFSymNameArity = pf_sym_name_pred_form_arity(pf_predicate,
+                SymName, PredFormArity),
             CallId = plain_call_id(PFSymNameArity)
         ;
             ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
             ModuleInfo = ClauseContext ^ tecc_module_info,
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+            pred_info_get_pf_sym_name_pred_form_arity(PredInfo,
+                PFSymNameArity),
             CallId = plain_call_id(PFSymNameArity)
         ;
             ArgVectorKind = arg_vector_generic_call(GenericCall),

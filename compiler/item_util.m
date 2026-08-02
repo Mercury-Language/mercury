@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -469,7 +469,7 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
     ;
         Pragma = impl_pragma_external_proc(External),
         External = impl_pragma_external_proc_info(PFNameArity, _, _, _),
-        PFNameArity = pred_pf_name_arity(PorF, _, _),
+        PFNameArity = pf_sym_name_user_arity(PorF, _, _),
         (
             PorF = pf_predicate,
             Pieces = [pragma_decl("external_pred"), words("declaration")]

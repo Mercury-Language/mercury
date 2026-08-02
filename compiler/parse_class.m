@@ -709,7 +709,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     InstanceMethodName)
             then
                 ProcDef = instance_proc_def_name(InstanceMethodName),
-                MethodName = pred_pf_name_arity(pf_predicate, PredSymName,
+                MethodName = pf_sym_name_user_arity(pf_predicate, PredSymName,
                     user_arity(ArityInt)),
                 InstanceMethod = instance_method(MethodName, ProcDef,
                     TermContext),
@@ -742,7 +742,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     InstanceMethodName)
             then
                 ProcDef = instance_proc_def_name(InstanceMethodName),
-                MethodName = pred_pf_name_arity(pf_function, FuncSymName,
+                MethodName = pf_sym_name_user_arity(pf_function, FuncSymName,
                     user_arity(ArityInt)),
                 InstanceMethod = instance_method(MethodName, ProcDef,
                     TermContext),
@@ -810,7 +810,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     UserArity, PredFormArity),
                 ClauseCord = cord.singleton(ItemClause),
                 ProcDef = instance_proc_def_clauses(ClauseCord),
-                MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName,
+                MethodName = pf_sym_name_user_arity(PredOrFunc, MethodSymName,
                     UserArity),
                 InstanceMethod = instance_method(MethodName, ProcDef, Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)

@@ -98,7 +98,7 @@
     list(gen_pragma_mm_tabling_info)::out,
     ims_list(item_clause_info)::out,
     ims_list(item_foreign_proc_info)::out,
-    set(pred_pf_name_arity)::out) is det.
+    set(pf_sym_name_user_arity)::out) is det.
 
 %---------------------------------------------------------------------------%
 

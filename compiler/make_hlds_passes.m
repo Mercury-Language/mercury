@@ -1337,7 +1337,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
 
 get_qual_pred_desc_piece(ModuleInfo, PredId) = Piece :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_pf_sym_name_arity(PredInfo, PFSNA),
+    pred_info_get_pf_sym_name_pred_form_arity(PredInfo, PFSNA),
     Piece = qual_pf_sym_name_pred_form_arity(PFSNA).
 
 %---------------------%

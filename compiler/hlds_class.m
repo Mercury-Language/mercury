@@ -238,7 +238,7 @@
                 % They will also have the same pred_id in the first half
                 % of the method_orig_proc field, but the proc_ids in the
                 % second half will monotonically increase.
-                method_pred_name        :: pred_pf_name_arity,
+                method_pred_name        :: pf_sym_name_user_arity,
 
                 % The originally created implementation of this procedure.
                 % For method_infos in class

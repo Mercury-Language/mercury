@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2021, 2024-2025 The Mercury team.
+% Copyright (C) 2015-2021, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1370,7 +1370,7 @@ mercury_format_instance_methods(S, HeadMethod, TailMethods, !U) :-
 
 mercury_format_instance_method(Method, S, !U) :-
     Method = instance_method(MethodId, Defn, _Context),
-    MethodId = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
+    MethodId = pf_sym_name_user_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
     (
         Defn = instance_proc_def_name(PredName),

@@ -1707,7 +1707,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !WarnSpecs) :-
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
     list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
-    set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
+    set(pf_sym_name_user_arity)::in, set(pf_sym_name_user_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -1876,7 +1876,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
     list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
-    set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
+    set(pf_sym_name_user_arity)::in, set(pf_sym_name_user_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -1971,7 +1971,7 @@ classify_src_items_int([Item | Items],
         PredFormArity = arg_list_arity(ArgTerms),
         user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         PredPfNameArity =
-            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+            pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
         Pieces = [words("Error:")] ++
             color_as_subject([words("clauses,")]) ++
             [words("such as this one for"),
@@ -1992,7 +1992,8 @@ classify_src_items_int([Item | Items],
         list.length(Vars, Arity),
         user_arity_pred_form_arity(PredOrFunc, UserArity,
             pred_form_arity(Arity)),
-        PredPfNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PredPfNameArity =
+            pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         set.insert(PredPfNameArity, !BadClausePreds)
     ;
         Item = item_decl_pragma(ItemDeclPragma),
@@ -2016,12 +2017,12 @@ classify_src_items_int([Item | Items],
             (
                 PFU = pfu_predicate,
                 PredPfNameArity =
-                    pred_pf_name_arity(pf_predicate, SymName, UserArity),
+                    pf_sym_name_user_arity(pf_predicate, SymName, UserArity),
                 set.insert(PredPfNameArity, !BadClausePreds)
             ;
                 PFU = pfu_function,
                 PredPfNameArity =
-                    pred_pf_name_arity(pf_function, SymName, UserArity),
+                    pf_sym_name_user_arity(pf_function, SymName, UserArity),
                 set.insert(PredPfNameArity, !BadClausePreds)
             ;
                 PFU = pfu_unknown

@@ -367,7 +367,7 @@ describe_one_pred_info_name(MaybeColor, ShouldModuleQualify, SuffixPieces,
         ),
         Pieces = maybe_color_pieces(MaybeColor, Pieces0 ++ SuffixPieces)
     else if Origin = origin_user(user_made_class_method(_, PFNA)) then
-        PFNA = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNA = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(SymName, UserArityInt),
         (
@@ -380,7 +380,7 @@ describe_one_pred_info_name(MaybeColor, ShouldModuleQualify, SuffixPieces,
         Pieces = [words("typeclass method"), p_or_f(PredOrFunc)] ++
             maybe_color_pieces(MaybeColor, [SNAPiece] ++ SuffixPieces)
     else if Origin = origin_user(user_made_instance_method(PFNA, _)) then
-        PFNA = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNA = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(SymName, UserArityInt),
         (
@@ -851,7 +851,8 @@ call_arg_id_to_pieces(PrintHoVarName, CallId, ArgNum, PredMarkers) = Pieces :-
 arg_number_to_pieces(CallId, ArgNum) = Pieces :-
     (
         CallId = plain_call_id(PFSymNameArity),
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, PredFormArity),
+        PFSymNameArity =
+            pf_sym_name_pred_form_arity(PredOrFunc, _, PredFormArity),
         PredFormArity = pred_form_arity(Arity),
         ( if
             PredOrFunc = pf_function,

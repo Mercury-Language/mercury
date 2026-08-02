@@ -64,7 +64,7 @@
     ;       mqcec_pred_decl(prog_context,
                 % The identity of the entity the constraint is on:
                 % whether it is predicate or function, its name, and its arity.
-                pf_sym_name_arity
+                pf_sym_name_pred_form_arity
             )
     ;       mqcec_type_spec_constr(prog_context,
                 % The constraint occurs in a type_spec_constraint pragma

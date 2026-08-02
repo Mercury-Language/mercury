@@ -317,8 +317,8 @@ module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
 :- pred classify_class_decls(list(class_decl)::in,
     cord(class_pred_or_func_info)::in,
     cord(class_pred_or_func_info)::out,
-    map(pred_pf_name_arity, cord(class_mode_info))::in,
-    map(pred_pf_name_arity, cord(class_mode_info))::out) is det.
+    map(pf_sym_name_user_arity, cord(class_mode_info))::in,
+    map(pf_sym_name_user_arity, cord(class_mode_info))::out) is det.
 
 classify_class_decls([], !PredOrFuncInfos, !ModeDeclMap).
 classify_class_decls([Decl | Decls], !PredOrFuncInfos, !ModeDeclMap) :-
@@ -340,7 +340,7 @@ classify_class_decls([Decl | Decls], !PredOrFuncInfos, !ModeDeclMap) :-
         PredFormArity = arg_list_arity(Modes),
         user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         MethodPredName =
-            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+            pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
         ( if map.search(!.ModeDeclMap, MethodPredName, ProcIdCord0) then
             cord.snoc(ModeInfo, ProcIdCord0, ProcIdCord),
             map.det_update(MethodPredName, ProcIdCord, !ModeDeclMap)
@@ -355,8 +355,8 @@ classify_class_decls([Decl | Decls], !PredOrFuncInfos, !ModeDeclMap) :-
     item_mercury_status::in, pred_status::in, need_qualifier::in,
     class_pred_or_func_info::in, int::in, int::out,
     cord(method_info)::in, cord(method_info)::out,
-    map(pred_pf_name_arity, cord(class_mode_info))::in,
-    map(pred_pf_name_arity, cord(class_mode_info))::out,
+    map(pf_sym_name_user_arity, cord(class_mode_info))::in,
+    map(pf_sym_name_user_arity, cord(class_mode_info))::out,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
@@ -377,7 +377,8 @@ add_class_pred_or_func_and_mode_decls(ClassName, ClassParamVars,
     ClassId = class_id(ClassName, list.length(ClassParamTypes)),
     PredFormArity = types_and_maybe_modes_arity(ArgTypesAndMaybeModes),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    MethodPredName = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+    MethodPredName =
+        pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
     Origin = compiler_origin_class_method(ClassId, MethodPredName),
     Attrs = item_compiler_attributes(Origin),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -474,14 +475,15 @@ add_class_pred_or_func_and_mode_decls(ClassName, ClassParamVars,
     ).
 
 :- pred add_class_mode_decl(item_mercury_status::in, pred_status::in,
-    pred_pf_name_arity::in, pred_id::in, class_mode_info::in,
+    pf_sym_name_user_arity::in, pred_id::in, class_mode_info::in,
     int::in, int::out, cord(method_info)::in, cord(method_info)::out,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 add_class_mode_decl(ItemMercuryStatus, PredStatus, MethodPredName, PredId,
         ModeInfo, !MethodProcNum, !MethodInfosCord, !ModuleInfo, !Specs) :-
-    MethodPredName = pred_pf_name_arity(PredOrFunc, PredSymName, _UserArity),
+    MethodPredName =
+        pf_sym_name_user_arity(PredOrFunc, PredSymName, _UserArity),
     ModeInfo = class_mode_info(_PredSymName, _MaybePredOrFunc, Modes,
         _WithInst, MaybeDetism, InstVarSet, Context),
     WithInst = maybe.no,
@@ -575,7 +577,7 @@ report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_mode_decls_for_undeclared_method(pred_pf_name_arity::in,
+:- pred report_mode_decls_for_undeclared_method(pf_sym_name_user_arity::in,
     cord(class_mode_info)::in,
     list(err_spec)::in, list(err_spec)::out) is det.
 
@@ -585,12 +587,12 @@ report_mode_decls_for_undeclared_method(MethodPredName, ModeInfosCord,
     list.foldl(report_mode_decl_for_undeclared_method(MethodPredName),
         ModeInfos, !Specs).
 
-:- pred report_mode_decl_for_undeclared_method(pred_pf_name_arity::in,
+:- pred report_mode_decl_for_undeclared_method(pf_sym_name_user_arity::in,
     class_mode_info::in,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
-    MethodPredName = pred_pf_name_arity(PorF, SymName, UserArity),
+    MethodPredName = pf_sym_name_user_arity(PorF, SymName, UserArity),
     UserArity = user_arity(UserArityInt),
     NameArity = name_arity(unqualify_name(SymName), UserArityInt),
     ModeInfo = class_mode_info(_, _, _, _, _, _, Context),

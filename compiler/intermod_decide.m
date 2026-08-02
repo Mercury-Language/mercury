@@ -874,7 +874,7 @@ gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
     % to the `.opt' file.
     %
 :- pred intermod_qualify_instance_method(module_info::in,
-    map(pred_pf_name_arity, pred_id)::in,
+    map(pf_sym_name_user_arity, pred_id)::in,
     instance_method::in, instance_method::out,
     list(pred_id)::in, list(pred_id)::out) is det.
 
@@ -883,7 +883,7 @@ intermod_qualify_instance_method(ModuleInfo, MethodNameToPredIdMap,
     InstanceMethod0 = instance_method(MethodName, InstanceMethodDefn0,
         MethodContext),
     MethodName =
-        pred_pf_name_arity(PredOrFunc, _MethodSymName, MethodUserArity),
+        pf_sym_name_user_arity(PredOrFunc, _MethodSymName, MethodUserArity),
     map.lookup(MethodNameToPredIdMap, MethodName, MethodPredId),
     module_info_pred_info(ModuleInfo, MethodPredId, MethodPredInfo),
     pred_info_get_arg_types(MethodPredInfo, MethodTVarSet,

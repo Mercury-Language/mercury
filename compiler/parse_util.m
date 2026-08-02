@@ -66,8 +66,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_pred_pf_name_arity(module_name::in, string::in,
-    varset::in, term::in, maybe1(pred_pf_name_arity)::out) is det.
+:- pred parse_pf_sym_name_user_arity(module_name::in, string::in,
+    varset::in, term::in, maybe1(pf_sym_name_user_arity)::out) is det.
 
 :- pred parse_pred_pfu_name_arity(module_name::in, string::in,
     varset::in, term::in, maybe1(pred_pfu_name_arity)::out) is det.
@@ -290,7 +290,7 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
 
 %---------------------------------------------------------------------------%
 
-parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
+parse_pf_sym_name_user_arity(ModuleName, PragmaName, VarSet,
         Term, MaybePredSpec) :-
     ( if
         Term = term.functor(term.atom(Functor), [SubTerm], _),
@@ -302,7 +302,8 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
         implicitly_qualify_sym_name(ModuleName, Term, SymName0, MaybeSymName),
         (
             MaybeSymName = ok1(SymName),
-            PredSpec = pred_pf_name_arity(PorF, SymName, user_arity(Arity)),
+            PredSpec = pf_sym_name_user_arity(PorF, SymName,
+                user_arity(Arity)),
             MaybePredSpec = ok1(PredSpec)
         ;
             MaybeSymName = error1(Specs),

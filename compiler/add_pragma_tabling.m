@@ -245,7 +245,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
 
     PredSymName = qualified(PredModuleName, PredName),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    PFSymNameArity = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+    PFSymNameArity =
+        pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
 
     TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -447,7 +448,8 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     PredSymName = qualified(PredModuleName, PredName),
-    PFSymNameArity = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+    PFSymNameArity =
+        pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
     (
         OldEvalMethod = eval_normal,
         proc_info_get_maybe_declared_argmodes(ProcInfo0,
@@ -602,7 +604,7 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
     Constraints = univ_exist_constraints([], []),
 
     PredSymName = qualified(PredModuleName, PredName),
-    PredSpec = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+    PredSpec = pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
     Attrs = item_compiler_attributes(compiler_origin_tabling(PredSpec,
         tabling_aux_pred_stats)),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -614,7 +616,8 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
         PredDecl, _MaybePredProcId, !ModuleInfo, !ErrSpecs),
 
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     some [!Attrs, !VarSet] (
         varset.init(!:VarSet),
         varset.new_named_var("Stats", Stats, !VarSet),
@@ -699,7 +702,7 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
     Constraints = univ_exist_constraints([], []),
 
     PredSymName = qualified(PredModuleName, PredName),
-    PredSpec = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+    PredSpec = pf_sym_name_user_arity(PredOrFunc, PredSymName, UserArity),
     Attrs = item_compiler_attributes(compiler_origin_tabling(PredSpec,
         tabling_aux_pred_reset)),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -711,7 +714,8 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         PredDecl, _MaybePredProcId, !ModuleInfo, !ErrSpecs),
 
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     some [!Attrs, !VarSet] (
         varset.init(!:VarSet),
         varset.new_named_var("IO0", IO0, !VarSet),
@@ -753,8 +757,8 @@ create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         )
     ).
 
-:- func table_info_c_global_var_name(module_info, pf_sym_name_arity, proc_id)
-    = string.
+:- func table_info_c_global_var_name(module_info, pf_sym_name_pred_form_arity,
+    proc_id) = string.
 
 table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -767,7 +771,8 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     % Shouldn't this mean that the module name in PredSymName is guaranteed
     % to be ModuleName?
     module_info_get_name(ModuleInfo, ModuleName),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     PredName = unqualify_name(PredSymName),
     (
         HighLevelCode = yes,

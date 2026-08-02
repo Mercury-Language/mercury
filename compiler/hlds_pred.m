@@ -168,7 +168,7 @@
 :- pred next_proc_id(proc_table::in, proc_id::out) is det.
 
 :- type call_id
-    --->    plain_call_id(pf_sym_name_arity)
+    --->    plain_call_id(pf_sym_name_pred_form_arity)
             % The call is a plain call, and the argument specifies the callee.
     ;       generic_call_id(var_name_source, generic_call).
             % The call is a generic call, specified by the second argument.
@@ -179,7 +179,7 @@
 
 :- type generic_call_id
     --->    gcid_higher_order(purity, pred_or_func, pred_form_arity)
-    ;       gcid_class_method(class_id, pf_sym_name_arity)
+    ;       gcid_class_method(class_id, pf_sym_name_pred_form_arity)
     ;       gcid_event_call(string)
     ;       gcid_cast(cast_kind).
 
@@ -656,8 +656,8 @@
 
 :- pred pred_info_infer_modes(pred_info::in) is semidet.
 
-:- pred pred_info_get_pf_sym_name_arity(pred_info::in, pf_sym_name_arity::out)
-    is det.
+:- pred pred_info_get_pf_sym_name_pred_form_arity(pred_info::in,
+    pf_sym_name_pred_form_arity::out) is det.
 
 :- pred pred_info_get_sym_name(pred_info::in, sym_name::out) is det.
 
@@ -1676,11 +1676,12 @@ pred_info_infer_modes(PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity) :-
+pred_info_get_pf_sym_name_pred_form_arity(PredInfo, PFSymNameArity) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_sym_name(PredInfo, SymName),
     PredFormArity = pred_info_pred_form_arity(PredInfo),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity).
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity).
 
 pred_info_get_sym_name(PredInfo, SymName) :-
     Module = pred_info_module(PredInfo),

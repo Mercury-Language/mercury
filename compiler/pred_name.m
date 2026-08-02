@@ -330,10 +330,10 @@
             % a sequence number used to distinguish multiple lambdas
             % on the same line.
 
-    ;       user_made_class_method(class_id, pred_pf_name_arity)
+    ;       user_made_class_method(class_id, pf_sym_name_user_arity)
             % The predicate is a class method implementation.
 
-    ;       user_made_instance_method(pred_pf_name_arity,
+    ;       user_made_instance_method(pf_sym_name_user_arity,
                 instance_method_constraints)
             % The predicate is a class method implementation for the class
             % whose class_id is in the instance_method_constraints.
@@ -369,9 +369,10 @@
             % the solver_type_pred_kind, for the type constructor given by
             % the sym_name and arity.
 
-    ;       made_for_tabling(pred_pf_name_arity, tabling_aux_pred_kind)
+    ;       made_for_tabling(pf_sym_name_user_arity, tabling_aux_pred_kind)
             % The predicate is an auxiliary predicate of the indicated kind
-            % for the tabled predicate identified by the pf_sym_name_arity.
+            % for the tabled predicate identified by the
+            % pf_sym_name_pred_form_arity.
 
     ;       made_for_mutable(module_name, string, mutable_pred_kind)
             % The predicate is a predicate that operates on the mutable
@@ -1206,7 +1207,7 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
         ;
             OriginUser = user_made_class_method(ClassId, MethodId),
             ClassId = class_id(ClassSymName, ClassArity),
-            MethodId = pred_pf_name_arity(MethodPredOrFunc,
+            MethodId = pf_sym_name_user_arity(MethodPredOrFunc,
                 MethodSymName, MethodUserArity),
             MethodUserArity = user_arity(MethodUserArityInt),
             string.format("%s class method %s %s/%d for %s/%d\n",
@@ -1216,7 +1217,7 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
         ;
             OriginUser = user_made_instance_method(MethodId,
                 MethodConstraints),
-            MethodId = pred_pf_name_arity(MethodPredOrFunc,
+            MethodId = pf_sym_name_user_arity(MethodPredOrFunc,
                 MethodSymName, MethodUserArity),
             MethodUserArity = user_arity(MethodUserArityInt),
             MethodConstraints = instance_method_constraints(ClassId,
@@ -1595,7 +1596,7 @@ layout_origin_name_new(Origin) = Str :-
             OriginUser = user_made_class_method(ClassId, PFSymNameArity),
             ClassId = class_id(ClassSymName, ClassArity),
             StuffedClassNameStr = mrtq_stuff_sym_name(ClassSymName),
-            PFSymNameArity = pred_pf_name_arity(PorF, MethodSymName,
+            PFSymNameArity = pf_sym_name_user_arity(PorF, MethodSymName,
                 MethodUserArity),
             PorFStr = pred_or_func_to_str(PorF),
             StuffedMethodNameStr = mrtq_stuff_sym_name(MethodSymName),
@@ -1607,7 +1608,7 @@ layout_origin_name_new(Origin) = Str :-
         ;
             OriginUser = user_made_instance_method(PFSymNameArity,
                 MethodConstraints),
-            PFSymNameArity = pred_pf_name_arity(PorF, MethodSymName,
+            PFSymNameArity = pf_sym_name_user_arity(PorF, MethodSymName,
                 MethodUserArity),
             PorFStr = pred_or_func_to_str(PorF),
             StuffedMethodNameStr = mrtq_stuff_sym_name(MethodSymName),
@@ -1689,7 +1690,7 @@ layout_origin_name_new(Origin) = Str :-
                 [s(PredKindStr), s(StuffedTypeCtorStr), i(TypeCtorArity)], Str)
         ;
             OriginCompiler = made_for_tabling(PFSymNameArity, Kind),
-            PFSymNameArity = pred_pf_name_arity(PorF, SymName, UserArity),
+            PFSymNameArity = pf_sym_name_user_arity(PorF, SymName, UserArity),
             PorFStr = pred_or_func_to_str(PorF),
             StuffedNameStr = mrtq_stuff_sym_name(SymName),
             UserArity = user_arity(UserArityInt),

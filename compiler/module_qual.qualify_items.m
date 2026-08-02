@@ -806,7 +806,8 @@ module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl, !Info) :-
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
         Constraints0, Context, SeqNum),
     PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes0),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
     ErrorContext = mqec_pred_or_func(Context, PredOrFunc,
         mq_id(SymName, PredFormArityInt)),
@@ -1819,7 +1820,8 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
     % Why aren't those clauses module qualified?
     InstanceMethod0 = instance_method(MethodName0,
         InstanceProcDef, DeclContext),
-    MethodName0 = pred_pf_name_arity(PredOrFunc, MethodSymName0, UserArity),
+    MethodName0 =
+        pf_sym_name_user_arity(PredOrFunc, MethodSymName0, UserArity),
     (
         MethodSymName0 = unqualified(Name),
         MethodSymName = qualified(DefaultModuleName, Name)
@@ -1843,7 +1845,7 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
             MethodSymName = MethodSymName0
         )
     ),
-    MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
+    MethodName = pf_sym_name_user_arity(PredOrFunc, MethodSymName, UserArity),
     InstanceMethod = instance_method(MethodName,
         InstanceProcDef, DeclContext).
 

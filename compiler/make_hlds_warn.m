@@ -33,7 +33,7 @@
 
     % Warn about variables with overlapping scopes.
     %
-:- pred add_quant_warnings(module_info::in, pf_sym_name_arity::in,
+:- pred add_quant_warnings(module_info::in, pf_sym_name_pred_form_arity::in,
     prog_varset::in, list(quant_warning)::in,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
@@ -52,8 +52,9 @@
     % but occur more than once, or about variables that do not occur in
     % target language code strings when they should.
     %
-:- pred warn_singletons_in_clause_body(module_info::in, pf_sym_name_arity::in,
-    prog_varset::in, hlds_goal::in, maybe_seen_quant::out,
+:- pred warn_singletons_in_clause_body(module_info::in,
+    pf_sym_name_pred_form_arity::in, prog_varset::in,
+    hlds_goal::in, maybe_seen_quant::out,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -123,8 +124,8 @@ add_quant_warnings(ModuleInfo, PfSymNameArity, VarSet, Warnings, !Specs) :-
 
     ).
 
-:- func quant_warning_to_spec(pf_sym_name_arity, prog_varset, quant_warning)
-    = warn_spec.
+:- func quant_warning_to_spec(pf_sym_name_pred_form_arity, prog_varset,
+    quant_warning) = warn_spec.
 
 quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
     Warning = warn_overlap(Vars, Context),
@@ -254,7 +255,7 @@ warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
 
                 % The id and the varset of the procedure whose body
                 % we are checking.
-                wp_pf_sna               :: pf_sym_name_arity,
+                wp_pf_sna               :: pf_sym_name_pred_form_arity,
                 wp_varset               :: prog_varset,
 
                 % We can update the last two fields at disable_warnings scopes.
@@ -641,7 +642,7 @@ add_warn_specs(NewSpecs, !Info) :-
     ;       sm_multi.
 
 :- pred generate_variable_warning(warn_params::in, prog_context::in,
-    single_or_multi::in, pf_sym_name_arity::in,
+    single_or_multi::in, pf_sym_name_pred_form_arity::in,
     prog_var::in, list(prog_var)::in, list(warn_spec)::out) is det.
 
 generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,

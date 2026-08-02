@@ -306,7 +306,7 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !ErrSpecs) :-
         % `external' declarations can only apply to things defined
         % in this module, since everything else is already external.
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         (
             PredOrFunc = pf_predicate,
             predicate_table_lookup_pred_sym_arity(PredicateTable0,
@@ -566,8 +566,8 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !ErrSpecs, !WarnSpecs) :-
             else
                 PredInfo = PredInfo0,
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-                PFNameArity =
-                    pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+                PFNameArity = pf_sym_name_user_arity(PredOrFunc,
+                    PredSymName, UserArity),
                 Pieces = [words("Error:")] ++
                     color_as_subject([pragma_decl("require_tail_recursion"),
                         words("declaration")]) ++

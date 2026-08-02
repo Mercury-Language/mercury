@@ -119,14 +119,15 @@ check_field_access_function(Context, FuncSymName, UserArity,
         FuncStatus \= pred_status(status_exported)
     then
         user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
-        PFSymNameArity =
-            pf_sym_name_arity(pf_function, FuncSymName, PredFormArity),
+        PFSymNameArity = pf_sym_name_pred_form_arity(pf_function,
+            FuncSymName, PredFormArity),
         report_field_status_mismatch(Context, PFSymNameArity, !Specs)
     else
         true
     ).
 
-:- pred report_field_status_mismatch(prog_context::in, pf_sym_name_arity::in,
+:- pred report_field_status_mismatch(prog_context::in,
+    pf_sym_name_pred_form_arity::in,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-

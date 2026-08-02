@@ -363,7 +363,7 @@ transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
         GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
             MaybeUnifyContext, SymName),
         PFSymNameArity =
-            pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
+            pf_sym_name_pred_form_arity(pf_predicate, SymName, PredFormArity),
         CallId = plain_call_id(PFSymNameArity)
     ),
     goal_info_init_context_purity(Context, Purity, GoalInfo),
@@ -517,7 +517,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             % *if* we use them this early in the compilation process.
             unexpected($pred, "not cons")
         ),
-        PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,
+        PFSymNameArity = pf_sym_name_pred_form_arity(pf_function, ConsName,
             pred_form_arity(ConsArity)),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
@@ -536,7 +536,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             % *if* we use them this early in the compilation process.
             unexpected($pred, "not cons")
         ),
-        PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,
+        PFSymNameArity = pf_sym_name_pred_form_arity(pf_function, ConsName,
             pred_form_arity(ConsArity)),
         FieldArgNumber = 2,
         FieldArgContext = ac_call(plain_call_id(PFSymNameArity)),

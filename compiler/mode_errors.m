@@ -771,7 +771,7 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     PredName = pred_info_name(PredInfo),
     pred_info_get_orig_arity(PredInfo, PredFormArity),
     SymName = qualified(PredModule, PredName),
-    PFSNA = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    PFSNA = pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity),
     % XXX What should we color as incorrect or as possible cause here?
     % The variable X? PFSNA, the name of the predicate or function?
     % Both? Neither? Something else?
@@ -1071,7 +1071,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
                 GenericCall0 = higher_order(_, _, PredOrFunc, _, _)
             ;
                 GenericCall0 = class_method(_, _, _, PFSymNameArity),
-                PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _)
+                PFSymNameArity = pf_sym_name_pred_form_arity(PredOrFunc, _, _)
             ;
                 ( GenericCall0 = event_call(_)
                 ; GenericCall0 = cast(_)
@@ -1087,7 +1087,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
             ModeCallId = mode_call_plain(PredId0),
             some [PredInfo, PFSymNameArity] (
                 module_info_pred_info(ModuleInfo, PredId0, PredInfo),
-                pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+                pred_info_get_pf_sym_name_pred_form_arity(PredInfo,
+                    PFSymNameArity),
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo),
                 pred_info_get_orig_arity(PredInfo, pred_form_arity(OrigArity))
             ),
@@ -1150,7 +1151,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         MatchWhat = match_plain_call(PredId),
         some [PredInfo, PFSymNameArity] (
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
+            pred_info_get_pf_sym_name_pred_form_arity(PredInfo,
+                PFSymNameArity),
             CallIdStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
             pred_info_get_proc_table(PredInfo, ProcTable)
         ),
@@ -2783,7 +2785,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     ( if
         PredOrigin = origin_user(OriginUser),
         OriginUser = user_made_instance_method(PFMethodSymNameArity, _),
-        PFMethodSymNameArity = pred_pf_name_arity(_, MethodSymName, _)
+        PFMethodSymNameArity = pf_sym_name_user_arity(_, MethodSymName, _)
     then
         Name = unqualify_name(MethodSymName),
         ExtraMethodPieces = [words("type class method implementation for")]

@@ -1018,8 +1018,8 @@ generate_instance_method_procs_for_concrete_instance(ClassId, ClassParamTVars,
 
 :- pred build_instance_method_map(class_id::in, hlds_instance_defn::in,
     list(instance_method)::in,
-    map(pred_pf_name_arity, instance_method)::in,
-    map(pred_pf_name_arity, instance_method)::out,
+    map(pf_sym_name_user_arity, instance_method)::in,
+    map(pf_sym_name_user_arity, instance_method)::out,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
 build_instance_method_map(_ClassId, _InstanceDefn, [],
@@ -1073,8 +1073,8 @@ build_instance_method_map(ClassId, InstanceDefn, [Method | Methods],
     %
 :- pred generate_instance_method_procs_for_preds(class_id::in, list(tvar)::in,
     hlds_instance_defn::in, list(method_info)::in,
-    map(pred_pf_name_arity, instance_method)::in,
-    map(pred_pf_name_arity, instance_method)::out,
+    map(pf_sym_name_user_arity, instance_method)::in,
+    map(pf_sym_name_user_arity, instance_method)::out,
     cord(instance_method)::in, cord(instance_method)::out,
     cord(method_info)::in, cord(method_info)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -1111,7 +1111,7 @@ generate_instance_method_procs_for_preds(ClassId, ClassVars, InstanceDefn,
 
 %---------------------%
 
-:- pred get_other_class_method_procs(pred_pf_name_arity::in,
+:- pred get_other_class_method_procs(pf_sym_name_user_arity::in,
     list(method_info)::in,
     list(method_info)::out, list(method_info)::out) is det.
 
@@ -1259,7 +1259,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % order.
     InstanceMethodConstraints = instance_method_constraints(ClassId,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-    ClassMethodPFSymNameArity = pred_pf_name_arity(PredOrFunc,
+    ClassMethodPFSymNameArity = pf_sym_name_user_arity(PredOrFunc,
         ClassPredMethodSymName, UserArity),
     PredOrigin = origin_user(
         user_made_instance_method(ClassMethodPFSymNameArity,
@@ -2515,7 +2515,7 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
     % Duplicate method definition error.
     %
 :- pred report_duplicate_method_defn(class_id::in, hlds_instance_defn::in,
-    pred_pf_name_arity::in, prog_context::in, prog_context::in,
+    pf_sym_name_user_arity::in, prog_context::in, prog_context::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
@@ -2539,7 +2539,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
 %---------------------------------------------------------------------------%
 
 :- pred report_undefined_method(class_id::in, hlds_instance_defn::in,
-    pred_pf_name_arity::in,
+    pf_sym_name_user_arity::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
 report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
@@ -2568,7 +2568,8 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
         HeadMethod = instance_method(MethodName, _Defn, HeadMethodContext),
         % If we have a context for the specific incorrect method, use it.
         SelectedContext = HeadMethodContext,
-        MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
+        MethodName =
+            pf_sym_name_user_arity(PredOrFunc, MethodSymName, UserArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(MethodSymName, UserArityInt),
         Pieces = PrefixPieces ++ [words("error: the type class")] ++
@@ -2854,8 +2855,8 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     PredFormArity = arg_list_arity(ArgTypes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity),
     TypeVars = choose_number(Vars, "type variable", "type variables"),
     VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
     VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
@@ -2902,7 +2903,8 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
     ),
     pred_info_get_arg_types(PredInfo, _TVarSet, _, ArgTypes),
     PredFormArity = arg_list_arity(ArgTypes),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, PredSymName, PredFormArity),
     StartPieces = [words("In declaration for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl],
     Pieces = StartPieces ++
@@ -3117,10 +3119,10 @@ instance_name(WhichTypes, Limit, Quals, SetDefaultFunc, ClassId, InstanceDefn)
 
 %---------------------%
 
-:- func pf_method_name_pieces(pred_pf_name_arity) = list(format_piece).
+:- func pf_method_name_pieces(pf_sym_name_user_arity) = list(format_piece).
 
 pf_method_name_pieces(MethodName) = Pieces :-
-    MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
+    MethodName = pf_sym_name_user_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(MethodSymName, UserArityInt),
     Pieces = [p_or_f(PredOrFunc), words("method"), unqual_sym_name_arity(SNA)].

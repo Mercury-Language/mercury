@@ -716,7 +716,7 @@ expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
 
 expand_bang_state_pairs_in_instance_method(IM0, IM) :-
     IM0 = instance_method(MethodId0, ProcDef0, Context),
-    MethodId0 = pred_pf_name_arity(PredOrFunc, MethodSymName, _UserArity0),
+    MethodId0 = pf_sym_name_user_arity(PredOrFunc, MethodSymName, _UserArity0),
     (
         ProcDef0 = instance_proc_def_name(_),
         IM = IM0
@@ -729,7 +729,8 @@ expand_bang_state_pairs_in_instance_method(IM0, IM) :-
             Args = ItemClause ^ cl_head_args,
             PredFormArity = arg_list_arity(Args),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-            MethodId = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity)
+            MethodId =
+                pf_sym_name_user_arity(PredOrFunc, MethodSymName, UserArity)
         else
             MethodId = MethodId0
         ),

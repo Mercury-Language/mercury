@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,19 +116,21 @@
 
 %---------------------------------------------------------------------------%
 
-:- func pf_sym_name_pred_form_arity_to_string(pf_sym_name_arity) = string.
+:- func pf_sym_name_pred_form_arity_to_string(pf_sym_name_pred_form_arity)
+    = string.
 :- func pf_sym_name_pred_form_arity_to_string(pred_or_func, sym_name_arity)
     = string.
 :- func pf_sym_name_pred_form_arity_to_string(pred_or_func, sym_name,
     pred_form_arity) = string.
 
-:- func pf_sym_name_user_arity_to_string(pred_pf_name_arity) = string.
+:- func pf_sym_name_user_arity_to_string(pf_sym_name_user_arity) = string.
 :- func pf_sym_name_user_arity_to_string(pred_or_func, sym_name_arity)
     = string.
 :- func pf_sym_name_user_arity_to_string(pred_or_func, sym_name, arity)
     = string.
 
-:- func pf_sym_name_user_arity_to_unquoted_string(pred_pf_name_arity) = string.
+:- func pf_sym_name_user_arity_to_unquoted_string(pf_sym_name_user_arity)
+    = string.
 :- func pf_sym_name_user_arity_to_unquoted_string(pred_or_func, sym_name_arity)
     = string.
 :- func pf_sym_name_user_arity_to_unquoted_string(pred_or_func, sym_name,
@@ -360,7 +362,8 @@ format_escaped_sym_name_arity(S, sym_name_arity(SymName, Arity), !U) :-
 %---------------------------------------------------------------------------%
 
 pf_sym_name_pred_form_arity_to_string(PFSymNameArity) = Str :-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    PFSymNameArity =
+        pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity),
     Str = pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName,
         PredFormArity).
 
@@ -383,7 +386,7 @@ pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, PredFormArity)
 
 pf_sym_name_user_arity_to_string(PFSymNameArity) = Str :-
     PFSymNameArity =
-        pred_pf_name_arity(PredOrFunc, SymName, user_arity(Arity)),
+        pf_sym_name_user_arity(PredOrFunc, SymName, user_arity(Arity)),
     Str = pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_string(PredOrFunc, SNA) = Str :-
@@ -400,7 +403,7 @@ pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
 
 pf_sym_name_user_arity_to_unquoted_string(PFSymNameArity) = Str :-
     PFSymNameArity =
-        pred_pf_name_arity(PredOrFunc, SymName, user_arity(Arity)),
+        pf_sym_name_user_arity(PredOrFunc, SymName, user_arity(Arity)),
     Str =
         pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
 

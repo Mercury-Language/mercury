@@ -180,8 +180,9 @@
 
 %---------------------%
 
-:- pred transform_selected_mode_of_pred(pred_id::in, pred_pf_name_arity::in,
-    list(mer_mode)::in, string::in, prog_context::in,
+:- pred transform_selected_mode_of_pred(pred_id::in,
+    pf_sym_name_user_arity::in, list(mer_mode)::in,
+    string::in, prog_context::in,
     pred(proc_info, proc_info)::in(pred(in, out) is det),
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.

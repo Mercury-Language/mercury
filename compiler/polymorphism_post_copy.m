@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -158,7 +158,7 @@ expand_class_method_body(ClassMethodInfo, !ProcNum, !ModuleInfo) :-
 
         InstanceConstraint = constraint(ClassName, InstanceArgs),
         list.length(InstanceArgs, InstanceArity),
-        pred_info_get_pf_sym_name_arity(PredInfo0, PFSymNameArity),
+        pred_info_get_pf_sym_name_pred_form_arity(PredInfo0, PFSymNameArity),
         BodyGoalExpr = generic_call(
             class_method(TypeClassInfoVar, method_proc_num(!.ProcNum),
                 class_id(ClassName, InstanceArity), PFSymNameArity),

@@ -988,7 +988,7 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
         (
             Call = class_method(_, _, ClassId, CallId),
             ClassId = class_id(ClassName, _),
-            CallId = pf_sym_name_arity(_, MethodName, _),
+            CallId = pf_sym_name_pred_form_arity(_, MethodName, _),
             record_sym_name_module_as_used(visibility_private, ClassName,
                 !UsedModules),
             record_sym_name_module_as_used(visibility_private, MethodName,

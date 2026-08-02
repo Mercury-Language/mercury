@@ -994,7 +994,7 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
     ;
         DeclPragma = decl_pragma_format_call(FormatCall),
         FormatCall = decl_pragma_format_call_info(PredNameArity, _, _, _),
-        PredNameArity = pred_pf_name_arity(PF, Name, user_arity(Arity)),
+        PredNameArity = pf_sym_name_user_arity(PF, Name, user_arity(Arity)),
         MaybePredOrFuncId = yes(yes(PF) - sym_name_arity(Name, Arity))
     ;
         DeclPragma = decl_pragma_oisu(_),

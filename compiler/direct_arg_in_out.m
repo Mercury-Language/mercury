@@ -2021,15 +2021,16 @@ generate_error_if_cloned_proc_is_exported(ModuleInfo, DirectArgProcMap,
         pred_info_get_is_pred_or_func(PredInfo, PorF),
         pred_info_get_orig_arity(PredInfo, PredFormArity),
         % We don't print the module qualifier anyway.
-        PFSNA = pf_sym_name_arity(PorF, unqualified(PredName), PredFormArity),
+        PFSNA = pf_sym_name_pred_form_arity(PorF,
+            unqualified(PredName), PredFormArity),
         generate_foreign_export_error(PFSNA, ExportedName, Context, Spec),
         !:Specs = [Spec | !.Specs]
     else
         !:RevExportedProcs = [ExportedProc0 | !.RevExportedProcs]
     ).
 
-:- pred generate_foreign_export_error(pf_sym_name_arity::in, string::in,
-    prog_context::in, diag_spec::out) is det.
+:- pred generate_foreign_export_error(pf_sym_name_pred_form_arity::in,
+    string::in, prog_context::in, diag_spec::out) is det.
 
 generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
     Pieces = [words("Error: the definition of")] ++

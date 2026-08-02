@@ -802,7 +802,8 @@ convert_msvc_x64_version(VersionStr, C_CompilerType) :-
     Version > 0,
     C_CompilerType = cc_cl_x64(yes(Version)).
 
-:- pred convert_msvc_arm64_version(string::in, c_compiler_type::out) is semidet.
+:- pred convert_msvc_arm64_version(string::in, c_compiler_type::out)
+    is semidet.
 
 convert_msvc_arm64_version(VersionStr, C_CompilerType) :-
     string.to_int(VersionStr, Version),

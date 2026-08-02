@@ -73,7 +73,7 @@
     % that follow pred or func declarations with embedded mode information
     % to be the same inside class definitions as they are outside.
     %
-:- func report_mode_decl_after_predmode(pred_pf_name_arity, prog_context)
+:- func report_mode_decl_after_predmode(pf_sym_name_user_arity, prog_context)
     = err_spec.
 
     % Whenever there is a clause or mode declaration for an undeclared
@@ -953,14 +953,14 @@ check_for_mode_decl_after_predmode(PredIsPredMode, PredOrFunc, PredName,
         PredIsPredMode = predmode_decl,
         user_arity_pred_form_arity(PredOrFunc,
             UserArity, PredFormArity),
-        PFNameArity = pred_pf_name_arity(PredOrFunc,
+        PFNameArity = pf_sym_name_user_arity(PredOrFunc,
             unqualified(PredName), UserArity),
         PredModeSpec = report_mode_decl_after_predmode(PFNameArity, Context),
         !:Specs = [PredModeSpec | !.Specs]
     ).
 
 report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
-    PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
     UserArity = user_arity(UserArityInt),
     NA = name_arity(unqualify_name(SymName), UserArityInt),
     Pieces = [words("Error:"), p_or_f(PredOrFunc)] ++

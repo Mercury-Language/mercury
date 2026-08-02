@@ -453,21 +453,22 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
-    ;       qual_pf_sym_name_pred_form_arity(pf_sym_name_arity)
-    ;       unqual_pf_sym_name_pred_form_arity(pf_sym_name_arity)
-    ;       qual_pf_sym_name_user_arity(pred_pf_name_arity)
-    ;       unqual_pf_sym_name_user_arity(pred_pf_name_arity)
+    ;       qual_pf_sym_name_pred_form_arity(pf_sym_name_pred_form_arity)
+    ;       unqual_pf_sym_name_pred_form_arity(pf_sym_name_pred_form_arity)
+    ;       qual_pf_sym_name_user_arity(pf_sym_name_user_arity)
+    ;       unqual_pf_sym_name_user_arity(pf_sym_name_user_arity)
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity, but
             % - precede them with either "predicate" or "function", and
             % - for functions, use their *user-visible* arity, which does not
             %   count the function result.
             %
-            % With the forms taking a pf_sym_name_arity argument, the
-            % pf_sym_name_arity contains a pred_form_arity that we convert
-            % to the user visible arity for printing. With the forms taking
-            % a pred_pf_name_arity argument, the pf_sym_name_arity contains
-            % a user_arity that we print unchanged.
+            % With the forms taking a pf_sym_name_pred_form_arity argument,
+            % the pf_sym_name_pred_form_arity contains a pred_form_arity
+            % that we convert to the user visible arity for printing.
+            % With the forms taking a pred_pf_name_arity argument, the
+            % pf_sym_name_pred_form_arity contains a user_arity that
+            % we print unchanged.
 
     ;       qual_type_ctor(type_ctor)
     ;       unqual_type_ctor(type_ctor)
