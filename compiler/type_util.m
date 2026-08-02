@@ -170,9 +170,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_ctor_is_du_type(type_table::in, type_ctor::in,
-    hlds_type_defn::out, type_body_du::out) is semidet.
-
     % get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
     %   SuperType0, SuperType):
     %
@@ -766,11 +763,6 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
 
 %-----------------------------------------------------------------------------%
 
-type_ctor_is_du_type(TypeTable, TypeCtor, TypeDefn, TypeBodyDu) :-
-    hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(TypeBodyDu).
-
 get_supertype_of_subtype(TVarSet, _TypeCtor, ArgTypes, TypeDefn,
         SuperType0, SuperType) :-
     % Create substitution from type parameters to ArgTypes.
@@ -789,6 +781,14 @@ get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
     TypeBodyDu = type_body_du(_, _, subtype_of(SuperType0), _, _, _),
     get_supertype_of_subtype(TVarSet, TypeCtor, ArgTypes, TypeDefn,
         SuperType0, SuperType).
+
+:- pred type_ctor_is_du_type(type_table::in, type_ctor::in,
+    hlds_type_defn::out, type_body_du::out) is semidet.
+
+type_ctor_is_du_type(TypeTable, TypeCtor, TypeDefn, TypeBodyDu) :-
+    hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    TypeBody = hlds_du_type(TypeBodyDu).
 
 %-----------------------------------------------------------------------------%
 
