@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -11,10 +11,12 @@
 % Author: zs.
 %
 % This module defines a set of predicates that operate on the abstract
-% 'var_locn_info' structure which maintains information about where variables
-% are stored, what their values are if they are not stored anywhere,
-% and which registers are reserved for purposes such as holding the arguments
-% of calls and tags that are to be switched upon.
+% var_locn_info structure. This maintains information about
+%
+% - where variables are stored,
+% - what their values are if they are not stored anywhere, and
+% - which registers are reserved for purposes such as holding the arguments
+%   of calls, and tags that are to be switched upon.
 %
 %---------------------------------------------------------------------------%
 
@@ -49,7 +51,7 @@
     % init_var_locn_state(VarTable, FloatRegType, StackSlots, FollowVars,
     %   Liveness, Arguments, VarLocnInfo):
     %
-    % Produces an initial state of the VarLocnInfo given
+    % Produce an initial state of the VarLocnInfo given
     % an association list of variables and lvalues. The initial
     % state places the given variables at their corresponding
     % locations, with the exception of variables which are not in
@@ -66,7 +68,7 @@
 
     % reinit_var_locn_state(VarLocs, !VarLocnInfo):
     %
-    % Produces a new state of the VarLocnInfo in which the static
+    % Produce a new state of the VarLocnInfo in which the static
     % and mostly static information (stack slot map, follow vars map,
     % varset, option settings) comes from VarLocnInfo0 but the
     % dynamic state regarding variable locations is thrown away
@@ -79,18 +81,18 @@
 
 %---------------------------------------------------------------------------%
 %
-% Getter predicates for var_locn_infos.
+% Trivial getter predicates for var_locn_infos.
 %
 
     % var_locn_get_stack_slots(VarLocnInfo, StackSlots):
     %
-    % Returns the table mapping each variable to its stack slot (if any).
+    % Return the table mapping each variable to its stack slot (if any).
     %
 :- pred var_locn_get_stack_slots(var_locn_info::in, stack_slots::out) is det.
 
     % var_locn_get_follow_var_map(VarLocnInfo, FollowVars):
     %
-    % Returns the table mapping each variable to the lval (if any)
+    % Return the table mapping each variable to the lval (if any)
     % where it is desired next.
     %
 :- pred var_locn_get_follow_var_map(var_locn_info::in,
@@ -103,7 +105,7 @@
 
     % var_locn_get_var_locations(VarLocnInfo, Locations):
     %
-    % Returns a map from each live variable that occurs in VarLocnInfo
+    % Return a map from each live variable that occurs in VarLocnInfo
     % to the set of locations in which it may be found (which may be empty,
     % if the variable's value is either a known constant, or an as-yet
     % unevaluated expression).
@@ -113,22 +115,22 @@
 
     % var_locn_lval_in_use(VarLocnInfo, Lval):
     %
-    % Succeeds iff Lval, which should be a register or stack slot,
+    % Succeed iff Lval, which should be a register or stack slot,
     % holds (a path to) a variable or is otherwise reserved.
     %
 :- pred var_locn_lval_in_use(var_locn_info::in, lval::in) is semidet.
 
     % var_locn_max_reg_in_use(MaxRegR, MaxRegF):
     %
-    % Returns the number of the highest numbered rN and fN registers in use.
+    % Return the number of the highest numbered rN and fN registers in use.
     %
 :- pred var_locn_max_reg_in_use(var_locn_info::in, int::out, int::out)
     is det.
 
     % var_locn_get_next_non_reserved(VarLocnInfo, NonRes):
     %
-    % Returns the number of the first register which is free for general use.
-    % It does not reserve the register.
+    % Return the number of the first register which is free for general use.
+    % Do not reserve the register.
     %
 :- pred var_locn_get_next_non_reserved(var_locn_info::in, reg_type::in,
     int::out) is det.
@@ -140,7 +142,7 @@
 
     % var_locn_set_follow_vars(FollowVars):
     %
-    % Sets the table mapping each variable to the lval (if any) where it is
+    % Set the table mapping each variable to the lval (if any) where it is
     % desired next, and the number of the first non-reserved register.
     %
 :- pred var_locn_set_follow_vars(abs_follow_vars::in,
@@ -153,16 +155,16 @@
 
     % var_locn_assign_var_to_var(Var, AssignedVar, !VarLocnInfo):
     %
-    % Reflects the effect of the assignment Var := AssignedVar in the
+    % Reflect the effect of the assignment Var := AssignedVar in the
     % state of !VarLocnInfo.
     %
 :- pred var_locn_assign_var_to_var(prog_var::in, prog_var::in,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
-    %   !VarLocnInfo);
+    %   !VarLocnInfo):
     %
-    % Reflects the effect of the assignment Var := lval(Lval) in the
+    % Reflect the effect of the assignment Var := lval(Lval) in the
     % state of !VarLocnInfo; any code required to effect the assignment
     % will be returned in Code.
     %
@@ -171,9 +173,9 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_assign_field_lval_expr_to_var(ModuleInfo, Var, BaseVar, Expr,
-    %   StaticCellInfo, Code, !VarLocnInfo);
+    %   StaticCellInfo, Code, !VarLocnInfo):
     %
-    % Reflects the effect of the assignment Var := Expr,
+    % Reflect the effect of the assignment Var := Expr,
     % where Expr contains only field lvals with the base BaseVar.
     % Any code required to effect the assignment will be returned in Code.
     %
@@ -184,7 +186,7 @@
     % var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval,
     %   !VarLocnInfo):
     %
-    % Reflects the effect of the assignment Var := const(ConstRval)
+    % Reflect the effect of the assignment Var := const(ConstRval)
     % in the state of !VarLocnInfo.
     %
 :- pred var_locn_assign_const_to_var(exprn_opts::in, prog_var::in, rval::in,
@@ -192,8 +194,8 @@
 
     % var_locn_assign_expr_to_var(Var, Rval, Code, !VarLocnInfo):
     %
-    % Generates code to execute the assignment Var := Expr, and
-    % updates the state of !VarLocnInfo accordingly.
+    % Generate code to execute the assignment Var := Expr, and
+    % update the state of !VarLocnInfo accordingly.
     %
     % Expr must contain no lvals, although it may (and typically will) refer
     % to the values of other variables through rvals of the form var(_).
@@ -203,8 +205,8 @@
 
     % var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VarLocnInfo):
     %
-    % Generates code to execute the assignment Var := mkword(Ptag, Rval), and
-    % updates the state of !VarLocnInfo accordingly. Var must previously have
+    % Generate code to execute the assignment Var := mkword(Ptag, Rval), and
+    % update the state of !VarLocnInfo accordingly. Var must previously have
     % been assigned the constant expression mkword_hole(Ptag).
     %
 :- pred var_locn_reassign_mkword_hole_var(prog_var::in, ptag::in, rval::in,
@@ -213,7 +215,7 @@
     % var_locn_reassign_tagword_var(Var, ToOrMask, ToOrRval, Code,
     %   !VarLocnInfo):
     %
-    % Generates code to assign (Var & \ToOrMask) | ToOrRval to Var.
+    % Generate code to assign (Var & \ToOrMask) | ToOrRval to Var.
     % Obviously, Var must have previously been assigned a value.
     % ToOrRval may (and typically will) contain references to other variables
     % in var(_) form; it should *not* contain references directly to lvals.
@@ -225,8 +227,8 @@
     %   MaybeRvals, MaybeSize, FieldAddrs, TypeMsg,
     %   MayUseAtomic, Label, Code, !StaticCellInfo, !VarLocnInfo):
     %
-    % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
-    % whose contents are given by the other arguments, and updates the state
+    % Generate code to assign to Var a pointer, tagged by Ptag, to the cell
+    % whose contents are given by the other arguments, and update the state
     % of !VarLocnInfo accordingly. If ReserveWordAtStart is yes, and the cell
     % is allocated on the heap (rather than statically), then reserve an extra
     % word immediately before the allocated object, for the garbage collector
@@ -253,7 +255,7 @@
 
     % var_locn_set_magic_var_location(Var, Lval, !VarLocnInfo):
     %
-    % Updates !VarLocnInfo to show that Var is *magically* stored in Lval.
+    % Update !VarLocnInfo to show that Var is *magically* stored in Lval.
     % Does not care if Lval is already in use; it overwrites it with the
     % new information. Var must not have been previously known. Used to
     % implement the ends of erroneous branches.
@@ -263,8 +265,8 @@
 
     % var_locn_check_and_set_magic_var_location(Var, Lval, !VarLocnInfo):
     %
-    % Updates VarLocnInfo to show that Var has been *magically* stored in Lval.
-    % (The caller usually generates code to perform this magic.) Aborts if Lval
+    % Update VarLocnInfo to show that Var has been *magically* stored in Lval.
+    % (The caller usually generates code to perform this magic.) Abort if Lval
     % is already in use, or if Var was previously known.
     %
 :- pred var_locn_check_and_set_magic_var_location(prog_var::in, lval::in,
@@ -293,7 +295,7 @@
 
     % var_locn_produce_var_in_reg(Var, Lval, Code, !VarLocnInfo):
     %
-    % Produces a code fragment Code to evaluate Var if necessary
+    % Produce a code fragment Code to evaluate Var if necessary
     % and provide it as an Lval of the form reg(_).
     %
 :- pred var_locn_produce_var_in_reg(prog_var::in, lval::out, llds_code::out,
@@ -302,7 +304,7 @@
     % var_locn_produce_var_in_reg_or_stack(Var, FollowVars, Lval, Code,
     %   !VarLocnInfo):
     %
-    % Produces a code fragment Code to evaluate Var if necessary and provide it
+    % Produce a code fragment Code to evaluate Var if necessary and provide it
     % as an Lval of the form reg(_), stackvar(_), or framevar(_).
     %
 :- pred var_locn_produce_var_in_reg_or_stack(prog_var::in,
@@ -315,7 +317,7 @@
 
     % var_locn_place_var(Var, Lval, Code, !VarLocnInfo):
     %
-    % Produces Code to place the value of Var in Lval, and update !VarLocnInfo
+    % Produce Code to place the value of Var in Lval, and update !VarLocnInfo
     % to reflect this.
     %
 :- pred var_locn_place_var(prog_var::in, lval::in, llds_code::out,
@@ -323,7 +325,7 @@
 
     % var_locn_place_vars(VarLocns, Code, !VarLocnInfo):
     %
-    % Produces Code to place the value of each variable mentioned in VarLocns
+    % Produce Code to place the value of each variable mentioned in VarLocns
     % into the corresponding location, and update !VarLocnInfo to reflect this.
     %
 :- pred var_locn_place_vars(assoc_list(prog_var, lval)::in, llds_code::out,
@@ -336,8 +338,8 @@
 
     % var_locn_materialize_vars_in_lval(Lval, FinalLval, Code, !VarLocnInfo):
     %
-    % For every variable in Lval, substitutes the value of the variable and
-    % returns it as FinalLval. If we need to save the values of some of the
+    % For every variable in Lval, substitute the value of the variable, and
+    % return it as FinalLval. If we need to save the values of some of the
     % substituted variables somewhere so as to prevent them from being
     % evaluated again (and again ...), the required code will be returned
     % in Code.
@@ -357,7 +359,7 @@
 
     % var_locn_clear_r1(ModuleInfo, Code, !VarLocnInfo):
     %
-    % Produces a code fragment Code to move whatever is in r1 to some other
+    % Produce a code fragment Code to move whatever is in r1 to some other
     % register, if r1 is live. This is used prior to semidet pragma
     % foreign_procs.
     %
@@ -381,8 +383,8 @@
 
     % var_locn_clobber_all_regs(OkToDeleteAny, !VarLocnInfo):
     %
-    % Modifies VarLocnInfo to show that all variables stored in registers
-    % have been clobbered. Aborts if this deletes the last record of the
+    % Modify VarLocnInfo to show that all variables stored in registers
+    % have been clobbered. Abort if this deletes the last record of the
     % state of a variable unless OkToDeleteAny is `yes'.
     %
 :- pred var_locn_clobber_all_regs(bool::in,
@@ -390,7 +392,7 @@
 
     % var_locn_clobber_reg(Reg, !VarLocnInfo):
     %
-    % Modifies VarLocnInfo to show that all variables stored in Reg
+    % Modify VarLocnInfo to show that all variables stored in Reg
     % (an lval which should be a register) are clobbered.
     %
 :- pred var_locn_clobber_reg(lval::in,
@@ -398,7 +400,7 @@
 
     % var_locn_clobber_regs(Regs, !VarLocnInfo):
     %
-    % Modifies VarLocnInfo to show that all variables stored in Regs
+    % Modify VarLocnInfo to show that all variables stored in Regs
     % (a list of lvals which should contain only registers) are clobbered.
     %
 :- pred var_locn_clobber_regs(list(lval)::in,
@@ -435,30 +437,30 @@
 
     % var_locn_acquire_reg(Lval, !VarLocnInfo):
     %
-    % Finds an unused register and marks it as 'in use'.
+    % Find an unused register and mark it as 'in use'.
     %
 :- pred var_locn_acquire_reg(reg_type::in, lval::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg_require_given(Reg, Lval, !VarLocInfo):
     %
-    % Marks Reg, which must be an unused register, as 'in use'.
+    % Mark Reg, which must be an unused register, as 'in use'.
     %
 :- pred var_locn_acquire_reg_require_given(lval::in,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg_prefer_given(Type, Pref, Lval, !VarLocInfo):
     %
-    % Finds an unused register, and marks it as 'in use'.
-    % If Pref itself is free, assigns that.
+    % Find an unused register, and mark it as 'in use'.
+    % If Pref itself is free, assign that.
     %
 :- pred var_locn_acquire_reg_prefer_given(reg_type::in, int::in, lval::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % var_locn_acquire_reg_start_at_given(Start, Lval, !VarLocInfo):
     %
-    % Finds an unused register, and marks it as 'in use'.
-    % It starts the search at the one numbered Start,
+    % Find an unused register, and mark it as 'in use'.
+    % Start the search at the one numbered Start,
     % continuing towards higher register numbers.
     %
 :- pred var_locn_acquire_reg_start_at_given(reg_type::in, int::in, lval::out,
@@ -466,7 +468,7 @@
 
     % var_locn_release_reg(Lval, !VarLocnInfo):
     %
-    % Marks a previously acquired reg as no longer 'in use'.
+    % Mark a previously acquired reg as no longer 'in use'.
     %
 :- pred var_locn_release_reg(lval::in, var_locn_info::in, var_locn_info::out)
     is det.
@@ -1666,25 +1668,6 @@ var_locn_produce_var_in_reg_or_stack(Var, Lval, Code, !VLI) :-
         reg_type_for_var(!.VLI, Var, RegType),
         select_preferred_reg_or_stack(!.VLI, Var, RegType, Lval),
         var_locn_place_var(Var, Lval, Code, !VLI)
-    ).
-
-:- pred reg_type_for_var(var_locn_info::in, prog_var::in, reg_type::out)
-    is det.
-
-reg_type_for_var(VLI, Var, RegType) :-
-    var_locn_get_float_reg_type(VLI, FloatRegType),
-    (
-        FloatRegType = reg_r,
-        RegType = reg_r
-    ;
-        FloatRegType = reg_f,
-        var_locn_get_var_table(VLI, VarTable),
-        lookup_var_type(VarTable, Var, VarType),
-        ( if VarType = float_type then
-            RegType = reg_f
-        else
-            RegType = reg_r
-        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -3043,6 +3026,27 @@ lval_depends_on_search_lval(Lval, SearchLval) :-
     ;
         Lval = lvar(_Var),
         unexpected($pred, "lvar")
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred reg_type_for_var(var_locn_info::in, prog_var::in, reg_type::out)
+    is det.
+
+reg_type_for_var(VLI, Var, RegType) :-
+    var_locn_get_float_reg_type(VLI, FloatRegType),
+    (
+        FloatRegType = reg_r,
+        RegType = reg_r
+    ;
+        FloatRegType = reg_f,
+        var_locn_get_var_table(VLI, VarTable),
+        lookup_var_type(VarTable, Var, VarType),
+        ( if VarType = float_type then
+            RegType = reg_f
+        else
+            RegType = reg_r
+        )
     ).
 
 %---------------------------------------------------------------------------%
