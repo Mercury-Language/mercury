@@ -778,6 +778,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         WrapperArgs = [ClosureArg | WrapperArgs0]
     ),
     WrapperParams = mlds_func_params(WrapperArgs, WrapperRetType),
+    WrapperFuncType = mlds_func_type(WrapperParams),
 
     % Also compute the lvals for the parameters,
     % and local declarations for any by-value output parameters.
@@ -952,9 +953,10 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     WrapperFuncBody = ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context),
     ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
         WrapperFuncRval, !Info),
-    ml_gen_wrapper_func(!.Info, WrapperFuncName, WrapperParams, Context,
-        WrapperFuncBody, WrapperFuncDefn),
-    WrapperFuncType = mlds_func_type(WrapperParams),
+    DeclFlags = mlds_function_decl_flags(func_private, one_copy),
+    ml_gen_label_func(!.Info, WrapperFuncName, DeclFlags,
+        mlds_func_source_wrapper, WrapperParams, Context, WrapperFuncBody,
+        WrapperFuncDefn),
     ml_gen_info_add_closure_wrapper_defn(WrapperFuncDefn, !Info).
 
 :- pred create_for_closure_wrapper_args(list(mlds_local_var_name)::in,
@@ -1012,20 +1014,6 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
     ),
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
         Context, ClosureGCStmt, !Info).
-
-:- pred ml_gen_wrapper_func(ml_gen_info::in, mlds_maybe_aux_func_id::in,
-    mlds_func_params::in, prog_context::in, mlds_stmt::in,
-    mlds_function_defn::out) is det.
-
-ml_gen_wrapper_func(Info, MaybeAux, FuncParams, Context, Stmt, FunctionDefn) :-
-    % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
-    ml_gen_label_func(Info, MaybeAux, mlds_func_source_wrapper, FuncParams,
-        Context, Stmt, FunctionDefn0),
-    FunctionDefn0 = mlds_function_defn(Name, Ctxt, _DeclFlags0,
-        MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec),
-    DeclFlags = mlds_function_decl_flags(func_private, one_copy),
-    FunctionDefn = mlds_function_defn(Name, Ctxt, DeclFlags,
-        MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec).
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_local_var_name).
 

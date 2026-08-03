@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2022-2025 The Mercury team.
+% Copyright (C) 2014-2019, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -585,8 +585,8 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
             % When hoisting nested functions, if there were no nested
             % functions, we have nothing to do.
             % Likewise, when doing accurate GC, if there were no local
-            % variables (or arguments) that contained pointers, then we don't
-            % need to chain a stack frame for this function.
+            % variables (or arguments) that contained pointers, then
+            % we don't need to chain a stack frame for this function.
             FuncBodyStmt = FuncBodyStmt1
         ;
             NestedFuncs0 = [_ | _],
@@ -597,10 +597,9 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
             ml_create_env(Target, Action, EnvName, EnvId, Locals, Context,
                 ModuleName, Name, EnvDefn, EnvDefns, InitEnv,
                 GCTraceFuncDefns),
-            list.map_foldl(
-                ml_insert_init_env(Action, EnvId),
-                    NestedFuncs0, NestedFuncs,
-                    have_not_inserted_env, InsertedEnv),
+            list.map_foldl(ml_insert_init_env(Action, EnvId),
+                NestedFuncs0, NestedFuncs,
+                have_not_inserted_env, InsertedEnv),
 
             % Hoist out the nested functions.
             !:FuncDefnsCord = !.FuncDefnsCord ++

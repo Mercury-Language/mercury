@@ -79,13 +79,14 @@
     mlds_func_source::in, prog_context::in, mlds_stmt::in,
     mlds_function_defn::out) is det.
 
-    % Given a function label, the function parameters, and the statement
-    % which will comprise the function body for that function,
-    % generate an mlds_function_defn which defines that function.
+    % Given maybe_aux_func_id part of the function label, the function flags,
+    % the function parameters, and the statement which will comprise
+    % the function body for that function, generate an mlds_function_defn
+    % which defines that function.
     %
 :- pred ml_gen_label_func(ml_gen_info::in, mlds_maybe_aux_func_id::in,
-    mlds_func_source::in, mlds_func_params::in, prog_context::in,
-    mlds_stmt::in, mlds_function_defn::out) is det.
+    mlds_function_decl_flags::in, mlds_func_source::in, mlds_func_params::in,
+    prog_context::in, mlds_stmt::in, mlds_function_defn::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -615,16 +616,18 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 ml_gen_nondet_label_func(Info, MaybeAux, Source, Context, Stmt, Func) :-
     ml_declare_env_ptr_arg(EnvPtrArg),
     FuncParams = mlds_func_params([EnvPtrArg], []),
-    ml_gen_label_func(Info, MaybeAux, Source, FuncParams, Context, Stmt, Func).
+    DeclFlags = mlds_function_decl_flags(func_private, per_instance),
+    ml_gen_label_func(Info, MaybeAux, DeclFlags, Source, FuncParams, Context,
+        Stmt, Func).
 
-ml_gen_label_func(Info, MaybeAux, Source, FuncParams, Context, Stmt, Func) :-
+ml_gen_label_func(Info, MaybeAux, DeclFlags, Source, FuncParams,
+        Context, Stmt, Func) :-
     % Compute the function name.
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_pred_proc_id(Info, PredProcId),
     FuncName = ml_gen_nondet_label(ModuleInfo, PredProcId, MaybeAux),
 
     % Compute the function definition.
-    DeclFlags = mlds_function_decl_flags(func_private, per_instance),
     Body = body_defined_here(Stmt),
     EnvVarNames = set.init,
     Func = mlds_function_defn(mlds_function_name(FuncName), Context,
