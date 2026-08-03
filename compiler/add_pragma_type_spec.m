@@ -97,9 +97,9 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
             ModesOrArity = moa_arity(UserArity),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ),
-        predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-            PredOrFunc, SymName, PredFormArity, PredIds),
-        predicate_table_lookup_pf_sym(PredTable, is_fully_qualified,
+        predicate_table_lookup_pf_sym_name_name_pfa(PredTable,
+            is_fully_qualified, PredOrFunc, SymName, PredFormArity, PredIds),
+        predicate_table_lookup_pf_sym_name(PredTable, is_fully_qualified,
             PredOrFunc, SymName, AllArityPredIds)
     ;
         PFUMM = pfumm_unknown(UserArity),
@@ -107,9 +107,9 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
             PFUMM, SymName, Context, UnknownWarnSpecs),
         !:WarnSpecs = UnknownWarnSpecs ++ !.WarnSpecs,
         MaybePredOrFunc = no,
-        predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+        predicate_table_lookup_sym_name_arity(PredTable, is_fully_qualified,
             SymName, UserArity, PredIds),
-        predicate_table_lookup_sym(PredTable, is_fully_qualified,
+        predicate_table_lookup_sym_name(PredTable, is_fully_qualified,
             SymName, AllArityPredIds)
     ),
     (

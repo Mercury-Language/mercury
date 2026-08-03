@@ -1877,7 +1877,7 @@ generate_outermost_proc_dyns(UseActivationCounts, TopCSD, MiddleCSD,
 get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
     ModuleName = mercury_profiling_builtin_module,
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_lookup_pred_m_n_a(PredTable,
+    predicate_table_lookup_pred_m_n_ua(PredTable,
         is_fully_qualified, ModuleName, Name, user_arity(Arity), PredIds),
     (
         PredIds = [],

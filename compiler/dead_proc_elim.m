@@ -1580,21 +1580,21 @@ dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon, !NeededPreds) :-
         module_info_get_predicate_table(ModuleInfo, PredTable),
         (
             NonCanonical = noncanon_uni_cmp(UniPredSymName, CmpPredSymName),
-            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                UniPredSymName, user_arity(2), UniPredIds),
-            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                CmpPredSymName, user_arity(3), CmpPredIds),
+            predicate_table_lookup_sym_name_arity(PredTable,
+                is_fully_qualified, UniPredSymName, user_arity(2), UniPredIds),
+            predicate_table_lookup_sym_name_arity(PredTable,
+                is_fully_qualified, CmpPredSymName, user_arity(3), CmpPredIds),
             set_tree234.insert_list(UniPredIds, !NeededPreds),
             set_tree234.insert_list(CmpPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_uni_only(UniPredSymName),
-            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                UniPredSymName, user_arity(2), UniPredIds),
+            predicate_table_lookup_sym_name_arity(PredTable,
+                is_fully_qualified, UniPredSymName, user_arity(2), UniPredIds),
             set_tree234.insert_list(UniPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_cmp_only(CmpPredSymName),
-            predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                CmpPredSymName, user_arity(3), CmpPredIds),
+            predicate_table_lookup_sym_name_arity(PredTable,
+                is_fully_qualified, CmpPredSymName, user_arity(3), CmpPredIds),
             set_tree234.insert_list(CmpPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_abstract(_IsSolverType)
@@ -1829,7 +1829,7 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
         else
             module_info_get_predicate_table(ModuleInfo, PredicateTable),
             set_tree234.insert(Name, !NeededNames),
-            predicate_table_lookup_sym(PredicateTable,
+            predicate_table_lookup_sym_name(PredicateTable,
                 may_be_partially_qualified, Name, PredIds),
             queue.put_list(PredIds, !Queue),
             !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, Examined,

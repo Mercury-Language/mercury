@@ -158,7 +158,7 @@ pred_info_proc_id_to_module_name_func_id(PredInfo, ProcId,
 func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
     FuncId = func_id(PredOrFunc, FuncName, PredFormArity, ProcId),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_lookup_pf_fqm_n_a(PredTable, PredOrFunc,
+    predicate_table_lookup_pf_fqm_n_pfa(PredTable, PredOrFunc,
         ModuleName, FuncName, PredFormArity, PredId),
     PPId = proc(PredId, ProcId).
 

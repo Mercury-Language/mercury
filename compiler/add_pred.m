@@ -412,7 +412,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         Context, PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
         Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
         ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
-    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
+    predicate_table_search_pf_fqm_n_pfa(PredTable0, PredOrFunc,
         PredModuleName, PredName, PredFormArity, MaybeOrigPredId),
     (
         MaybeOrigPredId = yes(OrigPredId),
@@ -794,7 +794,7 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         % will infer its type automatically.
         PredFormArity = arg_list_arity(Modes),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+        predicate_table_search_pf_fqm_n_pfa(PredicateTable0, PredOrFunc,
             PredModuleName, PredName, PredFormArity, MaybePredId),
         (
             MaybePredId = yes(PredId)
@@ -1100,7 +1100,7 @@ add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
     add_marker(marker_no_pred_decl, Markers1, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+    predicate_table_search_pf_fqm_n_pfa(PredicateTable0, PredOrFunc,
         PredModuleName, PredName, PredFormArity, MaybePredId),
     (
         MaybePredId = no,

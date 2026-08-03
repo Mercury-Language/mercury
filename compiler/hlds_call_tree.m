@@ -1032,7 +1032,7 @@ acc_moving_pred_name(ModuleInfo, PredName,
     module_info_get_predicate_table(ModuleInfo, PredTable),
     module_info_get_name(ModuleInfo, ModuleName),
     SymName = qualified(ModuleName, PredName),
-    predicate_table_lookup_sym(PredTable, is_fully_qualified,
+    predicate_table_lookup_sym_name(PredTable, is_fully_qualified,
         SymName, PredIds),
     (
         PredIds = [],

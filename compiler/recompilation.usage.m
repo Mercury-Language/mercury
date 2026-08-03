@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -246,8 +246,9 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
     % adjust_func_arity(PredOrFunc, Arity, PredFormArityInt),
     adjust_func_arity(PredOrFunc, PredFormArityInt, Arity),
     PredFormArity = pred_form_arity(PredFormArityInt),
-    predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
-        PredOrFunc, SymName, PredFormArity, MatchingPredIds),
+    predicate_table_lookup_pf_sym_name_name_pfa(PredTable,
+        may_be_partially_qualified, PredOrFunc, SymName, PredFormArity,
+        MatchingPredIds),
     (
         MatchingPredIds = [_ | _],
         Recorded = recorded,
@@ -329,7 +330,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
 
     % Is it a higher-order term or function call?
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    predicate_table_lookup_sym(PredicateTable,
+    predicate_table_lookup_sym_name(PredicateTable,
         may_be_partially_qualified, SymName, PredIds),
     list.filter_map(
         can_resolve_pred_or_func(ModuleInfo, SymName, Arity),

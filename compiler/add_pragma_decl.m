@@ -456,11 +456,11 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredSpec = pf_sym_name_user_arity(PredOrFunc, PredName, UserArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
-        PredOrFunc, PredName, PredFormArity, PredIds),
+    predicate_table_lookup_pf_sym_name_name_pfa(PredicateTable,
+        is_fully_qualified, PredOrFunc, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
-        predicate_table_lookup_sym(PredicateTable, is_fully_qualified,
+        predicate_table_lookup_sym_name(PredicateTable, is_fully_qualified,
             PredName, LooseArityPredIds),
         % TODO: reword the error messages to avoid embedding the assumption
         % that PredSpec cannot refer to a function.

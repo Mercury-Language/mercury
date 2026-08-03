@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -695,7 +695,7 @@ are_we_in_an_effective_field_access_function(ModuleInfo, InFieldAccessFunc,
         InFieldAccessFunc = not_in_field_access_func,
         module_info_get_predicate_table(ModuleInfo, PredTable),
         DuCtorName = unqualify_name(DuCtorSymName),
-        predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
+        predicate_table_lookup_func_m_n_ua(PredTable, is_fully_qualified,
             TypeModule, DuCtorName, UserArity, PredIds),
         list.all_false(
             is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
@@ -906,7 +906,7 @@ builtin_pred_type(Info, DuCtor, Arity, GoalId, ConsTypeInfos) :-
     DuCtor = du_ctor(SymName, _, _),
     typecheck_info_get_predicate_table(Info, PredicateTable),
     typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
-    predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
+    predicate_table_lookup_sym_name(PredicateTable, IsFullyQualified, SymName,
         PredIds),
     (
         PredIds = [_ | _],

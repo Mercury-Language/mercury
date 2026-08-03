@@ -111,7 +111,7 @@ report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
     IsFullyQualified = calls_are_fully_qualified(PredMarkers),
-    predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
+    predicate_table_lookup_pf_sym_name(PredicateTable, IsFullyQualified,
         pf_predicate, SymName, OtherIds),
     (
         OtherIds = [_ | _],
@@ -449,8 +449,8 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
     UndefMsg = simple_msg(Context,
         [InClauseForComponent, always(MainPieces ++ AddendumPieces)]),
 
-    predicate_table_lookup_pf_sym(PredicateTable, may_be_partially_qualified,
-        pf_function, SymName, FuncOtherIds),
+    predicate_table_lookup_pf_sym_name(PredicateTable,
+        may_be_partially_qualified, pf_function, SymName, FuncOtherIds),
     (
         FuncOtherIds = [_ | _],
         KindMsg = report_error_func_instead_of_pred(Context),
@@ -763,7 +763,7 @@ report_error_undef_du_ctor_std(ClauseContext, Context, ContextComp, DuCtor,
 
     DuCtor = du_ctor(SymName, Arity, _),
     return_cons_arities(ConsTable, SymName, ConsArities),
-    predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
+    predicate_table_lookup_sym_name(PredicateTable, may_be_partially_qualified,
         SymName, PredIds),
     return_pred_func_arities(ModuleInfo, PredIds,
         [], PredArities, [], FuncArities),
@@ -1381,7 +1381,7 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
 
 find_possible_pf_missing_module_qualifiers(PredicateTable,
         PredOrFunc, SymName) = ModuleNames :-
-    predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc,
+    predicate_table_lookup_pf_name(PredicateTable, PredOrFunc,
         unqualify_name(SymName), PredIds),
     list.foldl(accumulate_matching_pf_module_names(PredicateTable, SymName),
         PredIds, [], ModuleNames).

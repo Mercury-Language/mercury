@@ -987,7 +987,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodSymName0,
     TypeCtors = TypeCtors0 ++ TypeCtors1,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    predicate_table_lookup_func_sym_arity(PredicateTable,
+    predicate_table_lookup_func_sym_name_arity(PredicateTable,
         may_be_partially_qualified, InstanceMethodSymName0, MethodUserArity,
         PredIds),
     ( if

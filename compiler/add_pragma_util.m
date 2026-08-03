@@ -210,13 +210,13 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         Context, PragmaName, PredOrFunc, SymName, UserArity, MaybePredId) :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    predicate_table_lookup_pf_sym_arity(PredTable, IsFullyQualified,
+    predicate_table_lookup_pf_sym_name_name_pfa(PredTable, IsFullyQualified,
         PredOrFunc, SymName, PredFormArity, PredIds),
     (
         PredIds = [],
         (
             FailHandling = lfh_user_error,
-            predicate_table_lookup_pf_sym(PredTable,
+            predicate_table_lookup_pf_sym_name(PredTable,
                 may_be_partially_qualified,
                 PredOrFunc, SymName, AllArityPredIds),
             module_info_get_pred_id_table(ModuleInfo, PredIdTable),
@@ -527,26 +527,28 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
         SymName = qualified(_, _),
         (
             PFU = pfu_unknown,
-            predicate_table_lookup_sym_arity(PredTable0, is_fully_qualified,
-                SymName, UserArity, PredIds),
+            predicate_table_lookup_sym_name_arity(PredTable0,
+                is_fully_qualified, SymName, UserArity, PredIds),
             warn_about_pfu_unknown(ModuleInfo, Pragma, PragmaAllowsModes,
                 SymName, UserArity, Context, WarnSpecs)
         ;
             PFU = pfu_predicate,
             user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
-            predicate_table_lookup_pf_sym_arity(PredTable0, is_fully_qualified,
-                pf_predicate, SymName, PredFormArity, PredIds),
+            predicate_table_lookup_pf_sym_name_name_pfa(PredTable0,
+                is_fully_qualified, pf_predicate, SymName, PredFormArity,
+                PredIds),
             WarnSpecs = []
         ;
             PFU = pfu_function,
             user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
-            predicate_table_lookup_pf_sym_arity(PredTable0, is_fully_qualified,
-                pf_function, SymName, PredFormArity, PredIds),
+            predicate_table_lookup_pf_sym_name_name_pfa(PredTable0,
+                is_fully_qualified, pf_function, SymName, PredFormArity,
+                PredIds),
             WarnSpecs = []
         ),
         (
             PredIds = [],
-            predicate_table_lookup_sym(PredTable0, is_fully_qualified,
+            predicate_table_lookup_sym_name(PredTable0, is_fully_qualified,
                 SymName, SymOnlyPredIds),
             % If PFU is not pfu_unknown, we *could* count a pred_id
             % in SymOnlyPredIds only if it has the right PredOrFunc field, but

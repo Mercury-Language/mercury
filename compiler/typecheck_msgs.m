@@ -122,7 +122,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     ModuleName = pred_info_module(PredInfo),
     QualPredSymName = qualified(ModuleName, PredName),
-    predicate_table_lookup_pf_sym(PredicateTable, is_fully_qualified,
+    predicate_table_lookup_pf_sym_name(PredicateTable, is_fully_qualified,
         PredOrFunc, QualPredSymName, AllPredIds),
     list.delete_all(AllPredIds, PredId, AllOtherPredIds),
     PredIsDeclared =

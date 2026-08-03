@@ -137,8 +137,9 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
     PredFormArity = pred_form_arity(Arity),
     some [!PredInfo] (
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
-        predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
-            PredOrFunc, PredSymName, PredFormArity, PredIds),
+        predicate_table_lookup_pf_sym_name_name_pfa(PredicateTable,
+            is_fully_qualified, PredOrFunc, PredSymName, PredFormArity,
+            PredIds),
         ( if PredIds = [PredId] then
             add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,

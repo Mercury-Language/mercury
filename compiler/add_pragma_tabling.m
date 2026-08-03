@@ -98,7 +98,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         ),
         (
             ModesOrArity = moa_modes(Modes),
-            % The arity needed by predicate_table_lookup_pf_sym_arity
+            % The arity needed by predicate_table_lookup_pf_sym_name_name_pfa
             % includes the return type for functions.
             PredFormArity = arg_list_arity(Modes),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
@@ -109,7 +109,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for it.
-        predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+        predicate_table_search_pf_fqm_n_pfa(PredicateTable0, PredOrFunc,
             PredModuleName, PredName, PredFormArity, MaybePredId),
         (
             MaybePredId = no,
@@ -132,7 +132,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
             PredSymName, Context, PFUMMSpecs),
         !:WarnSpecs = PFUMMSpecs ++ !.WarnSpecs,
-        predicate_table_lookup_m_n_a(PredicateTable0, is_fully_qualified,
+        predicate_table_lookup_m_n_ua(PredicateTable0, is_fully_qualified,
             PredModuleName, PredName, UserArity, PredIds0),
         (
             PredIds0 = [],

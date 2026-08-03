@@ -648,8 +648,8 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             ),
             % If it is a closure constructor, create a disjunction
             % constraint for each predicate it could refer to.
-            predicate_table_lookup_sym(PredEnv, may_be_partially_qualified,
-                Name, PredIds),
+            predicate_table_lookup_sym_name(PredEnv,
+                may_be_partially_qualified, Name, PredIds),
             (
                 PredIds = [_ | _],
                 predicate_table_get_pred_id_table(PredEnv, Preds),
@@ -795,7 +795,7 @@ plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     GoalExpr = plain_call(_, _, Args, _, _, Name),
     % Transform a call to variable assignments of the variables
     % used in the call.
-    predicate_table_lookup_pred_sym(PredEnv, may_be_partially_qualified,
+    predicate_table_lookup_pred_sym_name(PredEnv, may_be_partially_qualified,
         Name, PredIds0),
     predicate_table_get_pred_id_table(PredEnv, Preds),
     list.filter(pred_has_arity(Preds, list.length(Args)), PredIds0, PredIds),

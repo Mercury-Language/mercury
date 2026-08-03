@@ -313,7 +313,7 @@ parse_non_contig_name_group(PredTable, ModuleName, GroupStr,
 
 parse_non_contig_name(PredTable, ModuleName, OptNum, Name, !PredIds, !Specs) :-
     SymName = qualified(ModuleName, Name),
-    predicate_table_lookup_sym(PredTable, is_fully_qualified, SymName,
+    predicate_table_lookup_sym_name(PredTable, is_fully_qualified, SymName,
         PredIds),
     (
         PredIds = [],

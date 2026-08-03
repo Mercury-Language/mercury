@@ -309,16 +309,16 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !ErrSpecs) :-
         PFNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
         (
             PredOrFunc = pf_predicate,
-            predicate_table_lookup_pred_sym_arity(PredicateTable0,
+            predicate_table_lookup_pred_sym_name_arity(PredicateTable0,
                 is_fully_qualified, SymName, UserArity, PredIds),
-            predicate_table_lookup_pred_sym(PredicateTable0,
+            predicate_table_lookup_pred_sym_name(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
             DeclPieces = [decl("external_pred"), words("pragma")]
         ;
             PredOrFunc = pf_function,
-            predicate_table_lookup_func_sym_arity(PredicateTable0,
+            predicate_table_lookup_func_sym_name_arity(PredicateTable0,
                 is_fully_qualified, SymName, UserArity, PredIds),
-            predicate_table_lookup_func_sym(PredicateTable0,
+            predicate_table_lookup_func_sym_name(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
             DeclPieces = [decl("external_func"), words("pragma")]
         ),

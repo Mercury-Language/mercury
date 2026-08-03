@@ -185,7 +185,7 @@ add_implicit_pred_decl_if_needed(PFSymNameArity, PredStatus, Context, PredId,
     det_sym_name_get_module_name_and_name(PredSymName,
         PredModuleName, PredName),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
+    predicate_table_search_pf_fqm_n_pfa(PredTable0, PredOrFunc,
         PredModuleName, PredName, PredFormArity, MaybePredId),
     (
         MaybePredId = yes(PredId)

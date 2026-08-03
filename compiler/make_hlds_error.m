@@ -299,7 +299,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         MainMsg = msg(Context, MainPieces),
 
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
-        predicate_table_lookup_pf_sym(PredicateTable,
+        predicate_table_lookup_pf_sym_name(PredicateTable,
             is_fully_qualified, PredOrFunc, SymName, AllArityPredIds),
         gather_porf_arities(ModuleInfo, PredOrFunc, AllArityPredIds,
             PorFArities),
