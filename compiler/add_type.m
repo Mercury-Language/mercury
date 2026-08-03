@@ -1027,8 +1027,9 @@ add_type_defn_ctors([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet,
 add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         TypeParams, KindMap, NeedQual, PQInfo, TypeStatus,
         !FieldNameTable, !ConsTable, !ErrSpecs) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
-    BaseName = unqualify_name(Name),
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity,
+        Context),
+    BaseName = unqualify_name(SymName),
     QualifiedName = qualified(TypeCtorModuleName, BaseName),
     QualifiedDuCtor = du_ctor(QualifiedName,   Arity, TypeCtor),
 
@@ -1824,12 +1825,12 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
         TypeB = type_variable(VarB, Kind),
         check_is_subtype_var_var(ExistQVarsMapping, VarA, VarB)
     ;
-        TypeA = defined_type(NameA, ArgTypesA, Kind),
-        TypeB = defined_type(NameB, ArgTypesB, Kind),
+        TypeA = defined_type(SymNameA, ArgTypesA, Kind),
+        TypeB = defined_type(SymNameB, ArgTypesB, Kind),
         list.length(ArgTypesA, ArityA),
         list.length(ArgTypesB, ArityB),
         ( if
-            NameA = NameB,
+            SymNameA = SymNameB,
             ArityA = ArityB
         then
             % TypeA and TypeB have the same type constructor.
@@ -1840,7 +1841,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
             % TypeA and TypeB have different type constructors.
             % Find a subtype definition s(S1, ..., Sn) =< t(T1, ..., Tk)
             % where s/n is the type constructor of TypeA.
-            TypeCtorA = type_ctor(NameA, ArityA),
+            TypeCtorA = type_ctor(SymNameA, ArityA),
             search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
             hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
             TypeBodyA = hlds_du_type(TypeBodyDuA),
@@ -2039,7 +2040,7 @@ ctor_to_string(Ctor, Str) :-
     constructor::in, constructor::out) is det.
 
 rename_and_rec_subst_in_constructor(Renaming, TSubst, Ctor0, Ctor) :-
-    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, Name, Args0, NumArgs,
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, SymName, Args0, NumArgs,
         Context),
     (
         MaybeExistConstraints0 = no_exist_constraints,
@@ -2052,7 +2053,7 @@ rename_and_rec_subst_in_constructor(Renaming, TSubst, Ctor0, Ctor) :-
     ),
     list.map(rename_and_rec_subst_in_constructor_arg(Renaming, TSubst),
         Args0, Args),
-    Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, NumArgs,
+    Ctor = ctor(Ordinal, MaybeExistConstraints, SymName, Args, NumArgs,
         Context).
 
 :- pred rename_and_rec_subst_in_exist_constraints(tvar_renaming::in,
