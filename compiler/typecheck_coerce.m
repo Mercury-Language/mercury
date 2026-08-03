@@ -806,6 +806,13 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
     % because are_actual_param_type_pair_as_related_as_needed can pass
     % *either* FromType as TypeA and ToType as TypeB, *or* vice versa.
     %
+    % NOTE The value of Comparison matters directly ONLY when comparing
+    % two du types, though it also matters indirectly when comparing
+    % two tuple or two kinded types (because they lead to this predicate
+    % being invoked recursively). We should be able to use this fact
+    % to eliminate the need for calling this predicate twice by
+    % are_actual_param_type_pair_as_related_as_needed.
+    %
     % Note: changes here may need to be made also to types_compare_as_given_mc
     % in modecheck_coerce.m.
     %
@@ -816,61 +823,67 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
 
 types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails) :-
-    ( if
-        ( TypeA = type_variable(_, _)
-        ; TypeB = type_variable(_, _)
-        )
-    then
-        ( if type_assign_unify_type(TypeA, TypeB, !TypeAssign) then
-            true
-        else
-            CoerceFail = cannot_unify_type_vars(TypeA, TypeB),
-            !:CoerceFails = [CoerceFail | !.CoerceFails]
-        )
-    else
-        types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
-            Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails)
-    ).
-
-:- pred types_compare_as_given_nonvar(type_table::in, tvarset::in,
-    type_ctor::in, uint::in, types_comparison::in, mer_type::in, mer_type::in,
-    type_assign::in, type_assign::out,
-    list(coerce_fail)::in, list(coerce_fail)::out) is det.
-
-types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
-        Comparison, TypeA, TypeB, !TypeAssign, !CoerceFails) :-
     % Several of the kinds of coerce_fails that the code below can generate
     % are NOT TESTED by any test case in the test suite.
     require_complete_switch [TypeA]
     (
         TypeA = builtin_type(BuiltinTypeA),
-        ( if TypeB = builtin_type(BuiltinTypeA) then
-            true
-        else
-            ( if TypeB = builtin_type(BuiltinTypeB) then
-                CoerceFail =
-                    different_builtin_types(BuiltinTypeA, BuiltinTypeB)
+        (
+            TypeB = builtin_type(BuiltinTypeB),
+            ( if BuiltinTypeA = BuiltinTypeB then
+                true
             else
-                CoerceFail = different_type_categories(TypeTable, TypeA, TypeB)
+                CoerceFail =
+                    different_builtin_types(BuiltinTypeA, BuiltinTypeB),
+                !:CoerceFails = [CoerceFail | !.CoerceFails]
+            )
+        ;
+            TypeB = type_variable(_, _),
+            try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            TypeB = apply_n_type(_, _, _),
+            sorry($pred, "apply_n_type")
+        ;
+            ( TypeB = defined_type(_, _, _)
+            ; TypeB = tuple_type(_, _)
+            ; TypeB = higher_order_type(_, _, _, _)
+            ; TypeB = kinded_type(_, _)
             ),
-            !:CoerceFails = [CoerceFail | !.CoerceFails]
-        )
-    ;
-        TypeA = type_variable(_, _),
-        unexpected($pred, "type_variable")
-    ;
-        TypeA = defined_type(_, _, _),
-        ( if TypeB = defined_type(_, _, _) then
-            defined_types_compare_as_given(TypeTable, TVarSet,
-                BaseTypeCtor, ArgNum, Comparison, TypeA, TypeB,
-                !TypeAssign, !CoerceFails)
-        else
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
-        TypeA = tuple_type(ArgTypesA, Kind),
-        ( if TypeB = tuple_type(ArgTypesB, Kind) then
+        TypeA = type_variable(_, _),
+        try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+    ;
+        TypeA = defined_type(_, _, _),
+        (
+            TypeB = defined_type(_, _, _),
+            defined_types_compare_as_given(TypeTable, TVarSet,
+                BaseTypeCtor, ArgNum, Comparison, TypeA, TypeB,
+                !TypeAssign, !CoerceFails)
+        ;
+            TypeB = type_variable(_, _),
+            try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            TypeB = apply_n_type(_, _, _),
+            sorry($pred, "apply_n_type")
+        ;
+            ( TypeB = builtin_type(_)
+            ; TypeB = tuple_type(_, _)
+            ; TypeB = higher_order_type(_, _, _, _)
+            ; TypeB = kinded_type(_, _)
+            ),
+            CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
+            !:CoerceFails = [CoerceFail | !.CoerceFails]
+        )
+    ;
+        TypeA = tuple_type(ArgTypesA, _KindA),
+        (
+            TypeB = tuple_type(ArgTypesB, _KindB),
+            % XXX KIND We do not yet support any kind other than kind_star,
+            % and kind_arrow does not make sense for tuples, so there is
+            % no point in checking for a kind mismatch.
             list.length(ArgTypesA, NumArgTypesA),
             list.length(ArgTypesB, NumArgTypesB),
             ( if NumArgTypesA = NumArgTypesB then
@@ -882,22 +895,55 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
                     different_tuple_arities(NumArgTypesA, NumArgTypesB),
                 !:CoerceFails = [CoerceFail | !.CoerceFails]
             )
-        else
+        ;
+            TypeB = type_variable(_, _),
+            try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            TypeB = apply_n_type(_, _, _),
+            sorry($pred, "apply_n_type")
+        ;
+            ( TypeB = builtin_type(_)
+            ; TypeB = defined_type(_, _, _)
+            ; TypeB = higher_order_type(_, _, _, _)
+            ; TypeB = kinded_type(_, _)
+            ),
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgTypesA, _IA, Purity),
-        % XXX We should return specific coerce_fails for Purity mismatches.
-        % XXX We probably should NOT ignore the higher order inst infos.
-        ( if TypeB = higher_order_type(PredOrFunc, ArgTypesB, _IB, Purity) then
-            % We do not allow subtyping in higher order argument types, so we
-            % pass compare_equal here EVEN IF Comparison is compare_equal_lt.
-            SubComparison = compare_equal(ir_higher_order),
-            corresponding_types_compare_as_given(TypeTable, TVarSet,
-                BaseTypeCtor, ArgNum, SubComparison, ArgTypesA, ArgTypesB,
-                !TypeAssign, !CoerceFails)
-        else
+        TypeA = higher_order_type(PredOrFuncA, ArgTypesA, _IA, PurityA),
+        (
+            TypeB = higher_order_type(PredOrFuncB, ArgTypesB, _IB, PurityB),
+            % XXX We should return specific coerce_fails for Purity mismatches.
+            % XXX We probably should NOT ignore the higher order inst infos.
+            ( if
+                PredOrFuncA = PredOrFuncB,
+                PurityA = PurityB
+            then
+                % We do not allow subtyping in higher order argument types,
+                % so we pass compare_equal here EVEN IF Comparison is
+                % compare_equal_lt.
+                SubComparison = compare_equal(ir_higher_order),
+                corresponding_types_compare_as_given(TypeTable, TVarSet,
+                    BaseTypeCtor, ArgNum, SubComparison, ArgTypesA, ArgTypesB,
+                    !TypeAssign, !CoerceFails)
+            else
+                CoerceFail = different_type_categories(TypeTable,
+                    TypeA, TypeB),
+                !:CoerceFails = [CoerceFail | !.CoerceFails]
+            )
+        ;
+            TypeB = type_variable(_, _),
+            try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            TypeB = apply_n_type(_, _, _),
+            sorry($pred, "apply_n_type")
+        ;
+            ( TypeB = builtin_type(_)
+            ; TypeB = defined_type(_, _, _)
+            ; TypeB = tuple_type(_, _)
+            ; TypeB = kinded_type(_, _)
+            ),
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
@@ -905,18 +951,51 @@ types_compare_as_given_nonvar(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         TypeA = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
-        TypeA = kinded_type(TypeA1, Kind),
-        % We require TypeB to be a kinded type of the SAME KIND as TypeA.
-        % XXX We should probably require it to have the same kind as TypeA,
-        % *without* requiring it to be a kinded type. However, that will matter
-        % only once we start using kinded types.
-        ( if TypeB = kinded_type(TypeB1, Kind) then
-            types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
-                Comparison, TypeA1, TypeB1, !TypeAssign, !CoerceFails)
-        else
+        TypeA = kinded_type(SubTypeA, KindA),
+        (
+            TypeB = kinded_type(SubTypeB, KindB),
+            % We require TypeB to be a kinded type of the SAME KIND as TypeA.
+            % XXX We should probably require it to have the same kind as TypeA,
+            % *without* requiring it to be a kinded type. However,
+            % that will matter only once we start *using* kinded types.
+            ( if KindA = KindB then
+                types_compare_as_given(TypeTable, TVarSet,
+                    BaseTypeCtor, ArgNum, Comparison,
+                    SubTypeA, SubTypeB, !TypeAssign, !CoerceFails)
+            else
+                % This is not a precise description of the problem,
+                % but again, this does not matter yet.
+                CoerceFail = different_type_categories(TypeTable,
+                    TypeA, TypeB),
+                !:CoerceFails = [CoerceFail | !.CoerceFails]
+            )
+        ;
+            TypeB = type_variable(_, _),
+            try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
+        ;
+            TypeB = apply_n_type(_, _, _),
+            sorry($pred, "apply_n_type")
+        ;
+            ( TypeB = builtin_type(_)
+            ; TypeB = defined_type(_, _, _)
+            ; TypeB = tuple_type(_, _)
+            ; TypeB = higher_order_type(_, _, _, _)
+            ),
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
+    ).
+
+:- pred try_to_unify_types(mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out,
+    list(coerce_fail)::in, list(coerce_fail)::out) is det.
+
+try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails) :-
+    ( if type_assign_unify_type(TypeA, TypeB, !TypeAssign) then
+        true
+    else
+        CoerceFail = cannot_unify_type_vars(TypeA, TypeB),
+        !:CoerceFails = [CoerceFail | !.CoerceFails]
     ).
 
 :- pred defined_types_compare_as_given(type_table::in, tvarset::in,

@@ -129,6 +129,7 @@
 
 :- import_module map.
 :- import_module maybe.
+:- import_module string.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -242,14 +243,25 @@ classify_is_du_type(TypeTable, Type, MaybeDuType) :-
         % argument types are coerceable.
         MaybeDuType = is_not_du_type("tuple type")
     ;
-        Type = higher_order_type(PorF, _, _, _),
+        Type = higher_order_type(PorF, _, _, Purity),
         (
             PorF = pf_function,
-            MaybeDuType = is_not_du_type("function type")
+            PorFStr = "function type"
         ;
             PorF = pf_predicate,
-            MaybeDuType = is_not_du_type("predicate type")
-        )
+            PorFStr = "predicate type"
+        ),
+        (
+            Purity = purity_pure,
+            DescStr = PorFStr
+        ;
+            Purity = purity_semipure,
+            DescStr = "semipure " ++ PorFStr
+        ;
+            Purity = purity_impure,
+            DescStr = "impure " ++ PorFStr
+        ),
+        MaybeDuType = is_not_du_type(DescStr)
     ;
         Type = apply_n_type(_, _, _),
         MaybeDuType = is_not_du_type("function type")
