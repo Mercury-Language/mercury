@@ -39,6 +39,6 @@ coerce_type_error.m:118:   constructor, which is an abstract type.
 coerce_type_error.m:125: In clause for predicate `non_subtypes'/2:
 coerce_type_error.m:125:   error: cannot coerce [38;5;87m`Fruits'[39;49m from [38;5;171m`list(fruit)'[39;49m to
 coerce_type_error.m:125:   [38;5;171m`list(orange_non_fruit)'.[39;49m
-coerce_type_error.m:125:   `coerce_type_error.fruit'/0 is [38;5;203mnot a subtype.[39;49m
-coerce_type_error.m:125:   `coerce_type_error.orange_non_fruit'/0 is [38;5;203mnot a[39;49m
-coerce_type_error.m:125:   [38;5;203msubtype.[39;49m
+coerce_type_error.m:125:   Coercion between the types [38;5;87mfruit[39;49m and
+coerce_type_error.m:125:   [38;5;87morange_non_fruit[39;49m is not possible, because they [38;5;203mdo[39;49m
+coerce_type_error.m:125:   [38;5;203mnot have a common base type.[39;49m

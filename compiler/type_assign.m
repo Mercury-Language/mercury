@@ -141,10 +141,13 @@
                 dta_type_a              :: arity,
                 dta_type_b              :: arity
             )
-    ;       du_type_is_not_subtype(
-                % The type is a du type with this type_ctor, but this type
-                % is not a subtype of anything.
-                ns_type_ctor            :: type_ctor
+    ;       no_common_base_type(
+                ncbt_base_tc            :: type_ctor,
+                ncbt_base_tc_arg_num    :: uint,
+                % Both types are du types, but they do not have a common
+                % base type.
+                ncbt_type_a             :: mer_type,
+                ncbt_type_b             :: mer_type
             )
     ;       cannot_unify_type_vars(
                 % One or both of these will be a type_variable.

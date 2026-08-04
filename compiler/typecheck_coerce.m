@@ -401,21 +401,19 @@ typecheck_coerce_between_types(TypeTable, TVarSet,
     ;
         MaybeBoth = ok2(FromDuTypeInfo, ToDuTypeInfo),
         compute_base_type_of_du_type(TypeTable, TVarSet,
-            FromDuTypeInfo, FromBaseTypeInfo),
+            FromDuTypeInfo, FromBaseDuTypeInfo),
         compute_base_type_of_du_type(TypeTable, TVarSet,
-            ToDuTypeInfo, ToBaseTypeInfo),
-        FromBaseTypeInfo = du_type_info(FromBaseTypeCtor, FromBaseTypeArgTypes,
-            FromBaseTypeDefn, FromBaseTypeBodyDu),
-        ToBaseTypeInfo = du_type_info(ToBaseTypeCtor, ToBaseTypeArgTypes,
-            _ToBaseTypeDefn, _ToBaseTypeBodyDu),
-        ( if
-            % Coercion can work only if the from-type and to-type
-            % have the same base type constructor.
-            BaseTypeCtor = FromBaseTypeCtor,
-            BaseTypeCtor = ToBaseTypeCtor
-        then
+            ToDuTypeInfo, ToBaseDuTypeInfo),
+        FromBaseDuTypeInfo = du_type_info(FromBaseTypeCtor,
+            FromBaseTypeArgTypes, FromBaseTypeDefn, FromBaseTypeBodyDu),
+        ToBaseDuTypeInfo = du_type_info(ToBaseTypeCtor,
+            ToBaseTypeArgTypes, _ToBaseTypeDefn, _ToBaseTypeBodyDu),
+        % Coercion can work only if the from-type and to-type
+        % have the same base type constructor.
+        ( if FromBaseTypeCtor = ToBaseTypeCtor then
             % Since FromBaseTypeCtor = ToBaseTypeCtor, the two type
             % definitions and their bodies must be the same as well.
+            BaseTypeCtor = FromBaseTypeCtor,
             BaseTypeDefn = FromBaseTypeDefn,
             BaseTypeBodyDu = FromBaseTypeBodyDu,
             hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeCtorParams),
@@ -759,44 +757,19 @@ are_actual_param_type_pair_as_related_as_needed(TypeTable, TVarSet,
         InvariantTVars, BaseTypeCtor, BaseTypeCtorParam, FromType, ToType,
         !ArgNum, !TypeAssign, !CoerceFails) :-
     ( if map.search(InvariantTVars, BaseTypeCtorParam, OoMCtorArgPosn) then
-        Comparison = compare_equal(ir_base_type_ctor(OoMCtorArgPosn)),
-        types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
-            Comparison, FromType, ToType, !TypeAssign, !CoerceFails)
+        Comparison = must_be_invariant(ir_base_type_ctor(OoMCtorArgPosn))
     else
-        types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
-            compare_equal_lt, FromType, ToType,
-            !.TypeAssign, FromToTypeAssign, [], FromToCoerceFails),
-        (
-            FromToCoerceFails = [],
-            !:TypeAssign = FromToTypeAssign
-        ;
-            FromToCoerceFails = [_ | _],
-            types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
-                compare_equal_lt, ToType, FromType,
-                !.TypeAssign, ToFromTypeAssign, [], ToFromCoerceFails),
-            (
-                ToFromCoerceFails = [],
-                !:TypeAssign = ToFromTypeAssign
-            ;
-                ToFromCoerceFails = [_ | _],
-                % NOTE Adding both FromToCoerceFails and ToFromCoerceFails
-                % to !CoerceFails can report the same issue twice, with
-                % the roles of coerce-from type and coerce-to type reversed
-                % for any symmetrical problem that types_compare_as_given
-                % can report. This is ok, because report_invalid_coerce_from_to
-                % will ensure that we report just one copy in each such pair.
-                !:CoerceFails = FromToCoerceFails ++ ToFromCoerceFails
-                    ++ !.CoerceFails
-            )
-        )
+        Comparison = need_not_be_invariant
     ),
+    types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, !.ArgNum,
+        Comparison, FromType, ToType, !TypeAssign, !CoerceFails),
     !:ArgNum = !.ArgNum + 1u.
 
 %---------------------------------------------------------------------------%
 
 :- type types_comparison
-    --->    compare_equal(invariant_reason)
-    ;       compare_equal_lt.
+    --->    must_be_invariant(invariant_reason)
+    ;       need_not_be_invariant.
 
     % Succeed if TypeA unifies with TypeB (possibly binding type vars).
     % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
@@ -921,9 +894,9 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
                 PurityA = PurityB
             then
                 % We do not allow subtyping in higher order argument types,
-                % so we pass compare_equal here EVEN IF Comparison is
-                % compare_equal_lt.
-                SubComparison = compare_equal(ir_higher_order),
+                % so we pass must_be_invariant here EVEN IF Comparison is
+                % need_not_be_invariant.
+                SubComparison = must_be_invariant(ir_higher_order),
                 corresponding_types_compare_as_given(TypeTable, TVarSet,
                     BaseTypeCtor, ArgNum, SubComparison, ArgTypesA, ArgTypesB,
                     !TypeAssign, !CoerceFails)
@@ -1050,43 +1023,58 @@ defined_types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
             MaybeBoth = ok2(DuTypenfoA, DuTypenfoB),
             du_types_compare_as_given(TypeTable, TVarSet,
                 BaseTypeCtor, ArgNum, Comparison,
-                TypeA, TypeCtorA, ArgTypesA, DuTypenfoA,
-                TypeB, TypeCtorB, ArgTypesB, DuTypenfoB,
+                TypeA, DuTypenfoA, TypeB, DuTypenfoB,
                 !TypeAssign, !CoerceFails)
         )
     ).
 
+    % du_types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
+    %   Comparison, TypeA, DuTypeInfoA, TypeB, DuTypeInfoB,
+    %   !TypeAssign, !CoerceFails):
+    %
+    % Our caller guarantees that TypeCtorA \= TypeCtorB.
+    %
 :- pred du_types_compare_as_given(type_table::in, tvarset::in,
     type_ctor::in, uint::in, types_comparison::in,
-    mer_type::in, type_ctor::in, list(mer_type)::in, du_type_info::in,
-    mer_type::in, type_ctor::in, list(mer_type)::in, du_type_info::in,
+    mer_type::in, du_type_info::in, mer_type::in, du_type_info::in,
     type_assign::in, type_assign::out,
     list(coerce_fail)::in, list(coerce_fail)::out) is det.
 
 du_types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum, Comparison,
-        TypeA, TypeCtorA, ArgTypesA, DuTypeInfoA,
-        TypeB, _TypeCtorB, _ArgTypesB, _DuTypeInfoB,
+        TypeA, DuTypeInfoA, TypeB, DuTypeInfoB,
         !TypeAssign, !CoerceFails) :-
     (
-        Comparison = compare_equal(Reason),
-        CoerceFail = should_be_invariant_arg(BaseTypeCtor,
-            ArgNum, Reason, TypeA, TypeB),
+        Comparison = must_be_invariant(Reason),
+        % Even if TypeA and/or TypeB contain type variables,
+        % no possible types being bound to those variables
+        % can fix the mismatch between TypeCtorA and TypeCtorB.
+        CoerceFail = should_be_invariant_arg(BaseTypeCtor, ArgNum,
+            Reason, TypeA, TypeB),
         !:CoerceFails = [CoerceFail | !.CoerceFails]
     ;
-        Comparison = compare_equal_lt,
-        DuTypeInfoA = du_type_info(_, _, TypeDefnA, TypeBodyDuA),
-        MaybeSuperTypeA = TypeBodyDuA ^ du_type_supertype,
-        (
-            MaybeSuperTypeA = subtype_of(SuperTypeA0),
-            get_supertype_of_subtype(TVarSet,
-                TypeCtorA, ArgTypesA, TypeDefnA,
-                SuperTypeA0, SuperTypeA),
-            types_compare_as_given(TypeTable, TVarSet,
+        Comparison = need_not_be_invariant,
+        % XXX If TypeA and TypeB have a common "ancestor" that is
+        % NOT their common supertype, we could use the nearest
+        % such common ancestor instead of the base type.
+        % This would allow us to check the coercability of
+        % any phantom type parameters that don't make it
+        % all the way up to the common base type.
+        compute_base_type_of_du_type(TypeTable, TVarSet,
+            DuTypeInfoA, BaseDuTypeInfoA),
+        compute_base_type_of_du_type(TypeTable, TVarSet,
+            DuTypeInfoB, BaseDuTypeInfoB),
+        BaseDuTypeInfoA = du_type_info(BaseTypeCtorA,
+            BaseTypeArgTypesA, _BaseTypeDefnA, _BaseTypeBodyDuA),
+        BaseDuTypeInfoB = du_type_info(BaseTypeCtorB,
+            BaseTypeArgTypesB, _BaseTypeDefnB, _BaseTypeBodyDuB),
+        ( if BaseTypeCtorA = BaseTypeCtorB then
+            corresponding_types_compare_as_given(TypeTable, TVarSet,
                 BaseTypeCtor, ArgNum, Comparison,
-                SuperTypeA, TypeB, !TypeAssign, !CoerceFails)
-        ;
-            MaybeSuperTypeA = not_a_subtype,
-            CoerceFail = du_type_is_not_subtype(TypeCtorA),
+                BaseTypeArgTypesA, BaseTypeArgTypesB,
+                !TypeAssign, !CoerceFails)
+        else
+            CoerceFail = no_common_base_type(BaseTypeCtor, ArgNum,
+                TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
     ).
