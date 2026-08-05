@@ -67,8 +67,6 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
         Opts = []
     ),
     KeepGoing = make_info_get_keep_going(!.Info),
-    % .int0 files need to be made before building .int files in parallel,
-    % otherwise two processes may try to build the same .int0 file.
     foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
         ProgressStream, Globals, Int3s, Succeeded0, !Info, !IO),
     ( if
@@ -78,6 +76,14 @@ build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
     then
         Succeeded = Succeeded0
     else
+        % All .int0 files need to be made before building any .int files
+        % in parallel, because otherwise two processes may try to build
+        % the same .int0 file at the same time.
+        %
+        % We cannot create *all* .int0 files in parallel, because if e.g.
+        % a module named a.b.c exists, we must create a.int0 before a.b.int0.
+        % We *could* create *unrelated* .int0 files in parallel, but
+        % there is as yet no fold for that.
         foldl2_make_module_targets(KeepGoing, [],
             ProgressStream, Globals, Int0s, Succeeded1, !Info, !IO),
         ( if
