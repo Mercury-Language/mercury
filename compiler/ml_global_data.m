@@ -34,7 +34,7 @@
 
     % This abstract type represents the MLDS code generator's repository of
     % data structures that are "born global", i.e. the ones for which we
-    % known from the start that they will be defined at file scope.
+    % know from the start that they will be defined at file scope.
     %
 :- type ml_global_data.
 
