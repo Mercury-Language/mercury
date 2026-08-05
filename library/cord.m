@@ -534,7 +534,7 @@
 :- import_module uint.
 
 % The original implementation of the cord/1 type had four function symbols
-% in one type: empty, unit, node and branch. However, this representation
+% in one type: empty, unit, node, and branch. However, this representation
 % requires code to handle the "empty" case when we look at *every* part
 % of the cord. This code is annoying to write, annoying to read, and the
 % tests for empty at these points also reduce performance.
@@ -565,8 +565,8 @@
     % and mispredicted branches have been the other one of the two most
     % costly operations (besides cache misses) on CPUs for many years now.
     %
-    % The overall effect is that deleting the unit_node function symbol
-    % gets a speedup on tools/speedtest of approximately 0.7%.
+    % The overall effect is that deleting the unit_node function symbol gets
+    % a speedup on tools/speedtest of approximately 0.7% (as of Oct 2025).
 :- type cord_node(T)
     --->    list_node(T, list(T))
     ;       branch_node(cord_node(T), cord_node(T)).
@@ -581,17 +581,17 @@ singleton(X) = nonempty_cord(list_node(X, [])).
 
 %---------------------------------------------------------------------------%
 
-cons(X, C) = XC :-
-    (
-        C = empty_cord,
-        XC = nonempty_cord(list_node(X, []))
-    ;
-        C = nonempty_cord(N),
-        XC = nonempty_cord(branch_node(list_node(X, []), N))
-    ).
+cons(X, C0) = C :-
+    cons(X, C0, C).
 
-cons(X, !C) :-
-    !:C = cons(X, !.C).
+cons(X, C0, C) :-
+    (
+        C0 = empty_cord,
+        C  = nonempty_cord(list_node(X, []))
+    ;
+        C0 = nonempty_cord(N),
+        C  = nonempty_cord(branch_node(list_node(X, []), N))
+    ).
 
 %---------------------%
 
