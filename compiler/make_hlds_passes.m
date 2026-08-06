@@ -203,7 +203,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
-        Promises, Typeclasses, Instances, Initialises, Finalises, Mutables,
+        Promises, Typeclasses, IntInstances, ImpInstances,
+        Initialises, Finalises, Mutables,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
         DeclPragmas, DeclMarkers, DeclTypeSpecConstr, DeclTypeSpec,
         DeclTermination, DeclTermination2, DeclSharing, DeclReuse,
@@ -439,7 +440,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % The items in MutablePredDecls do not have default modes to add.
 
     % Record instance definitions.
-    add_instance_defns(Instances,
+    add_instance_defns(coerce(IntInstances),
+        !ModuleInfo, !ErrSpecs),
+    add_instance_defns(ImpInstances,
         !ModuleInfo, !ErrSpecs),
 
     % Implement several kinds of pragmas, the ones in the subtype

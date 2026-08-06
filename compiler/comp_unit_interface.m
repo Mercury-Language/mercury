@@ -246,12 +246,11 @@ create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3) :-
     map.foldl(add_only_int_include, OrigInclMap, map.init, IntInclMap),
     IntTypeClasses = list.map(make_typeclass_abstract_for_int3,
         OrigIntTypeClasses),
-    IntInstances = list.map(make_instance_abstract, OrigIntInstances),
     (
-        IntInstances = [],
+        OrigIntInstances = [],
         map.init(IntImportMap)
     ;
-        IntInstances = [_ | _],
+        OrigIntInstances = [_ | _],
         map.foldl(acc_int_imports, OrigImportUseMap, map.init, IntImportMap)
     ),
     map.foldl(make_type_ctor_checked_defn_abstract_for_int3,
@@ -266,7 +265,7 @@ create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3) :-
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclMap, IntImportMap,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap).
+        IntTypeClasses, OrigIntInstances, IntTypeRepnMap).
 
 :- pred acc_int_imports(module_name::in, maybe_implicit_import_and_or_use::in,
     int_import_map::in, int_import_map::out) is det.
@@ -650,7 +649,7 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
-        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
+        IntTypeClasses, AbsIntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances0, ImpPredDecls, ImpModeDecls,
@@ -662,15 +661,14 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
     % Delete from the implementation section any abstract instances
     % that would duplicate one in the interface section.
     OutInfo = init_write_int_merc_out_info,
-    IntAbsInstances0 = list.map(make_instance_abstract, IntInstances0),
-    IntAbsInstanceStrs =
-        list.map(item_abstract_instance_to_string(OutInfo), IntAbsInstances0),
-    set_tree234.list_to_set(IntAbsInstanceStrs, IntAbsInstanceStrSet),
+    AbsIntInstanceStrs =
+        list.map(item_abstract_instance_to_string(OutInfo), AbsIntInstances0),
+    set_tree234.list_to_set(AbsIntInstanceStrs, AbsIntInstanceStrSet),
     ImpAbsInstances1 = list.map(make_instance_abstract, ImpInstances0),
     KeepImpAbsInstanceTest =
-        ( pred(AbsInstance::in) is semidet :-
-            Str = item_abstract_instance_to_string(OutInfo, AbsInstance),
-            not set_tree234.contains(IntAbsInstanceStrSet, Str)
+        ( pred(AbsIntInstance::in) is semidet :-
+            Str = item_abstract_instance_to_string(OutInfo, AbsIntInstance),
+            not set_tree234.contains(AbsIntInstanceStrSet, Str)
         ),
     list.filter(KeepImpAbsInstanceTest, ImpAbsInstances1, ImpAbsInstances0),
 
@@ -681,7 +679,7 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         [], [], [], [],
 
-        IntTypeClasses, coerce(IntAbsInstances0), IntPredDecls, IntModeDecls,
+        IntTypeClasses, AbsIntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, set.init,
 
         ImpTypeClasses, coerce(ImpAbsInstances0), ImpPredDecls, ImpModeDecls,
@@ -717,7 +715,7 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0) :-
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         _TypeErrSpecs, _TypeWarnSpecs, _InstModeErrSpecs, _InstModeWarnSpecs,
 
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, AbsIntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls0, ImpModeDecls,
@@ -740,7 +738,6 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0) :-
     % Make the implementation FIMs disjoint from the interface FIMs.
     set.difference(ImpFIMSpecs1, IntFIMSpecs, ImpFIMSpecs),
 
-    IntAbsInstances = list.map(check_instance_is_abstract, IntInstances),
     ImpAbsInstances = list.map(check_instance_is_abstract, ImpInstances),
 
     ImpPredDecls = ImpPredDecls0 ++ list.condense(
@@ -750,7 +747,7 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0) :-
         MaybeVersionNumbers, InclMap, SectionImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, IntAbsInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, AbsIntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpAbsInstances, ImpPredDecls, ImpModeDecls,
         ImpDeclPragmas, ImpDeclMarkers, ImpPromises).
@@ -901,7 +898,6 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
         _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
-    IntInstancesAbstract = list.map(make_instance_abstract, IntInstances),
     map.map_values_only(pre_grab_pre_qual_type_ctor_checked_defn,
         TypeCtorCheckedMap, IntTypeCtorCheckedMap),
     map.foldl(pre_grab_pre_qual_inst_ctor_checked_defn,
@@ -917,7 +913,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
-        IntTypeClasses, coerce(IntInstancesAbstract),
+        IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls, IntDeclPragmas, IntDeclMarkers,
         IntPromises, IntBadClausePreds,
 
@@ -1293,7 +1289,6 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         !:Specs = coerce(RepnSpecs) ++ !.Specs
     ),
 
-    IntInstances = list.map(check_instance_is_abstract, IntInstances0),
     list.filter(keep_promise_item_int, IntPromises0, IntPromises),
 
     DummyMaybeVersionNumbers = no_version_numbers,
@@ -1302,7 +1297,7 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         DummyMaybeVersionNumbers, InclMap, SectionUseOnlyMap,
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises,
         TypeCtorRepnMap, ImpTypeClasses).
 
@@ -2897,7 +2892,8 @@ get_int2_items_from_int1_int_typeclass([TypeClassInfo | TypeClassInfos],
     get_int2_items_from_int1_int_typeclass(TypeClassInfos,
         !MaybeUnqual, !ModuleNames, !IntTypeClassesCord).
 
-:- pred get_int2_items_from_int1_int_instance(list(item_instance_info)::in,
+:- pred get_int2_items_from_int1_int_instance(
+    list(item_abstract_instance_info)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
     set(module_name)::in, set(module_name)::out,
     cord(item_abstract_instance_info)::in,
@@ -2908,10 +2904,8 @@ get_int2_items_from_int1_int_instance([],
 get_int2_items_from_int1_int_instance([InstanceInfo | InstanceInfos],
         !MaybeUnqual, !ModuleNames, !IntInstancesCord) :-
     InstanceInfo = item_instance_info(ClassSymName,
-        ArgTypes, OrigArgTypes, ClassConstraints, InstanceBody0,
+        ArgTypes, OrigArgTypes, ClassConstraints, _InstanceBody0,
         TVarSet, ContainingModuleName, Context, SeqNum),
-    expect(unify(InstanceBody0, instance_body_abstract), $pred,
-        "instance_body_abstract"),
     accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
     accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames),
     accumulate_modules_in_types(OrigArgTypes, !MaybeUnqual, !ModuleNames),

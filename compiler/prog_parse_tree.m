@@ -329,7 +329,7 @@
                 % twice, once in each section, so we treat them as only
                 % being in the interface.)
                 ptms_int_typeclasses        :: list(item_typeclass_info),
-                ptms_int_instances          :: list(item_instance_info),
+                ptms_int_instances     :: list(item_abstract_instance_info),
                 ptms_int_pred_decls         :: list(item_pred_decl_info),
                 ptms_int_mode_decls         :: list(item_mode_decl_info),
                 ptms_int_decl_pragmas       :: list(item_decl_pragma_info),
@@ -436,7 +436,7 @@
                 % interface or implementation section. We should make that
                 % distinction here ONLY when we have to.
                 pti0_int_typeclasses        :: list(item_typeclass_info),
-                pti0_int_instances        :: list(item_abstract_instance_info),
+                pti0_int_instances      :: list(item_abstract_instance_info),
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
                 pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
@@ -445,7 +445,7 @@
 
                 % Items of various kinds in the implementation section.
                 pti0_imp_typeclasses        :: list(item_typeclass_info),
-                pti0_imp_instances        :: list(item_abstract_instance_info),
+                pti0_imp_instances      :: list(item_abstract_instance_info),
                 pti0_imp_pred_decls         :: list(item_pred_decl_info),
                 pti0_imp_mode_decls         :: list(item_mode_decl_info),
                 pti0_imp_decl_pragmas       :: list(item_decl_pragma_info),

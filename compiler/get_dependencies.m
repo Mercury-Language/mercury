@@ -369,7 +369,7 @@ acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
     % *declared* in interface sections. Therefore calling that predicate
     % on _IntTypeDefns would do nothing.
     list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds),
+        coerce(IntInstances), !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 

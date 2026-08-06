@@ -1544,14 +1544,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     list.reverse(RevImpFinalises0, ImpFinalises0),
     list.reverse(RevImpMutables0, ImpMutables0),
 
-    ( if map.is_empty(InclMap) then
-        IntInstances = IntInstances0,
-        ImpInstances = ImpInstances0
-    else
-        split_concrete_int_instances(IntInstances0,
-            IntInstances, MovedImpInstances),
-        ImpInstances = MovedImpInstances ++ ImpInstances0
-    ),
+    split_concrete_int_instances(IntInstances0,
+        AbsIntInstances, MovedImpInstances),
+    ImpInstances = MovedImpInstances ++ ImpInstances0,
 
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
@@ -1613,7 +1608,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeErrSpecs, TypeWarnSpecs, InstModeErrSpecs, InstModeWarnSpecs,
 
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, AbsIntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
@@ -1632,7 +1627,8 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     % nice to know just *why* this needs to be done.
     %
 :- pred split_concrete_int_instances(list(item_instance_info)::in,
-    list(item_instance_info)::out, list(item_instance_info)::out) is det.
+    list(item_abstract_instance_info)::out, list(item_instance_info)::out)
+    is det.
 
 split_concrete_int_instances(IntInstances0, IntInstances, ImpInstances) :-
     split_concrete_int_instances_acc(IntInstances0,
@@ -1641,27 +1637,34 @@ split_concrete_int_instances(IntInstances0, IntInstances, ImpInstances) :-
     ImpInstances = cord.list(ImpInstanceCord).
 
 :- pred split_concrete_int_instances_acc(list(item_instance_info)::in,
-    cord(item_instance_info)::in, cord(item_instance_info)::out,
+    cord(item_abstract_instance_info)::in,
+        cord(item_abstract_instance_info)::out,
     cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
 
 split_concrete_int_instances_acc([],
-        !IntInstanceCord, !ImpInstanceCord).
+        !AbsIntInstanceCord, !ImpInstanceCord).
 split_concrete_int_instances_acc([IntInstance | IntInstances],
-        !IntInstanceCord, !ImpInstanceCord) :-
-    Body = IntInstance ^ ci_method_instances,
+        !AbsIntInstanceCord, !ImpInstanceCord) :-
+    IntInstance = item_instance_info(ClassName, Types, OrigTypes,
+        DerivingClass, Body0, TVarSet, ContainingModule, Context, SeqNum),
+    % NOTE: Due to the lack of alias tracking, testing the value of a field
+    % does NOT update the compiler's knowledge of the term that the field
+    % came from. We have to rebuild the term to tell the compiler
+    % about AbsIntInstance being an item_abstract_instance_info.
+    Body = instance_body_abstract,
+    AbsIntInstance = item_instance_info(ClassName, Types, OrigTypes,
+        DerivingClass, Body, TVarSet, ContainingModule, Context, SeqNum),
     (
-        Body = instance_body_concrete(_),
-        AbstractIntInstance =
-            IntInstance ^ ci_method_instances := instance_body_abstract,
-        cord.snoc(AbstractIntInstance, !IntInstanceCord),
+        Body0 = instance_body_concrete(_),
+        cord.snoc(AbsIntInstance, !AbsIntInstanceCord),
         cord.snoc(IntInstance, !ImpInstanceCord)
     ;
-        Body = instance_body_abstract,
+        Body0 = instance_body_abstract,
         % Do not put another copy of this item into !ImpInstanceCord.
-        cord.snoc(IntInstance, !IntInstanceCord)
+        cord.snoc(AbsIntInstance, !AbsIntInstanceCord)
     ),
     split_concrete_int_instances_acc(IntInstances,
-        !IntInstanceCord, !ImpInstanceCord).
+        !AbsIntInstanceCord, !ImpInstanceCord).
 
 %---------------------------------------------------------------------------%
 

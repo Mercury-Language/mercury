@@ -384,7 +384,7 @@ mercury_format_parse_tree_module_src(Info, S, ParseTreeModuleSrc, !U) :-
     list.foldl(mercury_format_item_typeclass(Info, S),
         IntTypeClasses, !U),
     list.foldl(mercury_format_item_instance(Info, S),
-        IntInstances, !U),
+        coerce(IntInstances), !U),
     list.foldl(
         mercury_format_item_pred_decl_mu_mc(Info, print_name_only, S),
         IntPredDecls, !U),

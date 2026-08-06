@@ -1,0 +1,5 @@
+instances_pc.instances_pc_helper_1.m:019: Error: [38;5;203minconsistent instance[39;49m
+instances_pc.instances_pc_helper_1.m:019:   [38;5;203mdeclaration[39;49m for typeclass
+instances_pc.instances_pc_helper_1.m:019:   [38;5;87m`instances_pc.foo'/2[39;49m with
+instances_pc.instances_pc_helper_1.m:019:   functional dependency `(A -> B)'.
+instances_pc.int0:005: Here is the conflicting instance.

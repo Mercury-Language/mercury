@@ -131,7 +131,7 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         IntTypeClasses, !Info),
     list.foldl(collect_mq_info_in_item_typeclass(ImpPermissions),
         ImpTypeClasses, !Info),
-    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
+    list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info),
     list.foldl(collect_mq_info_in_item_instance, ImpInstances, !Info),
     list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
         IntPromises, !Info),
