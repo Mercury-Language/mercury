@@ -56,8 +56,6 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
-
-%---------------------------------------------------------------------------%
 %
 % Write out the typeclass table.
 %
@@ -152,9 +150,9 @@ format_method_info(IndentStr, MethodInfo, !State) :-
 % Write out the instance table.
 %
 
-write_instances(Info, Stream, ClassTable, !IO) :-
+write_instances(Info, Stream, InstanceTable, !IO) :-
     State0 = string.builder.init,
-    format_instances(Info, ClassTable, State0, State),
+    format_instances(Info, InstanceTable, State0, State),
     Str = string.builder.to_string(State),
     io.write_string(Stream, Str, !IO).
 
