@@ -215,8 +215,8 @@ format_hlds(ModuleInfo, !State) :-
             DumpTypesClasses = yes,
             LocalOnly = DumpOptions ^ dump_type_table_only_local,
             module_info_get_type_table(ModuleInfo, TypeTable),
-            module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
+            module_info_get_instance_table(ModuleInfo, InstanceTable),
             format_type_table(Info, LocalOnly, TypeTable, !State),
             format_classes(Info, ClassTable, !State),
             format_instances(Info, InstanceTable, !State)
