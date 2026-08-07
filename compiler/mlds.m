@@ -548,7 +548,7 @@
     ;       no_initializer.
 
 :- type initializer_array_size
-    --->    array_size(int)
+    --->    array_size(uint)
     ;       no_size.
             % Either the size is unknown, or the data is not an array.
 
@@ -939,9 +939,9 @@
 
 :- type mlds_maybe_aux_func_id
     --->    proc_func
-    ;       proc_aux_func(int)
+    ;       proc_aux_func(uint)
     ;       gc_trace_for_proc_func
-    ;       gc_trace_for_proc_aux_func(int).
+    ;       gc_trace_for_proc_aux_func(uint).
 
 :- type mlds_proc_label
     --->    mlds_proc_label(mlds_pred_label, proc_id).
@@ -1876,7 +1876,7 @@
     ;       target_code_alloc_id(mlds_alloc_id).
 
 :- type mlds_alloc_id
-    --->    mlds_alloc_id(int).
+    --->    mlds_alloc_id(uint).
 
     % Constructor id.
     %
@@ -2181,18 +2181,18 @@
             ).
 
 :- type ml_scalar_common_type_num
-    --->    ml_scalar_common_type_num(int).
+    --->    ml_scalar_common_type_num(uint).
 :- type ml_vector_common_type_num
-    --->    ml_vector_common_type_num(int).
+    --->    ml_vector_common_type_num(uint).
 
 :- type mlds_scalar_common
     --->    mlds_scalar_common(mlds_module_name, mlds_type,
-                ml_scalar_common_type_num, int).
+                ml_scalar_common_type_num, uint).
             % module name, type, type number, row number
 
 :- type mlds_vector_common
     --->    mlds_vector_common(mlds_module_name, mlds_type,
-                ml_vector_common_type_num, int, int).
+                ml_vector_common_type_num, uint, uint).
             % module name, type, type number,
             % starting row number, number of rows
 
@@ -2274,7 +2274,7 @@
             % used to implement memoization, loopcheck or minimal model
             % semantics for the given procedure.
 
-    ;       gvn_const_var(mlds_global_const_var, int)
+    ;       gvn_const_var(mlds_global_const_var, uint)
             % These MLDS variables are global variables holding constant,
             % immutable data. What kind of data is given by the first argument.
             % The integer is a sequence number (unique within the whole module)
@@ -2316,7 +2316,7 @@
             % are type qualified.
 
 :- type mlds_field_var_name
-    --->    fvn_global_data_field(int, int)
+    --->    fvn_global_data_field(uint, uint)
             % When implementing lookup switches (and some related HLDS
             % constructs, such as lookup disjunctions, which are like
             % lookup switches without the switch), the compiler generates
@@ -2402,7 +2402,7 @@
             % This MLDS variable represents the boxed version of the HLDS
             % variable with the given name and number.
 
-    ;       lvn_prog_var_conv(int, string, int)
+    ;       lvn_prog_var_conv(uint, string, int)
             % This MLDS variable represents a version of a HLDS variable
             % (of the name and number given by the second and third args)
             % created by a boxing or unboxing operation. The first integer
@@ -2432,9 +2432,9 @@
             % lvn_prog_var representing the HLDS variable when the scope
             % succeeds.
 
-    ;       lvn_tscc_proc_input_var(proc_id_in_tscc, int, string)
-    ;       lvn_tscc_output_var(int, string)
-    ;       lvn_tscc_output_var_ptr(int, string)
+    ;       lvn_tscc_proc_input_var(proc_id_in_tscc, uint, string)
+    ;       lvn_tscc_output_var(uint, string)
+    ;       lvn_tscc_output_var_ptr(uint, string)
     ;       lvn_tscc_output_var_succeeded
             % All four of these are used when we generate code for
             % a set of mutually *tail* recursive procedures.
@@ -2495,14 +2495,14 @@
     % The ids are sequentially allocated small integers starting at 1.
     %
 :- type proc_id_in_tscc
-    --->    proc_id_in_tscc(int).
+    --->    proc_id_in_tscc(uint).
 
 :- inst lvn_prog_var for mlds_local_var_name/0
     --->    lvn_prog_var(ground, ground).
 
 :- type mlds_compiler_var
     --->    lvnc_non_prog_var_boxed(string)
-    ;       lvnc_non_prog_var_conv(int, string)
+    ;       lvnc_non_prog_var_conv(uint, string)
     ;       lvnc_non_prog_var_next_value(string)
             % What the lvn_prog_var_boxed, lvn_prog_var_conv, and
             % lvn_prog_var_next_value are to lvn_prog_vars, these are
@@ -2528,35 +2528,35 @@
             % set up its input arguments, and "continue" to the next iteration
             % of the loop.
 
-    ;       lvnc_new_obj(int)
+    ;       lvnc_new_obj(uint)
             % A temporary variable holding the address of a newly allocated
             % object, used by accurate gc. The integer is a unique sequence
             % number allocated from a per-procedure counter that is dedicated
             % for this purpose.
 
-    ;       lvnc_cond(int)
+    ;       lvnc_cond(uint)
             % This MLDS variable records whether the condition of a model_non
             % if-then-else has ever succeeded. The integer is a sequence number
             % allocated from a counter that is dedicated for this purpose.
 
-    ;       lvnc_conv_var(int)
+    ;       lvnc_conv_var(uint)
             % This MLDS variable holds the address of the callee of a generic
             % call (according to the comment creating it, we need a variable
             % to hold the address to work around limitations in old C
             % compilers). The integer is a sequence number allocated from
             % a counter that is dedicated for this purpose.
 
-    ;       lvnc_arg(int)
+    ;       lvnc_arg(uint)
             % This MLDS variable represents the Nth output parameter of
             % a success continuation, where N is the given integer.
 
-    ;       lvnc_wrapper_arg(int)
+    ;       lvnc_wrapper_arg(uint)
             % This MLDS variable represents the Nth parameter of the wrapper
             % function around a procedure, where N is the given integer.
             % We put a wrapper function around procedures when they are used
             % as the code in a closure.
 
-    ;       lvnc_param(int)
+    ;       lvnc_param(uint)
             % This MLDS variable represents the Nth parameter of an MLDS
             % function, where N is the given integer, when the declaration
             % of that function is standardized for printing in an automatically
@@ -2565,7 +2565,7 @@
             % when the actual names of the corresponding procedure's arguments
             % change in the HLDS.
 
-    ;       lvnc_out_param(int)
+    ;       lvnc_out_param(uint)
             % This MLDS variable represents the Nth output parameter of an MLDS
             % function being compiled to C#, where N is the given integer,
             % and N > 1. (The C# backend returns the first output parameter
@@ -2639,7 +2639,7 @@
             % This variable is used by the Java backend.
             % I (zs) do not know what its semantics is.
 
-    ;       lvnc_aux_var(mlds_compiler_aux_var, int)
+    ;       lvnc_aux_var(mlds_compiler_aux_var, uint)
             % These MLDS variables contain values (most, but not all of which
             % are very short-lived) used to implement Mercury constructs
             % such as commits and switches. They contain such information
@@ -2649,7 +2649,7 @@
             % allocated from a counter that is shared between all
             % lvnc_aux_vars.
 
-    ;       lvnc_packed_word(int).
+    ;       lvnc_packed_word(uint).
             % Each of these MLDS variables contains a copy of a word that
             % contains the values of tags and/or arguments packed together.
             % The idea is that for HLDS code such as
@@ -2692,7 +2692,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func ml_global_const_var_name_to_string(mlds_global_const_var, int)
+:- func ml_global_const_var_name_to_string(mlds_global_const_var, uint)
     = string.
 :- func ml_field_var_name_to_string(mlds_field_var_name) = string.
 :- func ml_local_var_name_to_string(mlds_local_var_name) = string.
@@ -2803,7 +2803,8 @@ global_dummy_var = DummyVar :-
 get_initializer_array_size(no_initializer) = no_size.
 get_initializer_array_size(init_obj(_)) = no_size.
 get_initializer_array_size(init_struct(_, _)) = no_size.
-get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
+get_initializer_array_size(init_array(Elems)) =
+    array_size(list.ulength(Elems)).
 
 %---------------------------------------------------------------------------%
 
@@ -3103,12 +3104,12 @@ ml_global_const_var_name_to_string(ConstVar, Num) = Str :-
         ConstVar = mgcv_bit_vector,
         ConstVarStr = "bit_vector"
     ),
-    Str = string.format("%s_%d", [s(ConstVarStr), i(Num)]).
+    Str = string.format("%s_%u", [s(ConstVarStr), u(Num)]).
 
 ml_field_var_name_to_string(FieldVar) = Str :-
     (
         FieldVar = fvn_global_data_field(TypeRawNum, FieldNum),
-        Str = string.format("vct_%d_f_%d", [i(TypeRawNum), i(FieldNum)])
+        Str = string.format("vct_%u_f_%u", [u(TypeRawNum), u(FieldNum)])
     ;
         FieldVar = fvn_du_ctor_field_hld(FieldName),
         % XXX There is nothing to stop the variable names we generate here
@@ -3173,10 +3174,10 @@ ml_local_var_name_to_string(LocalVar) = Str :-
     ;
         LocalVar = lvn_prog_var_conv(ConvSeq, ProgVarName, ProgVarNum),
         ( if ProgVarName = "" then
-            Str = string.format("conv%d_Var_%d", [i(ConvSeq), i(ProgVarNum)])
+            Str = string.format("conv%u_Var_%d", [u(ConvSeq), i(ProgVarNum)])
         else
-            Str = string.format("conv%d_%s_%d",
-                [i(ConvSeq), s(ProgVarName), i(ProgVarNum)])
+            Str = string.format("conv%u_%s_%d",
+                [u(ConvSeq), s(ProgVarName), i(ProgVarNum)])
         )
     ;
         LocalVar = lvn_prog_var_next_value(ProgVarName, ProgVarNum),
@@ -3205,14 +3206,14 @@ ml_local_var_name_to_string(LocalVar) = Str :-
     ;
         LocalVar = lvn_tscc_proc_input_var(proc_id_in_tscc(ProcNum), ArgNum,
             VarName),
-        Str = string.format("tscc_proc_%d_input_%d_%s",
-            [i(ProcNum), i(ArgNum), s(VarName)])
+        Str = string.format("tscc_proc_%u_input_%u_%s",
+            [u(ProcNum), u(ArgNum), s(VarName)])
     ;
         LocalVar = lvn_tscc_output_var(ArgNum, VarName),
-        Str = string.format("tscc_output_%d_%s", [i(ArgNum), s(VarName)])
+        Str = string.format("tscc_output_%u_%s", [u(ArgNum), s(VarName)])
     ;
         LocalVar = lvn_tscc_output_var_ptr(ArgNum, VarName),
-        Str = string.format("tscc_output_ptr_%d_%s", [i(ArgNum), s(VarName)])
+        Str = string.format("tscc_output_ptr_%u_%s", [u(ArgNum), s(VarName)])
     ;
         LocalVar = lvn_tscc_output_var_succeeded,
         Str = string.format("tscc_output_succeeded", [])
@@ -3226,7 +3227,7 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             Str = string.format("boxed_%s", [s(BaseVarStr)])
         ;
             CompVar = lvnc_non_prog_var_conv(ConvSeq, BaseVarStr),
-            Str = string.format("conv%d_%s", [i(ConvSeq), s(BaseVarStr)])
+            Str = string.format("conv%u_%s", [u(ConvSeq), s(BaseVarStr)])
         ;
             CompVar = lvnc_non_prog_var_next_value(BaseVarStr),
             Str = string.format("next_value_of_%s", [s(BaseVarStr)])
@@ -3241,25 +3242,25 @@ ml_local_var_name_to_string(LocalVar) = Str :-
             Str = "tscc_proc_selector"
         ;
             CompVar = lvnc_new_obj(Id),
-            Str = string.format("new_obj_%d", [i(Id)])
+            Str = string.format("new_obj_%u", [u(Id)])
         ;
             CompVar = lvnc_cond(CondNum),
-            Str = string.format("cond_%d", [i(CondNum)])
+            Str = string.format("cond_%u", [u(CondNum)])
         ;
             CompVar = lvnc_conv_var(ConvVarNum),
-            Str = string.format("func_%d", [i(ConvVarNum)])
+            Str = string.format("func_%u", [u(ConvVarNum)])
         ;
             CompVar = lvnc_arg(ArgNum),
-            Str = string.format("arg%d", [i(ArgNum)])
+            Str = string.format("arg%u", [u(ArgNum)])
         ;
             CompVar = lvnc_wrapper_arg(ArgNum),
-            Str = string.format("wrapper_arg_%d", [i(ArgNum)])
+            Str = string.format("wrapper_arg_%u", [u(ArgNum)])
         ;
             CompVar = lvnc_param(ArgNum),
-            Str = string.format("param_%d", [i(ArgNum)])
+            Str = string.format("param_%u", [u(ArgNum)])
         ;
             CompVar = lvnc_out_param(ArgNum),
-            Str = string.format("out_param_%d", [i(ArgNum)])
+            Str = string.format("out_param_%u", [u(ArgNum)])
         ;
             CompVar = lvnc_return_value,
             Str = "return_value"
@@ -3350,10 +3351,10 @@ ml_local_var_name_to_string(LocalVar) = Str :-
                 AuxVar = mcav_case_num,
                 AuxVarStr = "case_num"
             ),
-            Str = string.format("%s_%d", [s(AuxVarStr), i(Num)])
+            Str = string.format("%s_%u", [s(AuxVarStr), u(Num)])
         ;
             CompVar = lvnc_packed_word(Id),
-            Str = string.format("packed_word_%d", [i(Id)])
+            Str = string.format("packed_word_%u", [u(Id)])
         )
     ).
 

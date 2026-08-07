@@ -69,7 +69,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -77,6 +76,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -684,7 +684,7 @@ compute_initial_tail_rec_map_for_none_or_self(ModuleInfo, NoneOrSelf,
             ml_gen_proc_params_inputs_only_no_gc_stmts(ModuleInfo, PredProcId),
         map.lookup(!.InSccMap, PredProcId, InSccInfo0),
         InSccInfo = InSccInfo0 ^ isi_maybe_in_tscc :=
-            in_tscc(proc_id_in_tscc(1), InputParams),
+            in_tscc(proc_id_in_tscc(1u), InputParams),
         map.det_update(PredProcId, InSccInfo, !InSccMap)
     ).
 
@@ -958,7 +958,7 @@ ml_gen_tscc_trial(ProgressStream, ModuleInfo, Target, ConstStructMap,
     reset_in_scc_map(!InSccMap),
     list.map_foldl6(compute_initial_tail_rec_map_for_mutual(ModuleInfo),
         set.to_sorted_list(PredProcIds), PredProcIdArgsInfos,
-        1, _, maybe.no, _, can_generate_code_for_tscc, CanGenerateTscc0,
+        1u, _, maybe.no, _, can_generate_code_for_tscc, CanGenerateTscc0,
         map.init, _OutArgNames, !InSccMap, map.init, SeenAtLabelMap),
 
     % Translate each procedure in the TSCC into a representation of the
@@ -1178,11 +1178,11 @@ separate_mutually_recursive_procs(NoMutualTailRecProcs,
     % TSCC that is convenient to compute at the same time.
     %
 :- pred compute_initial_tail_rec_map_for_mutual(module_info::in,
-    pred_proc_id::in, pred_proc_id_args_info::out, int::in, int::out,
+    pred_proc_id::in, pred_proc_id_args_info::out, uint::in, uint::out,
     maybe(assoc_list(mlds_local_var_name, mlds_type))::in,
     maybe(assoc_list(mlds_local_var_name, mlds_type))::out,
     can_we_generate_code_for_tscc::in, can_we_generate_code_for_tscc::out,
-    map(int, string)::in, map(int, string)::out,
+    map(uint, string)::in, map(uint, string)::out,
     in_scc_map::in, in_scc_map::out,
     seen_at_label_map::in, seen_at_label_map::out) is det.
 
@@ -1191,7 +1191,7 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
         !CanGenerateTscc, !OutArgNames, !InSccMap, !SeenAtLabelMap) :-
     ThisProcNum = !.ProcNum,
     IdInTscc = proc_id_in_tscc(ThisProcNum),
-    !:ProcNum = !.ProcNum + 1,
+    !:ProcNum = !.ProcNum + 1u,
 
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -1296,8 +1296,8 @@ ml_gen_tscc_proc_code(ProgressStream, ModuleInfo, Target, ConstStructMap,
         PredProcId = proc(_PredId, ProcId),
         ProcDesc = describe_proc(include_module_name, PredInfo, ProcId),
         ProcIdInTscc = proc_id_in_tscc(ProcNumInTscc),
-        ProcDescComment = string.format("proc %d in TSCC: %s",
-            [i(ProcNumInTscc), s(ProcDesc)]),
+        ProcDescComment = string.format("proc %u in TSCC: %s",
+            [u(ProcNumInTscc), s(ProcDesc)]),
         CommentStmt = ml_stmt_atomic(comment(ProcDescComment), ProcContext),
 
         ml_gen_info_proc_params(PredProcId, ProcArgTuples, FuncParams,
@@ -1381,8 +1381,8 @@ construct_tscc_entry_proc(ProgressStream, ModuleInfo, LoopKind, PredProcCodes,
     EntryIdInTscc = proc_id_in_tscc(EntryIdInTsccNum),
     EntryProcDesc = describe_proc_from_id(include_module_name,
         ModuleInfo, EntryProc),
-    Comment0 = string.format("The code for TSCC PROC %d: %s.",
-        [i(EntryIdInTsccNum), s(EntryProcDesc)]),
+    Comment0 = string.format("The code for TSCC PROC %u: %s.",
+        [u(EntryIdInTsccNum), s(EntryProcDesc)]),
     CommentStmt0 = ml_stmt_atomic(comment(Comment0), EntryProcContext),
     Comment1 = "Setup for mutual tailcalls optimized into a loop.",
     CommentStmt1 = ml_stmt_atomic(comment(Comment1), EntryProcContext),
@@ -1603,13 +1603,15 @@ make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
     EntryProc = proc_id_in_tscc(EntryProcNum),
     SelectorVarLval = ml_local_var(SelectorVar, SelectorType),
     SetSelectorStmt = ml_stmt_atomic(
-        assign(SelectorVarLval, ml_const(mlconst_int(EntryProcNum))),
+        assign(SelectorVarLval,
+            ml_const(mlconst_int(uint.cast_to_int(EntryProcNum)))),
         EntryProcContext),
 
     set.to_sorted_list(PossibleSwitchValues, PossibleSwitchValuesList),
     SwitchMin = list.det_head(PossibleSwitchValuesList),
     SwitchMax = list.det_last(PossibleSwitchValuesList),
-    SwitchRange = mlds_switch_range(SwitchMin, SwitchMax),
+    SwitchRange = mlds_switch_range(
+        uint.cast_to_int(SwitchMin), uint.cast_to_int(SwitchMax)),
     Default = default_is_unreachable,
     SwitchStmt = ml_stmt_switch(SelectorType, ml_lval(SelectorVarLval),
         SwitchRange, SwitchCases, Default, EntryProcContext),
@@ -1623,7 +1625,7 @@ make_container_proc_with_while_continue(CopyOutValThroughPtrStmts, ReturnStmt,
         CopyOutValThroughPtrStmts ++ [ReturnStmt].
 
 :- pred make_wrapped_proc_with_while_continue(list(mlds_stmt)::in,
-    proc_stmt_info::in, mlds_switch_case::out, set(int)::in, set(int)::out,
+    proc_stmt_info::in, mlds_switch_case::out, set(uint)::in, set(uint)::out,
     list(mlds_local_var_name)::in, list(mlds_local_var_name)::out) is det.
 
 make_wrapped_proc_with_while_continue(GotoEndStmts, ProcStmtInfo, SwitchCase,
@@ -1631,7 +1633,8 @@ make_wrapped_proc_with_while_continue(GotoEndStmts, ProcStmtInfo, SwitchCase,
     ProcStmtInfo = proc_stmt_info(IdInTscc, LoopLocalVars, ProcStmt,
         ProcContext),
     IdInTscc = proc_id_in_tscc(IdInTsccNum),
-    MatchCond = match_value(ml_const(mlconst_int(IdInTsccNum))),
+    MatchCond = match_value(ml_const(mlconst_int(
+        uint.cast_to_int(IdInTsccNum)))),
     SwitchStmt = ml_gen_block([], [], append_to_stmt(ProcStmt, GotoEndStmts),
         ProcContext),
     SwitchCase = mlds_switch_case(MatchCond, [], SwitchStmt),

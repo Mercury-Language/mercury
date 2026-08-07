@@ -1,7 +1,7 @@
 %_---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2020-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2018, 2020-2021, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,9 +98,9 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
-:- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -394,8 +394,8 @@ array_type_suffix_for_c(InitSize) = ArraySuffix :-
         % Standard ANSI/ISO C does not allow arrays of size 0.
         % But the MLDS does. To keep the C compiler happy, we therefore
         % convert zero-element MLDS arrays into one-element C arrays.
-        int.max(Size0, 1, Size),
-        string.format("[%d]", [i(Size)], ArraySuffix)
+        Size = uint.max(Size0, 1u),
+        string.format("[%u]", [u(Size)], ArraySuffix)
     ).
 
 %---------------------------------------------------------------------------%

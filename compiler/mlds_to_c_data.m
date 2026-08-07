@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2024-2025 The Mercury team.
+% Copyright (C) 2018, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -240,16 +240,16 @@ mlds_output_rval(Opts, Rval, Stream, !IO) :-
             ml_scalar_common_type_num(TypeNum), RowNum),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),
-        io.format(Stream, "%s_scalar_common_%d[%d]",
-            [s(MangledModuleName), i(TypeNum), i(RowNum)], !IO)
+        io.format(Stream, "%s_scalar_common_%u[%u]",
+            [s(MangledModuleName), u(TypeNum), u(RowNum)], !IO)
     ;
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
         VectorCommon = mlds_vector_common(ModuleName, _Type,
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),
-        io.format(Stream, "&%s_vector_common_%d[%d + ",
-            [s(MangledModuleName), i(TypeNum), i(StartRowNum)], !IO),
+        io.format(Stream, "&%s_vector_common_%u[%u + ",
+            [s(MangledModuleName), u(TypeNum), u(StartRowNum)], !IO),
         mlds_output_rval(Opts, RowRval, Stream, !IO),
         io.write_string(Stream, "]", !IO)
     ;

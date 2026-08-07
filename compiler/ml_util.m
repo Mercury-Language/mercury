@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2018, 2020, 2022, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -174,9 +174,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
-:- import_module int.
 :- import_module solutions.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -947,13 +947,13 @@ mlds_maybe_aux_func_id_to_suffix(MaybeAux) = Suffix :-
         Suffix = ""
     ;
         MaybeAux = proc_aux_func(SeqNum),
-        Suffix = string.format("_%d", [i(SeqNum)])
+        Suffix = string.format("_%u", [u(SeqNum)])
     ;
         MaybeAux = gc_trace_for_proc_func,
-        Suffix = string.format("_%d", [i(10000)])
+        Suffix = string.format("_%u", [u(10000u)])
     ;
         MaybeAux = gc_trace_for_proc_aux_func(SeqNum),
-        Suffix = string.format("_%d", [i(10001 + SeqNum)])
+        Suffix = string.format("_%u", [u(10001u + SeqNum)])
     ).
 
 %---------------------------------------------------------------------------%

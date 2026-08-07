@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2021, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -180,14 +180,14 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
 
     IndentStr = indent2_string(Indent),
     TypeStr = type_to_string_for_csharp(Info, Type),
-    io.format(Stream, "%sprivate static readonly %s[] MR_scalar_common_%d = ",
-        [s(IndentStr), s(TypeStr), i(TypeRawNum)], !IO),
+    io.format(Stream, "%sprivate static readonly %s[] MR_scalar_common_%u = ",
+        [s(IndentStr), s(TypeStr), u(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_csharp(Info, Stream,
         init_array(RowInits), yes(ArrayType), ";", !IO),
 
     MLDS_ModuleName = Info ^ csoi_module_name,
     record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
-        RowInits, 0, _, !InitMap, !DepGraph).
+        RowInits, 0u, _, !InitMap, !DepGraph).
 
 :- pred output_scalar_init_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -199,8 +199,8 @@ output_scalar_init_for_csharp(Info, Stream, Indent, Map, Scalar, !IO) :-
     map.lookup(Map, Scalar, Initializer),
     Scalar = mlds_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
-    io.format(Stream, "%sMR_scalar_common_%d[%d] =\n",
-        [s(IndentStr), i(TypeRawNum), i(RowNum)], !IO),
+    io.format(Stream, "%sMR_scalar_common_%u[%u] =\n",
+        [s(IndentStr), u(TypeRawNum), u(RowNum)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
         Indent + 1u, Initializer, yes(Type), ";", !IO).
 
@@ -233,8 +233,8 @@ output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
     IndentStr = indent2_string(Indent),
     TypeStr = type_to_string_for_csharp(Info, Type),
     io.format(Stream,
-        "%sprivate static /* readonly */ %s[] MR_vector_common_%d;\n",
-        [s(IndentStr), s(TypeStr), i(TypeRawNum)], !IO).
+        "%sprivate static /* readonly */ %s[] MR_vector_common_%u;\n",
+        [s(IndentStr), s(TypeStr), u(TypeRawNum)], !IO).
 
 :- pred output_vector_cell_init_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -250,8 +250,8 @@ output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
     CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
         RowInits),
     TypeStr = type_to_string_for_csharp(Info, Type),
-    io.format(Stream, "%sMR_vector_common_%d = new %s[]\n",
-        [s(IndentStr), i(TypeRawNum), s(TypeStr)], !IO),
+    io.format(Stream, "%sMR_vector_common_%u = new %s[]\n",
+        [s(IndentStr), u(TypeRawNum), s(TypeStr)], !IO),
     io.format(Stream, "%s{\n", [s(Indent1Str)], !IO),
     output_nonempty_initializer_body_list_for_csharp(Info, Stream, Indent + 2u,
         cord.list(RowInits), "", !IO),

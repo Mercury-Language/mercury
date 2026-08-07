@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2021-2023, 2025 The Mercury team.
+% Copyright (C) 2017-2018, 2021-2023, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -275,7 +275,7 @@
     code_model::in, prog_context::in, proc_id_in_tscc::in, var_table::in,
     list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     list(var_mvar_type_mode)::out,
-    map(int, string)::in, map(int, string)::out,
+    map(uint, string)::in, map(uint, string)::out,
     list(mlds_argument)::out, mlds_func_params::out,
     assoc_list(mlds_rval, mlds_type)::out,
     assoc_list(mlds_local_var_name, mlds_type)::out,
@@ -353,6 +353,7 @@
 :- import_module require.
 :- import_module term.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -784,8 +785,8 @@ ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
     package_vars_types_modes(ModuleInfo, VarTable, Vars, Types, Modes,
         ArgTuples),
-    NextInArgNum0 = 1,
-    NextOutArgNum0 = 1,
+    NextInArgNum0 = 1u,
+    NextOutArgNum0 = 1u,
     ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context,
         ProcIdInTscc, ArgTuples, NextInArgNum0, NextOutArgNum0,
         !OutArgNames, TsccInArgs, TsccArgs, ReturnRvalsTypes0, OutVarsTypes0,
@@ -832,7 +833,7 @@ ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
 
 :- pred ml_gen_tscc_arg_decls(module_info::in, copy_out_when::in,
     prog_context::in, proc_id_in_tscc::in, list(var_mvar_type_mode)::in,
-    int::in, int::in, map(int, string)::in, map(int, string)::out,
+    uint::in, uint::in, map(uint, string)::in, map(uint, string)::out,
     list(mlds_argument)::out, list(mlds_argument)::out,
     assoc_list(mlds_rval, mlds_type)::out,
     assoc_list(mlds_local_var_name, mlds_type)::out,
@@ -880,7 +881,7 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
             (
                 HeadMode = top_in,
                 InArgNum = NextInArgNum0,
-                NextInArgNum = NextInArgNum0 + 1,
+                NextInArgNum = NextInArgNum0 + 1u,
                 NextOutArgNum = NextOutArgNum0,
                 HeadTsccInVar = lvn_tscc_proc_input_var(ProcIdInTscc,
                     InArgNum, HeadVarNameStr),
@@ -911,7 +912,7 @@ ml_gen_tscc_arg_decls(ModuleInfo, CopyOutWhen, Context, ProcIdInTscc,
                 HeadMode = top_out,
                 OutArgNum = NextOutArgNum0,
                 NextInArgNum = NextInArgNum0,
-                NextOutArgNum = NextOutArgNum0 + 1,
+                NextOutArgNum = NextOutArgNum0 + 1u,
                 ( if map.search(!.OutArgNames, OutArgNum, OldOutArgName) then
                     OutArgName = OldOutArgName
                 else

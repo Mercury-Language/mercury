@@ -103,6 +103,7 @@
 :- import_module require.
 :- import_module set_tree234.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -425,9 +426,10 @@ ml_gen_plain_tail_call(CalleePredProcId, CodeModel, Context, ArgVars, Features,
                             SelectorVar =
                                 lvn_comp_var(lvnc_tscc_proc_selector),
                             SelectorLval = ml_local_var(SelectorVar, IntType),
+                            TsccProcNumI = uint.cast_to_int(TsccProcNum),
                             SetSelectorStmt = ml_stmt_atomic(
                                 assign(SelectorLval,
-                                    ml_const(mlconst_int(TsccProcNum))),
+                                    ml_const(mlconst_int(TsccProcNumI))),
                                 Context),
                             SetSelectorStmts = [SetSelectorStmt]
                         ),
@@ -868,12 +870,12 @@ ml_gen_success_cont(OutputArgLvalsTypes, Context, NewCont, ContDecls, !Info) :-
     mlds_func_params::out) is det.
 
 ml_gen_cont_params(OutputArgLvalsTypes, Params) :-
-    ml_gen_cont_params_loop(OutputArgLvalsTypes, 1, Args0),
+    ml_gen_cont_params_loop(OutputArgLvalsTypes, 1u, Args0),
     ml_declare_env_ptr_arg(EnvPtrArg),
     Args = Args0 ++ [EnvPtrArg],
     Params = mlds_func_params(Args, []).
 
-:- pred ml_gen_cont_params_loop(assoc_list(mlds_lval, mlds_type)::in, int::in,
+:- pred ml_gen_cont_params_loop(assoc_list(mlds_lval, mlds_type)::in, uint::in,
     list(mlds_argument)::out) is det.
 
 ml_gen_cont_params_loop([], _, []).
@@ -886,16 +888,16 @@ ml_gen_cont_params_loop([_Lval - Type | LvalsTypes], ArgNum,
     % responsibility of filling this in properly if needed.
     GCStmt = gc_no_stmt,
     Argument = mlds_argument(ArgName, Type, GCStmt),
-    ml_gen_cont_params_loop(LvalsTypes, ArgNum + 1, Arguments).
+    ml_gen_cont_params_loop(LvalsTypes, ArgNum + 1u, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(assoc_list(mlds_lval, mlds_type)::in,
     prog_context::in, list(mlds_stmt)::out) is det.
 
 ml_gen_copy_args_to_locals(ArgLvalsTypes, Context, CopyStmts) :-
-    ml_gen_copy_args_to_locals_loop(ArgLvalsTypes, 1, Context, CopyStmts).
+    ml_gen_copy_args_to_locals_loop(ArgLvalsTypes, 1u, Context, CopyStmts).
 
 :- pred ml_gen_copy_args_to_locals_loop(assoc_list(mlds_lval, mlds_type)::in,
-    int::in, prog_context::in, list(mlds_stmt)::out) is det.
+    uint::in, prog_context::in, list(mlds_stmt)::out) is det.
 
 ml_gen_copy_args_to_locals_loop([], _, _, []).
 ml_gen_copy_args_to_locals_loop([LocalLvalType | LocalLvalsTypes], ArgNum,
@@ -904,7 +906,7 @@ ml_gen_copy_args_to_locals_loop([LocalLvalType | LocalLvalsTypes], ArgNum,
     ArgName = lvn_comp_var(lvnc_arg(ArgNum)),
     ArgLval = ml_local_var(ArgName, Type),
     Stmt = ml_gen_assign(LocalLval, ml_lval(ArgLval), Context),
-    ml_gen_copy_args_to_locals_loop(LocalLvalsTypes, ArgNum + 1,
+    ml_gen_copy_args_to_locals_loop(LocalLvalsTypes, ArgNum + 1u,
         Context, Stmts).
 
 %---------------------------------------------------------------------------%

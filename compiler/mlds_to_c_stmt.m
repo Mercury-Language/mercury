@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2025 The Mercury team.
+% Copyright (C) 2018-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1111,7 +1111,7 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
 maybe_alloc_id_to_string(MaybeAllocId) = MaybeAllocIdStr :-
     (
         MaybeAllocId = yes(mlds_alloc_id(Num)),
-        string.format("&MR_alloc_sites[%d]", [i(Num)], MaybeAllocIdStr)
+        string.format("&MR_alloc_sites[%u]", [u(Num)], MaybeAllocIdStr)
     ;
         MaybeAllocId = no,
         MaybeAllocIdStr = "NULL"

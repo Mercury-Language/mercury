@@ -844,7 +844,7 @@ ml_gen_pred_label_from_rtti(_ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 
 ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),
-    Label = mlds_label("label_" ++ string.int_to_string(LabelNum)).
+    Label = mlds_label("label_" ++ string.uint_to_string(LabelNum)).
 
 %---------------------------------------------------------------------------%
 %

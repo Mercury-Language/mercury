@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2020-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2017-2018, 2020-2021, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -217,7 +217,7 @@
 
 :- pred record_scalar_inits_build_dep_graph(mlds_module_name::in,
     mlds_type::in, ml_scalar_common_type_num::in,
-    list(mlds_initializer)::in, int::in, int::out,
+    list(mlds_initializer)::in, uint::in, uint::out,
     map(mlds_scalar_common, mlds_initializer)::in,
     map(mlds_scalar_common, mlds_initializer)::out,
     digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
@@ -276,7 +276,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module char.
-:- import_module int.
 :- import_module library.
 :- import_module maybe.
 :- import_module pair.
@@ -541,7 +540,7 @@ record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
     digraph.add_vertex(Scalar, _Key, !DepGraph),
     add_scalar_initializer_deps(Scalar, Initializer, !DepGraph),
 
-    !:RowNum = !.RowNum + 1,
+    !:RowNum = !.RowNum + 1u,
     record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
         Initializers, !RowNum, !InitMap, !DepGraph).
 

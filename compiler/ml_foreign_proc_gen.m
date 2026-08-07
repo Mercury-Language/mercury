@@ -500,7 +500,7 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
         ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
         ml_gen_proc_label(ModuleInfo, PredProcId, _Module, ProcLabel),
         ml_gen_info_get_global_data(!.Info, GlobalData0),
-        ml_gen_alloc_site(mlds_function_name(ProcLabel), no, 0, Context,
+        ml_gen_alloc_site(mlds_function_name(ProcLabel), no, 0u, Context,
             AllocId, GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
         HashDefine = [

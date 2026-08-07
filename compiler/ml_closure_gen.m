@@ -117,6 +117,7 @@
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -733,8 +734,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     else
         unexpected($pred, "list.drop failed")
     ),
-    NumWrapperHeadVars = list.length(WrapperHeadVars),
-    WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1, NumWrapperHeadVars),
+    NumWrapperHeadVars = list.ulength(WrapperHeadVars),
+    WrapperHeadVarNames =
+        ml_gen_wrapper_head_var_names(1u, NumWrapperHeadVars),
     % We can't generate correct gc statements for the wrapper args, because
     % we don't have type_infos for the type variables in WrapperBoxedArgTypes.
     % We handle this by simply not generating such statements, since they are
@@ -1015,14 +1017,14 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
         Context, ClosureGCStmt, !Info).
 
-:- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_local_var_name).
+:- func ml_gen_wrapper_head_var_names(uint, uint) = list(mlds_local_var_name).
 
 ml_gen_wrapper_head_var_names(Num, Max) = VarNames :-
     ( if Num > Max then
         VarNames = []
     else
         HeadVarName = lvn_comp_var(lvnc_wrapper_arg(Num)),
-        TailVarNames = ml_gen_wrapper_head_var_names(Num + 1, Max),
+        TailVarNames = ml_gen_wrapper_head_var_names(Num + 1u, Max),
         VarNames = [HeadVarName | TailVarNames]
     ).
 

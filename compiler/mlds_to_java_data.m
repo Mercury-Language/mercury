@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -293,16 +293,16 @@ output_rval_for_java(Info, Rval, Stream, !IO) :-
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(ModuleSymName, module_qual, "__",
             MangledModuleName),
-        io.format(Stream, "%s.MR_scalar_common_%d[%d]",
-            [s(MangledModuleName),i(TypeNum), i(RowNum)], !IO)
+        io.format(Stream, "%s.MR_scalar_common_%u[%u]",
+            [s(MangledModuleName), u(TypeNum), u(RowNum)], !IO)
     ;
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
         VectorCommon = mlds_vector_common(_ModuleName, _Type,
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         % XXX Why do we print a "MangledModuleName." prefix for scalar common
         % addresses but not for vector common addresses?
-        io.format(Stream, "MR_vector_common_%d[%d + ",
-            [i(TypeNum), i(StartRowNum)], !IO),
+        io.format(Stream, "MR_vector_common_%u[%u + ",
+            [u(TypeNum), u(StartRowNum)], !IO),
         output_rval_for_java(Info, RowRval, Stream, !IO),
         io.write_string(Stream, "]", !IO)
     ;

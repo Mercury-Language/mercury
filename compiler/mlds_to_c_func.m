@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2018, 2020, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,7 +71,6 @@
 
 :- import_module bool.
 :- import_module char.
-:- import_module int.
 :- import_module maybe.
 :- import_module string.
 :- import_module uint.
@@ -119,7 +118,7 @@ mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
         Parameters = Parameters0
     ;
         StdDecl = yes,
-        list.map_foldl(standardize_param_names, Parameters0, Parameters, 1, _)
+        list.map_foldl(standardize_param_names, Parameters0, Parameters, 1u, _)
     ),
     IndentStr = indent2_string(Indent),
     QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
@@ -153,13 +152,13 @@ mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
     ).
 
 :- pred standardize_param_names(mlds_argument::in, mlds_argument::out,
-    int::in, int::out) is det.
+    uint::in, uint::out) is det.
 
 standardize_param_names(!Argument, !ArgNum) :-
     VarName = lvn_comp_var(lvnc_param(!.ArgNum)),
     !.Argument = mlds_argument(_VarName0, Type, GCStmt),
     !:Argument = mlds_argument(VarName, Type, GCStmt),
-    !:ArgNum = !.ArgNum + 1.
+    !:ArgNum = !.ArgNum + 1u.
 
 :- pred mlds_output_params_in_parens(mlds_to_c_opts::in,
     io.text_output_stream::in, type_prefix_suffix::in(type_prefix_suffix),

@@ -58,7 +58,7 @@
                 mscg_type           :: mlds_type,
                 mscg_array_size     :: initializer_array_size,
 
-                mscg_counter        :: counter, % next cell number
+                mscg_counter        :: ucounter, % next cell number
                 mscg_members        :: bimap(mlds_initializer,
                                         mlds_scalar_common),
                 mscg_rows           :: cord(mlds_initializer)
@@ -73,7 +73,7 @@
                 mvcg_type_defn      :: mlds_struct_defn,
                 mvcg_field_ids      :: list(mlds_field_id),
 
-                mvcg_next_row       :: int,
+                mvcg_next_row       :: uint,
                 mvcg_rows           :: cord(mlds_initializer)
             ).
 
@@ -82,7 +82,7 @@
                 masd_proc_label     :: mlds_function_name,
                 masd_context        :: prog_context,
                 masd_type           :: string,
-                masd_size           :: int
+                masd_size           :: uint
             ).
 
     % Initialize the ml_global_data structure to a value that represents
@@ -208,7 +208,7 @@
 
     % Generate or look up an allocation site.
     %
-:- pred ml_gen_alloc_site(mlds_function_name::in, maybe(cons_id)::in, int::in,
+:- pred ml_gen_alloc_site(mlds_function_name::in, maybe(cons_id)::in, uint::in,
     prog_context::in, mlds_alloc_id::out,
     ml_global_data::in, ml_global_data::out) is det.
 
@@ -223,9 +223,9 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -247,13 +247,13 @@
                 mgd_use_common_cells            :: use_common_cells,
                 mgd_have_unboxed_floats         :: have_unboxed_floats,
                 mgd_have_unboxed_int64s         :: have_unboxed_int64s,
-                mgd_const_counter               :: counter,
+                mgd_const_counter               :: ucounter,
 
                 mgd_cell_defns                  :: cord(mlds_global_var_defn),
                 mgd_rtti_defns                  :: cord(mlds_global_var_defn),
                 mgd_closure_wrapper_funcs       :: cord(mlds_function_defn),
 
-                mgd_cell_type_counter           :: counter,
+                mgd_cell_type_counter           :: ucounter,
 
                 mgd_scalar_type_num_map         :: ml_scalar_cell_type_map,
                 mgd_scalar_cell_group_map       :: ml_scalar_cell_map,
@@ -261,7 +261,7 @@
                 mgd_vector_type_num_map         :: ml_vector_cell_type_map,
                 mgd_vector_cell_group_map       :: ml_vector_cell_map,
 
-                mgd_alloc_id_counter            :: counter,
+                mgd_alloc_id_counter            :: ucounter,
                 mgd_alloc_id_map                :: ml_alloc_id_map
             ).
 
@@ -270,10 +270,10 @@
 ml_global_data_init(Target, UseCommonCells,
         HaveUnboxedFloats, HaveUnboxedInt64s) = GlobalData :-
     GlobalData = ml_global_data(map.init, Target, UseCommonCells,
-        HaveUnboxedFloats, HaveUnboxedInt64s, counter.init(1),
+        HaveUnboxedFloats, HaveUnboxedInt64s, counter.uinit(1u),
         cord.init, cord.init, cord.init,
-        counter.init(1), map.init, map.init, map.init, map.init,
-        counter.init(0), bimap.init).
+        counter.uinit(1u), map.init, map.init, map.init, map.init,
+        counter.uinit(0u), bimap.init).
 
 ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, AllocIds,
@@ -296,7 +296,7 @@ ml_global_data_get_all_global_defns(GlobalData,
 %
 
 :- pred ml_global_data_get_const_counter(ml_global_data::in,
-    counter::out) is det.
+    ucounter::out) is det.
 :- pred ml_global_data_get_cell_defns(ml_global_data::in,
     cord(mlds_global_var_defn)::out) is det.
 :- pred ml_global_data_get_rtti_defns(ml_global_data::in,
@@ -321,7 +321,7 @@ ml_global_data_get_closure_wrapper_func_defns(GlobalData, X) :-
 
 :- pred ml_global_data_set_pdup_rval_type_map(ml_rtti_rval_type_map::in,
     ml_global_data::in, ml_global_data::out) is det.
-:- pred ml_global_data_set_const_counter(counter::in,
+:- pred ml_global_data_set_const_counter(ucounter::in,
     ml_global_data::in, ml_global_data::out) is det.
 :- pred ml_global_data_set_cell_defns(cord(mlds_global_var_defn)::in,
     ml_global_data::in, ml_global_data::out) is det.
@@ -435,11 +435,11 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
                 true
             else
                 !:CellGroup = ml_scalar_cell_group(ConstType,
-                    InitArraySize, counter.init(0), bimap.init, cord.empty)
+                    InitArraySize, counter.uinit(0u), bimap.init, cord.empty)
             )
         else
             TypeNumCounter0 = !.GlobalData ^ mgd_cell_type_counter,
-            counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
+            counter.uallocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
             TypeNum = ml_scalar_common_type_num(TypeRawNum),
             !GlobalData ^ mgd_cell_type_counter := TypeNumCounter,
 
@@ -447,11 +447,11 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
             !GlobalData ^ mgd_scalar_type_num_map := TypeNumMap,
 
             !:CellGroup = ml_scalar_cell_group(ConstType,
-                InitArraySize, counter.init(0), bimap.init, cord.empty)
+                InitArraySize, counter.uinit(0u), bimap.init, cord.empty)
         ),
 
         RowCounter0 = !.CellGroup ^ mscg_counter,
-        counter.allocate(RowNum, RowCounter0, RowCounter),
+        counter.uallocate(RowNum, RowCounter0, RowCounter),
         MembersMap0 = !.CellGroup ^ mscg_members,
         NewCommon =
             mlds_scalar_common(MLDS_ModuleName, ConstType, TypeNum, RowNum),
@@ -483,7 +483,7 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
 ml_gen_plain_static_defn(ConstVarKind, ConstType,
         Initializer, Context, VarName, !GlobalData) :-
     ml_global_data_get_const_counter(!.GlobalData, ConstCounter0),
-    counter.allocate(ConstNum, ConstCounter0, ConstCounter),
+    counter.uallocate(ConstNum, ConstCounter0, ConstCounter),
     ml_global_data_set_const_counter(ConstCounter, !GlobalData),
 
     VarName = gvn_const_var(ConstVarKind, ConstNum),
@@ -604,8 +604,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         CellGroup = ml_vector_cell_group(StructType, _TypeDefn, FieldIds, _, _)
     else
         TypeNumCounter0 = !.GlobalData ^ mgd_cell_type_counter,
-        counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
-        TypeRawNumStr = string.int_to_string(TypeRawNum),
+        counter.uallocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
+        TypeRawNumStr = string.uint_to_string(TypeRawNum),
         TypeNum = ml_vector_common_type_num(TypeRawNum),
         !GlobalData ^ mgd_cell_type_counter := TypeNumCounter,
 
@@ -614,7 +614,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
 
         FieldFlags = mlds_field_var_decl_flags(per_instance, const),
         ml_gen_vector_cell_field_types(Context, FieldFlags,
-            TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
+            TypeRawNum, 0u, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
         StructName = "vector_common_type_" ++ TypeRawNumStr,
         StructId = mlds_struct_id(MLDS_ModuleName, StructName),
@@ -639,7 +639,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
            FieldIds),
 
         CellGroup = ml_vector_cell_group(StructType, StructDefn,
-            FieldIds, 0, cord.empty),
+            FieldIds, 0u, cord.empty),
 
         CellGroupMap0 = !.GlobalData ^ mgd_vector_cell_group_map,
         map.det_insert(TypeNum, CellGroup, CellGroupMap0, CellGroupMap),
@@ -647,7 +647,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
     ).
 
 :- pred ml_gen_vector_cell_field_types(prog_context::in,
-    mlds_field_var_decl_flags::in, int::in, int::in, list(mlds_type)::in,
+    mlds_field_var_decl_flags::in, uint::in, uint::in, list(mlds_type)::in,
     list(mlds_field_var_name)::out, list(mlds_field_var_defn)::out,
     list(mlds_field_info)::out) is det.
 
@@ -660,7 +660,7 @@ ml_gen_vector_cell_field_types(Context, Flags, TypeRawNum, FieldNum,
         Type, no_initializer, gc_no_stmt),
     FieldInfo = mlds_field_info(FieldVarName, Type, gc_no_stmt, Context),
     ml_gen_vector_cell_field_types(Context, Flags, TypeRawNum,
-        FieldNum + 1, Types, FieldVarNames, FieldDataDefns, FieldInfos).
+        FieldNum + 1u, Types, FieldVarNames, FieldDataDefns, FieldInfos).
 
 :- pred make_named_fields(mlds_module_name::in, mlds_type::in,
     list(mlds_field_var_name)::in, list(mlds_field_id)::out) is det.
@@ -675,7 +675,7 @@ make_named_fields(MLDS_ModuleName, StructType, [FieldName | FieldNames],
 ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
         !GlobalData) :-
     some [!CellGroup] (
-        list.length(RowInitializers, NumRows),
+        list.ulength(RowInitializers, NumRows),
         CellGroupMap0 = !.GlobalData ^ mgd_vector_cell_group_map,
         map.lookup(CellGroupMap0, TypeNum, !:CellGroup),
 
@@ -713,7 +713,7 @@ ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
         AllocId = AllocId0
     else
         Counter0 = !.GlobalData ^ mgd_alloc_id_counter,
-        counter.allocate(AllocIdNum, Counter0, Counter),
+        counter.uallocate(AllocIdNum, Counter0, Counter),
         AllocId = mlds_alloc_id(AllocIdNum),
         bimap.det_insert(AllocId, AllocData, Map0, Map),
         !GlobalData ^ mgd_alloc_id_counter := Counter,

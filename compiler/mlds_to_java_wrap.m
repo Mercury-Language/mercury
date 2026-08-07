@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -64,6 +64,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -225,7 +226,7 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     mlds_argument::out) is det.
 
 create_generic_arg(I, ArgName, Arg) :-
-    ArgName = lvn_comp_var(lvnc_arg(I)),
+    ArgName = lvn_comp_var(lvnc_arg(uint.cast_from_int(I))),
     Arg = mlds_argument(ArgName, mlds_generic_type, gc_no_stmt).
 
 :- type call_method_inputs

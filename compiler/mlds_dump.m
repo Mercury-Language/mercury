@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2020-2025 The Mercury team.
+% Copyright (C) 2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -584,7 +584,7 @@ mlds_lval_to_strcord(Lval) = Cord :-
                 GlobalConstVar = mgcv_bit_vector,
                 GlobalCord = strcord("global bit vector ")
             ),
-            Cord = GlobalCord ++ intcord(SeqNum)
+            Cord = GlobalCord ++ uintcord(SeqNum)
         ;
             GlobalVar = gvn_dummy_var,
             Cord = strcord("dummy_var")
@@ -785,19 +785,19 @@ mlds_rval_const_to_strcord(Const) = Cord :-
 
 mlds_scalar_common_to_strcord(ScalarCommon) = Cord :-
     ScalarCommon = mlds_scalar_common(_ModuleName, _Type, TypeNum, RowNum),
-    TypeNum = ml_scalar_common_type_num(TypeNumInt),
-    Cord = strcord("scalar_common(type ") ++ intcord(TypeNumInt) ++
-        comma_cord ++ strcord("row ") ++ intcord(RowNum) ++ strcord(")").
+    TypeNum = ml_scalar_common_type_num(TypeNumUInt),
+    Cord = strcord("scalar_common(type ") ++ uintcord(TypeNumUInt) ++
+        comma_cord ++ strcord("row ") ++ uintcord(RowNum) ++ strcord(")").
 
 :- func mlds_vector_common_to_strcord(mlds_vector_common) = strcord.
 
 mlds_vector_common_to_strcord(VectorCommon) = Cord :-
     VectorCommon = mlds_vector_common(_ModuleName, _Type, TypeNum,
         StartRowNum, NumRows),
-    TypeNum = ml_vector_common_type_num(TypeNumInt),
-    Cord = strcord("vector_common(type ") ++ intcord(TypeNumInt) ++
-        comma_cord ++ strcord("start row ") ++ intcord(StartRowNum) ++
-        comma_cord ++ strcord("num rows ") ++ intcord(NumRows) ++ strcord(")").
+    TypeNum = ml_vector_common_type_num(TypeNumUInt),
+    Cord = strcord("vector_common(type ") ++ uintcord(TypeNumUInt) ++
+        comma_cord ++ strcord("start row ") ++ uintcord(StartRowNum) ++
+        comma_cord ++ strcord("num rows ") ++ uintcord(NumRows) ++ strcord(")").
 
 :- func unop_to_strcord(unary_op) = strcord.
 
@@ -1249,8 +1249,8 @@ mercury_type_to_strcord(MerType) = Cord :-
 mlds_field_var_name_to_strcord(FieldVarName) = Cord :-
     (
         FieldVarName = fvn_global_data_field(TypeNum, FieldNum),
-        Str = string.format("global data field <type %d, field %d>",
-            [i(TypeNum), i(FieldNum)]),
+        Str = string.format("global data field <type %u, field %u>",
+            [u(TypeNum), u(FieldNum)]),
         Cord = strcord(Str)
     ;
         FieldVarName = fvn_du_ctor_field_hld(FieldName),
@@ -1400,13 +1400,13 @@ mlds_func_label_to_strcord(FuncLabel) = Cord :-
         AuxCord = cord.init
     ;
         MaybeAuxFuncId = proc_aux_func(SeqNum),
-        AuxCord = strcord("$aux_") ++ intcord(SeqNum)
+        AuxCord = strcord("$aux_") ++ uintcord(SeqNum)
     ;
         MaybeAuxFuncId = gc_trace_for_proc_func,
         AuxCord = strcord("$gc")
     ;
         MaybeAuxFuncId = gc_trace_for_proc_aux_func(SeqNum),
-        AuxCord = strcord("$gc_aux_") ++ intcord(SeqNum)
+        AuxCord = strcord("$gc_aux_") ++ uintcord(SeqNum)
     ),
     Cord = PredCord ++ ProcCord ++ AuxCord.
 
@@ -1423,6 +1423,10 @@ strcord(Str) = cord.singleton(Str).
 :- func intcord(int) = strcord.
 
 intcord(N) = cord.singleton(string.int_to_string(N)).
+
+:- func uintcord(uint) = strcord.
+
+uintcord(N) = cord.singleton(string.uint_to_string(N)).
 
 :- func indent_strcord(int) = strcord.
 

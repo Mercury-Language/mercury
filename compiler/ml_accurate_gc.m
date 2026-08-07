@@ -420,7 +420,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
                 fnoi_locals         :: cord(mlds_local_var_defn),
 
                 % A counter used to allocate variable names.
-                fnoi_next_id        :: counter
+                fnoi_next_id        :: ucounter
             ).
 
     % Replace all heap allocation (new_object instructions) with stack
@@ -432,7 +432,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     list(mlds_local_var_defn)::out) is det.
 
 fixup_newobj(ModuleName, Stmt0, Stmt, Defns) :-
-    Info0 = fixup_newobj_info(ModuleName, cord.init, counter.init(0)),
+    Info0 = fixup_newobj_info(ModuleName, cord.init, counter.uinit(0u)),
     fixup_newobj_in_stmt(Stmt0, Stmt, Info0, Info),
     Defns = cord.to_list(Info ^ fnoi_locals).
 
@@ -528,7 +528,7 @@ fixup_newobj_in_atomic_statement(Stmt0, Stmt, !Fixup) :-
         % length of the array is. We initialize it with null pointers and then
         % later generate assignment statements to fill in the values properly
         % (see below).
-        counter.allocate(Id, !.Fixup ^ fnoi_next_id, NextId),
+        counter.uallocate(Id, !.Fixup ^ fnoi_next_id, NextId),
         VarName = lvn_comp_var(lvnc_new_obj(Id)),
         VarType = mlds_array_type(mlds_generic_type),
         NullPointers = list.duplicate(list.length(ArgRvalsTypes),

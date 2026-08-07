@@ -484,8 +484,8 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         ExtraRHSRvalsTypesWidths ++ PackedRHSRvalsTypesWidths,
 
     % Compute the number of words to allocate.
-    list.length(RHSRvalsTypesWidths, Size),
-    SizeInWordsRval = ml_const(mlconst_int(Size)),
+    list.ulength(RHSRvalsTypesWidths, Size),
+    SizeInWordsRval = ml_const(mlconst_int(uint.cast_to_int(Size))),
 
     % Generate an allocation site id.
     ml_gen_info_get_profile_memory(!.Info, ProfileMemory),

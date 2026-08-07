@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020, 2023-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -46,7 +46,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module maybe.
 :- import_module string.
 :- import_module term.
@@ -138,7 +137,7 @@ output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
         FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
         get_return_type_and_out_params_for_csharp(Info, RetTypes,
             RetTypeStr, OutParamTypes),
-        list.map_foldl(make_out_param, OutParamTypes, OutParams, 2, _),
+        list.map_foldl(make_out_param, OutParamTypes, OutParams, 2u, _),
         ParamsStr = params_to_string_for_csharp(Info, Indent,
             Parameters ++ OutParams),
         io.format(Stream, "%s %s%s\n",
@@ -146,9 +145,9 @@ output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
     ).
 
 :- pred make_out_param(mlds_type::in, mlds_argument::out,
-    int::in, int::out) is det.
+    uint::in, uint::out) is det.
 
-make_out_param(Type, Argument, Num, Num + 1) :-
+make_out_param(Type, Argument, Num, Num + 1u) :-
     VarName = lvn_comp_var(lvnc_out_param(Num)),
     Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
