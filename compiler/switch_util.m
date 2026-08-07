@@ -640,7 +640,7 @@ num_is_in_range(PredIdInt, MinStr, MaxStr) :-
         % Cannot be less than the minimum if there is no minimum.
         true
     else if string.to_int(MinStr, Min) then
-        Min =< PredIdInt 
+        Min =< PredIdInt
     else
         unexpected($pred, "minimum is not a number")
     ),
