@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -915,7 +915,10 @@ mode_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
 typeclass_visibility_to_xml(Status) =
         tagged_string("visibility", Visibility) :-
     ( if typeclass_status_defined_in_impl_section(Status) = yes then
-        ( if Status = typeclass_status(status_abstract_exported) then
+        ( if
+            Status = typeclass_defined_in_this_module(Export),
+            Export = typeclass_export_gen_abs_sub_full
+        then
             Visibility = "abstract"
         else
             Visibility = "implementation"
@@ -929,7 +932,9 @@ typeclass_visibility_to_xml(Status) =
 
 instance_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if instance_status_defined_in_impl_section(Status) = yes then
-        ( if Status = instance_status(status_abstract_exported) then
+        ( if Status =
+            instance_defined_in_this_module(instance_export_gen_abs_sub_abs)
+        then
             Visibility = "abstract"
         else
             Visibility = "implementation"

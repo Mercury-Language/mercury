@@ -24,7 +24,11 @@
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
-:- pred add_instance_defns(ims_list(item_instance_info)::in,
+:- pred add_abstract_instance_defns(ims_list(item_abstract_instance_info)::in,
+    module_info::in, module_info::out,
+    list(err_spec)::in, list(err_spec)::out) is det.
+
+:- pred add_full_instance_defns(ims_list(item_instance_info)::in,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
@@ -73,13 +77,38 @@ add_typeclass_defns([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
         Items, !ModuleInfo, !Specs),
     add_typeclass_defns(SecSubLists, !ModuleInfo, !Specs).
 
-add_instance_defns([], !ModuleInfo, !Specs).
-add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+add_abstract_instance_defns([], !ModuleInfo, !Specs).
+add_abstract_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, Items),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        AbsItemMercuryStatus = ItemMercuryStatus
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(ItemImport),
+        (
+            ( ItemImport = item_import_int_concrete(_)
+            ; ItemImport = item_import_int_abstract
+            ),
+            AbsItemImport = item_import_int_abstract
+        ;
+            ItemImport = item_import_opt_int,
+            AbsItemImport = item_import_opt_int
+        ),
+        AbsItemMercuryStatus = item_defined_in_other_module(AbsItemImport)
+    ),
+    item_mercury_status_to_instance_status(AbsItemMercuryStatus,
+        InstanceStatus),
+    list.foldl2(add_instance_defn(InstanceStatus), coerce(Items),
+        !ModuleInfo, !Specs),
+    add_abstract_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
+
+add_full_instance_defns([], !ModuleInfo, !Specs).
+add_full_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, Items),
     item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus),
     list.foldl2(add_instance_defn(InstanceStatus), Items,
         !ModuleInfo, !Specs),
-    add_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
+    add_full_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -145,9 +174,12 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
                 Interface = class_interface_concrete(_),
                 OldInterface = class_interface_concrete(_)
             then
-                TypeClassStatus = typeclass_status(OldImportStatus),
                 % This is a duplicate, but an identical duplicate.
-                ( if OldImportStatus = status_opt_imported then
+                ( if
+                    TypeClassStatus =
+                        typeclass_defined_in_other_module(Import),
+                    Import = typeclass_import_full_opt
+                then
                     true
                 else
                     report_multiply_defined("typeclass", ClassName,
@@ -300,7 +332,7 @@ module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
     ClassPredOrFuncInfos = cord.list(ClassPredOrFuncInfosCord),
 
     % XXX STATUS
-    TypeClassStatus = typeclass_status(OldImportStatus),
+    OldImportStatus = new_typeclass_status_to_old(TypeClassStatus),
     PredStatus = pred_status(OldImportStatus),
     % Stage 2.
     list.foldl5(
@@ -506,24 +538,21 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, MethodPredName, PredId,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
-add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
+add_instance_defn(InstanceStatus, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     ItemInstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, InstanceBody0, TVarSet, InstanceModuleName,
         Context, _SeqNum),
     (
         InstanceBody0 = instance_body_abstract,
-        InstanceBody = instance_body_abstract,
-        % XXX This can make the status abstract_imported even if the instance
-        % is NOT imported.
-        % When this is fixed, please undo the workaround for this bug
-        % in instance_used_modules in unused_imports.m.
-        instance_make_status_abstract(InstanceStatus0, InstanceStatus)
+        InstanceBody = instance_body_abstract
+        % We used to change the InstanceStatus here to make it abstract,
+        % but outside of intermodule optimization; *all* intermodule
+        % references to instances are abstract.
     ;
         InstanceBody0 = instance_body_concrete(InstanceMethods0),
         list.map(expand_bang_state_pairs_in_instance_method,
             InstanceMethods0, InstanceMethods),
-        InstanceBody = instance_body_concrete(InstanceMethods),
-        InstanceStatus = InstanceStatus0
+        InstanceBody = instance_body_concrete(InstanceMethods)
     ),
 
     module_info_get_class_table(!.ModuleInfo, Classes),

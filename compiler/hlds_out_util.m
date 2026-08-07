@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -852,10 +852,10 @@ inst_import_status_to_string(inst_status(InstModeStatus)) =
     instmode_status_to_string(InstModeStatus).
 mode_import_status_to_string(mode_status(InstModeStatus)) =
     instmode_status_to_string(InstModeStatus).
-typeclass_import_status_to_string(typeclass_status(OldImportStatus)) =
-    old_import_status_to_string(OldImportStatus).
-instance_import_status_to_string(instance_status(OldImportStatus)) =
-    old_import_status_to_string(OldImportStatus).
+typeclass_import_status_to_string(TypeClassStatus) =
+    typeclass_status_to_string(TypeClassStatus).
+instance_import_status_to_string(InstanceStatus) =
+    instance_status_to_string(InstanceStatus).
 pred_import_status_to_string(pred_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
 
@@ -885,6 +885,79 @@ instmode_status_to_string(InstModeStatus) = Str :-
         ;
             InstModeImport = instmode_import_opt,
             Str = "other_module(import_opt)"
+        )
+    ).
+
+:- func typeclass_status_to_string(new_typeclass_status) = string.
+
+typeclass_status_to_string(TypeClassStatus) = Str :-
+    (
+        TypeClassStatus = typeclass_defined_in_this_module(TypeClassExport),
+        (
+            TypeClassExport = typeclass_export_gen_none_sub_none,
+            Str = "this_module(gen_none_sub_none)"
+        ;
+            TypeClassExport = typeclass_export_gen_none_sub_full,
+            Str = "this_module(gen_none_sub_full)"
+        ;
+            TypeClassExport = typeclass_export_gen_abs_sub_full,
+            Str = "this_module(gen_abs_sub_full)"
+        ;
+            TypeClassExport = typeclass_export_gen_full_sub_full,
+            Str = "this_module(gen_full_sub_full)"
+        )
+    ;
+        TypeClassStatus = typeclass_defined_in_other_module(TypeClassImport),
+        (
+            TypeClassImport = typeclass_import_full_own_int,
+            Str = "other_module(full_own_int)"
+        ;
+            TypeClassImport = typeclass_import_full_own_imp,
+            Str = "other_module(full_own_imp)"
+        ;
+            TypeClassImport = typeclass_import_full_int0_int,
+            Str = "other_module(full_int0_int)"
+        ;
+            TypeClassImport = typeclass_import_full_int0_imp,
+            Str = "other_module(full_int0_imp)"
+        ;
+            TypeClassImport = typeclass_import_full_by_ancestor,
+            Str = "other_module(full_by_ancestor)"
+        ;
+            TypeClassImport = typeclass_import_full_opt,
+            Str = "other_module(full_opt)"
+        ;
+            TypeClassImport = typeclass_import_abstract,
+            Str = "other_module(abstract)"
+        )
+    ).
+
+:- func instance_status_to_string(new_instance_status) = string.
+
+instance_status_to_string(InstanceStatus) = Str :-
+    (
+        InstanceStatus = instance_defined_in_this_module(InstanceExport),
+        (
+            InstanceExport = instance_export_gen_none_sub_none,
+            Str = "this_module(gen_none_sub_none)"
+        ;
+            InstanceExport = instance_export_gen_none_sub_abs,
+            Str = "this_module(gen_none_sub_abs)"
+        ;
+            InstanceExport = instance_export_gen_abs_sub_abs,
+            Str = "this_module(gen_abs_sub_abs)"
+        ;
+            InstanceExport = instance_export_full_opt,
+            Str = "this_module(full_opt)"
+        )
+    ;
+        InstanceStatus = instance_defined_in_other_module(InstanceImport),
+        (
+            InstanceImport = instance_import_full_opt,
+            Str = "other_module(full_opt)"
+        ;
+            InstanceImport = instance_import_abstract,
+            Str = "other_module(abstract)"
         )
     ).
 

@@ -440,9 +440,9 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % The items in MutablePredDecls do not have default modes to add.
 
     % Record instance definitions.
-    add_instance_defns(coerce(IntInstances),
+    add_abstract_instance_defns(IntInstances,
         !ModuleInfo, !ErrSpecs),
-    add_instance_defns(ImpInstances,
+    add_full_instance_defns(ImpInstances,
         !ModuleInfo, !ErrSpecs),
 
     % Implement several kinds of pragmas, the ones in the subtype

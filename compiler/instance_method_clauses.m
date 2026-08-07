@@ -165,7 +165,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             % dummy value should be ok.
             AllProcIds = [],
             % XXX STATUS
-            InstanceStatus = instance_status(OldImportStatus),
+            OldImportStatus = new_instance_status_to_old(InstanceStatus),
             PredStatus = pred_status(OldImportStatus),
             add_clause_to_clauses_info(all_modes, AllProcIds, PredStatus,
                 clause_not_for_promise, PredOrFunc, PredSymName, HeadTerms,

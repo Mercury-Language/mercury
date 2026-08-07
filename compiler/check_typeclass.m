@@ -1242,7 +1242,8 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     IsImported = instance_status_is_imported(InstanceStatus0),
     (
         IsImported = yes,
-        InstanceStatus = instance_status(status_opt_imported)
+        InstanceStatus =
+            instance_defined_in_other_module(instance_import_full_opt)
     ;
         IsImported = no,
         InstanceStatus = InstanceStatus0
@@ -1266,7 +1267,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
             InstanceMethodConstraints)),
     map.init(VarNameRemap),
     % XXX STATUS
-    InstanceStatus = instance_status(OldImportStatus),
+    OldImportStatus = new_instance_status_to_old(InstanceStatus),
     PredStatus = pred_status(OldImportStatus),
     CurUserDecl = maybe.no,
     GoalType = goal_not_for_promise(np_goal_type_none),

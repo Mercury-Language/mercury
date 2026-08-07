@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -171,9 +171,9 @@ maybe_opt_export_class_defn(ClassId - ClassDefn0, ClassId - ClassDefn,
         !ModuleInfo) :-
     ToWrite = typeclass_status_to_write(ClassDefn0 ^ classdefn_status),
     (
-        ToWrite = yes,
+        ToWrite = yes(Export),
         ClassDefn = ClassDefn0 ^ classdefn_status :=
-            typeclass_status(status_exported),
+            typeclass_defined_in_this_module(Export),
         method_infos_to_pred_ids(ClassDefn ^ classdefn_method_infos, PredIds),
         opt_export_preds(PredIds, !ModuleInfo)
     ;
@@ -224,8 +224,8 @@ maybe_opt_export_instance_defn(Instance0, Instance, !ModuleInfo) :-
         Body, MaybeMethodInfos, Context),
     ToWrite = instance_status_to_write(InstanceStatus0),
     (
-        ToWrite = yes,
-        InstanceStatus = instance_status(status_exported),
+        ToWrite = yes(Export),
+        InstanceStatus = instance_defined_in_this_module(Export),
         Instance = hlds_instance_defn(InstanceModule, InstanceStatus,
             TVarSet, OriginalTypes, Types,
             Constraints, MaybeSubsumedContext, ConstraintProofs,

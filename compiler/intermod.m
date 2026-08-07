@@ -622,7 +622,7 @@ intermod_gather_class(ModuleName, ClassId, ClassDefn, !TypeClassesCord) :-
     ClassId = class_id(QualifiedClassName, _),
     ( if
         QualifiedClassName = qualified(ModuleName, _),
-        typeclass_status_to_write(TypeClassStatus) = yes
+        typeclass_status_to_write(TypeClassStatus) = yes(_)
     then
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
