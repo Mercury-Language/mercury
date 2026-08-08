@@ -174,7 +174,7 @@
                 % whose .used file this is.
                 uf_module_timestamp     :: module_timestamp,
 
-                % If this module the top module in its source file?
+                % Is this module the top module in its source file?
                 % If it is, what are the names of its submodules?
                 uf_maybe_top_module     :: maybe_top_module_used_file,
 
@@ -240,10 +240,8 @@ init_resolved_used_items =
 write_usage_file(ProgressStream, ModuleInfo, UsedFileContents, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    % XXX We should output to progress stream and error stream,
-    % not CurStream.
     maybe_write_string(ProgressStream, Verbose,
-        "% Writing recompilation compilation dependency information\n", !IO),
+        "% Writing recompilation dependency information\n", !IO),
 
     module_info_get_name(ModuleInfo, ModuleName),
     % XXX LEGACY
