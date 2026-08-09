@@ -32,6 +32,8 @@
 :- import_module list.
 :- import_module maybe.
 
+%---------------------------------------------------------------------------%
+
     % Each of the predicates
     %
     %   generate_parse_tree_int3
@@ -2798,8 +2800,16 @@ restrict_type_ctor_int_defn_for_int2(TypeDefnInfo0, TypeDefnInfo,
         TypeDefn0 = parse_tree_sub_type(DetailsSub),
         DetailsSub = type_details_sub(SuperType, _Ctors),
         accumulate_modules_in_type(SuperType, !MaybeUnqual, !ModuleNames),
-        % The consideration just above about the types of constructors
-        % in du types applies also to subtypes.
+        % Consider what happens when, in the process of compiling module A,
+        % mmc reads B.int, which refers to module C, requiring C.int2
+        % to be read. If C.int2 contains a subtype definition whose supertype
+        % is defined in module D, and module D is not imported by module A,
+        % then the check of the subtype read from C.int2 will fail
+        % with an error.
+        %
+        % However, we have to include the subtype definition in C.int2
+        % anyway. This is because not doing so would screw up any references
+        % to the subtype that happen via shorter import chains.
         TypeDefnInfo = TypeDefnInfo0
     ;
         TypeDefn0 = parse_tree_solver_type(_),

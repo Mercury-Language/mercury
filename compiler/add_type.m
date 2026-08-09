@@ -942,23 +942,48 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         % save a pass over the type table.
         (
             MaybeSuperType = subtype_of(SuperType),
-            check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, BodyDu,
-                SuperType, MaybeSetSubtypeNoncanon,
-                !InvalidTypeSpecs, !WarnSpecs),
-            (
-                MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
-            ;
-                MaybeSetSubtypeNoncanon = set_subtype_noncanon,
-                % Set noncanonical flag on subtype definition if the base type
-                % is noncanonical.
-                NoncanonBodyDu = BodyDu ^ du_type_canonical :=
-                    noncanon(noncanon_subtype),
-                NoncanonBody = hlds_du_type(NoncanonBodyDu),
-                set_type_defn_body(NoncanonBody, TypeDefn, NoncanonTypeDefn),
-                module_info_get_type_table(!.ModuleInfo, TypeTable0),
-                replace_type_ctor_defn(TypeCtor, NoncanonTypeDefn,
-                    TypeTable0, TypeTable1),
-                module_info_set_type_table(TypeTable1, !ModuleInfo)
+            FileName = Context ^ context_filename,
+            ( if string.suffix(FileName, ".int2") then
+                % Consider what happens when, in the process of compiling
+                % module A, mmc reads B.int, which refers to module C,
+                % requiring C.int2 to be read. If C.int2 contains a subtype
+                % definition whose supertype is defined in module D, and
+                % module D is not imported by module A, then the check
+                % of the subtype read from C.int2 will fail with an error.
+                %
+                % We *must* include the subtype definition in C.int2, because
+                % any failure to do so would screw up any references
+                % to the subtype that happen via shorter import chains.
+                % This is why we avoid performing subtype tests that may
+                % refer to subtypes in modules like D that whose contents
+                % we do not see.
+                %
+                % This should be ok, since any errors that we could discover
+                % here if we *did* see D definitely will be discovered
+                % when compiling modules that get to D via shorter
+                % import chains.
+                true
+            else
+                check_subtype_defn(TypeTable, TVarSet,
+                    TypeCtor, TypeDefn, BodyDu,
+                    SuperType, MaybeSetSubtypeNoncanon,
+                    !InvalidTypeSpecs, !WarnSpecs),
+                (
+                    MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
+                ;
+                    MaybeSetSubtypeNoncanon = set_subtype_noncanon,
+                    % Set noncanonical flag on subtype definition
+                    % if the base type is noncanonical.
+                    NoncanonBodyDu = BodyDu ^ du_type_canonical :=
+                        noncanon(noncanon_subtype),
+                    NoncanonBody = hlds_du_type(NoncanonBodyDu),
+                    set_type_defn_body(NoncanonBody,
+                        TypeDefn, NoncanonTypeDefn),
+                    module_info_get_type_table(!.ModuleInfo, TypeTable0),
+                    replace_type_ctor_defn(TypeCtor, NoncanonTypeDefn,
+                        TypeTable0, TypeTable1),
+                    module_info_set_type_table(TypeTable1, !ModuleInfo)
+                )
             )
         ;
             MaybeSuperType = not_a_subtype
