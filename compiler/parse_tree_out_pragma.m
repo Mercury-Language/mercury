@@ -152,6 +152,7 @@
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.var_db.

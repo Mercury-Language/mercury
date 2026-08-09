@@ -71,6 +71,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

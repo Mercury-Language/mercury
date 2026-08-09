@@ -159,6 +159,7 @@
 :- import_module parse_tree.parse_tree_out_item.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_item_inst_mode.

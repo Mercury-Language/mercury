@@ -47,6 +47,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.

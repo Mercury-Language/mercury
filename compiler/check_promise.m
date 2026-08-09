@@ -43,6 +43,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
 

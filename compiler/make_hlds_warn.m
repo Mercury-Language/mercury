@@ -25,6 +25,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.

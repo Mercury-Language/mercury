@@ -184,6 +184,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module maybe.

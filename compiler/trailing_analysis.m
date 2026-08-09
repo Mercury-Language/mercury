@@ -102,6 +102,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.write_error_spec.

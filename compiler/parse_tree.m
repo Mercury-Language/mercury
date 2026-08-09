@@ -32,6 +32,7 @@
 :- include_module prog_data_event.
 :- include_module prog_data_foreign.
 :- include_module prog_data_pragma.
+:- include_module prog_data_rare.
 :- include_module prog_data_used_modules.
 :- include_module file_kind.
 

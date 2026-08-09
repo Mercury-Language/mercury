@@ -87,6 +87,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_rare.
 :- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_mode.
 
