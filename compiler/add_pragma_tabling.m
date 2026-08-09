@@ -14,7 +14,7 @@
 :- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module io.
 :- import_module list.
@@ -60,6 +60,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 

@@ -59,6 +59,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_inst_mode.
 
 :- import_module cord.
 :- import_module maybe.

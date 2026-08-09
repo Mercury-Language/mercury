@@ -46,6 +46,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.

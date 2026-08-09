@@ -59,6 +59,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
+:- import_module parse_tree.prog_item_pred_proc_id.
 
 :- import_module assoc_list.
 :- import_module cord.

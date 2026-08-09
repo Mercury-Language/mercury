@@ -117,6 +117,9 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
+:- import_module parse_tree.prog_item_pred_proc_id.
+:- import_module parse_tree.prog_item_type.
 :- import_module parse_tree.prog_mode.
 
 :- import_module assoc_list.

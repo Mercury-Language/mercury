@@ -13,7 +13,7 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module list.
 
@@ -49,6 +49,7 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2019, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2019, 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module cord.
 :- import_module list.
@@ -86,6 +87,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_mode.
 
 :- import_module bool.

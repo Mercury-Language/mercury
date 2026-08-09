@@ -131,7 +131,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_type.
 :- import_module parse_tree.prog_parse_tree.
 
 :- import_module list.
@@ -169,6 +169,7 @@
 :- import_module parse_tree.equiv_type_parse_tree.
 :- import_module parse_tree.parse_tree_out_type_repn.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.prog_type_subst.

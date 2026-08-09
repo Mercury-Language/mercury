@@ -20,7 +20,7 @@
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module list.
 :- import_module maybe.

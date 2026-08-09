@@ -24,7 +24,7 @@
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module list.
 :- import_module set.
@@ -70,6 +70,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.

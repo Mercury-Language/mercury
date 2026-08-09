@@ -876,6 +876,10 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       apply_n_type(tvar, list(ground_type), kind)
     ;       kinded_type(ground_type, kind).
 
+:- type var_or_ground_type
+    --->    type_var_name(tvar, string)
+    ;       ground_type(ground_type).
+
 % We could use this subtype in the mercury_nb_type function symbol
 % of mlds_type in mlds.m.
 %
@@ -1229,6 +1233,13 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type maybe_class_method
     --->    is_not_a_class_method
     ;       is_a_class_method.
+
+:- type var_or_ground_constraint
+    --->    var_or_ground_constraint(
+                class_name,
+                list(var_or_ground_type),
+                prog_context
+            ).
 
 :- implementation.
 

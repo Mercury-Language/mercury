@@ -52,7 +52,7 @@
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 :- import_module transform_hlds.unused_args_warn_pragma.
 
 :- import_module list.

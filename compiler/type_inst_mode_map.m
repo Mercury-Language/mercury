@@ -19,7 +19,8 @@
 :- module parse_tree.type_inst_mode_map.
 :- interface.
 
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_inst_mode.
+:- import_module parse_tree.prog_item_type.
 
 :- import_module list.
 

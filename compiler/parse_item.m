@@ -127,6 +127,7 @@
 :- import_module parse_tree.parse_type_repn.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.parse_vars.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module recompilation.

@@ -34,6 +34,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_type.
 
 :- import_module list.
 :- import_module map.

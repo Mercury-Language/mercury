@@ -68,7 +68,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_used_modules.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_type.
 :- import_module parse_tree.prog_parse_tree.
 :- import_module recompilation.
 :- import_module recompilation.record_uses.
@@ -136,6 +136,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.prog_type_test.

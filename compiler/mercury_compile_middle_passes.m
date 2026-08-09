@@ -23,10 +23,12 @@
 :- import_module libs.op_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module io.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
 
 :- pred middle_pass(io.text_output_stream::in, io.text_output_stream::in,
     op_mode_front_and_middle::in,

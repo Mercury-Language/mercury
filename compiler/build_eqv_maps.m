@@ -55,6 +55,8 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_inst_mode.
+:- import_module parse_tree.prog_item_type.
 :- import_module recompilation.
 :- import_module recompilation.item_types.
 

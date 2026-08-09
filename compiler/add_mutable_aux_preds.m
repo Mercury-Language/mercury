@@ -27,6 +27,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_pragma.
 
 :- import_module cord.
 :- import_module list.

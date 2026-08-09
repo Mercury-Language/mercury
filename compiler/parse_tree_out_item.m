@@ -22,6 +22,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_inst_mode.
+:- import_module parse_tree.prog_item_type.
 
 :- import_module io.
 :- import_module list.

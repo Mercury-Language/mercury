@@ -50,6 +50,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item_pred_proc_id.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 

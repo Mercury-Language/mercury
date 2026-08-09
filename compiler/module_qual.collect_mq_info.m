@@ -50,6 +50,8 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_item_inst_mode.
+:- import_module parse_tree.prog_item_type.
 
 :- import_module bool.
 :- import_module list.
