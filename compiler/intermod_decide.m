@@ -243,8 +243,8 @@ opt_exporting_pred_is_likely_worthwhile(Params, ModuleInfo,
     clauses_info_get_clauses_rep(ClauseInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
     % At this point, the goal size includes some dummy unifications
-    % HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away
-    % later. To account for this, we add the arity to the size thresholds.
+    % HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away later.
+    % To account for this, we add the arity to the size thresholds.
     pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
     (
         inlining.is_simple_clause_list(Clauses,
