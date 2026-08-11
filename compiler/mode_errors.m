@@ -479,6 +479,7 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_match.
 :- import_module hlds.inst_test.
+:- import_module hlds.inst_util.
 :- import_module hlds.mode_util.
 :- import_module libs.
 :- import_module libs.globals.
@@ -497,6 +498,7 @@
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -504,6 +506,7 @@
 :- import_module string.
 :- import_module string.builder.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -2135,8 +2138,6 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
 mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
         ActualInst, ExpectedInst, Reason) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
-    mode_info_get_context(ModeInfo, Context),
-    mode_info_get_var_table(ModeInfo, VarTable),
     (
         Reason = too_instantiated,
         Problem = "became too instantiated."
@@ -2173,21 +2174,129 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
         ArgNumPieces = [words("compiler-generated argument"),
             int_fixed(RawArgNum)]
     ),
+    mode_info_get_var_table(ModeInfo, VarTable),
     VarName = mercury_var_to_name_only(VarTable, Var),
-    Pieces = [words("mode error:")] ++ ArgNumPieces ++ [words(Problem), nl,
-        words("Final instantiatedness of")] ++
-        color_as_subject([quote(VarName)]) ++ [words("was")] ++
-        color_as_incorrect(
-            report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
-                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-                ActualInst)) ++
-        [words("expected final instantiatedness was")] ++
-        color_as_correct(
-            report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
-                [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
-                ExpectedInst)),
+    MainPieces = Preamble ++
+        [words("mode error:")] ++ ArgNumPieces ++ [words(Problem), nl],
+    lookup_var_type(VarTable, Var, Type),
+    ( if
+        Reason = not_instantiated_enough,
+        inst_is_ground(ModuleInfo, Type, ExpectedInst),
+        find_and_report_nonground_cons_id_args(ModuleInfo, VarTable,
+            [], Type, ActualInst, NonGroundCord),
+        cord.is_non_empty(NonGroundCord)
+    then
+        NonGroundPieceLists0 = cord.list(NonGroundCord),
+        NonGroundPieceLists =
+            list.map((func(Ps) = [blank_line | Ps]), NonGroundPieceLists0),
+        list.condense(NonGroundPieceLists, CausePieces)
+    else
+        CausePieces =
+            [words("Final instantiatedness of")] ++
+            color_as_subject([quote(VarName)]) ++ [words("was")] ++
+            color_as_incorrect(
+                report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
+                    [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                    ActualInst)) ++
+            [words("expected final instantiatedness was")] ++
+            color_as_correct(
+                report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
+                    [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
+                    ExpectedInst))
+    ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces).
+    Pieces = MainPieces ++ CausePieces,
+    mode_info_get_context(ModeInfo, Context),
+    Spec = spec($pred, severity_error, Phase, Context, Pieces).
+
+    % If the given inst is a bound inst, and less than about a third
+    % of its arguments is nonground, then return diagnostic text
+    % naming the nonground arguments, either at the top level,
+    % or lower down.
+    %
+    % If the given inst is not a bound inst, or if too many of its
+    % arguments are nonground, then return an empty cord.
+    %
+:- pred find_and_report_nonground_cons_id_args(module_info::in, var_table::in,
+    list(format_piece)::in, mer_type::in, mer_inst::in,
+    cord(list(format_piece))::out) is det.
+
+find_and_report_nonground_cons_id_args(ModuleInfo, VarTable, ContextPieces,
+        Type, Inst, Cord) :-
+    ( if
+        Inst = bound(_, _, [BoundFunctor]),
+        get_cons_id_arg_types_for_bound_functor(ModuleInfo, Type,
+            BoundFunctor, ArgTypes),
+        BoundFunctor = bound_functor(ConsId, ArgInsts),
+        find_nonground_args(ModuleInfo, VarTable, ContextPieces,
+            ConsId, 1, ArgTypes, ArgInsts,
+            0u, NumGroundArgs, 0u, NumNonGroundArgs,
+            [], RevNonGroundArgs, cord.init, SubCord),
+        list.reverse(RevNonGroundArgs, NonGroundArgs),
+        NonGroundArgs = [_ | _],
+        % This is a heuristic: if more than a third of the arguments
+        % are nonground, then just printing the inst of the entire structure
+        % will probably be easier to read than a list of reports about
+        % individual arguments.
+        NumGroundArgs >= 2u * NumNonGroundArgs
+    then
+        Arguments = choose_number(NonGroundArgs, "argument", "arguments"),
+        Are = is_or_are(NonGroundArgs),
+        TheyAre = choose_number(NonGroundArgs, "it is", "they are"),
+        ( ContextPieces = [],      The = "The"
+        ; ContextPieces = [_|  _], The = "the"
+        ),
+        Pieces = ContextPieces ++ [words(The)] ++
+            color_as_subject(piece_list_to_pieces("and", NonGroundArgs) ++
+                [words(Arguments)]) ++
+            [words("of"), unqual_cons_id_and_maybe_arity(ConsId),
+            words(Are), words("expected to be ground, but")] ++
+            color_as_incorrect([words(TheyAre), words("not.")]) ++ [nl],
+        cord.cons(Pieces, SubCord, Cord)
+    else
+        Cord = cord.init
+    ).
+
+:- pred find_nonground_args(module_info::in, var_table::in,
+    list(format_piece)::in,
+    cons_id::in, int::in, list(mer_type)::in, list(mer_inst)::in,
+    uint::in, uint::out, uint::in, uint::out,
+    list(format_piece)::in, list(format_piece)::out,
+    cord(list(format_piece))::in, cord(list(format_piece))::out) is det.
+
+find_nonground_args(_, _, _, _, _, [], [],
+        !NumGroundArgs, !NumNonGroundArgs, !RevNonGroundArgs, !SubCord).
+find_nonground_args(_, _, _, _, _, [], [_ | _],
+        !NumGroundArgs, !NumNonGroundArgs, !RevNonGroundArgs, !SubCord) :-
+    unexpected($pred, "length mismatch").
+find_nonground_args(_, _, _, _, _, [_ | _], [],
+        !NumGroundArgs, !NumNonGroundArgs, !RevNonGroundArgs, !SubCord) :-
+    unexpected($pred, "length mismatch").
+find_nonground_args(ModuleInfo, VarTable, ContextPieces,
+        ConsId, ArgNum, [ArgType | ArgTypes], [ArgInst | ArgInsts],
+        !NumGroundArgs, !NumNonGroundArgs, !RevNonGroundArgs, !SubCord) :-
+    ( if inst_is_ground(ModuleInfo, ArgType, ArgInst) then
+        !:NumGroundArgs = !.NumGroundArgs + 1u
+    else
+        !:NumNonGroundArgs = !.NumNonGroundArgs + 1u,
+        !:RevNonGroundArgs = [nth_fixed(ArgNum) | !.RevNonGroundArgs],
+        ( if ArgInst = bound(_, _, [_]) then
+            ( ContextPieces = [],      In = "In"
+            ; ContextPieces = [_|  _], In = "in"
+            ),
+            ArgContextPieces = ContextPieces ++ [words(In), words("the"),
+                nth_fixed(ArgNum), words("argument of"),
+                unqual_cons_id_and_maybe_arity(ConsId), suffix(":"), nl],
+            find_and_report_nonground_cons_id_args(ModuleInfo, VarTable,
+                ArgContextPieces, ArgType, ArgInst, ArgCord),
+            !:SubCord = !.SubCord ++ ArgCord
+        else
+            true
+        )
+    ),
+    find_nonground_args(ModuleInfo, VarTable, ContextPieces,
+        ConsId, ArgNum + 1, ArgTypes, ArgInsts,
+        !NumGroundArgs, !NumNonGroundArgs, !RevNonGroundArgs, !SubCord).
 
 %---------------------------------------------------------------------------%
 

@@ -271,6 +271,7 @@ BORING_SINGLEMODULE_PROGS = \
 	require_det_in_lambda \
 	require_scopes \
 	require_switch_arms_detism \
+	small_part_free \
 	spurious_mode_error \
 	state_vars_test_1 \
 	state_vars_test_2 \

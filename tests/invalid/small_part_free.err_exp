@@ -1,0 +1,16 @@
+small_part_free.m:048: In clause for `foo(in, out)':
+small_part_free.m:048:   mode error: argument 2 did not get sufficiently
+small_part_free.m:048:   instantiated.
+small_part_free.m:048:
+small_part_free.m:048:   The [38;5;87msixth argument[39;49m of `sub'/9 is expected to be
+small_part_free.m:048:   ground, but [38;5;203mit is not.[39;49m
+small_part_free.m:052: In clause for `bar(in, out)':
+small_part_free.m:052:   mode error: argument 2 did not get sufficiently
+small_part_free.m:052:   instantiated.
+small_part_free.m:052:
+small_part_free.m:052:   The [38;5;87mthird and seventh arguments[39;49m of `info'/10 are
+small_part_free.m:052:   expected to be ground, but [38;5;203mthey are not.[39;49m
+small_part_free.m:052:
+small_part_free.m:052:   In the seventh argument of `info'/10:
+small_part_free.m:052:   the [38;5;87mthird and sixth arguments[39;49m of `sub'/9 are expected
+small_part_free.m:052:   to be ground, but [38;5;203mthey are not.[39;49m
