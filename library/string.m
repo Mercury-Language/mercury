@@ -1431,7 +1431,7 @@
     % must contain one or more digits in the specified base. For bases > 10,
     % digits 10 to 35 are represented by the letters A-Z or a-z. If the string
     % does not match this syntax or the number is not in the range
-    % [0, max_uint], the predicate fails. Throws an excpetion if the
+    % [0, max_uint], the predicate fails. Throws an exception if the
     % specified base is not in [2, 36].
     %
 :- pred base_string_to_uint(int::in, string::in, uint::out) is semidet.
