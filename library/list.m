@@ -981,6 +981,7 @@
     list(T)::out, list(T)::out) is det.
 
     % negated_filter(Pred, List) = FalseList:
+    % negated_filter(Pred, List, FalseList):
     %
     % Takes a closure Pred with one input argument. It calls Pred(X)
     % on each member X of List, and includes X in FalseList if-and-only-if
@@ -991,7 +992,7 @@
 :- pred negated_filter(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out) is det.
 
-    % filter_map(Transformer, List, TrueList):
+    % filter_map(Transformer, List) = TrueList:
     %
     % Takes a semidet function Transformer and calls it on each element X
     % of List. If Transformer(X) succeeds, then it includes its return value
