@@ -476,8 +476,8 @@
     % overlay_large_map(MapA, MapB, Map) performs the same task as
     % overlay(MapA, MapB, Map). However, while overlay takes time
     % proportional to the size of MapB, overlay_large_map takes time
-    % proportional to the size of MapA. In other words, it preferable when
-    % MapB is the larger map.
+    % proportional to the size of MapA. In other words, it is preferable
+    % when MapB is the larger map.
     %
 :- func overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 :- pred overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
@@ -1242,7 +1242,7 @@ semidet),
 :- mode map_values_only_foldl(in(pred(in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % As map_values_only_foldl, but with two accumulators.
+    % As map_values_foldl, but with two accumulators.
     %
 :- pred map_values_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
@@ -1276,7 +1276,7 @@ semidet),
 :- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, in, out, di, uo) is cc_multi.
 
-    % As map_values_only_foldl, but with three accumulators.
+    % As map_values_foldl, but with three accumulators.
     %
 :- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
     map(K, V), map(K, W), A, A, B, B, C, C).

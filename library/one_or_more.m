@@ -583,8 +583,8 @@
 
     % filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
-    % X is included in TrueList if-and-only-if Pred(T) is true.
-    % X is included in FalseList if-and-only-if Pred(T) is false.
+    % X is included in TrueList if-and-only-if Pred(X) is true.
+    % X is included in FalseList if-and-only-if Pred(X) is false.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
     list(T)::out, list(T)::out) is det.
@@ -1087,7 +1087,7 @@
     mdi, muo) is nondet.
 
     % foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
-    % Does the same job as foldr, but with two accumulators.
+    % Does the same job as foldr, but with three accumulators.
     % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %

@@ -302,8 +302,7 @@
 :- func sorted_keys(multi_map(K, V)) = list(K).
 :- pred sorted_keys(multi_map(K, V)::in, list(K)::out) is det.
 
-   % Given a multi_map, return a list of all the keys in it
-    % as a set
+    % Given a multi_map, return all the keys in it as a set
     %
 :- func keys_as_set(multi_map(K, V)) = set(K).
 :- pred keys_as_set(multi_map(K, V)::in, set(K)::out) is det.

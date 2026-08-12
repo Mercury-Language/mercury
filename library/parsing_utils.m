@@ -28,7 +28,7 @@
 %
 %   var_assignment(Src, {Var, Value}, !PS) :-
 %       var(Src, Var, !PS),
-%       punct(Src, "=", !PS),
+%       punct("=", Src, _, !PS),
 %       expr(Src, Expr, !PS).
 %
 % where var/4 and expr/4 are parsers for variables and expressions respectively

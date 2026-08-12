@@ -201,7 +201,7 @@
     % - whether they contain a special_handler or not, and
     % - whether option default values are defined by a predicate or a map,
     % - and if they are defined by a predicate, whether the determinism
-    %   of that predicate is nondet or multi,
+    %   of that predicate is nondet or multi.
     %
 :- type option_ops(OptionType)
     --->    option_ops(
@@ -470,8 +470,8 @@
     %
     % All these predicates place all the non-option arguments in
     % 'NonOptionArgs', and the predicates that have an OptionArgs argument
-    % place the option arguments there. (While some callers will want
-    % the arguments contain the options, other callers will not, considering
+    % place the option arguments there. (While some callers will want the
+    % arguments to contain the options, other callers will not, considering
     % that the only information they want from them is that contained in
     % the option table.)
     %
@@ -557,7 +557,7 @@
     %   of specified options.
     %
     % - Even if they find an error, they return the option table as it was
-    %   just before it found the error. This option table will reflect
+    %   just before they found the error. This option table will reflect
     %   all the previous options that could be correctly processed.
     %
 :- pred process_options_userdata(
@@ -653,7 +653,7 @@
     %   looking for more errors. It can therefore return more than one error
     %   in Errors. Any arguments between and after errors *will* be included
     %   either in OptionValues and OptionArgs, or in NonOptionArgs.
-    %   Note though it is possible for recognize_all_options to mistake
+    %   Note though that it is possible for recognize_all_options to mistake
     %   an argument that was intended to be an argument of a previous
     %   option to be something else (either an option in its own right, or
     %   a nonoption argument) if the previous argument is not recognizable
