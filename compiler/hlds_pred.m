@@ -1218,11 +1218,9 @@ add_new_proc(ModuleInfo, Context, SeqNum, InstVarSet, ArgModes,
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
     proc_info_init(ModuleInfo, Context, SeqNum, ArgTypes,
-        MaybeDeclaredArgModes, ArgModes, MaybeArgLives,
+        InstVarSet, MaybeDeclaredArgModes, ArgModes, MaybeArgLives,
         DetismDecl, MaybeDetism, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ProcInfo0),
-    proc_info_set_inst_varset(InstVarSet, ProcInfo0, ProcInfo),
-
+        VarNameRemap, ProcInfo),
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     next_proc_id(ProcTable0, ProcId),
     map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
@@ -1974,12 +1972,6 @@ pred_info_get_sym_name(PredInfo, SymName) :-
     ;       detism_decl_implicit
     ;       detism_decl_none.
             % The determinism of the procedure is not declared.
-
-:- pred proc_info_init(module_info::in, prog_context::in, item_seq_num::in,
-    list(mer_type)::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
-    maybe(list(is_live))::in, detism_decl::in, maybe(determinism)::in,
-    is_address_taken::in, has_parallel_conj::in, map(prog_var, string)::in,
-    proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, item_seq_num::in,
     var_table::in, list(prog_var)::in,
@@ -2734,7 +2726,13 @@ table_step_stats_kind(Step) = KindStr :-
 
 %---------------------------------------------------------------------------%
 
-proc_info_init(ModuleInfo, MainContext, ItemNumber, Types,
+:- pred proc_info_init(module_info::in, prog_context::in, item_seq_num::in,
+    list(mer_type)::in, inst_varset::in, maybe(list(mer_mode))::in,
+    list(mer_mode)::in, maybe(list(is_live))::in,
+    detism_decl::in, maybe(determinism)::in, is_address_taken::in,
+    has_parallel_conj::in, map(prog_var, string)::in, proc_info::out) is det.
+
+proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
         DeclaredModes, Modes, MaybeArgLives, DetismDecl, MaybeDeclaredDetism,
         IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
     % When this predicate is invoked during the construction of the HLDS,
@@ -2837,7 +2835,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types,
     goal_info_init(GoalInfo),
     BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
     rtti_varmaps_init(RttiVarMaps),
-    varset.init(InstVarSet),
+    % argument InstVarSet
     % argument DeclaredModes
     % argument Modes
     MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
