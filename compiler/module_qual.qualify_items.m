@@ -1385,6 +1385,16 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName, !Info) :-
         unexpected($pred, "unexpected compiler generated inst_name")
     ).
 
+:- pred qualify_inst_ctor(mq_in_interface::in, mq_error_context::in,
+    inst_ctor::in, inst_ctor::out, mq_info::in, mq_info::out) is det.
+
+qualify_inst_ctor(InInt, ErrorContext, InstCtor0, InstCtor, !Info) :-
+    InstCtor0 = inst_ctor(SymName0, Arity),
+    mq_info_get_insts(!.Info, InstIdSet),
+    find_unique_match(InInt, ErrorContext, InstIdSet, qual_id_inst,
+        mq_id(SymName0, Arity), SymName, !Info),
+    InstCtor = inst_ctor(SymName, Arity).
+
 :- pred qualify_bound_functors(mq_in_interface::in, mq_error_context::in,
     list(bound_functor)::in, list(bound_functor)::out,
     mq_info::in, mq_info::out) is det.
@@ -1920,6 +1930,21 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info) :-
         TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName,
             SpecPredName, Subst, TVarSet, Items, Context, SeqNum),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
+    ;
+        Pragma0 = decl_pragma_input_spec(InputSpecInfo0),
+        InputSpecInfo0 = decl_pragma_input_spec_info(ContainingModuleName,
+            Type0, ReplaceOrAdd, OoMInstCtors0, OoMInsts0,
+            RecompItems, TVarSet, Context, SeqNum),
+        ErrorContext = mqec_pragma_decl(Context, Pragma0),
+        qualify_type(InInt, ErrorContext, Type0, Type, !Info),
+        one_or_more.map_foldl(qualify_inst_ctor(InInt, ErrorContext),
+            OoMInstCtors0, OoMInstCtors, !Info),
+        one_or_more.map_foldl(qualify_inst(InInt, ErrorContext),
+            OoMInsts0, OoMInsts, !Info),
+        InputSpecInfo = decl_pragma_input_spec_info(ContainingModuleName,
+            Type, ReplaceOrAdd, OoMInstCtors, OoMInsts,
+            RecompItems, TVarSet, Context, SeqNum),
+        Pragma = decl_pragma_input_spec(InputSpecInfo)
     ;
         Pragma0 = decl_pragma_oisu(OISUInfo0),
         OISUInfo0 = decl_pragma_oisu_info(TypeCtor0, CreatorPreds,

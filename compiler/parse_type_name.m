@@ -48,7 +48,8 @@
     ;       wnhii_pragma_struct_sharing
     ;       wnhii_pragma_struct_reuse
     ;       wnhii_pragma_type_spec_constr
-    ;       wnhii_pragma_type_spec.
+    ;       wnhii_pragma_type_spec
+    ;       wnhii_pragma_input_spec.
 
 :- pred maybe_parse_type(allow_ho_inst_info::in, term::in, mer_type::out)
     is semidet.
@@ -954,6 +955,9 @@ no_ho_inst_allowed_desc(WNHII, Place, WhyNot) :-
         ;
             WNHII = wnhii_pragma_type_spec,
             Place = "a type_spec pragma"
+        ;
+            WNHII = wnhii_pragma_input_spec,
+            Place = "an input_spec pragma"
         ),
         WhyNot = wna_by_design
     ).

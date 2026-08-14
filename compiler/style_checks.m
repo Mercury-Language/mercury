@@ -74,6 +74,7 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -565,7 +566,7 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
     ( if
         (
             % The usual case: a predicate declaration followed immediately
-            % by one or more mode declaration for the predicate.
+            % by one or more mode declarations for the predicate.
             FirstItemNumber + 1 = SecondItemNumber
         ;
             % If the predicate has a predmode declaration, then
@@ -574,6 +575,10 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
             FirstProcNum = 0,
             FirstItemNumber = SecondItemNumber,
             LaterINCs = []
+        ;
+            FirstItemNumber = SecondItemNumber,
+            pred_info_get_markers(PredInfo, Markers),
+            marker_is_present(Markers, marker_was_input_specialized)
         )
     then
         true

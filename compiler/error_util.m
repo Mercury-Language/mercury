@@ -571,13 +571,13 @@ get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_t2pt) = no.
 get_maybe_mode_report_control(phase_tim_check) = no.
 get_maybe_mode_report_control(phase_tim_check_invalid_type) = no.
-get_maybe_mode_report_control(phase_tim_check_invalid_inst_mode)
-    = no.
+get_maybe_mode_report_control(phase_tim_check_invalid_inst_mode) = no.
 get_maybe_mode_report_control(phase_type_repn) = no.
 get_maybe_mode_report_control(phase_pt2h) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.
 get_maybe_mode_report_control(phase_type_check) = no.
 get_maybe_mode_report_control(phase_inst_check) = no.
+get_maybe_mode_report_control(phase_input_spec) = no.
 get_maybe_mode_report_control(phase_polymorphism) = no.
 get_maybe_mode_report_control(phase_mode_check(Control)) = yes(Control).
 get_maybe_mode_report_control(phase_purity_check) = no.

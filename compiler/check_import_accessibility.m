@@ -461,8 +461,8 @@ record_includes_imports_uses_in_parse_tree_int3(Ancestors,
 
 record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors,
         ParseTreePlainOpt, !AncestorImportUseMap) :-
-    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, _, UseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, _, UseMap, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     ( if set.contains(Ancestors, ModuleName) then
         Avails = use_map_to_item_avails(UseMap),
         record_avails_acc(Avails, !AncestorImportUseMap)

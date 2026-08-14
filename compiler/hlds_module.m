@@ -187,6 +187,15 @@
                 pragma_map          :: type_spec_pragma_map
             ).
 
+:- type input_spec_table == map(module_name, input_spec_in_module_map).
+:- type input_spec_in_module_map == map(mer_type, input_spec_info).
+:- type input_spec_info
+    --->    input_spec_info(
+                replace_or_add_in_mode,
+                one_or_more(mer_inst),
+                prog_context
+            ).
+
     % Once filled in by simplify_proc.m (for all non-lambda procedures)
     % and by lambda.m (for procedures created to implement lambda expressions),
     % this map should have an entry for every procedure that is of interest to
@@ -358,6 +367,8 @@
     instance_table::out) is det.
 :- pred module_info_get_type_spec_tables(module_info::in,
     type_spec_tables::out) is det.
+:- pred module_info_get_input_spec_table(module_info::in,
+    input_spec_table::out) is det.
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
 :- pred module_info_get_c_j_cs_fims(module_info::in,
@@ -469,6 +480,8 @@
 :- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_spec_tables(type_spec_tables::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_input_spec_table(input_spec_table::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_const_struct_db(const_struct_db::in,
     module_info::in, module_info::out) is det.
@@ -849,6 +862,9 @@
                 % Data used for user-guided type specialization.
                 msi_type_spec_tables            :: type_spec_tables,
 
+                % Data used for input-value specialization.
+                msi_input_spec_table            :: input_spec_table,
+
                 % The database of constant structures the code generator
                 % will generate independently, outside all the procedures
                 % of the program.
@@ -1176,9 +1192,10 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     set.init(TypeSpecForcePreds),
     map.init(SpecMap),
     map.init(PragmaMap),
-    TypeSpecInfo = type_spec_tables(TypeSpecPreds, TypeSpecForcePreds,
+    TypeSpecTables = type_spec_tables(TypeSpecPreds, TypeSpecForcePreds,
         SpecMap, PragmaMap),
 
+    map.init(InputSpecTable),
     const_struct_db_init(Globals, ConstStructDb),
     ForeignImportModules = init_foreign_import_modules,
     PragmaExportedProcs = cord.init,
@@ -1187,7 +1204,8 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         SpecialPredMaps,
         ClassTable,
         InstanceTable,
-        TypeSpecInfo,
+        TypeSpecTables,
+        InputSpecTable,
         ConstStructDb,
         ForeignImportModules,
         PragmaExportedProcs),
@@ -1412,6 +1430,8 @@ module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
 module_info_get_type_spec_tables(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_type_spec_tables.
+module_info_get_input_spec_table(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_input_spec_table.
 module_info_get_const_struct_db(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_const_struct_db.
 module_info_get_c_j_cs_fims(MI, X) :-
@@ -1537,6 +1557,8 @@ module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
 module_info_set_type_spec_tables(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_type_spec_tables := X.
+module_info_set_input_spec_table(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_input_spec_table := X.
 module_info_set_const_struct_db(X, !MI) :-
     ( if
         private_builtin.pointer_equal(X,

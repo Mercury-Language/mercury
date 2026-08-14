@@ -431,6 +431,9 @@ decl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = decl_pragma_type_spec(_),
         Pieces = [pragma_decl("type_spec"), words("declaration")]
     ;
+        Pragma = decl_pragma_input_spec(_),
+        Pieces = [pragma_decl("input_spec"), words("declaration")]
+    ;
         Pragma = decl_pragma_oisu(_),
         Pieces = [pragma_decl("oisu"), words("declaration")]
     ;

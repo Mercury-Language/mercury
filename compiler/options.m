@@ -5665,7 +5665,8 @@ optdb(oc_dev_ctrl,  compiler_sufficiently_recent,      bool(no),
         "subtype-int2-2025-07-07",
         "inrange-2025-10-01",
         "scout-disj-2025-11-15",
-        "subtype-int2-2026-08-09"], [
+        "subtype-int2-2026-08-09",
+        "input-spec-2026-08-14"], [
         w("Is the compiler sufficiently recent to contain the new feature"),
         w("or bugfix referred to by each name?")])).
 % These options are provided for use by implementors who want to compare

@@ -261,6 +261,7 @@
     ;       phase_expand_types
     ;       phase_type_check
     ;       phase_inst_check
+    ;       phase_input_spec
     ;       phase_polymorphism
     ;       phase_mode_check(mode_report_control)
     ;       phase_purity_check

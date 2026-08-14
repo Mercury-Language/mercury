@@ -40,6 +40,7 @@
     ;       decl_pragma_format_call(decl_pragma_format_call_info)
     ;       decl_pragma_type_spec_constr(decl_pragma_type_spec_constr_info)
     ;       decl_pragma_type_spec(decl_pragma_type_spec_info)
+    ;       decl_pragma_input_spec(decl_pragma_input_spec_info)
     ;       decl_pragma_oisu(decl_pragma_oisu_info)
     ;       decl_pragma_termination(decl_pragma_termination_info)
     ;       decl_pragma_termination2(decl_pragma_termination2_info)
@@ -221,6 +222,102 @@
                 tspec_context           :: prog_context,
                 tspec_seq_num           :: item_seq_num
             ).
+
+%---------------------%
+
+:- type decl_pragma_input_spec_info
+    --->    decl_pragma_input_spec_info(
+                % This pragma tells the compiler to replace code
+                % that switches on values of a control type at runtime
+                % with code that switches on those values at compile time.
+                %
+                % Given a type such as
+                %
+                %   :- type action
+                %       --->    hoist_nested_funcs
+                %       ;       chain_gc_stack_frames.
+                %
+                % and its insts
+                %
+                %   :- inst hoist for action/0
+                %       --->    hoist_nested_funcs.
+                %   :- inst chain for action/0
+                %       --->    chain_gc_stack_frames.
+                %
+                % input_spec pragma for type action with insts
+                % hoist and chain can replace a mode that contains
+                % an "in" argument of the action type with two modes
+                % that contain "in(hoist)" and "in(chain)" respectively.
+                % This effectively allows switches on that argument
+                % to be performed at compile time. (This is a real example
+                % from ml_elim_nested.m.)
+
+                % The name of the module that this pragma occurs in.
+                % The pragma applies to the predicates and functions
+                % defined in this module, and *only* those defined
+                % in this module.
+                %
+                % If and when we start --intermod-opt to include
+                % input_spec pragmas in .opt files, we may also
+                % need to record the section (interface vs implementation)
+                % in which the pragma occurred.
+                ispec_module_name       :: module_name,
+
+                % We input specialize arguments of this type.
+                ispec_arg_type          :: mer_type,
+
+                % Do we replace the generic "in" mode with the set of
+                % specialized "in(inst_n)" modes, or do keep the old "in"
+                % mode as well? Only the latter preserves the ability to call
+                % the transformed predicate or function without knowing
+                % which of the specialized insts is applicable.
+                ispec_replace_or_add    :: replace_or_add_in_mode,
+
+                % The insts we specialize arguments of the selected type for.
+                % The pragma in the code contains each inst_ctor as simply
+                % a name; the parser adds the arity, which will be zero.
+                % (Input specialization is not applicable to any inst_ctor
+                % that takes any arguments.)
+                %
+                % We keep each inst_ctor in two forms: an inst_ctor,
+                % and an inst that applies that inst_ctor to the empty list
+                % of arguments.
+                %
+                % Both forms start out as just containing the inst name
+                % that the program contains, and then both get module
+                % qualified along with the rest of the compilation unit.
+                % The difference between them is that the inst form
+                % then also gets any inst equivalences in it expanded out.
+                % It is the inst form that input_specialization.m uses
+                % to actually implement the pragma, but for writing out
+                % the pragma, we want the non-equivalence-expanded form
+                % (since the expansion result can change if the set of
+                % visible inst equivalences changes.)
+                ispec_spec_inst_ctors   :: one_or_more(inst_ctor),
+                ispec_spec_insts        :: one_or_more(mer_inst),
+
+                % The equivalence types and insts used.
+                %
+                % At the moment, we gather this info, but then ignore it.
+                % For smart recompilation to work, we need to fix the latter.
+                ispec_items             :: set(recomp_item_id),
+
+                ispec_tvarset           :: tvarset,
+                % We do not need an inst_varset.
+
+                ispec_context           :: prog_context,
+                ispec_seq_num           :: item_seq_num
+            ).
+
+    % Do we want to *replace* the "in" mode with the specialized
+    % "in(inst1)", "in(inst2)" modes, or do we want to *add* them?
+    %
+    % Note that add_to_in_mode is the only allowed value if the pragma
+    % occurs in the interface (and therefore applies to predicates
+    % in the interface).
+:- type replace_or_add_in_mode
+    --->    replace_in_mode
+    ;       add_to_in_mode.
 
 %---------------------%
 
@@ -599,6 +696,9 @@ get_decl_pragma_context(DeclPragma) = Context :-
     ;
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         Context = TypeSpec ^ tspec_context
+    ;
+        DeclPragma = decl_pragma_input_spec(InputSpec),
+        Context = InputSpec ^ ispec_context
     ;
         DeclPragma = decl_pragma_oisu(OISU),
         Context = OISU ^ oisu_context

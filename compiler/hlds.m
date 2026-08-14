@@ -75,6 +75,9 @@
 % Module for expanding out implementation defined literals.
 :- include_module implementation_defined_literals.
 
+% Module for specializing procedure modes for specific input values.
+:- include_module input_specialization.
+
 % Miscellaneous utilities.
 :- include_module arg_info.
 :- include_module code_model.

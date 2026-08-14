@@ -550,7 +550,7 @@ replace_in_parse_tree_plain_opt(Params,
         InstDefns0, ModeDefns0, TypeClasses0, Instances0,
         PredDecls0, ModeDecls0, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers,
-        TypeSpecs0, UnusedArgs, TermInfos, Term2Infos,
+        TypeSpecs0, InputSpecs0, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
 
     InstDefns = InstDefns0, % XXX See the comment at module top.
@@ -573,6 +573,9 @@ replace_in_parse_tree_plain_opt(Params,
     replace_in_list(Params, MaybeRecord,
         replace_in_decl_pragma_type_spec, TypeSpecs0, TypeSpecs,
         !RecompInfo, !UsedModules, !Specs),
+    replace_in_list(Params, MaybeRecord,
+        replace_in_decl_pragma_input_spec, InputSpecs0, InputSpecs,
+        !RecompInfo, !UsedModules, !Specs),
 
     ParseTreePlainOpt = parse_tree_plain_opt(
         OptModuleName, OptModuleNameContext,
@@ -580,7 +583,7 @@ replace_in_parse_tree_plain_opt(Params,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers,
-        TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
+        TypeSpecs, InputSpecs, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses).
 
 :- pred replace_in_parse_tree_trans_opt(equiv_params::in,
@@ -1335,6 +1338,11 @@ replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
             TypeSpec0, TypeSpec, !RecompInfo, !UsedModules, Specs),
         DeclPragma = decl_pragma_type_spec(TypeSpec)
     ;
+        DeclPragma0 = decl_pragma_input_spec(InputSpec0),
+        replace_in_decl_pragma_input_spec(Params, MaybeRecord,
+            InputSpec0, InputSpec, !RecompInfo, !UsedModules, Specs),
+        DeclPragma = decl_pragma_input_spec(InputSpec)
+    ;
         ( DeclPragma0 = decl_pragma_obsolete_pred(_)
         ; DeclPragma0 = decl_pragma_obsolete_proc(_)
         ; DeclPragma0 = decl_pragma_format_call(_)
@@ -1347,6 +1355,8 @@ replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
         DeclPragma = DeclPragma0,
         Specs = []
     ).
+
+%---------------------%
 
 :- pred replace_in_decl_pragma_type_spec_constr(equiv_params::in,
     maybe_record_sym_name_use::in,
@@ -1397,6 +1407,8 @@ replace_in_decl_pragma_type_spec_constr(Params, MaybeRecord,
         OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, GatheredItemIds,
         Context, SeqNum).
 
+%---------------------%
+
 :- pred replace_in_decl_pragma_type_spec(equiv_params::in,
     maybe_record_sym_name_use::in,
     decl_pragma_type_spec_info::in, decl_pragma_type_spec_info::out,
@@ -1443,6 +1455,44 @@ replace_in_decl_pragma_type_spec(Params, MaybeRecord,
 
 %---------------------%
 
+:- pred replace_in_decl_pragma_input_spec(equiv_params::in,
+    maybe_record_sym_name_use::in,
+    decl_pragma_input_spec_info::in, decl_pragma_input_spec_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
+
+replace_in_decl_pragma_input_spec(Params, MaybeRecord,
+        InputSpecInfo0, InputSpecInfo,
+        RecompInfo, RecompInfo, !UsedModules, []) :-
+    % RecompInfo is unused, but its presence is required
+    % by the interface of replace_in_list.
+    %
+    % The XXX at the start of replace_in_decl_pragma_type_spec_constr
+    % applies here as well.
+    InputSpecInfo0 = decl_pragma_input_spec_info(ContainingModuleName,
+        Type0, ReplaceOrAdd, OoMInstCtors, OoMInsts0,
+        GatheredItemIds0, TVarSet0, Context, SeqNum),
+    ModuleName = Params ^ ep_module_name,
+    ItemRecompDeps0 = item_recomp_deps(ModuleName, GatheredItemIds0),
+    TypeEqvMap = Params ^ ep_type_eqv_map,
+    replace_in_type_maybe_record_use_ignore_circ(TypeEqvMap, MaybeRecord,
+        Type0, Type, _, TVarSet0, TVarSet,
+        ItemRecompDeps0, ItemRecompDeps1, !UsedModules),
+    InstEqvMap = Params ^ ep_inst_eqv_map,
+    one_or_more.map_foldl2(replace_in_inst(InstEqvMap, MaybeRecord),
+        OoMInsts0, OoMInsts, ItemRecompDeps1, ItemRecompDeps, !UsedModules),
+    (
+        ItemRecompDeps = no_item_recomp_deps,
+        GatheredItemIds = GatheredItemIds0
+    ;
+        ItemRecompDeps = item_recomp_deps(_, GatheredItemIds)
+    ),
+    InputSpecInfo = decl_pragma_input_spec_info(ContainingModuleName,
+        Type, ReplaceOrAdd, OoMInstCtors, OoMInsts,
+        GatheredItemIds, TVarSet, Context, SeqNum).
+
+%---------------------%
+
 :- pred replace_in_subst(type_eqv_map::in, maybe_record_sym_name_use::in,
     type_subst::in, type_subst::out,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
@@ -1462,24 +1512,22 @@ replace_in_subst(TypeEqvMap, MaybeRecord, Subst0, Subst,
     tvarset::in, tvarset::out, item_recomp_deps::in, item_recomp_deps::out,
     used_eqv_modules::in, used_eqv_modules::out) is det.
 
-replace_in_tvar_substs(TypeEqvMap, MaybeRecord, Subst0, Subst,
-        TailVarsTypes0, TailVarsTypes,
-        !TVarSet, !ItemRecompDeps, !UsedModules) :-
-    Subst0 = tvar_subst(HeadVar, HeadType0),
+replace_in_tvar_substs(TypeEqvMap, MaybeRecord, HeadSubst0, HeadSubst,
+        TailSubsts0, TailSubsts, !TVarSet, !ItemRecompDeps, !UsedModules) :-
+    HeadSubst0 = tvar_subst(HeadVar, HeadType0),
     replace_in_type_maybe_record_use_ignore_circ(TypeEqvMap, MaybeRecord,
         HeadType0, HeadType, _, !TVarSet, !ItemRecompDeps, !UsedModules),
+    HeadSubst = tvar_subst(HeadVar, HeadType),
     (
-        TailVarsTypes0 = [],
-        TailVarsTypes = []
+        TailSubsts0 = [],
+        TailSubsts = []
     ;
-        TailVarsTypes0 = [HeadTailVarType0 | TailTailVarsTypes0],
+        TailSubsts0 = [HeadTailSubst0 | TailTailSubsts0],
         replace_in_tvar_substs(TypeEqvMap, MaybeRecord,
-            HeadTailVarType0, HeadTailVarType,
-            TailTailVarsTypes0, TailTailVarsTypes,
+            HeadTailSubst0, HeadTailSubst, TailTailSubsts0, TailTailSubsts,
             !TVarSet, !ItemRecompDeps, !UsedModules),
-        TailVarsTypes = [HeadTailVarType | TailTailVarsTypes]
-    ),
-    Subst = tvar_subst(HeadVar, HeadType).
+        TailSubsts = [HeadTailSubst | TailTailSubsts]
+    ).
 
 %---------------------%
 

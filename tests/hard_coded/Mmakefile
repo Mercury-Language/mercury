@@ -466,6 +466,7 @@ ORDINARY_PROGS = \
 	test_foreign_proc \
 	test_imported_no_tag \
 	test_infinity \
+	test_input_spec \
 	test_int_hash \
 	test_keys_and_values \
 	test_map_filter \

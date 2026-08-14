@@ -1276,6 +1276,15 @@ is done after copying clauses to procedures,
 though it is not clear whether this is by design or by accident.
 This part is done by polymorphism_post_copy.m.
 <li>
+input_specialization.m implements
+any input_spec pragmas that occur in the compilation unit
+by looking for mode declarations containing a generic "in" mode
+for arguments of types identified in such pragmas,
+constructing (usually) two or more mode declarations that each contain
+a more specific "in(inst)" modes for the same argument,
+and then either replacing the original mode declaration with the new ones,
+or adding the new ones in front of the old one.
+<li>
 The mode analyser consists of several analysis modules
 and a whole bunch of service modules.
 <p>

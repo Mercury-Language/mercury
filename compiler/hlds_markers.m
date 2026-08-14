@@ -213,6 +213,13 @@
             % the typecheck pass, and it is used (as of this writing)
             % only by the post-typecheck pass.
 
+    ;       marker_was_input_specialized
+            % This predicate had one or more input_spec pragmas applied
+            % to it. Input specialization splits some procedures into
+            % two or more procedures, which will have the same item
+            % sequence numbers as the original procedure. This marker
+            % tells style_checks.m to allow this.
+
     ;       marker_fact_table_semantic_errors.
             % This predicate has a fact_table pragma for it, so it is
             % *expected* not to have any clauses in the program itself, but
@@ -516,6 +523,7 @@ marker_name(marker_has_require_scope, "has_require_scope").
 marker_name(marker_has_incomplete_switch, "has_incomplete_switch").
 marker_name(marker_has_format_call, "has_format_call").
 marker_name(marker_has_rhs_lambda, "has_rhs_lambda").
+marker_name(marker_was_input_specialized, "was_input_specialized").
 marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
 
 %---------------------------------------------------------------------------%

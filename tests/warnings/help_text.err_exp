@@ -3722,6 +3722,7 @@ Options for developers only
     --inrange-2025-10-01
     --scout-disj-2025-11-15
     --subtype-int2-2026-08-09
+    --input-spec-2026-08-14
         Is the compiler sufficiently recent to contain the new feature or
         bugfix referred to by each name?
 

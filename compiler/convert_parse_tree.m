@@ -1038,7 +1038,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         [], InstDefns0, [], ModeDefns0, [], TypeClasses0, [], Instances0,
         [], PredDecls0, [], RevModeDecls, [], RevClauses0, [], RevForeignProcs,
         [], Promises0, [], DeclMarkers0, [], ImplMarkers0,
-        [], TypeSpecs0, [], UnusedArgs0, [], TermInfos0, [], Term2Infos0,
+        [], TypeSpecs0, [], InputSpecs0,
+        [], UnusedArgs0, [], TermInfos0, [], Term2Infos0,
         [], Exceptions0, [], Trailings0, [], MMTablings0,
         [], Sharings0, [], Reuses0, !Specs),
     list.sort(TypeDefns0, TypeDefns),
@@ -1055,6 +1056,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list.sort(DeclMarkers0, DeclMarkers),
     list.sort(ImplMarkers0, ImplMarkers),
     list.sort(TypeSpecs0, TypeSpecs),
+    list.sort(InputSpecs0, InputSpecs),
     list.sort(UnusedArgs0, UnusedArgs),
     list.sort(TermInfos0, TermInfos),
     list.sort(Term2Infos0, Term2Infos),
@@ -1069,7 +1071,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        DeclMarkers, ImplMarkers, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
+        DeclMarkers, ImplMarkers, TypeSpecs, InputSpecs,
+        UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses).
 
 :- pred classify_plain_opt_items(list(item)::in,
@@ -1088,6 +1091,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list(item_impl_marker_info_opt)::in, list(item_impl_marker_info_opt)::out,
     list(decl_pragma_type_spec_info)::in,
         list(decl_pragma_type_spec_info)::out,
+    list(decl_pragma_input_spec_info)::in,
+        list(decl_pragma_input_spec_info)::out,
     list(gen_pragma_unused_args_info)::in,
         list(gen_pragma_unused_args_info)::out,
     list(decl_pragma_termination_info)::in,
@@ -1108,13 +1113,13 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
 classify_plain_opt_items([], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
         !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
 classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
         !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs) :-
     (
@@ -1155,6 +1160,9 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         (
             DeclPragma = decl_pragma_type_spec(TypeSpec),
             !:TypeSpecs = [TypeSpec | !.TypeSpecs]
+        ;
+            DeclPragma = decl_pragma_input_spec(InputSpec),
+            !:InputSpecs = [InputSpec | !.InputSpecs]
         ;
             DeclPragma = decl_pragma_termination(Term),
             !:TermInfos = [Term | !.TermInfos]
@@ -1286,7 +1294,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
     classify_plain_opt_items(Items, !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
         !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
 
@@ -1413,6 +1421,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
             ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_type_spec(_)
             ; DeclPragma = decl_pragma_type_spec_constr(_)
+            ; DeclPragma = decl_pragma_input_spec(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .trans_opt file may not contain")] ++

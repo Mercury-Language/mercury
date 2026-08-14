@@ -1480,7 +1480,7 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
         _UsedModuleNames, _FIMSpecs, _TypeDefns, _ForeignEnums,
         _InstDefns, _ModeDefns, _TypeClasses, _Instances,
         _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
-        _DeclMarkers, _ImplMarkers, _TypeSpecs,
+        _DeclMarkers, _ImplMarkers, _TypeSpecs, _InputSpecs,
         UnusedArgs0, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, Reuses0),
     (
@@ -1499,7 +1499,7 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
     ),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
         map.init, set.init, [], [], [], [], [], [], [], [], [], [], [],
-        [], [], [], UnusedArgs, [], [], [], [], [], [], Reuses).
+        [], [], [], [], UnusedArgs, [], [], [], [], [], [], Reuses).
 
 :- pred read_plain_opt_files(io.text_output_stream::in, globals::in,
     bool::in, bool::in, list(module_name)::in, set(module_name)::in,

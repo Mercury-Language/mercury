@@ -77,6 +77,7 @@ BORING_SINGLEMODULE_PROGS = \
 	bad_fact_table_decls \
 	bad_field \
 	bad_format_call \
+	bad_input_spec \
 	bad_inst_for_type \
 	bad_instance \
 	bad_item_in_interface \

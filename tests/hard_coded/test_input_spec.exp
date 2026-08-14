@@ -1,0 +1,10 @@
+
+CtrlA =   400, CtrlB =  4000
+AuxAC =   403, AuxAD =   406
+AuxBC =  4003, AuxBD =  4006
+AuxXC =    13, AuxXD =    16
+
+CtrlA =   500, CtrlB =  5000
+AuxAC =   503, AuxAD =   506
+AuxBC =  5003, AuxBD =  5006
+AuxXC = 10003, AuxXD = 10006

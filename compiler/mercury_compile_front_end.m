@@ -134,6 +134,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.implementation_defined_literals.
+:- import_module hlds.input_specialization.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -358,7 +359,12 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
         subst_implementation_defined_literals(ProgressStream, ErrorStream,
             Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 25,
-            "implementation_defined_literals", !DumpInfo, !IO),
+            "impl_defined_literals", !DumpInfo, !IO),
+
+        maybe_apply_input_specialization(ProgressStream, ErrorStream,
+            Verbose, Stats, !HLDS, !MaybeWrittenSpecs, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 27,
+            "input_spec", !DumpInfo, !IO),
 
         ( if
             !.FoundError = no,
@@ -782,6 +788,30 @@ subst_implementation_defined_literals(ProgressStream, ErrorStream,
     subst_impl_defined_literals(!HLDS),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_apply_input_specialization(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
+    maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+maybe_apply_input_specialization(ProgressStream, ErrorStream, Verbose, Stats,
+        !HLDS, !MaybeWrittenSpecs, !IO) :-
+    module_info_get_input_spec_table(!.HLDS, InputSpecTable),
+    ( if map.is_empty(InputSpecTable) then
+        true
+    else
+        module_info_get_globals(!.HLDS, Globals),
+        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+            !MaybeWrittenSpecs, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Performing input specialization...\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        input_specialize_in_module(!HLDS),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

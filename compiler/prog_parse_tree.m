@@ -633,6 +633,7 @@
                 ptpo_decl_markers   :: list(item_decl_marker_info_opt),
                 ptpo_impl_markers   :: list(item_impl_marker_info_opt),
                 ptpo_type_specs     :: list(decl_pragma_type_spec_info),
+                ptpo_input_specs    :: list(decl_pragma_input_spec_info),
                 ptpo_unused_args    :: list(gen_pragma_unused_args_info),
                 ptpo_termination    :: list(decl_pragma_termination_info),
                 ptpo_termination2   :: list(decl_pragma_termination2_info),

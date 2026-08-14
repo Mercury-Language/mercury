@@ -254,6 +254,10 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
+        PragmaName = "input_spec",
+        parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm,
+            PragmaTerms, Context, SeqNum, MaybeIOM)
+    ;
         PragmaName = "fact_table",
         parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
@@ -2124,6 +2128,141 @@ name_anonymous_variable(NamedVarNames, AnonVar, !Counter, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 %
+% Parse input_spec pragmas.
+%
+
+:- pred parse_pragma_input_spec(module_name::in, varset::in, term::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker)::out) is det.
+
+parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
+        Context, SeqNum, MaybeIOM) :-
+    ( if PragmaTerms = [TypeTerm, ReplaceOrAddTerm, InstsTerm] then
+        TypeContextPieces = cord.from_list(
+            [words("In the first argument of"), pragma_decl("input_spec"),
+            words("declaration:"), nl]),
+        parse_type(no_allow_ho_inst_info(wnhii_pragma_input_spec),
+            VarSet, TypeContextPieces, TypeTerm, MaybeType),
+        ( if
+            ReplaceOrAddTerm = term.functor(atom(RoAStr), [], _),
+            ( RoAStr = "replace_in_mode", ReplaceOrAdd0 = replace_in_mode
+            ; RoAStr = "add_to_in_mode",  ReplaceOrAdd0 = add_to_in_mode
+            )
+        then
+            MaybeReplaceOrAdd = ok1(ReplaceOrAdd0)
+        else
+            ReplaceOrAddTermStr = mercury_term_to_string_vs(VarSet,
+                print_name_only, ReplaceOrAddTerm),
+            RoAPieces = [words("In the second argument of"),
+                pragma_decl("input_spec"), words("declaration:"), nl,
+                words("error: expected either")] ++
+                color_as_correct([fixed("replace_in_mode")]) ++
+                [words("or")] ++
+                color_as_correct([fixed("add_to_in_mode,")]) ++
+                [words("got")] ++
+                color_as_incorrect([words(ReplaceOrAddTermStr),
+                    suffix(".")]) ++
+                [nl],
+            RoASpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ReplaceOrAddTerm), RoAPieces),
+            MaybeReplaceOrAdd = error1(one_or_more(RoASpec, []))
+        ),
+        ( if list_term_to_term_list(InstsTerm, InstTerms) then
+            ListContextPieces = [words("In the third argument of"),
+                pragma_decl("input_spec"), words("declaration:"), nl],
+            list.filter_map(term_to_inst_ctor, InstTerms,
+                InstCtors, BadInstTerms),
+            (
+                BadInstTerms = [],
+                (
+                    InstCtors = [],
+                    NoInstPieces = ListContextPieces ++
+                        [words("error: expected a")] ++
+                        color_as_correct(
+                            [words("nonempty list of inst names,")]) ++
+                        [words("got an")] ++
+                        color_as_incorrect([words("empty list.")]) ++
+                        [nl],
+                    NoInstSpec = spec($pred, severity_error, phase_t2pt,
+                        get_term_context(InstsTerm), NoInstPieces),
+                    MaybeOoMInstCtors = error1(one_or_more(NoInstSpec, []))
+                ;
+                    InstCtors = [HeadInstCtor | TailInstCtors],
+                    OoMInstCtors0 = one_or_more(HeadInstCtor, TailInstCtors),
+                    MaybeOoMInstCtors = ok1(OoMInstCtors0)
+                )
+            ;
+                BadInstTerms = [_ | _],
+                BadInstTermStrs = list.map(
+                    mercury_term_to_string_vs(VarSet, print_name_only),
+                    BadInstTerms),
+                BadInstTermPieces =
+                    list.map((func(S) = words(S)), BadInstTermStrs),
+                NotInstName = choose_number(BadInstTermPieces,
+                    "is not an inst name", "are not inst names"),
+                BadInstPieces = ListContextPieces ++
+                    [words("error: expected a nonempty")] ++
+                    color_as_correct([words("list of inst names,")]) ++
+                    [words("but")] ++
+                    piece_list_to_color_pieces(color_incorrect, "and", [],
+                        BadInstTermPieces) ++
+                    [words(NotInstName), suffix("."), nl],
+                BadInstSpec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(InstsTerm), BadInstPieces),
+                MaybeOoMInstCtors = error1(one_or_more(BadInstSpec, []))
+            )
+        else
+            InstsTermStr = mercury_term_to_string_vs(VarSet,
+                print_name_only, InstsTerm),
+            ListPieces = [words("In the third argument of"),
+                pragma_decl("input_spec"), words("declaration:"), nl,
+                words("error: expected a nonempty")] ++
+                color_as_correct([words("list of inst names,")]) ++
+                [words("got")] ++
+                color_as_incorrect([words(InstsTermStr), suffix(".")]) ++
+                [nl],
+            ListSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(InstsTerm), ListPieces),
+            MaybeOoMInstCtors = error1(one_or_more(ListSpec, []))
+        ),
+        ( if
+            MaybeType = ok1(Type),
+            MaybeReplaceOrAdd = ok1(ReplaceOrAdd),
+            MaybeOoMInstCtors = ok1(OoMInstCtors)
+        then
+            InstCtorToInst =
+                (func(inst_ctor(SN, _)) = defined_inst(user_inst(SN, []))),
+            OoMInsts = one_or_more.map(InstCtorToInst, OoMInstCtors),
+            varset.coerce(VarSet, TVarSet),
+            InputSpec = decl_pragma_input_spec_info(ModuleName, Type,
+                ReplaceOrAdd, OoMInstCtors, OoMInsts,
+                set.init, TVarSet, Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_input_spec(InputSpec)),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            Specs = get_any_errors1(MaybeType) ++
+                get_any_errors1(MaybeReplaceOrAdd) ++
+                get_any_errors1(MaybeOoMInstCtors),
+            det_list_to_one_or_more(Specs, OoMSpecs),
+            MaybeIOM = error1(OoMSpecs)
+        )
+        % parse_tvar_substs(WNHII, TypeContextPieces, VarSet0,
+        %     HeadTypeSubstTerm, TailTypeSubstTerms,
+        %     TVarSubsts, [], TypeSpecs)
+    else
+        Spec = report_pragma_arity_error(ErrorTerm, "input_spec",
+            "three arguments"),
+        MaybeIOM = error1(one_or_more(Spec, []))
+    ).
+
+:- pred term_to_inst_ctor(term::in, inst_ctor::out) is semidet.
+
+term_to_inst_ctor(Term, InstCtor) :-
+    try_parse_sym_name_and_no_args(Term, SymName),
+    InstCtor = inst_ctor(SymName, 0).
+
+%---------------------------------------------------------------------------%
+%
 % Parse fact_table pragmas.
 %
 
@@ -2294,6 +2433,10 @@ report_pragma_arity_error(ErrorTerm, PragmaName, ArgNumsStr) = Spec :-
     else
         AAn = "a"
     ),
+    % We used to use the code above, but what follows AAn in the output
+    % is not PragmaName, but ":- pragma PragmaName", which always starts
+    % with consonant, and specifically with "p".
+    % AAn = "a",
     Pieces = [words("Error:"), words(AAn)] ++
         color_as_subject([pragma_decl(PragmaName), words("declaration")]) ++
         [words("must have")] ++

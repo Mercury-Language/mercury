@@ -45,6 +45,10 @@
     list(err_spec)::in, list(err_spec)::out,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
+:- pred add_decl_pragmas_input_spec(ims_list(decl_pragma_input_spec_info)::in,
+    module_info::in, module_info::out,
+    list(err_spec)::in, list(err_spec)::out) is det.
+
 :- pred add_decl_pragmas_termination(list(decl_pragma_termination_info)::in,
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
@@ -74,6 +78,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_pragma_type_spec.
@@ -86,6 +91,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item_pred_proc_id.
@@ -95,6 +102,7 @@
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_util.
 
+:- import_module bag.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -135,6 +143,13 @@ add_decl_pragmas_type_spec([Pragma | Pragmas], !ModuleInfo, !QualInfo,
         !ErrSpecs, !WarnSpecs),
     add_decl_pragmas_type_spec(Pragmas, !ModuleInfo, !QualInfo,
         !ErrSpecs, !WarnSpecs).
+
+add_decl_pragmas_input_spec([], !ModuleInfo, !ErrSpecsWarnSpecs).
+add_decl_pragmas_input_spec([ImsList | ImsLists], !ModuleInfo, !ErrSpecs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Pragmas),
+    list.foldl2(add_pragma_input_spec(ItemMercuryStatus), Pragmas,
+        !ModuleInfo, !ErrSpecs),
+    add_decl_pragmas_input_spec(ImsLists, !ModuleInfo, !ErrSpecs).
 
 add_decl_pragmas_termination([], !ModuleInfo, !ErrSpecs).
 add_decl_pragmas_termination([Pragma | Pragmas], !ModuleInfo, !ErrSpecs) :-
@@ -187,6 +202,10 @@ add_decl_pragma(ProgressStream, ItemMercuryStatus, Pragma,
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
         add_pragma_type_spec(TypeSpecInfo, !ModuleInfo, !QualInfo,
             !ErrSpecs, !WarnSpecs)
+    ;
+        Pragma = decl_pragma_input_spec(InputSpecInfo),
+        add_pragma_input_spec(ItemMercuryStatus, InputSpecInfo,
+            !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_oisu(OISUInfo),
         add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !ErrSpecs)
@@ -362,6 +381,269 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo,
                 [FirstMsg, SecondMsg]),
             !:ErrSpecs = [Spec | !.ErrSpecs]
         )
+    ).
+
+%---------------------%
+
+:- pred add_pragma_input_spec(item_mercury_status::in,
+    decl_pragma_input_spec_info::in, module_info::in, module_info::out,
+    list(err_spec)::in, list(err_spec)::out) is det.
+
+add_pragma_input_spec(ItemMercuryStatus, InputSpec, !ModuleInfo, !ErrSpecs) :-
+    % XXX If we ever want to get smart recompilation working, we may
+    % have to do something with _RecompIds. What we do for type_spec pragmas
+    % may, or may not, be appropriate for input spec pragmas as well.
+    InputSpec = decl_pragma_input_spec_info(ContainingModuleName, Type,
+        ReplaceOrAdd, OoMInstCtors, OoMInsts, _RecompIds,
+        TVarSet, Context, _),
+    some [!InputSpecs] (
+        !:InputSpecs = [],
+        (
+            ItemMercuryStatus = item_defined_in_other_module(_)
+        ;
+            ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+            (
+                ItemExport = item_export_anywhere,
+                (
+                    ReplaceOrAdd = replace_in_mode,
+                    StatusPieces = [words("Error: a"),
+                        pragma_decl("input_spec"), words("declaration"),
+                        words("that occurs in the interface of its module"),
+                        words("is not allowed to specify")] ++
+                        color_as_incorrect([words("replace_in_mode,")]) ++
+                        [words("as this would contradict"),
+                        words("the mode declarations of the"),
+                        words("predicates and/or functions"),
+                        words("in its public interface."), nl],
+                    StatusSpec = spec($pred, severity_error, phase_pt2h,
+                        Context, StatusPieces),
+                    !:InputSpecs = [StatusSpec | !.InputSpecs]
+                ;
+                    ReplaceOrAdd = add_to_in_mode
+                )
+            ;
+                ( ItemExport = item_export_nowhere
+                ; ItemExport = item_export_only_submodules
+                )
+            )
+        ),
+        module_info_get_type_table(!.ModuleInfo, TypeTable),
+        check_input_spec_type(TypeTable, Type,
+            [], UnknownTypeCtors, [], NonDuTypeCtors, bag.init, TVars),
+        (
+            UnknownTypeCtors = []
+        ;
+            UnknownTypeCtors = [_ | _],
+            UCtors = choose_number(UnknownTypeCtors,
+                "constructor", "constructors"),
+            Have = choose_number(UnknownTypeCtors, "has", "have"),
+            UDefns = choose_number(UnknownTypeCtors,
+                "definition", "definitions"),
+            UnknownPieces = [words("Error: the type"), words(UCtors)] ++
+                piece_list_to_color_pieces(color_subject, "and", [],
+                    UnknownTypeCtors) ++
+                [words(Have)] ++
+                color_as_incorrect([words("no visible"), words(UDefns),
+                    suffix(".")]) ++
+            [nl],
+            UnknownSpec = spec($pred, severity_error, phase_pt2h,
+                Context, UnknownPieces),
+            !:InputSpecs = [UnknownSpec | !.InputSpecs]
+        ),
+        (
+            NonDuTypeCtors = []
+        ;
+            NonDuTypeCtors = [_ | _],
+            DefnPieces = choose_number(NonDuTypeCtors,
+                [words("definition of the type constructor")],
+                [words("definitions of the type constructors")]),
+            IsAre = is_or_are(NonDuTypeCtors),
+            NotDuDotPieces = choose_number(NonDuTypeCtors,
+                [words("not a discriminated union type.")],
+                [words("not discriminated union types.")]),
+            NonDuPieces = [words("Error: the")] ++ DefnPieces ++
+                piece_list_to_color_pieces(color_subject, "and", [],
+                    NonDuTypeCtors) ++
+                [words(IsAre)] ++
+                color_as_incorrect(NotDuDotPieces) ++
+                [nl],
+            NonDuSpec = spec($pred, severity_error, phase_pt2h,
+                Context, NonDuPieces),
+            !:InputSpecs = [NonDuSpec | !.InputSpecs]
+        ),
+        bag.to_list_without_duplicates(TVars, AllTVars),
+        (
+            AllTVars = []
+        ;
+            AllTVars = [_ | _],
+            AllTVarStrs = list.map(
+                mercury_var_to_string_vs(TVarSet, print_name_only),
+                AllTVars),
+            Vars = choose_number(AllTVarStrs, "variable", "variables"),
+            TVarPieces = [words("Error: the type being specialized")] ++
+                color_as_correct([words("must be a ground type,")]) ++
+                [words("but it contains the type"), words(Vars)] ++
+                fixed_list_to_color_pieces(color_incorrect,
+                    "and", [suffix(".")], AllTVarStrs) ++
+                [nl],
+            TVarSpec = spec($pred, severity_error, phase_pt2h,
+                Context, TVarPieces),
+            !:InputSpecs = [TVarSpec | !.InputSpecs]
+        ),
+% XXX We could relax that requirement to allow non-repeated tvars,
+% which would make Type effectively a template. However, for that to work,
+% input_specialization.m would need to use a more complex method than
+% a simple map lookup to test whether an input_spec pragma is applicable
+% to a given predicate or function argument.
+%
+%       bag.to_list_only_duplicates(TVars, DupTVars),
+%       (
+%           DupTVars = []
+%       ;
+%           DupTVars = [_ | _],
+%           DupTVarStrs = list.map(
+%               mercury_var_to_string_vs(TVarSet, print_name_only),
+%               DupTVars),
+%           Vars = choose_number(DupTVarStrs, "variable", "variables"),
+%           DupTVarPieces = [words("Error: the type"), words(Vars)] ++
+%               fixed_list_to_color_pieces(color_subject, "and", [],
+%                   DupTVarStrs) ++
+%               [words("occur")] ++
+%               color_as_incorrect([words("more than once")]) ++
+%               [words("in the type to be input specialized."),
+%               words("This is not allowed."), nl],
+%           DupTVarSpec = spec($pred, severity_error, phase_pt2h,
+%               Context, DupTVarPieces),
+%           !:InputSpecs = [DupTVarSpec | !.InputSpecs]
+%       ),
+        module_info_get_inst_table(!.ModuleInfo, InstTable),
+        inst_table_get_user_insts(InstTable, UserInstTable),
+        one_or_more.foldl(check_input_spec_inst_ctor(UserInstTable),
+            OoMInstCtors, [], _UndefInstCtors),
+        (
+            !.InputSpecs = [],
+            module_info_get_input_spec_table(!.ModuleInfo, InputSpecTable0),
+            InputSpecInfo = input_spec_info(ReplaceOrAdd, OoMInsts, Context),
+            ( if
+                map.search(InputSpecTable0, ContainingModuleName, InModuleMap0)
+            then
+                map.search_insert(Type, InputSpecInfo, MaybeOldInputSpecInfo,
+                    InModuleMap0, InModuleMap),
+                (
+                    MaybeOldInputSpecInfo = no,
+                    map.det_update(ContainingModuleName, InModuleMap,
+                        InputSpecTable0, InputSpecTable),
+                    module_info_set_input_spec_table(InputSpecTable,
+                        !ModuleInfo)
+                ;
+                    MaybeOldInputSpecInfo = yes(OldInputSpecInfo),
+                    OldInputSpecInfo = input_spec_info(_, _, OldContext),
+                    TypeStr = mercury_type_to_string(TVarSet,
+                        print_name_only, Type),
+                    DupDeclPiecesNew = [words("Error: duplicate"),
+                        pragma_decl("input_spec"), words("declaration for")] ++
+                        color_as_subject([words(TypeStr), suffix(".")]) ++
+                        [nl],
+                    DupDeclMsgNew = msg(Context, DupDeclPiecesNew),
+                    DupDeclPiecesOld = [words("The previous declaration"),
+                        words("was here."), nl],
+                    DupDeclMsgOld = msg(OldContext, DupDeclPiecesOld),
+                    DupDeclSpec = gen_spec($pred, severity_error, phase_pt2h,
+                        [DupDeclMsgNew, DupDeclMsgOld]),
+                    !:InputSpecs = [DupDeclSpec | !.InputSpecs]
+                )
+            else
+                map.det_insert(Type, InputSpecInfo, map.init, InModuleMap),
+                map.det_insert(ContainingModuleName, InModuleMap,
+                    InputSpecTable0, InputSpecTable),
+                module_info_set_input_spec_table(InputSpecTable, !ModuleInfo)
+            )
+        ;
+            !.InputSpecs = [_ | _]
+        ),
+        !:ErrSpecs = !.InputSpecs ++ !.ErrSpecs
+    ).
+
+:- pred check_input_spec_types(type_table::in, list(mer_type)::in,
+    list(format_piece)::in, list(format_piece)::out,
+    list(format_piece)::in, list(format_piece)::out,
+    bag(tvar)::in, bag(tvar)::out) is det.
+
+check_input_spec_types(_TypeTable, [],
+        !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag).
+check_input_spec_types(TypeTable, [Type | Types],
+        !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag) :-
+    check_input_spec_type(TypeTable, Type,
+        !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag),
+    check_input_spec_types(TypeTable, Types,
+        !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag).
+
+:- pred check_input_spec_type(type_table::in, mer_type::in,
+    list(format_piece)::in, list(format_piece)::out,
+    list(format_piece)::in, list(format_piece)::out,
+    bag(tvar)::in, bag(tvar)::out) is det.
+
+check_input_spec_type(TypeTable, Type,
+        !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag) :-
+    (
+        Type = type_variable(TVar, _),
+        bag.insert(TVar, !TVarBag)
+    ;
+        Type = builtin_type(_)
+    ;
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        list.length(ArgTypes, Arity),
+        TypeCtor = type_ctor(SymName, Arity),
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            get_type_defn_body(TypeDefn, TypeBody),
+            (
+                TypeBody = hlds_du_type(_)
+            ;
+                ( TypeBody = hlds_eqv_type(_)
+                ; TypeBody = hlds_foreign_type(_)
+                ; TypeBody = hlds_solver_type(_)
+                ; TypeBody = hlds_abstract_type(_)
+                ),
+                !:NonDuTypeCtors =
+                    [unqual_type_ctor(TypeCtor) | !.NonDuTypeCtors]
+            )
+        else
+            !:UnknownTypeCtors =
+                [unqual_type_ctor(TypeCtor) | !.UnknownTypeCtors]
+        ),
+        check_input_spec_types(TypeTable, ArgTypes,
+            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
+    ;
+        Type = tuple_type(ArgTypes, _Kind),
+        check_input_spec_types(TypeTable, ArgTypes,
+            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
+    ;
+        Type = higher_order_type(_PorF, ArgTypes, _HOInstInfo, _Purity),
+        check_input_spec_types(TypeTable, ArgTypes,
+            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
+    ;
+        Type = apply_n_type(TVar, ArgTypes, _Kind),
+        bag.insert(TVar, !TVarBag),
+        check_input_spec_types(TypeTable, ArgTypes,
+            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
+    ;
+        Type = kinded_type(SubType, _Kind),
+        check_input_spec_type(TypeTable, SubType,
+            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
+    ).
+
+:- pred check_input_spec_inst_ctor(user_inst_table::in, inst_ctor::in,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+check_input_spec_inst_ctor(UserInstTable, InstCtor, !UnknownInstCtors) :-
+    % XXX Any problems with _InstDefn (for example, it may not be applicable
+    % to the type of the selected argument) should be reported by the mode
+    % analysis pass.
+    ( if map.search(UserInstTable, InstCtor, _InstDefn) then
+        true
+    else
+        !:UnknownInstCtors =
+            [unqual_inst_ctor(InstCtor) | !.UnknownInstCtors]
     ).
 
 %---------------------%

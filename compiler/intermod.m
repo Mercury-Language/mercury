@@ -212,7 +212,7 @@ format_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !State) :-
     then
         ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
             map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
-            [], [], [], [], [], [], [], [], [], [])
+            [], [], [], [], [], [], [], [], [], [], [])
     else
         format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State)
     ).
@@ -371,13 +371,15 @@ format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State) :-
     Promises = [],
     DeclMarkers = cord.list(DeclMarkersCord),
     ImplMarkers = cord.list(ImplMarkersCord),
+    InputSpecs = [],
 
     module_info_get_name(ModuleInfo, ModuleName),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
         UseMap, FIMSpecsSet, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        DeclMarkers, ImplMarkers, TypeSpecs, [], [], [], [], [], [], [], []).
+        DeclMarkers, ImplMarkers, TypeSpecs, InputSpecs,
+        [], [], [], [], [], [], [], []).
 
 %---------------------------------------------------------------------------%
 
@@ -866,6 +868,7 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
         ; Marker = marker_has_incomplete_switch
         ; Marker = marker_has_format_call
         ; Marker = marker_has_rhs_lambda
+        ; Marker = marker_was_input_specialized
         ; Marker = marker_fact_table_semantic_errors
 
         % Since the inferred declarations are output, these don't need
