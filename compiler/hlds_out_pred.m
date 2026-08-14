@@ -233,10 +233,9 @@ format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State) :-
                     proc_id_to_int(ProcId, N)
                 ),
             ProcNums = list.map(GetProcNum, ProcIdsInfos),
-            FilledInProcNums = list.map(GetProcNum, FilledInProcIdsInfos),
-            string.builder.format("%% procedures: %s, filled in %s\n",
-                [s(string.string(ProcNums)),
-                s(string.string(FilledInProcNums))], !State),
+            string.builder.format("%% procedures: %s, filled in []\n",
+                [s(string.string(ProcNums))], !State),
+            format_proc_mode_lines_loop(PredInfo, ProcIdsInfos, !State),
             (
                 Clauses = [],
                 ClauseCountReport = report_clause_count(Clauses),
@@ -735,10 +734,8 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_can_process(ProcInfo, CanProcess),
     proc_info_get_var_table(ProcInfo, VarTable),
-    proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDeterminism),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, HeadModes),
     proc_info_get_maybe_arglives(ProcInfo, MaybeArgLives),
     proc_info_get_reg_r_headvars(ProcInfo, RegR_HeadVars),
     proc_info_get_maybe_arg_info(ProcInfo, MaybeArgInfos),
@@ -800,22 +797,7 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
         VarNameRemap, !State),
     format_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, !State),
 
-    PredSymName = unqualified(predicate_name(ModuleInfo, PredId)),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    varset.init(ModeVarSet),
-    (
-        PredOrFunc = pf_predicate,
-        MaybeWithInst = maybe.no,
-        mercury_format_pred_mode_decl(output_debug, ModeVarSet,
-            PredSymName, HeadModes, MaybeWithInst,
-            DeclaredDeterminism, string.builder.handle, !State)
-    ;
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
-        mercury_format_func_mode_decl(output_debug, ModeVarSet,
-            PredSymName, FuncHeadModes, RetHeadMode,
-            DeclaredDeterminism, string.builder.handle, !State)
-    ),
+    format_proc_mode_line(PredInfo, ProcId, ProcInfo, !State),
     format_proc_arg_info(DumpOptions, VarTable, VarNamePrint,
         MaybeArgLives, RegR_HeadVars, MaybeArgInfos, !State),
     pred_info_get_status(PredInfo, PredStatus),
@@ -828,12 +810,60 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
         proc_info_get_stack_slots(ProcInfo, StackSlots),
         format_stack_slots(VarTable, VarNamePrint, StackSlots, !State),
         term_subst.var_list_to_term_list(HeadVars, HeadTerms),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         format_clause_head(ModuleInfo, vns_var_table(VarTable),
             VarNamePrint, PredId, PredOrFunc, HeadTerms, !State),
         string.builder.append_string(" :-\n", !State),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         format_goal(Info, ModuleInfo, vns_var_table(VarTable),
             VarNamePrint, TVarSet, InstVarSet, Indent1, ".\n", Goal, !State)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Write out procedure mode lines.
+%
+
+:- pred format_proc_mode_lines_loop(pred_info::in,
+    assoc_list(proc_id, proc_info)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_proc_mode_lines_loop(_, [], !State).
+format_proc_mode_lines_loop(PredInfo,
+        [ProcId - ProcInfo | ProcIdsInfos], !State) :-
+    format_proc_mode_line(PredInfo, ProcId, ProcInfo, !State),
+    format_proc_mode_lines_loop(PredInfo, ProcIdsInfos, !State).
+
+:- pred format_proc_mode_line(pred_info::in, proc_id::in, proc_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_proc_mode_line(PredInfo, ProcId, ProcInfo, !State) :-
+    Indent1 = 1u,
+    Indent1Str = indent2_string(Indent1),
+
+    proc_id_to_int(ProcId, ProcIdInt),
+    proc_info_get_inferred_determinism(ProcInfo, InferredDeterminism),
+    InferredDetismStr = determinism_to_string(InferredDeterminism),
+    string.builder.format("%s%% mode number %d (%s)\n",
+        [s(Indent1Str), i(ProcIdInt), s(InferredDetismStr)], !State),
+
+    proc_info_get_argmodes(ProcInfo, HeadModes),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
+    PredSymName = unqualified(pred_info_name(PredInfo)),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    (
+        PredOrFunc = pf_predicate,
+        MaybeWithInst = maybe.no,
+        mercury_format_pred_mode_decl(output_debug, InstVarSet,
+            PredSymName, HeadModes, MaybeWithInst,
+            DeclaredDeterminism, string.builder.handle, !State)
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(HeadModes, FuncHeadModes, ReturnHeadMode),
+        mercury_format_func_mode_decl(output_debug, InstVarSet,
+            PredSymName, FuncHeadModes, ReturnHeadMode,
+            DeclaredDeterminism, string.builder.handle, !State)
     ).
 
 %---------------------------------------------------------------------------%
