@@ -58,6 +58,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mode_util.
+:- import_module hlds.pred_name.
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.
@@ -87,9 +88,40 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_module_name(PredInfo0, ModuleName),
     ( if map.search(InputSpecTable, ModuleName, InModuleMap) then
-        input_specialize_in_pred_if_possible(!.ModuleInfo, InModuleMap,
-            PredInfo0, PredInfo),
-        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+        pred_info_get_origin(PredInfo0, Origin),
+        (
+            Origin = origin_user(UserMade),
+            (
+                UserMade = user_made_pred(_, _, _),
+                input_specialize_in_pred_if_possible(!.ModuleInfo, InModuleMap,
+                    PredInfo0, PredInfo),
+                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+            ;
+                ( UserMade = user_made_lambda(_, _, _)
+                ; UserMade = user_made_class_method(_, _)
+                ; UserMade = user_made_instance_method(_, _)
+                ; UserMade = user_made_assertion(_, _, _)
+                )
+                % It would make sense to specialize lambda expressions,
+                % but they will exist in the form of separate predicates
+                % only after the frontend pass.
+                %
+                % For class and instance methods, altering their signature
+                % would be a bug.
+                %
+                % For assertions, specializations of any kind are irrelevant.
+            )
+        ;
+            ( Origin = origin_compiler(_)
+            ; Origin = origin_pred_transform(_, _, _)
+            ; Origin = origin_proc_transform(_, _, _, _)
+            )
+            % Do not specialize either unify/compare/index predicates,
+            % or predicates implementing initialise, finalise, mutable
+            % and solver type declarations. The other kinds of compiler-made
+            % predicates, and all transformed predicates, can only be created
+            % by compiler passes that execute after the frontend.
+        )
     else
         true
     ).
