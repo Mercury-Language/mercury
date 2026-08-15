@@ -71,7 +71,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module one_or_more.
-:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -234,38 +233,6 @@ create_input_specialized_proc_infos(ArgNum, ReplaceOrAdd, SpecInsts,
         create_input_specialized_proc_infos(ArgNum,
             ReplaceOrAdd, TailSpecInsts, OrigProcInfo, TailSpecProcInfos),
         SpecProcInfos = [HeadSpecProcInfo | TailSpecProcInfos]
-    ).
-
-%---------------------------------------------------------------------------%
-
-% XXX I (zs) think these should be in library/list.m.
-
-:- pred det_replace_nth_element1(int::in, T::in, list(T)::in, list(T)::out)
-    is det.
-
-det_replace_nth_element1(N, NewItem, Items0, Items) :-
-    ( if replace_nth_element1(N, NewItem, Items0, ItemsPrime) then
-        Items = ItemsPrime
-    else
-        unexpected($pred, "index out of range")
-    ).
-
-:- pred replace_nth_element1(int::in, T::in, list(T)::in, list(T)::out)
-    is semidet.
-
-replace_nth_element1(N, NewItem, Items0, Items) :-
-    replace_nth_element0(N - 1, NewItem, Items0, Items).
-
-:- pred replace_nth_element0(int::in, T::in, list(T)::in, list(T)::out)
-    is semidet.
-
-replace_nth_element0(N, NewItem, [Item0 | Items0], [Item | Items]) :-
-    ( if N = 0 then
-        Item = NewItem,
-        Items = Items0
-    else
-        Item = Item0,
-        replace_nth_element0(N - 1, NewItem, Items0, Items)
     ).
 
 %---------------------------------------------------------------------------%

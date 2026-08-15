@@ -773,6 +773,10 @@ Changes to the Mercury standard library
     - pred `merge_lists_and_remove_dups/3`
     - pred `nondet_member/2`
     - pred `remove_prefix/3`
+    - pred `replace_nth_element0/4`
+    - pred `replace_nth_element1/4`
+    - pred `det_replace_nth_element0/4`
+    - pred `det_replace_nth_element1/4`
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`
