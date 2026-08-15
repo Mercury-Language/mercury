@@ -827,6 +827,10 @@ Changes to the Mercury standard library
 
     - pred `is_non_empty/1`
     - pred `nondet_member/2`
+    - pred `replace_nth_element0/4`
+    - pred `replace_nth_element1/4`
+    - pred `det_replace_nth_element0/4`
+    - pred `det_replace_nth_element1/4`
     - func `ulength/1`
     - pred `ulength/2`
 

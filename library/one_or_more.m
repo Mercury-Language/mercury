@@ -285,6 +285,12 @@
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
+    % NOTE: please consider using one of replace_nth_element[01] below,
+    % since these
+    %
+    % - clearly specify how they number the list's elements, and
+    % - their argument order is suitable for the use of state variables.
+    %
 :- pred replace_nth(one_or_more(T)::in, int::in, T::in, one_or_more(T)::out)
     is semidet.
 
@@ -293,9 +299,49 @@
     % Throws an exception if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
+    % NOTE: please consider using one of det_replace_nth_element[01] below,
+    % since these
+    %
+    % - clearly specify how they number the list's elements, and
+    % - their argument order is suitable for the use of state variables.
+    %
 :- func det_replace_nth(one_or_more(T), int, T) = one_or_more(T).
 :- pred det_replace_nth(one_or_more(T)::in, int::in, T::in,
     one_or_more(T)::out) is det.
+
+    % replace_nth_element1(N, R, List0, List):
+    % det_replace_nth_element1(N, R, List0, List):
+    %
+    % Succeed if-and-only-if List is List0 with its element #N
+    % replaced with R. (The first element is element #1.)
+    %
+    % If List0 has no element #N, either N < 1, or because
+    % the length of List0 is less than N, then
+    %
+    % - replace_nth_element0 fails, while
+    % - det_replace_nth_element0 throws an exception.
+    %
+:- pred replace_nth_element1(int::in, T::in,
+    one_or_more(T)::in, one_or_more(T)::out) is semidet.
+:- pred det_replace_nth_element1(int::in, T::in,
+    one_or_more(T)::in, one_or_more(T)::out) is det.
+
+    % replace_nth_element0(N, R, List0, List):
+    % det_replace_nth_element0(N, R, List0, List):
+    %
+    % Succeed if-and-only-if List is List0 with its element #N
+    % replaced with R. (The first element is element #0.)
+    %
+    % If List0 has no element #N, either N < 0, or because
+    % the length of List0 is less than N-1, then
+    %
+    % - replace_nth_element0 fails, while
+    % - det_replace_nth_element0 throws an exception.
+    %
+:- pred replace_nth_element0(int::in, T::in,
+    one_or_more(T)::in, one_or_more(T)::out) is semidet.
+:- pred det_replace_nth_element0(int::in, T::in,
+    one_or_more(T)::in, one_or_more(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2040,6 +2086,8 @@ replace_all(one_or_more(H0, T0), From, To, one_or_more(H, T)) :-
     ),
     list.replace_all(T0, From, To, T).
 
+%---------------------%
+
 replace_nth(one_or_more(H0, T0), N, To, R) :-
     ( if N > 1 then
         list.replace_nth(T0, N - 1, To, T),
@@ -2062,6 +2110,37 @@ det_replace_nth(one_or_more(H0, T0), N, To, R) :-
     else
         unexpected($pred,
             "Cannot replace element whose index position is less than 1.")
+    ).
+
+%---------------------%
+
+replace_nth_element1(N, NewItem, OoMItems0, OoMItems) :-
+    replace_nth_element0(N - 1, NewItem, OoMItems0, OoMItems).
+
+det_replace_nth_element1(N, NewItem, OoMItems0, OoMItems) :-
+    ( if replace_nth_element1(N, NewItem, OoMItems0, OoMItemsPrime) then
+        OoMItems = OoMItemsPrime
+    else
+        unexpected($pred, "index out of range")
+    ).
+
+replace_nth_element0(N, NewItem,
+        one_or_more(Item0, Items0), one_or_more(Item, Items)) :-
+    ( if N > 0 then
+        Item = Item0,
+        list.replace_nth_element0(N - 1, NewItem, Items0, Items)
+    else if N = 0 then
+        Item = NewItem,
+        Items = Items0
+    else
+        fail
+    ).
+
+det_replace_nth_element0(N, NewItem, OoMItems0, OoMItems) :-
+    ( if replace_nth_element0(N, NewItem, OoMItems0, OoMItemsPrime) then
+        OoMItems = OoMItemsPrime
+    else
+        unexpected($pred, "index out of range")
     ).
 
 %---------------------------------------------------------------------------%
