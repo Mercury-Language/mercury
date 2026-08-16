@@ -62,7 +62,6 @@
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.
-:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
