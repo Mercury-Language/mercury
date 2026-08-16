@@ -147,7 +147,7 @@ check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
         !Specs),
     check_io_state_proc_detism(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs),
-    check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs).
+    check_exported_proc_detism(!.ModuleInfo, PredProcId, ProcInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -860,17 +860,14 @@ is_detism_ok_for_io(Detism) = Ok :-
     % should have been picked up in make_hlds, so this is just to catch those
     % whose determinisms need to be inferred.
     %
-:- pred check_exported_proc_detism(pred_proc_id::in, proc_info::in,
-    module_info::in, module_info::out,
+:- pred check_exported_proc_detism(module_info::in,
+    pred_proc_id::in, proc_info::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs) :-
-    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
-    ExportedProcs = cord.list(ExportedProcsCord0),
-    ExportedProcsCord = cord.from_list(ExportedProcs),
-    % So that any later conversion from cord to list will do nothing
-    % except take off the cord wrapper.
-    module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
+check_exported_proc_detism(ModuleInfo, PredProcId, ProcInfo, !Specs) :-
+    module_info_get_pragma_exported_procs(ModuleInfo, ExportedProcsCord),
+    ExportedProcs = cord.list(ExportedProcsCord),
+
     proc_info_get_inferred_determinism(ProcInfo, Detism),
     PredProcId = proc(PredId, ProcId),
     ( if

@@ -635,6 +635,13 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     map.foldl(add_module_item_version_numbers, ModuleItemVersionNumbers,
         !QualInfo),
 
+    % Ensure that later accesses to this field won't have to do anything
+    % beyond taking off the cord wrapper around the list.
+    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
+    ExportedProcs = cord.list(ExportedProcsCord0),
+    ExportedProcsCord = cord.from_list(ExportedProcs),
+    module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
+
     qual_info_get_mq_info(!.QualInfo, MQInfo),
     get_err_specs_in_mq_info(MQInfo,
         MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs),
