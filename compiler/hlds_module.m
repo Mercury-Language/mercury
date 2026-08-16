@@ -822,14 +822,15 @@
     %   the field very often. This may be e.g. because it is used only
     %   when processing a language construct that is rare, or because
     %   its uses are concentrated in a few pieces of code that read it
-    %   only when they start and write it only when they finish.
+    %   only when they start, and write it only when they finish.
     %
     % - Another reason is that the field is used only when a compiler option
     %   is given, and it is rarely given.
 
     % Please keep the order of the fields in module_info, module_sub_info
-    % and module_rare_info in sync with the order of the both the
-    % declarations and definitions of both the getter and setter predicates.
+    % and module_rare_info in sync with the order of
+    % - both the declarations and definitions of ...
+    % - both the getter and setter predicates.
 
 :- type module_info
     --->    module_info(

@@ -1699,14 +1699,6 @@ pred_info_get_sym_name(PredInfo, SymName) :-
     --->    address_is_taken
     ;       address_is_not_taken.
 
-:- type deep_profile_role
-    --->    deep_prof_inner_proc(
-                dpip_outer_proc         :: pred_proc_id
-            )
-    ;       deep_prof_outer_proc(
-                dpop_inner_proc         :: pred_proc_id
-            ).
-
 :- type deep_recursion_info
     --->    deep_recursion_info(
                 dri_role                :: deep_profile_role,
@@ -1715,6 +1707,14 @@ pred_info_get_sym_name(PredInfo, SymName) :-
                 % Otherwise, it contains outer-inner pairs of procedures
                 % in the visible SCC, including this procedure and its copy.
                 dri_visible_scc         :: list(visible_scc_data)
+            ).
+
+:- type deep_profile_role
+    --->    deep_prof_inner_proc(
+                dpip_outer_proc         :: pred_proc_id
+            )
+    ;       deep_prof_outer_proc(
+                dpop_inner_proc         :: pred_proc_id
             ).
 
 :- type visible_scc_data
