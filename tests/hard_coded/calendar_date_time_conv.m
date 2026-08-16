@@ -181,7 +181,11 @@ valid_date_times = [
     dt_conv_test("all maximum", "2024-12-31 23:59:60.999999"),
     dt_conv_test("Unix epoch", "1970-01-01 00:00:00"),
     dt_conv_test("first day of the Gregorian calendar",
-        "1582-10-15 00:00:00")
+        "1582-10-15 00:00:00"),
+
+    % Valid in all grades.
+    dt_conv_test("year on 32-bit integer boundary",
+        "2147483647-01-01 00:00:00")
 ].
 
     % These cannot be round-tripped through date_time_to_string/1.
@@ -294,7 +298,16 @@ invalid_date_times = [
     dt_conv_test("missing day", "2024-01- 00:00:00"),
     dt_conv_test("missing hour", "2024-01-01 :00:00"),
     dt_conv_test("missing minute", "2024-01-01 00::00"),
-    dt_conv_test("trailing colon with no second digits", "2024-01-01 00:00:")
+    dt_conv_test("trailing colon with no second digits", "2024-01-01 00:00:"),
+
+    % One past max_int for 64-bit integers.
+    dt_conv_test("integer overflow in year component",
+        "9223372036854775808-01-01 00:00:00"),
+
+    % A test case intended to defeat the incorrect overflow check that
+    % string.to_int/2 used.
+    dt_conv_test("bad overflow check",
+        "23058430092136939520-01-01 00:00:00")
 ].
 
 %---------------------------------------------------------------------------%

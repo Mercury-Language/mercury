@@ -129,6 +129,9 @@ PASS date_time(1970, 1, 1, 0, 0, 0, 0)
 "1582-10-15 00:00:00":        first day of the Gregorian calendar
 PASS date_time(1582, 10, 15, 0, 0, 0, 0)
 
+"2147483647-01-01 00:00:00":  year on 32-bit integer boundary
+PASS date_time(2147483647, 1, 1, 0, 0, 0, 0)
+
 "2024-01-01 00:00:00.10":     one fractional trailing zero
 PASS date_time(2024, 1, 1, 0, 0, 0, 100000)
 TEST 2024-01-01 00:00:00.10
@@ -365,4 +368,10 @@ PASS: ERROR DETECTED
 PASS: ERROR DETECTED
 
 "2024-01-01 00:00:":          trailing colon with no second digits
+PASS: ERROR DETECTED
+
+"9223372036854775808-01-01 00:00:00": integer overflow in year component
+PASS: ERROR DETECTED
+
+"23058430092136939520-01-01 00:00:00": bad overflow check
 PASS: ERROR DETECTED

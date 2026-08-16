@@ -216,8 +216,11 @@
     % The microseconds component (.mmmmmm) is optional. If present,
     % it may have between one and six digits.
     %
-    % This predicate fails if the string does not conform to the above format,
-    % or if any date or time component is outside its valid range.
+    % This predicate fails if
+    % - the string does not conform to the above format;
+    % - any date or time component is outside its valid range; or
+    % - the absolute value of the year cannot be represented by Mercury's
+    %   int type.
     %
 :- pred date_time_from_string(string::in, date_time::out) is semidet.
 
@@ -460,8 +463,12 @@
     % This fraction component cannot include more than six digits, since
     % the maximum resolution of a duration is a microsecond.
     %
-    % Fail if the string does not conform to the above format, or if the
-    % fractional part of the seconds component has more than six digits.
+    % This predicates fails if
+    % - the string does not conform to the above format;
+    % - the fractional part of the seconds component has more than
+    %   six digits; or
+    % - any of the duration components cannot be represented by Mercury's
+    %   int type.
     %
     % For example, the duration 1 year, 18 months, 100 days, 10 hours, 15
     % minutes, 90 seconds and 300 microseconds can be written as:
@@ -1498,25 +1505,45 @@ foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3) :-
 
 read_next_char(Char, [Char | Rest], Rest).
 
+    % read_int_and_return_num_digits(Int, NumDigits, !Chars):
+    %
+    % Int is a non-negative integer of NumDigits digits at the start
+    % of the given character list.
+    % Int and NumDigits are both zero if the start of the character list does
+    % not contain a digit.
+    % Fails if the integer is outside the bounds of what can be represented by
+    % Mercury's int type.
+    %
 :- pred read_int_and_return_num_digits(int::out, int::out,
-    list(char)::in, list(char)::out) is det.
+    list(char)::in, list(char)::out) is semidet.
 
 read_int_and_return_num_digits(Int, NumDigits, !Chars) :-
-    read_int_and_return_num_digits_loop(0, Int, 0, NumDigits, !Chars).
+    % See the comment for string.do_base_string_to_positive_int_loop/8
+    % for an explanation of how we check for overflow here.
+    CutOff = max_int `unchecked_quotient` 10,
+    CutLimit = max_int `unchecked_rem` 10,
+    read_int_and_return_num_digits_loop(CutOff, CutLimit, 0, Int,
+        0, NumDigits, !Chars).
 
-:- pred read_int_and_return_num_digits_loop(int::in, int::out,
-    int::in, int::out, list(char)::in, list(char)::out) is det.
+:- pred read_int_and_return_num_digits_loop(int::in, int::in,
+    int::in, int::out, int::in, int::out, list(char)::in, list(char)::out)
+    is semidet.
 
-read_int_and_return_num_digits_loop(!Int, !NumDigits, !Chars) :-
+read_int_and_return_num_digits_loop(CutOff, CutLimit, Acc0, Acc,
+        !NumDigits, !Chars) :-
     ( if
         !.Chars = [Char | !:Chars],
         decimal_digit_to_int(Char, Digit)
     then
-        !:Int = !.Int * 10 + Digit,
-        read_int_and_return_num_digits_loop(!Int, !.NumDigits + 1, !:NumDigits,
-            !Chars)
+        % Fail on overflow.
+        ( Acc0 < CutOff
+        ; Acc0 = CutOff, Digit =< CutLimit
+        ),
+        NextAcc = (10 * Acc0) + Digit,
+        read_int_and_return_num_digits_loop(CutOff, CutLimit, NextAcc, Acc,
+            !.NumDigits + 1, !:NumDigits, !Chars)
     else
-        true
+        Acc = Acc0
     ).
 
 :- pred read_microseconds(microseconds::out, list(char)::in, list(char)::out)

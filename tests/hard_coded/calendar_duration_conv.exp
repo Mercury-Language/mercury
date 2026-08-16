@@ -333,3 +333,21 @@ PASS: ERROR DETECTED
 
 "PTS":                              S with no second digits
 PASS: ERROR DETECTED
+
+"P9223372036854775808Y":            integer overflow in years component
+PASS: ERROR DETECTED
+
+"P9223372036854775808M":            integer overflow in months component
+PASS: ERROR DETECTED
+
+"P9223372036854775808D":            integer overflow in days component
+PASS: ERROR DETECTED
+
+"PT9223372036854775808H":           integer overflow in hours component
+PASS: ERROR DETECTED
+
+"PT9223372036854775808M":           integer overflow in minutes component
+PASS: ERROR DETECTED
+
+"PT9223372036854775808S":           integer overflow in seconds component
+PASS: ERROR DETECTED
