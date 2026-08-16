@@ -135,10 +135,10 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
     qual_info::in, qual_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_type_spec_for_pred(TypeSpec, PredId,
+add_pragma_type_spec_for_pred(TypeSpecInfo0, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
-    TypeSpec = decl_pragma_type_spec_info(PFUMM0, SymName, _SpecModuleName,
-        Subst, TVarSet0, _ExpandedItems, Context, _SeqNum),
+    TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM0, SymName,
+        SpecModuleName, Subst, TVarSet0, ExpandedItems, Context, SeqNum),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     check_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
         MaybeSubstResult),
@@ -171,15 +171,17 @@ add_pragma_type_spec_for_pred(TypeSpec, PredId,
             )
         then
             add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity,
-                TypeSpec, TVarSet, Types, ExistQVars, ClassContext,
+                TypeSpecInfo0, TVarSet, Types, ExistQVars, ClassContext,
                 ForcingProcTable0, ApplicableModes,
                 ForcingPredId, ForcingPredStatus, !ModuleInfo),
-            record_type_specialization(TypeSpec, PredId, ForcingPredId,
-                ForcingPredStatus, ForcingProcIds, RenamedSubst, TVarSet,
-                PFUMM, !ModuleInfo),
+            TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, SymName,
+                SpecModuleName, RenamedSubst, TVarSet, ExpandedItems,
+                Context, SeqNum),
+            record_type_specialization(TypeSpecInfo, PredId, ForcingPredId,
+                ForcingPredStatus, ForcingProcIds, !ModuleInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity,
-                ForcingPredStatus, TypeSpec, !QualInfo)
+                ForcingPredStatus, ExpandedItems, !QualInfo)
         else
             !:Specs = get_any_errors6(MaybeSpecProcs) ++ !.Specs
         )
@@ -501,12 +503,10 @@ tvar_subst_desc(tvar_subst(TVar, Type)) = var_to_int(TVar) - Type.
 
 :- pred record_type_specialization(decl_pragma_type_spec_info::in,
     pred_id::in, pred_id::in, pred_status::in, list(proc_id)::in,
-    type_subst::in, tvarset::in, pred_func_or_unknown_maybe_modes::in,
     module_info::in, module_info::out) is det.
 
-record_type_specialization(TypeSpecInfo0, PredId, ForcingPredId,
-        SpecPredStatus, SpecProcIds, RenamedSubst, TVarSet, PFUMM,
-        !ModuleInfo) :-
+record_type_specialization(TypeSpecInfo, PredId, ForcingPredId,
+        SpecPredStatus, SpecProcIds, !ModuleInfo) :-
     % Record the type specialisation in the module_info.
     module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables0),
     TypeSpecTables0 = type_spec_tables(ProcsToSpec0, ForcingPredIds0,
@@ -527,21 +527,17 @@ record_type_specialization(TypeSpecInfo0, PredId, ForcingPredId,
     else
         BaseToForcingMap = BaseToForcingMap0
     ),
-    TypeSpecInfo0 = decl_pragma_type_spec_info(_PFUMM0, SymName,
-        SpecModuleName, _Subst, _TVarSet0, ExpandedItems, Context, SeqNum),
-    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, SymName, SpecModuleName,
-        RenamedSubst, TVarSet, ExpandedItems, Context, SeqNum),
     one_or_more_map.add(PredId, TypeSpecInfo, PragmaMap0, PragmaMap),
     TypeSpecTables = type_spec_tables(ProcsToSpec, ForcingPredIds,
         BaseToForcingMap, PragmaMap),
     module_info_set_type_spec_tables(TypeSpecTables, !ModuleInfo).
 
 :- pred maybe_record_type_spec_in_qual_info(pred_or_func::in, sym_name::in,
-    user_arity::in, pred_status::in, decl_pragma_type_spec_info::in,
+    user_arity::in, pred_status::in, set(recomp_item_id)::in,
     qual_info::in, qual_info::out) is det.
 
 maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
-        TypeSpecInfo, !QualInfo) :-
+        ExpandedItems, !QualInfo) :-
     IsImported = pred_status_is_imported(PredStatus),
     (
         IsImported = yes,
@@ -549,9 +545,8 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
         UserArity = user_arity(UserArityInt),
         ItemName = recomp_item_name(SymName, UserArityInt),
         ItemId = recomp_item_id(ItemType, ItemName),
-        ItemRecompDeps = TypeSpecInfo ^ tspec_items,
         apply_to_recompilation_info(
-            record_gathered_item_deps(ItemId, ItemRecompDeps),
+            record_gathered_item_deps(ItemId, ExpandedItems),
             !QualInfo)
     ;
         IsImported = no
