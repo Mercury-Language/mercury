@@ -309,93 +309,102 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:ErrSpecs = [Spec | !.ErrSpecs]
     else
-        % Do we have to make sure the tabled preds are stratified?
-        NeedsStrat = tabled_eval_method_needs_stratification(TabledMethod),
-        (
-            NeedsStrat = yes,
-            module_info_get_must_be_stratified_preds(!.ModuleInfo,
-                StratPredIds0),
-            set.insert(PredId, StratPredIds0, StratPredIds),
-            module_info_set_must_be_stratified_preds(StratPredIds, !ModuleInfo)
-        ;
-            NeedsStrat = no
-        ),
+        select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
+            PredSymName, PredModuleName, PredName, UserArity,
+            PredId, PredInfo0, MaybeModes, TabledMethod, TabledMethodStr,
+            MaybeAttributes, Context, ItemMercuryStatus, PredStatus,
+            !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
+    ).
 
-        % Add the eval model to the proc_info for this procedure.
-        pred_info_get_proc_table(PredInfo0, ProcTable0),
+    % For each tabled procedure within the given predicate,
+    % set its eval method.
+    %
+:- pred select_tabled_proc_set_eval_method(io.text_output_stream::in,
+    pred_or_func::in, sym_name::in, module_name::in, string::in,
+    user_arity::in, pred_id::in, pred_info::in, maybe(list(mer_mode))::in,
+    tabled_eval_method::in, string::in, maybe(table_attributes)::in,
+    prog_context::in, item_mercury_status::in, pred_status::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+
+select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
+        PredSymName, PredModuleName, PredName, UserArity, PredId, PredInfo0,
+        MaybeModes, TabledMethod, TabledMethodStr, MaybeAttributes, Context,
+        ItemMercuryStatus, PredStatus,
+        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
+    record_any_need_for_stratification(PredId, TabledMethod, !ModuleInfo),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    (
+        MaybeModes = yes(Modes),
+        ( if
+            get_procedure_matching_argmodes(!.ModuleInfo, ProcTable0,
+                Modes, ProcId, ProcInfo0)
+        then
+            set_eval_method_create_aux_preds(ProgressStream,
+                PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
+                ProcId, ProcInfo0, is_single_proc, Context, TabledMethod,
+                MaybeAttributes, ItemMercuryStatus, PredStatus,
+                ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
+                !ErrSpecs, !WarnSpecs),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+        else
+            UserArity = user_arity(UserArityInt),
+            SNA = sym_name_arity(PredSymName, UserArityInt),
+            Pieces = [words("Error:"),
+                pragma_decl(TabledMethodStr), words("declaration for")] ++
+                color_as_incorrect([words("undeclared mode")]) ++
+                [words("of"), p_or_f(PredOrFunc)] ++
+                color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:ErrSpecs = [Spec | !.ErrSpecs]
+        )
+    ;
+        MaybeModes = no,
+        map.to_assoc_list(ProcTable0, ExistingProcs),
         (
-            MaybeModes = yes(Modes),
-            ( if
-                get_procedure_matching_argmodes(!.ModuleInfo, ProcTable0,
-                    Modes, ProcId, ProcInfo0)
-            then
-                set_eval_method_create_aux_preds(ProgressStream,
-                    PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
-                    ProcId, ProcInfo0, is_single_proc, Context, TabledMethod,
-                    MaybeAttributes, ItemMercuryStatus, PredStatus,
-                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
-                    !ErrSpecs, !WarnSpecs),
-                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
-            else
-                UserArity = user_arity(UserArityInt),
-                SNA = sym_name_arity(PredSymName, UserArityInt),
-                Pieces = [words("Error:"),
-                    pragma_decl(TabledMethodStr), words("declaration for")] ++
-                    color_as_incorrect([words("undeclared mode")]) ++
-                    [words("of"), p_or_f(PredOrFunc)] ++
-                    color_as_subject([qual_sym_name_arity(SNA),
-                        suffix(".")]) ++
-                    [nl],
-                Spec = spec($pred, severity_error, phase_pt2h,
-                    Context, Pieces),
-                !:ErrSpecs = [Spec | !.ErrSpecs]
-            )
+            ExistingProcs = [],
+            UserArity = user_arity(UserArityInt),
+            SNA = sym_name_arity(PredSymName, UserArityInt),
+            Pieces = [words("Error:"),
+                pragma_decl(TabledMethodStr), words("declaration"),
+                words("for the"), p_or_f(PredOrFunc)] ++
+                color_as_subject([qual_sym_name_arity(SNA), suffix(",")]) ++
+                [words("which has")] ++
+                color_as_incorrect([words("no declared modes.")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:ErrSpecs = [Spec | !.ErrSpecs]
         ;
-            MaybeModes = no,
-            map.to_assoc_list(ProcTable0, ExistingProcs),
+            ExistingProcs = [_ | ExistingProcsTail],
             (
-                ExistingProcs = [],
-                UserArity = user_arity(UserArityInt),
-                SNA = sym_name_arity(PredSymName, UserArityInt),
-                Pieces = [words("Error:"),
-                    pragma_decl(TabledMethodStr), words("declaration"),
-                    words("for the"), p_or_f(PredOrFunc)] ++
-                    color_as_subject([qual_sym_name_arity(SNA),
-                        suffix(",")]) ++
-                    [words("which has")] ++
-                    color_as_incorrect([words("no declared modes.")]) ++
-                    [nl],
-                Spec = spec($pred, severity_error, phase_pt2h,
-                    Context, Pieces),
-                !:ErrSpecs = [Spec | !.ErrSpecs]
+                ExistingProcsTail = [],
+                SingleProc = is_single_proc
             ;
-                ExistingProcs = [_ | ExistingProcsTail],
-                (
-                    ExistingProcsTail = [],
-                    SingleProc = is_single_proc
-                ;
-                    ExistingProcsTail = [_ | _],
-                    SingleProc = is_not_single_proc
-                ),
-                set_eval_method_create_aux_preds_list(ProgressStream,
-                    PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
-                    ExistingProcs, SingleProc, Context,
-                    TabledMethod, MaybeAttributes,
-                    ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
-                    !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
-                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
-            )
+                ExistingProcsTail = [_ | _],
+                SingleProc = is_not_single_proc
+            ),
+            set_eval_method_create_aux_preds_list(ProgressStream,
+                PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
+                ExistingProcs, SingleProc, Context,
+                TabledMethod, MaybeAttributes,
+                ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
+                !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
         )
     ).
 
-    % Return true if the given evaluation method requires a
-    % stratification check.
+    % If the tabled preds have to be stratified, record that fact.
     %
-:- func tabled_eval_method_needs_stratification(tabled_eval_method) = bool.
+:- pred record_any_need_for_stratification(pred_id::in, tabled_eval_method::in,
+    module_info::in, module_info::out) is det.
 
-tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
+record_any_need_for_stratification(PredId, TabledMethod, !ModuleInfo) :-
+    % Does TabledMethod require a stratification check?
+    require_complete_switch [TabledMethod]
     (
         ( TabledMethod = tabled_loop_check
         ; TabledMethod = tabled_memo(_)
@@ -405,7 +414,18 @@ tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
     ;
         TabledMethod = tabled_minimal(_),
         NeedsStratification = yes
+    ),
+    (
+        NeedsStratification = yes,
+        module_info_get_must_be_stratified_preds(!.ModuleInfo, StratPredIds0),
+        set.insert(PredId, StratPredIds0, StratPredIds),
+        module_info_set_must_be_stratified_preds(StratPredIds, !ModuleInfo)
+    ;
+        NeedsStratification = no
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred set_eval_method_create_aux_preds_list(io.text_output_stream::in,
     pred_info::in,
