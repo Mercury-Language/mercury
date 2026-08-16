@@ -215,14 +215,8 @@ input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum, InputSpecInfo,
     ( if
         mode_get_insts_semidet(ModuleInfo, SelectedArgMode,
             InitInst, FinalInst),
-        InitInst = FinalInst,
-        (
-            InitInst = ground(shared, none_or_default_func)
-        ;
-            InitInst = defined_inst(user_inst(SymName, [])),
-            SymName = qualified(mercury_public_builtin_module, Name),
-            ( Name = "in" ; Name = "input" )
-        )
+        InitInst = ground(shared, none_or_default_func),
+        InitInst = FinalInst
     then
         input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum,
             InputSpecInfo, TailProcInfos0, TailProcInfos, _Changed),
