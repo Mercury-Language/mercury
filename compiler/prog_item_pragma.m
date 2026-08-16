@@ -627,7 +627,7 @@
 
 :- type gen_pragma_unused_args_info
     --->    gen_pragma_unused_args_info(
-                % This pragma Should only appear in .opt files.
+                % This pragma should only appear in .opt files.
                 unused_proc_id          :: proc_pf_name_arity_mn,
 
                 % The argument positions of the unused arguments.
