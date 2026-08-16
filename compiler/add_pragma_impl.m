@@ -197,13 +197,13 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !ErrSpecs) :-
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         % predicate_table_get_preds(PredTable, Preds),
         % map.lookup(Preds, PredId, PredInfo),
-        pred_info_get_proc_table(PredInfo, Procs),
-        map.to_assoc_list(Procs, ExistingProcs),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        map.to_assoc_list(ProcTable, ExistingProcs),
         ( if
             get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
                 ExistingProcs, ArgModes, ProcId)
         then
-            map.lookup(Procs, ProcId, ProcInfo0),
+            map.lookup(ProcTable, ProcId, ProcInfo0),
             proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
             % We cannot catch those multi or nondet procedures that don't have
             % a determinism declaration until after determinism analysis.
