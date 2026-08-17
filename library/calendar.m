@@ -177,8 +177,11 @@
     % The microseconds component (.mmmmmm) is optional. If present,
     % it may have between one and six digits.
     %
-    % This predicate fails if the string does not conform to the above format,
-    % or if any date or time component is outside its valid range.
+    % This predicate fails if
+    % - the string does not conform to the above format;
+    % - any date or time component is outside its valid range; or
+    % - the absolute value of the year cannot be represented by Mercury's
+    %   int type.
     %
 :- pred date_from_string(string::in, date::out) is semidet.
 
@@ -411,8 +414,12 @@
     % This fraction component cannot include more than six digits, since
     % the maximum resolution of a duration is a microsecond.
     %
-    % Fail if the string does not conform to the above format, or if the
-    % fractional part of the seconds component has more than six digits.
+    % This predicates fails if
+    % - the string does not conform to the above format;
+    % - the fractional part of the seconds component has more than
+    %   six digits; or
+    % - any of the duration components cannot be represented by Mercury's
+    %   int type.
     %
     % For example, the duration 1 year, 18 months, 100 days, 10 hours, 15
     % minutes, 90 seconds and 300 microseconds can be written as:
