@@ -459,8 +459,8 @@
     % overlay_large_map(MapA, MapB, Map) performs the same task as
     % overlay(MapA, MapB, Map). However, while overlay takes time
     % proportional to the size of MapB, overlay_large_map takes time
-    % proportional to the size of MapA. In other words, it preferable when
-    % MapB is the larger map.
+    % proportional to the size of MapA. In other words, it is preferable
+    % when MapB is the larger map.
     %
 :- func overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 :- pred overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)

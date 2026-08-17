@@ -126,7 +126,7 @@
     %   InitialLineContext, FinalLineContext, InitialPos, FinalPos):
     %
     % Scan a list of tokens from a string, starting at the current offset
-    % specified by InitialPos. Keep scanning until either we encounter either
+    % specified by InitialPos. Keep scanning until either we encounter
     % an `end' token (i.e. a full stop followed by whitespace) or until we
     % reach MaxOffset. (MaxOffset must be =< the length of the string.)
     % Return the tokens scanned in Tokens, and return the position one
@@ -142,7 +142,7 @@
 
     % string_get_token_list(String, Tokens, InitialPos, FinalPos):
     %
-    % calls string_get_token_list_max above with MaxPos = length of String.
+    % calls string_get_token_list_max above with FinalPos = length of String.
     %
 :- pred string_get_token_list(string::in, token_list::out,
     posn::in, posn::out) is det.

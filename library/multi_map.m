@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997, 2000, 2002-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2024, 2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -297,8 +297,7 @@
 :- func sorted_keys(multi_map(K, V)) = list(K).
 :- pred sorted_keys(multi_map(K, V)::in, list(K)::out) is det.
 
-   % Given a multi_map, return a list of all the keys in it
-    % as a set
+    % Given a multi_map, return of all the keys in it as a set.
     %
 :- func keys_as_set(multi_map(K, V)) = set(K).
 :- pred keys_as_set(multi_map(K, V)::in, set(K)::out) is det.
