@@ -1,0 +1,109 @@
+=== Test det_int_to_month/2 ===
+
+det_int_to_month(-1) ==> EXCEPTION
+det_int_to_month(0) ==> EXCEPTION
+det_int_to_month(1) ==> january
+det_int_to_month(2) ==> february
+det_int_to_month(11) ==> november
+det_int_to_month(12) ==> december
+det_int_to_month(13) ==> EXCEPTION
+
+=== Test det_int0_to_month/2 ===
+
+det_int0_to_month(-1) ==> EXCEPTION
+det_int0_to_month(0) ==> january
+det_int0_to_month(1) ==> february
+det_int0_to_month(2) ==> march
+det_int0_to_month(11) ==> december
+det_int0_to_month(12) ==> EXCEPTION
+det_int0_to_month(13) ==> EXCEPTION
+
+=== Test int_to_month/2 ===
+
+int_to_month(-1) ==> FAILED
+int_to_month(0) ==> FAILED
+int_to_month(1) ==> january
+int_to_month(2) ==> february
+int_to_month(11) ==> november
+int_to_month(12) ==> december
+int_to_month(13) ==> FAILED
+
+=== Test int0_to_month/2 ===
+
+int0_to_month(-1) ==> FAILED
+int0_to_month(0) ==> january
+int0_to_month(1) ==> february
+int0_to_month(2) ==> march
+int0_to_month(11) ==> december
+int0_to_month(12) ==> FAILED
+int0_to_month(13) ==> FAILED
+
+=== Test month_to_int/1 ===
+
+month_to_int(january) = 1
+month_to_int(february) = 2
+month_to_int(march) = 3
+month_to_int(april) = 4
+month_to_int(may) = 5
+month_to_int(june) = 6
+month_to_int(july) = 7
+month_to_int(august) = 8
+month_to_int(september) = 9
+month_to_int(october) = 10
+month_to_int(november) = 11
+month_to_int(december) = 12
+
+=== Test month_to_int0/1 ===
+
+month_to_int0(january) = 0
+month_to_int0(february) = 1
+month_to_int0(march) = 2
+month_to_int0(april) = 3
+month_to_int0(may) = 4
+month_to_int0(june) = 5
+month_to_int0(july) = 6
+month_to_int0(august) = 7
+month_to_int0(september) = 8
+month_to_int0(october) = 9
+month_to_int0(november) = 10
+month_to_int0(december) = 11
+
+=== Test unix_epoch/0 ===
+
+Unix epoch year   = 1970
+Unix epoch month  = january
+Unix epoch day    = 1
+Unix epoch hour   = 0
+Unix epoch minute = 0
+Unix epoch second = 0
+Unix epoch microsecond = 0
+
+=== Test julian_day_number/1 ===
+
+julian_day_number(-4713-11-23 00:00:00) = -1 OK (Day before start of Julian period)
+julian_day_number(-4713-11-24 00:00:00) = 0 OK (Start of Julian period)
+julian_day_number(1970-01-01 00:00:00) = 2440588 OK (Unix epoch)
+julian_day_number(2000-01-01 00:00:00) = 2451545 OK (J2000)
+julian_day_number(1582-10-14 00:00:00) = 2299160 OK (Day before Gregorian calendar adoption)
+julian_day_number(1582-10-15 00:00:00) = 2299161 OK (First day of the Gregorian calendar)
+julian_day_number(2000-02-29 00:00:00) = 2451604 OK (Leap day)
+julian_day_number(2000-03-01 00:00:00) = 2451605 OK (Day after leap day)
+julian_day_number(1900-02-28 00:00:00) = 2415079 OK (Non-leap century)
+julian_day_number(1900-03-01 00:00:00) = 2415080 OK (Day after non-leap Feb)
+julian_day_number(2024-02-29 00:00:00) = 2460370 OK (Ordinary leap year)
+julian_day_number(2007-12-31 00:00:00) = 2454466 OK (New Year's Eve)
+julian_day_number(2008-01-01 00:00:00) = 2454467 OK (New Year's Day)
+julian_day_number(0000-01-01 00:00:00) = 1721060 OK (Year zero)
+julian_day_number(-0001-01-01 00:00:00) = 1720695 OK (Year -1)
+julian_day_number(2000-01-01 00:00:00) = 2451545 OK (Midnight)
+julian_day_number(2000-01-01 23:59:59) = 2451545 OK (End of day)
+julian_day_number(10000-01-01 00:00:00) = 5373485 OK (Large year)
+
+=== Test current_{local,utc}_time/3 ===
+
+TEST: current_local_time/3 PASSED
+TEST: current_utc_time/3 PASSED
+
+=== Test local_time_offset/3 ===
+
+TEST: local_time_offset/3 PASSED
