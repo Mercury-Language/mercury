@@ -30,6 +30,9 @@ This is a bug-fix release.
   an incorrect duration, or abort, for some pairs of dates whose difference
   required borrowing days across months of differing length.
 
+* `calendar.date_from_string/2` and `calendar.duration_from_string/2` now
+   check for integer overflow in their components.
+
 * We have fixed bugs in the C# and Java implementations of
   `math.unchecked_log2/1` that caused target language compilation errors
   when compiling with `--intermodule-optimisation`.
@@ -46,6 +49,14 @@ This is a bug-fix release.
 
 * We have fixed an issue that caused the Microsoft linker to emit
   warning `LNK4001`: "no object files specified; libraries used".
+
+* We have fixed an incorrect overflow check in `string.to_int/2`,
+  `string.to_uint`, `string.base_string_to_int/3` and
+  `string.base_string_to_uint/3`.
+
+* We have fixed a bug where `string.to_uint/2` and
+  `string.base_string_to_uint/3` returned zero instead of failing
+  when called with an empty input string.
 
 * Many documentation fixes and improvements.
 
