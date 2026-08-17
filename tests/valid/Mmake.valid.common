@@ -65,9 +65,11 @@ ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 	PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
 	# The AGC_PROGS tests don't work in the java or csharp grades.
-	# The AGC_PROGS tests also don't work in minimal model grades,
-	# because the collector doesn't scan the copied areas of the stacks.
-	ifneq "$(filter java% csharp%,$(GRADE))$(findstring mm,$(GRADE))" ""
+	# The AGC_PROGS tests also don't work in debug grades,
+	# because I/O tabling is incompatible with accurate gc, or in
+	# in minimal model grades, because the collector doesn't scan
+	# the copied areas of the stacks.
+	ifneq "$(filter java% csharp%,$(GRADE))$(findstring debug,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS1 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)

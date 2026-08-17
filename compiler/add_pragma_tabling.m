@@ -32,6 +32,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_clause.
@@ -77,6 +78,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%---------------------------------------------------------------------------%
 
 module_add_pragma_tabled(ProgressStream, TabledInfo,
         ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo,
@@ -306,15 +309,242 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             words("such as")] ++
             color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
-        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:ErrSpecs = [Spec | !.ErrSpecs]
+        ImportSpec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        ImportErrSpecs = [ImportSpec],
+        !:ErrSpecs = ImportErrSpecs ++ !.ErrSpecs
     else
+        ImportErrSpecs = []
+    ),
+    find_grade_problems_for_tabling(!.ModuleInfo, PredId, TabledMethod,
+        GradeErrSpecs, GradeWarnSpecs),
+    ( if GradeErrSpecs = [], GradeWarnSpecs = [] then
+        MaybeSetTabledEval = yes
+    else
+        !:ErrSpecs = GradeErrSpecs ++ !.ErrSpecs,
+        ( if TabledMethod = tabled_memo(table_attr_ignore_without_warning) then
+            true
+        else
+            !:WarnSpecs = GradeWarnSpecs ++ !.WarnSpecs
+        ),
+        % Not setting the eval_method to tabled in the presence of
+        % some warnings but NO errors preserves old behavior.
+        MaybeSetTabledEval = no
+    ),
+    (
+        ImportErrSpecs = [],
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
             PredSymName, PredModuleName, PredName, UserArity,
             PredId, PredInfo0, MaybeModes, TabledMethod, TabledMethodStr,
             MaybeAttributes, Context, ItemMercuryStatus, PredStatus,
-            !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
+            ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
+            !ErrSpecs, !WarnSpecs),
+        (
+            MaybeSetTabledEval = no
+            % We want to keep most of the effects of the call above,
+            % including the additions of reset and statistics predicates
+            % to !ModuleInfo (so that calls to them do not get reported
+            % as calls to undefined predicates), and any new diagnostics.
+            % However, by throwing away ProcTable, we keep the original
+            % eval_methods of all procedures.
+        ;
+            MaybeSetTabledEval = yes,
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+        )
+    ;
+        ImportErrSpecs = [_ | _]
+        % Not invoking select_tabled_proc_set_eval_method here
+        % preserves old behavior.
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_grade_problems_for_tabling(module_info::in, pred_id::in,
+    tabled_eval_method::in, list(err_spec)::out, list(warn_spec)::out) is det.
+
+find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
+        !:ErrSpecs, !:WarnSpecs) :-
+    % We use severity_informational for any messages because severity_warning
+    % would combine with --halt-at-warn to prevent the clean compilation
+    % of the library and the compiler.
+    %
+    % Please keep this code in sync with current_grade_supports_tabling
+    % in globals.m and with handle_debugging_options in handle_options.m
+    % (the latter implements the requirements of I/O predicates that
+    % implicitly get eval_method tabled_io with --trace-table-io).
+    !:ErrSpecs = [],
+    !:WarnSpecs = [],
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c
+    ;
+        ( Target = target_csharp
+        ; Target = target_java
+        ),
+        general_cannot_table_reason_spec(ModuleInfo, PredId,
+            TabledMethod, gen_reason_non_c_backend, !ErrSpecs, !WarnSpecs)
+    ),
+    globals.get_gc_method(Globals, GC),
+    (
+        GC = gc_accurate,
+        general_cannot_table_reason_spec(ModuleInfo, PredId,
+            TabledMethod, gen_reason_gc_accurate, !ErrSpecs, !WarnSpecs)
+    ;
+        GC = gc_hgc,
+        general_cannot_table_reason_spec(ModuleInfo, PredId,
+            TabledMethod, gen_reason_gc_hgc, !ErrSpecs, !WarnSpecs)
+    ;
+        ( GC = gc_automatic
+        ; GC = gc_none
+        ; GC = gc_boehm
+        ; GC = gc_boehm_debug
+        )
+    ),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Parallel = no
+    ;
+        Parallel = yes,
+        general_cannot_table_reason_spec(ModuleInfo, PredId,
+            TabledMethod, gen_reason_parallel, !ErrSpecs, !WarnSpecs)
+    ),
+    (
+        TabledMethod = tabled_minimal(_),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = yes,
+            mm_cannot_table_reason_spec(mm_reason_hlc, HLCSpec),
+            !:ErrSpecs = [HLCSpec | !.ErrSpecs]
+        ;
+            HighLevelCode = no
+        ),
+        globals.lookup_bool_option(Globals, use_trail, UseTrail),
+        (
+            UseTrail = yes,
+            mm_cannot_table_reason_spec(mm_reason_trailing, TrailSpec),
+            !:ErrSpecs = [TrailSpec | !.ErrSpecs]
+        ;
+            UseTrail = no
+        ),
+        globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+        globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
+        ( if ( ProfileCalls = yes ; ProfileDeep = yes ) then
+            mm_cannot_table_reason_spec(mm_reason_profiling, ProfSpec),
+            !:ErrSpecs = [ProfSpec | !.ErrSpecs]
+        else
+            true
+        )
+    ;
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ; TabledMethod = tabled_io(_, _)
+        )
+    ).
+
+%---------------------%
+
+:- pred general_cannot_table_reason_spec(module_info::in,
+    pred_id::in, tabled_eval_method::in, general_cannot_table_reason::in,
+    list(err_spec)::in, list(err_spec)::out,
+    list(warn_spec)::in, list(warn_spec)::out) is det.
+
+general_cannot_table_reason_spec(ModuleInfo, PredId, TabledMethod, Reason,
+        !ErrSpecs, !WarnSpecs) :-
+    ReasonDesc = color_as_incorrect(gen_cannot_table_reason_desc(Reason)),
+    (
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ),
+        TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        PredPieces = describe_unqual_pred_name(ModuleInfo, PredId),
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
+            words("declaration for")] ++ PredPieces ++ [suffix(","),
+            words("because tabling is")] ++ ReasonDesc ++ [nl],
+        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
+            Context, Pieces),
+        !:WarnSpecs = [Spec | !.WarnSpecs]
+    ;
+        TabledMethod = tabled_io(_, _),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Warning: debugging implicitly tables"),
+            words("all predicates that perform I/O"),
+            words("(to make the mdb command `retry' safe across I/O),"),
+            words("but tabling is")] ++ ReasonDesc ++ [nl],
+        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
+            Context, Pieces),
+        !:WarnSpecs = [Spec | !.WarnSpecs]
+    ;
+        TabledMethod = tabled_minimal(_),
+        Pieces = [words("Error: minimal model tabling is")] ++
+            ReasonDesc ++ [nl],
+        % We generate one no-context diag_spec for each affected predicate,
+        % but we print only one copy of each duplicated diag_spec.
+        Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces),
+        !:ErrSpecs = [Spec | !.ErrSpecs]
+    ).
+
+:- type general_cannot_table_reason
+    --->    gen_reason_non_c_backend
+    ;       gen_reason_gc_accurate
+    ;       gen_reason_gc_hgc
+    ;       gen_reason_parallel.
+
+:- func gen_cannot_table_reason_desc(general_cannot_table_reason)
+    = list(format_piece).
+
+gen_cannot_table_reason_desc(Reason) = Desc :-
+    (
+        Reason = gen_reason_non_c_backend,
+        Desc = [words("is implemented only on the C backend."), nl]
+    ;
+        Reason = gen_reason_gc_accurate,
+        Desc = [words("is not compatible with --gc accurate."), nl]
+    ;
+        Reason = gen_reason_gc_hgc,
+        Desc = [words("is not compatible with --gc hgc."), nl]
+    ;
+        Reason = gen_reason_parallel,
+        Desc = [words("is not compatible with parallel execution."), nl]
+    ).
+
+%---------------------%
+
+:- pred mm_cannot_table_reason_spec(mm_cannot_table_reason::in,
+    err_spec::out) is det.
+
+mm_cannot_table_reason_spec(Reason, Spec) :-
+    Pieces = [words("Error: minimal model tabling is not compatible with")] ++
+        mm_cannot_table_reason_desc(Reason),
+    % We generate one no-context diag_spec for each affected predicate,
+    % but we print only one copy of each duplicated diag_spec.
+    Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces).
+
+:- type mm_cannot_table_reason
+    --->    mm_reason_hlc
+    ;       mm_reason_trailing
+    ;       mm_reason_profiling.
+
+:- func mm_cannot_table_reason_desc(mm_cannot_table_reason)
+    = list(format_piece).
+
+mm_cannot_table_reason_desc(Reason) = Desc :-
+    (
+        Reason = mm_reason_hlc,
+        Desc = [words("generating high level code.")]
+    ;
+        Reason = mm_reason_trailing,
+        Desc = [words("trailing.")]
+    ;
+        Reason = mm_reason_profiling,
+        Desc = [words("profiling.")]
+    ).
+
+%---------------------------------------------------------------------------%
 
     % For each tabled procedure within the given predicate,
     % set its eval method.
@@ -324,6 +554,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
     user_arity::in, pred_id::in, pred_info::in, maybe(list(mer_mode))::in,
     tabled_eval_method::in, string::in, maybe(table_attributes)::in,
     prog_context::in, item_mercury_status::in, pred_status::in,
+    proc_table::in, proc_table::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(err_spec)::in, list(err_spec)::out,
     list(warn_spec)::in, list(warn_spec)::out) is det.
@@ -332,23 +563,19 @@ select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
         PredSymName, PredModuleName, PredName, UserArity, PredId, PredInfo0,
         MaybeModes, TabledMethod, TabledMethodStr, MaybeAttributes, Context,
         ItemMercuryStatus, PredStatus,
-        !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
+        !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     record_any_need_for_stratification(PredId, TabledMethod, !ModuleInfo),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
     (
         MaybeModes = yes(Modes),
         ( if
-            get_procedure_matching_argmodes(!.ModuleInfo, ProcTable0,
+            get_procedure_matching_argmodes(!.ModuleInfo, !.ProcTable,
                 Modes, ProcId, ProcInfo0)
         then
             set_eval_method_create_aux_preds(ProgressStream,
                 PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
                 ProcId, ProcInfo0, is_single_proc, Context, TabledMethod,
                 MaybeAttributes, ItemMercuryStatus, PredStatus,
-                ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
-                !ErrSpecs, !WarnSpecs),
-            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+                !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
         else
             UserArity = user_arity(UserArityInt),
             SNA = sym_name_arity(PredSymName, UserArityInt),
@@ -363,7 +590,7 @@ select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
         )
     ;
         MaybeModes = no,
-        map.to_assoc_list(ProcTable0, ExistingProcs),
+        map.to_assoc_list(!.ProcTable, ExistingProcs),
         (
             ExistingProcs = [],
             UserArity = user_arity(UserArityInt),
@@ -389,11 +616,8 @@ select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
             set_eval_method_create_aux_preds_list(ProgressStream,
                 PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
                 ExistingProcs, SingleProc, Context,
-                TabledMethod, MaybeAttributes,
-                ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
-                !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs),
-            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+                TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
+                !ProcTable, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs)
         )
     ).
 

@@ -1482,6 +1482,24 @@ handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
                 nl],
             add_error(phase_options, TraceHLSpec, !Specs)
         ),
+        globals.get_gc_method(!.Globals, GC),
+        (
+            GC = gc_accurate,
+            GCSpec =
+                [words("Debugging is not compatible with --gc accurate."), nl],
+            add_error(phase_options, GCSpec, !Specs)
+        ;
+            GC = gc_hgc,
+            GCSpec =
+                [words("Debugging is not compatible with --gc hgc."), nl],
+            add_error(phase_options, GCSpec, !Specs)
+        ;
+            ( GC = gc_automatic
+            ; GC = gc_none
+            ; GC = gc_boehm
+            ; GC = gc_boehm_debug
+            )
+        ),
         globals.lookup_bool_option(!.Globals, parallel, Parallel),
         (
             Parallel = no

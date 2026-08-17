@@ -88,7 +88,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -120,10 +119,10 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % Values of this type map the pred_id of a minimal_model tabled
-    % predicate to the pred_id of its generator variant.
+    % Values of this type map the pred_id of a minimal_model tabled predicate
+    % to the pred_id of its generator variant.
     %
-:- type generator_map   ==  map(pred_id, pred_id).
+:- type generator_map == map(pred_id, pred_id).
 
     % NOTE: following preds seem to duplicate the code in passes_aux.m.
     % The reason for this duplication is that this module needs a variant
@@ -188,8 +187,8 @@ table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     (
         EvalMethod = eval_tabled(TabledMethod),
-        table_gen_transform_proc_if_possible(TabledMethod, PredId,
-            ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !Specs)
+        table_gen_transform_proc(TabledMethod, PredId,
+            ProcId, ProcInfo0, PredInfo0, !ModuleInfo, !GenMap)
     ;
         EvalMethod = eval_normal,
         ( if
@@ -266,9 +265,8 @@ table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
         TableIoMethod = tabled_io(EntryKind, Unitize),
         proc_info_set_eval_method(eval_tabled(TableIoMethod),
             ProcInfo0, ProcInfo1),
-        table_gen_transform_proc_if_possible(TableIoMethod,
-            PredId, ProcId, ProcInfo1, _, PredInfo0, _, !ModuleInfo,
-            !GenMap, !Specs)
+        table_gen_transform_proc(TableIoMethod, PredId, ProcId,
+            ProcInfo1, PredInfo0, !ModuleInfo, !GenMap)
     ).
 
 :- pred should_io_procedure_be_transformed(bool::in, bool::in, hlds_goal::in,
@@ -377,231 +375,12 @@ report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- pred table_gen_transform_proc_if_possible(tabled_eval_method::in,
-    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
-    pred_info::in, pred_info::out, module_info::in, module_info::out,
-    generator_map::in, generator_map::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-table_gen_transform_proc_if_possible(TabledMethod, PredId, ProcId,
-        !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !Specs) :-
-    find_grade_problems_for_tabling(!.ModuleInfo, PredId, ProcId, TabledMethod,
-        GradeSpecs),
-    (
-        GradeSpecs = [],
-        table_gen_transform_proc(TabledMethod, PredId, ProcId,
-            !ProcInfo, !PredInfo, !ModuleInfo, !GenMap)
-    ;
-        GradeSpecs = [_ | _],
-        ( if TabledMethod = tabled_memo(table_attr_ignore_without_warning) then
-            true
-        else
-            !:Specs = GradeSpecs ++ !.Specs
-        ),
-        % XXX We set the evaluation method to eval_normal here to prevent
-        % problems in the ml code generator if we are compiling in a grade
-        % that does not support tabling. (See ml_gen_maybe_add_table_var/6
-        % in ml_code_gen.m for further details.)
-        %
-        % We do this here rather than when processing the tabling pragmas
-        % (in add_pragma.m) so that we can still generate error messages
-        % for misuses of the tabling pragmas.
-        proc_info_set_eval_method(eval_normal, !ProcInfo),
-        module_info_set_pred_proc_info(PredId, ProcId, !.PredInfo,
-            !.ProcInfo, !ModuleInfo)
-    ).
-
-:- pred find_grade_problems_for_tabling(module_info::in,
-    pred_id::in, proc_id::in, tabled_eval_method::in,
-    list(diag_spec)::out) is det.
-
-find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
-        !:Specs) :-
-    % We use severity_informational for any messages because severity_warning
-    % would combine with --halt-at-warn to prevent the clean compilation
-    % of the library and the compiler.
-    %
-    % Please keep this code in sync with current_grade_supports_tabling
-    % in globals.m.
-    !:Specs = [],
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        Target = target_c
-    ;
-        ( Target = target_csharp
-        ; Target = target_java
-        ),
-        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
-            TabledMethod, gen_reason_non_c_backend, TargetSpec),
-        !:Specs = [TargetSpec | !.Specs]
-    ),
-    globals.get_gc_method(Globals, GC),
-    (
-        GC = gc_accurate,
-        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
-            TabledMethod, gen_reason_gc_accurate, GcSpec),
-        !:Specs = [GcSpec | !.Specs]
-    ;
-        GC = gc_hgc,
-        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
-            TabledMethod, gen_reason_gc_hgc, GcSpec),
-        !:Specs = [GcSpec | !.Specs]
-    ;
-        ( GC = gc_automatic
-        ; GC = gc_none
-        ; GC = gc_boehm
-        ; GC = gc_boehm_debug
-        )
-    ),
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
-        Parallel = no
-    ;
-        Parallel = yes,
-        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
-            TabledMethod, gen_reason_parallel, ParSpec),
-        !:Specs = [ParSpec | !.Specs]
-    ),
-    (
-        TabledMethod = tabled_minimal(_),
-        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-        (
-            HighLevelCode = yes,
-            mm_cannot_table_reason_spec(mm_reason_hlc, HLCSpec),
-            !:Specs = [HLCSpec | !.Specs]
-        ;
-            HighLevelCode = no
-        ),
-        globals.lookup_bool_option(Globals, use_trail, UseTrail),
-        (
-            UseTrail = yes,
-            mm_cannot_table_reason_spec(mm_reason_trailing, TrailSpec),
-            !:Specs = [TrailSpec | !.Specs]
-        ;
-            UseTrail = no
-        ),
-        globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
-        globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
-        ( if ( ProfileCalls = yes ; ProfileDeep = yes ) then
-            mm_cannot_table_reason_spec(mm_reason_profiling, ProfSpec),
-            !:Specs = [ProfSpec | !.Specs]
-        else
-            true
-        )
-    ;
-        ( TabledMethod = tabled_loop_check
-        ; TabledMethod = tabled_memo(_)
-        ; TabledMethod = tabled_io(_, _)
-        )
-    ).
-
-%---------------------%
-
-:- pred general_cannot_table_reason_spec(module_info::in,
-    pred_id::in, proc_id::in, tabled_eval_method::in,
-    general_cannot_table_reason::in, diag_spec::out) is det.
-
-general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
-        Reason, Spec) :-
-    ReasonDesc = color_as_incorrect(gen_cannot_table_reason_desc(Reason)),
-    (
-        ( TabledMethod = tabled_loop_check
-        ; TabledMethod = tabled_memo(_)
-        ),
-        TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ProcPieces = describe_qual_proc_name(ModuleInfo, proc(PredId, ProcId)),
-        pred_info_get_context(PredInfo, Context),
-        Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
-            words("declaration for")] ++ ProcPieces ++ [suffix(","),
-            words("because tabling is")] ++ ReasonDesc ++ [nl],
-        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
-            Context, Pieces)
-    ;
-        TabledMethod = tabled_io(_, _),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_context(PredInfo, Context),
-        Pieces = [words("Warning: debugging implicitly tables"),
-            words("all predicates that perform I/O"),
-            words("(to make the mdb command `retry' safe across I/O),"),
-            words("but tabling is")] ++ ReasonDesc ++ [nl],
-        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
-            Context, Pieces)
-    ;
-        TabledMethod = tabled_minimal(_),
-        Pieces = [words("Error: minimal model tabling is")] ++
-            ReasonDesc ++ [nl],
-        % We generate one no-context diag_spec for each affected predicate,
-        % but we print only one copy of each duplicated diag_spec.
-        Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces)
-    ).
-
-:- type general_cannot_table_reason
-    --->    gen_reason_non_c_backend
-    ;       gen_reason_gc_accurate
-    ;       gen_reason_gc_hgc
-    ;       gen_reason_parallel.
-
-:- func gen_cannot_table_reason_desc(general_cannot_table_reason)
-    = list(format_piece).
-
-gen_cannot_table_reason_desc(Reason) = Desc :-
-    (
-        Reason = gen_reason_non_c_backend,
-        Desc = [words("is implemented only on the C backend."), nl]
-    ;
-        Reason = gen_reason_gc_accurate,
-        Desc = [words("is not compatible with --gc accurate."), nl]
-    ;
-        Reason = gen_reason_gc_hgc,
-        Desc = [words("is not compatible with --gc hgc."), nl]
-    ;
-        Reason = gen_reason_parallel,
-        Desc = [words("is not compatible with parallel execution."), nl]
-    ).
-
-%---------------------%
-
-:- pred mm_cannot_table_reason_spec(mm_cannot_table_reason::in,
-    diag_spec::out) is det.
-
-mm_cannot_table_reason_spec(Reason, Spec) :-
-    Pieces = [words("Error: minimal model tabling is not compatible with")] ++
-        mm_cannot_table_reason_desc(Reason),
-    % We generate one no-context diag_spec for each affected predicate,
-    % but we print only one copy of each duplicated diag_spec.
-    Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces).
-
-:- type mm_cannot_table_reason
-    --->    mm_reason_hlc
-    ;       mm_reason_trailing
-    ;       mm_reason_profiling.
-
-:- func mm_cannot_table_reason_desc(mm_cannot_table_reason)
-    = list(format_piece).
-
-mm_cannot_table_reason_desc(Reason) = Desc :-
-    (
-        Reason = mm_reason_hlc,
-        Desc = [words("generating high level code.")]
-    ;
-        Reason = mm_reason_trailing,
-        Desc = [words("trailing.")]
-    ;
-        Reason = mm_reason_profiling,
-        Desc = [words("profiling.")]
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- pred table_gen_transform_proc(tabled_eval_method::in,
-    pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, pred_info::in, pred_info::out,
+    pred_id::in, proc_id::in, proc_info::in, pred_info::in,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out) is det.
 
-table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
+table_gen_transform_proc(TabledMethod, PredId, ProcId, !.ProcInfo, !.PredInfo,
         !ModuleInfo, !GenMap) :-
     table_info_init(!.ModuleInfo, !.PredInfo, !.ProcInfo, TableInfo0),
 
