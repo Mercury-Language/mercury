@@ -289,7 +289,21 @@ invalid_durations = [
     duration_test("D with no day digits", "P5YD"),
     duration_test("H with no hour digits", "PTH"),
     duration_test("M with no minute digits", "PT5HM"),
-    duration_test("S with no second digits", "PTS")
+    duration_test("S with no second digits", "PTS"),
+
+    % Integer overflow in components.
+    duration_test("integer overflow in years component",
+        "P9223372036854775808Y"),
+    duration_test("integer overflow in months component",
+        "P9223372036854775808M"),
+    duration_test("integer overflow in days component",
+        "P9223372036854775808D"),
+    duration_test("integer overflow in hours component",
+        "PT9223372036854775808H"),
+    duration_test("integer overflow in minutes component",
+        "PT9223372036854775808M"),
+    duration_test("integer overflow in seconds component",
+        "PT9223372036854775808S")
 ].
 
 %---------------------------------------------------------------------------%
