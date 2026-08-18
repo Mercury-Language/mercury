@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2018, 2020, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -83,7 +83,7 @@
 :- implementation.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

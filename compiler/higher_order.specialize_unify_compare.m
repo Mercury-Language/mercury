@@ -13,6 +13,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.higher_order.higher_order_info.
@@ -37,6 +38,7 @@
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
@@ -344,7 +346,7 @@ find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
             SpecialId = spec_pred_compare,
             add_lazily_generated_compare_pred_decl(TypeCtor, PredId,
                 ModuleInfo0, ModuleInfo),
-            ProcId = hlds_pred.initial_proc_id
+            ProcId = initial_proc_id
         ;
             SpecialId = spec_pred_index,
             % This shouldn't happen. The index predicate should only be called
@@ -362,7 +364,7 @@ find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
             % reordering which requires rescheduling a conjunction.
             add_lazily_generated_unify_pred(TypeCtor, PredId,
                 ModuleInfo0, ModuleInfo),
-            hlds_pred.in_in_unification_proc_id(ProcId)
+            in_in_unification_proc_id(ProcId)
         ),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),

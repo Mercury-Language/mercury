@@ -22,8 +22,8 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.          % for nontail_rec_call_reason
+:- import_module hlds.pred_proc_id.
 :- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
@@ -85,6 +85,8 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.

@@ -22,7 +22,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -59,9 +59,11 @@
 
 :- import_module check_hlds.inst_abstract_unify.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_match.
 :- import_module hlds.mode_util.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

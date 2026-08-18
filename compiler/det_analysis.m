@@ -51,7 +51,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
@@ -110,6 +110,8 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
@@ -484,7 +486,7 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
         % ourselves, they do not need to be checked.
         (
             pred_info_is_pseudo_imported(PredInfo),
-            hlds_pred.in_in_unification_proc_id(ProcId)
+            in_in_unification_proc_id(ProcId)
         ;
             pred_info_get_markers(PredInfo, Markers),
             marker_is_present(Markers, marker_class_method)

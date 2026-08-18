@@ -52,6 +52,8 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.op_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -64,6 +66,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
     globals.get_op_mode(Globals, OpMode),

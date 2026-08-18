@@ -17,7 +17,7 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.pred_info_types.

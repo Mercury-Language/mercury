@@ -54,7 +54,7 @@
 :- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 :- import_module bool.
@@ -98,6 +98,8 @@
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.

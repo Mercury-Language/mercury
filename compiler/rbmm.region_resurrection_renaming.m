@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.rbmm.points_to_info.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_liveness_info.

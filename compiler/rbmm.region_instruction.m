@@ -20,13 +20,15 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.rbmm.points_to_info.
 :- import_module transform_hlds.rbmm.region_liveness_info.
 :- import_module transform_hlds.smm_common.
 
 :- import_module list.
 :- import_module map.
+
+%---------------------------------------------------------------------------%
 
 :- type region_instr_table
     ==      map(pred_proc_id, region_instr_proc).
@@ -109,11 +111,15 @@
 :- implementation.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module transform_hlds.rbmm.points_to_graph.
 
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,

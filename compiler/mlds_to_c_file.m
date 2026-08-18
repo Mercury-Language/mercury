@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2013-2025 The Mercury team.
+% Copyright (C) 2013-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,7 +73,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module hlds.
-:- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.indent.

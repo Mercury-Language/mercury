@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 

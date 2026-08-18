@@ -50,7 +50,6 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.

@@ -22,6 +22,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -468,7 +469,7 @@
 
 predicate_table_init(PredicateTable) :-
     map.init(PredIdTable),
-    NextPredId = hlds_pred.initial_pred_id,
+    NextPredId = initial_pred_id,
     ValidPredIds = set_tree234.init,
     map.init(AccessibilityTable),
     map.init(Pred_N_Index),
@@ -513,7 +514,7 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         % Allocate a new pred_id.
         MaybePredId = no,
         PredId = NextPredId0,
-        hlds_pred.next_pred_id(PredId, NextPredId)
+        next_pred_id(PredId, NextPredId)
     ),
     % Insert the pred_id into either the function or predicate indices,
     % as appropriate.

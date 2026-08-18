@@ -11,7 +11,7 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.higher_order.higher_order_global_info.
 
 :- import_module set.
@@ -51,6 +51,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
@@ -1037,7 +1039,7 @@ maybe_specialize_call(GoalExpr0, GoalInfo, GoalExpr, !Info) :-
             not set.member(proc(CalleePredId, CalleeProcId), TypeSpecProcs)
         ;
             pred_info_is_pseudo_imported(CalleePredInfo),
-            hlds_pred.in_in_unification_proc_id(CalleeProcId)
+            in_in_unification_proc_id(CalleeProcId)
         ;
             pred_info_defn_has_foreign_proc(CalleePredInfo)
         )

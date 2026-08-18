@@ -186,6 +186,7 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.

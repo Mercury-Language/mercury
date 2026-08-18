@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,8 +40,10 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
@@ -274,7 +276,7 @@ process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         determinism_components(Detism, CanFail, at_most_one),
         lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
         ( if
-            hlds_pred.in_in_unification_proc_id(ProcId),
+            in_in_unification_proc_id(ProcId),
             % For most imported types, we only generate unification
             % predicate declarations if they are needed for complicated
             % unifications other than proc_id 0. higher_order.m will

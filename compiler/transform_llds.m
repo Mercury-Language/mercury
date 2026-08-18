@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
@@ -109,8 +109,8 @@ transform_llds(Globals, !CFile) :-
 
 gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     Arity = 0,
-    ProcId = hlds_pred.initial_proc_id,
-    PredId = hlds_pred.initial_pred_id,
+    ProcId = initial_proc_id,
+    PredId = initial_pred_id,
     PredName = "ACCURATE_GC_END_LABEL",
     ProcLabel = ordinary_proc_label(ModuleName, pf_predicate, ModuleName,
         PredName, Arity, proc_id_to_int(ProcId)),

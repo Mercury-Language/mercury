@@ -67,6 +67,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.make_hlds.add_class.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
@@ -84,6 +85,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.

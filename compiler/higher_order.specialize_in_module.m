@@ -50,7 +50,6 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

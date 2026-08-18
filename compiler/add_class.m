@@ -45,6 +45,7 @@
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds_error.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

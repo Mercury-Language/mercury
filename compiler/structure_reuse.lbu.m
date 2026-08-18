@@ -29,7 +29,7 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 
 :- pred backward_use_information(proc_info::in, proc_info::out) is det.
 

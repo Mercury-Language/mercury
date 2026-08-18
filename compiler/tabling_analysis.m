@@ -86,7 +86,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.dependency_graph.

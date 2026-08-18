@@ -132,7 +132,7 @@
 :- implementation.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.options.
 :- import_module libs.pickle.
 :- import_module mdbcomp.prim_data.

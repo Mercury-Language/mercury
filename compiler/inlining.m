@@ -86,7 +86,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
@@ -1170,7 +1172,7 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
     % for imported types.
     not (
         pred_info_is_pseudo_imported(PredInfo),
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     ),
 
     % Only try to inline procedures which are evaluated using normal

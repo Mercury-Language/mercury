@@ -22,7 +22,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
@@ -31,6 +31,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
 :- pred apply_deep_profiling_transform(io.text_output_stream::in,
     module_info::in, module_info::out) is det.
@@ -72,6 +74,8 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.

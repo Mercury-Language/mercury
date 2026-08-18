@@ -17,7 +17,7 @@
 :- module hlds.hlds_class.
 :- interface.
 
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.

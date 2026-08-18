@@ -105,7 +105,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module transform_hlds.ctgc.structure_reuse.dead_cell_table.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 

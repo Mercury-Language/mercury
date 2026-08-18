@@ -137,7 +137,9 @@
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.

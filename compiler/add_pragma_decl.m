@@ -81,11 +81,13 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.make_hlds.add_pragma_type_spec.
 :- import_module hlds.make_hlds.add_pragma_type_spec_constr.
 :- import_module hlds.make_hlds.add_pragma_util.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module mdbcomp.

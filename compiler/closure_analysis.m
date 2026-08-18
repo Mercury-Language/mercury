@@ -39,8 +39,10 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.mode_test.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

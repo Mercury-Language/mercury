@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.indent.

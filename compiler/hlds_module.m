@@ -30,7 +30,9 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_promise.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.special_pred.

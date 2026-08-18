@@ -52,6 +52,8 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.quantification.
 :- import_module hlds.type_util.
 :- import_module libs.

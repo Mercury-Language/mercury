@@ -25,7 +25,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -191,6 +191,8 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.introduced_call_table.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
@@ -1113,7 +1115,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             KeepAnyProc = no
         ;
             PredStatus = pred_status(status_pseudo_exported),
-            hlds_pred.in_in_unification_proc_id(InitProcId),
+            in_in_unification_proc_id(InitProcId),
             KeepAnyProc = yes(InitProcId)
         )
     then

@@ -23,6 +23,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 

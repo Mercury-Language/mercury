@@ -101,6 +101,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -842,7 +844,7 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, Replacement, Body,
 
     % Put the new proc body and instmap into the module_info.
     AuxPredProcId = proc(AuxPredId, AuxProcId),
-    hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
+    proc_info_set_goal(AuxBody, !AuxProcInfo),
     requantify_proc_general(ord_nl_no_lambda, !AuxProcInfo),
     recompute_instmap_delta_proc(no_recomp_atomics, !AuxProcInfo, !ModuleInfo),
     module_info_set_pred_proc_info(AuxPredId, AuxProcId,

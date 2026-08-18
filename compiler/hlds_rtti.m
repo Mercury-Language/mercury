@@ -19,9 +19,9 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -319,6 +319,8 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
 :- import_module parse_tree.prog_type_scan.
@@ -363,7 +365,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
             PredIsImported = yes
         ;
             PredIsPseudoImp = yes,
-            hlds_pred.in_in_unification_proc_id(ProcId)
+            in_in_unification_proc_id(ProcId)
         )
     then
         ProcIsImported = yes

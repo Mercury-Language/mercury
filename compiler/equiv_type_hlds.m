@@ -41,8 +41,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.type_classify.

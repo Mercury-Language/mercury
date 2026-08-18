@@ -99,6 +99,7 @@
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.

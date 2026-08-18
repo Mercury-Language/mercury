@@ -22,8 +22,8 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.inst_graph.
+:- import_module hlds.pred_proc_id.
 
 :- import_module bool.
 :- import_module io.
@@ -43,6 +43,7 @@
 
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.

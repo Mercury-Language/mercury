@@ -22,7 +22,7 @@
 :- import_module check_hlds.prop_mode_constraints.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 
@@ -110,6 +110,8 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.indent.

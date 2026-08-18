@@ -19,9 +19,9 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -102,6 +102,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds_error.

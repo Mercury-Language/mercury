@@ -118,7 +118,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
@@ -166,6 +166,8 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_info_types.
 :- import_module mdbcomp.

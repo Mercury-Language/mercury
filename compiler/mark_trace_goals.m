@@ -43,7 +43,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_markers.
-:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.

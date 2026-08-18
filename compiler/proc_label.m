@@ -21,8 +21,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -46,6 +46,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -99,7 +100,7 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredFormArity,
             ( if
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
-                not hlds_pred.in_in_unification_proc_id(ProcId)
+                not in_in_unification_proc_id(ProcId)
             then
                 DefiningModule = ThisModule
             else
@@ -148,7 +149,7 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
     module_info_get_name(ModuleInfo, ModuleName),
     ( if TypeCtor = type_ctor(qualified(TypeModule, TypeName), Arity) then
-        ( if hlds_pred.in_in_unification_proc_id(UniModeNum) then
+        ( if in_in_unification_proc_id(UniModeNum) then
             Module = TypeModule
         else
             Module = ModuleName

@@ -12,7 +12,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
@@ -34,6 +34,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.options.

@@ -40,6 +40,7 @@
 :- import_module hlds.hlds_promise.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

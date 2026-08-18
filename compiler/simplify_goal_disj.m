@@ -47,6 +47,8 @@
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
@@ -57,6 +59,7 @@
 :- import_module hlds.inst_match.
 :- import_module hlds.inst_test.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
@@ -72,6 +75,8 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+
+%----------------------------------------------------------------------------%
 
 simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-

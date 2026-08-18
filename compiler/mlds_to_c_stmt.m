@@ -51,7 +51,7 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

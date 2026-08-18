@@ -12,7 +12,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 
 :- import_module list.
 
@@ -31,6 +31,8 @@
 :- import_module check_hlds.introduce_exists_casts.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.status.

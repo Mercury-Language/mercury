@@ -55,6 +55,7 @@
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.

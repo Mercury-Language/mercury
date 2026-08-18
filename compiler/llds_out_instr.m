@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020, 2022-2025 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -86,7 +86,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module ll_backend.foreign_proc_gen.
@@ -481,7 +481,7 @@ output_float_dword_assignment(Info, Stream, Lval, Rval, !IO) :-
 output_debug_instruction_and_comment(Info, Stream, Instr, Comment, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
-    proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
+    proc_id_to_int(initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     CallerLabel = entry_label(entry_label_local, ProcLabel),
@@ -499,7 +499,7 @@ output_debug_instruction_and_comment(Info, Stream, Instr, Comment, !IO) :-
 output_debug_instruction(Info, Stream, Instr, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
-    proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
+    proc_id_to_int(initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     CallerLabel = entry_label(entry_label_local, ProcLabel),

@@ -118,6 +118,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.dependency_graph.
@@ -840,7 +841,7 @@ maybe_write_pred(Info, Lang, ModuleInfo, PredId - PredInfo, !State) :-
                     % only print them if we are using a local mode for them.
                     pred_info_is_pseudo_imported(PredInfo),
                     ProcIds = pred_info_all_proc_ids(PredInfo),
-                    hlds_pred.in_in_unification_proc_id(ProcId),
+                    in_in_unification_proc_id(ProcId),
                     ProcIds = [ProcId]
                 )
             ;

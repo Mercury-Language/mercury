@@ -179,6 +179,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_test.
@@ -187,6 +188,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.

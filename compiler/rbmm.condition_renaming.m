@@ -40,7 +40,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module transform_hlds.rbmm.points_to_info.
@@ -139,6 +139,8 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.smm_common.

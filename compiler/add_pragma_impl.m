@@ -61,11 +61,13 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_pragma_tabling.
 :- import_module hlds.make_hlds.add_pragma_util.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds_error.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.status.

@@ -11,6 +11,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 
 :- import_module list.

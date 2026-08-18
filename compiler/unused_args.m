@@ -75,11 +75,13 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_match.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
@@ -367,7 +369,7 @@ should_ignore_proc_unused_args(PredInfo, ProcId, ProcInfo) :-
         pred_info_is_imported(PredInfo)
     ;
         pred_info_is_pseudo_imported(PredInfo),
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     ;
         % Unused argument optimization and tabling are
         % not compatible with each other.

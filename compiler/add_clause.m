@@ -12,8 +12,8 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -65,6 +65,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.add_pred.

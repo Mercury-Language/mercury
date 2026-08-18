@@ -20,7 +20,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
@@ -83,6 +83,8 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.mark_tail_calls.          % for ntrcr_program
 :- import_module hlds.pred_info_types.
 :- import_module hlds.type_util.

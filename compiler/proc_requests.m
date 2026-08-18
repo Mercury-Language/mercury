@@ -51,7 +51,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -107,6 +107,8 @@
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_transform.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
@@ -324,15 +326,15 @@ search_mode_num(ModuleInfo, TypeCtor, UnifyMode, Determinism, ProcId) :-
         inst_is_ground_or_any(ModuleInfo, InitInstX),
         inst_is_ground_or_any(ModuleInfo, InitInstY)
     then
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     else if
         InitInstX = not_reached
     then
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     else if
         InitInstY = not_reached
     then
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     else
         module_info_get_proc_requests(ModuleInfo, Requests),
         get_unify_req_map(Requests, UnifyReqMap),

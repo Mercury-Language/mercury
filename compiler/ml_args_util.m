@@ -19,9 +19,9 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_gen_info.
@@ -337,6 +337,8 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.type_util.
 :- import_module libs.

@@ -72,7 +72,9 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module libs.

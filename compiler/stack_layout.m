@@ -34,8 +34,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.

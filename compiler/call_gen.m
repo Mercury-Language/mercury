@@ -21,8 +21,8 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.code_info.
@@ -79,6 +79,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.

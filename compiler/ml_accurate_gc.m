@@ -87,7 +87,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -369,7 +371,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
     PredFormArity = pred_form_arity(1),
     PredLabel =
         mlds_user_pred_label(pf_predicate, no, PredName, PredFormArity),
-    ProcId = hlds_pred.initial_proc_id,
+    ProcId = initial_proc_id,
     PredModule = mercury_private_builtin_module,
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),

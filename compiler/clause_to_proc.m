@@ -13,6 +13,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 
 :- import_module list.
 
@@ -107,7 +109,7 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
             pred_info_is_imported(PredInfo)
         ;
             pred_info_is_pseudo_imported(PredInfo),
-            hlds_pred.in_in_unification_proc_id(ProcId)
+            in_in_unification_proc_id(ProcId)
         )
     then
         % We need to set these fields in the proc_info here, because
@@ -255,7 +257,7 @@ select_matching_clauses(PredInfo, ProcId, Clauses, MatchingClauses) :-
     ( if
         Origin = origin_compiler(made_for_uci(spec_pred_unify, _TypeCtor))
     then
-        ( if hlds_pred.in_in_unification_proc_id(ProcId) then
+        ( if in_in_unification_proc_id(ProcId) then
             MaybeInInMode = in_in_mode
         else
             MaybeInInMode = not_in_in_mode

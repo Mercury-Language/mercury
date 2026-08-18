@@ -41,11 +41,13 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.type_util.
@@ -412,7 +414,7 @@ construct_created_spec_name_status(ModuleInfo, Request, PredInfo0,
         pred_info_get_status(PredInfo0, PredStatus)
     ;
         RequestKind = non_user_type_spec,
-        NewProcId = hlds_pred.initial_proc_id,
+        NewProcId = initial_proc_id,
         hogi_allocate_id(SeqNum, !GlobalInfo),
         Transform = tn_higher_order(PredOrFunc, SeqNum),
         Name0 = pred_info_name(PredInfo0),

@@ -57,8 +57,10 @@
 
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.

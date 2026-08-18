@@ -30,11 +30,13 @@
 :- include_module hlds_markers.
 :- include_module hlds_module.
 :- include_module hlds_pred.
+:- include_module hlds_proc.
 :- include_module hlds_promise.
 :- include_module hlds_rtti.
 :- include_module inst_graph.
 :- include_module instmap.
 :- include_module pred_info_types.
+:- include_module pred_proc_id.
 :- include_module pred_table.
 :- include_module proc_info_types.
 :- include_module special_pred.

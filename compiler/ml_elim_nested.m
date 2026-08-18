@@ -453,7 +453,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

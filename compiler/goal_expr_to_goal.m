@@ -48,13 +48,13 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.make_hlds.superhomogeneous_util.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

@@ -243,6 +243,7 @@
 :- import_module check_hlds.inst_abstract_unify.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.polymorphism_goal.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_match.
 :- import_module hlds.inst_test.

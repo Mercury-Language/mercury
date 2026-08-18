@@ -27,7 +27,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.trace_params.

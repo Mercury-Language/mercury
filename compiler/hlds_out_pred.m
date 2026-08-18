@@ -19,6 +19,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.indent.
@@ -83,6 +84,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_info_types.
@@ -805,7 +807,7 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
     pred_info_get_status(PredInfo, PredStatus),
     ( if
         PredStatus = pred_status(status_pseudo_imported),
-        hlds_pred.in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     then
         true
     else

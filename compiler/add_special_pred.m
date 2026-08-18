@@ -20,7 +20,7 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -102,6 +102,7 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.

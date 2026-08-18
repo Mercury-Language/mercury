@@ -18,7 +18,7 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
@@ -259,6 +259,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_cons_id.

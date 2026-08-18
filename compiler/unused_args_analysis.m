@@ -22,7 +22,7 @@
 :- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -75,6 +75,8 @@
 :- import_module analysis.operations.
 :- import_module hlds.goal_refs.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module transform_hlds.mmc_analysis.

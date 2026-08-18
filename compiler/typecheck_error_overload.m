@@ -62,7 +62,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.

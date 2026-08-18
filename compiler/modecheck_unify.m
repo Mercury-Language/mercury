@@ -55,6 +55,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_match.
 :- import_module hlds.inst_test.
@@ -64,6 +65,7 @@
 :- import_module hlds.mode_top_functor.
 :- import_module hlds.mode_util.
 :- import_module hlds.pred_info_types.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.type_classify.
 :- import_module hlds.type_util.
 :- import_module libs.

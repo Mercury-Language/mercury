@@ -101,6 +101,8 @@
 
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

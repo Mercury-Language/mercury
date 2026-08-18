@@ -22,8 +22,9 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.mark_tail_calls.      % for nontail_rec_call_reason
+:- import_module hlds.pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

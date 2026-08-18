@@ -132,6 +132,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
+:- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.

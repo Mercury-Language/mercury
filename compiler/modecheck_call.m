@@ -27,7 +27,7 @@
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -67,6 +67,8 @@
 :- import_module check_hlds.proc_requests.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.inst_test.

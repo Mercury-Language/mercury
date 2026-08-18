@@ -25,8 +25,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_gen_info.
@@ -803,7 +803,7 @@ ml_gen_pred_label_from_rtti(_ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             ( if
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
-                not hlds_pred.in_in_unification_proc_id(ProcId)
+                not in_in_unification_proc_id(ProcId)
             then
                 % This is a locally-defined instance of a unification procedure
                 % for a type defined in some other module.

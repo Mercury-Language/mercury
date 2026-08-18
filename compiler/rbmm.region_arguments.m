@@ -25,7 +25,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.rbmm.points_to_info.
 :- import_module transform_hlds.rbmm.region_liveness_info.
@@ -33,6 +33,8 @@
 
 :- import_module list.
 :- import_module map.
+
+%---------------------------------------------------------------------------%
 
 :- type proc_formal_region_args_table
     ==  map(
@@ -71,6 +73,8 @@
 
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -78,6 +82,8 @@
 :- import_module bool.
 :- import_module require.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
 
 record_region_arguments(ModuleInfo, RptaInfoTable, ConstantRTable,
         DeadRTable, BornRTable, FormalRegionArgTable, ActualRegionArgTable) :-

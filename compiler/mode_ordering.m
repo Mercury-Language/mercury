@@ -19,7 +19,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
@@ -64,6 +64,8 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_graph.
 :- import_module mdbcomp.

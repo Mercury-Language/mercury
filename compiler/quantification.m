@@ -35,7 +35,7 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_rtti.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -148,6 +148,7 @@
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_proc_id.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.var_db.
 

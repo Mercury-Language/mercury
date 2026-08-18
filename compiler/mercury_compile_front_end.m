@@ -135,6 +135,7 @@
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.implementation_defined_literals.
 :- import_module hlds.input_specialization.
+:- import_module hlds.pred_proc_id.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

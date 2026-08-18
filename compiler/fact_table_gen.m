@@ -55,6 +55,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -1545,7 +1547,7 @@ write_fact_table_arrays(MaybeProgressStream, OutputStream, FactTableSize,
         ProcFiles = [],
         HeaderCode = "",
         % This won't get used anyway.
-        PrimaryProcId = hlds_pred.initial_proc_id
+        PrimaryProcId = initial_proc_id
     ;
         ProcFiles = [PrimaryProcId - FileName | TailProcFiles],
         (

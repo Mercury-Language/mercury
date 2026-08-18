@@ -53,7 +53,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.java_names.
@@ -202,7 +202,7 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     ),
 
     % Create new method name.
-    PredId = hlds_pred.initial_pred_id,
+    PredId = initial_pred_id,
     ProcId = initial_proc_id,
     PredLabel = mlds_special_pred_label("call", no, "", 0),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
