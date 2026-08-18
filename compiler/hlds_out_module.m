@@ -118,6 +118,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
+:- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

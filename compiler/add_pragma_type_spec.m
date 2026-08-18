@@ -36,6 +36,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds_error.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.

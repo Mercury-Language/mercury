@@ -110,6 +110,7 @@
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.special_pred.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.

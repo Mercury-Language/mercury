@@ -275,6 +275,7 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.proc_info_types.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.

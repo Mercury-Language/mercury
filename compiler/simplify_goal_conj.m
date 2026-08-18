@@ -54,6 +54,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.trace_params.
 :- import_module parse_tree.

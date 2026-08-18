@@ -87,7 +87,6 @@
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.

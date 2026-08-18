@@ -47,6 +47,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_pragma_util.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

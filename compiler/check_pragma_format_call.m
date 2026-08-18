@@ -59,6 +59,7 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.mode_test.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.

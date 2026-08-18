@@ -159,10 +159,10 @@
 :- import_module pair.
 :- import_module require.
 :- import_module uint.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint64.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 %

@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_info_types.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.

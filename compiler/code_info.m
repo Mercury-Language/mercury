@@ -32,6 +32,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_info_types.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -67,6 +68,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.type_util.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.

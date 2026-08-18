@@ -59,6 +59,7 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_static_terms.
+:- import_module hlds.proc_info_types.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.

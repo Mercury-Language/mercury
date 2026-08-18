@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -102,8 +102,10 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_markers.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.special_pred.
 :- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.sym_name.

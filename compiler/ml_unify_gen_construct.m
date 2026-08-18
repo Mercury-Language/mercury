@@ -92,6 +92,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mode_top_functor.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.type_classify.
 :- import_module hlds.type_util.
 :- import_module libs.

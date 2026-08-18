@@ -167,6 +167,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_info_types.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.

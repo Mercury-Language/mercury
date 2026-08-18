@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.call_gen.

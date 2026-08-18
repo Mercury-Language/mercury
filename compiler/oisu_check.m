@@ -42,6 +42,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module parse_tree.prog_type.
 

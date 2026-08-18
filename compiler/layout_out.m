@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2022, 2024-2025 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.proc_info_types.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
@@ -191,6 +191,7 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_name.
 :- import_module libs.

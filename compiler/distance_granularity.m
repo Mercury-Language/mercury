@@ -140,6 +140,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

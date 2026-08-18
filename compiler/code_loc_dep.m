@@ -45,8 +45,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_info_types.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module ll_backend.code_info.
@@ -74,6 +74,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.

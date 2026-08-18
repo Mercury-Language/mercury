@@ -66,6 +66,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.mode_top_functor.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.type_classify.
 :- import_module libs.

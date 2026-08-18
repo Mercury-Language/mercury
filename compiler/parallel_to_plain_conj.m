@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2021 the Mercury team.
+% Copyright (C) 2014-2015, 2018, 2021, 2026 the Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,6 +36,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.proc_info_types.
 
 :- import_module io.
 :- import_module list.

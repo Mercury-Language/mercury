@@ -70,6 +70,7 @@
 :- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.mode_util.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.

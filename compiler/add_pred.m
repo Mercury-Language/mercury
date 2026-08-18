@@ -20,6 +20,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module mdbcomp.
@@ -105,6 +106,7 @@
 :- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.

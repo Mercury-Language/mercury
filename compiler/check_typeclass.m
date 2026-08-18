@@ -142,8 +142,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.instance_method_clauses.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module hlds.type_util.
 :- import_module libs.

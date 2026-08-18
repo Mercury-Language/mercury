@@ -67,6 +67,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.

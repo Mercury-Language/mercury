@@ -45,6 +45,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.type_classify.
 :- import_module libs.
 :- import_module libs.globals.

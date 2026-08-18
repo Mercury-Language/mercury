@@ -82,6 +82,7 @@
 :- import_module hlds.make_hlds.make_hlds_separate_items.
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.

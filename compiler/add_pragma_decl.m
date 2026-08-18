@@ -85,6 +85,7 @@
 :- import_module hlds.make_hlds.add_pragma_type_spec_constr.
 :- import_module hlds.make_hlds.add_pragma_util.
 :- import_module hlds.make_hlds_error.
+:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module mdbcomp.

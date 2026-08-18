@@ -171,6 +171,7 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.quantification.
 :- import_module hlds.type_util.
 :- import_module libs.

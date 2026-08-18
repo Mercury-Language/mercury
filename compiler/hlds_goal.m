@@ -35,6 +35,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -1057,6 +1058,22 @@
 
                 string      % Used to explain the source of the unification.
             ).
+
+:- type call_id
+    --->    plain_call_id(pf_sym_name_pred_form_arity)
+            % The call is a plain call, and the argument specifies the callee.
+    ;       generic_call_id(var_name_source, generic_call).
+            % The call is a generic call, specified by the second argument.
+            % If it is a higher order call, then the second argument will
+            % specify the variable holding the identity of the callee.
+            % The var_name_source is needed to convert this variable
+            % to a printable name in diagnotics.
+
+:- type generic_call_id
+    --->    gcid_higher_order(purity, pred_or_func, pred_form_arity)
+    ;       gcid_class_method(class_id, pf_sym_name_pred_form_arity)
+    ;       gcid_event_call(string)
+    ;       gcid_cast(cast_kind).
 
     % A unify_sub_context describes the location of sub-unification
     % (which is unifying one argument of a term) within a particular
