@@ -3,6 +3,9 @@
 %---------------------------------------------------------------------------%
 % Test for error messages produced by module qualification errors in
 % pragma declarations.
+%
+% The .err_exp file is for LLDS grades.
+% The .err_exp2 file is for MLDS grades.
 %---------------------------------------------------------------------------%
 
 :- module pragma_qual_error.

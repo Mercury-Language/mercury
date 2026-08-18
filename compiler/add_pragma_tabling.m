@@ -85,7 +85,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo,
         !ErrSpecs, !WarnSpecs) :-
     TabledInfo = impl_pragma_tabled_info(TabledMethod, PredOrProcSpec,
-        MaybeAttributes, Context, _SeqNum),
+        MaybeAttributes, PragmaContext, _SeqNum),
     PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
     (
         PredSymName = qualified(PredModuleName, PredName)
@@ -125,7 +125,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             add_implicit_pred_decl_report_error(PredOrFunc,
                 PredModuleName, PredName, PredFormArity, PredStatus,
-                is_not_a_class_method, Context, Origin, DescPieces,
+                is_not_a_class_method, PragmaContext, Origin, DescPieces,
                 PredId, !ModuleInfo, !ErrSpecs),
             PredIds = [PredId]
         ;
@@ -136,7 +136,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
         PFUMM = pfumm_unknown(UserArity),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
-            PredSymName, Context, PFUMMSpecs),
+            PredSymName, PragmaContext, PFUMMSpecs),
         !:WarnSpecs = PFUMMSpecs ++ !.WarnSpecs,
         predicate_table_lookup_m_n_ua(PredicateTable0, is_fully_qualified,
             PredModuleName, PredName, UserArity, PredIds0),
@@ -151,7 +151,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
             add_implicit_pred_decl_report_error(pf_predicate,
                 PredModuleName, PredName, PredFormArity, PredStatus,
-                is_not_a_class_method, Context, Origin,
+                is_not_a_class_method, PragmaContext, Origin,
                 DescPieces, PredId, !ModuleInfo, !ErrSpecs),
             PredIds = [PredId]
         ;
@@ -180,7 +180,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     words("statistics predicate"),
                     words("would have an ambiguous name too."), nl],
                 StatsSpec = spec($pred, severity_error, phase_pt2h,
-                    Context, StatsPieces),
+                    PragmaContext, StatsPieces),
                 !:ErrSpecs = [StatsSpec | !.ErrSpecs]
             ;
                 Statistics = table_do_not_gather_statistics
@@ -196,7 +196,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     [words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
                 ResetSpec = spec($pred, severity_error, phase_pt2h,
-                    Context, ResetPieces),
+                    PragmaContext, ResetPieces),
                 !:ErrSpecs = [ResetSpec | !.ErrSpecs]
             ;
                 AllowReset = table_do_not_allow_reset
@@ -207,7 +207,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
     ),
     list.foldl4(
         module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod, PFUMM,
-            PredModuleName, PredName, MaybeAttributes, Context,
+            PredModuleName, PredName, MaybeAttributes, PragmaContext,
             ItemMercuryStatus, PredStatus),
         PredIds, !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs).
 
@@ -221,7 +221,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
-        PredModuleName, PredName, MaybeAttributes, Context,
+        PredModuleName, PredName, MaybeAttributes, PragmaContext,
         ItemMercuryStatus, PredStatus, PredId,
         !ModuleInfo, !QualInfo, !ErrSpecs, !WarnSpecs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -294,7 +294,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             words("option to suppress this warning."), nl],
         Severity = severity_warning(warn_table_with_inline),
         InlineWarningSpec = spec($pred, Severity, phase_pt2h,
-            Context, InlineWarningPieces),
+            PragmaContext, InlineWarningPieces),
         !:WarnSpecs = [InlineWarningSpec | !.WarnSpecs]
     else
         true
@@ -309,14 +309,15 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             words("such as")] ++
             color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
-        ImportSpec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        ImportSpec = spec($pred, severity_error, phase_pt2h,
+            PragmaContext, Pieces),
         ImportErrSpecs = [ImportSpec],
         !:ErrSpecs = ImportErrSpecs ++ !.ErrSpecs
     else
         ImportErrSpecs = []
     ),
-    find_grade_problems_for_tabling(!.ModuleInfo, PredId, TabledMethod,
-        GradeErrSpecs, GradeWarnSpecs),
+    find_grade_problems_for_tabling(!.ModuleInfo, PredId, PragmaContext,
+        TabledMethod, GradeErrSpecs, GradeWarnSpecs),
     ( if GradeErrSpecs = [], GradeWarnSpecs = [] then
         MaybeSetTabledEval = yes
     else
@@ -336,7 +337,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         select_tabled_proc_set_eval_method(ProgressStream, PredOrFunc,
             PredSymName, PredModuleName, PredName, UserArity,
             PredId, PredInfo0, MaybeModes, TabledMethod, TabledMethodStr,
-            MaybeAttributes, Context, ItemMercuryStatus, PredStatus,
+            MaybeAttributes, PragmaContext, ItemMercuryStatus, PredStatus,
             ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
             !ErrSpecs, !WarnSpecs),
         (
@@ -361,10 +362,11 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
 %---------------------------------------------------------------------------%
 
 :- pred find_grade_problems_for_tabling(module_info::in, pred_id::in,
-    tabled_eval_method::in, list(err_spec)::out, list(warn_spec)::out) is det.
+    prog_context::in, tabled_eval_method::in,
+    list(err_spec)::out, list(warn_spec)::out) is det.
 
-find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
-        !:ErrSpecs, !:WarnSpecs) :-
+find_grade_problems_for_tabling(ModuleInfo, PredId, PragmaContext,
+        TabledMethod, !:ErrSpecs, !:WarnSpecs) :-
     % We use severity_informational for any messages because severity_warning
     % would combine with --halt-at-warn to prevent the clean compilation
     % of the library and the compiler.
@@ -383,17 +385,17 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
         ( Target = target_csharp
         ; Target = target_java
         ),
-        general_cannot_table_reason_spec(ModuleInfo, PredId,
+        general_cannot_table_reason_spec(ModuleInfo, PredId, PragmaContext,
             TabledMethod, gen_reason_non_c_backend, !ErrSpecs, !WarnSpecs)
     ),
     globals.get_gc_method(Globals, GC),
     (
         GC = gc_accurate,
-        general_cannot_table_reason_spec(ModuleInfo, PredId,
+        general_cannot_table_reason_spec(ModuleInfo, PredId, PragmaContext,
             TabledMethod, gen_reason_gc_accurate, !ErrSpecs, !WarnSpecs)
     ;
         GC = gc_hgc,
-        general_cannot_table_reason_spec(ModuleInfo, PredId,
+        general_cannot_table_reason_spec(ModuleInfo, PredId, PragmaContext,
             TabledMethod, gen_reason_gc_hgc, !ErrSpecs, !WarnSpecs)
     ;
         ( GC = gc_automatic
@@ -407,7 +409,7 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
         Parallel = no
     ;
         Parallel = yes,
-        general_cannot_table_reason_spec(ModuleInfo, PredId,
+        general_cannot_table_reason_spec(ModuleInfo, PredId, PragmaContext,
             TabledMethod, gen_reason_parallel, !ErrSpecs, !WarnSpecs)
     ),
     (
@@ -415,7 +417,7 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            mm_cannot_table_reason_spec(mm_reason_hlc, HLCSpec),
+            mm_cannot_table_reason_spec(PragmaContext, mm_reason_hlc, HLCSpec),
             !:ErrSpecs = [HLCSpec | !.ErrSpecs]
         ;
             HighLevelCode = no
@@ -423,7 +425,8 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
         globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = yes,
-            mm_cannot_table_reason_spec(mm_reason_trailing, TrailSpec),
+            mm_cannot_table_reason_spec(PragmaContext, mm_reason_trailing,
+                TrailSpec),
             !:ErrSpecs = [TrailSpec | !.ErrSpecs]
         ;
             UseTrail = no
@@ -431,7 +434,8 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
         globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
         globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
         ( if ( ProfileCalls = yes ; ProfileDeep = yes ) then
-            mm_cannot_table_reason_spec(mm_reason_profiling, ProfSpec),
+            mm_cannot_table_reason_spec(PragmaContext, mm_reason_profiling,
+                ProfSpec),
             !:ErrSpecs = [ProfSpec | !.ErrSpecs]
         else
             true
@@ -445,46 +449,41 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, TabledMethod,
 
 %---------------------%
 
-:- pred general_cannot_table_reason_spec(module_info::in,
-    pred_id::in, tabled_eval_method::in, general_cannot_table_reason::in,
+:- pred general_cannot_table_reason_spec(module_info::in, pred_id::in,
+    prog_context::in, tabled_eval_method::in, general_cannot_table_reason::in,
     list(err_spec)::in, list(err_spec)::out,
     list(warn_spec)::in, list(warn_spec)::out) is det.
 
-general_cannot_table_reason_spec(ModuleInfo, PredId, TabledMethod, Reason,
-        !ErrSpecs, !WarnSpecs) :-
+general_cannot_table_reason_spec(ModuleInfo, PredId, PragmaContext,
+        TabledMethod, Reason, !ErrSpecs, !WarnSpecs) :-
     ReasonDesc = color_as_incorrect(gen_cannot_table_reason_desc(Reason)),
     (
         ( TabledMethod = tabled_loop_check
         ; TabledMethod = tabled_memo(_)
         ),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
         PredPieces = describe_unqual_pred_name(ModuleInfo, PredId),
-        pred_info_get_context(PredInfo, Context),
         Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
             words("declaration for")] ++ PredPieces ++ [suffix(","),
             words("because tabling is")] ++ ReasonDesc ++ [nl],
         Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
-            Context, Pieces),
+            PragmaContext, Pieces),
         !:WarnSpecs = [Spec | !.WarnSpecs]
     ;
         TabledMethod = tabled_io(_, _),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_context(PredInfo, Context),
         Pieces = [words("Warning: debugging implicitly tables"),
             words("all predicates that perform I/O"),
             words("(to make the mdb command `retry' safe across I/O),"),
             words("but tabling is")] ++ ReasonDesc ++ [nl],
         Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
-            Context, Pieces),
+            PragmaContext, Pieces),
         !:WarnSpecs = [Spec | !.WarnSpecs]
     ;
         TabledMethod = tabled_minimal(_),
         Pieces = [words("Error: minimal model tabling is")] ++
             ReasonDesc ++ [nl],
-        % We generate one no-context diag_spec for each affected predicate,
-        % but we print only one copy of each duplicated diag_spec.
-        Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces),
+        Spec = spec($pred, severity_error, phase_code_gen,
+            PragmaContext, Pieces),
         !:ErrSpecs = [Spec | !.ErrSpecs]
     ).
 
@@ -500,29 +499,27 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, TabledMethod, Reason,
 gen_cannot_table_reason_desc(Reason) = Desc :-
     (
         Reason = gen_reason_non_c_backend,
-        Desc = [words("is implemented only on the C backend."), nl]
+        Desc = [words("implemented only on the C backend."), nl]
     ;
         Reason = gen_reason_gc_accurate,
-        Desc = [words("is not compatible with --gc accurate."), nl]
+        Desc = [words("not compatible with --gc accurate."), nl]
     ;
         Reason = gen_reason_gc_hgc,
-        Desc = [words("is not compatible with --gc hgc."), nl]
+        Desc = [words("not compatible with --gc hgc."), nl]
     ;
         Reason = gen_reason_parallel,
-        Desc = [words("is not compatible with parallel execution."), nl]
+        Desc = [words("not compatible with parallel execution."), nl]
     ).
 
 %---------------------%
 
-:- pred mm_cannot_table_reason_spec(mm_cannot_table_reason::in,
-    err_spec::out) is det.
+:- pred mm_cannot_table_reason_spec(prog_context::in,
+    mm_cannot_table_reason::in, err_spec::out) is det.
 
-mm_cannot_table_reason_spec(Reason, Spec) :-
+mm_cannot_table_reason_spec(Context, Reason, Spec) :-
     Pieces = [words("Error: minimal model tabling is not compatible with")] ++
         mm_cannot_table_reason_desc(Reason),
-    % We generate one no-context diag_spec for each affected predicate,
-    % but we print only one copy of each duplicated diag_spec.
-    Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces).
+    Spec = spec($pred, severity_error, phase_code_gen, Context, Pieces).
 
 :- type mm_cannot_table_reason
     --->    mm_reason_hlc

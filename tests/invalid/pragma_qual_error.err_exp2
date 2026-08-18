@@ -18,6 +18,8 @@ pragma_qual_error.m:074:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is 
 pragma_qual_error.m:091: Error: `:- pragma minimal_model_stack_copy'
 pragma_qual_error.m:091:   declaration for [38;5;203mundeclared mode[39;49m of predicate
 pragma_qual_error.m:091:   [38;5;87m`pragma_qual_error.tc'/2.[39;49m
+pragma_qual_error.m:091: Error: minimal model tabling is not compatible with
+pragma_qual_error.m:091:   generating high level code.
 pragma_qual_error.m:091: In `:- pragma minimal_model' declaration:
 pragma_qual_error.m:091:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:115: In `:- pragma type_spec' declaration:

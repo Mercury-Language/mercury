@@ -17,6 +17,9 @@
 % foo.m:014: Warning: this disjunct will never have any solutions.
 % foo.m:017: Warning: this disjunct will never have any solutions.
 % ** Error making `Mercury/cs/foo.c'.
+%
+% The .err_exp file is for LLDS grades.
+% The .err_exp2 file is for HLDS grades.
 
 :- module hawkins_mm_fail_reset.
 :- interface.
