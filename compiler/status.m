@@ -128,6 +128,13 @@
     % XXX TYPECLASS_STATUS Are any of these "full"s lies?
     % XXX TYPECLASS_STATUS We need *some* of the distinctions between
     % import locations, but do we need them *all*?
+    % No, we do not. We could merge these three into one function symbol:
+    %   typeclass_import_full_own_int
+    %   typeclass_import_full_own_imp
+    %   typeclass_import_full_by_ancestor
+    % and these two into one function symbol:
+    %   typeclass_import_full_int0_int
+    %   typeclass_import_full_int0_imp
 :- type typeclass_import
     --->    typeclass_import_full_own_int
     ;       typeclass_import_full_own_imp
@@ -1012,29 +1019,6 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
         ),
         Status = typeclass_defined_in_other_module(Import)
     ;
-        StatusA = typeclass_defined_in_other_module(ImportA),
-        StatusB = typeclass_defined_in_this_module(ExportB),
-        % XXX TYPECLASS_STATUS This combination should not be allowed.
-        (
-            ( ImportA = typeclass_import_full_own_int
-            ; ImportA = typeclass_import_full_own_imp
-            ; ImportA = typeclass_import_full_by_ancestor
-            ),
-            (
-                ExportB = typeclass_export_gen_none_sub_none,
-                Import = typeclass_import_full_own_imp,
-                Status = typeclass_defined_in_other_module(Import)
-            ;
-                ExportB = typeclass_export_gen_abs_sub_full,
-                Export = typeclass_export_gen_abs_sub_full,
-                Status = typeclass_defined_in_this_module(Export)
-            ;
-                ExportB = typeclass_export_gen_full_sub_full,
-                Export = typeclass_export_gen_full_sub_full,
-                Status = typeclass_defined_in_this_module(Export)
-            )
-        )
-    ;
         StatusA = typeclass_defined_in_this_module(ExportA),
         StatusB = typeclass_defined_in_this_module(ExportB),
         require_complete_switch [ExportA]
@@ -1067,11 +1051,6 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
             )
         ),
         Status = typeclass_defined_in_this_module(Export)
-    ;
-        StatusA = typeclass_defined_in_this_module(ExportA),
-        StatusB = typeclass_defined_in_other_module(_ImportB),
-        % XXX TYPECLASS_STATUS This combination should not be allowed.
-        Status = typeclass_defined_in_this_module(ExportA)
     ).
 
 %---------------------%
