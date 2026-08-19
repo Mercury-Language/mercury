@@ -375,6 +375,10 @@ all_chapters = AllSections :-
         SubSubSectionWarnStyleGoal, SubSubSectionWarnStyleOrder,
         SubSubSectionWarnStyleContig]),
 
+    SubSubSectionWarnLangChange = help_atomic(help_option_group(
+        "Warnings about language changes",
+        "", [], [oc_warn_lang_change])),
+
     SubSectionWarnCtrl = help_atomic(help_option_group(
         "Options that control warnings",
         "", [], [oc_warn_ctrl])),
@@ -384,6 +388,7 @@ all_chapters = AllSections :-
     SectionWarn = help_composite("Warning options",
         "", [],
         [SubSectionWarnDodgy, SubSectionWarnPerf, SubSectionWarnStyle,
+        SubSubSectionWarnLangChange,
         SubSectionWarnCtrl, SubSectionWarnHalt]),
 
     % XXX Should these two chapters instead be two sections in one chapter?

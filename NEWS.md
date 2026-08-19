@@ -10,7 +10,10 @@ Changes that may break compatibility
     in the implementation section of a module will make the declarations
     in the interface section of `M` visible in the implementation sections
     of its submodules only. Previously, the declarations would also be also
-    visible in the submodules' interface sections.
+    visible in the submodules' interface sections. Code depending on the
+    old behaviour will be accepted for now with a warning message.
+    The warning can be disabled with the
+    `--no-warn-old-submodule-visibility-rule` option.
 
   - If a module contains `:- import_module` or `:- use_module` declarations
     that import module `M`, visibility of M's exports within that module

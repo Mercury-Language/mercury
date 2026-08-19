@@ -547,6 +547,9 @@
     ;       warn_non_contiguous_foreign_procs
     ;       allow_non_contiguity_for
 
+    % Warnings about language changes.
+    ;       warn_old_submodule_visibility_rule
+
     % Options that control warnings.
     ;       inhibit_warnings
     ;       inhibit_style_warnings
@@ -3019,6 +3022,14 @@ optdb(oc_warn_style_ctg_c, allow_non_contiguity_for,   accumulating([]),
         w("specifying a distinct set of predicates and/or function names"),
         w("that may be intermingled. Each name must uniquely specify"),
         w("a predicate or a function.")])).
+
+% Warnings about language changes.
+
+optdb(oc_warn_lang_change, warn_old_submodule_visibility_rule, bool(yes),
+    help("warn-old-submodule-visibility-rule", [
+        w("Do not warn about code that depends on a deprecated visibility"),
+        w("rule where entities imported in a module's implementation section"),
+        w("are visible in the interface sections of its submodules.")])).
 
 %---------------------%
 

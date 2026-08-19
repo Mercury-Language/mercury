@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2025 The Mercury team.
+% Copyright (C) 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -72,6 +72,8 @@
     ;       oc_warn_style_ctg
     ;       oc_warn_style_ctg_c
             % Warnings about programming style.
+    ;       oc_warn_lang_change
+            % Warnings about language changes.
     ;       oc_warn_ctrl
             % Options that *control* warnings.
             % XXX Split into subparts, one for each of oc_warn_*
@@ -234,6 +236,7 @@ option_categories(oc_warn_style_ctg, 0).
 option_categories(oc_warn_style_ctg_c, 0).
 option_categories(oc_warn_style_goal, 0).
 option_categories(oc_warn_style_goal_c, 0).
+option_categories(oc_warn_lang_change, 0).
 option_categories(oc_warn_ctrl, 0).
 option_categories(oc_warn_halt, 0).
 option_categories(oc_inform, 0).

@@ -511,10 +511,25 @@ filter_interface_generation_specs(Globals, Specs, SpecsToPrint) :-
         halt_at_invalid_interface, HaltInvalidInterface),
     (
         HaltInvalidInterface = yes,
-        list.filter(does_spec_print_anything(Globals), Specs, SpecsToPrint)
+        list.filter(keep_spec_for_interface_generation(Globals),
+            Specs, SpecsToPrint)
     ;
         HaltInvalidInterface = no,
         SpecsToPrint = []
+    ).
+
+:- pred keep_spec_for_interface_generation(globals::in, diag_spec::in)
+    is semidet.
+
+keep_spec_for_interface_generation(Globals, Spec) :-
+    does_spec_print_anything(Globals, Spec),
+    not (
+        % We will warn about code that depends on the old submodule visibility
+        % rule when compiling the module, but we do not want the warning to
+        % stop the interface file from being generated when
+        % halt_at_invalid_interface is enabled.
+        Spec = spec(_Id, Severity, _Phase, _Context, _Pieces),
+        Severity = severity_warning(warn_old_submodule_visibility_rule)
     ).
 
 %---------------------------------------------------------------------------%

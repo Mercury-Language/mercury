@@ -195,6 +195,17 @@
     qual_id_kind::in,
     list(module_name)::in, list(module_name)::in, err_spec::out) is det.
 
+    % report_old_submodule_visibility_match(ErrorContext, Id, IdType,
+    %   ModuleName, Spec):
+    %
+    % Report a warning where an entity was matched but used the deprecated
+    % submodule visibility rule where entities imported in the implementation
+    % section of an ancestor are made visible in the interface section of its
+    % descendant modules.
+    %
+:- pred report_old_submodule_visibility_match(mq_error_context::in, mq_id::in,
+    qual_id_kind::in, module_name::in, warn_spec::out) is det.
+
     % Output an error message about an ill-formed user_inst.
     %
 :- pred report_invalid_user_inst(sym_name::in, list(mer_inst)::in,
@@ -446,6 +457,23 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         [always(MainPieces), always(UnusablePieces),
         verbose_only(verbose_always, VerbosePieces)]),
     Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]).
+
+report_old_submodule_visibility_match(ErrorContext, Id, IdType, ModuleName,
+        Spec) :-
+    mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
+        ErrorContextPieces),
+    qual_id_kind_to_string(IdType, IdTypeStr),
+    Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+        words("the"), fixed(IdTypeStr)] ++
+        color_as_subject([wrap_qual_id(Id)]) ++
+        [words("is only visible here due to an import of")] ++
+        color_as_subject([wrap_module_name(ModuleName)]) ++
+        [words("in an ancestor module's implementation section."),
+        words("This behaviour is")] ++
+        color_as_incorrect([words("deprecated.")]) ++
+        [nl],
+    Severity = severity_warning(warn_old_submodule_visibility_rule),
+    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

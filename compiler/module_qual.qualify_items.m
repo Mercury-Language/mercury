@@ -200,9 +200,11 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
         get_err_specs_in_mq_info(!.Info,
-            InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
+            InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs,
+            WarnSpecs),
         !:ErrSpecs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
             NonBlockingUndefSpecs ++ !.ErrSpecs,
+        !:WarnSpecs = WarnSpecs ++ !.WarnSpecs,
 
         globals.lookup_bool_option(Globals, warn_unused_interface_imports,
             WarnUnusedInterfaceImports),
@@ -273,7 +275,8 @@ module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
     qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         Info1, Info),
     get_err_specs_in_mq_info(Info,
-        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs),
+        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs,
+        _WarnSpecs),
     !:ErrSpecs = InvalidTypeSpecs ++ InvalidInstModeSpecs ++
         NonBlockingUndefSpecs ++ !.ErrSpecs.
 

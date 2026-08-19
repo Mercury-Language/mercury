@@ -122,18 +122,18 @@ $(MAKE_DEP_ONLY_PROGS:%=%.err): %.err: %.m
 	else true; \
 	fi
 
-# For this test case, the bug is caught when generating the interface for the
-# helper module.
+# For this test case, the bug should be caught when generating the interface
+# for the helper module. However, in the transition period, we will only
+# generate a warning while compiling the module.
 bug584.err: %.err: %.m
 	$(MC) --make-short-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		bug584_helper_1
 	$(MC) --make-private-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		bug584_helper_1
-	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-		bug584_helper_1 > $*.err 2>&1; \
-	then false; \
-	else true; \
-	fi
+	$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		bug584_helper_1 > $*.err 2>&1
+	$(MC) -C $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		bug584_helper_1 >> $*.err 2>&1
 
 $(SUB_VISIBILITY_PROGS:%=%.err): %.err: %.m
 	{ \

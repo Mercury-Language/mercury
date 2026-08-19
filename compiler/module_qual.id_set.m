@@ -67,7 +67,8 @@
 
 :- type perm_in_int
     --->    may_not_use_in_int
-    ;       may_use_in_int(need_qualifier).
+    ;       may_use_in_int(need_qualifier)
+    ;       may_use_in_int_warn(need_qualifier).
 
 :- type perm_in_imp
     --->    may_use_in_imp(need_qualifier).
@@ -245,15 +246,31 @@ insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
             OldPermInt = may_not_use_in_int,
             PermInt = NewPermInt
         ;
-            OldPermInt = may_use_in_int(OldIntNeedQual),
+            (
+                OldPermInt = may_use_in_int(OldIntNeedQual),
+                OldWarn = no
+            ;
+                OldPermInt = may_use_in_int_warn(OldIntNeedQual),
+                OldWarn = yes
+            ),
             (
                 NewPermInt = may_not_use_in_int,
                 PermInt = OldPermInt
             ;
-                NewPermInt = may_use_in_int(NewIntNeedQual),
+                (
+                    NewPermInt = may_use_in_int(NewIntNeedQual),
+                    NewWarn = no
+                ;
+                    NewPermInt = may_use_in_int_warn(NewIntNeedQual),
+                    NewWarn = yes
+                ),
                 need_qual_only_if_both(OldIntNeedQual, NewIntNeedQual,
                     IntNeedQual),
-                PermInt = may_use_in_int(IntNeedQual)
+                ( if NewWarn = yes, OldWarn = yes then
+                    PermInt = may_use_in_int_warn(IntNeedQual)
+                else
+                    PermInt = may_use_in_int(IntNeedQual)
+                )
             )
         ),
         OldPermImp = may_use_in_imp(OldImpNeedQual),
@@ -304,7 +321,7 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName, !Info) :-
     (
         Matches = [],
         % No matches for this id.
-        MaybeUniqModuleName = no,
+        MaybeUniqMatchType = no,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
@@ -326,29 +343,38 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName, !Info) :-
             ReportErrors = should_not_report_errors
         )
     ;
-        Matches = [ModuleName],
+        Matches = [ModuleMatchType],
         % A unique match for this ID.
-        MaybeUniqModuleName = yes(ModuleName)
+        MaybeUniqMatchType = yes(ModuleMatchType)
     ;
         Matches = [_, _ | _],
-        MaybeUniqModuleName = no,
+        MaybeUniqMatchType = no,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
+            UsableModuleNames = list.map(matched_module_name, Matches),
             NonUsableModuleNames = IntMismatches ++ QualMismatches,
             report_ambiguous_match(ErrorContext, Id0, IdType,
-                Matches, NonUsableModuleNames, Spec),
+                UsableModuleNames, NonUsableModuleNames, Spec),
             mq_info_record_undef_mq_id(IdType, Id0, Spec, !Info)
         ;
             ReportErrors = should_not_report_errors
         )
     ),
     (
-        MaybeUniqModuleName = no,
+        MaybeUniqMatchType = no,
         % Returning any SymName is fine, since it won't be used.
         Id0 = mq_id(SymName, _)
     ;
-        MaybeUniqModuleName = yes(UniqModuleName),
+        MaybeUniqMatchType = yes(UniqMatchType),
+        (
+            UniqMatchType = match(UniqModuleName)
+        ;
+            UniqMatchType = match_with_warning(UniqModuleName),
+            report_old_submodule_visibility_match(ErrorContext, Id0, IdType,
+                UniqModuleName, WarnSpec),
+            mq_info_record_warning(WarnSpec, !Info)
+        ),
         SymName = qualified(UniqModuleName, BaseName),
         mq_info_set_module_used(InInt, UniqModuleName, !Info),
         UsedItemType = convert_used_item_type(IdType),
@@ -399,6 +425,14 @@ mq_info_record_undef_mq_id(IdType, Id, Spec, !Info) :-
         )
     ).
 
+:- pred mq_info_record_warning(warn_spec::in, mq_info::in, mq_info::out)
+    is det.
+
+mq_info_record_warning(Spec, !Info) :-
+    mq_info_get_warn_specs(!.Info, Specs0),
+    Specs = [Spec | Specs0],
+    mq_info_set_warn_specs(Specs, !Info).
+
 :- func convert_used_item_type(qual_id_kind) = used_item_type.
 
 convert_used_item_type(qual_id_type) = used_type_name.
@@ -408,8 +442,17 @@ convert_used_item_type(qual_id_class) = used_typeclass.
 
 %---------------------------------------------------------------------------%
 
+:- type module_match_type
+    --->    match(module_name)
+    ;       match_with_warning(module_name).
+
+:- func matched_module_name(module_match_type) = module_name.
+
+matched_module_name(match(ModuleName)) = ModuleName.
+matched_module_name(match_with_warning(ModuleName)) = ModuleName.
+
 :- pred id_set_search_sym_arity(mq_in_interface::in, id_set::in,
-    sym_name::in, string::in, int::in, list(module_name)::out,
+    sym_name::in, string::in, int::in, list(module_match_type)::out,
     list(module_name)::out, list(module_name)::out) is det.
 
 id_set_search_sym_arity(InInt, IdSet, SymName, UnqualName, Arity,
@@ -427,7 +470,7 @@ id_set_search_sym_arity(InInt, IdSet, SymName, UnqualName, Arity,
     ).
 
 :- pred find_matches_in_permissions_map(mq_in_interface::in, sym_name::in,
-    permissions_map::in, list(module_name)::out,
+    permissions_map::in, list(module_match_type)::out,
     list(module_name)::out, list(module_name)::out) is det.
 
 find_matches_in_permissions_map(InInt, SymName, PermissionsMap,
@@ -437,7 +480,7 @@ find_matches_in_permissions_map(InInt, SymName, PermissionsMap,
 
 :- pred add_matching_and_nearmiss_modules(mq_in_interface::in, sym_name::in,
     module_name::in, module_permissions::in,
-    list(module_name)::in, list(module_name)::out,
+    list(module_match_type)::in, list(module_match_type)::out,
     list(module_name)::in, list(module_name)::out,
     list(module_name)::in, list(module_name)::out) is det.
 
@@ -477,7 +520,7 @@ add_matching_and_nearmiss_modules(InInt, SymName, ModuleName, Permissions,
 
 :- pred add_matching_and_nearmiss_modules_int(mq_in_interface::in, bool::in,
     module_name::in, module_permissions::in,
-    list(module_name)::in, list(module_name)::out,
+    list(module_match_type)::in, list(module_match_type)::out,
     list(module_name)::in, list(module_name)::out,
     list(module_name)::in, list(module_name)::out) is det.
 
@@ -490,30 +533,47 @@ add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
             PermInInt = may_not_use_in_int,
             !:IntMismatches = [ModuleName | !.IntMismatches]
         ;
-            PermInInt = may_use_in_int(NeedQual),
+            (
+                PermInInt = may_use_in_int(NeedQual),
+                MaybeWarn = do_not_warn
+            ;
+                PermInInt = may_use_in_int_warn(NeedQual),
+                MaybeWarn = warn_if_matching
+            ),
             add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
-                NeedQual, ModuleName, !Matches, !QualMismatches)
+                NeedQual, ModuleName, MaybeWarn, !Matches, !QualMismatches)
         )
     ;
         InInt = mq_not_used_in_interface,
         PermInImp = may_use_in_imp(NeedQual),
         add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
-            NeedQual, ModuleName, !Matches, !QualMismatches)
+            NeedQual, ModuleName, do_not_warn, !Matches, !QualMismatches)
     ).
 
+:- type maybe_warn_if_matching
+    --->    do_not_warn
+    ;       warn_if_matching.
+
 :- pred add_matching_and_nearmiss_modules_qual(bool::in, need_qualifier::in,
-    module_name::in,
-    list(module_name)::in, list(module_name)::out,
+    module_name::in, maybe_warn_if_matching::in,
+    list(module_match_type)::in, list(module_match_type)::out,
     list(module_name)::in, list(module_name)::out) is det.
 
 add_matching_and_nearmiss_modules_qual(FullyModuleQualified, NeedQual,
-        ModuleName, !Matches, !QualMismatches) :-
+        ModuleName, MaybeWarn, !Matches, !QualMismatches) :-
     ( if
         ( FullyModuleQualified = yes
         ; NeedQual = may_be_unqualified
         )
     then
-        !:Matches = [ModuleName | !.Matches]
+        (
+            MaybeWarn = do_not_warn,
+            MatchType = match(ModuleName)
+        ;
+            MaybeWarn = warn_if_matching,
+            MatchType = match_with_warning(ModuleName)
+        ),
+        !:Matches = [MatchType | !.Matches]
     else
         !:QualMismatches = [ModuleName | !.QualMismatches]
     ).

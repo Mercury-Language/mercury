@@ -298,9 +298,9 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
         IntPermInInt = may_use_in_int(may_be_unqualified),
         IntPermInImp = may_use_in_imp(may_be_unqualified)
     ;
-        ( ReadWhy1 = rwi1_ancestor_imp_import
-        ; ReadWhy1 = rwi1_imp_import
-        ),
+        % Under the new submodule visibility rule,
+        % ReadWhy1 = rwi1_ancestor_imp_import should be handled here.
+        ReadWhy1 = rwi1_imp_import,
         IntPermInInt = may_not_use_in_int,
         IntPermInImp = may_use_in_imp(may_be_unqualified)
     ;
@@ -310,10 +310,23 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
         IntPermInInt = may_use_in_int(must_be_qualified),
         IntPermInImp = may_use_in_imp(must_be_qualified)
     ;
-        ( ReadWhy1 = rwi1_ancestor_imp_use
-        ; ReadWhy1 = rwi1_imp_use
-        ),
+        % Under the new submodule visibility rule,
+        % ReadWhy1 = rwi1_ancestor_imp_use should be handled here.
+        ReadWhy1 = rwi1_imp_use,
         IntPermInInt = may_not_use_in_int,
+        IntPermInImp = may_use_in_imp(must_be_qualified)
+    ;
+        % Old submodule visibility rule: during the transition,
+        % allow entities imported in an ancestor implementation section
+        % to be visible in the interface section, but generate a warning
+        % if that is how an entity is used.
+        ReadWhy1 = rwi1_ancestor_imp_import,
+        IntPermInInt = may_use_in_int_warn(may_be_unqualified),
+        IntPermInImp = may_use_in_imp(may_be_unqualified)
+    ;
+        % Old submodule visibility rule: as above.
+        ReadWhy1 = rwi1_ancestor_imp_use,
+        IntPermInInt = may_use_in_int_warn(must_be_qualified),
         IntPermInImp = may_use_in_imp(must_be_qualified)
     ;
         ReadWhy1 = rwi1_int_use_imp_import,
@@ -630,17 +643,32 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
             PermInInt = may_use_in_int(must_be_qualified),
             PermInImp = may_use_in_imp(must_be_qualified)
         ;
-            ( ReadWhy3 = rwi3_direct_ancestor_imp_import
-            ; ReadWhy3 = rwi3_direct_imp_import
-            ),
+            % Under the new submodule visibility rule,
+            % ReadWhy3 = rwi3_direct_ancestor_imp_import should be handled
+            % here.
+            ReadWhy3 = rwi3_direct_imp_import,
             PermInInt = may_not_use_in_int,
             PermInImp = may_use_in_imp(may_be_unqualified)
         ;
-            ( ReadWhy3 = rwi3_direct_ancestor_imp_use
-            ; ReadWhy3 = rwi3_direct_imp_use
+            % Old submodule visibility rule: during the transition,
+            % allow entities imported in an ancestor implementation section
+            % to be visible in the interface section, but generate a warning
+            % if that is how an entity is used.
+            ReadWhy3 = rwi3_direct_ancestor_imp_import,
+            PermInInt = may_use_in_int_warn(may_be_unqualified),
+            PermInImp = may_use_in_imp(may_be_unqualified)
+        ;
+            % Under the new submodule visibility rule,
+            % ReadWhy3 = rwi3_direct_ancestor_imp_use should be handled here.
+            ( ReadWhy3 = rwi3_direct_imp_use
             ; ReadWhy3 = rwi3_indirect_imp_use
             ),
             PermInInt = may_not_use_in_int,
+            PermInImp = may_use_in_imp(must_be_qualified)
+        ;
+            % Old submodule visibility rule: as above.
+            ReadWhy3 = rwi3_direct_ancestor_imp_use,
+            PermInInt = may_use_in_int_warn(must_be_qualified),
             PermInImp = may_use_in_imp(must_be_qualified)
         ;
             ReadWhy3 = rwi3_direct_int_use_imp_import,

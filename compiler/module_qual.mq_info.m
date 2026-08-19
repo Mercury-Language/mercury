@@ -81,6 +81,8 @@
     is_undef_blocking::out) is det.
 :- pred mq_info_get_nonblocking_undef_specs(mq_info::in,
     list(err_spec)::out) is det.
+:- pred mq_info_get_warn_specs(mq_info::in,
+    list(warn_spec)::out) is det.
 :- pred mq_info_get_should_report_errors(mq_info::in,
     maybe_should_report_errors::out) is det.
 
@@ -116,6 +118,8 @@
 :- pred mq_info_set_is_undef_blocking(is_undef_blocking::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_nonblocking_undef_specs(list(err_spec)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_warn_specs(list(warn_spec)::in,
     mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -171,10 +175,12 @@
 %---------------------------------------------------------------------------%
 
     % get_err_specs_in_mq_info(Info,
-    %   InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs)
+    %   InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs,
+    %   WarnSpecs)
     %
 :- pred get_err_specs_in_mq_info(mq_info::in,
-    list(err_spec)::out, list(err_spec)::out, list(err_spec)::out) is det.
+    list(err_spec)::out, list(err_spec)::out, list(err_spec)::out,
+    list(warn_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -249,6 +255,9 @@
                 mqsi_is_undef_blocking          :: is_undef_blocking,
                 mqsi_nonblocking_undef_specs    :: list(err_spec),
 
+                % Warnings generated during module qualification.
+                mqsi_warn_specs                 :: list(warn_spec),
+
                 % Do we want to report errors.
                 mqsi_should_report_errors       :: maybe_should_report_errors,
 
@@ -277,7 +286,7 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
         InstanceModules, ExportedInstancesFlag,
         one_or_more_map.init, one_or_more_map.init,
         one_or_more_map.init, one_or_more_map.init,
-        undef_is_blocking, [], ReportErrors, 0),
+        undef_is_blocking, [], [], ReportErrors, 0),
 
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
@@ -335,6 +344,8 @@ mq_info_get_is_undef_blocking(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_is_undef_blocking.
 mq_info_get_nonblocking_undef_specs(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_nonblocking_undef_specs.
+mq_info_get_warn_specs(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_warn_specs.
 mq_info_get_should_report_errors(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_should_report_errors.
 
@@ -371,6 +382,8 @@ mq_info_set_is_undef_blocking(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_is_undef_blocking := X.
 mq_info_set_nonblocking_undef_specs(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_nonblocking_undef_specs := X.
+mq_info_set_warn_specs(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_warn_specs := X.
 
 %---------------------------------------------------------------------------%
 
@@ -458,7 +471,8 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 %---------------------------------------------------------------------------%
 
 get_err_specs_in_mq_info(Info,
-        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs) :-
+        InvalidTypeSpecs, InvalidInstModeSpecs, NonBlockingUndefSpecs,
+        WarnSpecs) :-
     mq_info_get_undef_types(Info, UndefTypesMap),
     mq_info_get_undef_insts(Info, UndefInstsMap),
     mq_info_get_undef_modes(Info, UndefModesMap),
@@ -469,7 +483,8 @@ get_err_specs_in_mq_info(Info,
     one_or_more_map.values(UndefTypeClassesMap, UndefTypeClassSpecs),
     InvalidTypeSpecs = UndefTypeSpecs ++ UndefTypeClassSpecs,
     InvalidInstModeSpecs = UndefInstSpecs ++ UndefModeSpecs,
-    mq_info_get_nonblocking_undef_specs(Info, NonBlockingUndefSpecs).
+    mq_info_get_nonblocking_undef_specs(Info, NonBlockingUndefSpecs),
+    mq_info_get_warn_specs(Info, WarnSpecs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.module_qual.mq_info.

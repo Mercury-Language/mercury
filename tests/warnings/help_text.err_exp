@@ -1331,6 +1331,13 @@ Warning options
         and/or function names that may be intermingled. Each name must uniquely
         specify a predicate or a function.
 
+  Warnings about language changes
+
+    --no-warn-old-submodule-visibility-rule
+        Do not warn about code that depends on a deprecated visibility rule
+        where entities imported in a module's implementation section are
+        visible in the interface sections of its submodules.
+
   Options that control warnings
 
     -w

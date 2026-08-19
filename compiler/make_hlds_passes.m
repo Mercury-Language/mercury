@@ -647,10 +647,12 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
     get_err_specs_in_mq_info(MQInfo,
-        MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs),
+        MQInvalidTypeSpecs, MQInvalidInstModeSpecs, MQNonBlockingUndefSpecs,
+        WarnSpecs),
     !:InvalidTypeSpecs = MQInvalidTypeSpecs ++ !.InvalidTypeSpecs,
     !:InvalidInstModeSpecs = MQInvalidInstModeSpecs ++ !.InvalidInstModeSpecs,
-    !:ErrSpecs = MQNonBlockingUndefSpecs ++ !.ErrSpecs.
+    !:ErrSpecs = MQNonBlockingUndefSpecs ++ !.ErrSpecs,
+    !:WarnSpecs = WarnSpecs ++ !.WarnSpecs.
 
 %---------------------------------------------------------------------------%
 
