@@ -1,0 +1,168 @@
+### Empty and blank strings ###
+
+base_string_to_uint(10, "") ==> no
+base_string_to_uint(2, "") ==> no
+base_string_to_uint(36, "") ==> no
+base_string_to_uint(10, " ") ==> no
+base_string_to_uint(10, "   ") ==> no
+base_string_to_uint(10, "\t") ==> no
+base_string_to_uint(10, "\n") ==> no
+base_string_to_uint(10, " \t ") ==> no
+base_string_to_uint(2, " ") ==> no
+base_string_to_uint(36, " ") ==> no
+
+### Signs are not accepted ###
+
+base_string_to_uint(10, "-1") ==> no
+base_string_to_uint(10, "+1") ==> no
+base_string_to_uint(10, "-0") ==> no
+base_string_to_uint(10, "+0") ==> no
+base_string_to_uint(10, "-") ==> no
+base_string_to_uint(10, "+") ==> no
+base_string_to_uint(16, "-f") ==> no
+base_string_to_uint(36, "+z") ==> no
+base_string_to_uint(10, "--1") ==> no
+base_string_to_uint(10, "1-") ==> no
+base_string_to_uint(10, "1+") ==> no
+
+### Single digits ###
+
+base_string_to_uint(10, "0") ==> 0u
+base_string_to_uint(10, "7") ==> 7u
+base_string_to_uint(2, "0") ==> 0u
+base_string_to_uint(2, "1") ==> 1u
+base_string_to_uint(8, "7") ==> 7u
+base_string_to_uint(16, "f") ==> 15u
+base_string_to_uint(16, "F") ==> 15u
+base_string_to_uint(36, "z") ==> 35u
+base_string_to_uint(36, "Z") ==> 35u
+
+### Upper and lower case digits ###
+
+base_string_to_uint(16, "abcdef") ==> 11259375u
+base_string_to_uint(16, "ABCDEF") ==> 11259375u
+base_string_to_uint(16, "AbCdEf") ==> 11259375u
+base_string_to_uint(36, "abz") ==> 13391u
+base_string_to_uint(36, "ABZ") ==> 13391u
+base_string_to_uint(36, "AbZ") ==> 13391u
+
+### Leading zeros ###
+
+base_string_to_uint(10, "00") ==> 0u
+base_string_to_uint(10, "007") ==> 7u
+base_string_to_uint(2, "000101") ==> 5u
+base_string_to_uint(8, "00017") ==> 15u
+base_string_to_uint(16, "000ff") ==> 255u
+base_string_to_uint(36, "000z") ==> 35u
+base_string_to_uint(10, "0000000000000000000000000000000") ==> 0u
+base_string_to_uint(10, "0000000000000000000000000000001") ==> 1u
+
+### Digits not valid in the specified base ###
+
+base_string_to_uint(2, "1") ==> 1u
+base_string_to_uint(2, "2") ==> no
+base_string_to_uint(3, "2") ==> 2u
+base_string_to_uint(3, "3") ==> no
+base_string_to_uint(8, "7") ==> 7u
+base_string_to_uint(8, "8") ==> no
+base_string_to_uint(9, "8") ==> 8u
+base_string_to_uint(9, "9") ==> no
+base_string_to_uint(10, "9") ==> 9u
+base_string_to_uint(10, "a") ==> no
+base_string_to_uint(10, "A") ==> no
+base_string_to_uint(11, "a") ==> 10u
+base_string_to_uint(11, "A") ==> 10u
+base_string_to_uint(11, "b") ==> no
+base_string_to_uint(11, "B") ==> no
+base_string_to_uint(16, "f") ==> 15u
+base_string_to_uint(16, "g") ==> no
+base_string_to_uint(16, "G") ==> no
+base_string_to_uint(17, "g") ==> 16u
+base_string_to_uint(17, "h") ==> no
+base_string_to_uint(35, "y") ==> 34u
+base_string_to_uint(35, "z") ==> no
+base_string_to_uint(35, "Z") ==> no
+base_string_to_uint(36, "z") ==> 35u
+base_string_to_uint(36, "Z") ==> 35u
+base_string_to_uint(2, "102") ==> no
+base_string_to_uint(8, "178") ==> no
+base_string_to_uint(16, "1fg") ==> no
+
+### Non-digit characters ###
+
+base_string_to_uint(10, " 1") ==> no
+base_string_to_uint(10, "1 ") ==> no
+base_string_to_uint(10, "1 2") ==> no
+base_string_to_uint(10, "1.0") ==> no
+base_string_to_uint(10, "1,000") ==> no
+base_string_to_uint(10, "1_000") ==> no
+base_string_to_uint(10, "1e5") ==> no
+base_string_to_uint(16, "0x10") ==> no
+base_string_to_uint(10, "\t1") ==> no
+base_string_to_uint(10, "1\n") ==> no
+base_string_to_uint(36, "1!") ==> no
+base_string_to_uint(10, "３") ==> no
+
+### The string "10" in every base ###
+
+base_string_to_uint(2, "10") ==> 2u
+base_string_to_uint(3, "10") ==> 3u
+base_string_to_uint(4, "10") ==> 4u
+base_string_to_uint(5, "10") ==> 5u
+base_string_to_uint(6, "10") ==> 6u
+base_string_to_uint(7, "10") ==> 7u
+base_string_to_uint(8, "10") ==> 8u
+base_string_to_uint(9, "10") ==> 9u
+base_string_to_uint(10, "10") ==> 10u
+base_string_to_uint(11, "10") ==> 11u
+base_string_to_uint(12, "10") ==> 12u
+base_string_to_uint(13, "10") ==> 13u
+base_string_to_uint(14, "10") ==> 14u
+base_string_to_uint(15, "10") ==> 15u
+base_string_to_uint(16, "10") ==> 16u
+base_string_to_uint(17, "10") ==> 17u
+base_string_to_uint(18, "10") ==> 18u
+base_string_to_uint(19, "10") ==> 19u
+base_string_to_uint(20, "10") ==> 20u
+base_string_to_uint(21, "10") ==> 21u
+base_string_to_uint(22, "10") ==> 22u
+base_string_to_uint(23, "10") ==> 23u
+base_string_to_uint(24, "10") ==> 24u
+base_string_to_uint(25, "10") ==> 25u
+base_string_to_uint(26, "10") ==> 26u
+base_string_to_uint(27, "10") ==> 27u
+base_string_to_uint(28, "10") ==> 28u
+base_string_to_uint(29, "10") ==> 29u
+base_string_to_uint(30, "10") ==> 30u
+base_string_to_uint(31, "10") ==> 31u
+base_string_to_uint(32, "10") ==> 32u
+base_string_to_uint(33, "10") ==> 33u
+base_string_to_uint(34, "10") ==> 34u
+base_string_to_uint(35, "10") ==> 35u
+base_string_to_uint(36, "10") ==> 36u
+
+### Invalid bases ###
+
+base_string_to_uint(1, "1") ==> exception
+base_string_to_uint(0, "1") ==> exception
+base_string_to_uint(-1, "1") ==> exception
+base_string_to_uint(37, "1") ==> exception
+base_string_to_uint(100, "1") ==> exception
+
+### det_base_string_to_uint ###
+
+det_base_string_to_uint(10, "123") ==> 123u
+det_base_string_to_uint(16, "ff") ==> 255u
+det_base_string_to_uint(10, "") ==> exception
+det_base_string_to_uint(10, "12a") ==> exception
+det_base_string_to_uint(10, "-1") ==> exception
+det_base_string_to_uint(1, "1") ==> exception
+
+### to_uint ###
+
+to_uint("123") ==> 123u
+to_uint("-123") ==> no
+to_uint("") ==> no
+to_uint("0x10") ==> no
+to_uint(" 1") ==> no
+

@@ -1,0 +1,178 @@
+### Empty, blank and sign-only strings ###
+
+base_string_to_int(10, "") ==> no
+base_string_to_int(2, "") ==> no
+base_string_to_int(36, "") ==> no
+base_string_to_int(10, " ") ==> no
+base_string_to_int(2, " ") ==> no
+base_string_to_int(36, " ") ==> no
+base_string_to_int(10, "-") ==> no
+base_string_to_int(10, "+") ==> no
+base_string_to_int(16, "-") ==> no
+base_string_to_int(2, "+") ==> no
+base_string_to_int(10, "--") ==> no
+base_string_to_int(10, "++") ==> no
+base_string_to_int(10, "+-1") ==> no
+base_string_to_int(10, "-+1") ==> no
+base_string_to_int(10, "   ") ==> no
+base_string_to_int(10, "\t") ==> no
+base_string_to_int(10, "\n") ==> no
+base_string_to_int(10, " \t ") ==> no
+base_string_to_int(10, "- ") ==> no
+base_string_to_int(10, "+ ") ==> no
+
+### Single digits ###
+
+base_string_to_int(10, "0") ==> 0
+base_string_to_int(10, "7") ==> 7
+base_string_to_int(10, "-7") ==> -7
+base_string_to_int(10, "+7") ==> 7
+base_string_to_int(2, "0") ==> 0
+base_string_to_int(2, "1") ==> 1
+base_string_to_int(8, "7") ==> 7
+base_string_to_int(16, "f") ==> 15
+base_string_to_int(16, "F") ==> 15
+base_string_to_int(36, "z") ==> 35
+base_string_to_int(36, "Z") ==> 35
+
+### Upper and lower case digits ###
+
+base_string_to_int(16, "abcdef") ==> 11259375
+base_string_to_int(16, "ABCDEF") ==> 11259375
+base_string_to_int(16, "AbCdEf") ==> 11259375
+base_string_to_int(16, "-Ff") ==> -255
+base_string_to_int(36, "abz") ==> 13391
+base_string_to_int(36, "ABZ") ==> 13391
+base_string_to_int(36, "AbZ") ==> 13391
+
+### Leading zeros ###
+
+base_string_to_int(10, "00") ==> 0
+base_string_to_int(10, "007") ==> 7
+base_string_to_int(10, "-007") ==> -7
+base_string_to_int(10, "+007") ==> 7
+base_string_to_int(2, "000101") ==> 5
+base_string_to_int(8, "00017") ==> 15
+base_string_to_int(16, "000ff") ==> 255
+base_string_to_int(36, "000z") ==> 35
+base_string_to_int(10, "0000000000000000000000000000000") ==> 0
+base_string_to_int(10, "0000000000000000000000000000001") ==> 1
+
+### Digits not valid in the specified base ###
+
+base_string_to_int(2, "1") ==> 1
+base_string_to_int(2, "2") ==> no
+base_string_to_int(3, "2") ==> 2
+base_string_to_int(3, "3") ==> no
+base_string_to_int(8, "7") ==> 7
+base_string_to_int(8, "8") ==> no
+base_string_to_int(9, "8") ==> 8
+base_string_to_int(9, "9") ==> no
+base_string_to_int(10, "9") ==> 9
+base_string_to_int(10, "a") ==> no
+base_string_to_int(10, "A") ==> no
+base_string_to_int(11, "a") ==> 10
+base_string_to_int(11, "A") ==> 10
+base_string_to_int(11, "b") ==> no
+base_string_to_int(11, "B") ==> no
+base_string_to_int(16, "f") ==> 15
+base_string_to_int(16, "g") ==> no
+base_string_to_int(16, "G") ==> no
+base_string_to_int(17, "g") ==> 16
+base_string_to_int(17, "h") ==> no
+base_string_to_int(35, "y") ==> 34
+base_string_to_int(35, "z") ==> no
+base_string_to_int(35, "Z") ==> no
+base_string_to_int(36, "z") ==> 35
+base_string_to_int(36, "Z") ==> 35
+base_string_to_int(2, "102") ==> no
+base_string_to_int(8, "178") ==> no
+base_string_to_int(16, "1fg") ==> no
+
+### Non-digit characters ###
+
+base_string_to_int(10, " 1") ==> no
+base_string_to_int(10, "1 ") ==> no
+base_string_to_int(10, "1 2") ==> no
+base_string_to_int(10, "1.0") ==> no
+base_string_to_int(10, "1,000") ==> no
+base_string_to_int(10, "1_000") ==> no
+base_string_to_int(10, "1e5") ==> no
+base_string_to_int(16, "0x10") ==> no
+base_string_to_int(10, "\t1") ==> no
+base_string_to_int(10, "1\n") ==> no
+base_string_to_int(36, "1!") ==> no
+base_string_to_int(10, "３") ==> no
+
+### Signs in the wrong place ###
+
+base_string_to_int(10, "1-") ==> no
+base_string_to_int(10, "1+") ==> no
+base_string_to_int(10, "1-2") ==> no
+base_string_to_int(10, "12-34") ==> no
+base_string_to_int(10, "--1") ==> no
+base_string_to_int(10, "++1") ==> no
+base_string_to_int(10, "-1-") ==> no
+
+### The string "10" in every base ###
+
+base_string_to_int(2, "10") ==> 2
+base_string_to_int(3, "10") ==> 3
+base_string_to_int(4, "10") ==> 4
+base_string_to_int(5, "10") ==> 5
+base_string_to_int(6, "10") ==> 6
+base_string_to_int(7, "10") ==> 7
+base_string_to_int(8, "10") ==> 8
+base_string_to_int(9, "10") ==> 9
+base_string_to_int(10, "10") ==> 10
+base_string_to_int(11, "10") ==> 11
+base_string_to_int(12, "10") ==> 12
+base_string_to_int(13, "10") ==> 13
+base_string_to_int(14, "10") ==> 14
+base_string_to_int(15, "10") ==> 15
+base_string_to_int(16, "10") ==> 16
+base_string_to_int(17, "10") ==> 17
+base_string_to_int(18, "10") ==> 18
+base_string_to_int(19, "10") ==> 19
+base_string_to_int(20, "10") ==> 20
+base_string_to_int(21, "10") ==> 21
+base_string_to_int(22, "10") ==> 22
+base_string_to_int(23, "10") ==> 23
+base_string_to_int(24, "10") ==> 24
+base_string_to_int(25, "10") ==> 25
+base_string_to_int(26, "10") ==> 26
+base_string_to_int(27, "10") ==> 27
+base_string_to_int(28, "10") ==> 28
+base_string_to_int(29, "10") ==> 29
+base_string_to_int(30, "10") ==> 30
+base_string_to_int(31, "10") ==> 31
+base_string_to_int(32, "10") ==> 32
+base_string_to_int(33, "10") ==> 33
+base_string_to_int(34, "10") ==> 34
+base_string_to_int(35, "10") ==> 35
+base_string_to_int(36, "10") ==> 36
+
+### Invalid bases ###
+
+base_string_to_int(1, "1") ==> exception
+base_string_to_int(0, "1") ==> exception
+base_string_to_int(-1, "1") ==> exception
+base_string_to_int(37, "1") ==> exception
+base_string_to_int(100, "1") ==> exception
+
+### det_base_string_to_int ###
+
+det_base_string_to_int(10, "123") ==> 123
+det_base_string_to_int(16, "ff") ==> 255
+det_base_string_to_int(10, "") ==> exception
+det_base_string_to_int(10, "12a") ==> exception
+det_base_string_to_int(1, "1") ==> exception
+
+### to_int ###
+
+to_int("123") ==> 123
+to_int("-123") ==> -123
+to_int("") ==> no
+to_int("0x10") ==> no
+to_int(" 1") ==> no
+
