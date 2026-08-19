@@ -2,9 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Test the non-overflow behaviour of string.base_string_to_int/3.
-% (The overflow behaviour of this predicate is tested separately, by
-% ../general/test_string_to_int_overflow.m.)
+% Test the non-overflow behaviour of string.base_string_to_int/3 and
+% string.base_string_to_uint/3.
+% (The overflow behaviour of these predicates is tested separately, by
+% ../general/test_string_to_int_overflow.m and string_to_uint_overflow.m
+% respectively.)
 %
 %---------------------------------------------------------------------------%
 
@@ -30,13 +32,27 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    header("Empty, blank and sign-only strings", !IO),
+    header("Empty strings", !IO),
     test(10, "", !IO),
     test(2, "", !IO),
     test(36, "", !IO),
+    io.nl(!IO),
+
+    header("Blank strings", !IO),
     test(10, " ", !IO),
+    test(10, "   ", !IO),
+    test(10, "\t", !IO),
+    test(10, "\n", !IO),
+    test(10, " \t ", !IO),
     test(2, " ", !IO),
     test(36, " ", !IO),
+    io.nl(!IO),
+
+    header("Signs", !IO),
+    test(10, "-1", !IO),
+    test(10, "+1", !IO),
+    test(10, "-0", !IO),
+    test(10, "+0", !IO),
     test(10, "-", !IO),
     test(10, "+", !IO),
     test(16, "-", !IO),
@@ -45,10 +61,6 @@ main(!IO) :-
     test(10, "++", !IO),
     test(10, "+-1", !IO),
     test(10, "-+1", !IO),
-    test(10, "   ", !IO),
-    test(10, "\t", !IO),
-    test(10, "\n", !IO),
-    test(10, " \t ", !IO),
     test(10, "- ", !IO),
     test(10, "+ ", !IO),
     io.nl(!IO),
@@ -150,9 +162,9 @@ main(!IO) :-
     list.foldl(test_10_in_base, 2 .. 36, !IO),
     io.nl(!IO),
 
-    % base_string_to_int/3 throws an exception if the base is not in 2..36.
-    % It checks the base before it looks at the string, so the string is
-    % irrelevant in these tests.
+    % Both base_string_to_int/3 and base_string_to_uint/3 throw an exception if
+    % the base is not in 2..36. They check the base before they look at the
+    % string, so the string is irrelevant in these tests.
 
     header("Invalid bases", !IO),
     test(1, "1", !IO),
@@ -162,7 +174,7 @@ main(!IO) :-
     test(100, "1", !IO),
     io.nl(!IO),
 
-    header("det_base_string_to_int", !IO),
+    header("det_base_string_to_{int,uint}", !IO),
     test_det(10, "123", !IO),
     test_det(16, "ff", !IO),
     test_det(10, "", !IO),
@@ -171,8 +183,9 @@ main(!IO) :-
     io.nl(!IO),
 
     % to_int/2 is base_string_to_int/3 with the base fixed at 10.
+    % to_uint/2 is base_string_to_uint/3 with the base fixed at 10.
 
-    header("to_int", !IO),
+    header("to_{int,uint}", !IO),
     test_to_int("123", !IO),
     test_to_int("-123", !IO),
     test_to_int("", !IO),
@@ -191,14 +204,17 @@ test_10_in_base(Base, !IO) :-
 
     % test(Base, Str, !IO):
     %
-    % Test string.base_string_to_int(Base, Str, Int), writing out the call
-    % and then its result: the value of Int if the call succeeds, "no" if
-    % it fails, or "exception" if it throws.
+    % Test string.base_string_to_int(Base, Str, Int) and
+    % string.base_string_to_uint(Base, Str, UInt) writing out
+    % the call then results: the numeric value of the Int / UInt if both
+    % calls succeed, "no" if they fail, or "exception" if they throw
+    % an exception. If the results differ between the signed and signed
+    % version, write out both results.
     %
 :- pred test(int::in, string::in, io::di, io::uo) is cc_multi.
 
 test(Base, Str, !IO) :-
-    io.format("base_string_to_int(%d, %s) ==> ",
+    io.format("base_string_to_{int,uint}(%3d, %8s) ==> ",
         [i(Base), s(string(Str))], !IO),
     ( try []
         ( if string.base_string_to_int(Base, Str, Int0) then
@@ -209,36 +225,83 @@ test(Base, Str, !IO) :-
     then
         (
             MaybeInt = yes(Int),
-            io.write_line(Int, !IO)
+            IntResult = int_to_string(Int)
         ;
             MaybeInt = no,
-            io.write_string("no\n", !IO)
+            IntResult = "no"
         )
     catch_any _ ->
-        io.write_string("exception\n", !IO)
+        IntResult = "exception"
+    ),
+    ( try []
+        ( if string.base_string_to_uint(Base, Str, UInt0) then
+            MaybeUInt = yes(UInt0)
+        else
+            MaybeUInt = no
+        )
+    then
+        (
+            MaybeUInt = yes(UInt),
+            UIntResult = uint_to_string(UInt)
+        ;
+            MaybeUInt = no,
+            UIntResult = "no"
+        )
+    catch_any _ ->
+        UIntResult = "exception"
+    ),
+    ( if IntResult = UIntResult then
+        io.print_line(IntResult, !IO)
+    else
+        io.format("int = %3s, uint = %3s\n",
+            [s(IntResult), s(UIntResult)], !IO)
     ).
 
 :- pred test_det(int::in, string::in, io::di, io::uo) is cc_multi.
 
 test_det(Base, Str, !IO) :-
-    io.format("det_base_string_to_int(%d, %s) ==> ",
+    io.format("det_base_string_to_{int,uint}(%2d, %5s) ==> ",
         [i(Base), s(string(Str))], !IO),
     ( try []
         Int = string.det_base_string_to_int(Base, Str)
     then
-        io.write_line(Int, !IO)
+        IntResult = int_to_string(Int)
     catch_any _ ->
-        io.write_string("exception\n", !IO)
+        IntResult = "exception"
+    ),
+    ( try []
+        UInt = string.det_base_string_to_uint(Base, Str)
+    then
+        UIntResult = uint_to_string(UInt)
+    catch_any _ ->
+        UIntResult = "exception"
+    ),
+    ( if IntResult = UIntResult then
+        io.print_line(IntResult, !IO)
+    else
+        io.format("int = %3s, uint = %3s\n",
+            [s(IntResult), s(UIntResult)], !IO)
     ).
 
 :- pred test_to_int(string::in, io::di, io::uo) is det.
 
 test_to_int(Str, !IO) :-
-    io.format("to_int(%s) ==> ", [s(string(Str))], !IO),
+    io.format("to_{int,uint}(%6s) ==> ", [s(string(Str))], !IO),
     ( if string.to_int(Str, Int) then
-        io.write_line(Int, !IO)
+        IntResult = int_to_string(Int)
     else
-        io.write_string("no\n", !IO)
+        IntResult = "no"
+    ),
+    ( if string.to_uint(Str, UInt) then
+        UIntResult = uint_to_string(UInt)
+    else
+        UIntResult = "no"
+    ),
+    ( if IntResult = UIntResult then
+        io.print_line(IntResult, !IO)
+    else
+        io.format("int = %3s, uint = %3s\n",
+            [s(IntResult), s(UIntResult)], !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -776,7 +776,6 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		array_shrink \
 		array_swap \
 		base_string_to_int \
-		base_string_to_uint \
 		bit_access_uint16 \
 		bit_access_uint32 \
 		bit_access_uint64 \
