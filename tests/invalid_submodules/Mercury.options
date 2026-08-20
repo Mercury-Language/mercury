@@ -5,6 +5,7 @@
 # Inter-module optimization changes the diagnostics for some tests
 # (in most cases reporting diagnostics when writing the `.opt' file).
 # For those tests, we just disable inter-module optimization.
+MCFLAGS-bug584                  += --no-intermodule-optimization
 MCFLAGS-exported_unify3         += --no-intermodule-optimization
 MCFLAGS-import_in_parent        += --no-intermodule-optimization
 MCFLAGS-import_in_parent        += --warn-unused-imports
