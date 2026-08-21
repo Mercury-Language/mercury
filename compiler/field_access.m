@@ -96,7 +96,7 @@
 
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.make_hlds.superhomogeneous_util.

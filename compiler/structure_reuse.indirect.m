@@ -79,6 +79,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.

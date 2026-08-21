@@ -56,6 +56,7 @@
 
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
@@ -367,7 +368,7 @@ set_compiler_gen_terminates(ModuleInfo, PredInfo, PredId, ProcIds,
     % XXX This code looks to be a near-identical copy of the predicate
     % of the same name in termination.m.
     ( if
-        hlds_pred.pred_info_is_builtin(PredInfo)
+        pred_info_is_builtin(PredInfo)
     then
         set_builtin_terminates(ModuleInfo, PredInfo, PredId, ProcIds,
             !ProcTable)

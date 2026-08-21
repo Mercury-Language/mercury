@@ -46,7 +46,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_cons.
-:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 

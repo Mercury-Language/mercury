@@ -35,6 +35,7 @@
 
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.options.

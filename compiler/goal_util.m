@@ -255,6 +255,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.pred_proc_id.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

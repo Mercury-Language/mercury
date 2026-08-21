@@ -86,6 +86,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_proc_id.

@@ -54,6 +54,7 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.

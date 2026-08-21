@@ -99,6 +99,7 @@
 :- include_module hlds_code_util.
 :- include_module hlds_defns.
 :- include_module hlds_dependency_graph.
+:- include_module hlds_pred_tests.
 :- include_module hlds_proc_util.
 :- include_module hlds_statistics.
 :- include_module inst_lookup.

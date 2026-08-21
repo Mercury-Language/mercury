@@ -214,6 +214,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_pred_tests.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

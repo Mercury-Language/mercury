@@ -141,6 +141,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_markers.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_name.
@@ -493,7 +494,7 @@ gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
         ( PredStatus = pred_status(status_exported)
         ; PredStatus = pred_status(status_opt_exported)
         ),
-        not hlds_pred.is_unify_index_or_compare_pred(PredInfo),
+        not is_unify_index_or_compare_pred(PredInfo),
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),

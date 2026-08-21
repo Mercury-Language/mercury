@@ -132,6 +132,7 @@
 :- import_module hlds.hlds_call_tree.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.implementation_defined_literals.
 :- import_module hlds.input_specialization.

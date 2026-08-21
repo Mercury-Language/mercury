@@ -45,6 +45,7 @@
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mark_tail_calls.

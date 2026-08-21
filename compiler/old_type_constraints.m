@@ -43,6 +43,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.

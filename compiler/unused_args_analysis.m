@@ -76,6 +76,7 @@
 :- import_module hlds.goal_refs.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

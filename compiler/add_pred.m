@@ -103,6 +103,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds_error.

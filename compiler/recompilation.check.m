@@ -64,7 +64,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_cons.    % for type field_access_type
-:- import_module hlds.hlds_pred.    % for field_access_function_name, pred_id.
+:- import_module hlds.hlds_pred_tests.
 :- import_module hlds.pred_proc_id.
 :- import_module libs.file_util.
 :- import_module libs.options.
