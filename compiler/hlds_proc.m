@@ -41,43 +41,14 @@
 :- import_module maybe.
 :- import_module set.
 
-:- implementation.
-
-:- import_module hlds.type_util.
-:- import_module parse_tree.prog_type.
-
-:- import_module int.
-:- import_module string.
-:- import_module term.
-:- import_module unit.
-:- import_module varset.
-
 %---------------------------------------------------------------------------%
-
-:- interface.
 
 :- type proc_info.
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % Various predicates for accessing the proc_info data structure,
-    % and the types they work with.
-
-:- interface.
-
-    % Exported to hlds_pred.m only.
-    %
-:- pred proc_info_init(module_info::in, prog_context::in, item_seq_num::in,
-    list(mer_type)::in, inst_varset::in, maybe(list(mer_mode))::in,
-    list(mer_mode)::in, maybe(list(is_live))::in,
-    detism_decl::in, maybe(determinism)::in, is_address_taken::in,
-    has_parallel_conj::in, map(prog_var, string)::in, proc_info::out) is det.
+%
+% Creating proc_infos.
+%
 
 :- pred proc_info_create(prog_context::in, item_seq_num::in,
     var_table::in, list(prog_var)::in,
@@ -95,7 +66,18 @@
     rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
     map(prog_var, string)::in, proc_info::out) is det.
 
-%---------------------%
+    % Exported to hlds_pred.m only.
+    %
+:- pred proc_info_init(module_info::in, prog_context::in, item_seq_num::in,
+    list(mer_type)::in, inst_varset::in, maybe(list(mer_mode))::in,
+    list(mer_mode)::in, maybe(list(is_live))::in,
+    detism_decl::in, maybe(determinism)::in, is_address_taken::in,
+    has_parallel_conj::in, map(prog_var, string)::in, proc_info::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Cloning proc_infos.
+%
 
 % proc_prepare_to_clone returns all the fields of an existing proc_info,
 % while proc_create constructs a new proc_info putting the supplied values
@@ -152,13 +134,54 @@
     maybe(proc_mm_tabling_info)::in, structure_sharing_info::in,
     structure_reuse_info::in, proc_info::out) is det.
 
-%---------------------%
+%---------------------------------------------------------------------------%
+%
+% Nontrivial getters and setters.
+%
 
 :- pred proc_info_set_body(var_table::in,
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
 
-    % Predicates to get fields of proc_infos.
+:- pred proc_info_get_structure_sharing(proc_info::in,
+    maybe(structure_sharing_domain_and_status)::out) is det.
+
+:- pred proc_info_set_structure_sharing(
+    structure_sharing_domain_and_status::in,
+    proc_info::in, proc_info::out) is det.
+
+:- pred proc_info_get_imported_structure_sharing(proc_info::in,
+    list(prog_var)::out, list(mer_type)::out, structure_sharing_domain::out)
+    is semidet.
+
+:- pred proc_info_set_imported_structure_sharing(list(prog_var)::in,
+    list(mer_type)::in, structure_sharing_domain::in, proc_info::in,
+    proc_info::out) is det.
+
+:- pred proc_info_reset_imported_structure_sharing(proc_info::in,
+    proc_info::out) is det.
+
+:- pred proc_info_get_structure_reuse(proc_info::in,
+    maybe(structure_reuse_domain_and_status)::out) is det.
+
+:- pred proc_info_set_structure_reuse(structure_reuse_domain_and_status::in,
+    proc_info::in, proc_info::out) is det.
+
+:- pred proc_info_get_imported_structure_reuse(proc_info::in,
+    list(prog_var)::out, list(mer_type)::out, structure_reuse_domain::out)
+    is semidet.
+
+:- pred proc_info_set_imported_structure_reuse(list(prog_var)::in,
+    list(mer_type)::in, structure_reuse_domain::in,
+    proc_info::in, proc_info::out) is det.
+
+:- pred proc_info_reset_imported_structure_reuse(proc_info::in,
+    proc_info::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Getters and setters.
+%
 
 :- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
 :- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
@@ -238,8 +261,6 @@
     maybe(proc_trailing_info)::out) is det.
 :- pred proc_info_get_mm_tabling_info(proc_info::in,
     maybe(proc_mm_tabling_info)::out) is det.
-
-    % Predicates to set fields of proc_infos.
 
 :- pred proc_info_set_headvars(list(prog_var)::in,
     proc_info::in, proc_info::out) is det.
@@ -329,52 +350,502 @@
 :- pred proc_info_set_mm_tabling_info(maybe(proc_mm_tabling_info)::in,
     proc_info::in, proc_info::out) is det.
 
-:- pred proc_info_get_structure_sharing(proc_info::in,
-    maybe(structure_sharing_domain_and_status)::out) is det.
-
-:- pred proc_info_set_structure_sharing(
-    structure_sharing_domain_and_status::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_imported_structure_sharing(proc_info::in,
-    list(prog_var)::out, list(mer_type)::out, structure_sharing_domain::out)
-    is semidet.
-
-:- pred proc_info_set_imported_structure_sharing(list(prog_var)::in,
-    list(mer_type)::in, structure_sharing_domain::in, proc_info::in,
-    proc_info::out) is det.
-
-:- pred proc_info_reset_imported_structure_sharing(proc_info::in,
-    proc_info::out) is det.
-
-:- pred proc_info_get_structure_reuse(proc_info::in,
-    maybe(structure_reuse_domain_and_status)::out) is det.
-
-:- pred proc_info_set_structure_reuse(structure_reuse_domain_and_status::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_imported_structure_reuse(proc_info::in,
-    list(prog_var)::out, list(mer_type)::out, structure_reuse_domain::out)
-    is semidet.
-
-:- pred proc_info_set_imported_structure_reuse(list(prog_var)::in,
-    list(mer_type)::in, structure_reuse_domain::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_reset_imported_structure_reuse(proc_info::in,
-    proc_info::out) is det.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-    % The information specific to a procedure, as opposed to a predicate.
+:- import_module hlds.type_util.
+:- import_module parse_tree.prog_type.
+
+:- import_module int.
+:- import_module string.
+:- import_module term.
+:- import_module unit.
+:- import_module varset.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Creating proc_infos.
+%
+
+proc_info_create(Context, ItemNumber, VarTable, HeadVars,
+        InstVarSet, HeadModes, DetismDecl, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
+    proc_info_create_with_declared_detism(Context, ItemNumber,
+        VarTable, HeadVars, InstVarSet, HeadModes,
+        DetismDecl, yes(Detism), Detism, Goal, RttiVarMaps, IsAddressTaken,
+        HasParallelConj, VarNameRemap, ProcInfo).
+
+proc_info_create_with_declared_detism(MainContext, ItemNumber,
+        VarTable, HeadVars, InstVarSet, Modes,
+        DetismDecl, MaybeDeclaredDetism, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
+    % See the comment at the top of  proc_info_init; it applies here as well.
+
+    % Please use a variable for every field of the proc_info and proc_sub_info,
+    % and please keep the definitions of those variables in the same order
+    % as the fields themselves.
+
+    % argument MainContext
+    % argument ItemNumber
+    CanProcess = can_process_now,
+    % argument DetismDecl
+    CseNopullContexts = [],
+    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    % argument VarNameRemap
+    StateVarWarnings = [],
+    set.init(DeletedCallees),
+    % argument IsAddressTaken
+    HasForeignProcExports = no_foreign_exports,
+    % argument HasParallelConj
+    HasUserEvent = has_no_user_event,
+    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
+        has_no_mutual_tail_rec_call),
+    OisuKinds = [],
+    MaybeRequireTailRecursion = no,
+    set_of_var.init(RegR_HeadVars),
+    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
+    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
+    set_of_var.init(InitialLiveness),
+    map.init(StackSlots),
+    NeedsMaxfrSlot = does_not_need_maxfr_slot,
+    MaybeCallTableTip = no `with_type` maybe(prog_var),
+    MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
+    MaybeTableAttrs = no `with_type` maybe(table_attributes),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
+    MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
+    MaybeArgSizes = no `with_type` maybe(arg_size_info),
+    MaybeTermInfo = no `with_type` maybe(termination_info),
+    Term2Info = term_constr_main_types.term2_info_init,
+    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
+    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
+    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
+    SharingInfo = structure_sharing_info_init,
+    ReuseInfo = structure_reuse_info_init,
+
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo),
+
+    % argument HeadVars
+    % argument Goal
+    % argument VarSet
+    % argument VarTypes
+    % argument RttiVarMaps
+    % argument InstVarSet
+    DeclaredModes = no,
+    % argument Modes
+    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
+    MaybeArgLives = no,
+    % argument MaybeDeclaredDetism
+    % argument Detism
+    EvalMethod = eval_normal,
+
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarTable,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ProcSubInfo).
+
+proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
+        DeclaredModes, Modes, MaybeArgLives, DetismDecl, MaybeDeclaredDetism,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
+    % When this predicate is invoked during the construction of the HLDS,
+    % some parts of the procedure aren't known yet. In that case, we can
+    % simply initialize them to any old garbage which we will later throw away.
     %
-    % The proc_info and proc_sub_info types constitute a single logical
-    % data structure split into two parts for efficiency purposes.
+    % However, when this predicate is invoked by HLDS transformation passes
+    % after the front-end has finished, this strategy won't work. We need
+    % to fill in every field with meaningful, correct information, unless
+    % we know for sure that before the next pass that needs the correct value
+    % in a field, we will invoke another pass that fills in the correct value
+    % in that field.
     %
-    % The proc_info type contains the most frequently accessed and/or updated
-    % pieces of information about the procedure. Everything else is in the
-    % proc_sub_info type. This arrangement minimizes the amount of memory that
-    % needs to be allocated, and filled in, when a field is updated.
+    % XXX I (zs) am far from sure that all the field initializations below,
+    % in this predicate and in proc_info_create_with_declared_detism,
+    % fulfill this condition.
+
+    % Please use a variable for every field of the proc_info and proc_sub_info,
+    % and please keep the definitions of those variables in the same order
+    % as the fields themselves.
+
+    % argument MainContext
+    % argument ItemNumber
+    CanProcess = can_process_now,
+    % argument DetismDecl
+    CseNopullContexts = [],
+    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    % argument VarNameRemap
+    StateVarWarnings = [],
+    set.init(DeletedCallees),
+    % argument IsAddressTaken
+    HasForeignProcExports = no_foreign_exports,
+    % argument HasParallelConj
+    HasUserEvent = has_no_user_event,
+    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
+        has_no_mutual_tail_rec_call),
+    OisuKinds = [],
+    MaybeRequireTailRecursion = no,
+    set_of_var.init(RegR_HeadVars),
+    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
+    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
+    set_of_var.init(InitialLiveness),
+    map.init(StackSlots),
+    NeedsMaxfrSlot = does_not_need_maxfr_slot,
+    MaybeCallTableTip = no `with_type` maybe(prog_var),
+    MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
+    MaybeTableAttrs = no `with_type` maybe(table_attributes),
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
+    MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
+    MaybeArgSizes = no `with_type` maybe(arg_size_info),
+    MaybeTermInfo = no `with_type` maybe(termination_info),
+    Term2Info = term_constr_main_types.term2_info_init,
+    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
+    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
+    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
+    SharingInfo = structure_sharing_info_init,
+    ReuseInfo = structure_reuse_info_init,
+
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo),
+
+    init_var_table(VarTable0),
+    make_fresh_prefix_named_vars_from_types(ModuleInfo, "HeadVar__", 1,
+        Types, HeadVars, VarTable0, VarTable),
+    goal_info_init(GoalInfo),
+    BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
+    rtti_varmaps_init(RttiVarMaps),
+    % argument InstVarSet
+    % argument DeclaredModes
+    % argument Modes
+    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
+    % argument MaybeArgLives
+    % argument MaybeDeclaredDetism
+    % Inferred determinism gets initialized to `erroneous'.
+    % This is what `det_analysis.m' wants. det_analysis.m
+    % will later provide the correct inferred determinism for it.
+    InferredDetism = detism_erroneous,
+    EvalMethod = eval_normal,
+
+    ProcInfo = proc_info(
+        HeadVars,
+        BodyGoal,
+        VarTable,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        InferredDetism,
+        EvalMethod,
+        ProcSubInfo).
+
+:- pred make_fresh_prefix_named_vars_from_types(module_info::in,
+    string::in, int::in, list(mer_type)::in, list(prog_var)::out,
+    var_table::in, var_table::out) is det.
+
+make_fresh_prefix_named_vars_from_types(_, _, _, [], [], !Info).
+make_fresh_prefix_named_vars_from_types(ModuleInfo, BaseName, Num,
+        [Type | Types], [Var | Vars], !VarTable) :-
+    make_fresh_prefix_named_var_from_type(ModuleInfo, BaseName, Num,
+        Type, Var, !VarTable),
+    make_fresh_prefix_named_vars_from_types(ModuleInfo, BaseName, Num + 1,
+        Types, Vars, !VarTable).
+
+:- pred make_fresh_prefix_named_var_from_type(module_info::in,
+    string::in, int::in, mer_type::in, prog_var::out,
+    var_table::in, var_table::out) is det.
+
+make_fresh_prefix_named_var_from_type(ModuleInfo, BaseName, Num, Type, Var,
+        !VarTable) :-
+    string.format("%s%d", [s(BaseName), i(Num)], Name),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    add_var_entry(Entry, Var, !VarTable).
+
+%---------------------------------------------------------------------------%
+%
+% Cloning proc_infos.
+%
+
+proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
+        MaybeDeclaredDetism, Detism, EvalMethod,
+        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
+        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
+        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
+        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
+        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
+        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
+        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo) :-
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarTable,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ProcSubInfo),
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo).
+
+proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
+        MaybeDeclaredDetism, Detism, EvalMethod,
+        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
+        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
+        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
+        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
+        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
+        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
+        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo,
+        ProcInfo) :-
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo),
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarTable,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ProcSubInfo).
+
+%---------------------------------------------------------------------------%
+%
+% Nontrivial getters and setters.
+%
+
+proc_info_set_body(VarTable, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
+    !ProcInfo ^ proc_var_table := VarTable,
+    !ProcInfo ^ proc_head_vars := HeadVars,
+    !ProcInfo ^ proc_body := Goal,
+    !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
+
+proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
+    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_sharing.
+
+proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
+        yes(Sharing).
+
+proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
+    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing,
+    MaybeImportedSharing = yes(ImportedSharing),
+    ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
+
+proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
+        !ProcInfo) :-
+    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
+    MaybeImportedSharing = yes(ImportedSharing),
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := MaybeImportedSharing.
+
+proc_info_reset_imported_structure_sharing(!ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := no.
+
+proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
+    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
+
+proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
+        := yes(Reuse).
+
+proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
+    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
+        ^ maybe_imported_reuse,
+    MaybeImportedReuse = yes(ImportedReuse),
+    ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
+
+proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
+    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
+    MaybeImportedReuse = yes(ImportedReuse),
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
+        MaybeImportedReuse.
+
+proc_info_reset_imported_structure_reuse(!ProcInfo) :-
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
+        ^ maybe_imported_reuse := no.
+
+%---------------------------------------------------------------------------%
+%
+% The information specific to a procedure, as opposed to a predicate.
+%
+% The proc_info and proc_sub_info types constitute a single logical
+% data structure split into two parts for efficiency purposes.
+%
+% The proc_info type contains the most frequently accessed and/or updated
+% pieces of information about the procedure. Everything else is in the
+% proc_sub_info type. This arrangement minimizes the amount of memory that
+% needs to be allocated, and filled in, when a field is updated.
+%
 
 :- type proc_info
     --->    proc_info(
@@ -651,416 +1122,6 @@
                 psi_structure_reuse             :: structure_reuse_info
         ).
 
-%---------------------------------------------------------------------------%
-
-proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
-        DeclaredModes, Modes, MaybeArgLives, DetismDecl, MaybeDeclaredDetism,
-        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
-    % When this predicate is invoked during the construction of the HLDS,
-    % some parts of the procedure aren't known yet. In that case, we can
-    % simply initialize them to any old garbage which we will later throw away.
-    %
-    % However, when this predicate is invoked by HLDS transformation passes
-    % after the front-end has finished, this strategy won't work. We need
-    % to fill in every field with meaningful, correct information, unless
-    % we know for sure that before the next pass that needs the correct value
-    % in a field, we will invoke another pass that fills in the correct value
-    % in that field.
-    %
-    % XXX I (zs) am far from sure that all the field initializations below,
-    % in this predicate and in proc_info_create_with_declared_detism,
-    % fulfill this condition.
-
-    % Please use a variable for every field of the proc_info and proc_sub_info,
-    % and please keep the definitions of those variables in the same order
-    % as the fields themselves.
-
-    % argument MainContext
-    % argument ItemNumber
-    CanProcess = can_process_now,
-    % argument DetismDecl
-    CseNopullContexts = [],
-    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
-    % argument VarNameRemap
-    StateVarWarnings = [],
-    set.init(DeletedCallees),
-    % argument IsAddressTaken
-    HasForeignProcExports = no_foreign_exports,
-    % argument HasParallelConj
-    HasUserEvent = has_no_user_event,
-    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
-        has_no_mutual_tail_rec_call),
-    OisuKinds = [],
-    MaybeRequireTailRecursion = no,
-    set_of_var.init(RegR_HeadVars),
-    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
-    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
-    set_of_var.init(InitialLiveness),
-    map.init(StackSlots),
-    NeedsMaxfrSlot = does_not_need_maxfr_slot,
-    MaybeCallTableTip = no `with_type` maybe(prog_var),
-    MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
-    MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
-    MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
-    MaybeArgSizes = no `with_type` maybe(arg_size_info),
-    MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main_types.term2_info_init,
-    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
-    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
-    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
-    SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init,
-
-    ProcSubInfo = proc_sub_info(
-        MainContext,
-        ItemNumber,
-        CanProcess,
-        MaybeHeadModesConstr,
-        DetismDecl,
-        CseNopullContexts,
-        MaybeUntupleInfo,
-        VarNameRemap,
-        StateVarWarnings,
-        DeletedCallees,
-        IsAddressTaken,
-        HasForeignProcExports,
-        HasParallelConj,
-        HasUserEvent,
-        HasTailCallEvent,
-        OisuKinds,
-        MaybeRequireTailRecursion,
-        RegR_HeadVars,
-        MaybeArgPassInfo,
-        MaybeSpecialReturn,
-        InitialLiveness,
-        StackSlots,
-        NeedsMaxfrSlot,
-        MaybeCallTableTip,
-        MaybeTableIOInfo,
-        MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
-        MaybeDeepProfProcInfo,
-        MaybeArgSizes,
-        MaybeTermInfo,
-        Term2Info,
-        MaybeExceptionInfo,
-        MaybeTrailingInfo,
-        MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
-
-    init_var_table(VarTable0),
-    make_fresh_prefix_named_vars_from_types(ModuleInfo, "HeadVar__", 1,
-        Types, HeadVars, VarTable0, VarTable),
-    goal_info_init(GoalInfo),
-    BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
-    rtti_varmaps_init(RttiVarMaps),
-    % argument InstVarSet
-    % argument DeclaredModes
-    % argument Modes
-    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
-    % argument MaybeArgLives
-    % argument MaybeDeclaredDetism
-    % Inferred determinism gets initialized to `erroneous'.
-    % This is what `det_analysis.m' wants. det_analysis.m
-    % will later provide the correct inferred determinism for it.
-    InferredDetism = detism_erroneous,
-    EvalMethod = eval_normal,
-
-    ProcInfo = proc_info(
-        HeadVars,
-        BodyGoal,
-        VarTable,
-        RttiVarMaps,
-        InstVarSet,
-        DeclaredModes,
-        Modes,
-        MaybeArgLives,
-        MaybeDeclaredDetism,
-        InferredDetism,
-        EvalMethod,
-        ProcSubInfo).
-
-:- pred make_fresh_prefix_named_vars_from_types(module_info::in,
-    string::in, int::in, list(mer_type)::in, list(prog_var)::out,
-    var_table::in, var_table::out) is det.
-
-make_fresh_prefix_named_vars_from_types(_, _, _, [], [], !Info).
-make_fresh_prefix_named_vars_from_types(ModuleInfo, BaseName, Num,
-        [Type | Types], [Var | Vars], !VarTable) :-
-    make_fresh_prefix_named_var_from_type(ModuleInfo, BaseName, Num,
-        Type, Var, !VarTable),
-    make_fresh_prefix_named_vars_from_types(ModuleInfo, BaseName, Num + 1,
-        Types, Vars, !VarTable).
-
-:- pred make_fresh_prefix_named_var_from_type(module_info::in,
-    string::in, int::in, mer_type::in, prog_var::out,
-    var_table::in, var_table::out) is det.
-
-make_fresh_prefix_named_var_from_type(ModuleInfo, BaseName, Num, Type, Var,
-        !VarTable) :-
-    string.format("%s%d", [s(BaseName), i(Num)], Name),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte(Name, Type, IsDummy),
-    add_var_entry(Entry, Var, !VarTable).
-
-%---------------------------------------------------------------------------%
-
-proc_info_create(Context, ItemNumber, VarTable, HeadVars,
-        InstVarSet, HeadModes, DetismDecl, Detism, Goal, RttiVarMaps,
-        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
-    proc_info_create_with_declared_detism(Context, ItemNumber,
-        VarTable, HeadVars, InstVarSet, HeadModes,
-        DetismDecl, yes(Detism), Detism, Goal, RttiVarMaps, IsAddressTaken,
-        HasParallelConj, VarNameRemap, ProcInfo).
-
-proc_info_create_with_declared_detism(MainContext, ItemNumber,
-        VarTable, HeadVars, InstVarSet, Modes,
-        DetismDecl, MaybeDeclaredDetism, Detism, Goal, RttiVarMaps,
-        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
-    % See the comment at the top of  proc_info_init; it applies here as well.
-
-    % Please use a variable for every field of the proc_info and proc_sub_info,
-    % and please keep the definitions of those variables in the same order
-    % as the fields themselves.
-
-    % argument MainContext
-    % argument ItemNumber
-    CanProcess = can_process_now,
-    % argument DetismDecl
-    CseNopullContexts = [],
-    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
-    % argument VarNameRemap
-    StateVarWarnings = [],
-    set.init(DeletedCallees),
-    % argument IsAddressTaken
-    HasForeignProcExports = no_foreign_exports,
-    % argument HasParallelConj
-    HasUserEvent = has_no_user_event,
-    HasTailCallEvent = has_tail_rec_call(has_no_self_tail_rec_call,
-        has_no_mutual_tail_rec_call),
-    OisuKinds = [],
-    MaybeRequireTailRecursion = no,
-    set_of_var.init(RegR_HeadVars),
-    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
-    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
-    set_of_var.init(InitialLiveness),
-    map.init(StackSlots),
-    NeedsMaxfrSlot = does_not_need_maxfr_slot,
-    MaybeCallTableTip = no `with_type` maybe(prog_var),
-    MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
-    MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
-    MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
-    MaybeArgSizes = no `with_type` maybe(arg_size_info),
-    MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main_types.term2_info_init,
-    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
-    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
-    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
-    SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init,
-
-    ProcSubInfo = proc_sub_info(
-        MainContext,
-        ItemNumber,
-        CanProcess,
-        MaybeHeadModesConstr,
-        DetismDecl,
-        CseNopullContexts,
-        MaybeUntupleInfo,
-        VarNameRemap,
-        StateVarWarnings,
-        DeletedCallees,
-        IsAddressTaken,
-        HasForeignProcExports,
-        HasParallelConj,
-        HasUserEvent,
-        HasTailCallEvent,
-        OisuKinds,
-        MaybeRequireTailRecursion,
-        RegR_HeadVars,
-        MaybeArgPassInfo,
-        MaybeSpecialReturn,
-        InitialLiveness,
-        StackSlots,
-        NeedsMaxfrSlot,
-        MaybeCallTableTip,
-        MaybeTableIOInfo,
-        MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
-        MaybeDeepProfProcInfo,
-        MaybeArgSizes,
-        MaybeTermInfo,
-        Term2Info,
-        MaybeExceptionInfo,
-        MaybeTrailingInfo,
-        MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
-
-    % argument HeadVars
-    % argument Goal
-    % argument VarSet
-    % argument VarTypes
-    % argument RttiVarMaps
-    % argument InstVarSet
-    DeclaredModes = no,
-    % argument Modes
-    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
-    MaybeArgLives = no,
-    % argument MaybeDeclaredDetism
-    % argument Detism
-    EvalMethod = eval_normal,
-
-    ProcInfo = proc_info(
-        HeadVars,
-        Goal,
-        VarTable,
-        RttiVarMaps,
-        InstVarSet,
-        DeclaredModes,
-        Modes,
-        MaybeArgLives,
-        MaybeDeclaredDetism,
-        Detism,
-        EvalMethod,
-        ProcSubInfo).
-
-proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
-        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDeclaredDetism, Detism, EvalMethod,
-        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
-        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
-        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
-        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
-        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
-        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
-        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
-        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo) :-
-    ProcInfo = proc_info(
-        HeadVars,
-        Goal,
-        VarTable,
-        RttiVarMaps,
-        InstVarSet,
-        DeclaredModes,
-        Modes,
-        MaybeArgLives,
-        MaybeDeclaredDetism,
-        Detism,
-        EvalMethod,
-        ProcSubInfo),
-    ProcSubInfo = proc_sub_info(
-        MainContext,
-        ItemNumber,
-        CanProcess,
-        MaybeHeadModesConstr,
-        DetismDecl,
-        CseNopullContexts,
-        MaybeUntupleInfo,
-        VarNameRemap,
-        StateVarWarnings,
-        DeletedCallees,
-        IsAddressTaken,
-        HasForeignProcExports,
-        HasParallelConj,
-        HasUserEvent,
-        HasTailCallEvent,
-        OisuKinds,
-        MaybeRequireTailRecursion,
-        RegR_HeadVars,
-        MaybeArgPassInfo,
-        MaybeSpecialReturn,
-        InitialLiveness,
-        StackSlots,
-        NeedsMaxfrSlot,
-        MaybeCallTableTip,
-        MaybeTableIOInfo,
-        MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
-        MaybeDeepProfProcInfo,
-        MaybeArgSizes,
-        MaybeTermInfo,
-        Term2Info,
-        MaybeExceptionInfo,
-        MaybeTrailingInfo,
-        MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo).
-
-proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
-        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDeclaredDetism, Detism, EvalMethod,
-        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
-        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
-        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
-        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
-        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
-        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
-        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
-        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo,
-        ProcInfo) :-
-    ProcSubInfo = proc_sub_info(
-        MainContext,
-        ItemNumber,
-        CanProcess,
-        MaybeHeadModesConstr,
-        DetismDecl,
-        CseNopullContexts,
-        MaybeUntupleInfo,
-        VarNameRemap,
-        StateVarWarnings,
-        DeletedCallees,
-        IsAddressTaken,
-        HasForeignProcExports,
-        HasParallelConj,
-        HasUserEvent,
-        HasTailCallEvent,
-        OisuKinds,
-        MaybeRequireTailRecursion,
-        RegR_HeadVars,
-        MaybeArgPassInfo,
-        MaybeSpecialReturn,
-        InitialLiveness,
-        StackSlots,
-        NeedsMaxfrSlot,
-        MaybeCallTableTip,
-        MaybeTableIOInfo,
-        MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
-        MaybeDeepProfProcInfo,
-        MaybeArgSizes,
-        MaybeTermInfo,
-        Term2Info,
-        MaybeExceptionInfo,
-        MaybeTrailingInfo,
-        MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
-    ProcInfo = proc_info(
-        HeadVars,
-        Goal,
-        VarTable,
-        RttiVarMaps,
-        InstVarSet,
-        DeclaredModes,
-        Modes,
-        MaybeArgLives,
-        MaybeDeclaredDetism,
-        Detism,
-        EvalMethod,
-        ProcSubInfo).
-
-proc_info_set_body(VarTable, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
-    !ProcInfo ^ proc_var_table := VarTable,
-    !ProcInfo ^ proc_head_vars := HeadVars,
-    !ProcInfo ^ proc_body := Goal,
-    !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
-
 proc_info_get_headvars(PI, X) :-
     X = PI ^ proc_head_vars.
 proc_info_get_goal(PI, X) :-
@@ -1238,54 +1299,6 @@ proc_info_set_trailing_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_trailing_info := X.
 proc_info_set_mm_tabling_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_mm_tabling_info := X.
-
-proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
-    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_sharing.
-
-proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
-        yes(Sharing).
-
-proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
-    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing,
-    MaybeImportedSharing = yes(ImportedSharing),
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
-
-proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
-        !ProcInfo) :-
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
-    MaybeImportedSharing = yes(ImportedSharing),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := MaybeImportedSharing.
-
-proc_info_reset_imported_structure_sharing(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := no.
-
-proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
-    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
-
-proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
-        := yes(Reuse).
-
-proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
-    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse,
-    MaybeImportedReuse = yes(ImportedReuse),
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
-
-proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
-    MaybeImportedReuse = yes(ImportedReuse),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
-        MaybeImportedReuse.
-
-proc_info_reset_imported_structure_reuse(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse := no.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_proc.
