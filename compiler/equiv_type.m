@@ -404,18 +404,6 @@ replace_in_type_maybe_record_use(TypeEqvMap, MaybeRecord,
             Type = Type0
         )
     ;
-        Type0 = apply_n_type(Var, ApplyArgTypes0, Kind),
-        replace_in_type_list_location_acc_circ(TypeEqvMap, MaybeRecord,
-            TypeCtorsAlreadyExpanded, ApplyArgTypes0, ApplyArgTypes, Changed,
-            set.init, Circ, !TVarSet, !ItemRecompDeps, !UsedModules),
-        (
-            Changed = changed,
-            Type = apply_n_type(Var, ApplyArgTypes, Kind)
-        ;
-            Changed = unchanged,
-            Type = Type0
-        )
-    ;
         Type0 = kinded_type(RawType0, Kind),
         replace_in_type_maybe_record_use(TypeEqvMap, MaybeRecord,
             TypeCtorsAlreadyExpanded, RawType0, RawType, Changed, Circ,

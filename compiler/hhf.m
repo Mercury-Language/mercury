@@ -480,8 +480,6 @@ same_type_2(higher_order_type(PorF, ArgsA, HOInstInfo, Purity),
     same_type_list(ArgsA, ArgsB).
 same_type_2(tuple_type(ArgsA, _), tuple_type(ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
-same_type_2(apply_n_type(_, ArgsA, _), apply_n_type(_, ArgsB, _)) :-
-    same_type_list(ArgsA, ArgsB).
 
 :- pred same_type_list(list(mer_type)::in, list(mer_type)::in) is semidet.
 

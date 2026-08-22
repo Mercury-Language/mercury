@@ -895,7 +895,6 @@ update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
         ; ConstraintType = builtin_type(_)
         ; ConstraintType = tuple_type(_, _)
         ; ConstraintType = higher_order_type(_, _, _, _)
-        ; ConstraintType = apply_n_type(_, _, _)
         ; ConstraintType = kinded_type(_, _)
         )
     ).

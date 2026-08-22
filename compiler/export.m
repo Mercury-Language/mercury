@@ -873,7 +873,6 @@ convert_type_to_mercury(RvalStr, Type, TargetArgLoc, ConvertedRvalStr) :-
         ; Type = defined_type(_, _, _)
         ; Type = higher_order_type(_, _, _, _)
         ; Type = tuple_type(_, _)
-        ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
         ConvertedRvalStr = RvalStr
@@ -927,7 +926,6 @@ convert_type_from_mercury(SourceArgLoc, RvalStr, Type, ConvertedRvalStr) :-
         ; Type = defined_type(_, _, _)
         ; Type = higher_order_type(_, _, _, _)
         ; Type = tuple_type(_, _)
-        ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
         ConvertedRvalStr = RvalStr

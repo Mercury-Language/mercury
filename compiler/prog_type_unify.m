@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2025 The Mercury team.
+% Copyright (C) 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -236,11 +236,7 @@ type_unify_nonvar(TypeX, TypeY, HeadTypeParams, !Bindings) :-
     tsubst::in, tsubst::out) is semidet.
 
 type_unify_special(TypeX, TypeY, HeadTypeParams, !Bindings) :-
-    ( if TypeX = apply_n_type(VarX, ArgTypesX, _) then
-        type_unify_apply(TypeY, VarX, ArgTypesX, HeadTypeParams, !Bindings)
-    else if TypeY = apply_n_type(VarY, ArgTypesY, _) then
-        type_unify_apply(TypeX, VarY, ArgTypesY, HeadTypeParams, !Bindings)
-    else if TypeX = kinded_type(RawX, _) then
+    ( if TypeX = kinded_type(RawX, _) then
         ( if TypeY = kinded_type(RawY, _) then
             type_unify(RawX, RawY, HeadTypeParams, !Bindings)
         else
@@ -251,98 +247,6 @@ type_unify_special(TypeX, TypeY, HeadTypeParams, !Bindings) :-
     else
         fail
     ).
-
-    % The idea here is that we try to strip off arguments from Y starting
-    % from the end and unify each with the corresponding argument of X.
-    % If we reach an atomic type before the arguments run out, we fail.
-    % If we reach a variable before the arguments run out, we unify it
-    % with what remains of the apply_n expression. If we manage to unify
-    % all of the arguments, we unify the apply_n variable with what remains
-    % of the other expression.
-    %
-    % Note that Y is not a variable, since that case would have been caught
-    % by type_unify.
-    %
-:- pred type_unify_apply(mer_type::in, tvar::in, list(mer_type)::in,
-    list(tvar)::in, tsubst::in, tsubst::out) is semidet.
-
-type_unify_apply(TypeY, VarX, ArgTypesX0, HeadTypeParams, !Bindings) :-
-    (
-        TypeY = defined_type(NameY, ArgTypesY0, KindY0),
-        type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, KindY0, KindY,
-            HeadTypeParams, !Bindings),
-        type_unify_var(VarX, defined_type(NameY, ArgTypesY, KindY),
-            HeadTypeParams, !Bindings)
-    ;
-        TypeY = builtin_type(_),
-        ArgTypesX0 = [],
-        type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
-    ;
-        TypeY = higher_order_type(_, _, _, _),
-        ArgTypesX0 = [],
-        type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
-    ;
-        TypeY = tuple_type(ArgTypesY0, KindY0),
-        type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, KindY0, KindY,
-            HeadTypeParams, !Bindings),
-        type_unify_var(VarX, tuple_type(ArgTypesY, KindY), HeadTypeParams,
-            !Bindings)
-    ;
-        TypeY = apply_n_type(VarY, ArgTypesY0, Kind0),
-        list.length(ArgTypesX0, NArgTypesX0),
-        list.length(ArgTypesY0, NArgTypesY0),
-        compare(Result, NArgTypesX0, NArgTypesY0),
-        (
-            Result = (<),
-            type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, Kind0, Kind,
-                HeadTypeParams, !Bindings),
-            type_unify_var(VarX, apply_n_type(VarY, ArgTypesY, Kind),
-                HeadTypeParams, !Bindings)
-        ;
-            Result = (=),
-            % We know here that the list of remaining args will be empty.
-            type_unify_args(ArgTypesX0, ArgTypesY0, _, Kind0, Kind,
-                HeadTypeParams, !Bindings),
-            type_unify_var_var(VarX, VarY, Kind, HeadTypeParams, !Bindings)
-        ;
-            Result = (>),
-            type_unify_args(ArgTypesY0, ArgTypesX0, ArgTypesX, Kind0, Kind,
-                HeadTypeParams, !Bindings),
-            type_unify_var(VarY, apply_n_type(VarX, ArgTypesX, Kind),
-                HeadTypeParams, !Bindings)
-        )
-    ;
-        TypeY = kinded_type(RawY, _),
-        type_unify_apply(RawY, VarX, ArgTypesX0, HeadTypeParams, !Bindings)
-    ;
-        TypeY = builtin_type(_),
-        % XXX I (zs) am not sure *why* it is ok to fail here.
-        fail
-    ).
-
-:- pred type_unify_args(list(mer_type)::in, list(mer_type)::in,
-    list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
-    tsubst::in, tsubst::out) is semidet.
-
-type_unify_args(ArgTypesX, ArgTypesY0, ArgTypesY,
-        KindY0, KindY, HeadTypeParams, !Bindings) :-
-    list.reverse(ArgTypesX, RevArgTypesX),
-    list.reverse(ArgTypesY0, RevArgTypesY0),
-    type_unify_rev_args(RevArgTypesX, RevArgTypesY0, RevArgTypesY,
-        KindY0, KindY, HeadTypeParams, !Bindings),
-    list.reverse(RevArgTypesY, ArgTypesY).
-
-:- pred type_unify_rev_args(list(mer_type)::in, list(mer_type)::in,
-    list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
-    tsubst::in, tsubst::out) is semidet.
-
-type_unify_rev_args([], ArgTypesY, ArgTypesY, KindY, KindY, _, !Bindings).
-type_unify_rev_args([ArgTypeX | ArgTypesX], [ArgTypeY0 | ArgTypesY0],
-        ArgTypesY, KindY0, KindY, HeadTypeParams, !Bindings) :-
-    type_unify(ArgTypeX, ArgTypeY0, HeadTypeParams, !Bindings),
-    KindY1 = kind_arrow(get_type_kind(ArgTypeY0), KindY0),
-    type_unify_rev_args(ArgTypesX, ArgTypesY0, ArgTypesY,
-        KindY1, KindY, HeadTypeParams, !Bindings).
 
 type_unify_list([], [], _HeadTypeParams, !Bindings).
 type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
@@ -374,16 +278,6 @@ type_occurs(TypeX, Y, Bindings) :-
     ;
         TypeX = tuple_type(ArgTypes, _),
         type_occurs_list(ArgTypes, Y, Bindings)
-    ;
-        TypeX = apply_n_type(X, ArgTypes, _),
-        (
-            X = Y
-        ;
-            type_occurs_list(ArgTypes, Y, Bindings)
-        ;
-            map.search(Bindings, X, BindingOfX),
-            type_occurs(BindingOfX, Y, Bindings)
-        )
     ;
         TypeX = kinded_type(TypeX1, _),
         type_occurs(TypeX1, Y, Bindings)

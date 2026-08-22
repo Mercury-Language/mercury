@@ -306,7 +306,6 @@ polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
             ; Type = builtin_type(_)
             ; Type = tuple_type(_, _)
             ; Type = higher_order_type(_,_, _, _)
-            ; Type = apply_n_type(_, _, _)
             ; Type = kinded_type(_, _)
             ),
             type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),

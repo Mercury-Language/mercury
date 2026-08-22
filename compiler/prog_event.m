@@ -936,7 +936,6 @@ describe_attr_type(Type) = Desc :-
     ;
         ( Type = type_variable(_, _)
         ; Type = tuple_type(_, _)
-        ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
         unexpected($pred, "type not constructed by prog_event")

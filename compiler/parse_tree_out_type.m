@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -236,10 +236,6 @@ type_to_debug_string(TVarSet, Type, Name) :-
             Name = "func(" ++  string.join_list(", ", ArgTypeNames) ++ ") = "
                 ++ ReturnTypeName
         )
-    ;
-        Type = apply_n_type(_, Subtypes, _),
-        list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),
-        Name = "func(" ++  string.join_list(", ", SubtypeNames) ++ ")"
     ;
         Type = kinded_type(Type0, _),
         type_to_debug_string(TVarSet, Type0, Name)

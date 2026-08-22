@@ -724,7 +724,6 @@ propagate_type_into_bound_functor(Info, Context, Type, Inst0, Inst,
     ;
         ( Type = type_variable(_, _)
         ; Type = higher_order_type(_, _, _, _)
-        ; Type = apply_n_type(_, _, _)
         ),
         % Type variables have no info to propagate into an inst.
         % Higher order types may have some, but we have not traditionally

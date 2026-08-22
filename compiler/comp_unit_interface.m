@@ -1949,7 +1949,6 @@ ctor_arg_is_dummy_type(TypeDefnMap, TVarSet, Type, CoveredTypes0)
         ; Type = builtin_type(_)
         ; Type = tuple_type(_, _)
         ; Type = higher_order_type(_, _, _, _)
-        ; Type = apply_n_type(_, _, _)
         ),
         IsDummyType = no
     ;
@@ -3467,7 +3466,6 @@ accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames) :-
         accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
     ;
         ( Type = tuple_type(ArgTypes, _Kind)
-        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
         ; Type = higher_order_type(_PorF, ArgTypes, _HO, _Purity)
         ),
         accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
@@ -3503,7 +3501,6 @@ accumulate_modules_in_qual_type(Type, !ModuleNames) :-
         accumulate_modules_in_qual_types(ArgTypes, !ModuleNames)
     ;
         ( Type = tuple_type(ArgTypes, _Kind)
-        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
         ; Type = higher_order_type(_PorF, ArgTypes, _HO, _Purity)
         ),
         % XXX ITEM_LIST accumulate modules from _HOInstInfo

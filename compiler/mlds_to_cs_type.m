@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -407,7 +407,6 @@ csharp_builtin_type(Type, TargetType) :-
             ( MerType = type_variable(_, _)
             ; MerType = tuple_type(_, _)
             ; MerType = higher_order_type(_, _, _, _)
-            ; MerType = apply_n_type(_, _, _)
             ; MerType = kinded_type(_, _)
             ),
             fail

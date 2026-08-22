@@ -625,11 +625,6 @@ check_input_spec_type(TypeTable, Type,
         check_input_spec_types(TypeTable, ArgTypes,
             !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
     ;
-        Type = apply_n_type(TVar, ArgTypes, _Kind),
-        bag.insert(TVar, !TVarBag),
-        check_input_spec_types(TypeTable, ArgTypes,
-            !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)
-    ;
         Type = kinded_type(SubType, _Kind),
         check_input_spec_type(TypeTable, SubType,
             !UnknownTypeCtors, !NonDuTypeCtors, !TVarBag)

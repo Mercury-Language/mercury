@@ -1184,9 +1184,8 @@ acc_local_type_ctors_in_type(ModuleName, Type, !TypeCtorNameArities) :-
         acc_local_type_ctors_in_types(ModuleName, ArgTypes,
             !TypeCtorNameArities)
     ;
-        ( Type = apply_n_type(_, ArgTypes, _)
+        ( Type = tuple_type(ArgTypes, _)
         ; Type = higher_order_type(_, ArgTypes, _, _)
-        ; Type = tuple_type(ArgTypes, _)
         ),
         acc_local_type_ctors_in_types(ModuleName, ArgTypes,
             !TypeCtorNameArities)

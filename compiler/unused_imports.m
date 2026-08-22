@@ -1139,9 +1139,6 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
         Type = tuple_type(ArgTypes, _),
         list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules)
     ;
-        Type = apply_n_type(_, ArgTypes, _),
-        list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules)
-    ;
         Type = kinded_type(ArgType, _),
         mer_type_used_modules(Visibility, ArgType, !UsedModules)
     ).

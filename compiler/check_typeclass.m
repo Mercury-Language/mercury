@@ -523,7 +523,6 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
     ;
         ( Type = builtin_type(_)
         ; Type = higher_order_type(_, _, _, _)
-        ; Type = apply_n_type(_, _, _)
         ; Type = type_variable(_, _)
         ; Type = tuple_type(_, _)
         )
@@ -550,10 +549,6 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             Type = higher_order_type(_, _, _, _),
             KindPieces = [words("is a")] ++
                 color_as_incorrect([words("higher order type;")])
-        ;
-            Type = apply_n_type(_, _, _),
-            KindPieces = [words("is an")] ++
-                color_as_incorrect([words("apply/N type;")])
         ;
             Type = type_variable(_, _),
             KindPieces = [words("is a")] ++
@@ -611,7 +606,6 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
         ; ArgType = builtin_type(_)
         ; ArgType = higher_order_type(_, _, _, _)
         ; ArgType = tuple_type(_, _)
-        ; ArgType = apply_n_type(_, _, _)
         ; ArgType = kinded_type(_, _)
         ),
         NonTVarArgs = [ArgNum - ArgType | TailNonTVarArgs]
@@ -728,7 +722,6 @@ acc_type_ctors_in_type(Type, !TypeCtorSet) :-
     ;
         ( Type = tuple_type(ArgTypes, _Kind)
         ; Type = higher_order_type(_, ArgTypes, _, _)
-        ; Type = apply_n_type(_, ArgTypes, _)
         ),
         list.foldl(acc_type_ctors_in_type, ArgTypes, !TypeCtorSet)
     ;

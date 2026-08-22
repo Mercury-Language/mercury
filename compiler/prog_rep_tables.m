@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2024 The Mercury team.
+% Copyright (C) 2014-2018, 2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -394,9 +394,6 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
             Selector = 12
         ),
         TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
-    ;
-        Type = apply_n_type(_TVar, _ArgTypes, _Kind),
-        unexpected($pred, "apply_n_type")
     ;
         Type = kinded_type(_Kind, _SubType),
         unexpected($pred, "kinded_type")

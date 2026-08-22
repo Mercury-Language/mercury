@@ -538,21 +538,6 @@ delete_identical_qualifications(TypeA0, TypeB0, TypeA, TypeB) :-
             TypeB = TypeB0
         )
     ;
-        TypeA0 = apply_n_type(TVar, ArgTypesA0, Kind),
-        ( if
-            TypeB0 = apply_n_type(TVar, ArgTypesB0, Kind),
-            maybe_from_corresponding_lists(ArgTypesA0, ArgTypesB0,
-                ArgTypesAB0)
-        then
-            delete_identical_qualifications_al(ArgTypesAB0, ArgTypesAB),
-            keys_and_values(ArgTypesAB, ArgTypesA, ArgTypesB),
-            TypeA = apply_n_type(TVar, ArgTypesA, Kind),
-            TypeB = apply_n_type(TVar, ArgTypesB, Kind)
-        else
-            TypeA = TypeA0,
-            TypeB = TypeB0
-        )
-    ;
         TypeA0 = kinded_type(SubTypeA0, Kind),
         ( if TypeB0 = kinded_type(SubTypeB0, Kind) then
             delete_identical_qualifications(SubTypeA0, SubTypeB0,

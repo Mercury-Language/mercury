@@ -1213,11 +1213,6 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info) :-
         qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
         Type = tuple_type(Args, Kind)
     ;
-        Type0 = apply_n_type(Var, Args0, Kind),
-        % XXX We could pass a more specific error context.
-        qualify_type_list(InInt, ErrorContext, Args0, Args, !Info),
-        Type = apply_n_type(Var, Args, Kind)
-    ;
         Type0 = kinded_type(SubType0, Kind),
         % XXX We could pass a more specific error context.
         qualify_type(InInt, ErrorContext, SubType0, SubType, !Info),

@@ -278,9 +278,6 @@ type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
         Arity = list.length(ArgTypes),
         TypeCtor = type_ctor(SymName, Arity)
     ;
-        Type = apply_n_type(_, _, _),
-        sorry($pred, "apply/N types")
-    ;
         Type = kinded_type(SubType, _),
         type_to_ctor_and_args(SubType, TypeCtor, ArgTypes)
     ).
@@ -349,11 +346,6 @@ strip_module_names_from_type(StripWhat, SetDefaultFunc, Type0, Type) :-
             ArgTypes0, ArgTypes),
         Type = tuple_type(ArgTypes, Kind)
     ;
-        Type0 = apply_n_type(Var, ArgTypes0, Kind),
-        strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
-            ArgTypes0, ArgTypes),
-        Type = apply_n_type(Var, ArgTypes, Kind)
-    ;
         Type0 = kinded_type(SubType0, Kind),
         strip_module_names_from_type(StripWhat, SetDefaultFunc,
             SubType0, SubType),
@@ -366,27 +358,27 @@ strip_module_names_from_type_list(StripWhat, SetDefaultFunc, Types0, Types) :-
 
 %---------------------------------------------------------------------------%
 
-builtin_type_ctors_with_no_hlds_type_defn =
+builtin_type_ctors_with_no_hlds_type_defn = [
     % Every element of this list must be reflected in the code of
     % builtin_type_ctor in type_ctor_info.m.
-    [ type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "int8"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "int16"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "int32"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "int64"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint8"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint16"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint32"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint64"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "string"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "character"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "float"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "pred"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "func"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "void"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
-    ].
+    type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "int8"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "int16"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "int32"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "int64"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "uint"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "uint8"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "uint16"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "uint32"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "uint64"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "string"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "character"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "float"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "pred"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "func"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "void"), 0),
+    type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
+].
 
 %---------------------------------------------------------------------------%
 

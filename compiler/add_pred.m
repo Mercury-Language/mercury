@@ -579,9 +579,6 @@ report_any_unqualified_type(PredSymName, Context, Type, !Specs) :-
         Type = higher_order_type(_PorF, ArgTypes, _HOInstInfo, _Purity),
         report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
     ;
-        Type = apply_n_type(_TVar, ArgTypes, _Kind),
-        report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
-    ;
         Type = kinded_type(SubType, _Kind),
         report_any_unqualified_type(PredSymName, Context, SubType, !Specs)
     ;

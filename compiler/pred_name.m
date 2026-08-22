@@ -1887,7 +1887,6 @@ subst_to_mrtq_stuffed_string(TVar - Type) = Str :-
     %   X = b:          type is builtin type
     %   X = d:          type is defined type
     %   X = t:          type is tuple type
-    %   X = a:          type is apply_n type
     %   X = h:          type is higher order type
     %
     %   X = n:          end of name of type constructor
@@ -1915,9 +1914,6 @@ type_to_txq_mrtq_stuffed_string(Type) = Str :-
         ;
             Type = tuple_type(ArgTypes, _),
             StartStr = "txq_t"
-        ;
-            Type = apply_n_type(TVar, ArgTypes, _),
-            string.format("txq_a_%d", [i(var_to_int(TVar))], StartStr)
         ;
             Type = higher_order_type(PorF, ArgTypes, _HOInst, Purity),
             ( PorF = pf_predicate, PorFStr = "p"

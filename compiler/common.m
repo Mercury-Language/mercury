@@ -1525,10 +1525,6 @@ types_match_exactly(TypeA, TypeB) :-
         TypeB = tuple_type(ArgTypesB, _),
         types_match_exactly_list(ArgTypesA, ArgTypesB)
     ;
-        TypeA = apply_n_type(TVar, ArgTypesA, _),
-        TypeB = apply_n_type(TVar, ArgTypesB, _),
-        types_match_exactly_list(ArgTypesA, ArgTypesB)
-    ;
         TypeA = kinded_type(_, _),
         unexpected($pred, "kind annotation")
     ).

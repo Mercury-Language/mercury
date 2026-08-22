@@ -787,13 +787,6 @@ hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
         ; Changed = changed, Type = tuple_type(Args, Kind)
         )
     ;
-        Type0 = apply_n_type(Var, Args0, Kind),
-        hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
-            Args0, Args, unchanged, Changed, !TVarSet),
-        ( Changed = unchanged, Type = Type0
-        ; Changed = changed, Type = apply_n_type(Var, Args, Kind)
-        )
-    ;
         Type0 = kinded_type(RawType0, Kind),
         hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             RawType0, RawType, Changed, !TVarSet),

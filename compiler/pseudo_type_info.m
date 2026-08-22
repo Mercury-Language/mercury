@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2000, 2002-2003, 2005-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2019, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -95,7 +95,6 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         ; Type = builtin_type(_)
         ; Type = tuple_type(_, _)
         ; Type = higher_order_type(_, _, _, _)
-        ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),

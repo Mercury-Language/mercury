@@ -1226,18 +1226,6 @@ mercury_type_to_strcord(MerType) = Cord :-
         ),
         Cord = PurityCord ++ PorFCord ++ ArgCord
     ;
-        MerType = apply_n_type(TypeVar, ArgTypes, _Kind),
-        (
-            ArgTypes = [],
-            Cord = strcord("apply_tvar_") ++ intcord(var_to_int(TypeVar))
-        ;
-            ArgTypes = [HeadArgType | TailArgTypes],
-            Cord = strcord("apply_tvar_") ++ intcord(var_to_int(TypeVar)) ++
-                strcord("(") ++
-                mercury_types_to_strcord(HeadArgType, TailArgTypes) ++
-                strcord(")")
-        )
-    ;
         MerType = kinded_type(SubType, _Kind),
         Cord = mercury_type_to_strcord(SubType)
     ).

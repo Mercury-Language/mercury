@@ -527,7 +527,6 @@ mer_type_to_xml(TVarset, higher_order_type(PorF, Types, _, _)) = Xml :-
 mer_type_to_xml(TVarset, tuple_type(Types, _)) = Xml :-
     XmlArgs = xml_list("tuple_types", mer_type_to_xml(TVarset), Types),
     Xml = elem("tuple", [], [XmlArgs]).
-mer_type_to_xml(_, apply_n_type(_, _, _)) = nyi("apply_n_type").
 mer_type_to_xml(_, kinded_type(_, _)) = nyi("kinded_type").
 
 %-----------------------------------------------------------------------------%

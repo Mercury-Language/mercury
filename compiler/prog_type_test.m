@@ -111,8 +111,7 @@
     ;       builtin_type(builtin_type)
     ;       tuple_type(list(mer_type), kind)
     ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
-                purity)
-    ;       apply_n_type(tvar, list(mer_type), kind).
+                purity).
 
     % Remove the kind annotation at the top-level if there is one,
     % otherwise return the type unchanged.
@@ -168,9 +167,7 @@ type_is_ground(Type) :-
 type_is_ground(Type, GroundType) :-
     require_complete_switch [Type]
     (
-        ( Type = type_variable(_TVar, _)
-        ; Type = apply_n_type(_TVar, _, _)
-        ),
+        Type = type_variable(_TVar, _),
         fail
     ;
         Type = builtin_type(BuiltinType),
@@ -279,7 +276,6 @@ strip_kind_annotation(Type0) = Type :-
         ; Type0 = builtin_type(_)
         ; Type0 = tuple_type(_, _)
         ; Type0 = higher_order_type(_, _, _, _)
-        ; Type0 = apply_n_type(_, _, _)
         ),
         Type = coerce(Type0)
     ).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,10 +108,6 @@ type_vars_in_type_acc(Type, !RevTVars) :-
         ),
         type_vars_in_types_acc(ArgTypes, !RevTVars)
     ;
-        Type = apply_n_type(Var, ArgTypes, _),
-        !:RevTVars= [Var | !.RevTVars],
-        type_vars_in_types_acc(ArgTypes, !RevTVars)
-    ;
         Type = kinded_type(SubType, _),
         type_vars_in_type_acc(SubType, !RevTVars)
     ).
@@ -135,13 +131,6 @@ type_contains_var(Type, Var) :-
         ; Type = higher_order_type(_, ArgTypes, _, _)
         ),
         type_list_contains_var(ArgTypes, Var)
-    ;
-        Type = apply_n_type(V, ArgTypes, _),
-        (
-            Var = V
-        ;
-            type_list_contains_var(ArgTypes, Var)
-        )
     ;
         Type = kinded_type(SubType, _),
         type_contains_var(SubType, Var)

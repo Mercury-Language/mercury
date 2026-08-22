@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018, 2023-2025 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2023-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -186,11 +186,6 @@ apply_renaming_to_type(Renaming, Type0, Type) :-
         apply_renaming_to_types(Renaming, Args0, Args),
         Type = tuple_type(Args, Kind)
     ;
-        Type0 = apply_n_type(TVar0, Args0, Kind),
-        apply_renaming_to_types(Renaming, Args0, Args),
-        apply_renaming_to_tvar(Renaming, TVar0, TVar),
-        Type = apply_n_type(TVar, Args, Kind)
-    ;
         Type0 = kinded_type(BaseType0, Kind),
         apply_renaming_to_type(Renaming, BaseType0, BaseType),
         Type = kinded_type(BaseType, Kind)
@@ -219,14 +214,6 @@ apply_subst_to_type(Subst, Type0, Type) :-
         Type0 = tuple_type(Args0, Kind),
         apply_subst_to_types(Subst, Args0, Args),
         Type = tuple_type(Args, Kind)
-    ;
-        Type0 = apply_n_type(TVar, Args0, Kind),
-        apply_subst_to_types(Subst, Args0, Args),
-        ( if map.search(Subst, TVar, AppliedType) then
-            apply_type_args(AppliedType, Args, Type)
-        else
-            Type = apply_n_type(TVar, Args, Kind)
-        )
     ;
         Type0 = kinded_type(BaseType0, Kind),
         apply_subst_to_type(Subst, BaseType0, BaseType),
@@ -258,15 +245,6 @@ apply_rec_subst_to_type(Subst, Type0, Type) :-
         apply_rec_subst_to_types(Subst, Args0, Args),
         Type = tuple_type(Args, Kind)
     ;
-        Type0 = apply_n_type(TVar, Args0, Kind),
-        apply_rec_subst_to_types(Subst, Args0, Args),
-        ( if map.search(Subst, TVar, AppliedType0) then
-            apply_rec_subst_to_type(Subst, AppliedType0, AppliedType),
-            apply_type_args(AppliedType, Args, Type)
-        else
-            Type = apply_n_type(TVar, Args, Kind)
-        )
-    ;
         Type0 = kinded_type(BaseType0, Kind),
         apply_rec_subst_to_type(Subst, BaseType0, BaseType),
         Type = kinded_type(BaseType, Kind)
@@ -284,70 +262,6 @@ apply_rec_subst_to_types(Subst, Types0, Types) :-
     list.map(apply_rec_subst_to_type(Subst), Types0, Types).
 
 %---------------------------------------------------------------------------%
-
-:- pred apply_type_args(mer_type::in, list(mer_type)::in, mer_type::out)
-    is det.
-
-apply_type_args(Type0, Args, Type) :-
-    (
-        Type0 = type_variable(TVar, Kind0),
-        apply_type_args_to_kind(Kind0, Args, Kind),
-        Type = apply_n_type(TVar, Args, Kind)
-    ;
-        Type0 = defined_type(Name, Args0, Kind0),
-        apply_type_args_to_kind(Kind0, Args, Kind),
-        Type = defined_type(Name, Args0 ++ Args, Kind)
-    ;
-        ( Type0 = builtin_type(_)
-        ; Type0 = higher_order_type(_, _, _, _)
-        ),
-        (
-            Args = []
-        ;
-            Args = [_ | _],
-            unexpected($pred, "applied type args to builtin")
-        ),
-        Type = Type0
-    ;
-        Type0 = tuple_type(Args0, Kind0),
-        apply_type_args_to_kind(Kind0, Args, Kind),
-        Type = tuple_type(Args0 ++ Args, Kind)
-    ;
-        Type0 = apply_n_type(TVar, Args0, Kind0),
-        apply_type_args_to_kind(Kind0, Args, Kind),
-        Type = apply_n_type(TVar, Args0 ++ Args, Kind)
-    ;
-        Type0 = kinded_type(BaseType0, _),
-        % We drop the explicit kind annotation, since:
-        %   - it will already have been used by kind inference, and
-        %   - it no longer corresponds to any explicit annotation given.
-        apply_type_args(BaseType0, Args, Type)
-    ).
-
-:- pred apply_type_args_to_kind(kind::in, list(mer_type)::in, kind::out)
-    is det.
-
-apply_type_args_to_kind(Kind0, ArgTypes, Kind) :-
-    (
-        ArgTypes = [],
-        Kind = Kind0
-    ;
-        ArgTypes = [HeadArgType | TailArgTypes],
-        (
-            Kind0 = kind_star,
-            unexpected($pred, "too many args in apply_n")
-        ;
-            Kind0 = kind_arrow(KindA, KindB),
-            ( if get_type_kind(HeadArgType) = KindA then
-                apply_type_args_to_kind(KindB, TailArgTypes, Kind)
-            else
-                unexpected($pred, "kind error in apply_n")
-            )
-        ;
-            Kind0 = kind_variable(_),
-            unexpected($pred, "unbound kind variable")
-        )
-    ).
 
 :- pred ensure_type_has_kind(kind::in, mer_type::in, mer_type::out) is det.
 

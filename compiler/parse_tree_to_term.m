@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -121,12 +121,6 @@ unparse_type(Type, Term) :-
         Type = tuple_type(ArgTypes, _),
         unparse_type_list(ArgTypes, ArgTerms),
         Term = term.functor(term.atom("{}"), ArgTerms, Context)
-    ;
-        Type = apply_n_type(TVar, ArgTypes, _),
-        Var = term.coerce_var(TVar),
-        unparse_type_list(ArgTypes, ArgTerms),
-        Term = term.functor(term.atom(""),
-            [term.variable(Var, Context) | ArgTerms], Context)
     ;
         Type = kinded_type(_, _),
         unexpected($pred, "kind annotation")

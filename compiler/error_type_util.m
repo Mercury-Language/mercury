@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,15 +142,6 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             Const = "{}",
             NonConstL = [left_paren_maybe_nl_inc("{", lp_plain)],
             NonConstR = [maybe_nl_dec_right_paren("}", rp_plain)]
-        ;
-            Type = apply_n_type(TVar, ArgTypes, _),
-            % XXX None of the test cases cover the output we generate
-            % for apply_n_type, so I (zs) don't know whether this is ok.
-            TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
-            Const = TVarStr,
-            NonConstL = [fixed(TVarStr),
-                left_paren_maybe_nl_inc("(", lp_suffix)],
-            NonConstR = [maybe_nl_dec_right_paren(")", rp_plain)]
         ),
         (
             ArgTypes = [],

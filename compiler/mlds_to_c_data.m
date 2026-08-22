@@ -366,7 +366,6 @@ mlds_output_boxed_rval(Opts, Stream, Type, Rval, !IO) :-
                 ( MercuryType = defined_type(_, _, _)
                 ; MercuryType = tuple_type(_, _)
                 ; MercuryType = higher_order_type(_, _, _, _)
-                ; MercuryType = apply_n_type(_, _, _)
                 ; MercuryType = kinded_type(_, _)
                 ),
                 mlds_output_boxed_rval_default(Opts, Stream, Rval, !IO)
@@ -569,7 +568,6 @@ mlds_output_unboxed_rval(Opts, Stream, Type, Rval, !IO) :-
             ; MercuryType = defined_type(_, _, _)
             ; MercuryType = tuple_type(_, _)
             ; MercuryType = higher_order_type(_, _, _, _)
-            ; MercuryType = apply_n_type(_, _, _)
             ; MercuryType = kinded_type(_, _)
             ),
             mlds_output_unboxed_rval_default(Opts, Stream, Type, Rval, !IO)

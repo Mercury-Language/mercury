@@ -182,7 +182,6 @@ acc_builtin_type(Type, !BuiltinTypes) :-
         ; Type = defined_type(_, _, _)
         ; Type = tuple_type(_, _)
         ; Type = higher_order_type(_, _, _, _)
-        ; Type = apply_n_type(_, _, _)
         )
     ;
         Type = kinded_type(SubType, _Kind),

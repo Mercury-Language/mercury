@@ -1924,9 +1924,6 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
             ExistQVarsMapping, ArgTypesA, ArgTypesB,
             MaybeArgModesA, MaybeArgModesB)
     ;
-        TypeA = apply_n_type(_, _, _),
-        fail
-    ;
         TypeA = kinded_type(TypeA1, Kind),
         TypeB = kinded_type(TypeB1, Kind),
         check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus,

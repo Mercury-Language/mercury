@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2013-2020, 2022-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -486,7 +486,6 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
             ( MerType = type_variable(_, _)
             ; MerType = tuple_type(_, _)
             ; MerType = higher_order_type(_, _, _, _)
-            ; MerType = apply_n_type(_, _, _)
             ; MerType = kinded_type(_, _)
             ),
             fail

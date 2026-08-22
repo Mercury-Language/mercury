@@ -263,9 +263,6 @@ classify_is_du_type(TypeTable, Type, MaybeDuType) :-
         ),
         MaybeDuType = is_not_du_type(DescStr)
     ;
-        Type = apply_n_type(_, _, _),
-        MaybeDuType = is_not_du_type("function type")
-    ;
         Type = kinded_type(SubType, _),
         classify_is_du_type(TypeTable, SubType, MaybeDuType)
     ).

@@ -762,7 +762,6 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
         ; NewType = defined_type(_, _, _)
         ; NewType = tuple_type(_, _)
         ; NewType = higher_order_type(_, _, _, _)
-        ; NewType = apply_n_type(_, _, _)
         ; NewType = kinded_type(_, _)
         )
     ).

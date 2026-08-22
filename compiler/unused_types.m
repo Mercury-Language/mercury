@@ -470,7 +470,6 @@ record_type_ctors_used_in_type(Type, !ShouldBeUsedTypeCtors) :-
     ;
         ( Type = tuple_type(ArgTypes, _Kind)
         ; Type = higher_order_type(_PorF, ArgTypes, _HOInstInfo, _Purity)
-        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
         ),
         record_type_ctors_used_in_types(ArgTypes, !ShouldBeUsedTypeCtors)
     ;

@@ -1515,11 +1515,6 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
         NewTypeA = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity),
         restrict_domain(TVarA, NewTypeA, !DomainMap)
     ;
-        TypeA = apply_n_type(Return, ArgTypes0, Kind),
-        list.map(find_type_of_tvar(!.DomainMap), ArgTypes0, ArgTypes),
-        NewTypeA = apply_n_type(Return, ArgTypes, Kind),
-        restrict_domain(TVarA, NewTypeA, !DomainMap)
-    ;
         TypeA = kinded_type(KindedTypeA, _),
         simple_find_domain(stconstr(TVarA, KindedTypeA), !DomainMap)
     ).
@@ -1784,15 +1779,6 @@ unify_types(A, B, Type) :-
             ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
                 Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
-            else
-                fail
-            )
-        ;
-            A = apply_n_type(TVarA, ArgsA, Kind),
-            B = apply_n_type(_, ArgsB, Kind),
-            ( if list.same_length(ArgsA, ArgsB) then
-                list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
-                Type = apply_n_type(TVarA, Args, Kind)
             else
                 fail
             )

@@ -638,9 +638,6 @@ acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
         list.foldl(one_or_more_map.reverse_add(CtorArgPosn), TypeVars,
             !InvariantTVars)
     ;
-        CtorArgType = apply_n_type(_, _, _),
-        sorry($pred, "apply_n_type")
-    ;
         CtorArgType = kinded_type(SubCtorArgType, _Kind),
         acc_invariant_tvars_in_ctor_arg_type(TypeTable, ActiveTypeCtors,
             BaseTypeCtor, BaseTypeCtorParams, ConsId, SubCtorArgType,
@@ -814,9 +811,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
             TypeB = type_variable(_, _),
             try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
         ;
-            TypeB = apply_n_type(_, _, _),
-            sorry($pred, "apply_n_type")
-        ;
             ( TypeB = defined_type(_, _, _)
             ; TypeB = tuple_type(_, _)
             ; TypeB = higher_order_type(_, _, _, _)
@@ -838,9 +832,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         ;
             TypeB = type_variable(_, _),
             try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
-        ;
-            TypeB = apply_n_type(_, _, _),
-            sorry($pred, "apply_n_type")
         ;
             ( TypeB = builtin_type(_)
             ; TypeB = tuple_type(_, _)
@@ -871,9 +862,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         ;
             TypeB = type_variable(_, _),
             try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
-        ;
-            TypeB = apply_n_type(_, _, _),
-            sorry($pred, "apply_n_type")
         ;
             ( TypeB = builtin_type(_)
             ; TypeB = defined_type(_, _, _)
@@ -909,9 +897,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
             TypeB = type_variable(_, _),
             try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
         ;
-            TypeB = apply_n_type(_, _, _),
-            sorry($pred, "apply_n_type")
-        ;
             ( TypeB = builtin_type(_)
             ; TypeB = defined_type(_, _, _)
             ; TypeB = tuple_type(_, _)
@@ -920,9 +905,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
             CoerceFail = different_type_categories(TypeTable, TypeA, TypeB),
             !:CoerceFails = [CoerceFail | !.CoerceFails]
         )
-    ;
-        TypeA = apply_n_type(_, _, _),
-        sorry($pred, "apply_n_type")
     ;
         TypeA = kinded_type(SubTypeA, KindA),
         (
@@ -945,9 +927,6 @@ types_compare_as_given(TypeTable, TVarSet, BaseTypeCtor, ArgNum,
         ;
             TypeB = type_variable(_, _),
             try_to_unify_types(TypeA, TypeB, !TypeAssign, !CoerceFails)
-        ;
-            TypeB = apply_n_type(_, _, _),
-            sorry($pred, "apply_n_type")
         ;
             ( TypeB = builtin_type(_)
             ; TypeB = defined_type(_, _, _)

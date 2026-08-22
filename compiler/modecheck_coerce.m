@@ -683,7 +683,6 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
     ;
         ( TypeX = type_variable(_, _)
         ; TypeX = higher_order_type(_, _, _, _)
-        ; TypeX = apply_n_type(_, _, _)
         ),
         Result = bad_cons_id_for_input_type
     ).
@@ -1139,9 +1138,6 @@ types_compare_as_given_nonvar_mc(TypeTable, TVarSet, Comparison,
         % We do not allow subtyping in higher order argument types.
         corresponding_types_compare_as_given_mc(TypeTable, TVarSet,
             compare_equal, ArgTypesA, ArgTypesB)
-    ;
-        TypeA = apply_n_type(_, _, _),
-        sorry($pred, "apply_n_type")
     ;
         TypeA = kinded_type(TypeA1, Kind),
         TypeB = kinded_type(TypeB1, Kind),

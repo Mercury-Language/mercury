@@ -858,11 +858,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 purity
             )
 
-    ;       apply_n_type(tvar, list(mer_type), kind)
-            % An apply/N expression. `apply_n(V, [T1, ...], K)'
-            % would be the representation of type `V(T1, ...)' with kind K.
-            % The list must be non-empty.
-
     ;       kinded_type(mer_type, kind).
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
@@ -873,7 +868,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       tuple_type(list(ground_type), kind)
     ;       higher_order_type(pred_or_func, list(ground_type), ho_inst_info,
                 purity)
-    ;       apply_n_type(tvar, list(ground_type), kind)
     ;       kinded_type(ground_type, kind).
 
 :- type var_or_ground_type
@@ -889,7 +883,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 %   ;       tuple_type(list(mer_type), kind)
 %   ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
 %               purity)
-%   ;       apply_n_type(tvar, list(mer_type), kind)
 %   ;       kinded_type(mer_type, kind).
 
     % This type enumerates all of the builtin primitive types in Mercury.
@@ -1133,7 +1126,6 @@ get_type_kind(defined_type(_, _, Kind)) = Kind.
 get_type_kind(builtin_type(_)) = kind_star.
 get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
 get_type_kind(tuple_type(_, Kind)) = Kind.
-get_type_kind(apply_n_type(_, _, Kind)) = Kind.
 get_type_kind(kinded_type(_, Kind)) = Kind.
 
 %---------------------------------------------------------------------------%
