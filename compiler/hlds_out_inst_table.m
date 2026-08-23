@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2024 The Mercury team.
+% Copyright (C) 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,6 +34,11 @@
 :- pred format_mode_table(mode_table::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
+:- pred write_input_spec_table(io.text_output_stream::in, input_spec_table::in,
+    io::di, io::uo) is det.
+:- pred format_input_spec_table(input_spec_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -47,6 +52,7 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.write_error_spec.
@@ -54,6 +60,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module term.
 :- import_module varset.
@@ -475,6 +482,44 @@ format_mode_table_entry(ModeCtor, ModeDefn, !State) :-
     string.builder.append_string("\n", !State),
     StatusStr = mode_import_status_to_string(Status),
     string.builder.format("%% status %s\n", [s(StatusStr)], !State).
+
+%---------------------------------------------------------------------------%
+%
+% Write out the input_spec table.
+%
+
+write_input_spec_table(Stream, InputSpecTable, !IO) :-
+    State0 = string.builder.init,
+    format_input_spec_table(InputSpecTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_input_spec_table(InputSpecTable, !State) :-
+    string.builder.append_string("%-------- Input spec --------\n", !State),
+    map.foldl(format_input_specs_for_module, InputSpecTable, !State).
+
+:- pred format_input_specs_for_module(module_name::in,
+    input_spec_in_module_map::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_input_specs_for_module(ModuleName, InModuleMap, !State) :-
+    string.builder.format("\ninput specializations in module %s\n\n",
+        [s(sym_name_to_string(ModuleName))], !State),
+    map.foldl(format_input_spec_for_type, InModuleMap, !State),
+    string.builder.append_string("\n", !State).
+
+:- pred format_input_spec_for_type(mer_type::in, input_spec_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_input_spec_for_type(Type, InputSpecInfo, !State) :-
+    InputSpecInfo = input_spec_info(ReplaceOrAddInMode, OoMInsts, _Context),
+    varset.init(TVarset),
+    TypeStr = mercury_type_to_string(TVarset, print_name_and_num, Type),
+    varset.init(InstVarset),
+    InstsStr = mercury_inst_list_to_string(output_debug, InstVarset,
+        one_or_more_to_list(OoMInsts)),
+    string.builder.format("%s %s ->\n  %s\n",
+        [s(string(ReplaceOrAddInMode)), s(TypeStr), s(InstsStr)], !State).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_inst_table.

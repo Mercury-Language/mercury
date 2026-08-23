@@ -232,6 +232,7 @@ format_hlds(ModuleInfo, !State) :-
             DumpInstsModes = yes,
             module_info_get_inst_table(ModuleInfo, InstTable),
             module_info_get_mode_table(ModuleInfo, ModeTable),
+            module_info_get_input_spec_table(ModuleInfo, InputSpecTable),
             DumpStructuredInsts = DumpOptions ^ dump_structured_insts,
             (
                 DumpStructuredInsts = yes,
@@ -246,7 +247,8 @@ format_hlds(ModuleInfo, !State) :-
                 InstSizeLimit),
             format_inst_table(Lang, MaybeUseErrorMsgInst,
                 InstNumLimit, InstSizeLimit, InstTable, !State),
-            format_mode_table(ModeTable, !State)
+            format_mode_table(ModeTable, !State),
+            format_input_spec_table(InputSpecTable, !State)
         ;
             DumpInstsModes = no
         ),
