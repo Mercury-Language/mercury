@@ -51,9 +51,9 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc.
-:- import_module hlds.pred_info_types.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
@@ -246,7 +246,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_test.

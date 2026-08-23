@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2018, 2020, 2022 The Mercury team.
+% Copyright (C) 2013-2015, 2018, 2020, 2022, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,6 +30,17 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+
+%-----------------------------------------------------------------------------%
+
+:- type arg_info
+    --->    arg_info(
+                arg_loc,                    % Stored location.
+                top_functor_mode            % Mode of top functor.
+            ).
+
+:- type arg_loc
+    --->    reg(reg_type, int).
 
     % reg_r are the general purpose registers.
     %

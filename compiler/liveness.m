@@ -204,7 +204,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.mode_top_functor.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module libs.
@@ -332,7 +331,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugThisPred, PredId, !.ProcInfo, VarTable, Goal, !IO)
     ),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_liveness_info(Liveness0, !ProcInfo).
+    proc_info_set_initial_liveness(Liveness0, !ProcInfo).
 
 :- pred maybe_debug_liveness(module_info::in, string::in, bool::in,
     pred_id::in, proc_info::in, var_table::in, hlds_goal::in,

@@ -93,7 +93,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.mode_top_functor.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

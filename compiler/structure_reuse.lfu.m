@@ -61,7 +61,7 @@ forward_use_information(!ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
 
     % Set of variables initially instantiated.
-    proc_info_get_liveness_info(!.ProcInfo, InstantiatedVars0),
+    proc_info_get_initial_liveness(!.ProcInfo, InstantiatedVars0),
     % Set of variables initially "dead" = instantiated variables that
     % syntactically do not occur in the remainder of the goal.
     set_of_var.init(DeadVars0),

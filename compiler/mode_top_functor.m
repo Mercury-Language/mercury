@@ -17,7 +17,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.pred_info_types.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

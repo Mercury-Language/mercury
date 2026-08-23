@@ -19,7 +19,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.

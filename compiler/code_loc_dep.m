@@ -46,7 +46,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
-:- import_module hlds.pred_info_types.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module ll_backend.code_info.
@@ -195,7 +194,7 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
     get_proc_info(!.CI, ProcInfo),
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap),
-    proc_info_get_liveness_info(ProcInfo, Liveness),
+    proc_info_get_initial_liveness(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     build_input_arg_list(ProcInfo, ArgList),
     get_var_table(!.CI, VarTable),

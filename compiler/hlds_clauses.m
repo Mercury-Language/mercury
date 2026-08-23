@@ -42,8 +42,9 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_proc_id.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -143,6 +144,12 @@
 :- type is_clause_a_fact
     --->    clause_is_not_a_fact
     ;       clause_is_a_fact.
+
+%---------------------%
+
+:- type implementation_language
+    --->    impl_lang_mercury
+    ;       impl_lang_foreign(foreign_language).
 
 %---------------------%
 

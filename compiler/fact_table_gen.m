@@ -138,7 +138,6 @@
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_test.
 :- import_module hlds.mode_util.
-:- import_module hlds.pred_info_types.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

@@ -10,8 +10,7 @@
 % File: hlds_pred.m.
 % Main authors: fjh, conway.
 %
-% This module defines the part of the HLDS that deals with predicates
-% and procedures.
+% This module defines types that are specific to fields of proc_infos.
 %
 %---------------------------------------------------------------------------%
 
@@ -31,6 +30,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_data_rare.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -39,6 +39,12 @@
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
+
+    % NOTE: `codegen_liveness' records liveness in the sense used by code
+    % generation. This is *not* the same thing as the notion of liveness
+    % used by mode analysis! See compiler/notes/glossary.html.
+    %
+:- type codegen_liveness == set_of_progvar. % The live variables.
 
 :- type is_address_taken
     --->    address_is_taken
@@ -118,10 +124,10 @@
     --->    hlds_deep_excp_vars(
                 top_csd                 :: prog_var,
                 middle_csd              :: prog_var,
+
+                % This field is needed only with the save/restore approach,
+                % not the activation counting approach.
                 old_outermost           :: maybe(prog_var)
-                                        % Needed only with the save/restore
-                                        % approach, not the activation counting
-                                        % approach.
             ).
 
 :- type hlds_deep_layout
@@ -312,15 +318,26 @@
                 map(prog_var, list(prog_var))
             ).
 
-:- type detism_decl
-    --->    detism_decl_explicit
-    ;       detism_decl_implicit
-    ;       detism_decl_none.
-            % The determinism of the procedure is not declared.
-
 :- type can_process
     --->    cannot_process_yet
     ;       can_process_now.
+
+    % Values of this type are used only for choosing the wording of
+    % determinism diagnostics.
+:- type detism_decl
+    --->    detism_decl_explicit
+    ;       detism_decl_implicit
+            % The determinism of the procedure is not declared,
+            % but the procedure needs no declaration, because either
+            %
+            % - the procedure is for a function, which are implicitly det
+            %   unless explicitly declared otherwise, or
+            %
+            % - the procedure was created by the compiler, e.g.
+            %   to implement a unify/index/compare predicate,
+            %   to implement an instance method, or as implied mode.
+    ;       detism_decl_none.
+            % The determinism of the procedure is not declared.
 
 :- type needs_maxfr_slot
     --->    needs_maxfr_slot

@@ -212,7 +212,6 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.pred_info_types.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.

@@ -58,7 +58,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_proc_id.
 :- import_module ll_backend.call_gen.
 :- import_module parse_tree.prog_data.

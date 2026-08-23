@@ -219,7 +219,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.type_util.
 :- import_module libs.options.

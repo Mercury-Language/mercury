@@ -111,7 +111,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.

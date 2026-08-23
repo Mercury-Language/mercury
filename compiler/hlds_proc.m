@@ -23,7 +23,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.pred_info_types.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
 :- import_module parse_tree.
@@ -104,7 +103,7 @@
     has_user_event::out, has_tail_rec_call::out, list(oisu_pred_kind_for)::out,
     maybe(require_tail_recursion)::out, set_of_progvar::out,
     maybe(list(arg_info))::out, maybe(special_proc_return)::out,
-    liveness_info::out, stack_slots::out, needs_maxfr_slot::out,
+    codegen_liveness::out, stack_slots::out, needs_maxfr_slot::out,
     maybe(prog_var)::out, maybe(proc_table_io_info)::out,
     maybe(table_attributes)::out, maybe(list(sym_name_arity))::out,
     maybe(deep_profile_proc_info)::out, maybe(arg_size_info)::out,
@@ -125,7 +124,7 @@
     has_user_event::in, has_tail_rec_call::in, list(oisu_pred_kind_for)::in,
     maybe(require_tail_recursion)::in, set_of_progvar::in,
     maybe(list(arg_info))::in, maybe(special_proc_return)::in,
-    liveness_info::in, stack_slots::in, needs_maxfr_slot::in,
+    codegen_liveness::in, stack_slots::in, needs_maxfr_slot::in,
     maybe(prog_var)::in, maybe(proc_table_io_info)::in,
     maybe(table_attributes)::in, maybe(list(sym_name_arity))::in,
     maybe(deep_profile_proc_info)::in, maybe(arg_size_info)::in,
@@ -235,7 +234,8 @@
     maybe(list(arg_info))::out) is det.
 :- pred proc_info_get_maybe_special_return(proc_info::in,
     maybe(special_proc_return)::out) is det.
-:- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
+:- pred proc_info_get_initial_liveness(proc_info::in,
+    codegen_liveness::out) is det.
 :- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
 :- pred proc_info_get_needs_maxfr_slot(proc_info::in,
     needs_maxfr_slot::out) is det.
@@ -319,7 +319,7 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_special_return(maybe(special_proc_return)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_liveness_info(liveness_info::in,
+:- pred proc_info_set_initial_liveness(codegen_liveness::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_stack_slots(stack_slots::in,
     proc_info::in, proc_info::out) is det.
@@ -1025,7 +1025,7 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 psi_maybe_special_return        :: maybe(special_proc_return),
 
                 % The initial liveness, for code generation.
-                psi_initial_liveness            :: liveness_info,
+                psi_initial_liveness            :: codegen_liveness,
 
                 % Allocation of variables to stack slots.
                 psi_stack_slots                 :: stack_slots,
@@ -1185,7 +1185,7 @@ proc_info_get_maybe_arg_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_arg_info.
 proc_info_get_maybe_special_return(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_special_return.
-proc_info_get_liveness_info(PI, X) :-
+proc_info_get_initial_liveness(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_initial_liveness.
 proc_info_get_stack_slots(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_stack_slots.
@@ -1271,7 +1271,7 @@ proc_info_set_arg_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_arg_info := yes(X).
 proc_info_set_maybe_special_return(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_special_return := X.
-proc_info_set_liveness_info(X, !PI) :-
+proc_info_set_initial_liveness(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_initial_liveness := X.
 proc_info_set_stack_slots(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_stack_slots := X.
