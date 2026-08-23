@@ -1087,8 +1087,8 @@ mercury_format_tvar_subst(VarSet, TVarSubst, S, !U) :-
 mercury_format_pragma_input_spec(S, _Lang, InputSpec, !U) :-
     InputSpec = decl_pragma_input_spec_info(_ContainingModuleName,
         Type, ReplaceOrAdd, OoMInstCtors, _OoMInsts, _, TVarSet, _, _),
-    Instctors = one_or_more_to_list(OoMInstCtors),
-    InstStrs0 = list.map(get_zero_arity_inst_ctor_name, Instctors),
+    InstCtors = one_or_more_to_list(OoMInstCtors),
+    InstStrs0 = list.map(get_zero_arity_inst_ctor_name, InstCtors),
     list.sort(InstStrs0, InstStrs),
     InstsStr = string.join_list(", ", InstStrs),
     IndentStr = "    ",
