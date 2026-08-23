@@ -797,7 +797,8 @@ mlds_vector_common_to_strcord(VectorCommon) = Cord :-
     TypeNum = ml_vector_common_type_num(TypeNumUInt),
     Cord = strcord("vector_common(type ") ++ uintcord(TypeNumUInt) ++
         comma_cord ++ strcord("start row ") ++ uintcord(StartRowNum) ++
-        comma_cord ++ strcord("num rows ") ++ uintcord(NumRows) ++ strcord(")").
+        comma_cord ++ strcord("num rows ") ++ uintcord(NumRows) ++
+        strcord(")").
 
 :- func unop_to_strcord(unary_op) = strcord.
 
