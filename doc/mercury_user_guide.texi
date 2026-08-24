@@ -861,7 +861,7 @@ while the second generates either high level C code, Java code, or C# code.
 In general, a Mercury program consists of many modules.
 These modules must be compiled in a manner
 that allows the resulting files codes to be linked together.
-For example if you compile e.g.@:
+For example, if you compile e.g.@:
 module @var{module_a} to @file{@var{module_a}.java}
 and module @var{module_b} to @file{@var{module_b}.c},
 which the Java and C implementations compile further
@@ -2521,7 +2521,7 @@ The other way to create an executable for a multi-module program
 is to compile each module separately.
 When targeting C,
 
-using @samp{mmc -c},
+use @samp{mmc -c},
 @findex -c
 and then link the resulting object files together.
 The linking is a two-stage process.
