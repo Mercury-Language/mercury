@@ -200,10 +200,8 @@
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
 :- pred proc_info_get_item_number(proc_info::in, item_seq_num::out) is det.
-:- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_maybe_head_modes_constr(proc_info::in,
     maybe(mode_constraint)::out) is det.
-:- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_cse_nopull_contexts(proc_info::in,
     list(prog_context)::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
@@ -214,6 +212,8 @@
     list(warn_spec)::out) is det.
 :- pred proc_info_get_deleted_call_callees(proc_info::in,
     set(pred_proc_id)::out) is det.
+:- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
+:- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
 :- pred proc_info_get_has_any_foreign_exports(proc_info::in,
@@ -283,11 +283,7 @@
 :- pred proc_info_set_eval_method(eval_method::in,
     proc_info::in, proc_info::out) is det.
 
-:- pred proc_info_set_can_process(can_process::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_head_modes_constraint(mode_constraint::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_detism_decl(detism_decl::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_cse_nopull_contexts(list(prog_context)::in,
     proc_info::in, proc_info::out) is det.
@@ -298,6 +294,10 @@
 :- pred proc_info_set_statevar_warnings(list(warn_spec)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_deleted_call_callees(set(pred_proc_id)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_can_process(can_process::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_detism_decl(detism_decl::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_address_taken(is_address_taken::in,
     proc_info::in, proc_info::out) is det.
@@ -428,14 +428,14 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     ProcSubInfo = proc_sub_info(
         MainContext,
         ItemNumber,
-        CanProcess,
         MaybeHeadModesConstr,
-        DetismDecl,
         CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
+        CanProcess,
+        DetismDecl,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -553,14 +553,14 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
     ProcSubInfo = proc_sub_info(
         MainContext,
         ItemNumber,
-        CanProcess,
         MaybeHeadModesConstr,
-        DetismDecl,
         CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
+        CanProcess,
+        DetismDecl,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -676,14 +676,14 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
     ProcSubInfo = proc_sub_info(
         MainContext,
         ItemNumber,
-        CanProcess,
         MaybeHeadModesConstr,
-        DetismDecl,
         CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
+        CanProcess,
+        DetismDecl,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -727,14 +727,14 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
     ProcSubInfo = proc_sub_info(
         MainContext,
         ItemNumber,
-        CanProcess,
         MaybeHeadModesConstr,
-        DetismDecl,
         CseNopullContexts,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
+        CanProcess,
+        DetismDecl,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -895,21 +895,11 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % The item number of the mode declaration, if there was one.
                 psi_item_number                 :: item_seq_num,
 
-                % Set to cannot_process if we must not process this procedure
-                % just yet. This is used to delay mode checking etc. for
-                % complicated modes of unification predicates until the end
-                % of the unique_modes pass.
-                psi_can_process                 :: can_process,
-
                 % XXX The mode of the procedure in the ROBDD based
                 % constraint system. Whether it represents the declared
                 % or the actual mode is unclear, but since that constraint
                 % system is obsolete, this does not much matter :-(
                 psi_maybe_head_modes_constr     :: maybe(mode_constraint),
-
-                % Was the determinism declaration explicit, or was it implicit,
-                % as for functions?
-                psi_detism_decl                 :: detism_decl,
 
                 % A list of all the contexts at which cse_detection.m
                 % declined to pull out a common deconstruction out of
@@ -967,6 +957,16 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 %-----------------------------------------------------------%
                 % Flags that record simple properties of the procedure.
                 %-----------------------------------------------------------%
+
+                % Set to cannot_process if we must not process this procedure
+                % just yet. This is used to delay mode checking etc. for
+                % complicated modes of unification predicates until the end
+                % of the unique_modes pass.
+                psi_can_process                 :: can_process,
+
+                % Was the determinism declaration explicit, or was it implicit,
+                % as for functions?
+                psi_detism_decl                 :: detism_decl,
 
                 % Is the address of this procedure taken? If yes, we will
                 % need to use typeinfo liveness for them, so that deep_copy
@@ -1149,12 +1149,8 @@ proc_info_get_context(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_context.
 proc_info_get_item_number(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_item_number.
-proc_info_get_can_process(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_can_process.
 proc_info_get_maybe_head_modes_constr(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_head_modes_constr.
-proc_info_get_detism_decl(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_detism_decl.
 proc_info_get_cse_nopull_contexts(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_cse_nopull_contexts.
 proc_info_get_maybe_untuple_info(PI, X) :-
@@ -1165,6 +1161,10 @@ proc_info_get_statevar_warnings(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_statevar_warnings.
 proc_info_get_deleted_call_callees(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_deleted_call_callees.
+proc_info_get_can_process(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_can_process.
+proc_info_get_detism_decl(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_detism_decl.
 proc_info_get_is_address_taken(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_is_address_taken.
 proc_info_get_has_any_foreign_exports(PI, X) :-
@@ -1235,12 +1235,8 @@ proc_info_set_inferred_determinism(X, !PI) :-
 proc_info_set_eval_method(X, !PI) :-
     !PI ^ proc_eval_method := X.
 
-proc_info_set_can_process(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_can_process := X.
 proc_info_set_head_modes_constraint(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_head_modes_constr := yes(X).
-proc_info_set_detism_decl(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_detism_decl := X.
 proc_info_set_cse_nopull_contexts(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_cse_nopull_contexts := X.
 proc_info_set_maybe_untuple_info(X, !PI) :-
@@ -1251,6 +1247,10 @@ proc_info_set_statevar_warnings(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_statevar_warnings := X.
 proc_info_set_deleted_call_callees(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_deleted_call_callees := X.
+proc_info_set_can_process(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_can_process := X.
+proc_info_set_detism_decl(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_detism_decl := X.
 proc_info_set_address_taken(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_is_address_taken := X.
 proc_info_set_has_any_foreign_exports(X, !PI) :-
