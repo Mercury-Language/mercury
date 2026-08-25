@@ -234,7 +234,7 @@
 
 #if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
   #define MR_insert_internal(n, a, l)   MR_insert_internal_label(n, a,        \
-                                            (const struct MR_LabelLayout *) l)
+                                            (const MR_LabelLayout *) l)
 #else
   #define MR_insert_internal(n, a, l)   MR_insert_internal_label(NULL, a, l)
 #endif
