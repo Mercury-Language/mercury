@@ -233,9 +233,8 @@
 // Since label names are quite big, we include them only when needed.
 
 #if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
-  #define MR_insert_internal(n, a, l)   MR_insert_internal_label(             \
-                                            (const struct MR_LabelLayout *) n,\
-                                            a, l)
+  #define MR_insert_internal(n, a, l)   MR_insert_internal_label(n, a,        \
+                                            (const MR_LabelLayout *) l)
 #else
   #define MR_insert_internal(n, a, l)   MR_insert_internal_label(NULL, a, l)
 #endif
