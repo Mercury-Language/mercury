@@ -75,6 +75,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
+:- import_module ll_backend.fact_table_check.
+:- import_module ll_backend.fact_table_compile.
 :- import_module ll_backend.fact_table_gen.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

@@ -828,11 +828,15 @@ add_pragma_gen.m adds compiler-generated pragmas to the HLDS.
 add_pragma_util.m provides utility operations to the three modules above.
 </ul>
 
-Fact table pragmas are handled by fact_table_gen.m
-(which is part of the ll_backend.m package).
-That module also reads the facts from the declared file
-and compiles them into a separate C file
-used by the foreign_proc body of the relevant predicate.
+Fact table pragmas are implemented by fact_table_check.m,
+fact_table_compile.m, and fact_table_gen.m,
+which are all part of the ll_backend.m package.
+The first checks whether types and modes of the named predicate
+are suitable for fact table implementation;
+the second reads the facts from the fact table file
+and compiles them into a separate C file,
+ready for use by the foreign_proc bodies of the predicate's procedures.
+The third generates those foreign_procs.
 <p>
 The HLDS data structure itself is spread over the following modules:
 
