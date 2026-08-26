@@ -19,7 +19,7 @@
 % ** Error making `Mercury/cs/foo.c'.
 %
 % The .err_exp file is for LLDS grades.
-% The .err_exp2 file is for HLDS grades.
+% The .err_exp2 file is for HLDS grades. The .err_exp3 file is for profiling.
 
 :- module hawkins_mm_fail_reset.
 :- interface.

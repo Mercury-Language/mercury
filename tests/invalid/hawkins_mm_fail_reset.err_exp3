@@ -1,0 +1,11 @@
+hawkins_mm_fail_reset.m:027: Warning: the determinism declaration for predicate
+hawkins_mm_fail_reset.m:027:   [38;5;87m`entry'/1[39;49m [38;5;203mcould be tighter.[39;49m
+hawkins_mm_fail_reset.m:027:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`failure'.[39;49m
+hawkins_mm_fail_reset.m:035: Error: minimal model tabling is not compatible
+hawkins_mm_fail_reset.m:035:   with profiling.
+hawkins_mm_fail_reset.m:037: Warning: this disjunct [38;5;203mwill never have any[39;49m
+hawkins_mm_fail_reset.m:037:   [38;5;203msolutions.[39;49m
+hawkins_mm_fail_reset.m:040: Warning: this disjunct [38;5;203mwill never have any[39;49m
+hawkins_mm_fail_reset.m:040:   [38;5;203msolutions.[39;49m
+hawkins_mm_fail_reset.m:044: Error: minimal model tabling is not compatible
+hawkins_mm_fail_reset.m:044:   with profiling.

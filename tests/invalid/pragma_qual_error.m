@@ -5,7 +5,7 @@
 % pragma declarations.
 %
 % The .err_exp file is for LLDS grades.
-% The .err_exp2 file is for MLDS grades.
+% The .err_exp2 file is for MLDS grades. The .err_exp3 file is for profiling.
 %---------------------------------------------------------------------------%
 
 :- module pragma_qual_error.
