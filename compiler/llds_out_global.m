@@ -59,7 +59,7 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.rtti.
-:- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

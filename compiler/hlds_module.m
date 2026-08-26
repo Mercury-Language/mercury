@@ -35,6 +35,7 @@
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module libs.

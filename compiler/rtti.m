@@ -29,7 +29,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.

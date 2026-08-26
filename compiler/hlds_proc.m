@@ -204,8 +204,6 @@
     maybe(mode_constraint)::out) is det.
 :- pred proc_info_get_cse_nopull_contexts(proc_info::in,
     list(prog_context)::out) is det.
-:- pred proc_info_get_maybe_untuple_info(proc_info::in,
-    maybe(untuple_proc_info)::out) is det.
 :- pred proc_info_get_var_name_remap(proc_info::in,
     map(prog_var, string)::out) is det.
 :- pred proc_info_get_statevar_warnings(proc_info::in,
@@ -222,12 +220,16 @@
     has_parallel_conj::out) is det.
 :- pred proc_info_get_has_user_event(proc_info::in,
     has_user_event::out) is det.
+:- pred proc_info_get_needs_maxfr_slot(proc_info::in,
+    needs_maxfr_slot::out) is det.
 :- pred proc_info_get_has_tail_rec_call(proc_info::in,
     has_tail_rec_call::out) is det.
 :- pred proc_info_get_oisu_kind_fors(proc_info::in,
     list(oisu_pred_kind_for)::out) is det.
 :- pred proc_info_get_maybe_require_tailrec_info(proc_info::in,
     maybe(require_tail_recursion)::out) is det.
+:- pred proc_info_get_obsolete_in_favour_of(proc_info::in,
+    maybe(list(sym_name_arity))::out) is det.
 :- pred proc_info_get_reg_r_headvars(proc_info::in,
     set_of_progvar::out) is det.
 :- pred proc_info_get_maybe_arg_info(proc_info::in,
@@ -237,18 +239,16 @@
 :- pred proc_info_get_initial_liveness(proc_info::in,
     codegen_liveness::out) is det.
 :- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
-:- pred proc_info_get_needs_maxfr_slot(proc_info::in,
-    needs_maxfr_slot::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
 :- pred proc_info_get_maybe_proc_table_io_info(proc_info::in,
     maybe(proc_table_io_info)::out) is det.
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
-:- pred proc_info_get_obsolete_in_favour_of(proc_info::in,
-    maybe(list(sym_name_arity))::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
+:- pred proc_info_get_maybe_untuple_info(proc_info::in,
+    maybe(untuple_proc_info)::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
     maybe(arg_size_info)::out) is det.
 :- pred proc_info_get_maybe_termination_info(proc_info::in,
@@ -287,8 +287,6 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_cse_nopull_contexts(list(prog_context)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_var_name_remap(map(prog_var, string)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_statevar_warnings(list(warn_spec)::in,
@@ -307,11 +305,15 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_has_user_event(has_user_event::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_needs_maxfr_slot(needs_maxfr_slot::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_has_tail_rec_call(has_tail_rec_call::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_require_tailrec_info(require_tail_recursion::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_obsolete_in_favour_of(maybe(list(sym_name_arity))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_reg_r_headvars(set_of_progvar::in,
     proc_info::in, proc_info::out) is det.
@@ -323,19 +325,16 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_stack_slots(stack_slots::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_needs_maxfr_slot(needs_maxfr_slot::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_proc_table_io_info(maybe(proc_table_io_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_obsolete_in_favour_of(
-    maybe(list(sym_name_arity))::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
     maybe(deep_profile_proc_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_arg_size_info(maybe(arg_size_info)::in,
     proc_info::in, proc_info::out) is det.
@@ -393,7 +392,6 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     CanProcess = can_process_now,
     % argument DetismDecl
     CseNopullContexts = [],
-    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
     set.init(DeletedCallees),
@@ -405,6 +403,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         has_no_mutual_tail_rec_call),
     OisuKinds = [],
     MaybeRequireTailRecursion = no,
+    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
     set_of_var.init(RegR_HeadVars),
     MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
     MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
@@ -414,8 +413,8 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeObsoleteInFavourOf = no `with_type` maybe(list(sym_name_arity)),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
+    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
     Term2Info = term_constr_main_types.term2_info_init,
@@ -430,7 +429,6 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         ItemNumber,
         MaybeHeadModesConstr,
         CseNopullContexts,
-        MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
@@ -440,20 +438,21 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         HasForeignProcExports,
         HasParallelConj,
         HasUserEvent,
+        NeedsMaxfrSlot,
         HasTailCallEvent,
         OisuKinds,
         MaybeRequireTailRecursion,
+        MaybeObsoleteInFavourOf,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
         InitialLiveness,
         StackSlots,
-        NeedsMaxfrSlot,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
+        MaybeUntupleInfo,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -555,7 +554,6 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
         ItemNumber,
         MaybeHeadModesConstr,
         CseNopullContexts,
-        MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
@@ -565,20 +563,21 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
         HasForeignProcExports,
         HasParallelConj,
         HasUserEvent,
+        NeedsMaxfrSlot,
         HasTailCallEvent,
         OisuKinds,
         MaybeRequireTailRecursion,
+        MaybeObsoleteInFavourOf,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
         InitialLiveness,
         StackSlots,
-        NeedsMaxfrSlot,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
+        MaybeUntupleInfo,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -678,7 +677,6 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         ItemNumber,
         MaybeHeadModesConstr,
         CseNopullContexts,
-        MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
@@ -688,20 +686,21 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         HasForeignProcExports,
         HasParallelConj,
         HasUserEvent,
+        NeedsMaxfrSlot,
         HasTailCallEvent,
         OisuKinds,
         MaybeRequireTailRecursion,
+        MaybeObsoleteInFavourOf,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
         InitialLiveness,
         StackSlots,
-        NeedsMaxfrSlot,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
+        MaybeUntupleInfo,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -729,7 +728,6 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         ItemNumber,
         MaybeHeadModesConstr,
         CseNopullContexts,
-        MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
         DeletedCallees,
@@ -739,20 +737,21 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         HasForeignProcExports,
         HasParallelConj,
         HasUserEvent,
+        NeedsMaxfrSlot,
         HasTailCallEvent,
         OisuKinds,
         MaybeRequireTailRecursion,
+        MaybeObsoleteInFavourOf,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
         InitialLiveness,
         StackSlots,
-        NeedsMaxfrSlot,
         MaybeCallTableTip,
         MaybeTableIOInfo,
         MaybeTableAttrs,
-        MaybeObsoleteInFavourOf,
         MaybeDeepProfProcInfo,
+        MaybeUntupleInfo,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -911,15 +910,6 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % See Mantis bug #496.
                 psi_cse_nopull_contexts         :: list(prog_context),
 
-                % If set, it means this procedure was created from another
-                % procedure by the untupling transformation. This slot records
-                % which of the procedure's arguments were derived from which
-                % arguments in the original procedure.
-                %
-                % This is effectively a record of the *procedure*'s origin.
-                % (The pred_origin field records the *predicate*'s origin.)
-                psi_maybe_untuple_info          :: maybe(untuple_proc_info),
-
                 % Remaps the compiler-created variables named HeadVar__N
                 % to the user-given variable names that actually occupied the
                 % corresponding argument slots in the procedure's clauses.
@@ -996,7 +986,20 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % This slot is set by the simplification pass.
                 psi_proc_has_user_event         :: has_user_event,
 
+                % True iff tracing is enabled, this is a procedure that lives
+                % on the det stack, and the code of this procedure may create
+                % a frame on the det stack. (Only in these circumstances do we
+                % need to reserve a stack slot to hold the value of maxfr
+                % at the call, for use in implementing retry.) This slot
+                % is used only with the LLDS backend XXX. Its value is set
+                % during the live_vars pass; it is invalid before then.
+                psi_needs_maxfr_slot            :: needs_maxfr_slot,
+
                 psi_proc_has_tail_rec_call      :: has_tail_rec_call,
+
+                %-----------------------------------------------------------%
+                % Information about pragmas.
+                %-----------------------------------------------------------%
 
                 % Is the procedure mentioned in any order-independent-state-
                 % update pragmas? If yes, list the role of this procedure
@@ -1007,6 +1010,14 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % pragma) that we suppress or enable warnings about tail
                 % recursion for this procedure?
                 psi_maybe_require_tailrec   :: maybe(require_tail_recursion),
+
+                % If this procedure is marked as obsolete, this will be a
+                % "yes(_)" wrapped around a list of the predicate names that
+                % the compiler should suggest as possible replacements.
+                % (Note that the list of possible replacements may be empty.)
+                % In the usual case where this predicate is NOT marked
+                % as obsolete, this will be "no".
+                psi_proc_obsolete_in_favour_of :: maybe(list(sym_name_arity)),
 
                 %-----------------------------------------------------------%
                 % Information needed by the LLDS code generator.
@@ -1029,15 +1040,6 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
 
                 % Allocation of variables to stack slots.
                 psi_stack_slots                 :: stack_slots,
-
-                % True iff tracing is enabled, this is a procedure that lives
-                % on the det stack, and the code of this procedure may create
-                % a frame on the det stack. (Only in these circumstances do we
-                % need to reserve a stack slot to hold the value of maxfr
-                % at the call, for use in implementing retry.) This slot
-                % is used only with the LLDS backend XXX. Its value is set
-                % during the live_vars pass; it is invalid before then.
-                psi_needs_maxfr_slot            :: needs_maxfr_slot,
 
                 %-----------------------------------------------------------%
                 % Information needed for tabling.
@@ -1076,15 +1078,6 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
 
                 psi_table_attributes            :: maybe(table_attributes),
 
-                % If this procedure is marked as obsolete, this will be a
-                % "yes(_)" wrapped around a list of the predicate names that
-                % the compiler should suggest as possible replacements.
-                % (Note that the list of possible replacements may be empty.)
-                % In the usual case where this predicate is NOT marked
-                % as obsolete, this will be "no".
-                psi_proc_obsolete_in_favour_of  :: maybe(list(
-                                                    sym_name_arity)),
-
                 %-----------------------------------------------------------%
                 % Information needed for deep profiling.
                 %-----------------------------------------------------------%
@@ -1095,9 +1088,18 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % The results of program analyses.
                 %-----------------------------------------------------------%
 
+                % If set, it means this procedure was created from another
+                % procedure by the untupling transformation. This slot records
+                % which of the procedure's arguments were derived from which
+                % arguments in the original procedure.
+                %
+                % This is effectively a record of the *procedure*'s origin.
+                % (The pred_origin field records the *predicate*'s origin.)
+                psi_maybe_untuple_info          :: maybe(untuple_proc_info),
+
                 % Information about the relative sizes of the input and output
                 % args of the procedure. Set by termination analysis.
-                psi_maybe_arg_sizes             :: maybe(arg_size_info),
+                psi_maybe_arg_size_infos        :: maybe(arg_size_info),
 
                 % The termination properties of the procedure.
                 % Set by termination analysis.
@@ -1153,8 +1155,6 @@ proc_info_get_maybe_head_modes_constr(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_head_modes_constr.
 proc_info_get_cse_nopull_contexts(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_cse_nopull_contexts.
-proc_info_get_maybe_untuple_info(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_maybe_untuple_info.
 proc_info_get_var_name_remap(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_var_name_remap.
 proc_info_get_statevar_warnings(PI, X) :-
@@ -1173,12 +1173,16 @@ proc_info_get_has_parallel_conj(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_parallel_conj.
 proc_info_get_has_user_event(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_user_event.
+proc_info_get_needs_maxfr_slot(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_needs_maxfr_slot.
 proc_info_get_has_tail_rec_call(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_tail_rec_call.
 proc_info_get_oisu_kind_fors(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_oisu_kind_fors.
 proc_info_get_maybe_require_tailrec_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_require_tailrec.
+proc_info_get_obsolete_in_favour_of(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of.
 proc_info_get_reg_r_headvars(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_reg_r_headvars.
 proc_info_get_maybe_arg_info(PI, X) :-
@@ -1189,20 +1193,18 @@ proc_info_get_initial_liveness(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_initial_liveness.
 proc_info_get_stack_slots(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_stack_slots.
-proc_info_get_needs_maxfr_slot(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_needs_maxfr_slot.
 proc_info_get_call_table_tip(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_call_table_tip.
 proc_info_get_maybe_proc_table_io_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_table_io_info.
 proc_info_get_table_attributes(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_table_attributes.
-proc_info_get_obsolete_in_favour_of(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of.
 proc_info_get_maybe_deep_profile_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_deep_prof_info.
+proc_info_get_maybe_untuple_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_untuple_info.
 proc_info_get_maybe_arg_size_info(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_maybe_arg_sizes.
+    X = PI ^ proc_sub_info ^ psi_maybe_arg_size_infos.
 proc_info_get_maybe_termination_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_termination.
 proc_info_get_termination2_info(PI, X) :-
@@ -1239,8 +1241,6 @@ proc_info_set_head_modes_constraint(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_head_modes_constr := yes(X).
 proc_info_set_cse_nopull_contexts(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_cse_nopull_contexts := X.
-proc_info_set_maybe_untuple_info(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_maybe_untuple_info := X.
 proc_info_set_var_name_remap(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_var_name_remap := X.
 proc_info_set_statevar_warnings(X, !PI) :-
@@ -1259,12 +1259,16 @@ proc_info_set_has_parallel_conj(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_parallel_conj := X.
 proc_info_set_has_user_event(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_user_event := X.
+proc_info_set_needs_maxfr_slot(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_needs_maxfr_slot := X.
 proc_info_set_has_tail_rec_call(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_tail_rec_call := X.
 proc_info_set_oisu_kind_fors(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_oisu_kind_fors := X.
 proc_info_set_require_tailrec_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_require_tailrec := yes(X).
+proc_info_set_obsolete_in_favour_of(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of := X.
 proc_info_set_reg_r_headvars(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_reg_r_headvars := X.
 proc_info_set_arg_info(X, !PI) :-
@@ -1275,20 +1279,18 @@ proc_info_set_initial_liveness(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_initial_liveness := X.
 proc_info_set_stack_slots(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_stack_slots := X.
-proc_info_set_needs_maxfr_slot(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_needs_maxfr_slot := X.
 proc_info_set_call_table_tip(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_call_table_tip := X.
 proc_info_set_maybe_proc_table_io_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_table_io_info := X.
 proc_info_set_table_attributes(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_table_attributes := X.
-proc_info_set_obsolete_in_favour_of(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_proc_obsolete_in_favour_of := X.
 proc_info_set_maybe_deep_profile_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_deep_prof_info := X.
+proc_info_set_maybe_untuple_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_untuple_info := X.
 proc_info_set_maybe_arg_size_info(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_maybe_arg_sizes := X.
+    !PI ^ proc_sub_info ^ psi_maybe_arg_size_infos := X.
 proc_info_set_maybe_termination_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_termination := X.
 proc_info_set_termination2_info(X, !PI) :-

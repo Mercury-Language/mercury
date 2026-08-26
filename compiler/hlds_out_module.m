@@ -121,6 +121,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

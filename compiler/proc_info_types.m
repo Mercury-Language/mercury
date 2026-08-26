@@ -24,8 +24,8 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.
-:- import_module mdbcomp.goal_path.
-:- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.goal_path.                 % for forward_goal_path
+:- import_module mdbcomp.program_representation.    % for coverage_point_info
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
@@ -40,15 +40,154 @@
 
 %---------------------------------------------------------------------------%
 
+:- type can_process
+    --->    cannot_process_yet
+    ;       can_process_now.
+
+    % Values of this type are used only for choosing the wording of
+    % determinism diagnostics.
+:- type detism_decl
+    --->    detism_decl_explicit
+    ;       detism_decl_implicit
+            % The determinism of the procedure is not declared,
+            % but the procedure needs no declaration, because either
+            %
+            % - the procedure is for a function, which are implicitly det
+            %   unless explicitly declared otherwise, or
+            %
+            % - the procedure was created by the compiler, e.g.
+            %   to implement a unify/index/compare predicate,
+            %   to implement an instance method, or as implied mode.
+    ;       detism_decl_none.
+            % The determinism of the procedure is not declared.
+
+:- type is_address_taken
+    --->    address_is_taken
+    ;       address_is_not_taken.
+
+    % Is a procedure the subject of any foreign_export pragmas?
+    %
+:- type proc_foreign_exports
+    --->    no_foreign_exports
+    ;       has_foreign_exports.
+
+:- type has_parallel_conj
+    --->    has_parallel_conj
+    ;       has_no_parallel_conj.
+
+:- type has_user_event
+    --->    has_user_event
+    ;       has_no_user_event.
+
+:- type needs_maxfr_slot
+    --->    needs_maxfr_slot
+    ;       does_not_need_maxfr_slot.
+
+%---------------------%
+
+:- type has_tail_rec_call
+    --->    has_tail_rec_call(
+                has_self_tail_rec_call,
+                has_mutual_tail_rec_call
+            ).
+
+:- type has_self_tail_rec_call
+    --->    has_self_tail_rec_call
+    ;       has_no_self_tail_rec_call.
+
+:- type has_mutual_tail_rec_call
+    --->    has_mutual_tail_rec_call
+    ;       has_no_mutual_tail_rec_call.
+
+%---------------------------------------------------------------------------%
+
+:- type oisu_pred_kind_for
+    --->    oisu_creator_for(type_ctor)
+    ;       oisu_mutator_for(type_ctor)
+    ;       oisu_destructor_for(type_ctor).
+
     % NOTE: `codegen_liveness' records liveness in the sense used by code
     % generation. This is *not* the same thing as the notion of liveness
     % used by mode analysis! See compiler/notes/glossary.html.
     %
 :- type codegen_liveness == set_of_progvar. % The live variables.
 
-:- type is_address_taken
-    --->    address_is_taken
-    ;       address_is_not_taken.
+%---------------------------------------------------------------------------%
+
+:- type special_proc_return
+    --->    generator_return(
+                % The generator is stored in this location. We can't use an
+                % rval to represent the location, since we don't want this
+                % module to depend on the ll_backend package.
+                generator_rval          :: string,
+
+                % What should we pass as the value of the debug parameter
+                % in the call to MR_tbl_mmos_return_answer?
+                return_debug            :: string
+            ).
+
+%---------------------%
+
+:- type proc_table_io_info
+    --->    proc_table_io_info(
+                % The information we need to display an I/O action to the user.
+                %
+                % The table_arg_infos correspond one to one to the elements
+                % of the block saved for an I/O action. The first element
+                % will be the pointer to the proc_layout of the action's
+                % procedure.
+                %
+                % The right tvarset for interpreting the types in the
+                % table_arg_infos is the one in the proc_info in which
+                % the proc_table_io_info is stored.
+
+                maybe(table_arg_infos)
+            ).
+
+:- type table_arg_infos
+    --->    table_arg_infos(
+                list(table_arg_info),
+                map(tvar, table_locn)
+            ).
+
+:- type table_arg_info
+    --->    table_arg_info(
+                orig_var_num            :: int,
+                orig_var_name           :: string,
+                slot_num                :: int,
+                arg_type                :: mer_type
+            ).
+
+    % This type is analogous to layout_locn in llds.m, but it refers
+    % not to lvals, but to slots in the extended answer blocks used by
+    % I/O action tabling for declarative debugging.
+:- type table_locn
+    --->    table_locn_direct(int)
+    ;       table_locn_indirect(int, int).
+
+%---------------------------------------------------------------------------%
+
+:- type deep_profile_proc_info
+    --->    deep_profile_proc_info(
+                % This field is set during the first part of the deep profiling
+                % transformation; tail recursion, if that is enabled.
+                deep_rec                :: maybe(deep_recursion_info),
+
+                % This field is set during the second part; it will be bound
+                % to `no' before and during the first part, and to `yes'
+                % after the second. The contents of this field govern
+                % what will go into MR_ProcStatic structures.
+                deep_layout             :: maybe(hlds_deep_layout),
+
+                % This field stores the original body of a procedure,
+                % before either part of the deep profiling transformation
+                % was executed. For inner procedures created by the tail
+                % recursion part of the deep profiling transformation,
+                % it holds the original body of the outer procedure.
+                deep_orig_body          :: deep_original_body
+            ).
+
+%---------------------%
 
 :- type deep_recursion_info
     --->    deep_recursion_info(
@@ -77,6 +216,25 @@
                 % tail calls. (Call sites are numbered depth-first,
                 % left-to-right, starting from zero.)
                 rec_call_sites          :: list(int)
+            ).
+
+%---------------------%
+
+:- type hlds_deep_layout
+    --->    hlds_deep_layout(
+                deep_layout_static      :: hlds_proc_static,
+                deep_layout_excp        :: hlds_deep_excp_vars
+            ).
+
+%---------------------%
+
+:- type hlds_proc_static
+    --->    hlds_proc_static(           % defines part of MR_ProcStatic
+                proc_static_file_name   :: string,
+                proc_static_line_number :: int,
+                proc_is_in_interface    :: bool,
+                call_site_statics       :: list(call_site_static_data),
+                coverage_points         :: list(coverage_point_info)
             ).
 
 :- type call_site_static_data           % defines MR_CallSiteStatic
@@ -108,15 +266,6 @@
                 callback_goal_path      :: forward_goal_path
             ).
 
-:- type hlds_proc_static
-    --->    hlds_proc_static(           % defines part of MR_ProcStatic
-                proc_static_file_name   :: string,
-                proc_static_line_number :: int,
-                proc_is_in_interface    :: bool,
-                call_site_statics       :: list(call_site_static_data),
-                coverage_points         :: list(coverage_point_info)
-            ).
-
     % The hlds_deep_excp_vars gives the variables that hold the values returned
     % by the call port code, which are needed to let exception.throw perform
     % the work we need to do at the excp port.
@@ -130,31 +279,7 @@
                 old_outermost           :: maybe(prog_var)
             ).
 
-:- type hlds_deep_layout
-    --->    hlds_deep_layout(
-                deep_layout_static      :: hlds_proc_static,
-                deep_layout_excp        :: hlds_deep_excp_vars
-            ).
-
-:- type deep_profile_proc_info
-    --->    deep_profile_proc_info(
-                % This field is set during the first part of the deep profiling
-                % transformation; tail recursion, if that is enabled.
-                deep_rec                :: maybe(deep_recursion_info),
-
-                % This field is set during the second part; it will be bound
-                % to `no' before and during the first part, and to `yes'
-                % after the second. The contents of this field govern
-                % what will go into MR_ProcStatic structures.
-                deep_layout             :: maybe(hlds_deep_layout),
-
-                % This field stores the original body of a procedure,
-                % before either part of the deep profiling transformation
-                % was executed. For inner procedures created by the tail
-                % recursion part of the deep profiling transformation,
-                % it holds the original body of the outer procedure.
-                deep_orig_body          :: deep_original_body
-            ).
+%---------------------%
 
 :- type deep_original_body
     --->    deep_original_body(
@@ -165,216 +290,14 @@
                 dob_detism              :: determinism
             ).
 
-:- type table_arg_infos
-    --->    table_arg_infos(
-                list(table_arg_info),
-                map(tvar, table_locn)
-            ).
-
-:- type table_arg_info
-    --->    table_arg_info(
-                orig_var_num            :: int,
-                orig_var_name           :: string,
-                slot_num                :: int,
-                arg_type                :: mer_type
-            ).
-
-    % This type is analogous to layout_locn in llds.m, but it refers
-    % not to lvals, but to slots in the extended answer blocks used by
-    % I/O action tabling for declarative debugging.
-:- type table_locn
-    --->    table_locn_direct(int)
-    ;       table_locn_indirect(int, int).
-
-    % This type differs from the type table_step_kind in table_statistics.m
-    % in the library in that
-    % (a) in gives more information about the type of the corresponding
-    % argument (if this info is needed and available),
-    % (b) it doesn't have to be an enum, and
-    % (c) it doesn't have to handle dummy steps.
-    %
-:- type table_trie_step
-    --->    table_trie_step_dummy
-    ;       table_trie_step_int(int_type)
-    ;       table_trie_step_char
-    ;       table_trie_step_string
-    ;       table_trie_step_float
-    ;       table_trie_step_enum(
-                % The int gives the maximum enum value in the enum type + 1,
-                % and thus the size of the corresponding trie node.
-                % If the enum type is not a subtype, then the value is equal to
-                % the number of alternatives in the type.
-                int
-            )
-    ;       table_trie_step_foreign_enum
-    ;       table_trie_step_general(
-                mer_type,
-                table_is_poly,
-                table_value_or_addr
-            )
-    ;       table_trie_step_typeinfo
-    ;       table_trie_step_typeclassinfo
-    ;       table_trie_step_promise_implied.
-
-:- type table_is_poly
-    --->    table_is_mono       % The table type is monomorphic.
-    ;       table_is_poly.      % The table type is polymorphic.
-
-:- type table_value_or_addr
-    --->    table_value         % We are tabling the value itself.
-    ;       table_addr.         % We are tabling only the address.
-
-    % Return a description of what kind of statistics we collect for a trie
-    % step of a given kind. The description is the name of a value in the C
-    % enum type MR_TableStepStatsKind. (We will need to generalize this
-    % when we implement tabling for non-C backends.)
-    %
-:- func table_step_stats_kind(table_trie_step) = string.
-
-:- type proc_table_io_info
-    --->    proc_table_io_info(
-                % The information we need to display an I/O action to the user.
-                %
-                % The table_arg_infos correspond one to one to the elements
-                % of the block saved for an I/O action. The first element
-                % will be the pointer to the proc_layout of the action's
-                % procedure.
-                %
-                % The right tvarset for interpreting the types in the
-                % table_arg_infos is the one in the proc_info in which
-                % the proc_table_io_info is stored.
-
-                maybe(table_arg_infos)
-            ).
-
-:- type table_step_desc
-    --->    table_step_desc(
-                tsd_var_name                :: string,
-                tsd_step                    :: table_trie_step
-            ).
-
-:- type proc_table_struct_info
-    --->    proc_table_struct_info(
-                % The information we need to create the data structures
-                % created by tabling for a procedure, and to interpret them
-                % for the debugger (except the information -such as
-                % determinism- that is already available from proc_layout
-                % structures.
-                %
-                % The table_arg_infos list first all the input arguments,
-                % then all the output arguments.
-                %
-                % The right tvarset for interpreting the types in the
-                % table_arg_infos is the one stored below. It is taken from
-                % the proc_info of the procedure whose table this structure
-                % describes. Since we care only about the shapes of the types,
-                % we don't care about neither the actual numerical values
-                % nor the names of the type variables, so we don't care if
-                % the tvarset in that proc_info changes after table_gen.m
-                % takes the snapshot stored here.
-                %
-                % We record the rtti_proc_label of the procedure whose table
-                % this is. We can't record its identity in the form of a
-                % pred_proc_id, since that won't work if the procedure is
-                % deleted before the code generation phase.
-
-                ptsi_proc_label             :: rtti_proc_label,
-                ptsi_tvarset                :: tvarset,
-                ptsi_context                :: prog_context,
-                ptsi_num_inputs             :: int,
-                ptsi_num_outputs            :: int,
-                ptsi_input_steps            :: list(table_step_desc),
-                ptsi_maybe_output_steps     :: maybe(list(table_step_desc)),
-                ptsi_gen_arg_infos          :: table_arg_infos,
-                ptsi_eval_method            :: tabled_eval_method
-            ).
-
-:- type special_proc_return
-    --->    generator_return(
-                % The generator is stored in this location. We can't use an
-                % rval to represent the location, since we don't want this
-                % module to depend on the ll_backend package.
-                generator_rval          :: string,
-
-                % What should we pass as the value of the debug parameter
-                % in the call to MR_tbl_mmos_return_answer?
-                return_debug            :: string
-            ).
-
-:- type structure_sharing_domain_and_status
-    --->    structure_sharing_domain_and_status(
-                structure_sharing_domain,
-                analysis_status
-            ).
-
-:- type structure_reuse_domain_and_status
-    --->    structure_reuse_domain_and_status(
-                structure_reuse_domain,
-                analysis_status
-            ).
+%---------------------------------------------------------------------------%
 
 :- type untuple_proc_info
     --->    untuple_proc_info(
                 map(prog_var, list(prog_var))
             ).
 
-:- type can_process
-    --->    cannot_process_yet
-    ;       can_process_now.
-
-    % Values of this type are used only for choosing the wording of
-    % determinism diagnostics.
-:- type detism_decl
-    --->    detism_decl_explicit
-    ;       detism_decl_implicit
-            % The determinism of the procedure is not declared,
-            % but the procedure needs no declaration, because either
-            %
-            % - the procedure is for a function, which are implicitly det
-            %   unless explicitly declared otherwise, or
-            %
-            % - the procedure was created by the compiler, e.g.
-            %   to implement a unify/index/compare predicate,
-            %   to implement an instance method, or as implied mode.
-    ;       detism_decl_none.
-            % The determinism of the procedure is not declared.
-
-:- type needs_maxfr_slot
-    --->    needs_maxfr_slot
-    ;       does_not_need_maxfr_slot.
-
-:- type has_parallel_conj
-    --->    has_parallel_conj
-    ;       has_no_parallel_conj.
-
-:- type has_user_event
-    --->    has_user_event
-    ;       has_no_user_event.
-
-:- type has_self_tail_rec_call
-    --->    has_self_tail_rec_call
-    ;       has_no_self_tail_rec_call.
-
-:- type has_mutual_tail_rec_call
-    --->    has_mutual_tail_rec_call
-    ;       has_no_mutual_tail_rec_call.
-
-:- type has_tail_rec_call
-    --->    has_tail_rec_call(
-                has_self_tail_rec_call,
-                has_mutual_tail_rec_call
-            ).
-
-:- type oisu_pred_kind_for
-    --->    oisu_creator_for(type_ctor)
-    ;       oisu_mutator_for(type_ctor)
-    ;       oisu_destructor_for(type_ctor).
-
-    % Is a procedure the subject of any foreign_export pragmas?
-    %
-:- type proc_foreign_exports
-    --->    no_foreign_exports
-    ;       has_foreign_exports.
+%---------------------%
 
     % Gives an indication of whether or not the procedure
     % might throw an exception.
@@ -385,6 +308,8 @@
                 proc_maybe_excep_analysis_status    :: maybe(analysis_status)
             ).
 
+%---------------------%
+
     % Gives an indication of whether or not the procedure modifies the trail.
     %
 :- type proc_trailing_info
@@ -392,6 +317,8 @@
                 proc_trailing_status                :: trailing_status,
                 proc_maybe_trail_analysis_status    :: maybe(analysis_status)
             ).
+
+%---------------------%
 
     % Gives an indication of whether or not the procedure, or one of its
     % subgoals, calls a procedure that is tabled using minimal model tabling.
@@ -406,6 +333,14 @@
                 % framework to determine if there is any benefit in
                 % re-analysing this procedure.
                 proc_mm_analysis_status             :: maybe(analysis_status)
+            ).
+
+%---------------------%
+
+:- type structure_sharing_domain_and_status
+    --->    structure_sharing_domain_and_status(
+                structure_sharing_domain,
+                analysis_status
             ).
 
 :- type structure_sharing_info
@@ -439,6 +374,16 @@
                 s_sharing         :: structure_sharing_domain
             ).
 
+:- func structure_sharing_info_init = structure_sharing_info.
+
+%---------------------%
+
+:- type structure_reuse_domain_and_status
+    --->    structure_reuse_domain_and_status(
+                structure_reuse_domain,
+                analysis_status
+            ).
+
 :- type structure_reuse_info
     --->    structure_reuse_info(
                 maybe_reuse     :: maybe(structure_reuse_domain_and_status),
@@ -464,54 +409,13 @@
                 r_reuse           :: structure_reuse_domain
             ).
 
-:- func structure_sharing_info_init = structure_sharing_info.
-
 :- func structure_reuse_info_init = structure_reuse_info.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module term.
-:- import_module varset.
-
 %---------------------------------------------------------------------------%
-
-table_step_stats_kind(Step) = KindStr :-
-    (
-        ( Step = table_trie_step_int(_)
-        ; Step = table_trie_step_char
-        ; Step = table_trie_step_string
-        ; Step = table_trie_step_float
-        ; Step = table_trie_step_typeinfo
-        ; Step = table_trie_step_typeclassinfo
-        ; Step = table_trie_step_foreign_enum
-        ),
-        KindStr = "MR_TABLE_STATS_DETAIL_HASH"
-    ;
-        Step = table_trie_step_enum(_),
-        KindStr = "MR_TABLE_STATS_DETAIL_ENUM"
-    ;
-        Step = table_trie_step_general(_Type, IsPoly, ValueOrAddr),
-        (
-            ValueOrAddr = table_addr,
-            KindStr = "MR_TABLE_STATS_DETAIL_HASH"
-        ;
-            ValueOrAddr = table_value,
-            (
-                IsPoly = table_is_mono,
-                KindStr = "MR_TABLE_STATS_DETAIL_DU"
-            ;
-                IsPoly = table_is_poly,
-                KindStr = "MR_TABLE_STATS_DETAIL_POLY"
-            )
-        )
-    ;
-        ( Step = table_trie_step_promise_implied
-        ; Step = table_trie_step_dummy
-        ),
-        KindStr = "MR_TABLE_STATS_DETAIL_NONE"
-    ).
 
 structure_sharing_info_init = structure_sharing_info(no, no).
 

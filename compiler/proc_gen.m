@@ -79,6 +79,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_name.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

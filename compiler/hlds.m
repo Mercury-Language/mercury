@@ -39,6 +39,7 @@
 :- include_module pred_proc_id.
 :- include_module pred_table.
 :- include_module proc_info_types.
+:- include_module proc_table_struct.
 :- include_module special_pred.
 :- include_module status.
 

@@ -62,6 +62,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.proc_info_types.
+:- import_module hlds.proc_table_struct.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
