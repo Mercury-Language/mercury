@@ -861,10 +861,18 @@
     --->    ancestor_int0(parse_tree_int0, read_why_int0).
 
 :- type direct_int1_spec
-    --->    direct_int1(parse_tree_int1, read_why_int1).
+    --->    direct_int1(
+                parse_tree_int1,
+                read_why_int1,
+                maybe(shadowed_read_why_int1)
+            ).
 
 :- type direct_int3_spec
-    --->    direct_int3(parse_tree_int3, read_why_int3).
+    --->    direct_int3(
+                parse_tree_int3,
+                read_why_int3,
+                maybe(shadowed_read_why_int3)
+            ).
 
 :- type indirect_int2_spec
     --->    indirect_int2(parse_tree_int2, read_why_int2).
@@ -941,6 +949,12 @@
             % on interface files that are needed only for type representation
             % information.
 
+:- type shadowed_read_why_int1 =< read_why_int1
+    --->    rwi1_ancestor_int_import
+    ;       rwi1_ancestor_int_use
+    ;       rwi1_ancestor_imp_import
+    ;       rwi1_ancestor_imp_use.
+
     % All these record recomp_avail_imp_use as recompilation reason.
 :- type read_why_int2
     --->    rwi2_int_use
@@ -998,6 +1012,12 @@
             %
             % Record recomp_avail_imp_use as recompilation reason.
             % (Since there is no recomp_avail_indirect_use_imp, yet).
+
+:- type shadowed_read_why_int3 =< read_why_int3
+    --->    rwi3_direct_ancestor_int_import
+    ;       rwi3_direct_ancestor_imp_import
+    ;       rwi3_direct_ancestor_int_use
+    ;       rwi3_direct_ancestor_imp_use.
 
 %---------------------------------------------------------------------------%
 

@@ -239,21 +239,28 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
             set.init, AncestorIntUses0, set.init, AncestorImpUses0,
             !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO),
 
-        % Any modules that are explicitly imported or used by declarations in
-        % the current module have visibility determined by those declarations,
-        % instead of inheriting their visibility from ancestor modules.
+        % Commit a5f5f7dbc7 introduced a new rule:
+        %
+        % - If a module contains :- import_module or :- use_module
+        %   declarations that import module M, visibility of M's exports
+        %   within that module will be determined only by those declarations,
+        %   not by import or use declarations in any ancestor module.
+        %
+        % During a transition period, we will accept code written prior to the
+        % rule change, but generate a warning if an entity can only be resolved
+        % using a "shadowed" ancestor import.
         import_and_or_use_map_to_item_avails(do_not_include_implicit,
             ImportAndOrUseMap0, ExplicitIntAvails, ExplicitImpAvails),
         avail_module_names(ExplicitIntAvails ++ ExplicitImpAvails,
             ExplicitAvailModules),
-        set.difference(AncestorIntImports0, ExplicitAvailModules,
-            AncestorIntImports),
-        set.difference(AncestorImpImports0, ExplicitAvailModules,
-            AncestorImpImports),
-        set.difference(AncestorIntUses0, ExplicitAvailModules,
-            AncestorIntUses),
-        set.difference(AncestorImpUses0, ExplicitAvailModules,
-            AncestorImpUses),
+        set.divide_by_set(ExplicitAvailModules, AncestorIntImports0,
+            ShadowedAncestorIntImports, AncestorIntImports),
+        set.divide_by_set(ExplicitAvailModules, AncestorImpImports0,
+            ShadowedAncestorImpImports, AncestorImpImports),
+        set.divide_by_set(ExplicitAvailModules, AncestorIntUses0,
+            ShadowedAncestorIntUses, AncestorIntUses),
+        set.divide_by_set(ExplicitAvailModules, AncestorImpUses0,
+            ShadowedAncestorImpUses, AncestorImpUses),
 
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -308,6 +315,26 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
             set.to_sorted_list(IntUsesImpImports),
             !IntIndirectImported, !HaveParseTreeMaps,
             !Baggage, !AugMakeIntUnit, !IO),
+
+        % For any modules imported both by the current module and ancestor
+        % modules, add the shadowed ancestor imports as a secondary reason
+        % why the .int3 file of the module is read.
+        amend_shadow_imported_module_int3_files(
+            rwi3_direct_ancestor_int_import,
+            set.to_sorted_list(ShadowedAncestorIntImports),
+            !AugMakeIntUnit),
+        amend_shadow_imported_module_int3_files(
+            rwi3_direct_ancestor_imp_import,
+            set.to_sorted_list(ShadowedAncestorImpImports),
+            !AugMakeIntUnit),
+        amend_shadow_imported_module_int3_files(
+            rwi3_direct_ancestor_int_use,
+            set.to_sorted_list(ShadowedAncestorIntUses),
+            !AugMakeIntUnit),
+        amend_shadow_imported_module_int3_files(
+            rwi3_direct_ancestor_imp_use,
+            set.to_sorted_list(ShadowedAncestorImpUses),
+            !AugMakeIntUnit),
 
         % Get the .int3 files of the modules imported in .int3 files.
         grab_module_int3_files_transitively(ProgressStream, Globals,
@@ -511,21 +538,20 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
             set.init, AncestorImpImports0, set.init, AncestorImpUses0,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
 
-        % Any modules that are explicitly imported or used by declarations in
-        % the current module have visibility determined by those declarations,
-        % instead of inheriting their visibility from ancestor modules.
+        % See the comment in grab_unqual_imported_modules_make_int
+        % regarding shadowed ancestor imports.
         import_and_or_use_map_to_item_avails(do_not_include_implicit,
             ImportUseMap, ExplicitIntAvails, ExplicitImpAvails),
         avail_module_names(ExplicitIntAvails ++ ExplicitImpAvails,
             ExplicitAvailModules),
-        set.difference(AncestorIntImports0, ExplicitAvailModules,
-            AncestorIntImports),
-        set.difference(AncestorImpImports0, ExplicitAvailModules,
-            AncestorImpImports),
-        set.difference(AncestorIntUses0, ExplicitAvailModules,
-            AncestorIntUses),
-        set.difference(AncestorImpUses0, ExplicitAvailModules,
-            AncestorImpUses),
+        set.divide_by_set(ExplicitAvailModules, AncestorIntImports0,
+            ShadowedAncestorIntImports, AncestorIntImports),
+        set.divide_by_set(ExplicitAvailModules, AncestorImpImports0,
+            ShadowedAncestorImpImports, AncestorImpImports),
+        set.divide_by_set(ExplicitAvailModules, AncestorIntUses0,
+            ShadowedAncestorIntUses, AncestorIntUses),
+        set.divide_by_set(ExplicitAvailModules, AncestorImpUses0,
+            ShadowedAncestorImpUses, AncestorImpUses),
 
         % Get the .int files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -582,6 +608,26 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
             IntUseImpImports,
             !IntIndirectImported, !IntImpIndirectImported,
             !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
+
+        % For any modules imported both by the current module and ancestor
+        % modules, add the shadowed ancestor imports as secondary reason
+        % why the .int file of the module is read.
+        amend_shadow_imported_module_int1_files(
+            rwi1_ancestor_int_import,
+            set.to_sorted_list(ShadowedAncestorIntImports),
+            !AugCompUnit),
+        amend_shadow_imported_module_int1_files(
+            rwi1_ancestor_imp_import,
+            set.to_sorted_list(ShadowedAncestorImpImports),
+            !AugCompUnit),
+        amend_shadow_imported_module_int1_files(
+            rwi1_ancestor_int_use,
+            set.to_sorted_list(ShadowedAncestorIntUses),
+            !AugCompUnit),
+        amend_shadow_imported_module_int1_files(
+            rwi1_ancestor_imp_use,
+            set.to_sorted_list(ShadowedAncestorImpUses),
+            !AugCompUnit),
 
         % Get the .int2 files of the modules imported in .int files.
         grab_module_int2_files_transitively(ProgressStream, Globals,
@@ -1200,7 +1246,7 @@ grab_module_int1_file(ProgressStream, Globals, ReadWhy1, ModuleName,
                 ReadWhy1 = rwi1_int_use_imp_import,
                 RecompAvail = recomp_avail_int_use_imp_import
             ),
-            DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
+            DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1, no),
             aug_compilation_unit_add_direct_int1_spec(DirectIntSpec,
                 !AugCompUnit),
             module_baggage_add_errors(Errors, !Baggage)
@@ -1321,7 +1367,7 @@ grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
                 ReadWhy3 = rwi3_direct_int_use_imp_import,
                 RecompAvail = recomp_avail_int_use_imp_import
             ),
-            DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
+            DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3, no),
             aug_make_int_unit_add_direct_int3_spec(DirectIntSpec,
                 !AugMakeIntUnit)
         ;
@@ -1345,6 +1391,32 @@ grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
         set.init(IntImports)
     ),
     module_baggage_add_errors(Errors, !Baggage).
+
+%---------------------------------------------------------------------------%
+
+:- pred amend_shadow_imported_module_int1_files(shadowed_read_why_int1::in,
+    list(module_name)::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+
+amend_shadow_imported_module_int1_files(_ReadWhy1, [], !AugCompUnit).
+amend_shadow_imported_module_int1_files(ReadWhy1, [ModuleName | ModuleNames],
+        !AugCompUnit) :-
+    aug_compilation_unit_amend_direct_int1_shadowed_reason(ModuleName,
+        ReadWhy1, !AugCompUnit),
+    amend_shadow_imported_module_int1_files(ReadWhy1, ModuleNames,
+        !AugCompUnit).
+
+:- pred amend_shadow_imported_module_int3_files(shadowed_read_why_int3::in,
+    list(module_name)::in, aug_make_int_unit::in, aug_make_int_unit::out)
+    is det.
+
+amend_shadow_imported_module_int3_files(_ReadWhy3, [], !AugMakeIntUnit).
+amend_shadow_imported_module_int3_files(ReadWhy3, [ModuleName | ModuleNames],
+        !AugMakeIntUnit) :-
+    aug_make_int_unit_amend_direct_int3_shadowed_reason(ModuleName, ReadWhy3,
+        !AugMakeIntUnit),
+    amend_shadow_imported_module_int3_files(ReadWhy3, ModuleNames,
+        !AugMakeIntUnit).
 
 %---------------------------------------------------------------------------%
 
@@ -1698,6 +1770,9 @@ report_any_errors_in_read_opt_file(ModuleErrors, !BlockErrSpecs, !WarnSpecs) :-
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
 :- pred aug_compilation_unit_add_direct_int1_spec(direct_int1_spec::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_amend_direct_int1_shadowed_reason(module_name::in,
+    shadowed_read_why_int1::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
 :- pred aug_compilation_unit_add_indirect_int2_spec(indirect_int2_spec::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
 :- pred aug_compilation_unit_add_plain_opt(parse_tree_plain_opt::in,
@@ -1723,8 +1798,23 @@ aug_compilation_unit_add_ancestor_int_spec(X, !AugCompUnit) :-
 
 aug_compilation_unit_add_direct_int1_spec(X, !AugCompUnit) :-
     Map0 = !.AugCompUnit ^ acu_direct_int1s,
-    X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name,
+    X = direct_int1(PT1, _, _), MN = PT1 ^ pti1_module_name,
     map.det_insert(MN, X, Map0, Map),
+    !AugCompUnit ^ acu_direct_int1s := Map.
+
+aug_compilation_unit_amend_direct_int1_shadowed_reason(MN, ShadowedReadWhy1,
+        !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_direct_int1s,
+    map.lookup(Map0, MN, X0),
+    X0 = direct_int1(PT, OldReadWhy1, MaybeOldShadowedReadWhy1),
+    (
+        MaybeOldShadowedReadWhy1 = no,
+        X = direct_int1(PT, OldReadWhy1, yes(ShadowedReadWhy1)),
+        map.det_update(MN, X, Map0, Map)
+    ;
+        MaybeOldShadowedReadWhy1 = yes(_),
+        Map = Map0
+    ),
     !AugCompUnit ^ acu_direct_int1s := Map.
 
 aug_compilation_unit_add_indirect_int2_spec(X, !AugCompUnit) :-
@@ -1792,6 +1882,9 @@ init_aug_make_int_unit(ParseTreeModuleSrc, AugMakeIntUnit) :-
     aug_make_int_unit::in, aug_make_int_unit::out) is det.
 :- pred aug_make_int_unit_add_direct_int3_spec(direct_int3_spec::in,
     aug_make_int_unit::in, aug_make_int_unit::out) is det.
+:- pred aug_make_int_unit_amend_direct_int3_shadowed_reason(module_name::in,
+    shadowed_read_why_int3::in, aug_make_int_unit::in, aug_make_int_unit::out)
+    is det.
 :- pred aug_make_int_unit_add_indirect_int3_spec(indirect_int3_spec::in,
     aug_make_int_unit::in, aug_make_int_unit::out) is det.
 :- pred aug_make_int_unit_maybe_add_module_version_numbers(
@@ -1808,8 +1901,23 @@ aug_make_int_unit_add_ancestor_int(PT0, !AugMakeIntUnit) :-
 
 aug_make_int_unit_add_direct_int3_spec(X, !AugMakeIntUnit) :-
     Map0 = !.AugMakeIntUnit ^ amiu_direct_int3s,
-    X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name,
+    X = direct_int3(PT3, _, _), MN = PT3 ^ pti3_module_name,
     map.det_insert(MN, X, Map0, Map),
+    !AugMakeIntUnit ^ amiu_direct_int3s := Map.
+
+aug_make_int_unit_amend_direct_int3_shadowed_reason(MN, ShadowedReadWhy3,
+        !AugMakeIntUnit) :-
+    Map0 = !.AugMakeIntUnit ^ amiu_direct_int3s,
+    map.lookup(Map0, MN, X0),
+    X0 = direct_int3(PT, OldReadWhy3, MaybeOldShadowedReadWhy3),
+    (
+        MaybeOldShadowedReadWhy3 = no,
+        X = direct_int3(PT, OldReadWhy3, yes(ShadowedReadWhy3)),
+        map.det_update(MN, X, Map0, Map)
+    ;
+        MaybeOldShadowedReadWhy3 = yes(_),
+        Map = Map0
+    ),
     !AugMakeIntUnit ^ amiu_direct_int3s := Map.
 
 aug_make_int_unit_add_indirect_int3_spec(X, !AugMakeIntUnit) :-

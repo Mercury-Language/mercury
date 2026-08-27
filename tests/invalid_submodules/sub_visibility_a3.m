@@ -17,8 +17,8 @@
     :- module sub1.
     :- interface.
 
-    :- type int_uq ---> int_uq(foo). % error
-    :- type int_fq ---> int_fq(sub_visibility_a3.sub2.foo). % error
+    :- type int_uq ---> int_uq(foo). % deprecated
+    :- type int_fq ---> int_fq(sub_visibility_a3.sub2.foo). % deprecated
 
     :- end_module sub1.
 

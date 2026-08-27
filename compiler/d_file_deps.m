@@ -543,7 +543,8 @@ gather_fim_specs_in_ancestor_int_spec(AncestorIntSpec, !FIMSpecs) :-
     set(fim_spec)::in, set(fim_spec)::out) is det.
 
 gather_fim_specs_in_direct_int1_spec(DirectInt1Spec, !FIMSpecs) :-
-    DirectInt1Spec = direct_int1(ParseTreeInt1, _ReadWhy1),
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _ReadWhy1,
+        _MaybeShadowedReadWhy1),
     gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs).
 
 :- pred gather_fim_specs_in_indirect_int2_spec(indirect_int2_spec::in,

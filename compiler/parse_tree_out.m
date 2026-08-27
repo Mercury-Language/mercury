@@ -515,11 +515,11 @@ mercury_output_ancestor_int_spec(Info, Stream, AncestorIntSpec, !IO) :-
     mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO).
 
 mercury_output_direct_int1_spec(Info, Stream, DirectInt1Spec, !IO) :-
-    DirectInt1Spec = direct_int1(ParseTreeInt1, _),
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _, _),
     mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO).
 
 mercury_output_direct_int3_spec(Info, Stream, DirectInt3Spec, !IO) :-
-    DirectInt3Spec = direct_int3(ParseTreeInt3, _),
+    DirectInt3Spec = direct_int3(ParseTreeInt3, _, _),
     mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO).
 
 mercury_output_indirect_int2_spec(Info, Stream, IndirectInt2Spec, !IO) :-

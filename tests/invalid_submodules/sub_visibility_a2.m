@@ -19,7 +19,7 @@
 
     :- use_module sub_visibility_a2.sub2. % overrides decl in parent
 
-    :- type int_uq ---> int_uq(foo). % error
+    :- type int_uq ---> int_uq(foo). % deprecated
     :- type int_fq ---> int_fq(sub_visibility_a2.sub2.foo). % ok
 
     :- end_module sub1.
@@ -32,7 +32,7 @@
     :- module sub1.
     :- implementation.
 
-    :- type imp_uq ---> imp_uq(foo). % error
+    :- type imp_uq ---> imp_uq(foo). % deprecated
     :- type imp_fq ---> imp_fq(sub_visibility_a2.sub2.foo). % ok
 
     :- end_module sub1.

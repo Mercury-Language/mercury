@@ -325,10 +325,12 @@ replace_in_ancestor_int_spec(Params, AncestorIntSpec0, AncestorIntSpec,
 
 replace_in_direct_int1_spec(Params, DirectIntSpec0, DirectIntSpec,
         !RecompInfo, !UsedModules, !Specs) :-
-    DirectIntSpec0 = direct_int1(OrigParseTree1, ReadWhy1),
+    DirectIntSpec0 = direct_int1(OrigParseTree1, ReadWhy1,
+        MaybeShadowedReadWhy1),
     replace_in_parse_tree_int1(Params, OrigParseTree1, ParseTree1,
         !RecompInfo, !UsedModules, !Specs),
-    DirectIntSpec = direct_int1(ParseTree1, ReadWhy1).
+    DirectIntSpec = direct_int1(ParseTree1, ReadWhy1,
+        MaybeShadowedReadWhy1).
 
 :- pred replace_in_indirect_int2_spec(equiv_params::in,
     indirect_int2_spec::in, indirect_int2_spec::out,

@@ -290,9 +290,44 @@ record_includes_imports_uses_in_ancestor_int_spec(Ancestors,
 
 record_includes_imports_uses_in_direct_int1_spec(Ancestors,
         DirectSpec, !ReadModules, !InclMap) :-
-    DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1),
+    DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1,
+        MaybeShadowedReadWhy1),
+    % This is temporary while we provide a transition period for shadowed
+    % ancestor import declarations.
+    (
+        MaybeShadowedReadWhy1 = yes(ShadowedReadWhy1),
+        (
+            ( ReadWhyInt1 = rwi1_ancestor_int_import
+            ; ReadWhyInt1 = rwi1_ancestor_int_use
+            ; ReadWhyInt1 = rwi1_ancestor_imp_import
+            ; ReadWhyInt1 = rwi1_ancestor_imp_use
+            ; ReadWhyInt1 = rwi1_int_import
+            ; ReadWhyInt1 = rwi1_imp_import
+            ; ReadWhyInt1 = rwi1_int_use
+            ; ReadWhyInt1 = rwi1_imp_use
+            ; ReadWhyInt1 = rwi1_int_use_imp_import
+            ),
+            % All these values equivalent to any value of ShadowedReadWhy1
+            % as far as record_includes_imports_uses_in_parse_tree_int1
+            % is concerned.
+            UseReadWhyInt1 = ReadWhyInt1
+        ;
+            ReadWhyInt1 = rwi1_opt,
+            % rwi1_opt is "stronger" than any value of ShadowedReadWhy1
+            % for record_includes_imports_uses_in_parse_tree_int1.
+            UseReadWhyInt1 = ReadWhyInt1
+        ;
+            ReadWhyInt1 = rwi1_type_repn,
+            % ShadowedReadWhy1 is "stronger" than rwi1_type_repn
+            % but I don't know if this is needed.
+            UseReadWhyInt1 = coerce(ShadowedReadWhy1)
+        )
+    ;
+        MaybeShadowedReadWhy1 = no,
+        UseReadWhyInt1 = ReadWhyInt1
+    ),
     record_includes_imports_uses_in_parse_tree_int1(Ancestors,
-        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap).
+        ParseTreeInt1, UseReadWhyInt1, !ReadModules, !InclMap).
 
 :- pred record_includes_imports_uses_in_indirect_int2_spec(
     set(module_name)::in, indirect_int2_spec::in,
@@ -311,8 +346,9 @@ record_includes_imports_uses_in_indirect_int2_spec(Ancestors,
     module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_direct_int3_spec(Ancestors,
-        IndirectSpec, !ReadModules, !InclMap) :-
-    IndirectSpec = direct_int3(ParseTreeInt3, _ReadWhyInt3),
+        DirectSpec, !ReadModules, !InclMap) :-
+    DirectSpec = direct_int3(ParseTreeInt3, _ReadWhyInt3,
+        _MaybeShadowedReadWhy3),
     record_includes_imports_uses_in_parse_tree_int3(Ancestors,
         ParseTreeInt3, non_abstract_section, !ReadModules, !InclMap).
 

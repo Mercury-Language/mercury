@@ -664,7 +664,8 @@ item_type_repn_info_eqv_to_eqv_type_body(ItemTypeRepnInfoEqv, EqvBody) :-
 
 record_type_repns_in_direct_int3_spec(DirectInt3Spec,
         !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
-    DirectInt3Spec = direct_int3(ParseTreeInt3, _ReadWhy3),
+    DirectInt3Spec = direct_int3(ParseTreeInt3, _ReadWhy3,
+        _MaybeShadowedReadWhy3),
     record_type_repns_in_parse_tree_int3(ParseTreeInt3,
         !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
 

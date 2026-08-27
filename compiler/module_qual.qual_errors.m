@@ -195,16 +195,19 @@
     qual_id_kind::in,
     list(module_name)::in, list(module_name)::in, err_spec::out) is det.
 
+:- type old_submodule_visibility_rule_warning
+    --->    no_warn_shadowed_ancestor_import
+    ;       also_warn_shadowed_ancestor_import.
+
     % report_old_submodule_visibility_match(ErrorContext, Id, IdType,
-    %   ModuleName, Spec):
+    %   ModuleName, WarnType, Spec):
     %
-    % Report a warning where an entity was matched but used the deprecated
-    % submodule visibility rule where entities imported in the implementation
-    % section of an ancestor are made visible in the interface section of its
-    % descendant modules.
+    % Report a warning where an entity was matched but used a deprecated
+    % submodule visibility rule.
     %
 :- pred report_old_submodule_visibility_match(mq_error_context::in, mq_id::in,
-    qual_id_kind::in, module_name::in, warn_spec::out) is det.
+    qual_id_kind::in, module_name::in,
+    old_submodule_visibility_rule_warning::in, warn_spec::out) is det.
 
     % Output an error message about an ill-formed user_inst.
     %
@@ -459,19 +462,39 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     Spec = gen_spec($pred, severity_error, phase_pt2h, [Msg]).
 
 report_old_submodule_visibility_match(ErrorContext, Id, IdType, ModuleName,
-        Spec) :-
+        WarnType, Spec) :-
     mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
         ErrorContextPieces),
     qual_id_kind_to_string(IdType, IdTypeStr),
-    Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
-        words("the"), fixed(IdTypeStr)] ++
-        color_as_subject([wrap_qual_id(Id)]) ++
-        [words("is only visible here due to an import of")] ++
-        color_as_subject([wrap_module_name(ModuleName)]) ++
-        [words("in an ancestor module's implementation section."),
-        words("This behaviour is")] ++
-        color_as_incorrect([words("deprecated.")]) ++
-        [nl],
+    (
+        WarnType = no_warn_shadowed_ancestor_import,
+        Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+            words("warning: the"), fixed(IdTypeStr)] ++
+            color_as_subject([wrap_qual_id(Id)]) ++
+            [words("is only visible here due to an import of")] ++
+            color_as_subject([wrap_module_name(ModuleName)]) ++
+            [words("in an ancestor module's implementation section."),
+            words("This behaviour is")] ++
+            color_as_incorrect([words("deprecated.")]) ++
+            [nl]
+    ;
+        WarnType = also_warn_shadowed_ancestor_import,
+        % In this case, we cannot be sure that the ancestor import that was
+        % used is located in the implementation section of an ancestor module.
+        Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+            words("warning: the"), fixed(IdTypeStr)] ++
+            color_as_subject([wrap_qual_id(Id)]) ++
+            [words("is only visible here under a")] ++
+            color_as_incorrect([words("deprecated")]) ++
+            [words("visibility rule."),
+            words("Under the new rule, the visibility of")] ++
+            color_as_subject([wrap_qual_id(Id)]) ++
+            [words("is determined solely by the import of")] ++
+            color_as_subject([wrap_module_name(ModuleName)]) ++
+            [words("in this module, regardless of any"),
+            words("import declarations in ancestor modules."),
+            nl]
+    ),
     Severity = severity_warning(warn_old_submodule_visibility_rule),
     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 

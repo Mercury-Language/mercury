@@ -17,7 +17,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.module_qual.qual_errors.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -66,12 +65,28 @@
             ).
 
 :- type perm_in_int
-    --->    may_not_use_in_int
-    ;       may_use_in_int(need_qualifier)
-    ;       may_use_in_int_warn(need_qualifier).
+    --->    perm_in_int_qual_unqual(
+                perm_qual           :: permitted_or_not,
+                perm_unqual         :: permitted_or_not
+            ).
 
 :- type perm_in_imp
-    --->    may_use_in_imp(need_qualifier).
+    --->    perm_in_imp_qual_unqual(
+                perm_in_imp_qual    :: permitted_or_not,
+                perm_in_imp_unqual  :: permitted_or_not
+            ).
+
+:- type permitted_or_not
+    --->    not_permitted
+    ;       permitted
+    ;       permitted_with_warning
+            % Permitted under deprecated visibility rule, where the interface
+            % section of a submodule inherits visibility from imports made in
+            % the implementation section of an ancestor module.
+    ;       permitted_with_warning_shadowed.
+            % Permitted under the deprecated visibility rule above, but also
+            % depends on an ancestor import declaration that would be shadowed
+            % by an import declaration in the current module.
 
     % When we process types, typeclasses, insts or modes, we need to know
     % whether they occur in the interface of the current module. This is
@@ -146,6 +161,7 @@
 :- implementation.
 
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.prog_data.
 :- import_module recompilation.
 :- import_module recompilation.item_types.
 :- import_module recompilation.record_uses.
@@ -242,41 +258,18 @@ insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
         % NewPermissions.
         OldPermissions = module_permissions(OldPermInt, OldPermImp),
         NewPermissions = module_permissions(NewPermInt, NewPermImp),
-        (
-            OldPermInt = may_not_use_in_int,
-            PermInt = NewPermInt
-        ;
-            (
-                OldPermInt = may_use_in_int(OldIntNeedQual),
-                OldWarn = no
-            ;
-                OldPermInt = may_use_in_int_warn(OldIntNeedQual),
-                OldWarn = yes
-            ),
-            (
-                NewPermInt = may_not_use_in_int,
-                PermInt = OldPermInt
-            ;
-                (
-                    NewPermInt = may_use_in_int(NewIntNeedQual),
-                    NewWarn = no
-                ;
-                    NewPermInt = may_use_in_int_warn(NewIntNeedQual),
-                    NewWarn = yes
-                ),
-                need_qual_only_if_both(OldIntNeedQual, NewIntNeedQual,
-                    IntNeedQual),
-                ( if NewWarn = yes, OldWarn = yes then
-                    PermInt = may_use_in_int_warn(IntNeedQual)
-                else
-                    PermInt = may_use_in_int(IntNeedQual)
-                )
-            )
+        OldPermInt = perm_in_int_qual_unqual(OldIntQual, OldIntUnqual),
+        NewPermInt = perm_in_int_qual_unqual(NewIntQual, NewIntUnqual),
+        OldPermImp = perm_in_imp_qual_unqual(OldImpQual, OldImpUnqual),
+        NewPermImp = perm_in_imp_qual_unqual(NewImpQual, NewImpUnqual),
+        PermInt = perm_in_int_qual_unqual(
+            update_permission(OldIntQual, NewIntQual),
+            update_permission(OldIntUnqual, NewIntUnqual)
         ),
-        OldPermImp = may_use_in_imp(OldImpNeedQual),
-        NewPermImp = may_use_in_imp(NewImpNeedQual),
-        need_qual_only_if_both(OldImpNeedQual, NewImpNeedQual, ImpNeedQual),
-        PermImp = may_use_in_imp(ImpNeedQual),
+        PermImp = perm_in_imp_qual_unqual(
+            update_permission(OldImpQual, NewImpQual),
+            update_permission(OldImpUnqual, NewImpUnqual)
+        ),
 
         % Update the entry only if it changed.
         ( if
@@ -292,17 +285,25 @@ insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
         map.det_insert(ModuleName, NewPermissions, !PermissionsMap)
     ).
 
-:- pred need_qual_only_if_both(need_qualifier::in, need_qualifier::in,
-    need_qualifier::out) is det.
+:- func update_permission(permitted_or_not, permitted_or_not) =
+    permitted_or_not.
 
-need_qual_only_if_both(NeedQualA, NeedQualB, NeedQual) :-
-    ( if
-        NeedQualA = must_be_qualified,
-        NeedQualB = must_be_qualified
-    then
-        NeedQual = must_be_qualified
-    else
-        NeedQual = may_be_unqualified
+update_permission(OldPermission, NewPermission) = Result :-
+    (
+        OldPermission = not_permitted,
+        Result = NewPermission
+    ;
+        OldPermission = permitted,
+        Result = permitted
+    ;
+        ( OldPermission = permitted_with_warning
+        ; OldPermission = permitted_with_warning_shadowed
+        ),
+        % permitted_with_warning and permitted_with_warning_shadowed will be
+        % used during a transition period. We do not expect to reach this
+        % point because we add the permissions that include warnings after
+        % the ones that do not include them.
+        Result = OldPermission
     ).
 
 %---------------------------------------------------------------------------%
@@ -370,9 +371,9 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName, !Info) :-
         (
             UniqMatchType = match(UniqModuleName)
         ;
-            UniqMatchType = match_with_warning(UniqModuleName),
+            UniqMatchType = match_with_warning(UniqModuleName, WarnType),
             report_old_submodule_visibility_match(ErrorContext, Id0, IdType,
-                UniqModuleName, WarnSpec),
+                UniqModuleName, WarnType, WarnSpec),
             mq_info_record_warning(WarnSpec, !Info)
         ),
         SymName = qualified(UniqModuleName, BaseName),
@@ -444,12 +445,15 @@ convert_used_item_type(qual_id_class) = used_typeclass.
 
 :- type module_match_type
     --->    match(module_name)
-    ;       match_with_warning(module_name).
+    ;       match_with_warning(
+                module_name,
+                old_submodule_visibility_rule_warning
+            ).
 
 :- func matched_module_name(module_match_type) = module_name.
 
 matched_module_name(match(ModuleName)) = ModuleName.
-matched_module_name(match_with_warning(ModuleName)) = ModuleName.
+matched_module_name(match_with_warning(ModuleName, _WarnType)) = ModuleName.
 
 :- pred id_set_search_sym_arity(mq_in_interface::in, id_set::in,
     sym_name::in, string::in, int::in, list(module_match_type)::out,
@@ -529,53 +533,44 @@ add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
     Permissions = module_permissions(PermInInt, PermInImp),
     (
         InInt = mq_used_in_interface,
-        (
-            PermInInt = may_not_use_in_int,
-            !:IntMismatches = [ModuleName | !.IntMismatches]
-        ;
-            (
-                PermInInt = may_use_in_int(NeedQual),
-                MaybeWarn = do_not_warn
-            ;
-                PermInInt = may_use_in_int_warn(NeedQual),
-                MaybeWarn = warn_if_matching
-            ),
-            add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
-                NeedQual, ModuleName, MaybeWarn, !Matches, !QualMismatches)
-        )
+        PermInInt = perm_in_int_qual_unqual(PermQual, PermUnqual)
     ;
         InInt = mq_not_used_in_interface,
-        PermInImp = may_use_in_imp(NeedQual),
-        add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
-            NeedQual, ModuleName, do_not_warn, !Matches, !QualMismatches)
-    ).
-
-:- type maybe_warn_if_matching
-    --->    do_not_warn
-    ;       warn_if_matching.
-
-:- pred add_matching_and_nearmiss_modules_qual(bool::in, need_qualifier::in,
-    module_name::in, maybe_warn_if_matching::in,
-    list(module_match_type)::in, list(module_match_type)::out,
-    list(module_name)::in, list(module_name)::out) is det.
-
-add_matching_and_nearmiss_modules_qual(FullyModuleQualified, NeedQual,
-        ModuleName, MaybeWarn, !Matches, !QualMismatches) :-
-    ( if
-        ( FullyModuleQualified = yes
-        ; NeedQual = may_be_unqualified
-        )
-    then
+        PermInImp = perm_in_imp_qual_unqual(PermQual, PermUnqual)
+    ),
+    (
+        FullyModuleQualified = yes,
+        Permission = PermQual,
+        OtherPermission = PermUnqual
+    ;
+        FullyModuleQualified = no,
+        Permission = PermUnqual,
+        OtherPermission = PermQual
+    ),
+    (
+        Permission = permitted,
+        !:Matches = [match(ModuleName) | !.Matches]
+    ;
         (
-            MaybeWarn = do_not_warn,
-            MatchType = match(ModuleName)
+            Permission = permitted_with_warning,
+            WarnType = no_warn_shadowed_ancestor_import
         ;
-            MaybeWarn = warn_if_matching,
-            MatchType = match_with_warning(ModuleName)
+            Permission = permitted_with_warning_shadowed,
+            WarnType = also_warn_shadowed_ancestor_import
         ),
-        !:Matches = [MatchType | !.Matches]
-    else
-        !:QualMismatches = [ModuleName | !.QualMismatches]
+        !:Matches = [match_with_warning(ModuleName, WarnType) | !.Matches]
+    ;
+        Permission = not_permitted,
+        (
+            OtherPermission = not_permitted,
+            !:IntMismatches = [ModuleName | !.IntMismatches]
+        ;
+            ( OtherPermission = permitted
+            ; OtherPermission = permitted_with_warning
+            ; OtherPermission = permitted_with_warning_shadowed
+            ),
+            !:QualMismatches = [ModuleName | !.QualMismatches]
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -632,10 +627,20 @@ parent_module_is_imported(InInt, ModuleIdSet, ParentModule, ChildModule) :-
     ParentModulePermissions = module_permissions(PermInInt, PermInImp),
     (
         InInt = mq_used_in_interface,
-        PermInInt = may_use_in_int(may_be_unqualified)
+        PermInInt = perm_in_int_qual_unqual(_PermQual, PermUnqual)
     ;
         InInt = mq_not_used_in_interface,
-        PermInImp = may_use_in_imp(may_be_unqualified)
+        PermInImp = perm_in_imp_qual_unqual(_PermQual, PermUnqual)
+    ),
+    require_complete_switch [PermUnqual]
+    (
+        ( PermUnqual = permitted
+        ; PermUnqual = permitted_with_warning
+        ; PermUnqual = permitted_with_warning_shadowed
+        )
+    ;
+        PermUnqual = not_permitted,
+        fail
     ).
 
     % Given a module name, possibly module-qualified, return the name

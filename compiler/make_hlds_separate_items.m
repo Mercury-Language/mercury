@@ -369,7 +369,11 @@ acc_ancestor_int_spec(AncestorIntSpec, !Acc) :-
     item_accumulator::in, item_accumulator::out) is det.
 
 acc_direct_int1_spec(DirectInt1Spec, !Acc) :-
-    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1),
+    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1,
+        _MaybeShadowedReadWhy1),
+    % MaybeShadowedReadWhy1 may give another reason why the .int file read
+    % (due to a shadowed ancestor import declaration) but ReadWhy1 should
+    % take precedence.
     acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc).
 
 :- pred acc_indirect_int2_spec(indirect_int2_spec::in,

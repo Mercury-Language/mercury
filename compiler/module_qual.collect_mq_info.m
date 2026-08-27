@@ -20,7 +20,11 @@
 
 :- type int3_role
     --->    int3_as_src
-    ;       int3_as_direct_int(read_why_int3).
+    ;       int3_as_direct_int(read_why_int3, maybe_shadowed_import).
+
+:- type maybe_shadowed_import
+    --->    not_shadowed_import
+    ;       is_shadowed_import.
 
     % Pass over the given parse tree collecting all defined module, type,
     % inst, mode and class ids, together with their permissions.
@@ -66,9 +70,9 @@
 %---------------------------------------------------------------------------%
 
 collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
-    IntPermInInt = may_use_in_int(may_be_unqualified),
-    ImpPermInInt = may_not_use_in_int,
-    PermInImp = may_use_in_imp(may_be_unqualified),
+    IntPermInInt = perm_in_int_qual_unqual(permitted, permitted),
+    ImpPermInInt = perm_in_int_qual_unqual(not_permitted, not_permitted),
+    PermInImp = perm_in_imp_qual_unqual(permitted, permitted),
     IntPermissions = module_permissions(IntPermInInt, PermInImp),
     ImpPermissions = module_permissions(ImpPermInInt, PermInImp),
 
@@ -203,13 +207,31 @@ collect_mq_info_in_ancestor_int_spec(AncestorIntSpec, !Info) :-
     collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info).
 
 collect_mq_info_in_direct_int1_spec(DirectInt1Spec, !Info) :-
-    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1),
-    collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info).
+    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1,
+        MaybeShadowedReadWhy1),
+    collect_mq_info_in_parse_tree_int1(ReadWhy1, not_shadowed_import,
+        ParseTreeInt1, !Info),
+    (
+        MaybeShadowedReadWhy1 = yes(ShadowedReadWhy1),
+        collect_mq_info_in_parse_tree_int1(coerce(ShadowedReadWhy1),
+            is_shadowed_import, ParseTreeInt1, !Info)
+    ;
+        MaybeShadowedReadWhy1 = no
+    ).
 
 collect_mq_info_in_direct_int3_spec(DirectInt3Spec, !Info) :-
-    DirectInt3Spec = direct_int3(ParseTreeInt3, ReadWhy3),
-    Role = int3_as_direct_int(ReadWhy3),
-    collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info).
+    DirectInt3Spec = direct_int3(ParseTreeInt3, ReadWhy3,
+        MaybeShadowedReadWhy3),
+    RoleA = int3_as_direct_int(ReadWhy3, not_shadowed_import),
+    collect_mq_info_in_parse_tree_int3(RoleA, ParseTreeInt3, !Info),
+    (
+        MaybeShadowedReadWhy3 = yes(ShadowedReadWhy3),
+        RoleB = int3_as_direct_int(coerce(ShadowedReadWhy3),
+            is_shadowed_import),
+        collect_mq_info_in_parse_tree_int3(RoleB, ParseTreeInt3, !Info)
+    ;
+        MaybeShadowedReadWhy3 = no
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -221,10 +243,10 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
         % the ancestor imported that mq_id in its INTERFACE or not.
         % Since we don't know where that import was, this is a
         % conservative approximation.
-        IntPermInInt = may_use_in_int(may_be_unqualified),
-        IntPermInImp = may_use_in_imp(may_be_unqualified),
-        ImpPermInInt = may_use_in_int(may_be_unqualified),
-        ImpPermInImp = may_use_in_imp(may_be_unqualified),
+        IntPermInInt = perm_in_int_qual_unqual(permitted, permitted),
+        IntPermInImp = perm_in_imp_qual_unqual(permitted, permitted),
+        ImpPermInInt = perm_in_int_qual_unqual(permitted, permitted),
+        ImpPermInImp = perm_in_imp_qual_unqual(permitted, permitted),
 
         IntPermissions = module_permissions(IntPermInInt, IntPermInImp),
         ImpPermissions = module_permissions(ImpPermInInt, ImpPermInImp)
@@ -288,50 +310,54 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred collect_mq_info_in_parse_tree_int1(read_why_int1::in,
-    parse_tree_int1::in, mq_info::in, mq_info::out) is det.
+    maybe_shadowed_import::in, parse_tree_int1::in, mq_info::in, mq_info::out)
+    is det.
 
-collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
+collect_mq_info_in_parse_tree_int1(ReadWhy1, IsShadowed, ParseTreeInt1,
+        !Info) :-
     (
         ( ReadWhy1 = rwi1_ancestor_int_import
         ; ReadWhy1 = rwi1_int_import
         ),
-        IntPermInInt = may_use_in_int(may_be_unqualified),
-        IntPermInImp = may_use_in_imp(may_be_unqualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(permitted, permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
     ;
         % Under the new submodule visibility rule,
         % ReadWhy1 = rwi1_ancestor_imp_import should be handled here.
         ReadWhy1 = rwi1_imp_import,
-        IntPermInInt = may_not_use_in_int,
-        IntPermInImp = may_use_in_imp(may_be_unqualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(not_permitted, not_permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
     ;
         ( ReadWhy1 = rwi1_ancestor_int_use
         ; ReadWhy1 = rwi1_int_use
         ),
-        IntPermInInt = may_use_in_int(must_be_qualified),
-        IntPermInImp = may_use_in_imp(must_be_qualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(permitted, not_permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
     ;
         % Under the new submodule visibility rule,
         % ReadWhy1 = rwi1_ancestor_imp_use should be handled here.
         ReadWhy1 = rwi1_imp_use,
-        IntPermInInt = may_not_use_in_int,
-        IntPermInImp = may_use_in_imp(must_be_qualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(not_permitted, not_permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
     ;
         % Old submodule visibility rule: during the transition,
         % allow entities imported in an ancestor implementation section
         % to be visible in the interface section, but generate a warning
         % if that is how an entity is used.
         ReadWhy1 = rwi1_ancestor_imp_import,
-        IntPermInInt = may_use_in_int_warn(may_be_unqualified),
-        IntPermInImp = may_use_in_imp(may_be_unqualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(permitted_with_warning,
+            permitted_with_warning),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
     ;
         % Old submodule visibility rule: as above.
         ReadWhy1 = rwi1_ancestor_imp_use,
-        IntPermInInt = may_use_in_int_warn(must_be_qualified),
-        IntPermInImp = may_use_in_imp(must_be_qualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(permitted_with_warning,
+            not_permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
     ;
         ReadWhy1 = rwi1_int_use_imp_import,
-        IntPermInInt = may_use_in_int(must_be_qualified),
-        IntPermInImp = may_use_in_imp(may_be_unqualified)
+        IntPermInInt0 = perm_in_int_qual_unqual(permitted, not_permitted),
+        IntPermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
     ;
         ReadWhy1 = rwi1_opt,
         % Since we do not collect module qual info for int_for_opt_specs,
@@ -342,6 +368,15 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
         % Since we do not collect module qual info for type_repn_specs,
         % we should never encounter this value of ReadWhy1.
         unexpected($pred, "rwi1_opt")
+    ),
+    (
+        IsShadowed = not_shadowed_import,
+        IntPermInInt = IntPermInInt0,
+        IntPermInImp = IntPermInImp0
+    ;
+        IsShadowed = is_shadowed_import,
+        IntPermInInt = add_warn_shadowed_import_int(IntPermInInt0),
+        IntPermInImp = add_warn_shadowed_import_imp(IntPermInImp0)
     ),
     IntPermissions = module_permissions(IntPermInInt, IntPermInImp),
     % The implementation section of a .int1 file is abstract imported,
@@ -625,55 +660,66 @@ collect_mq_info_in_int_mode_defn(IntPermissions, ModeCtor, CheckedDefn,
 collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     (
         Role = int3_as_src,
-        PermInInt = may_use_in_int(may_be_unqualified),
-        PermInImp = may_use_in_imp(may_be_unqualified)
+        PermInInt = perm_in_int_qual_unqual(permitted, permitted),
+        PermInImp = perm_in_imp_qual_unqual(permitted, permitted)
     ;
-        Role = int3_as_direct_int(ReadWhy3),
+        Role = int3_as_direct_int(ReadWhy3, IsShadowed),
         (
             ( ReadWhy3 = rwi3_direct_ancestor_int_import
             ; ReadWhy3 = rwi3_direct_int_import
             ),
-            PermInInt = may_use_in_int(may_be_unqualified),
-            PermInImp = may_use_in_imp(may_be_unqualified)
+            PermInInt0 = perm_in_int_qual_unqual(permitted, permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
         ;
             ( ReadWhy3 = rwi3_direct_ancestor_int_use
             ; ReadWhy3 = rwi3_direct_int_use
             ; ReadWhy3 = rwi3_indirect_int_use
             ),
-            PermInInt = may_use_in_int(must_be_qualified),
-            PermInImp = may_use_in_imp(must_be_qualified)
+            PermInInt0 = perm_in_int_qual_unqual(permitted, not_permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
         ;
             % Under the new submodule visibility rule,
             % ReadWhy3 = rwi3_direct_ancestor_imp_import should be handled
             % here.
             ReadWhy3 = rwi3_direct_imp_import,
-            PermInInt = may_not_use_in_int,
-            PermInImp = may_use_in_imp(may_be_unqualified)
+            PermInInt0 = perm_in_int_qual_unqual(not_permitted, not_permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
         ;
             % Old submodule visibility rule: during the transition,
             % allow entities imported in an ancestor implementation section
             % to be visible in the interface section, but generate a warning
             % if that is how an entity is used.
             ReadWhy3 = rwi3_direct_ancestor_imp_import,
-            PermInInt = may_use_in_int_warn(may_be_unqualified),
-            PermInImp = may_use_in_imp(may_be_unqualified)
+            PermInInt0 = perm_in_int_qual_unqual(
+                permitted_with_warning, permitted_with_warning),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
         ;
             % Under the new submodule visibility rule,
             % ReadWhy3 = rwi3_direct_ancestor_imp_use should be handled here.
             ( ReadWhy3 = rwi3_direct_imp_use
             ; ReadWhy3 = rwi3_indirect_imp_use
             ),
-            PermInInt = may_not_use_in_int,
-            PermInImp = may_use_in_imp(must_be_qualified)
+            PermInInt0 = perm_in_int_qual_unqual(not_permitted, not_permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
         ;
             % Old submodule visibility rule: as above.
             ReadWhy3 = rwi3_direct_ancestor_imp_use,
-            PermInInt = may_use_in_int_warn(must_be_qualified),
-            PermInImp = may_use_in_imp(must_be_qualified)
+            PermInInt0 = perm_in_int_qual_unqual(permitted_with_warning,
+                not_permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, not_permitted)
         ;
             ReadWhy3 = rwi3_direct_int_use_imp_import,
-            PermInInt = may_use_in_int(must_be_qualified),
-            PermInImp = may_use_in_imp(may_be_unqualified)
+            PermInInt0 = perm_in_int_qual_unqual(permitted, not_permitted),
+            PermInImp0 = perm_in_imp_qual_unqual(permitted, permitted)
+        ),
+        (
+            IsShadowed = not_shadowed_import,
+            PermInInt = PermInInt0,
+            PermInImp = PermInImp0
+        ;
+            IsShadowed = is_shadowed_import,
+            PermInInt = add_warn_shadowed_import_int(PermInInt0),
+            PermInImp = add_warn_shadowed_import_imp(PermInImp0)
         )
     ),
     Permissions = module_permissions(PermInInt, PermInImp),
@@ -711,6 +757,40 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     list.foldl(collect_mq_info_in_item_typeclass(Permissions),
         coerce(IntTypeClasses), !Info),
     list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info).
+
+%---------------------------------------------------------------------------%
+
+:- func add_warn_shadowed_import_int(perm_in_int) = perm_in_int.
+
+add_warn_shadowed_import_int(PermInInt0) = PermInInt :-
+    PermInInt0 = perm_in_int_qual_unqual(PermQual0, PermUnqual0),
+    PermInInt = perm_in_int_qual_unqual(
+        add_warn_shadowed_import_perm(PermQual0),
+        add_warn_shadowed_import_perm(PermUnqual0)
+    ).
+
+:- func add_warn_shadowed_import_imp(perm_in_imp) = perm_in_imp.
+
+add_warn_shadowed_import_imp(PermInImp0) = PermInImp :-
+    PermInImp0 = perm_in_imp_qual_unqual(PermQual0, PermUnqual0),
+    PermInImp = perm_in_imp_qual_unqual(
+        add_warn_shadowed_import_perm(PermQual0),
+        add_warn_shadowed_import_perm(PermUnqual0)
+    ).
+
+:- func add_warn_shadowed_import_perm(permitted_or_not) = permitted_or_not.
+
+add_warn_shadowed_import_perm(Permission0) = Permission :-
+    (
+        Permission0 = not_permitted,
+        Permission = not_permitted
+    ;
+        ( Permission0 = permitted
+        ; Permission0 = permitted_with_warning
+        ; Permission0 = permitted_with_warning_shadowed
+        ),
+        Permission = permitted_with_warning_shadowed
+    ).
 
 %---------------------------------------------------------------------------%
 

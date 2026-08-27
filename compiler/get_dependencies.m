@@ -404,7 +404,7 @@ acc_implicit_avail_needs_in_ancestor_int_spec(AncestorIntSpec,
 
 acc_implicit_avail_needs_in_direct_int1_spec(DirectInt1Spec,
         !ImplicitAvailNeeds) :-
-    DirectInt1Spec = direct_int1(ParseTreeInt1, _),
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _, _),
     acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
         !ImplicitAvailNeeds).
 

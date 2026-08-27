@@ -122,7 +122,12 @@ build_eqv_maps_in_ancestor_int_spec(AncestorIntSpec,
 
 build_eqv_maps_in_direct_int1_spec(DirectIntSpec,
         !TypeEqvMap, !InstEqvMap) :-
-    DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
+    DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1,
+        _MaybeShadowedReadWhy1),
+    % build_eqv_maps_in_parse_tree_int1 does not use ReadWhy1, for the reason
+    % given there. Since shadowed_read_why_int1 is a subset of read_why_int1,
+    % build_eqv_maps_in_parse_tree_int1 would also not have any need to examine
+    % MaybeShadowReadWhy1 either.
     build_eqv_maps_in_parse_tree_int1(ReadWhy1, ParseTreeInt1,
         !TypeEqvMap, !InstEqvMap).
 

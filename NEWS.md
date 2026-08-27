@@ -10,15 +10,16 @@ Changes that may break compatibility
     in the implementation section of a module will make the declarations
     in the interface section of `M` visible in the implementation sections
     of its submodules only. Previously, the declarations would also be also
-    visible in the submodules' interface sections. Code depending on the
-    old behaviour will be accepted for now with a warning message.
-    The warning can be disabled with the
-    `--no-warn-old-submodule-visibility-rule` option.
+    visible in the submodules' interface sections.
 
   - If a module contains `:- import_module` or `:- use_module` declarations
     that import module `M`, visibility of M's exports within that module
     will be determined only by those declarations, not by import or use
     declarations in any ancestor module.
+
+  Code depending on the old behaviours will be accepted for now with
+  a warning message. The warnings can be disabled with the
+  `--no-warn-old-submodule-visibility-rule` option.
 
 * The predicates `read_term/3`, `read_term/4`, `read_term_with_op_table/4`,
   `read_term_with_op_table/5` have been removed from the `term_io` module
