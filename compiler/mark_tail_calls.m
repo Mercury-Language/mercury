@@ -216,6 +216,7 @@
 :- implementation.
 
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_top_functor.
@@ -1191,11 +1192,6 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         Context, Reason, RequestBy, WarnOrError, !Specs) :-
     CallerPredProcId = proc(CallerPredId, CallerProcId),
     module_info_pred_info(ModuleInfo, CallerPredId, CallerPredInfo),
-    CallerPredOrFunc = pred_info_is_pred_or_func(CallerPredInfo),
-    CallerName = pred_info_name(CallerPredInfo),
-    CallerPredFormArity = pred_info_pred_form_arity(CallerPredInfo),
-    CallerPFSNA = pf_sym_name_pred_form_arity(CallerPredOrFunc,
-        unqualified(CallerName), CallerPredFormArity),
     pred_info_get_proc_table(CallerPredInfo, CallerProcTable),
     map.count(CallerProcTable, CallerNumProcs),
     ( if CallerNumProcs > 1 then
@@ -1204,19 +1200,13 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         MaybeCallerProcId = no
     ),
     ( if CallerPredProcId = CalleePredProcId then
-        add_message_for_nontail_self_recursive_call(CallerPFSNA,
+        add_message_for_nontail_self_recursive_call(CallerPredInfo,
             MaybeCallerProcId, Context, Reason, RequestBy, WarnOrError, !Specs)
     else
         CalleePredProcId = proc(CalleePredId, _),
         module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-        CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
-        CalleeName = qualified(pred_info_module(CalleePredInfo),
-            pred_info_name(CalleePredInfo)),
-        CalleePredFormArity = pred_info_pred_form_arity(CalleePredInfo),
-        CalleePFSNA = pf_sym_name_pred_form_arity(CalleePredOrFunc, CalleeName,
-            CalleePredFormArity),
-        add_message_for_nontail_mutual_recursive_call(CallerPFSNA,
-            MaybeCallerProcId, CalleePFSNA, Context, Reason,
+        add_message_for_nontail_mutual_recursive_call(CallerPredInfo,
+            MaybeCallerProcId, CalleePredInfo, Context, Reason,
             RequestBy, WarnOrError, !Specs)
     ).
 
@@ -1230,12 +1220,12 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
     % at Context is not *tail* recursive. Set its severity based on
     % WarnOrError.
     %
-:- pred add_message_for_nontail_self_recursive_call(
-    pf_sym_name_pred_form_arity::in, maybe(proc_id)::in, prog_context::in,
+:- pred add_message_for_nontail_self_recursive_call(pred_info::in,
+    maybe(proc_id)::in, prog_context::in,
     nontail_rec_call_reason::in, report_requested_by::in,
     warning_or_error::in, list(diag_spec)::in, list(diag_spec)::out) is det.
 
-add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
+add_message_for_nontail_self_recursive_call(CallerPredInfo, MaybeCallerProcId,
         Context, Reason, RequestBy, WarnOrError, !Specs) :-
     ( RequestBy = request_by_code,   Option = warn_requested_by_code
     ; RequestBy = request_by_option, Option = warn_non_tail_recursion_self
@@ -1243,14 +1233,14 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
     woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
-    caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces),
+    pred_info_get_pf_sym_name_pred_form_arity(CallerPredInfo, CallerPFSNA),
+    caller_proc_id_pieces(CallerPredInfo, MaybeCallerProcId, ProcIdPieces),
     MainPieces = [WarnOrErrorWord, words("in")] ++ ProcIdPieces ++
         [unqual_pf_sym_name_pred_form_arity(CallerPFSNA), suffix(":"), nl,
         words("this")] ++ color_as_subject([words("self-recursive call")]) ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = gen_spec($pred, Severity, phase_code_gen,
-        [MainMsg | VerboseMsgs]),
+    Spec = gen_spec($pred, Severity, phase_code_gen, [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
     % add_message_for_nontail_mutual_recursive_call(CallerPFSNA,
@@ -1262,21 +1252,23 @@ add_message_for_nontail_self_recursive_call(CallerPFSNA, MaybeCallerProcId,
     % CallerProcId (if specified) at Context is not *tail* recursive.
     % Set its severity based on WarnOrError.
     %
-:- pred add_message_for_nontail_mutual_recursive_call(
-    pf_sym_name_pred_form_arity::in, maybe(proc_id)::in,
-    pf_sym_name_pred_form_arity::in, prog_context::in,
+:- pred add_message_for_nontail_mutual_recursive_call(pred_info::in,
+    maybe(proc_id)::in, pred_info::in, prog_context::in,
     nontail_rec_call_reason::in, report_requested_by::in, warning_or_error::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
-        CalleePFSNA, Context, Reason, RequestBy, WarnOrError, !Specs) :-
+add_message_for_nontail_mutual_recursive_call(CallerPredInfo,
+        MaybeCallerProcId, CalleePredInfo, Context, Reason, RequestBy,
+        WarnOrError, !Specs) :-
     ( RequestBy = request_by_code,   Option = warn_requested_by_code
     ; RequestBy = request_by_option, Option = warn_non_tail_recursion_mutual
     ),
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
     woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord),
-    caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces),
+    caller_proc_id_pieces(CallerPredInfo, MaybeCallerProcId, ProcIdPieces),
+    pred_info_get_pf_sym_name_pred_form_arity(CallerPredInfo, CallerPFSNA),
+    pred_info_get_pf_sym_name_pred_form_arity(CalleePredInfo, CalleePFSNA),
     MainPieces = [WarnOrErrorWord, words("in")] ++ ProcIdPieces ++
         [unqual_pf_sym_name_pred_form_arity(CallerPFSNA), suffix(":"), nl,
         words("this")] ++
@@ -1284,8 +1276,7 @@ add_message_for_nontail_mutual_recursive_call(CallerPFSNA, MaybeCallerProcId,
         [words("to"), unqual_pf_sym_name_pred_form_arity(CalleePFSNA)] ++
         ReasonPieces,
     MainMsg = msg(Context, MainPieces),
-    Spec = gen_spec($pred, Severity, phase_code_gen,
-        [MainMsg | VerboseMsgs]),
+    Spec = gen_spec($pred, Severity, phase_code_gen, [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- pred woe_to_severity_and_string(option::in, warning_or_error::in,
@@ -1302,16 +1293,19 @@ woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord) :-
         WarnOrErrorWord = words("Error")
     ).
 
-:- pred caller_proc_id_pieces(maybe(proc_id)::in, list(format_piece)::out)
-    is det.
+:- pred caller_proc_id_pieces(pred_info::in, maybe(proc_id)::in,
+    list(format_piece)::out) is det.
 
-caller_proc_id_pieces(MaybeCallerProcId, ProcIdPieces) :-
+caller_proc_id_pieces(CallerPredInfo, MaybeCallerProcId, ProcIdPieces) :-
     (
         MaybeCallerProcId = no,
         ProcIdPieces = []
     ;
         MaybeCallerProcId = yes(CallerProcId),
-        proc_id_to_int(CallerProcId, CallerProcNumber0),
+        pred_info_get_proc_table(CallerPredInfo, CallerProcTable),
+        map.lookup(CallerProcTable, CallerProcId, CallerProcInfo),
+        original_proc_id(CallerProcInfo, CallerProcId, OrigCallerProcId),
+        proc_id_to_int(OrigCallerProcId, CallerProcNumber0),
         % Internally, proc_ids start at zero. For users, they start at one.
         CallerProcNumber = CallerProcNumber0 + 1,
         ProcIdPieces = [words("mode number"),
