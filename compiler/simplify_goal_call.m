@@ -136,7 +136,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     else
         true
     ),
-    maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
+    maybe_generate_warning_for_call_to_obsolete_pred_or_proc(PredId, ProcId,
         PredInfo, ProcInfo, GoalInfo0, !Info),
     maybe_generate_warning_for_infinite_loop_call(PredId, ProcId,
         Args, IsBuiltin, PredInfo, ProcInfo, GoalInfo0, NestedContext,
@@ -472,14 +472,14 @@ one_extra_stream_arg(ModuleInfo, NumExtraArgs,
 
 %---------------------%
 
-    % Generate warnings for calls to predicates that have been marked with
-    % `pragma obsolete' declarations.
+    % Generate warnings for calls to predicates or procedures
+    % that have been marked with `pragma obsolete' declarations.
     %
-:- pred maybe_generate_warning_for_call_to_obsolete_predicate(
+:- pred maybe_generate_warning_for_call_to_obsolete_pred_or_proc(
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, hlds_goal_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
+maybe_generate_warning_for_call_to_obsolete_pred_or_proc(PredId, ProcId,
         PredInfo, ProcInfo, GoalInfo, !Info) :-
     ( if
         simplify_do_warn_obsolete(!.Info),

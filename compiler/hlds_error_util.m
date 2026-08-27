@@ -486,12 +486,8 @@ describe_one_proc_name_pred_info_maybe_argmodes(PredInfo, Lang, MaybeColor,
         % The absence or presence of a distinguished return value argument
         % tells the reader whether we are reporting the name of a predicate
         % or a function; no need to specify that same info in a word as well.
-        string.append_list([
-            "`",
-            MaybeModuleNameDotStr,
-            PredName,
-            ArgModesStr,
-            "'"], Descr),
+        string.format("`%s%s%s'",
+            [s(MaybeModuleNameDotStr), s(PredName), s(ArgModesStr)], Descr),
         Pieces = maybe_color_pieces(MaybeColor, [words(Descr)] ++ SuffixPieces)
     else
         % The Pieces we now return identifies a predicate or a function,
