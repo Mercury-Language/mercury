@@ -227,73 +227,34 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
-
-report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
-    get_context_from_scc(ModuleInfo, SCC, Context),
-    ( if set.is_singleton(SCC, PPId) then
-        Pieces1 = [words("Termination constant of")] ++
-            describe_qual_proc_name(ModuleInfo, PPId),
-        Single = yes(PPId)
-    else
-        Pieces1 = [words("Termination constants"),
-            words("of the mutually recursive procedures")] ++
-            describe_several_proc_names(ModuleInfo, no,
-                should_module_qualify, set.to_sorted_list(SCC)),
-        Single = no
-    ),
-    Piece2 = words("set to infinity for the following"),
-    (
-        Errors = [],
-        unexpected($pred, "empty list of errors")
-    ;
-        Errors = [Error],
-        Piece3 = words("reason:"),
-        Pieces = Pieces1 ++ [Piece2, Piece3],
-        describe_term_error(ModuleInfo, Single, Error, no,
-            cord.init, ReasonMsgsCord, !Specs)
-    ;
-        Errors = [_, _ | _],
-        Piece3 = words("reasons:"),
-        Pieces = Pieces1 ++ [Piece2, Piece3],
-        describe_term_errors(ModuleInfo, Single, Errors, 1,
-            cord.init, ReasonMsgsCord, !Specs)
-    ),
-    ReasonMsgs = cord.list(ReasonMsgsCord),
-    Msgs = [msg(Context, Pieces) | ReasonMsgs],
-    Severity = severity_warning(warn_requested_by_option),
-    Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
-    !:Specs = [Spec | !.Specs].
-
 :- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,
     list(term_error)::in, int::in, cord(diag_msg)::in, cord(diag_msg)::out,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-describe_term_errors(_, _, [], _, !Msgs, !Specs).
+describe_term_errors(_, _, [], _, !ReasonMsgs, !Specs).
 describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
-        !Msgs, !Specs) :-
+        !ReasonMsgs, !Specs) :-
     describe_term_error(ModuleInfo, Single, Error, yes(ErrNum0),
-        !Msgs, !Specs),
+        !ReasonMsgs, !Specs),
     describe_term_errors(ModuleInfo, Single, Errors, ErrNum0 + 1,
-        !Msgs, !Specs).
+        !ReasonMsgs, !Specs).
 
 :- pred describe_term_error(module_info::in, maybe(pred_proc_id)::in,
     term_error::in, maybe(int)::in, cord(diag_msg)::in, cord(diag_msg)::out,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
+describe_term_error(ModuleInfo, Single, TermErrorContext, MaybeErrorNum,
         !ReasonMsgs, !Specs) :-
     TermErrorContext = term_error(Context, ErrorKind),
     term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces0,
         Reason),
     (
-        ErrorNum = yes(N),
+        MaybeErrorNum = yes(N),
         string.int_to_string(N, Nstr),
         Preamble = "Reason " ++ Nstr ++ ":",
         Pieces = [fixed(Preamble) | Pieces0]
     ;
-        ErrorNum = no,
+        MaybeErrorNum = no,
         Pieces = Pieces0
     ),
     ReasonMsg = gen_msg(yes(Context), always_treat_as_first, 0u,
@@ -304,8 +265,8 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
         lookup_proc_arg_size_info(ModuleInfo, InfArgSizePPId, ArgSize),
         ( if ArgSize = yes(infinite(ArgSizeErrors)) then
             % XXX Should we add a Msg about the relevance of the spec
-            % added by the folliwng call?
-            % XXX the next line is cheating
+            % added by the following call?
+            % XXX The next line is cheating.
             ArgSizePPIdSCC = set.make_singleton_set(InfArgSizePPId),
             report_arg_size_errors(ModuleInfo, ArgSizePPIdSCC, ArgSizeErrors,
                 !Specs)
@@ -521,6 +482,47 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             words("may make one or more calls back to Mercury."), nl],
         Reason = no
     ).
+
+%----------------------------------------------------------------------------%
+
+:- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
+
+report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
+    get_context_from_scc(ModuleInfo, SCC, Context),
+    ( if set.is_singleton(SCC, PPId) then
+        Pieces1 = [words("Termination constant of")] ++
+            describe_qual_proc_name(ModuleInfo, PPId),
+        Single = yes(PPId)
+    else
+        Pieces1 = [words("Termination constants"),
+            words("of the mutually recursive procedures")] ++
+            describe_several_proc_names(ModuleInfo, no,
+                should_module_qualify, set.to_sorted_list(SCC)),
+        Single = no
+    ),
+    Piece2 = words("set to infinity for the following"),
+    (
+        Errors = [],
+        unexpected($pred, "empty list of errors")
+    ;
+        Errors = [Error],
+        Piece3 = words("reason:"),
+        Pieces = Pieces1 ++ [Piece2, Piece3],
+        describe_term_error(ModuleInfo, Single, Error, no,
+            cord.init, ReasonMsgsCord, !Specs)
+    ;
+        Errors = [_, _ | _],
+        Piece3 = words("reasons:"),
+        Pieces = Pieces1 ++ [Piece2, Piece3],
+        describe_term_errors(ModuleInfo, Single, Errors, 1,
+            cord.init, ReasonMsgsCord, !Specs)
+    ),
+    ReasonMsgs = cord.list(ReasonMsgsCord),
+    Msgs = [msg(Context, Pieces) | ReasonMsgs],
+    Severity = severity_warning(warn_requested_by_option),
+    Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
+    !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%
 
