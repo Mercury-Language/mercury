@@ -29,8 +29,8 @@
 %   builtin predicates, and also sets the termination properties of
 %   predicates that have either termination pragmas, or have termination
 %   assertions among their foreign_proc attributes. It also sets up
-%   information imported from `.opt' and `.trans_opt' files. ("sets up"
-%   in what sense?"
+%   information imported from `.opt' and `.trans_opt' files.
+%   XXX "sets up" in what sense?
 %
 %   This pass is in term_constr_initial.m.
 %

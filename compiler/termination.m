@@ -161,13 +161,11 @@ check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
     ;
         PPIds = [PPId],
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-        ( if
-            proc_info_get_goal(ProcInfo0, Goal),
-            Goal = hlds_goal(GoalExpr, _GoalInfo),
-            GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _)
-        then
+        proc_info_get_goal(ProcInfo0, Goal),
+        Goal = hlds_goal(GoalExpr, _GoalInfo),
+        ( if GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _) then
             check_foreign_code_attributes_of_proc(!.ModuleInfo, PPId,
-                Attributes, ProcInfo0, ProcInfo, !Specs),
+                PredInfo, Attributes, ProcInfo0, ProcInfo, !Specs),
             module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo,
                 !ModuleInfo)
         else
@@ -179,12 +177,25 @@ check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
     ).
 
 :- pred check_foreign_code_attributes_of_proc(module_info::in,
-    pred_proc_id::in, foreign_proc_attributes::in,
+    pred_proc_id::in, pred_info::in, foreign_proc_attributes::in,
     proc_info::in, proc_info::out,
     list(diag_spec)::in, list(diag_spec)::out) is det.
 
-check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
+check_foreign_code_attributes_of_proc(ModuleInfo, PPId, _PredInfo, Attributes,
         !ProcInfo, !Specs) :-
+% XXX This *should* be enough to make termination analysis decide that
+% the difftime and therefore compare_time_t_reps predicates in library/time.m
+% terminate *without* an explicit terminates pragma, but it is NOT enough.
+%
+%   pred_info_get_arg_types(PredInfo, ArgTypes),
+%   proc_info_get_argmodes(!.ProcInfo, ArgModes),
+%   ( if all_outputs_are_builtins(ModuleInfo, ArgTypes, ArgModes, Nos) then
+%       % XXX norm dependent
+%       ArgSizeInfo = finite(0, Nos),
+%       proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), !ProcInfo)
+%   else
+%       true
+%   ),
     proc_info_get_maybe_termination_info(!.ProcInfo, MaybeTermination),
     proc_info_get_context(!.ProcInfo, Context),
     (
@@ -258,6 +269,26 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
             )
         )
     ).
+
+% XXX This is part of the non-working, commented-out code at the top of
+% check_foreign_code_attributes_of_proc.
+%
+% :- pred all_outputs_are_builtins(module_info::in,
+%     list(mer_type)::in, list(mer_mode)::in, list(bool)::out) is semidet.
+%
+% all_outputs_are_builtins(_, [], [], []).
+% all_outputs_are_builtins(_, [], [_ | _], []) :-
+%     unexpected($pred, "list length mismatch").
+% all_outputs_are_builtins(_, [_ | _], [], []) :-
+%     unexpected($pred, "list length mismatch").
+% all_outputs_are_builtins(ModuleInfo, [Type | Types], [Mode | Modes], Nos) :-
+%     all_outputs_are_builtins(ModuleInfo, Types, Modes, TailNos),
+%     ( if mode_is_output(ModuleInfo, Mode) then
+%         Type = builtin_type(_)
+%     else
+%         true
+%     ),
+%     Nos = [no | TailNos].
 
 %----------------------------------------------------------------------------%
 %
@@ -624,8 +655,8 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
         % It is possible for compiler generated/mercury builtin predicates
         % to be imported or locally defined, so they must be covered here,
         % separately.
-        set_compiler_gen_terminates(!.ModuleInfo, PredInfo0, ProcIds, PredId,
-            ProcTable0, ProcTable1)
+        set_compiler_gen_terminates(!.ModuleInfo, PredId, PredInfo0,
+            ProcIds, ProcTable0, ProcTable1)
     then
         ProcTable2 = ProcTable1
     else if
@@ -691,11 +722,11 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     % We assume that user-defined special predicates terminate. This assumption
     % is checked later during the post_term_analysis pass.
     %
-:- pred set_compiler_gen_terminates(module_info::in, pred_info::in,
-    list(proc_id)::in, pred_id::in, proc_table::in, proc_table::out)
-    is semidet.
+:- pred set_compiler_gen_terminates(module_info::in,
+    pred_id::in, pred_info::in, list(proc_id)::in,
+    proc_table::in, proc_table::out) is semidet.
 
-set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
+set_compiler_gen_terminates(ModuleInfo, PredId, PredInfo, ProcIds,
         !ProcTable) :-
     % XXX This code looks to be a near-identical copy of the predicate
     % of the same name in term_constr_initial.m.
@@ -705,13 +736,44 @@ set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
         set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
             !ProcTable)
     else if
-        % XXX The origin test should be the only one needed;
-        % we should pay no attention to the name.
+        % Compiler-generated unify/compare/index predicates always terminate.
+        % The else part checks for that.
+        %
+        % The then part checks for something else: for the predicate being
+        % named "unify", "index" or "compare", and defined in a builtin module.
+        % In practice, this is an unnecessarily roundabout way to  assert that
+        % builtin.unify and builtin.compare always terminate.
+        %
+        % This assertion was correct when this code was written in 1997/8,
+        % but has not been true since 2005, when we added user-specified
+        % type-specific unify and compare predicates to the language.
+        % This is because the user-specified unify/compare predicates
+        % may not always terminate.
+        %
+        % We should therefore delete the test and the then part.
+        % XXX However, doing so leads to the failure of several test cases:
+        %   term/exception_analysis_test2
+        %   term/existential_error1
+        %   term/occur
+        %   term/overlap
+        %   term/pl7_6_2c
+        %   term/pl8_3_1a
+        %   term/subset
+        % Until the addition of a "terminates" pragma for compare_time_t_reps,
+        % it also caused the building of time.c in the stage 2 library to fail.
+        %
+        % The best solution for this problem is
+        %
+        % - delete the condition and then-part here;
+        % - add "terminates" pragmas for unify, compare (and
+        %   compare_representation) in library/builtin.m, but then
+        % - generate an error if any user-specified unify or compare predicate
+        %   cannot be proven to terminate.
         ( if
             ModuleName = pred_info_module(PredInfo),
             Name = pred_info_name(PredInfo),
-            pred_info_get_orig_arity(PredInfo,
-                pred_form_arity(PredFormArityInt)),
+            pred_info_get_orig_arity(PredInfo, PredFormArity),
+            PredFormArity = pred_form_arity(PredFormArityInt),
             special_pred_name_arity(SpecPredId0, Name, _, PredFormArityInt),
             any_mercury_builtin_module(ModuleName)
         then

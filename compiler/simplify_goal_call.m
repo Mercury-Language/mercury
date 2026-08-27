@@ -143,6 +143,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         !.Common, !Info),
     maybe_generate_warning_for_useless_comparison(PredInfo,
         InstMap0, Args, GoalInfo0, !Info),
+    maybe_generate_error_for_input_spec_replaced_procedure(PredInfo, ProcInfo,
+        GoalInfo0, !Info),
 
     % Try to evaluate the call at compile-time.
     ModuleSymName = pred_info_module(PredInfo),
@@ -959,6 +961,34 @@ arg_is_unsigned_zero(ModuleName, Arg, ZeroStr) :-
         ModuleName = "uint64",
         IntConst = uint64_const(0u64),
         ZeroStr = "0u64"
+    ).
+
+%---------------------%
+
+:- pred maybe_generate_error_for_input_spec_replaced_procedure(pred_info::in,
+    proc_info::in, hlds_goal_info::in,
+    simplify_info::in, simplify_info::out) is det.
+
+maybe_generate_error_for_input_spec_replaced_procedure(PredInfo, ProcInfo,
+        GoalInfo, !Info) :-
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+    ;
+        MaybeInputSpec = input_spec_original_proc_logically_deleted(_),
+        Context = goal_info_get_context(GoalInfo),
+        Phase = phase_simplify(report_in_any_mode),
+        PredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_module_qualify, [], PredInfo),
+        Pieces = [words("Error: call to")] ++ PredPieces ++
+            [words("in a mode that was")] ++
+            color_as_incorrect([words("replaced")]) ++
+            [words("by input mode specialization."), nl],
+        Spec = spec($pred, severity_error, Phase, Context, Pieces),
+        simplify_info_add_message(Spec, !Info)
     ).
 
 %---------------------------------------------------------------------------%

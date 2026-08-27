@@ -10,8 +10,8 @@
 % File: term_errors.m.
 % Main author: crs.
 %
-% This module prints out the various error messages that are produced by the
-% various modules of termination analysis.
+% This module prints out the various error messages that are produced
+% by the various modules of our first termination analysis system.
 %
 %-----------------------------------------------------------------------------%
 
@@ -34,9 +34,15 @@
 
 :- type term_error_kind
     --->    pragma_foreign_code
-            % The analysis result depends on the change constant of a piece
-            % of pragma foreign code, (which cannot be obtained without
-            % analyzing the foreign code, which is something we cannot do).
+            % The analysis result depends on the change constant of a
+            % foreign_proc (which cannot be obtained without analyzing
+            % the foreign code, which is something we cannot do).
+            % XXX Except that we do know the argument types and modes
+            % of the foreign_proc. If all the output arguments have
+            % builtin types or enum types, i.e. types populated entirely
+            % by constants, then for both the simple and total norms,
+            % the change constant should be zero.
+            %
             % Valid in both passes.
 
     ;       imported_pred
@@ -196,6 +202,8 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     (
         Errors = [],
         % XXX This should never happen but for some reason, it often does.
+        % XXX Making report_term_errors take one_or_more Errors, instead of
+        % a list of Errors, should help fix that.
         % error("empty list of errors")
         Pieces2 = [words("not proven, for unknown reason(s).")],
         Pieces = Pieces1 ++ Pieces2,
@@ -516,6 +524,9 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
 
 %----------------------------------------------------------------------------%
 
+    % XXX Apparently, this predicate is not invoked, at least not with
+    % nonempty bags, for any test case in our suite.
+    %
 :- pred term_errors_var_bag_description(var_table::in, bag(prog_var)::in,
     list(string)::out) is det.
 
@@ -544,7 +555,7 @@ term_errors_var_bag_desc_loop(VarTable, Prefix,
     ),
     (
         VarsCounts = [],
-        Piece = Piece0 ++ "}.",
+        Piece = Piece0 ++ "}",
         Pieces = []
     ;
         VarsCounts = [HeadVarCount | TailVarsCounts],

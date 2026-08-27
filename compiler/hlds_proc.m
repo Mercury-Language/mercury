@@ -98,7 +98,8 @@
     eval_method::out, prog_context::out, item_seq_num::out,
     can_process::out, maybe(mode_constraint)::out, detism_decl::out,
     list(prog_context)::out, maybe(untuple_proc_info)::out,
-    map(prog_var, string)::out, list(warn_spec)::out, set(pred_proc_id)::out,
+    maybe_input_spec_proc::out, map(prog_var, string)::out,
+    list(warn_spec)::out, set(pred_proc_id)::out,
     is_address_taken::out, proc_foreign_exports::out, has_parallel_conj::out,
     has_user_event::out, has_tail_rec_call::out, list(oisu_pred_kind_for)::out,
     maybe(require_tail_recursion)::out, set_of_progvar::out,
@@ -117,8 +118,8 @@
     inst_varset::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
     maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
     eval_method::in, prog_context::in, item_seq_num::in, can_process::in,
-    maybe(mode_constraint)::in, detism_decl::in,
-    list(prog_context)::in, maybe(untuple_proc_info)::in,
+    maybe(mode_constraint)::in, detism_decl::in, list(prog_context)::in,
+    maybe(untuple_proc_info)::in, maybe_input_spec_proc::in,
     map(prog_var, string)::in, list(warn_spec)::in, set(pred_proc_id)::in,
     is_address_taken::in, proc_foreign_exports::in, has_parallel_conj::in,
     has_user_event::in, has_tail_rec_call::in, list(oisu_pred_kind_for)::in,
@@ -249,6 +250,8 @@
     maybe(deep_profile_proc_info)::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
     maybe(untuple_proc_info)::out) is det.
+:- pred proc_info_get_maybe_input_spec(proc_info::in,
+    maybe_input_spec_proc::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
     maybe(arg_size_info)::out) is det.
 :- pred proc_info_get_maybe_termination_info(proc_info::in,
@@ -336,6 +339,8 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_input_spec(maybe_input_spec_proc::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_arg_size_info(maybe(arg_size_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_termination_info(maybe(termination_info)::in,
@@ -415,6 +420,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    MaybeInputSpecProc = not_involved_in_input_spec,
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
     Term2Info = term_constr_main_types.term2_info_init,
@@ -453,6 +459,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MaybeTableAttrs,
         MaybeDeepProfProcInfo,
         MaybeUntupleInfo,
+        MaybeInputSpecProc,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -518,6 +525,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
     % argument DetismDecl
     CseNopullContexts = [],
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    MaybeInputSpecProc = not_involved_in_input_spec,
     % argument VarNameRemap
     StateVarWarnings = [],
     set.init(DeletedCallees),
@@ -578,6 +586,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
         MaybeTableAttrs,
         MaybeDeepProfProcInfo,
         MaybeUntupleInfo,
+        MaybeInputSpecProc,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -651,9 +660,10 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         InstVarSet, DeclaredModes, Modes, MaybeArgLives,
         MaybeDeclaredDetism, Detism, EvalMethod,
         MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
-        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
-        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        CseNopullContexts, MaybeUntupleInfo, MaybeInputSpecProc, VarNameRemap,
+        StateVarWarnings, DeletedCallees,
+        IsAddressTaken, HasForeignProcExports, HasParallelConj, HasUserEvent,
+        HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
         RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
         StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
         MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
@@ -701,6 +711,7 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeTableAttrs,
         MaybeDeepProfProcInfo,
         MaybeUntupleInfo,
+        MaybeInputSpecProc,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -714,9 +725,10 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         InstVarSet, DeclaredModes, Modes, MaybeArgLives,
         MaybeDeclaredDetism, Detism, EvalMethod,
         MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
-        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
-        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        CseNopullContexts, MaybeUntupleInfo, MaybeInputSpecProc, VarNameRemap,
+        StateVarWarnings, DeletedCallees,
+        IsAddressTaken, HasForeignProcExports, HasParallelConj, HasUserEvent,
+        HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
         RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
         StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
         MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
@@ -752,6 +764,7 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeTableAttrs,
         MaybeDeepProfProcInfo,
         MaybeUntupleInfo,
+        MaybeInputSpecProc,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
@@ -1085,7 +1098,7 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 psi_maybe_deep_prof_info      :: maybe(deep_profile_proc_info),
 
                 %-----------------------------------------------------------%
-                % The results of program analyses.
+                % Information from code optimizations.
                 %-----------------------------------------------------------%
 
                 % If set, it means this procedure was created from another
@@ -1096,6 +1109,12 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 % This is effectively a record of the *procedure*'s origin.
                 % (The pred_origin field records the *predicate*'s origin.)
                 psi_maybe_untuple_info          :: maybe(untuple_proc_info),
+
+                psi_maybe_input_spec            :: maybe_input_spec_proc,
+
+                %-----------------------------------------------------------%
+                % The results of program analyses.
+                %-----------------------------------------------------------%
 
                 % Information about the relative sizes of the input and output
                 % args of the procedure. Set by termination analysis.
@@ -1203,6 +1222,8 @@ proc_info_get_maybe_deep_profile_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_deep_prof_info.
 proc_info_get_maybe_untuple_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_untuple_info.
+proc_info_get_maybe_input_spec(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_input_spec.
 proc_info_get_maybe_arg_size_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_arg_size_infos.
 proc_info_get_maybe_termination_info(PI, X) :-
@@ -1289,6 +1310,8 @@ proc_info_set_maybe_deep_profile_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_deep_prof_info := X.
 proc_info_set_maybe_untuple_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_untuple_info := X.
+proc_info_set_maybe_input_spec(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_input_spec := X.
 proc_info_set_maybe_arg_size_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_arg_size_infos := X.
 proc_info_set_maybe_termination_info(X, !PI) :-

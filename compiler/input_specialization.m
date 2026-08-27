@@ -61,6 +61,7 @@
 :- import_module hlds.mode_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.proc_info_types.
 :- import_module libs.
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.
@@ -69,10 +70,13 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item_pragma.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module one_or_more.
+:- import_module pair.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -175,21 +179,37 @@ input_specialize_in_pred(ModuleInfo, HeadArgToSpec, TailArgsToSpec,
         !PredInfo) :-
     HeadArgToSpec = arg_to_specialize(ArgNum, InputSpecInfo),
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
-    map.values(ProcTable0, ProcInfos0),
+    map.to_assoc_list(ProcTable0, ProcIdInfos0),
+    mark_procs_as_input_specialized(ProcIdInfos0, ProcInfos1),
     input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum, InputSpecInfo,
-        ProcInfos0, ProcInfos, _Changed),
-    rebuild_proc_table_loop(0, ProcInfos, map.init, ProcTable),
-    pred_info_set_proc_table(ProcTable, !PredInfo),
-    pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(marker_was_input_specialized, Markers0, Markers),
-    pred_info_set_markers(Markers, !PredInfo),
+        ProcInfos1, ProcInfos, Changed),
     (
-        TailArgsToSpec = []
+        Changed = unchanged
     ;
-        TailArgsToSpec = [HeadTailArgToSpec | TailTailArgsToSpec],
-        input_specialize_in_pred(ModuleInfo,
-            HeadTailArgToSpec, TailTailArgsToSpec, !PredInfo)
+        Changed = changed,
+        rebuild_proc_table_loop(0, ProcInfos, map.init, ProcTable),
+        pred_info_set_proc_table(ProcTable, !PredInfo),
+        pred_info_get_markers(!.PredInfo, Markers0),
+        add_marker(marker_was_input_specialized, Markers0, Markers),
+        pred_info_set_markers(Markers, !PredInfo),
+        (
+            TailArgsToSpec = []
+        ;
+            TailArgsToSpec = [HeadTailArgToSpec | TailTailArgsToSpec],
+            input_specialize_in_pred(ModuleInfo,
+                HeadTailArgToSpec, TailTailArgsToSpec, !PredInfo)
+        )
     ).
+
+:- pred mark_procs_as_input_specialized(assoc_list(proc_id, proc_info)::in,
+    list(proc_info)::out) is det.
+
+mark_procs_as_input_specialized([], []).
+mark_procs_as_input_specialized([ProcId - ProcInfo0 | ProcIdsInfos0],
+        [ProcInfo | ProcInfos]) :-
+    proc_info_set_maybe_input_spec(input_spec_original_proc_kept(ProcId),
+        ProcInfo0, ProcInfo),
+    mark_procs_as_input_specialized(ProcIdsInfos0, ProcInfos).
 
 %---------------------------------------------------------------------------%
 
@@ -221,10 +241,23 @@ input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum, InputSpecInfo,
     then
         input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum,
             InputSpecInfo, TailProcInfos0, TailProcInfos, _Changed),
+        proc_info_get_maybe_input_spec(HeadProcInfo0, HeadInputSpecProc0),
+        (
+            HeadInputSpecProc0 = not_involved_in_input_spec,
+            % We set this field in ALL of the predicate's proc_infos
+            % to one of the other three function symbols.
+            unexpected($pred, "not_involved_in_input_spec")
+        ;
+            ( HeadInputSpecProc0 =
+                input_spec_original_proc_logically_deleted(HeadProcId)
+            ; HeadInputSpecProc0 = input_spec_original_proc_kept(HeadProcId)
+            ; HeadInputSpecProc0 = input_specialized_proc(HeadProcId)
+            )
+        ),
         InputSpecInfo = input_spec_info(ReplaceOrAdd, OoMInsts, _Context),
         SpecInsts = one_or_more_to_list(OoMInsts),
-        create_input_specialized_proc_infos(ArgNum, ReplaceOrAdd, SpecInsts,
-            HeadProcInfo0, SpecProcInfos),
+        create_input_specialized_proc_infos(HeadProcId, HeadProcInfo0, ArgNum,
+            ReplaceOrAdd, SpecInsts, SpecProcInfos),
         ProcInfos = SpecProcInfos ++ TailProcInfos,
         Changed = changed
     else
@@ -233,21 +266,24 @@ input_specialize_proc_table_in_given_arg(ModuleInfo, ArgNum, InputSpecInfo,
         ProcInfos = [HeadProcInfo0 | TailProcInfos]
     ).
 
-:- pred create_input_specialized_proc_infos(int::in,
-    replace_or_add_in_mode::in, list(mer_inst)::in,
-    proc_info::in, list(proc_info)::out) is det.
+:- pred create_input_specialized_proc_infos(proc_id::in, proc_info::in,
+    int::in, replace_or_add_in_mode::in, list(mer_inst)::in,
+    list(proc_info)::out) is det.
 
-create_input_specialized_proc_infos(ArgNum, ReplaceOrAdd, SpecInsts,
-        OrigProcInfo, SpecProcInfos) :-
+create_input_specialized_proc_infos(OrigProcId, OrigProcInfo, ArgNum,
+        ReplaceOrAdd, SpecInsts, SpecProcInfos) :-
     (
         SpecInsts = [],
         (
             ReplaceOrAdd = replace_in_mode,
-            SpecProcInfos = []
+            InputSpec = input_spec_original_proc_logically_deleted(OrigProcId)
         ;
             ReplaceOrAdd = add_to_in_mode,
-            SpecProcInfos = [OrigProcInfo]
-        )
+            InputSpec = input_spec_original_proc_kept(OrigProcId)
+        ),
+        proc_info_set_maybe_input_spec(InputSpec,
+            OrigProcInfo, SpecOrigProcInfo),
+        SpecProcInfos = [SpecOrigProcInfo]
     ;
         SpecInsts = [HeadSpecInst | TailSpecInsts],
 
@@ -256,9 +292,11 @@ create_input_specialized_proc_infos(ArgNum, ReplaceOrAdd, SpecInsts,
         det_replace_nth_element1(ArgNum, HeadSpecArgMode,
             OrigModes, HeadSpecModes),
         proc_info_set_argmodes(HeadSpecModes,
-            OrigProcInfo, HeadSpecProcInfo),
-        create_input_specialized_proc_infos(ArgNum,
-            ReplaceOrAdd, TailSpecInsts, OrigProcInfo, TailSpecProcInfos),
+            OrigProcInfo, HeadSpecProcInfo0),
+        proc_info_set_maybe_input_spec(input_specialized_proc(OrigProcId),
+            HeadSpecProcInfo0, HeadSpecProcInfo),
+        create_input_specialized_proc_infos(OrigProcId, OrigProcInfo, ArgNum,
+            ReplaceOrAdd, TailSpecInsts, TailSpecProcInfos),
         SpecProcInfos = [HeadSpecProcInfo | TailSpecProcInfos]
     ).
 

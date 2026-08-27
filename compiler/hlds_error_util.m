@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -163,6 +164,12 @@
     %
 :- func describe_several_proc_names(module_info, maybe(color_name),
     should_module_qualify, list(pred_proc_id)) = list(format_piece).
+
+    % Given a procedure and its proc_id, return its *original* proc_id,
+    % before input specialization modified the list of the predicate's
+    % procedures.
+    %
+:- pred original_proc_id(proc_info::in, proc_id::in, proc_id::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -307,8 +314,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred_tests.
-:- import_module hlds.hlds_proc.
 :- import_module hlds.pred_name.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -541,9 +548,11 @@ describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
         PredProcId) = Pieces :-
     SuffixPieces = [],
     PredProcId = proc(PredId, ProcId),
-    PredPieces = describe_one_pred_name(ModuleInfo, MaybeColor,
-        ShouldModuleQualify, SuffixPieces, PredId),
-    proc_id_to_int(ProcId, ProcIdInt),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    PredPieces = describe_one_pred_info_name(MaybeColor,
+        ShouldModuleQualify, SuffixPieces, PredInfo),
+    original_proc_id(ProcInfo, ProcId, OrigProcId),
+    proc_id_to_int(OrigProcId, ProcIdInt),
     Pieces = PredPieces ++ [words("mode"), int_fixed(ProcIdInt)].
 
 describe_several_proc_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
@@ -552,6 +561,19 @@ describe_several_proc_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
         describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify),
         PPIds),
     Pieces = pieces_list_to_pieces("and", PiecesList).
+
+original_proc_id(ProcInfo, ProcId, OrigProcId) :-
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        MaybeInputSpec = not_involved_in_input_spec,
+        OrigProcId = ProcId
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_kept(OrigProcId)
+        ; MaybeInputSpec =
+            input_spec_original_proc_logically_deleted(OrigProcId)
+        ; MaybeInputSpec = input_specialized_proc(OrigProcId)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

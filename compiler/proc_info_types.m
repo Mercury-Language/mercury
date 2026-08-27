@@ -299,6 +299,14 @@
 
 %---------------------%
 
+:- type maybe_input_spec_proc
+    --->    not_involved_in_input_spec
+    ;       input_spec_original_proc_kept(proc_id)
+    ;       input_spec_original_proc_logically_deleted(proc_id)
+    ;       input_specialized_proc(proc_id).
+
+%---------------------------------------------------------------------------%
+
     % Gives an indication of whether or not the procedure
     % might throw an exception.
     %

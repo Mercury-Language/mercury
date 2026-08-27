@@ -140,22 +140,22 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
     (
         GoalExpr = unify(_Var, _RHS, _UniMode, Unification, _Context),
         (
-            Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
+            Unification = construct(OutVar, ConsId, ArgVars, Modes, _, _, _),
             ( if
-                unify_change(ModuleInfo, OutVar, ConsId, Args, Modes, Params,
-                    Gamma, InVars, OutVars0)
+                unify_change(ModuleInfo, Params, OutVar, ConsId, ArgVars,
+                    Modes, Gamma, InVars, OutVars0)
             then
                 bag.insert(OutVar, OutVars0, OutVars),
                 record_change(InVars, OutVars, Gamma, [], !Info)
             else
-                % length(Args) is not necessarily equal to length(Modes)
+                % length(ArgVars) is not necessarily equal to length(Modes)
                 % for higher order constructions.
                 true
             )
         ;
-            Unification = deconstruct(InVar, ConsId, Args, Modes, _, _),
+            Unification = deconstruct(InVar, ConsId, ArgVars, Modes, _, _),
             ( if
-                unify_change(ModuleInfo, InVar, ConsId, Args, Modes, Params,
+                unify_change(ModuleInfo, Params, InVar, ConsId, ArgVars, Modes,
                     Gamma0, InVars0, OutVars)
             then
                 bag.insert(InVar, InVars0, InVars),
@@ -176,7 +176,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             unexpected($pred, "complicated unify")
         )
     ;
-        GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
+        GoalExpr = plain_call(CallPredId, CallProcId, ArgVars, _, _, _),
         Context = goal_info_get_context(GoalInfo),
         params_get_ppid(Params, PPId),
         CallPPId = proc(CallPredId, CallProcId),
@@ -189,12 +189,13 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         proc_info_get_maybe_termination_info(CallProcInfo,
             CallTerminationInfo),
 
-        partition_call_args(ModuleInfo, CallArgModes, Args, InVars, OutVars),
+        partition_call_args(ModuleInfo, CallArgModes, ArgVars,
+            InVars, OutVars),
 
         % Handle existing paths.
         (
             CallArgSizeInfo = yes(finite(CallGamma, OutputSuppliers)),
-            remove_unused_args(Args, OutputSuppliers, InVars, UsedInVars),
+            remove_unused_args(ArgVars, OutputSuppliers, InVars, UsedInVars),
             record_change(UsedInVars, OutVars, CallGamma, [], !Info)
         ;
             CallArgSizeInfo = yes(infinite(_)),
@@ -207,7 +208,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             % a runtime abort in map.lookup.
             params_get_output_suppliers(Params, OutputSuppliersMap),
             map.lookup(OutputSuppliersMap, CallPPId, OutputSuppliers),
-            remove_unused_args(Args, OutputSuppliers, InVars, UsedInVars),
+            remove_unused_args(ArgVars, OutputSuppliers, InVars, UsedInVars),
             record_change(UsedInVars, OutVars, 0, [CallPPId], !Info)
         ),
 
@@ -224,7 +225,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             % XXX This is an overapproximation, since it includes
             % higher order outputs.
             params_get_var_table(Params, VarTable),
-            some_var_is_higher_order(VarTable, Args)
+            some_var_is_higher_order(VarTable, ArgVars)
         then
             add_term_error(Params, Context, horder_args(PPId, CallPPId), !Info)
         else
@@ -232,14 +233,14 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         ),
 
         % Do we start another path?
+        params_get_rec_input_suppliers(Params, RecInputSuppliersMap),
         ( if
-            params_get_rec_input_suppliers(Params, RecInputSuppliersMap),
             map.search(RecInputSuppliersMap, CallPPId, RecInputSuppliers)
         then
             % We should get to this point only in pass 2, and then
             % only if this call is to a procedure in the current SCC.
             % In pass 1, RecInputSuppliersMap will be empty.
-            compute_rec_start_vars(Args, RecInputSuppliers, Bag),
+            compute_rec_start_vars(ArgVars, RecInputSuppliers, Bag),
             PathStart = yes(CallPPId - Context),
             NewPath = term_path_info(PPId, PathStart, 0, [], Bag),
             add_path(NewPath, !Info)
@@ -249,28 +250,24 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
     ;
         GoalExpr = call_foreign_proc(Attributes, CallPredId, CallProcId, Args,
             _, _, _),
-        module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId, _,
-            CallProcInfo),
+        CallPPId = proc(CallPredId, CallProcId),
+        module_info_pred_proc_info(ModuleInfo, CallPPId, _, CallProcInfo),
         proc_info_get_argmodes(CallProcInfo, CallArgModes),
         ArgVars = list.map(foreign_arg_var, Args),
         partition_call_args(ModuleInfo, CallArgModes, ArgVars,
             _InVars, OutVars),
         Context = goal_info_get_context(GoalInfo),
 
-        ( if
-            is_termination_known(ModuleInfo, proc(CallPredId, CallProcId))
-        then
+        ( if is_termination_known(ModuleInfo, CallPPId) then
             error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
-        else if
-            attributes_imply_termination(Attributes)
-        then
+        else if attributes_imply_termination(Attributes) then
             error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
         else
             add_term_error(Params, Context, does_not_term_pragma(CallPredId),
                 !Info)
         )
     ;
-        GoalExpr = generic_call(Details, Args, ArgModes, _, _),
+        GoalExpr = generic_call(Details, ArgVars, ArgModes, _, _),
         Context = goal_info_get_context(GoalInfo),
         (
             Details = higher_order(Var, _, _, _, _),
@@ -288,7 +285,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
                     ClosureValues, Terminating, NonTerminating),
                 (
                     NonTerminating = [],
-                    partition_call_args(ModuleInfo, ArgModes, Args,
+                    partition_call_args(ModuleInfo, ArgModes, ArgVars,
                         _InVars, OutVars),
                     params_get_ppid(Params, PPId),
                     Error = ho_inf_termination_const(PPId, Terminating),
@@ -364,17 +361,17 @@ remove_unused_args([], [_ | _], !Vars) :-
     unexpected($pred, "unmatched variables").
 remove_unused_args([_ | _], [], !Vars) :-
     unexpected($pred, "unmatched variables").
-remove_unused_args([Arg | Args], [UsedVar | UsedVars], !Vars) :-
+remove_unused_args([ArgVar | ArgVars], [UsedVar | UsedVars], !Vars) :-
     (
         % The variable is used, so leave it.
         UsedVar = yes,
-        remove_unused_args(Args, UsedVars, !Vars)
+        remove_unused_args(ArgVars, UsedVars, !Vars)
     ;
         % The variable is not used in producing output vars, so don't include
         % it as an input variable.
         UsedVar = no,
-        bag.delete(Arg, !Vars),
-        remove_unused_args(Args, UsedVars, !Vars)
+        bag.delete(ArgVar, !Vars),
+        remove_unused_args(ArgVars, UsedVars, !Vars)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -551,11 +548,11 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
     % input or output bags. The predicate fails if invoked on a higher
     % order unification.
     %
-:- pred unify_change(module_info::in, prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, term_traversal_params::in,
+:- pred unify_change(module_info::in, term_traversal_params::in,
+    prog_var::in, cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     int::out, bag(prog_var)::out, bag(prog_var)::out) is semidet.
 
-unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
+unify_change(ModuleInfo, Params, OutVar, ConsId, ArgVars0, Modes0, Gamma,
         InVars, OutVars) :-
     params_get_functor_info(Params, FunctorInfo),
     params_get_var_table(Params, VarTable),
@@ -568,11 +565,11 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     ),
     require_det (
         type_to_ctor_det(Type, TypeCtor),
-        filter_typeinfos_from_args_and_modes(VarTable, Args0, Args1,
+        filter_typeinfos_from_args_and_modes(VarTable, ArgVars0, ArgVars1,
             Modes0, Modes1),
         functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
-            Args1, Args, Modes1, Modes),
-        split_unification_vars(ModuleInfo, Args, Modes, InVars, OutVars)
+            ArgVars1, ArgVars, Modes1, Modes),
+        split_unification_vars(ModuleInfo, ArgVars, Modes, InVars, OutVars)
     ).
 
 :- pred filter_typeinfos_from_args_and_modes(var_table::in,
@@ -584,17 +581,18 @@ filter_typeinfos_from_args_and_modes(_, [], _, [_ | _], _) :-
     unexpected($pred, "list length mismatch").
 filter_typeinfos_from_args_and_modes(_, [_ | _], _, [], _) :-
     unexpected($pred, "list length mismatch").
-filter_typeinfos_from_args_and_modes(VarTable, [Arg0 | Args0], Args,
-        [Mode0 | Modes0], Modes) :-
-    filter_typeinfos_from_args_and_modes(VarTable, Args0, TailArgs,
-        Modes0, TailModes),
-    lookup_var_type(VarTable, Arg0, Type),
-    ( if is_introduced_type_info_type(Type) then
-        Args = TailArgs,
+filter_typeinfos_from_args_and_modes(VarTable,
+        [HeadArgVar0 | TailArgVars0], ArgVars,
+        [HeadMode0 | TailModes0], Modes) :-
+    filter_typeinfos_from_args_and_modes(VarTable, TailArgVars0, TailArgVars,
+        TailModes0, TailModes),
+    lookup_var_type(VarTable, HeadArgVar0, HeadType),
+    ( if is_introduced_type_info_type(HeadType) then
+        ArgVars = TailArgVars,
         Modes = TailModes
     else
-        Args = [Arg0 | TailArgs],
-        Modes = [Mode0 | TailModes]
+        ArgVars = [HeadArgVar0 | TailArgVars],
+        Modes = [HeadMode0 | TailModes]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -611,23 +609,23 @@ record_change(InVars, OutVars, Gamma, CalledPPIds, Info0, Info) :-
         Info0 = term_traversal_ok(Paths0, CanLoop),
         set.to_sorted_list(Paths0, PathsList0),
         set.init(NewPaths0),
-        record_change_2(PathsList0, InVars, OutVars, Gamma, CalledPPIds,
-            NewPaths0, NewPaths),
+        record_change_2(InVars, OutVars, Gamma, CalledPPIds,
+            PathsList0, NewPaths0, NewPaths),
         Info = term_traversal_ok(NewPaths, CanLoop)
     ).
 
-:- pred record_change_2(list(term_path_info)::in, bag(prog_var)::in,
-    bag(prog_var)::in, int::in, list(pred_proc_id)::in,
+:- pred record_change_2(bag(prog_var)::in, bag(prog_var)::in, int::in,
+    list(pred_proc_id)::in, list(term_path_info)::in,
     set(term_path_info)::in, set(term_path_info)::out) is det.
 
-record_change_2([], _, _, _, _, !PathSet).
-record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
-        !PathSet) :-
+record_change_2(_, _, _, _, [], !PathSet).
+record_change_2(InVars, OutVars, CallGamma, CallPPIds,
+        [Path0 | Paths0], !PathSet) :-
     Path0 = term_path_info(ProcData, Start, Gamma0, PPIds0, Vars0),
     ( if bag.intersect(OutVars, Vars0) then
         % The change produces some active variables.
         Gamma = CallGamma + Gamma0,
-        list.append(CallPPIds, PPIds0, PPIds),
+        PPIds = CallPPIds ++ PPIds0,
         bag.subtract(Vars0, OutVars, Vars1),
         bag.union(InVars, Vars1, Vars),
         Path = term_path_info(ProcData, Start, Gamma, PPIds, Vars)
@@ -636,7 +634,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
         Path = Path0
     ),
     set.insert(Path, !PathSet),
-    record_change_2(Paths0, InVars, OutVars, CallGamma, CallPPIds, !PathSet).
+    record_change_2(InVars, OutVars, CallGamma, CallPPIds, Paths0, !PathSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -649,10 +647,8 @@ error_if_intersect(OutVars, Context, ErrorKind, !Info) :-
         !.Info = term_traversal_error(_, _)
     ;
         !.Info = term_traversal_ok(Paths, CanLoop),
-        ( if
-            set.to_sorted_list(Paths, PathList),
-            some_active_vars_in_bag(PathList, OutVars)
-        then
+        set.to_sorted_list(Paths, PathList),
+        ( if some_active_vars_in_bag(PathList, OutVars) then
             Error = term_error(Context, ErrorKind),
             !:Info = term_traversal_error([Error], CanLoop)
         else

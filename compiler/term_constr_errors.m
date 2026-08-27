@@ -133,9 +133,12 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
     then
         MaybeErrorsToReport = yes(Errors)
     else if
+        % XXX This test is not quite right; it treats pseudo-imported
+        % and opt-imported predicates as NonImported.
         IsNonImported =
             ( pred(PPId::in) is semidet :-
-                module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
+                PPId = proc(PredId, _),
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 not pred_info_is_imported(PredInfo)
             ),
         set.filter(IsNonImported, SCC, NonImportedPPIds),
@@ -293,8 +296,10 @@ term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
         Pieces = Pieces1 ++ Pieces2
     ;
         Error = foreign_proc_called(PPId),
+        % Apparently, this text does not occur in the expected output
+        % of any test case in our suite.
         Name = describe_qual_proc_name(ModuleInfo, PPId),
-        Pieces = [words("There is a call the foreign procedure")] ++
+        Pieces = [words("There is a call to a foreign procedure")] ++
             Name ++ [words("which is not known to terminate."), nl]
     ).
 

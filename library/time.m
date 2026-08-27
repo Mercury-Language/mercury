@@ -4,7 +4,8 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
+% Some portions are
+% Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
 % Copyright (C) 2014-2026 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
@@ -72,7 +73,7 @@
                 tm_hour :: int,         % Hours (after midnight, 0-23)
                 tm_min  :: int,         % Minutes (0-59)
                 tm_sec  :: int,         % Seconds (0-60)
-                                        % (60 allows for a positive leap second)
+                                        % (60 allows a positive leap second)
                 tm_yday :: int,         % YearDay (number since Jan 1st, 0-365)
                 tm_wday :: int,         % WeekDay (number since Sunday, 0-6)
                 tm_dst  :: maybe(dst)   % IsDST (is DST applicable, and if so,
@@ -270,6 +271,7 @@
 
 :- pred compare_time_t_reps(comparison_result::uo,
     time_t_rep::in, time_t_rep::in) is det.
+:- pragma terminates(pred(compare_time_t_reps/3)).
 
 compare_time_t_reps(Result, X, Y) :-
     compare(Result, difftime(time_t(X), time_t(Y)), 0.0).
@@ -288,7 +290,8 @@ clock(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     target_clock(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, tabled_for_io],
 "
     Ret = (int64_t) clock();
 ").
@@ -301,7 +304,8 @@ clock(Result, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     target_clock(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, may_not_export_body],
 "
     if (
         !jmercury.time.THREAD_CPU_TIME_SUPPORTED ||
@@ -336,20 +340,20 @@ clock(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     Ret = (MR_Integer) CLOCKS_PER_SEC;
 ").
 :- pragma foreign_proc("C#",
     clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     // TicksPerSecond is guaranteed to be 10,000,000
     Ret = (int) System.TimeSpan.TicksPerSecond;
 ").
 :- pragma foreign_proc("Java",
     clocks_per_sec = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     // Emulate the POSIX value.
     Ret = 1000000;
@@ -376,19 +380,20 @@ time(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     target_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, tabled_for_io],
 "
     Ret = time(NULL);
 ").
 :- pragma foreign_proc("C#",
     target_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     Ret = System.DateTime.UtcNow;
 ").
 :- pragma foreign_proc("Java",
     target_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     Ret = java.time.Instant.now();
 ").
@@ -397,19 +402,19 @@ time(Result, !IO) :-
 
 :- pragma foreign_proc("C",
     time_t_is_invalid(Val::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     SUCCESS_INDICATOR = (Val == (time_t) -1);
 ").
 :- pragma foreign_proc("C#",
     time_t_is_invalid(_Val::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     SUCCESS_INDICATOR = false;
 ").
 :- pragma foreign_proc("Java",
     time_t_is_invalid(_Val::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     SUCCESS_INDICATOR = false;
 ").
@@ -447,8 +452,8 @@ times(Tms, Result, !IO) :-
 :- pragma foreign_proc("C",
     target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, tabled_for_io, may_not_duplicate],
 "
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
@@ -490,7 +495,8 @@ times(Tms, Result, !IO) :-
 :- pragma foreign_proc("Java",
     target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, may_not_duplicate],
 "
     Ret = System.currentTimeMillis();
 
@@ -522,7 +528,7 @@ times(Tms, Result, !IO) :-
 :- pragma foreign_proc("C#",
     target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, terminates, may_not_duplicate],
 "
     Ret = System.DateTime.UtcNow.Ticks;
 
@@ -551,7 +557,7 @@ clk_tck = Ret :-
 :- func target_clk_tck = int.
 :- pragma foreign_proc("C",
     target_clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
     Ret = MR_CLOCK_TICKS_PER_SECOND;
@@ -562,7 +568,7 @@ clk_tck = Ret :-
 
 :- pragma foreign_proc("C#",
     target_clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     // TicksPerSecond is guaranteed to be 10,000,000.
     Ret = (int) System.TimeSpan.TicksPerSecond;
@@ -570,7 +576,7 @@ clk_tck = Ret :-
 
 :- pragma foreign_proc("Java",
     target_clk_tck = (Ret::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     // We use System.currentTimeMillis() to return elapsed time,
     // so say that there are 1000 clock ticks per second.
@@ -586,13 +592,13 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 
 :- pragma foreign_proc("C",
     target_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     Diff = (MR_Float) difftime(T1, T0);
 ").
 :- pragma foreign_proc("C#",
     target_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     System.TimeSpan span;
     span = T1 - T0;
@@ -600,7 +606,7 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 ").
 :- pragma foreign_proc("Java",
     target_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     Diff = (double) (T1.toEpochMilli() - T0.toEpochMilli()) / 1000;
 ").
@@ -670,7 +676,7 @@ localtime(Time, TM, !IO) :-
     target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
          _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, terminates],
 "
     // XXX t will be clamped to MinValue / MaxValue if the converted
     // time cannot be represented by a DateTime object.
@@ -703,7 +709,8 @@ localtime(Time, TM, !IO) :-
     target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, may_not_duplicate],
 "
     try {
         java.time.ZoneId tz = java.time.ZoneId.systemDefault();
@@ -766,7 +773,7 @@ gmtime(Time) = TM :-
 :- pragma foreign_proc("C",
     target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
-    [will_not_call_mercury, promise_pure, not_thread_safe],
+    [will_not_call_mercury, promise_pure, not_thread_safe, terminates],
 "
     struct tm   *p;
     time_t      t;
@@ -830,7 +837,8 @@ gmtime(Time) = TM :-
 :- pragma foreign_proc("Java",
     target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        terminates, may_not_duplicate],
 "
     try {
         java.time.OffsetDateTime utcTime =
@@ -906,7 +914,8 @@ mktime(TM, Time, !IO) :-
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         YD::in, WD::in, N::in, IsOk::out, Time::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, not_thread_safe,
+        terminates, tabled_for_io],
 "
     struct tm t;
     char errbuf[MR_STRERROR_BUF_SIZE];
@@ -938,7 +947,7 @@ mktime(TM, Time, !IO) :-
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, _N::in, IsOk::out, Time::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, terminates],
 "
     // We don't use YD, WD and N.
     // XXX Ignoring N, the daylight savings time indicator, is bad.
@@ -963,7 +972,7 @@ mktime(TM, Time, !IO) :-
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, N::in, IsOk::out, Time::out, ErrorMsg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, terminates, may_not_duplicate],
 "
     try {
         java.time.ZoneId tz = java.time.ZoneId.systemDefault();
