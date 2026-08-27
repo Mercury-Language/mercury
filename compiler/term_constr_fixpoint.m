@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2012 The University of Melbourne.
 % Copyright (C) 2015, 2017-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_fixpoint.m.
 % Main author: juliensf.
@@ -17,7 +17,7 @@
 % (with the exception of the termination2_info slots in the
 %  proc_sub_info structure)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_fixpoint.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Derive the argument size constraints for the procedures in this SCC
     % that need them.
@@ -53,8 +53,8 @@
     %
 :- func fixpoint_options_init(widening, int) = fixpoint_options.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -80,7 +80,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Perform the fixpoint calculation on the AR.
 %
@@ -148,7 +148,7 @@ update_size_info(Info, !ModuleInfo) :-
     Info = iteration_info(PPId, Poly, _),
     update_arg_size_info(PPId, Poly, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred term_iterate_over_abstract_proc(module_info::in, fixpoint_options::in,
     int::in, abstract_proc::in,
@@ -258,7 +258,7 @@ term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
     ),
     !:IterationInfo = [ThisIterationInfo | !.IterationInfo].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fixpoint_info
     --->    fixpoint_info(
@@ -278,7 +278,7 @@ init_fixpoint_info(ModuleInfo, SizeVarSet, PPId, MaxMatrixSize, HeadVars,
     fixpoint_info(ModuleInfo, SizeVarSet, PPId, MaxMatrixSize, HeadVars,
         Zeros).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred term_traverse_abstract_goal(fixpoint_info::in, abstract_goal::in,
     polyhedron::in, polyhedron::out) is det.
@@ -346,7 +346,7 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
         post_process_abstract_goal(Locals, Info, Poly, !Polyhedron)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred post_process_abstract_goal(list(size_var)::in, fixpoint_info::in,
     polyhedron::in, polyhedron::in, polyhedron::out) is det.
@@ -360,7 +360,7 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     ),
     polyhedron.intersection(GoalPolyhedron, !Polyhedron).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for handling disjunctions.
 %
@@ -443,7 +443,7 @@ pairwise_map_2(Op, [X, Y | Rest], !Acc) :-
     !:Acc = [Op(X, Y) | !.Acc],
     pairwise_map_2(Op, Rest, !Acc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Fixpoint test.
 %
@@ -478,7 +478,7 @@ test_fixpoint(NewPoly, OldPoly, SizeVarSet) = ChangeFlag :-
         ChangeFlag = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fixpoint_options
     --->    fixpoint_options(
@@ -489,6 +489,6 @@ test_fixpoint(NewPoly, OldPoly, SizeVarSet) = ChangeFlag :-
 fixpoint_options_init(Widening, MaxMatrixSize) =
     fixpoint_options(Widening, MaxMatrixSize).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_fixpoint.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

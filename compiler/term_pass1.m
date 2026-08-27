@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2003-2008, 2010-2012 The University of Melbourne.
 % Copyright (C) 2015-2018, 2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_pass1.m.
 % Main author: crs.
@@ -19,7 +19,7 @@
 %
 % For details, please refer to the papers mentioned in termination.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass1.
 :- interface.
@@ -33,7 +33,7 @@
 :- import_module list.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type arg_size_result
     --->    arg_size_ok(
@@ -50,8 +50,8 @@
 :- pred find_arg_sizes_in_scc(module_info::in, pass_info::in,
     scc::in, arg_size_result::out, list(term_error)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -77,7 +77,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type pass1_result
     --->    term_pass1_ok(
@@ -132,7 +132,7 @@ find_arg_sizes_in_scc(ModuleInfo, PassInfo, SCC, ArgSize, TermErrors) :-
         ArgSize = arg_size_error(Errors)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Initialise the output suppliers map.
     % Initially, we consider that no input arguments contribute their size
@@ -151,7 +151,7 @@ init_output_suppliers(ModuleInfo, [PPId | PPIds], OutputSupplierMap) :-
     list.map(MapToNo, HeadVars, BoolList),
     map.det_insert(PPId, BoolList, OutputSupplierMap0, OutputSupplierMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_arg_sizes_in_scc_fixpoint(module_info::in, pass_info::in,
     list(pred_proc_id)::in, used_args::in,
@@ -212,7 +212,7 @@ find_arg_sizes_in_scc_pass(ModuleInfo, PassInfo, [PPId | PPIds],
             OutputSupplierMap1, Paths, SubsetErrors, Result, !TermErrors)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_arg_sizes_pred(module_info::in, pass_info::in, pred_proc_id::in,
     used_args::in, pass1_result::out, list(term_error)::out) is det.
@@ -285,7 +285,7 @@ update_output_suppliers([Arg | Args], ActiveVars,
     update_output_suppliers(Args, ActiveVars,
         OutputSuppliers0, OutputSuppliers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Check if a procedure makes any nonterminating calls.
 %
@@ -391,7 +391,7 @@ check_cases_non_term_calls(ModuleInfo, PPId, VarTable, Case, !Errors) :-
     Case = case(_, _, Goal),
     check_goal_non_term_calls(ModuleInfo, PPId, VarTable, Goal, !Errors).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Solve the list of constraints.
 %
@@ -471,6 +471,6 @@ pred_proc_var(PPId, Var, !Varset, !PPVars) :-
         map.det_insert(PPId, Var, !PPVars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_pass1.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

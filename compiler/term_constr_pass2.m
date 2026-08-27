@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2012 The University of Melbourne.
 % Copyright (C) 2015-2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_pass2.m.
 % Main author: juliensf.
@@ -17,7 +17,7 @@
 % proof method which is essentially what the existing termination analyser
 % does.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_pass2.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.term_constr_main_types.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This structure holds the values of options used to control pass 2.
     %
@@ -43,8 +43,8 @@
 :- pred prove_termination_in_scc(pass2_options::in, scc::in,
     module_info::in, constr_termination_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -77,7 +77,7 @@
 :- import_module term_context.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Handle pass 2 options.
 %
@@ -89,7 +89,7 @@
 
 pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Each edge in the call-graph represents a single call site.
     %
@@ -138,7 +138,7 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
                 tcgcs_cycles    :: list(edge)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 prove_termination_in_scc(Options, SCC0, ModuleInfo, Result) :-
     ( if set.is_empty(SCC0) then
@@ -161,7 +161,7 @@ prove_termination_in_scc(Options, SCC0, ModuleInfo, Result) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for labelling edges.
 %
@@ -339,7 +339,7 @@ fix_edges(Poly, Edge0) = Edge :-
     Label = polyhedron.intersection(Poly, Label0),
     Edge = Edge0 ^ tcge_label := Label.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Cycle detection.
 %
@@ -432,7 +432,7 @@ search_for_cycles_3(Start, SoFar, Map, Visited, Edge, !Cycles) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Partitioning sets of cycles.
 %
@@ -464,7 +464,7 @@ get_proc_from_abstract_scc([Proc | Procs], PPId) =
         get_proc_from_abstract_scc(Procs, PPId)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Termination checking.
 %
@@ -550,7 +550,7 @@ cycle_contains_proc(PPId, term_cg_cycle(Nodes, _)) :- list.member(PPId, Nodes).
 
 make_coeffs(Vars, Coeff) = list.map((func(Var) = Var - Coeff), Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Collapse all the cycles so that they all start with the given
     % procedure and all the edge labels between are conjoined.
@@ -657,7 +657,7 @@ subst_size_var_coeff(Map, Var0 - Coeff) = Var - Coeff :-
 
 subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for printing out debugging traces.
 %
@@ -702,6 +702,6 @@ write_edge(Stream, ModuleInfo, SizeVarSet, Edge, !IO) :-
     write_size_vars(Stream, SizeVarSet, Edge ^ tcge_call_args, !IO),
     io.write_string(Stream, " :- \n\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_pass2.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

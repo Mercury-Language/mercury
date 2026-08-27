@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2001, 2003-2012 The University of Melbourne.
 % Copyright (C) 2014-2020, 2022-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: termination.m.
 % Main author: crs.
@@ -28,7 +28,7 @@
 % the size of a term. These are set by using the --termination-norm string
 % option.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.termination.
 :- interface.
@@ -40,15 +40,15 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform termination analysis on the module.
     %
 :- pred analyse_termination_in_module(module_info::in, module_info::out,
     list(diag_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -88,7 +88,7 @@
 :- import_module term.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 analyse_termination_in_module(!ModuleInfo, !:Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -127,7 +127,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
     set.insert(pak_termination, ProcAnalysisKinds0, ProcAnalysisKinds),
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Handle foreign code attributes.
 %
@@ -290,7 +290,7 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, _PredInfo, Attributes,
 %     ),
 %     Nos = [no | TailNos].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Check termination pragmas for consistency.
 %
@@ -394,7 +394,7 @@ classify_termination_status(ModuleInfo, [PPId | PPIds],
         !KnownPredNamesIds, !KnownContexts,
         !KnownTermStatuses, !UnknownPPIds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Run termination analysis on a single SCC.
 %
@@ -474,7 +474,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate takes the results from solve_equations and inserts these
     % results into the module info.
@@ -508,7 +508,7 @@ set_infinite_arg_size_info(ArgSizeInfo, PPId, !ModuleInfo) :-
     pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred set_termination_info(termination_info::in, pred_proc_id::in,
     module_info::in, module_info::out) is det.
@@ -523,7 +523,7 @@ set_termination_info(TerminationInfo, PPId, !ModuleInfo) :-
     pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_report_termination_errors(module_info::in, scc::in,
     list(term_error)::in,
@@ -614,7 +614,7 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
         MaybeErrorsToReport = no
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate preprocesses each predicate and sets the termination
     % property if possible. This is done as follows.
@@ -712,7 +712,7 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate checks each ProcId in the list to see if it is a compiler
     % generated predicate, or a predicate from builtin.m or private_builtin.m.
@@ -858,7 +858,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     map.det_update(ProcId, ProcInfo, !ProcTable),
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate sets the arg_size_info property of the given list of
     % procedures.
@@ -924,8 +924,6 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
     ),
     change_procs_termination_info(ProcIds, Override, Termination, !ProcTable).
 
-%-----------------------------------------------------------------------------%
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.termination.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
 % Copyright (C) 2015-2019, 2021-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_traversal.m.
 % Main author: crs.
@@ -16,7 +16,7 @@
 %
 % For details, please refer to the papers mentioned in termination.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_traversal.
 :- interface.
@@ -38,7 +38,7 @@
 :- import_module pair.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term_traversal_info
     --->    term_traversal_ok(
@@ -92,7 +92,7 @@
                 bag(prog_var)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred term_traverse_goal(module_info::in, term_traversal_params::in,
     hlds_goal::in, term_traversal_info::in, term_traversal_info::out) is det.
@@ -100,7 +100,7 @@
 :- pred upper_bound_active_vars(list(term_path_info)::in, bag(prog_var)::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term_traversal_params.
 
@@ -109,8 +109,8 @@
     used_args::in, used_args::in, int::in, int::in,
     term_traversal_params::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -125,7 +125,7 @@
 :- import_module map.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -374,7 +374,7 @@ remove_unused_args([ArgVar | ArgVars], [UsedVar | UsedVars], !Vars) :-
         remove_unused_args(ArgVars, UsedVars, !Vars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % term_traverse_rev_conj should be invoked with a reversed list of goals.
     % This is to keep stack consumption down.
@@ -408,7 +408,7 @@ term_traverse_switch(ModuleInfo, Params, [Case | Cases], !Info) :-
     term_traverse_switch(ModuleInfo, Params, Cases, !.Info, CasesInfo),
     combine_paths(CaseInfo, CasesInfo, Params, !:Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred cannot_succeed(term_traversal_info::in, term_traversal_info::out)
     is det.
@@ -515,7 +515,7 @@ combine_paths(InfoA, InfoB, Params, Info) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred compute_rec_start_vars(list(prog_var)::in, list(bool)::in,
     bag(prog_var)::out) is det.
@@ -537,7 +537,7 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
         Out = Out1
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % unify_change is invoked for unifications of the form X = f(Yi),
     % with the first argument giving the identity of X, the second the
@@ -595,7 +595,7 @@ filter_typeinfos_from_args_and_modes(VarTable,
         Modes = [HeadMode0 | TailModes]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred record_change(bag(prog_var)::in, bag(prog_var)::in, int::in,
     list(pred_proc_id)::in, term_traversal_info::in, term_traversal_info::out)
@@ -636,7 +636,7 @@ record_change_2(InVars, OutVars, CallGamma, CallPPIds,
     set.insert(Path, !PathSet),
     record_change_2(InVars, OutVars, CallGamma, CallPPIds, Paths0, !PathSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred error_if_intersect(bag(prog_var)::in, prog_context::in,
     term_error_kind::in, term_traversal_info::in, term_traversal_info::out)
@@ -667,7 +667,7 @@ some_active_vars_in_bag([Path | Paths], OutVars) :-
         some_active_vars_in_bag(Paths, OutVars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 upper_bound_active_vars([], ActiveVars) :-
     bag.init(ActiveVars).
@@ -676,7 +676,7 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
     Path = term_path_info(_, _, _, _, ActiveVars2),
     bag.least_upper_bound(ActiveVars1, ActiveVars2, ActiveVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term_traversal_params
     --->    term_traversal_params(
@@ -744,6 +744,6 @@ params_get_max_errors(Params, X) :-
 params_get_max_paths(Params, X) :-
     X = Params ^ term_trav_max_paths.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_traversal.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

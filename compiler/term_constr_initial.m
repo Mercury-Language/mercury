@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2011 The University of Melbourne.
 % Copyright (C) 2014-2016, 2018, 2020-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_initial.m.
 % Main author: juliensf.
@@ -28,7 +28,7 @@
 % A lot of this code is based on that in termination.m that does the
 % equivalent job for the old termination analyser.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_initial.
 :- interface.
@@ -36,7 +36,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Prepare a module for running the main termination pass.
     % This involves setting up argument size and termination information
@@ -49,8 +49,8 @@
     %
 :- pred term2_preprocess_module(module_info::in, module_info::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -90,7 +90,7 @@
 :- import_module string.
 :- import_module term.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Process each predicate and set the termination property.
 %
@@ -118,7 +118,7 @@ term2_preprocess_module(!ModuleInfo) :-
     process_builtin_preds(BelieveCheckTerm, PredIds, !ModuleInfo),
     process_imported_preds(PredIds, !ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Set the argument size constraints for imported procedures.
 %
@@ -251,7 +251,7 @@ create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
     ArgSizeTerm = arg_size_term(VarId, Coefficient),
     map.lookup(SubstMap, VarId, Var).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Set up information for builtins.
 %
@@ -689,7 +689,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
             "unrecognised arity-10+ no_type_info_builtin " ++ PredName)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred initialise_size_var_maps(list(proc_id)::in,
     proc_table::in, proc_table::out) is det.
@@ -705,6 +705,6 @@ initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
     map.det_update(ProcId, ProcInfo, !ProcTable),
     initialise_size_var_maps(ProcIds, !ProcTable).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_initial.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

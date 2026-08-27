@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2006, 2010-2011 The University of Melbourne.
 % Copyright (C) 2014-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_errors.m.
 % Main author: crs.
@@ -13,7 +13,7 @@
 % This module prints out the various error messages that are produced
 % by the various modules of our first termination analysis system.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_errors.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module bool.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term_error_kind
     --->    pragma_foreign_code
@@ -161,8 +161,8 @@
     %
 :- func term_error_kind_is_fatal_error(term_error_kind) = bool.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -184,7 +184,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
@@ -483,7 +483,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         Reason = no
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
     list(diag_spec)::in, list(diag_spec)::out) is det.
@@ -524,7 +524,7 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     Spec = gen_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX Apparently, this predicate is not invoked, at least not with
     % nonempty bags, for any test case in our suite.
@@ -566,7 +566,7 @@ term_errors_var_bag_desc_loop(VarTable, Prefix,
             HeadVarCount, TailVarsCounts, Pieces)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX Some of the following (and in is_fatal_error/1 as well) look wrong.
 % Some of them should probably be calling unexpected/2 - juliensf.
@@ -625,6 +625,6 @@ term_error_kind_is_fatal_error(ErrorKind) = IsFatal :-
         IsFatal = no
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_errors.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

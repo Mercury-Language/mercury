@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2011 The University of Melbourne.
 % Copyright (C) 2015-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_data.m.
 % Main author: juliensf.
@@ -17,7 +17,7 @@
 % which is an abstraction of a Mercury program in terms of linear arithmetic
 % constraints on term sizes.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % AR Goals.
 %
@@ -38,7 +38,7 @@
 % XXX In order to handle higher-order, we need to either modify the
 % exiting AR call goal or add a new AR goal type.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mapping the HLDS to the AR.
 %
@@ -105,7 +105,7 @@
 %
 % XXX As above, need HO analysis to make these work.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_data.
 
@@ -128,7 +128,7 @@
 :- import_module set.   % XXX We should experiment with different set
                         % implementations.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Types that are common to all parts of the termination analyser.
 %
@@ -161,7 +161,7 @@
     --->    arg_size_ok
     ;       arg_size_error(list(term2_error)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The abstract representation.
 %
@@ -301,7 +301,7 @@
                         % in the same SCC.
     ;       both.       % Both types of recursion.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Functions that operate on the AR.
 %
@@ -348,7 +348,7 @@
 :- func simplify_abstract_rep(abstract_goal) = abstract_goal.
 :- func simplify_conjuncts(list(abstract_goal)) = list(abstract_goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for printing out debugging traces, etc.
 %
@@ -373,8 +373,8 @@
 :- pred dump_abstract_goal(io.text_output_stream::in, module_info::in,
     size_varset::in, int::in, abstract_goal::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -387,7 +387,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Functions that operate on the AR.
 %
@@ -437,7 +437,7 @@ size_varset_from_abstract_scc(SCC) = SizeVarSet :-
 analysis_depends_on_ho(Proc) :-
     list.is_not_empty(Proc ^ ap_ho_calls).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for dealing with different types of recursion.
 %
@@ -472,7 +472,7 @@ combine_primitive_goals(GoalA, GoalB) = Goal :-
         unexpected($pred, "non-primitive goals")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for simplifying the abstract representation.
 %
@@ -613,7 +613,7 @@ is_empty_primitive(term_primitive(Poly, _, _)) :-
 
 is_empty_conj(term_conj([], _, _)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for simplifying conjuncts.
 %
@@ -652,7 +652,7 @@ simplify_conjuncts(Goals0, Goals) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for printing out the abstract data structure.
 % (These are for debugging only.)
@@ -776,6 +776,6 @@ indent_line(Stream, N, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_data.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

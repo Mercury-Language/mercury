@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
 % Copyright (C) 2017-2018, 2020-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_build.m.
 % Main author: juliensf.
@@ -18,7 +18,7 @@
 % TODO:
 % Make the abstract representations more independent of the HLDS.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_build.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module bool.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This structure holds the values of options used to control the build
     % pass.
@@ -56,8 +56,8 @@
     scc_with_entry_points::in, list(term2_error)::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -98,7 +98,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Build pass options.
 %
@@ -118,7 +118,7 @@
 term_build_options_init(Norm, Failure, ArgSizeOnly) =
     term_build_options(Norm, Failure, ArgSizeOnly).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % This information is accumulated while building the abstract
 % representation of a SCC. After we have finished we write it to the
@@ -136,7 +136,7 @@ term_build_options_init(Norm, Failure, ArgSizeOnly) =
                 tsi_non_zero_heads  :: list(size_var)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
         !ModuleInfo) :-
@@ -275,7 +275,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         io.nl(DebugStream, !DebugIO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for traversing HLDS goals and collecting constraints from them.
 %
@@ -382,7 +382,7 @@ info_update_recursion(RecType, !Info) :-
 info_update_ho_info(Context, !Info) :-
     !Info ^ tti_ho_info := [ho_call(Context) | !.Info ^ tti_ho_info].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for abstracting goals.
 %
@@ -513,7 +513,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
         unexpected($pred, "shorthand")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting (parallel) conjunctions.
 %
@@ -526,7 +526,7 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
     AbstractGoals = simplify_conjuncts(AbstractGoals0),
     AbstractGoal = term_conj(AbstractGoals, [], []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting calls.
 %
@@ -632,7 +632,7 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
     Polyhedron = polyhedron.from_constraints(Constraints),
     AbstractGoal = term_primitive(Polyhedron, [], []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting switches and disjunctions.
 %
@@ -769,7 +769,7 @@ detect_switch_var(hlds_goal(unify(_, _, _, Kind, _), _), SwitchVar, ConsId) :-
 detect_switch_var(hlds_goal(shorthand(_), _), _, _) :-
     unexpected($pred, "shorthand").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting from_ground_term scopes,
 % which act like giant construction unifications.
@@ -852,7 +852,7 @@ accumulate_sum([Size | Sizes], !TotalSize) :-
     !:TotalSize = !.TotalSize + Size,
     accumulate_sum(Sizes, !TotalSize).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates for abstracting unifications.
 %
@@ -1037,7 +1037,7 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Partition the variables of a goal into a set of local variables
     % and a set of non-local variables.
@@ -1052,7 +1052,7 @@ partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
         set_of_var.difference(QuantVars, NonLocals0)),
     NonLocals = set_of_var.to_sorted_list(NonLocals0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Procedures for manipulating sets of size_vars.
 %
@@ -1097,7 +1097,7 @@ possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
         possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Failure constraints.
 %
@@ -1303,6 +1303,6 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
         Constraints = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_build.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2003, 2005-2012 The University of Melbourne.
 % Copyright (C) 2014-2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_util.m.
 % Main author: juliensf.
 %
 % This module defines some utility predicates used by the termination analyser.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_util.
 :- interface.
@@ -38,7 +38,7 @@
 :- import_module maybe.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for storing things in the HLDS.
 %
@@ -58,7 +58,7 @@
 
 :- func get_abstract_proc(module_info, pred_proc_id) = abstract_proc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for size_vars.
 %
@@ -119,13 +119,13 @@
     %
 :- pred is_zero_size_var(zero_vars::in, size_var::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_context_to_constr_termination_info(
     maybe(pragma_termination_info)::in, prog_context::in,
     maybe(constr_termination_info)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % substitute_size_vars: Takes a list of constraints and a var_substitution.
     % Returns the constraints with the specified substitutions made.
@@ -133,7 +133,7 @@
 :- func substitute_size_vars(lp_constraint_conj, map(size_var, size_var))
     = lp_constraint_conj.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_arg_size_info(pred_proc_id::in, polyhedron::in, module_info::in,
     module_info::out) is det.
@@ -163,7 +163,7 @@
 :- pred change_procs_constr_arg_size_info(list(proc_id)::in, bool::in,
     constr_arg_size_info::in, proc_table::in, proc_table::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for printing out debugging traces. The first boolean argument
 % of these predicates should be the value of the --debug-term option.
@@ -203,8 +203,8 @@
 :- pred dump_size_varset(io.text_output_stream::in, size_varset::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -223,7 +223,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_pred_proc_ids_constr_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
@@ -243,7 +243,7 @@ lookup_proc_constr_arg_size_info(ModuleInfo, PredProcId) = MaybeArgSizeInfo :-
     proc_info_get_termination2_info(ProcInfo, Term2Info),
     MaybeArgSizeInfo = term2_info_get_success_constrs(Term2Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_abstract_scc(ModuleInfo, SCC) =
     set.map(get_abstract_proc(ModuleInfo), SCC).
@@ -259,7 +259,7 @@ get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
         unexpected($pred, "no abstract rep. for proc")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_size_var_map(ProgVars, SizeVarSet, SizeVarMap) :-
     make_size_var_map_alloc_from(ProgVars, varset.init, SizeVarSet,
@@ -309,7 +309,7 @@ is_zero_size_prog_var(ModuleInfo, VarTable, Var) :-
         is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility procedures used by various parts of the IR analysis.
 %
@@ -353,7 +353,7 @@ make_arg_constraints([Var | Vars], Zeros) = Constraints :-
 is_zero_size_var(Zeros, SizeVar) :-
     set.member(SizeVar, Zeros).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_context_to_constr_termination_info(no, _, no).
 add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
@@ -361,7 +361,7 @@ add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
 add_context_to_constr_termination_info(yes(can_loop(_)), Context,
         yes(can_loop([term2_error(Context, imported_pred)]))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 substitute_size_vars(Constraints0, SubstMap) = Constraints :-
     SubVarInCoeff =
@@ -376,12 +376,12 @@ substitute_size_vars(Constraints0, SubstMap) = Constraints :-
         ),
     Constraints = list.map(SubVarInEqn, Constraints0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 update_arg_size_info(PPID, Polyhedron, !ModuleInfo) :-
     set_pred_proc_ids_constr_arg_size_info([PPID], Polyhedron, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 change_procs_constr_termination_info([], _, _, !ProcTable).
 change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
@@ -420,7 +420,7 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
     ),
     change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for printing out debugging traces ...
 %
@@ -464,7 +464,7 @@ write_size_vars(Stream, VarSet, Vars, !IO) :-
     list.map(varset.lookup_name(VarSet), Vars, VarNames),
     io.format(Stream, "[%s]", [s(string.join_list(", ", VarNames))], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dump_size_vars(Stream, VarSet, Vars, !IO) :-
     dump_size_varset_loop(Stream, VarSet, Vars, !IO).
@@ -483,6 +483,6 @@ dump_size_varset_loop(Stream, VarSet, [Var | Vars], !IO) :-
     io.format(Stream, " = %s\n", [s(Name)], !IO),
     dump_size_varset_loop(Stream, VarSet, Vars, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

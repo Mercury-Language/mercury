@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2003-2008, 2010-2012 The University of Melbourne.
 % Copyright (C) 2014-2018, 2022, 2025-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_pass2.m.
 % Main author of original version: crs.
@@ -14,7 +14,7 @@
 % This file contains the code that tries to prove that procedures terminate.
 % For details, please refer to the papers mentioned in termination.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass2.
 :- interface.
@@ -24,7 +24,7 @@
 :- import_module hlds.pred_proc_id.
 :- import_module transform_hlds.term_util.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % NOTE: This code assumes that the SCC does not call any nonterminating
     % procedures. If it does then, that fact should have been detected
@@ -33,8 +33,8 @@
 :- pred prove_termination_in_scc(module_info::in, pass_info::in,
     scc::in, int::in, termination_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -61,7 +61,7 @@
 :- import_module term.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term_pass2_result
     --->    term_pass2_ok(
@@ -84,7 +84,7 @@
 :- type call_weight_edge
     --->    call_weight_edge(int, prog_context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 prove_termination_in_scc(ModuleInfo, PassInfo, SCC, SingleArgs, Termination) :-
     set.to_sorted_list(SCC, SCCProcs),
@@ -149,7 +149,7 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
     list.map(MapIsInput, HeadVars, BoolList),
     map.det_insert(PPId, BoolList, RecSupplierMap0, RecSupplierMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform single arg analysis on the SCC.
     %
@@ -293,7 +293,7 @@ lookup_proc_arity(ModuleInfo, PPId) = Arity :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     list.length(HeadVars, Arity).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fixpoint_dir
     --->    up
@@ -333,7 +333,7 @@ prove_termination_in_scc_trial(ModuleInfo, PassInfo, FixDir,
         Termination = can_loop(Errors)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_fixpoint(module_info::in,
     pass_info::in, fixpoint_dir::in, list(pred_proc_id)::in, used_args::in,
@@ -361,7 +361,7 @@ prove_termination_in_scc_fixpoint(ModuleInfo, PassInfo, FixDir,
         Result = Result1
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Process a whole SCC, to determine the termination property of each
     % procedure in that SCC.
@@ -413,7 +413,7 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
         Result = term_pass2_error(Errors)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_rec_input_suppliers(list(prog_var)::in, bag(prog_var)::in,
     fixpoint_dir::in, list(bool)::in, list(bool)::out,
@@ -455,7 +455,7 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
     update_rec_input_suppliers(Args, ActiveVars, FixDir,
         RecInputSuppliers0, RecInputSuppliers, !RecBag).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This adds the information from a stage 2 traversal to the graph.
     % The graph's nodes are the procedures in the current SCC. The graph's
@@ -515,7 +515,7 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
     ),
     add_call_arcs(Paths, RecInputSuppliers, !CallInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We use a simple depth first search to find and return the list of all
     % cycles in the call graph of the SCC where the change in the size of the
@@ -624,12 +624,12 @@ zero_or_positive_weight_cycles_from_neighbour(CallWeights,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred map_to_no(T::in, bool::out) is det.
 
 map_to_no(_, no).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_pass2.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

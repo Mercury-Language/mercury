@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997, 2002-2012 The University of Melbourne.
 % Copyright (C) 2014-2017, 2022, 2024-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_constr_main.m.
 % Main author: juliensf.
@@ -75,7 +75,7 @@
 %
 % * experiment with different representation for the polyhedra.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_main.
 :- interface.
@@ -87,15 +87,15 @@
 
 :- import_module list.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform termination analysis on a module.
     %
 :- pred term2_analyse_module(module_info::in, module_info::out,
     list(diag_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -121,7 +121,7 @@
 :- import_module set.
 :- import_module std_util.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Main pass.
 %
@@ -174,7 +174,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     set.insert(pak_termination2, ProcAnalysisKinds0, ProcAnalysisKinds),
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Analyse a single SCC.
 %
@@ -284,7 +284,7 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCCEntryPoints,
         ArgSizeOnly = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Procedures for storing 'termination2_info' in the HLDS.
 %
@@ -306,7 +306,7 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
     proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates.
 %
@@ -344,6 +344,6 @@ proc_needs_ar_built(ModuleInfo, PPId) :-
         term2_info_get_term_status(TermInfo) = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_main.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

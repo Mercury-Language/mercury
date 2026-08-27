@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
 % Copyright (C) 2015-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_norm.m.
 % Main author: crs.
 %
 % This module defines predicates for computing functor norms.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_norm.
 :- interface.
@@ -27,7 +27,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The functor_info type contains information about how the weight
     % of a term is calculated.
@@ -69,8 +69,8 @@
     %
 :- pred zero_size_type(module_info::in, mer_type::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -87,7 +87,7 @@
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % We use semilinear norms (denoted by ||) to compute the sizes of terms.
 % These have the form
@@ -116,7 +116,7 @@
             % the set of arguments of the functor whose size should be counted
             % (I is given by the table entry of the functor).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Calculate the weight to be assigned to each function symbol for the
 % use_map and use_map_and_args semilinear norms.
@@ -248,7 +248,7 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_functor_info(_ModuleInfo, norm_total) = total.
 set_functor_info(_ModuleInfo, norm_simple) = simple.
@@ -259,7 +259,7 @@ set_functor_info(ModuleInfo, norm_size_data_elems) = FunctorInfo :-
     find_weights(ModuleInfo, WeightMap),
     FunctorInfo = use_map(WeightMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
         !Args, !Modes) :-
@@ -338,7 +338,7 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
         [_Mode0 | Modes0], Modes) :-
     functor_norm_filter_args(Bools, Args0, Args, Modes0, Modes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred const_struct_count_cells(const_struct_db::in, int::in,
     int::in, int::out) is det.
@@ -478,7 +478,7 @@ const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
     const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
         Args, UseArgs, !Gamma).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 functor_lower_bound(_ModuleInfo, FunctorInfo, TypeCtor, ConsId) = Weight :-
     (
@@ -513,7 +513,7 @@ functor_lower_bound(_ModuleInfo, FunctorInfo, TypeCtor, ConsId) = Weight :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 zero_size_type(ModuleInfo, Type) :-
     CtorCat = classify_type(ModuleInfo, Type),
@@ -543,6 +543,6 @@ zero_size_type_category(CtorCat, ZeroSize) :-
         ZeroSize = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_norm.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
