@@ -42,6 +42,56 @@
 % could be called a "cross product" of all the input specializations.
 %
 %---------------------------------------------------------------------------%
+%
+% This program transformation can change the proc_id of a procedure
+% in a predicate or function. This means that it can potentially affect
+% the operation of all Mercury program constructs that refer to proc_ids.
+% These constructs are all pragmas.
+%
+% The following lists the pragmas that can refer to specific procedures
+% (as opposed to whole predicates and/or functions), and how we handle them.
+% A common theme is that the code that add the pragma to the HLDS
+% puts information about it into a field of the proc_info, and that
+% this module both preserves that field in the original procedure and
+% copies it to any input-specialized procedures.
+%
+% termination
+% termination2
+% require_tail_rec
+%   The compiler records these pragmas in the termination_info,
+%   termination2_info, and require_tailrec_info fields of the proc_info
+%   respectively. The parts of the passes implementing these pragmas
+%   that generate the diagnostics that they call for can include proc_ids
+%   (mode numbers) in those diagnostics, but they will map the then-actual
+%   proc_ids back to their original proc_ids using the maybe_input_spec field,
+%   which is set by code in this module.
+%
+% obsolete_proc
+%   The compiler records this pragma in the obsolete_in_favour_of field
+%   of the proc_info. simplify_goal_call.m, which implements the pragma,
+%   looks only at this field, so it gets the "should this call get an
+%   obsolete proc warning" test right using its existing code. And the code
+%   generating the warning did not need any changes either, because its text
+%   identifies the obsolete procedure not by giving its proc_id, but by
+%   listing its argument modes.
+%
+% foreign_proc
+%   The compiler records this pragma BY PRED_ID AND PROC_ID in the
+%   pragma_exported_procs field of the module_info. If the pred_id
+%   in such as record identifies a predicate that we input specialize,
+%   then update_exported_proc_id_if_needed below will update the proc_id.
+%
+% tabled
+% structure sharing
+% structure reuse
+% type_spec
+% unused_args
+% exceptions
+% trailing
+% mm_tabling
+%   We do not yet have code to handle these pragmas correctly.
+%
+%---------------------------------------------------------------------------%
 
 :- module hlds.input_specialization.
 
@@ -71,25 +121,43 @@
 :- import_module parse_tree.prog_item_pragma.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
 input_specialize_in_module(!ModuleInfo) :-
     module_info_get_input_spec_table(!.ModuleInfo, InputSpecTable),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    list.foldl(maybe_input_specialize_in_pred(InputSpecTable), PredIds,
-        !ModuleInfo).
+    list.foldl2(maybe_input_specialize_in_pred(InputSpecTable), PredIds,
+        [], SpecPredIds, !ModuleInfo),
+    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcCord0),
+    ( if
+        SpecPredIds = [_ | _],
+        cord.is_non_empty(ExportedProcCord0)
+    then
+        set_tree234.list_to_set(SpecPredIds, SpecPredIdSet),
+        cord.map_pred(
+            update_exported_proc_id_if_needed(!.ModuleInfo, SpecPredIdSet),
+            ExportedProcCord0, ExportedProcCord),
+        module_info_set_pragma_exported_procs(ExportedProcCord, !ModuleInfo)
+    else
+        true
+    ).
 
 :- pred maybe_input_specialize_in_pred(input_spec_table::in, pred_id::in,
+    list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out) is det.
 
-maybe_input_specialize_in_pred(InputSpecTable, PredId, !ModuleInfo) :-
+maybe_input_specialize_in_pred(InputSpecTable, PredId,
+        !SpecPredIds, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_module_name(PredInfo0, ModuleName),
     ( if map.search(InputSpecTable, ModuleName, InModuleMap) then
@@ -99,8 +167,14 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId, !ModuleInfo) :-
             (
                 UserMade = user_made_pred(_, _, _),
                 input_specialize_in_pred_if_possible(!.ModuleInfo, InModuleMap,
-                    PredInfo0, PredInfo),
-                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+                    PredInfo0, MaybeNewPredInfo),
+                (
+                    MaybeNewPredInfo = no
+                ;
+                    MaybeNewPredInfo = yes(NewPredInfo),
+                    !:SpecPredIds = [PredId | !.SpecPredIds],
+                    module_info_set_pred_info(PredId, NewPredInfo, !ModuleInfo)
+                )
             ;
                 ( UserMade = user_made_lambda(_, _, _)
                 ; UserMade = user_made_class_method(_, _)
@@ -132,20 +206,20 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId, !ModuleInfo) :-
     ).
 
 :- pred input_specialize_in_pred_if_possible(module_info::in,
-    input_spec_in_module_map::in, pred_info::in, pred_info::out) is det.
+    input_spec_in_module_map::in, pred_info::in, maybe(pred_info)::out) is det.
 
-input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap, !PredInfo) :-
-    pred_info_get_arg_types(!.PredInfo, ArgTypes),
+input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap,
+        PredInfo0, MaybeNewPredInfo) :-
+    pred_info_get_arg_types(PredInfo0, ArgTypes),
     find_args_to_specialize(InModuleMap, 1, ArgTypes, ArgsToSpec),
     (
-        ArgsToSpec = []
-        % Pieces = [words("Error:")],
-        % Spec = spec($pred, severity_error, phase_input_spec, Pieces),
-        % !:Specs = [Spec | !.Specs]
+        ArgsToSpec = [],
+        MaybeNewPredInfo = no
     ;
         ArgsToSpec = [HeadArgToSpec | TailArgsToSpec],
         input_specialize_in_pred(ModuleInfo, HeadArgToSpec, TailArgsToSpec,
-            !PredInfo)
+            PredInfo0, NewPredInfo),
+        MaybeNewPredInfo = yes(NewPredInfo)
     ).
 
 :- type arg_to_specialize
@@ -298,6 +372,64 @@ create_input_specialized_proc_infos(OrigProcId, OrigProcInfo, ArgNum,
         create_input_specialized_proc_infos(OrigProcId, OrigProcInfo, ArgNum,
             ReplaceOrAdd, TailSpecInsts, TailSpecProcInfos),
         SpecProcInfos = [HeadSpecProcInfo | TailSpecProcInfos]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred update_exported_proc_id_if_needed(module_info::in,
+    set_tree234(pred_id)::in,
+    pragma_exported_proc::in, pragma_exported_proc::out) is det.
+
+update_exported_proc_id_if_needed(ModuleInfo, SpecPredIdSet, !ExportedProc) :-
+    !.ExportedProc =
+        pragma_exported_proc(Lang, PredId, OrigProcId, Name, Ctxt),
+    ( if set_tree234.contains(SpecPredIdSet, PredId) then
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        map.to_assoc_list(ProcTable, ProcIdsInfos),
+        find_original_proc_id_in_updated_proc_table(OrigProcId, ProcIdsInfos,
+            CurProcId),
+        % The presence of the PredId/CurProcId pair in this structure
+        % in the module_info will protect the procedure from deletion
+        % by dead_proc_elim.m, even if this procedure is logically deleted.
+        % It should therefore survive to have code generated for it,
+        % and for that generated code to be exported to the rest of
+        % the target language program.
+        !:ExportedProc =
+            pragma_exported_proc(Lang, PredId, CurProcId, Name, Ctxt)
+    else
+        true
+    ).
+
+:- pred find_original_proc_id_in_updated_proc_table(proc_id::in,
+    assoc_list(proc_id, proc_info)::in, proc_id::out) is det.
+
+find_original_proc_id_in_updated_proc_table(_SearchOrigProcId, [], _) :-
+    unexpected($pred, "search failed").
+find_original_proc_id_in_updated_proc_table(SearchOrigProcId,
+        [ProcId - ProcInfo | ProcIdsInfos], CurProcId) :-
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        MaybeInputSpec = not_involved_in_input_spec,
+        % We put a predicate into SpecPredIdSet only if we replaced
+        % the maybe_input_spec field of all its procedures with
+        % one of the other three values of this type.
+        unexpected($pred, "not_involved_in_input_spec failed")
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_kept(OrigProcId)
+        ; MaybeInputSpec =
+            input_spec_original_proc_logically_deleted(OrigProcId)
+        ),
+        ( if OrigProcId = SearchOrigProcId then
+            CurProcId = ProcId
+        else
+            find_original_proc_id_in_updated_proc_table(SearchOrigProcId,
+                ProcIdsInfos, CurProcId)
+        )
+    ;
+        MaybeInputSpec = input_specialized_proc(_),
+        find_original_proc_id_in_updated_proc_table(SearchOrigProcId,
+            ProcIdsInfos, CurProcId)
     ).
 
 %---------------------------------------------------------------------------%
