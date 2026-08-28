@@ -210,11 +210,11 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfosSet,
             SharingInfos, ReuseInfos,
             Exceptions, TrailingInfos, MMTablingInfos, !State),
 
-        !ParseTreePlainOpt ^ ptpo_unused_args := UnusedArgsInfos,
         !ParseTreePlainOpt ^ ptpo_termination := TermInfos,
         !ParseTreePlainOpt ^ ptpo_termination2 := TermInfos2,
         !ParseTreePlainOpt ^ ptpo_struct_sharing := SharingInfos,
         !ParseTreePlainOpt ^ ptpo_struct_reuse := ReuseInfos,
+        !ParseTreePlainOpt ^ ptpo_unused_args := UnusedArgsInfos,
         !ParseTreePlainOpt ^ ptpo_exceptions := Exceptions,
         !ParseTreePlainOpt ^ ptpo_trailing := TrailingInfos,
         !ParseTreePlainOpt ^ ptpo_mm_tabling := MMTablingInfos
@@ -230,10 +230,10 @@ format_trans_opt_file(ModuleInfo, ParseTreeTransOpt, !State) :-
     % Select all the predicates for which something should be written
     % into the .trans_opt file.
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    PredIdsSet = set.list_to_set(PredIds),
+    set.list_to_set(PredIds, PredIdsSet),
     module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
-    PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
-    PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),
+    set.difference(PredIdsSet, ReusePredsSet, PredIdsNoReusePredsSet),
+    set.to_sorted_list(PredIdsNoReusePredsSet, PredIdsNoReuseVersions),
     generate_order_pred_infos(ModuleInfo, PredIdsNoReuseVersions,
         NoReuseOrderPredInfos),
 
@@ -241,8 +241,7 @@ format_trans_opt_file(ModuleInfo, ParseTreeTransOpt, !State) :-
     % was actually run.
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
     gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds,
-        NoReuseOrderPredInfos,
-        TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        NoReuseOrderPredInfos, TermInfos, TermInfos2, SharingInfos, ReuseInfos,
         Exceptions, TrailingInfos, MMTablingInfos),
     format_analysis_pragmas(TermInfos, TermInfos2, SharingInfos, ReuseInfos,
         Exceptions, TrailingInfos, MMTablingInfos, !State),
@@ -424,10 +423,8 @@ gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
     proc_info_declared_argmodes(ProcInfo, ArgModes),
     proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-    PredNameModesPF =
-        proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
-    MaybeParseTreeArgSize =
-        maybe_arg_size_info_to_parse_tree(MaybeArgSize),
+    PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+    MaybeParseTreeArgSize = maybe_arg_size_info_to_parse_tree(MaybeArgSize),
     MaybeParseTreeTermination =
         maybe_termination_info_to_parse_tree(MaybeTermination),
     TermInfo = decl_pragma_termination_info(PredNameModesPF,
@@ -526,8 +523,7 @@ gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
 
     % NOTE: If this predicate is changed, then parse_pragma.m must also
     % be changed, so that it can parse the resulting pragmas.
-    PredNameModesPF =
-        proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+    PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
 
     proc_info_get_headvars(ProcInfo, HeadVars),
     SizeVarMap = term2_info_get_size_var_map(Term2Info),
@@ -582,8 +578,8 @@ maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
 :- pred lp_rational_constraint_to_arg_size_constr(map(size_var, int)::in,
     lp_constraint::in, arg_size_constr::out) is det.
 
-lp_rational_constraint_to_arg_size_constr(VarToVarIdMap,
-        LPConstraint, ArgSizeConstr) :-
+lp_rational_constraint_to_arg_size_constr(VarToVarIdMap, LPConstraint,
+        ArgSizeConstr) :-
     deconstruct_non_false_constraint(LPConstraint,
         LPTerms, Operator, Constant),
     list.map(lp_term_to_arg_size_term(VarToVarIdMap), LPTerms, ArgSizeTerms),
@@ -817,8 +813,7 @@ gather_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl(
-        gather_pragma_structure_reuse_for_proc(ModuleInfo,
-            OrderPredInfo),
+        gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo),
         ProcTable, !ReuseInfosCord).
 
 :- pred gather_pragma_structure_reuse_for_proc(module_info::in,
