@@ -65,6 +65,7 @@
 :- import_module hlds.mode_test.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.options.
@@ -278,6 +279,8 @@ may_gather_warning_pragma_for_pred(PredInfo) :-
 :- type warn_unused_pred_args
     --->    warn_unused_pred_args(
                 pred_info,
+                % The proc_id is the original proc_id of the procedure,
+                % even if this was changed later by input specialization.
                 one_or_more(pair(proc_id, unused_proc_args))
             ).
 
@@ -309,23 +312,41 @@ maybe_add_proc_to_unused_args_map(ModuleInfo, PredInfo, PredId, ProcId,
     (
         UnusedArgs = [_ | _],
         pred_info_proc_info(PredInfo, ProcId, ProcInfo),
-        proc_info_get_argmodes(ProcInfo, ArgModes0),
-        list.det_drop(NumExtraArgs, ArgModes0, ArgModes),
-        record_which_unused_args_are_marked(ModuleInfo, ArgModes,
-            UnusedArgs, UnusedProcArgs),
-        % If UnusedArgs is not empty, then UnusedProcArgs cannot be empty.
-        det_list_to_one_or_more(UnusedProcArgs, OoMUnusedProcArgs),
-        ( if
-            map.search(!.WarnUnusedPredArgsMap, PredId, WarnUnusedPredArgs0)
-        then
-            WarnUnusedPredArgs0 = warn_unused_pred_args(_PredInfo, ProcAL0),
-            one_or_more.cons(ProcId - OoMUnusedProcArgs, ProcAL0, ProcAL),
-            WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
-            map.det_update(PredId, WarnUnusedPredArgs, !WarnUnusedPredArgsMap)
-        else
-            ProcAL = one_or_more(ProcId - OoMUnusedProcArgs, []),
-            WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
-            map.det_insert(PredId, WarnUnusedPredArgs, !WarnUnusedPredArgsMap)
+        proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+        (
+            (
+                MaybeInputSpec = not_involved_in_input_spec,
+                OrigProcId = ProcId
+            ;
+                MaybeInputSpec = input_spec_original_proc_kept(OrigProcId)
+            ),
+            proc_info_get_argmodes(ProcInfo, ArgModes0),
+            list.det_drop(NumExtraArgs, ArgModes0, ArgModes),
+            record_which_unused_args_are_marked(ModuleInfo, ArgModes,
+                UnusedArgs, UnusedProcArgs),
+            % If UnusedArgs is not empty, then UnusedProcArgs cannot be empty.
+            det_list_to_one_or_more(UnusedProcArgs, OoMUnusedProcArgs),
+            ( if
+                map.search(!.WarnUnusedPredArgsMap, PredId,
+                    WarnUnusedPredArgs0)
+            then
+                WarnUnusedPredArgs0 =
+                    warn_unused_pred_args(_PredInfo, ProcAL0),
+                one_or_more.cons(OrigProcId - OoMUnusedProcArgs,
+                    ProcAL0, ProcAL),
+                WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
+                map.det_update(PredId, WarnUnusedPredArgs,
+                    !WarnUnusedPredArgsMap)
+            else
+                ProcAL = one_or_more(OrigProcId - OoMUnusedProcArgs, []),
+                WarnUnusedPredArgs = warn_unused_pred_args(PredInfo, ProcAL),
+                map.det_insert(PredId, WarnUnusedPredArgs,
+                    !WarnUnusedPredArgsMap)
+            )
+        ;
+            ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+            ; MaybeInputSpec = input_specialized_proc(_)
+            )
         )
     ;
         UnusedArgs = []
@@ -383,6 +404,11 @@ warn_unused_args_in_pred(_PredId, WarnUnusedPredArgs, !Specs) :-
     % - all procedures have some unused arguments, and
     % - they all have the *same set* of unused arguments, *and*
     %   they agree on which unused args are marked as such.
+    % Note that "all procedures" here means "all procedures for which
+    % we have entries in WarnUnusedPredArgs". Procedures that were ignored
+    % by maybe_add_proc_to_unused_args_map because of an unsuitable value
+    % of MaybeInputSpec do not count as parts of "all", since they are
+    % effectively invisible to the user.
     ( if
         map.is_empty(UnmentionedProcTable),
         UnusedArgsToProcAL = [UnusedProcArgs - _OoMProcIds]
@@ -538,23 +564,38 @@ maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
         ),
         UnusedArgs = [_ | _]
     then
-        ModuleName = pred_info_module(PredInfo),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        PredName = pred_info_name(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        pred_info_get_orig_arity(PredInfo, PredFormArity),
-        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, PredSymName,
-            UserArity, ModeNum),
-        % We can either collect a set of gen_pragma_unused_args
-        % with dummy contexts and item sequence numbers now,
-        % or we can collect PredNameArityPFMn/UnusedArgs pairs,
-        % and add the dummy contexts and item sequence numbers to them
-        % later. Both should work; this is marginally simpler to program.
-        UnusedArgInfo = gen_pragma_unused_args_info(PredNameArityPFMn,
-            UnusedArgs, dummy_context, item_no_seq_num),
-        set.insert(UnusedArgInfo, !UnusedArgInfos)
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+        (
+            (
+                MaybeInputSpec = not_involved_in_input_spec,
+                OrigProcId = ProcId
+            ;
+                MaybeInputSpec = input_spec_original_proc_kept(OrigProcId)
+            ),
+            ModuleName = pred_info_module(PredInfo),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            PredName = pred_info_name(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            pred_info_get_orig_arity(PredInfo, PredFormArity),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+            proc_id_to_int(OrigProcId, ModeNum),
+            PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, PredSymName,
+                UserArity, ModeNum),
+            % We can either collect a set of gen_pragma_unused_args
+            % with dummy contexts and item sequence numbers now,
+            % or we can collect PredNameArityPFMn/UnusedArgs pairs,
+            % and add the dummy contexts and item sequence numbers to them
+            % later. Both should work; this is marginally simpler to program.
+            UnusedArgInfo = gen_pragma_unused_args_info(PredNameArityPFMn,
+                UnusedArgs, dummy_context, item_no_seq_num),
+            set.insert(UnusedArgInfo, !UnusedArgInfos)
+        ;
+            ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+            ; MaybeInputSpec = input_specialized_proc(_)
+            )
+        )
     else
         true
     ).

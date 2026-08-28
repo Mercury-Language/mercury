@@ -140,6 +140,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_error_util.  % for original_proc_id
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred_tests.
 :- import_module hlds.hlds_proc.
@@ -194,7 +195,6 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfosSet,
         % We have nothing to append to the .opt file.
         true
     else
-        UnusedArgsInfos = set.to_sorted_list(UnusedArgsInfosSet),
         module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
 
@@ -202,6 +202,7 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfosSet,
             TermInfos, TermInfos2, SharingInfos, ReuseInfos,
             Exceptions, TrailingInfos, MMTablingInfos),
 
+        set.to_sorted_list(UnusedArgsInfosSet, UnusedArgsInfos),
         maybe_format_block_start_blank_line(string.builder.handle,
             UnusedArgsInfos, !State),
         list.foldl(mercury_format_pragma_unused_args(string.builder.handle),
@@ -416,21 +417,47 @@ gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfosCord) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        _PredId, PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    PredSymName = qualified(ModuleName, PredName),
-    proc_info_declared_argmodes(ProcInfo, ArgModes),
-    proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
-    proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-    PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
-    MaybeParseTreeArgSize = maybe_arg_size_info_to_parse_tree(MaybeArgSize),
-    MaybeParseTreeTermination =
-        maybe_termination_info_to_parse_tree(MaybeTermination),
-    TermInfo = decl_pragma_termination_info(PredNameModesPF,
-        MaybeParseTreeArgSize, MaybeParseTreeTermination,
-        dummy_context, item_no_seq_num),
-    cord.snoc(TermInfo, !TermInfosCord).
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+            _PredId, PredInfo),
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
+        proc_info_declared_argmodes(ProcInfo, ArgModes),
+        proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
+        proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
+        PredNameModesPF =
+            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+        MaybeParseTreeArgSize =
+            maybe_arg_size_info_to_parse_tree(MaybeArgSize),
+        MaybeParseTreeTermination =
+            maybe_termination_info_to_parse_tree(MaybeTermination),
+        TermInfo = decl_pragma_termination_info(PredNameModesPF,
+            MaybeParseTreeArgSize, MaybeParseTreeTermination,
+            dummy_context, item_no_seq_num),
+        cord.snoc(TermInfo, !TermInfosCord)
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % Logically deleted procedures should not be visible
+        % from *any* module, even the one defining them.
+        %
+        % XXX input_spec pragmas are too new to know whether it is
+        % worth including either them, or the declarations and definitions
+        % of the procedures resulting from them, in .opt or .trans_opt files.
+        % Until we know the answer to that question, it is better to err
+        % on the side of including the declarations of such predicates
+        % in .opt/.trans_opt files without their termination info
+        % (which leads to suboptimal termination results but works)
+        % than on the side of including their termination into
+        % but not their declarations (which leads to a compiler crash
+        % when the lookup of the predicate the termination pragma applies
+        % fails).
+    ).
 
 :- func maybe_arg_size_info_to_parse_tree(maybe(arg_size_info)) =
     maybe(pragma_arg_size_info).
@@ -510,49 +537,61 @@ gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfo2sCord) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        _PredId, PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    PredSymName = qualified(ModuleName, PredName),
-
-    proc_info_declared_argmodes(ProcInfo, ArgModes),
-    proc_info_get_termination2_info(ProcInfo, Term2Info),
-    MaybeSuccessConstraints = term2_info_get_success_constrs(Term2Info),
-    MaybeFailureConstraints = term2_info_get_failure_constrs(Term2Info),
-    MaybeTermination = term2_info_get_term_status(Term2Info),
-
-    % NOTE: If this predicate is changed, then parse_pragma.m must also
-    % be changed, so that it can parse the resulting pragmas.
-    PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
-
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    SizeVarMap = term2_info_get_size_var_map(Term2Info),
-    HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
-    list.length(HeadVars, NumHeadSizeVars),
-
-    HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
-    map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
-        map.init, VarToVarIdMap),
-    maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-        MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
-    maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-        MaybeFailureConstraints, MaybeFailureArgSizeInfo),
-
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
     (
-        MaybeTermination = no,
-        MaybePragmaTermination = no
-    ;
-        MaybeTermination = yes(cannot_loop(_)),
-        MaybePragmaTermination = yes(cannot_loop(unit))
-    ;
-        MaybeTermination = yes(can_loop(_)),
-        MaybePragmaTermination = yes(can_loop(unit))
-    ),
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+            _PredId, PredInfo),
+        ModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(ModuleName, PredName),
 
-    TermInfo2 = decl_pragma_termination2_info(PredNameModesPF,
-        MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
-        MaybePragmaTermination, dummy_context, item_no_seq_num),
-    cord.snoc(TermInfo2, !TermInfo2sCord).
+        proc_info_declared_argmodes(ProcInfo, ArgModes),
+        proc_info_get_termination2_info(ProcInfo, Term2Info),
+        MaybeSuccessConstraints = term2_info_get_success_constrs(Term2Info),
+        MaybeFailureConstraints = term2_info_get_failure_constrs(Term2Info),
+        MaybeTermination = term2_info_get_term_status(Term2Info),
+
+        % NOTE: If this predicate is changed, then parse_pragma.m must also
+        % be changed, so that it can parse the resulting pragmas.
+        PredNameModesPF =
+            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        SizeVarMap = term2_info_get_size_var_map(Term2Info),
+        HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
+        list.length(HeadVars, NumHeadSizeVars),
+
+        HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
+        map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
+            map.init, VarToVarIdMap),
+        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+            MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
+        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+            MaybeFailureConstraints, MaybeFailureArgSizeInfo),
+
+        (
+            MaybeTermination = no,
+            MaybePragmaTermination = no
+        ;
+            MaybeTermination = yes(cannot_loop(_)),
+            MaybePragmaTermination = yes(cannot_loop(unit))
+        ;
+            MaybeTermination = yes(can_loop(_)),
+            MaybePragmaTermination = yes(can_loop(unit))
+        ),
+
+        TermInfo2 = decl_pragma_termination2_info(PredNameModesPF,
+            MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
+            MaybePragmaTermination, dummy_context, item_no_seq_num),
+        cord.snoc(TermInfo2, !TermInfo2sCord)
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
+    ).
 
 %---------------------%
 
@@ -622,37 +661,49 @@ gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ExceptionsCord) :-
-    OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_index_or_compare_pred(PredInfo),
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
+            PredId, PredInfo),
+        ( if
+            procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+            not is_unify_index_or_compare_pred(PredInfo),
 
-        module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
-        TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
-        not set.member(PredId, TypeSpecForcePreds),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds),
 
-        % XXX Writing out pragmas for the automatically generated class
-        % instance methods causes the compiler to abort when it reads them
-        % back in.
-        pred_info_get_markers(PredInfo, Markers),
-        not marker_is_present(Markers, marker_class_instance_method),
-        not marker_is_present(Markers, marker_named_class_instance_method),
+            % XXX Writing out pragmas for the automatically generated class
+            % instance methods causes the compiler to abort when it reads them
+            % back in.
+            pred_info_get_markers(PredInfo, Markers),
+            not marker_is_present(Markers, marker_class_instance_method),
+            not marker_is_present(Markers, marker_named_class_instance_method),
 
-        proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
-        MaybeProcExceptionInfo = yes(ProcExceptionInfo)
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
-            PredSymName, UserArity, ModeNum),
-        ProcExceptionInfo = proc_exception_info(Status, _),
-        ExceptionInfo = gen_pragma_exceptions_info(PredNameArityPFMn, Status,
-            dummy_context, item_no_seq_num),
-        cord.snoc(ExceptionInfo, !ExceptionsCord)
-    else
-        true
+            proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
+            MaybeProcExceptionInfo = yes(ProcExceptionInfo)
+        then
+            ModuleName = pred_info_module(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            original_proc_id(ProcInfo, ProcId, OrigProcId),
+            proc_id_to_int(OrigProcId, ModeNum),
+            PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+                PredSymName, UserArity, ModeNum),
+            ProcExceptionInfo = proc_exception_info(Status, _),
+            ExceptionInfo = gen_pragma_exceptions_info(PredNameArityPFMn,
+                Status, dummy_context, item_no_seq_num),
+            cord.snoc(ExceptionInfo, !ExceptionsCord)
+        else
+            true
+        )
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
     ).
 
 %---------------------------------------------------------------------------%
@@ -680,26 +731,38 @@ gather_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !TrailingInfosCord) :-
-    OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
-        PredId, PredInfo),
-    proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
-    ( if
-        MaybeProcTrailingInfo = yes(ProcTrailingInfo),
-        should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
-            PredSymName, UserArity, ModeNum),
-        ProcTrailingInfo = proc_trailing_info(Status, _),
-        TrailingInfo = gen_pragma_trailing_info(PredNameArityPFMn, Status,
-            dummy_context, item_no_seq_num),
-        cord.snoc(TrailingInfo, !TrailingInfosCord)
-    else
-        true
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
+            PredId, PredInfo),
+        proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
+        ( if
+            MaybeProcTrailingInfo = yes(ProcTrailingInfo),
+            should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
+                for_pragma, ShouldWrite),
+            ShouldWrite = should_write
+        then
+            ModuleName = pred_info_module(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            original_proc_id(ProcInfo, ProcId, OrigProcId),
+            proc_id_to_int(OrigProcId, ModeNum),
+            PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+                PredSymName, UserArity, ModeNum),
+            ProcTrailingInfo = proc_trailing_info(Status, _),
+            TrailingInfo = gen_pragma_trailing_info(PredNameArityPFMn, Status,
+                dummy_context, item_no_seq_num),
+            cord.snoc(TrailingInfo, !TrailingInfosCord)
+        else
+            true
+        )
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
     ).
 
 %---------------------------------------------------------------------------%
@@ -726,27 +789,39 @@ gather_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !MMTablingInfosCord) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
-        PredId, PredInfo),
-    proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
-    ( if
-        MaybeProcMMTablingInfo = yes(ProcMMTablingInfo),
-        should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write
-    then
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
-            PredSymName, PredArity, ModeNum),
-        ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
-        MMTablingInfo =
-            gen_pragma_mm_tabling_info(PredNameArityPFMn, Status,
-            dummy_context, item_no_seq_num),
-        cord.snoc(MMTablingInfo, !MMTablingInfosCord)
-    else
-        true
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+            PredId, PredInfo),
+        proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
+        ( if
+            MaybeProcMMTablingInfo = yes(ProcMMTablingInfo),
+            should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
+                for_pragma, ShouldWrite),
+            ShouldWrite = should_write
+        then
+            ModuleName = pred_info_module(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            original_proc_id(ProcInfo, ProcId, OrigProcId),
+            proc_id_to_int(OrigProcId, ModeNum),
+            PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+                PredSymName, PredArity, ModeNum),
+            ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
+            MMTablingInfo =
+                gen_pragma_mm_tabling_info(PredNameArityPFMn, Status,
+                dummy_context, item_no_seq_num),
+            cord.snoc(MMTablingInfo, !MMTablingInfosCord)
+        else
+            true
+        )
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
     ).
 
 %---------------------------------------------------------------------------%
@@ -772,33 +847,45 @@ gather_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !SharingInfosCord) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write,
-        proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
-        MaybeSharingStatus = SharingReuseInfo ^ maybe_sharing,
-        MaybeSharingStatus = yes(SharingStatus)
-    then
-        proc_info_get_var_table(ProcInfo, VarTable),
-        split_var_table(VarTable, VarSet, _VarTypes),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = proc_pf_name_modes(PredOrFunc,
-            PredSymName, ArgModes),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        lookup_var_types(VarTable, HeadVars, HeadVarTypes),
-        SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
-        SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing),
-            dummy_context, item_no_seq_num),
-        cord.snoc(SharingInfo, !SharingInfosCord)
-    else
-        true
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+            PredId, PredInfo),
+        ( if
+            should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+                for_pragma, ShouldWrite),
+            ShouldWrite = should_write,
+            proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+            MaybeSharingStatus = SharingReuseInfo ^ maybe_sharing,
+            MaybeSharingStatus = yes(SharingStatus)
+        then
+            proc_info_get_var_table(ProcInfo, VarTable),
+            split_var_table(VarTable, VarSet, _VarTypes),
+            pred_info_get_typevarset(PredInfo, TypeVarSet),
+            ModuleName = pred_info_module(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            proc_info_declared_argmodes(ProcInfo, ArgModes),
+            PredNameModesPF = proc_pf_name_modes(PredOrFunc,
+                PredSymName, ArgModes),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            lookup_var_types(VarTable, HeadVars, HeadVarTypes),
+            SharingStatus =
+                structure_sharing_domain_and_status(Sharing, _Status),
+            SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
+                HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing),
+                dummy_context, item_no_seq_num),
+            cord.snoc(SharingInfo, !SharingInfosCord)
+        else
+            true
+        )
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
     ).
 
 %---------------------------------------------------------------------------%
@@ -823,34 +910,45 @@ gather_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ReuseInfosCord) :-
-    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-        PredId, PredInfo),
-    ( if
-        should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-            for_pragma, ShouldWrite),
-        ShouldWrite = should_write,
-        proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
-        MaybeStructureReuseDomain = SharingReuseInfo ^ maybe_reuse,
-        MaybeStructureReuseDomain = yes(StructureReuseDomain)
-    then
-        proc_info_get_var_table(ProcInfo, VarTable),
-        split_var_table(VarTable, VarSet, _VarTypes),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName,
-            ArgModes),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        lookup_var_types(VarTable, HeadVars, HeadVarTypes),
-        StructureReuseDomain =
-            structure_reuse_domain_and_status(Reuse, _Status),
-        ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse),
-            dummy_context, item_no_seq_num),
-        cord.snoc(ReuseInfo, !ReuseInfosCord)
-    else
-        true
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ),
+        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+            PredId, PredInfo),
+        ( if
+            should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
+                for_pragma, ShouldWrite),
+            ShouldWrite = should_write,
+            proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+            MaybeStructureReuseDomain = SharingReuseInfo ^ maybe_reuse,
+            MaybeStructureReuseDomain = yes(StructureReuseDomain)
+        then
+            proc_info_get_var_table(ProcInfo, VarTable),
+            split_var_table(VarTable, VarSet, _VarTypes),
+            pred_info_get_typevarset(PredInfo, TypeVarSet),
+            ModuleName = pred_info_module(PredInfo),
+            PredSymName = qualified(ModuleName, PredName),
+            proc_info_declared_argmodes(ProcInfo, ArgModes),
+            PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName,
+                ArgModes),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            lookup_var_types(VarTable, HeadVars, HeadVarTypes),
+            StructureReuseDomain =
+                structure_reuse_domain_and_status(Reuse, _Status),
+            ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
+                HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse),
+                dummy_context, item_no_seq_num),
+            cord.snoc(ReuseInfo, !ReuseInfosCord)
+        else
+            true
+        )
+    ;
+        ( MaybeInputSpec = input_spec_original_proc_logically_deleted(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+        % The comment in gather_pragma_termination_for_proc applies here too.
     ).
 
 %---------------------------------------------------------------------------%

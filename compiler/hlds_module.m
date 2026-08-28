@@ -954,6 +954,10 @@
 
                 % Unused argument info about predicates in the current module
                 % which has been exported in .opt files.
+                %
+                % XXX This field is effectively write-only: the ONLY call
+                % to its getter predicate is from the code in add_pragma_gen.m
+                % that adds new entries to this map.
                 mri_proc_to_unused_args_map     :: proc_to_unused_args_map,
 
                 % For every procedure that requires its own tabling structure,

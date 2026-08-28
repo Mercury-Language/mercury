@@ -65,7 +65,8 @@
 %   (mode numbers) in those diagnostics, but they will map the then-actual
 %   proc_ids back to their original proc_ids using the maybe_input_spec field,
 %   which is set by code in this module. This mapping back is done by
-%   describe_one_proc_name and its variants in hlds_error_util.
+%   describe_one_proc_name and its variants, and by its subcontractor
+%   original_proc_id, in hlds_error_util.
 %
 % obsolete_proc
 %   The compiler records this pragma in the obsolete_in_favour_of field
@@ -111,17 +112,51 @@
 % structure_sharing
 % structure_reuse
 %   Both structure_sharing and structure_reuse pragmas can contain
-%   structure_sharing_domains, which contain proc_ids. We handle this
+%   structure_sharing_domains, which contain proc_ids. For pragmas read in
+%   from other modules' .opt and/or .trans_opt files, we handle this
 %   the same way we handle the interaction with tabling: if a predicate
-%   that *could* be input specialized has one or more procedures that have
-%   sharing and/or reuse pragmas, we generate an error message, and
-%   do not perform the input specialization.
+%   that *could* be input specialized has one or more procedures for which
+%   we have read sharing and/or reuse pragmas, we generate an error message,
+%   and do not perform the input specialization.
 %
-% type_spec
-% unused_args
+%   When creating .opt and/or .trans_opt files, we do not output either
+%   structure_sharing and structure_reuse pragmas for procedures that
+%   are either logically deleted by input specialization (since they are
+%   not supposed to be referred to at all), or are themselves the
+%   specialized procedures created by input specialization (since we
+%   don't yet know whether we want to export those procedures outside
+%   their defining module, and no pragma in a .opt/.trans_opt file
+%   should refer to a procedure that its reader may have no knowledge of).
+%
 % exceptions
 % trailing
 % mm_tabling
+%   The compiler records these pragmas in the exception_info, trailing_info,
+%   and mm_tabling_info fields of the proc_info respectively. When input
+%   specialization specializes a procedure, these fields get copied as well,
+%   and since specialization leaves the body goal of the procedure unchanged,
+%   the analysis results they contain remain valid.
+%
+%   When intermodule optimization writes out these pragmas, we have handle
+%   two issues. First as with the structure_sharing and structure_reuse
+%   pragmas, we do not write out these pragmas for either procedures
+%   logically deleted by input specialization, nor for the new specialized
+%   procedures created by it. As for the procedures that do not fall into
+%   either of those categories, the second issue is that their procedure number
+%   may have been changed by input specialization. We therefore map
+%   their procedure ids back to the original.
+%
+% unused_args
+%   We handle writing out unused_args pragmas to .opt/.trans_opt files
+%   the same say we handle writing exceptions, trailing, and mm_tabling
+%   pragmas, and for the same reason.
+%
+%   For reading them in, we do not have to do anything special, because
+%   while add the contents of each unused_args pragma we read in to a
+%   table in the module_info, we do not actually DO anything with the
+%   contents of the table :-)
+%
+% type_spec
 %   We do not yet have code to handle these pragmas correctly.
 %
 %---------------------------------------------------------------------------%
