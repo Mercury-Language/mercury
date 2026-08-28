@@ -54,7 +54,7 @@
 :- pred c_init_xml_reader(io::di, io::uo) is det.
 
 :- pragma foreign_proc(c,
-    c_init_xml_reader(IIO::di, OIO::uo),
+    c_init_xml_reader(_IIO::di, _OIO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     /*
@@ -62,10 +62,9 @@
     ** between the version it was compiled for and the actual shared
     ** library used.
     LIBXML_TEST_VERSION
+    MR_update_io(IIO, OIO);
     */
     LIBXML_TEST_VERSION = 1;
-
-    MR_update_io(IIO, OIO);
 ").
 
 open_file(FN, MayReader, !IO) :-
@@ -98,13 +97,13 @@ open_file(FN, MayReader, !IO) :-
 ").
 
 :- pragma foreign_proc(c,
-    close_reader(Rdr::di, IIO::di, OIO::uo),
+    close_reader(Rdr::di, _IIO::di, _OIO::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     /*
     xmlFreeTextReader(Rdr);
-    */
     MR_update_io(IIO, OIO);
+    */
 ").
 
 read(Evt, !Rdr) :-
