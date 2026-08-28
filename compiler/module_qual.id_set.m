@@ -57,6 +57,14 @@
 % usable in the implementation even if not fully qualified (if that defining
 % module has an `import_module' declaration in the implementation.)
 %
+% Invariants:
+% - perm_in_int_qual must be at least as permissive as perm_in_int_unqual.
+% - perm_in_imp_qual must be at least as permissive as perm_in_imp_unqual.
+% - perm_in_imp_qual must be at least as permissive as perm_in_int_qual.
+% - perm_in_imp_unqual must be at least as permissive as perm_in_int_unqual.
+% - At least one of perm_in_{int,imp}_{qual,unqual} must permit something,
+%   otherwise there should be no module_permissions for the entity
+%   in question.
 
 :- type module_permissions
     --->    module_permissions(
@@ -66,8 +74,8 @@
 
 :- type perm_in_int
     --->    perm_in_int_qual_unqual(
-                perm_qual           :: permitted_or_not,
-                perm_unqual         :: permitted_or_not
+                perm_in_int_qual    :: permitted_or_not,
+                perm_in_int_unqual  :: permitted_or_not
             ).
 
 :- type perm_in_imp
@@ -541,11 +549,14 @@ add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
     (
         FullyModuleQualified = yes,
         Permission = PermQual,
-        OtherPermission = PermUnqual
+        % PermQual is at least as permissive as PermUnqual. If PermQual does
+        % not allow the name, then adding more qualifiers will not help -
+        % the name is already fully module qualified.
+        OtherQualPermission = not_permitted
     ;
         FullyModuleQualified = no,
         Permission = PermUnqual,
-        OtherPermission = PermQual
+        OtherQualPermission = PermQual
     ),
     (
         Permission = permitted,
@@ -562,12 +573,12 @@ add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
     ;
         Permission = not_permitted,
         (
-            OtherPermission = not_permitted,
+            OtherQualPermission = not_permitted,
             !:IntMismatches = [ModuleName | !.IntMismatches]
         ;
-            ( OtherPermission = permitted
-            ; OtherPermission = permitted_with_warning
-            ; OtherPermission = permitted_with_warning_shadowed
+            ( OtherQualPermission = permitted
+            ; OtherQualPermission = permitted_with_warning
+            ; OtherQualPermission = permitted_with_warning_shadowed
             ),
             !:QualMismatches = [ModuleName | !.QualMismatches]
         )
