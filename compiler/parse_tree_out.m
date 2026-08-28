@@ -862,8 +862,8 @@ mercury_format_parse_tree_plain_opt(Info, S, ParseTree, !U) :-
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers, TypeSpecs, InputSpecs,
-        UnusedArgs, Terms, Term2s,
-        Exceptions, Trailings, MMTablings, Sharings, Reuses),
+        Terms, Term2s, Sharings, Reuses,
+        UnusedArgs, Exceptions, Trailings, MMTablings),
     Lang = get_output_lang(Info),
     add_string("% .opt file\n", S, !U),
     mercury_format_module_decl(S, "module", ModuleName, !U),
@@ -921,20 +921,20 @@ mercury_format_parse_tree_plain_opt(Info, S, ParseTree, !U) :-
     list.foldl(mercury_format_pragma_termination(S, Lang), Terms, !U),
     maybe_format_block_start_blank_line(S, Term2s, !U),
     list.foldl(mercury_format_pragma_termination2(S, Lang), Term2s, !U),
+    maybe_format_block_start_blank_line(S, Sharings, !U),
+    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
+    maybe_format_block_start_blank_line(S, Reuses, !U),
+    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U),
     maybe_format_block_start_blank_line(S, Exceptions, !U),
     list.foldl(mercury_format_pragma_exceptions(S), Exceptions, !U),
     maybe_format_block_start_blank_line(S, Trailings, !U),
     list.foldl(mercury_format_pragma_trailing(S), Trailings, !U),
     maybe_format_block_start_blank_line(S, MMTablings, !U),
-    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U),
-    maybe_format_block_start_blank_line(S, Sharings, !U),
-    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
-    maybe_format_block_start_blank_line(S, Reuses, !U),
-    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U).
+    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U).
 
 mercury_format_parse_tree_trans_opt(Info, S, ParseTree, !U) :-
     ParseTree = parse_tree_trans_opt(ModuleName, _Context,
-        Terms, Term2s, Exceptions, Trailings, MMTablings, Sharings, Reuses),
+        Terms, Term2s, Sharings, Reuses, Exceptions, Trailings, MMTablings),
     Lang = get_output_lang(Info),
     add_string("% .trans_opt file\n", S, !U),
     mercury_format_module_decl(S, "module", ModuleName, !U),
@@ -942,16 +942,16 @@ mercury_format_parse_tree_trans_opt(Info, S, ParseTree, !U) :-
     list.foldl(mercury_format_pragma_termination(S, Lang), Terms, !U),
     maybe_format_block_start_blank_line(S, Term2s, !U),
     list.foldl(mercury_format_pragma_termination2(S, Lang), Term2s, !U),
+    maybe_format_block_start_blank_line(S, Sharings, !U),
+    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
+    maybe_format_block_start_blank_line(S, Reuses, !U),
+    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U),
     maybe_format_block_start_blank_line(S, Exceptions, !U),
     list.foldl(mercury_format_pragma_exceptions(S), Exceptions, !U),
     maybe_format_block_start_blank_line(S, Trailings, !U),
     list.foldl(mercury_format_pragma_trailing(S), Trailings, !U),
     maybe_format_block_start_blank_line(S, MMTablings, !U),
-    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U),
-    maybe_format_block_start_blank_line(S, Sharings, !U),
-    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
-    maybe_format_block_start_blank_line(S, Reuses, !U),
-    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U).
+    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U).
 
 %---------------------------------------------------------------------------%
 

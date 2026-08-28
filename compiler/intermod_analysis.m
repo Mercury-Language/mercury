@@ -199,24 +199,25 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfosSet,
         generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
 
         gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
-            TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-            SharingInfos, ReuseInfos),
+            TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+            Exceptions, TrailingInfos, MMTablingInfos),
 
         maybe_format_block_start_blank_line(string.builder.handle,
             UnusedArgsInfos, !State),
         list.foldl(mercury_format_pragma_unused_args(string.builder.handle),
             UnusedArgsInfos, !State),
-        format_analysis_pragmas(TermInfos, TermInfos2, Exceptions,
-            TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !State),
+        format_analysis_pragmas(TermInfos, TermInfos2,
+            SharingInfos, ReuseInfos,
+            Exceptions, TrailingInfos, MMTablingInfos, !State),
 
         !ParseTreePlainOpt ^ ptpo_unused_args := UnusedArgsInfos,
         !ParseTreePlainOpt ^ ptpo_termination := TermInfos,
         !ParseTreePlainOpt ^ ptpo_termination2 := TermInfos2,
+        !ParseTreePlainOpt ^ ptpo_struct_sharing := SharingInfos,
+        !ParseTreePlainOpt ^ ptpo_struct_reuse := ReuseInfos,
         !ParseTreePlainOpt ^ ptpo_exceptions := Exceptions,
         !ParseTreePlainOpt ^ ptpo_trailing := TrailingInfos,
-        !ParseTreePlainOpt ^ ptpo_mm_tabling := MMTablingInfos,
-        !ParseTreePlainOpt ^ ptpo_struct_sharing := SharingInfos,
-        !ParseTreePlainOpt ^ ptpo_struct_reuse := ReuseInfos
+        !ParseTreePlainOpt ^ ptpo_mm_tabling := MMTablingInfos
     ).
 
 %---------------------%
@@ -241,14 +242,14 @@ format_trans_opt_file(ModuleInfo, ParseTreeTransOpt, !State) :-
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
     gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds,
         NoReuseOrderPredInfos,
-        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-        SharingInfos, ReuseInfos),
-    format_analysis_pragmas(TermInfos, TermInfos2, Exceptions,
-        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !State),
+        TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        Exceptions, TrailingInfos, MMTablingInfos),
+    format_analysis_pragmas(TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        Exceptions, TrailingInfos, MMTablingInfos, !State),
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, dummy_context,
-        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-        SharingInfos, ReuseInfos).
+        TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        Exceptions, TrailingInfos, MMTablingInfos).
 
 %---------------------------------------------------------------------------%
 
@@ -256,15 +257,15 @@ format_trans_opt_file(ModuleInfo, ParseTreeTransOpt, !State) :-
     list(order_pred_info)::in,
     list(decl_pragma_termination_info)::out,
     list(decl_pragma_termination2_info)::out,
+    list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::out,
     list(gen_pragma_exceptions_info)::out,
     list(gen_pragma_trailing_info)::out,
-    list(gen_pragma_mm_tabling_info)::out,
-    list(decl_pragma_struct_sharing_info)::out,
-    list(decl_pragma_struct_reuse_info)::out) is det.
+    list(gen_pragma_mm_tabling_info)::out) is det.
 
 gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
-        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-        SharingInfos, ReuseInfos) :-
+        TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        Exceptions, TrailingInfos, MMTablingInfos) :-
     ( if set.contains(ProcAnalysisKinds, pak_termination) then
         list.foldl(
             gather_pragma_termination_for_pred(ModuleInfo),
@@ -325,15 +326,15 @@ gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
 :- pred format_analysis_pragmas(
     list(decl_pragma_termination_info)::in,
     list(decl_pragma_termination2_info)::in,
+    list(decl_pragma_struct_sharing_info)::in,
+    list(decl_pragma_struct_reuse_info)::in,
     list(gen_pragma_exceptions_info)::in,
     list(gen_pragma_trailing_info)::in,
     list(gen_pragma_mm_tabling_info)::in,
-    list(decl_pragma_struct_sharing_info)::in,
-    list(decl_pragma_struct_reuse_info)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_analysis_pragmas(TermInfos, TermInfos2, Exceptions, TrailingInfos,
-        MMTablingInfos, SharingInfos, ReuseInfos, !State) :-
+format_analysis_pragmas(TermInfos, TermInfos2, SharingInfos, ReuseInfos,
+        Exceptions, TrailingInfos, MMTablingInfos, !State) :-
     maybe_format_block_start_blank_line(string.builder.handle, TermInfos,
         !State),
     list.foldl(
@@ -346,18 +347,6 @@ format_analysis_pragmas(TermInfos, TermInfos2, Exceptions, TrailingInfos,
         mercury_format_pragma_termination2(string.builder.handle,
             output_mercury),
         TermInfos2, !State),
-    maybe_format_block_start_blank_line(string.builder.handle, Exceptions,
-        !State),
-    list.foldl(mercury_format_pragma_exceptions(string.builder.handle),
-        Exceptions, !State),
-    maybe_format_block_start_blank_line(string.builder.handle, TrailingInfos,
-        !State),
-    list.foldl(mercury_format_pragma_trailing(string.builder.handle),
-        TrailingInfos, !State),
-    maybe_format_block_start_blank_line(string.builder.handle, MMTablingInfos,
-        !State),
-    list.foldl(mercury_format_pragma_mm_tabling(string.builder.handle),
-        MMTablingInfos, !State),
     maybe_format_block_start_blank_line(string.builder.handle, SharingInfos,
         !State),
     list.foldl(
@@ -369,7 +358,19 @@ format_analysis_pragmas(TermInfos, TermInfos2, Exceptions, TrailingInfos,
     list.foldl(
         mercury_format_pragma_struct_reuse(string.builder.handle,
             output_debug),
-        ReuseInfos, !State).
+        ReuseInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, Exceptions,
+        !State),
+    list.foldl(mercury_format_pragma_exceptions(string.builder.handle),
+        Exceptions, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, TrailingInfos,
+        !State),
+    list.foldl(mercury_format_pragma_trailing(string.builder.handle),
+        TrailingInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, MMTablingInfos,
+        !State),
+    list.foldl(mercury_format_pragma_mm_tabling(string.builder.handle),
+        MMTablingInfos, !State).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

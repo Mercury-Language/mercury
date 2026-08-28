@@ -982,8 +982,8 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers, TypeSpecs, InputSpecs,
-        UnusedArgs, TermInfos, Term2Infos,
-        Exceptions, Trailings, MMTablings, Sharings, Reuses),
+        TermInfos, Term2Infos, Sharings, Reuses,
+        UnusedArgs, Exceptions, Trailings, MMTablings),
 
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
@@ -1076,8 +1076,8 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
 
 acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
     ParseTreeTransOpt = parse_tree_trans_opt(_ModuleName, _ModuleNameContext,
-        TermInfos, Term2Infos, Exceptions, Trailings, MMTablings,
-        Sharings, Reuses),
+        TermInfos, Term2Infos, Sharings, Reuses,
+        Exceptions, Trailings, MMTablings),
 
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,

@@ -1039,9 +1039,9 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         [], PredDecls0, [], RevModeDecls, [], RevClauses0, [], RevForeignProcs,
         [], Promises0, [], DeclMarkers0, [], ImplMarkers0,
         [], TypeSpecs0, [], InputSpecs0,
-        [], UnusedArgs0, [], TermInfos0, [], Term2Infos0,
-        [], Exceptions0, [], Trailings0, [], MMTablings0,
-        [], Sharings0, [], Reuses0, !Specs),
+        [], TermInfos0, [], Term2Infos0, [], Sharings0, [], Reuses0,
+        [], UnusedArgs0, [], Exceptions0, [], Trailings0, [], MMTablings0,
+        !Specs),
     list.sort(TypeDefns0, TypeDefns),
     list.sort(ForeignEnums0, ForeignEnums),
     list.sort(InstDefns0, InstDefns),
@@ -1057,14 +1057,14 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list.sort(ImplMarkers0, ImplMarkers),
     list.sort(TypeSpecs0, TypeSpecs),
     list.sort(InputSpecs0, InputSpecs),
-    list.sort(UnusedArgs0, UnusedArgs),
     list.sort(TermInfos0, TermInfos),
     list.sort(Term2Infos0, Term2Infos),
+    list.sort(Sharings0, Sharings),
+    list.sort(Reuses0, Reuses),
+    list.sort(UnusedArgs0, UnusedArgs),
     list.sort(Exceptions0, Exceptions),
     list.sort(Trailings0, Trailings),
     list.sort(MMTablings0, MMTablings),
-    list.sort(Sharings0, Sharings),
-    list.sort(Reuses0, Reuses),
 
     list.map(undo_default_names_in_clause, Clauses0, Clauses),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
@@ -1072,8 +1072,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
         DeclMarkers, ImplMarkers, TypeSpecs, InputSpecs,
-        UnusedArgs, TermInfos, Term2Infos,
-        Exceptions, Trailings, MMTablings, Sharings, Reuses).
+        TermInfos, Term2Infos, Sharings, Reuses,
+        UnusedArgs, Exceptions, Trailings, MMTablings).
 
 :- pred classify_plain_opt_items(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -1093,35 +1093,35 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         list(decl_pragma_type_spec_info)::out,
     list(decl_pragma_input_spec_info)::in,
         list(decl_pragma_input_spec_info)::out,
-    list(gen_pragma_unused_args_info)::in,
-        list(gen_pragma_unused_args_info)::out,
     list(decl_pragma_termination_info)::in,
         list(decl_pragma_termination_info)::out,
     list(decl_pragma_termination2_info)::in,
         list(decl_pragma_termination2_info)::out,
+    list(decl_pragma_struct_sharing_info)::in,
+        list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::in,
+        list(decl_pragma_struct_reuse_info)::out,
+    list(gen_pragma_unused_args_info)::in,
+        list(gen_pragma_unused_args_info)::out,
     list(gen_pragma_exceptions_info)::in,
         list(gen_pragma_exceptions_info)::out,
     list(gen_pragma_trailing_info)::in, list(gen_pragma_trailing_info)::out,
     list(gen_pragma_mm_tabling_info)::in,
         list(gen_pragma_mm_tabling_info)::out,
-    list(decl_pragma_struct_sharing_info)::in,
-        list(decl_pragma_struct_sharing_info)::out,
-    list(decl_pragma_struct_reuse_info)::in,
-        list(decl_pragma_struct_reuse_info)::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_plain_opt_items([], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
         !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
-        !UnusedArgs, !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
+        !TermInfos, !Term2Infos, !Sharings, !Reuses,
+        !UnusedArgs, !Exceptions, !Trailings, !MMTablings, !Specs).
 classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
         !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
-        !UnusedArgs, !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs) :-
+        !TermInfos, !Term2Infos, !Sharings, !Reuses,
+        !UnusedArgs, !Exceptions, !Trailings, !MMTablings, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -1295,8 +1295,8 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
         !DeclMarkers, !ImplMarkers, !TypeSpecs, !InputSpecs,
-        !UnusedArgs, !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
+        !TermInfos, !Term2Infos, !Sharings, !Reuses,
+        !UnusedArgs, !Exceptions, !Trailings, !MMTablings, !Specs).
 
     % When the compiler writes out a clause to an optimization file,
     % it must give every variable in that clause visible representation,
@@ -1367,40 +1367,40 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
     ),
 
     classify_trans_opt_items(Items, [], TermInfos0, [], Term2Infos0,
-        [], Exceptions0, [], Trailings0, [], MMTablings0,
-        [], Sharings0, [], Reuses0, !Specs),
+        [], Sharings0, [], Reuses0,
+        [], Exceptions0, [], Trailings0, [], MMTablings0, !Specs),
     list.sort(TermInfos0, TermInfos),
     list.sort(Term2Infos0, Term2Infos),
+    list.sort(Sharings0, Sharings),
+    list.sort(Reuses0, Reuses),
     list.sort(Exceptions0, Exceptions),
     list.sort(Trailings0, Trailings),
     list.sort(MMTablings0, MMTablings),
-    list.sort(Sharings0, Sharings),
-    list.sort(Reuses0, Reuses),
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, ModuleNameContext,
-        TermInfos, Term2Infos, Exceptions, Trailings, MMTablings,
-        Sharings, Reuses).
+        TermInfos, Term2Infos, Sharings, Reuses,
+        Exceptions, Trailings, MMTablings).
 
 :- pred classify_trans_opt_items(list(item)::in,
     list(decl_pragma_termination_info)::in,
         list(decl_pragma_termination_info)::out,
     list(decl_pragma_termination2_info)::in,
         list(decl_pragma_termination2_info)::out,
+    list(decl_pragma_struct_sharing_info)::in,
+        list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::in,
+        list(decl_pragma_struct_reuse_info)::out,
     list(gen_pragma_exceptions_info)::in,
         list(gen_pragma_exceptions_info)::out,
     list(gen_pragma_trailing_info)::in, list(gen_pragma_trailing_info)::out,
     list(gen_pragma_mm_tabling_info)::in,
         list(gen_pragma_mm_tabling_info)::out,
-    list(decl_pragma_struct_sharing_info)::in,
-        list(decl_pragma_struct_sharing_info)::out,
-    list(decl_pragma_struct_reuse_info)::in,
-        list(decl_pragma_struct_reuse_info)::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
 classify_trans_opt_items([], !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
+        !Sharings, !Reuses, !Exceptions, !Trailings, !MMTablings, !Specs).
 classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs) :-
+        !Sharings, !Reuses, !Exceptions, !Trailings, !MMTablings, !Specs) :-
     (
         Item = item_decl_pragma(DeclPragma),
         (
@@ -1477,7 +1477,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         !:Specs = [Spec | !.Specs]
     ),
     classify_trans_opt_items(Items, !TermInfos, !Term2Infos,
-        !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
+        !Sharings, !Reuses, !Exceptions, !Trailings, !MMTablings, !Specs).
 
 %---------------------------------------------------------------------------%
 

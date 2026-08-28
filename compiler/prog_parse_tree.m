@@ -634,14 +634,14 @@
                 ptpo_impl_markers   :: list(item_impl_marker_info_opt),
                 ptpo_type_specs     :: list(decl_pragma_type_spec_info),
                 ptpo_input_specs    :: list(decl_pragma_input_spec_info),
-                ptpo_unused_args    :: list(gen_pragma_unused_args_info),
                 ptpo_termination    :: list(decl_pragma_termination_info),
                 ptpo_termination2   :: list(decl_pragma_termination2_info),
+                ptpo_struct_sharing :: list(decl_pragma_struct_sharing_info),
+                ptpo_struct_reuse   :: list(decl_pragma_struct_reuse_info),
+                ptpo_unused_args    :: list(gen_pragma_unused_args_info),
                 ptpo_exceptions     :: list(gen_pragma_exceptions_info),
                 ptpo_trailing       :: list(gen_pragma_trailing_info),
-                ptpo_mm_tabling     :: list(gen_pragma_mm_tabling_info),
-                ptpo_struct_sharing :: list(decl_pragma_struct_sharing_info),
-                ptpo_struct_reuse   :: list(decl_pragma_struct_reuse_info)
+                ptpo_mm_tabling     :: list(gen_pragma_mm_tabling_info)
             ).
 
     % A representation of the contents of .trans_opt files.
@@ -655,11 +655,11 @@
 
                 ptto_termination        :: list(decl_pragma_termination_info),
                 ptto_termination2       :: list(decl_pragma_termination2_info),
+                ptto_struct_sharing :: list(decl_pragma_struct_sharing_info),
+                ptto_struct_reuse   :: list(decl_pragma_struct_reuse_info),
                 ptto_exceptions         :: list(gen_pragma_exceptions_info),
                 ptto_trailing           :: list(gen_pragma_trailing_info),
-                ptto_mm_tabling         :: list(gen_pragma_mm_tabling_info),
-                ptto_struct_sharing :: list(decl_pragma_struct_sharing_info),
-                ptto_struct_reuse   :: list(decl_pragma_struct_reuse_info)
+                ptto_mm_tabling         :: list(gen_pragma_mm_tabling_info)
             ).
 
 %---------------------------------------------------------------------------%
