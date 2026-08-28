@@ -810,8 +810,11 @@ maybe_apply_input_specialization(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Performing input specialization...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        input_specialize_in_module(!HLDS),
+        input_specialize_in_module(!HLDS, [], InputSpecs),
+        add_to_be_written_specs(InputSpecs, !MaybeWrittenSpecs),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_write_not_yet_written_specs(ErrorStream, Globals, Verbose,
+            !MaybeWrittenSpecs, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ).
 

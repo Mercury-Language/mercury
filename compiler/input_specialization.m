@@ -64,7 +64,8 @@
 %   that generate the diagnostics that they call for can include proc_ids
 %   (mode numbers) in those diagnostics, but they will map the then-actual
 %   proc_ids back to their original proc_ids using the maybe_input_spec field,
-%   which is set by code in this module.
+%   which is set by code in this module. This mapping back is done by
+%   describe_one_proc_name and its variants in hlds_error_util.
 %
 % obsolete_proc
 %   The compiler records this pragma in the obsolete_in_favour_of field
@@ -82,8 +83,40 @@
 %   then update_exported_proc_id_if_needed below will update the proc_id.
 %
 % tabled
-% structure sharing
-% structure reuse
+%   The compiler generates target language variables and auxiliary predicates
+%   whose names include the proc_id when it adds tabled pragmas to the HLDS.
+%   Since input specialization can change these proc_ids, it is not compatible
+%   with tabling. This is why if a predicate that *could* be input specialized
+%   has one or more tabled procedures, we generate an error message, and
+%   do not perform the input specialization.
+%
+%   (We do this even if the predicate's tabled procedures would NOT have
+%   their proc_ids changed by input specialization. The reason for this
+%   decision is that this is a fragile state of affairs, subject to change
+%   e.g. by the addition of new modes, and it is better for programmers
+%   to learn about this incompatibility before they start relying on
+%   something that is liable to break later.)
+%
+%   There is one form of tabling, I/O tabling, that is implemented
+%   entirely by table_gen.m, which runs much later than input specialization.
+%   It applies only to predicates that do NOT have a tabled pragma,
+%   so their implementations do not involve any variable or procedure names
+%   that were decided at the add-pragma-to-the-HLDS time. Their implementation
+%   works with the current proc_ids, and should work whether those proc_ids
+%   were updated by input specialization or not. In some cases, we can
+%   generate diagnostics for such predicates, and these diagnostics do
+%   include proc_ids, but describe_one_proc_name maps them back to their
+%   originals.
+%
+% structure_sharing
+% structure_reuse
+%   Both structure_sharing and structure_reuse pragmas can contain
+%   structure_sharing_domains, which contain proc_ids. We handle this
+%   the same way we handle the interaction with tabling: if a predicate
+%   that *could* be input specialized has one or more procedures that have
+%   sharing and/or reuse pragmas, we generate an error message, and
+%   do not perform the input specialization.
+%
 % type_spec
 % unused_args
 % exceptions
@@ -98,13 +131,19 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 
-:- pred input_specialize_in_module(module_info::in, module_info::out) is det.
+:- import_module list.
+
+:- pred input_specialize_in_module(module_info::in, module_info::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc.
@@ -116,14 +155,14 @@
 :- import_module libs.maybe_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item_pragma.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -133,11 +172,11 @@
 
 %---------------------------------------------------------------------------%
 
-input_specialize_in_module(!ModuleInfo) :-
+input_specialize_in_module(!ModuleInfo, !Specs) :-
     module_info_get_input_spec_table(!.ModuleInfo, InputSpecTable),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    list.foldl2(maybe_input_specialize_in_pred(InputSpecTable), PredIds,
-        [], SpecPredIds, !ModuleInfo),
+    list.foldl3(maybe_input_specialize_in_pred(InputSpecTable), PredIds,
+        [], SpecPredIds, !ModuleInfo, !Specs),
     module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcCord0),
     ( if
         SpecPredIds = [_ | _],
@@ -154,10 +193,11 @@ input_specialize_in_module(!ModuleInfo) :-
 
 :- pred maybe_input_specialize_in_pred(input_spec_table::in, pred_id::in,
     list(pred_id)::in, list(pred_id)::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 maybe_input_specialize_in_pred(InputSpecTable, PredId,
-        !SpecPredIds, !ModuleInfo) :-
+        !SpecPredIds, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_module_name(PredInfo0, ModuleName),
     ( if map.search(InputSpecTable, ModuleName, InModuleMap) then
@@ -167,7 +207,7 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId,
             (
                 UserMade = user_made_pred(_, _, _),
                 input_specialize_in_pred_if_possible(!.ModuleInfo, InModuleMap,
-                    PredInfo0, MaybeNewPredInfo),
+                    PredInfo0, MaybeNewPredInfo, !Specs),
                 (
                     MaybeNewPredInfo = no
                 ;
@@ -206,10 +246,11 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId,
     ).
 
 :- pred input_specialize_in_pred_if_possible(module_info::in,
-    input_spec_in_module_map::in, pred_info::in, maybe(pred_info)::out) is det.
+    input_spec_in_module_map::in, pred_info::in, maybe(pred_info)::out,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
 
 input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap,
-        PredInfo0, MaybeNewPredInfo) :-
+        PredInfo0, MaybeNewPredInfo, !Specs) :-
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     find_args_to_specialize(InModuleMap, 1, ArgTypes, ArgsToSpec),
     (
@@ -217,9 +258,17 @@ input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap,
         MaybeNewPredInfo = no
     ;
         ArgsToSpec = [HeadArgToSpec | TailArgsToSpec],
-        input_specialize_in_pred(ModuleInfo, HeadArgToSpec, TailArgsToSpec,
-            PredInfo0, NewPredInfo),
-        MaybeNewPredInfo = yes(NewPredInfo)
+        report_any_incompatibilities(PredInfo0, PredSpecs),
+        (
+            PredSpecs = [],
+            input_specialize_in_pred(ModuleInfo, HeadArgToSpec, TailArgsToSpec,
+                PredInfo0, NewPredInfo),
+            MaybeNewPredInfo = yes(NewPredInfo)
+        ;
+            PredSpecs = [_ | _],
+            !:Specs = PredSpecs ++ !.Specs,
+            MaybeNewPredInfo = no
+        )
     ).
 
 :- type arg_to_specialize
@@ -241,6 +290,124 @@ find_args_to_specialize(InModuleMap, ArgNum, [ArgType | ArgTypes],
         ArgsToSpec = [ArgToSpec | ArgsToSpecTail]
     else
         ArgsToSpec = ArgsToSpecTail
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred report_any_incompatibilities(pred_info::in, list(diag_spec)::out)
+    is det.
+
+report_any_incompatibilities(PredInfo0, Specs) :-
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.foldl4(acc_proc_eval_methods_structs, ProcTable0,
+        [], NormalProcIds, [], TabledProcIds, no, Sharing, no, Reuse),
+    pred_info_get_context(PredInfo0, Context),
+    (
+        TabledProcIds = [_ | _],
+        (
+            NormalProcIds = [],
+            (
+                TabledProcIds = [_],
+                ProcsDesc = [words("its only procedure is tabled,")]
+            ;
+                TabledProcIds = [_, _ | _],
+                ProcsDesc = [words("all of its procedures are tabled,")]
+            )
+        ;
+            NormalProcIds = [_ | _],
+            ProcsDesc = [words("some of its procedures are tabled,")]
+        ),
+        TabledPredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo0),
+        % This incompatability comes from add_pragma_tabling.m adding
+        % to the HLDS global target language variables and auxiliary predicates
+        % whose names include the original proc_ids of the tabled procedures.
+        TabledPieces = [words("Error:")] ++ TabledPredPieces ++
+            [words("could have its modes input specialized, but")] ++
+            color_as_incorrect(ProcsDesc) ++
+            [words("and input specialization and tabling"),
+            words("are mutually exclusive."), nl],
+        TabledSpec = spec($pred, severity_error, phase_input_spec,
+            Context, TabledPieces),
+        TabledSpecs = [TabledSpec]
+    ;
+        TabledProcIds = [],
+        TabledSpecs = []
+    ),
+    (
+        Sharing = yes,
+        SharingPredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo0),
+        SharingPieces = [words("Error:")] ++ SharingPredPieces ++
+            [words("could have its modes input specialized, but")] ++
+            color_as_incorrect(
+                [words("it has a structure_sharing pragma,")]) ++
+            [words("and input specialization and structure sharing analysis"),
+            words("are mutually exclusive."), nl],
+        SharingSpec = spec($pred, severity_error, phase_input_spec,
+            Context, SharingPieces),
+        SharingSpecs = [SharingSpec]
+    ;
+        Sharing = no,
+        SharingSpecs = []
+    ),
+    (
+        Reuse = yes,
+        ReusePredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo0),
+        ReusePieces = [words("Error:")] ++ ReusePredPieces ++
+            [words("could have its modes input specialized, but")] ++
+            color_as_incorrect([words("it has a structure_reuse pragma,")]) ++
+            [words("and input specialization and structure reuse analysis"),
+            words("are mutually exclusive."), nl],
+        ReuseSpec = spec($pred, severity_error, phase_input_spec,
+            Context, ReusePieces),
+        ReuseSpecs = [ReuseSpec]
+    ;
+        Reuse = no,
+        ReuseSpecs = []
+    ),
+    Specs = TabledSpecs ++ SharingSpecs ++ ReuseSpecs.
+
+:- pred acc_proc_eval_methods_structs(proc_id::in, proc_info::in,
+    list(proc_id)::in, list(proc_id)::out,
+    list(proc_id)::in, list(proc_id)::out,
+    bool::in, bool::out, bool::in, bool::out) is det.
+
+acc_proc_eval_methods_structs(ProcId, ProcInfo,
+        !Normal, !Tabled, !Sharing, !Reuse) :-
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
+    (
+        EvalMethod = eval_normal,
+        !:Normal = [ProcId | !.Normal]
+    ;
+        EvalMethod = eval_tabled(_),
+        !:Tabled = [ProcId | !.Tabled]
+    ),
+    proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+    SharingReuseInfo = sharing_reuse_info(MaybeSharing, MaybeReuse,
+        MaybeImportedSharing, MaybeImportedReuse),
+    % Technically, only MaybeImportedSharing and MaybeImportedReuse
+    % come from pragmas, and MaybeSharing and MaybeReuse should both be
+    % simply "no" at this point in the compilation process, but
+    % just in case ...
+    ( if
+        ( MaybeSharing = yes(_)
+        ; MaybeImportedSharing = yes(_)
+        )
+    then
+        !:Sharing = yes
+    else
+        true
+    ),
+    ( if
+        ( MaybeReuse = yes(_)
+        ; MaybeImportedReuse = yes(_)
+        )
+    then
+        !:Reuse = yes
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
