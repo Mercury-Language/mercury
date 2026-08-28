@@ -124,8 +124,8 @@ term2_preprocess_module(!ModuleInfo) :-
 %
 
 % When interargument size constraints are imported from other modules there
-% are two parts. The first of the these is a list of ints. Each int
-% represents one of a procedure's arguments (including typeinfo related ones).
+% are two parts. The first of these is a list of ints. Each int represents
+% one of a procedure's arguments (including typeinfo related ones).
 %
 % XXX Since typeinfos all became zero sized we don't actually need this list.
 % (I forget the reason we did need it, I think it was something to do with
@@ -138,7 +138,6 @@ term2_preprocess_module(!ModuleInfo) :-
 %
 % We now know the actual head_vars so we create size_vars and substitute
 % these into the actual constraints.
-%
 
 :- pred process_imported_preds(list(pred_id)::in,
     module_info::in, module_info::out) is det.
