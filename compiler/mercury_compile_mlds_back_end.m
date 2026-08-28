@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2013-2026 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,9 +30,13 @@
 
 :- import_module io.
 
+%---------------------------------------------------------------------------%
+
 :- pred hlds_to_mlds(io.text_output_stream::in, module_info::in, mlds::out,
     dump_info::in, dump_info::out,
     maybe_written_specs::in, maybe_written_specs::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred mlds_to_high_level_c(io.text_output_stream::in, globals::in, mlds::in,
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -324,47 +329,6 @@ mlds_gen_rtti_data(HLDS, Target, !MLDS) :-
     !MLDS ^ mlds_global_defns := GlobalData.
 
 %---------------------------------------------------------------------------%
-%
-% The `--high-level-code' MLDS output pass.
-%
-
-mlds_to_high_level_c(ProgressStream, Globals, MLDS, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, statistics, Stats),
-
-    maybe_write_string(ProgressStream, Verbose,
-        "% Converting MLDS to C...\n", !IO),
-    output_c_mlds(ProgressStream, MLDS, Globals, tod_target,
-        "", Succeeded, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Finished converting MLDS to C.\n", !IO),
-    maybe_report_stats(ProgressStream, Stats, !IO).
-
-mlds_to_java(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
-    module_info_get_globals(HLDS, Globals),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, statistics, Stats),
-
-    maybe_write_string(ProgressStream, Verbose,
-        "% Converting MLDS to Java...\n", !IO),
-    output_java_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Finished converting MLDS to Java.\n", !IO),
-    maybe_report_stats(ProgressStream, Stats, !IO).
-
-mlds_to_csharp(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
-    module_info_get_globals(HLDS, Globals),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, statistics, Stats),
-
-    maybe_write_string(ProgressStream, Verbose,
-        "% Converting MLDS to C#...\n", !IO),
-    output_csharp_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
-    maybe_write_string(ProgressStream, Verbose,
-        "% Finished converting MLDS to C#.\n", !IO),
-    maybe_report_stats(ProgressStream, Stats, !IO).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred maybe_dump_mlds(io.text_output_stream::in, globals::in, mlds::in,
@@ -456,6 +420,47 @@ dump_mlds_doc(ProgressStream, Globals, DumpFileName, Doc, !IO) :-
         report_cannot_open_file_for_output(ProgressStream, Globals,
             DumpFileName, IOError, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+%
+% The `--high-level-code' MLDS output pass.
+%
+
+mlds_to_high_level_c(ProgressStream, Globals, MLDS, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+
+    maybe_write_string(ProgressStream, Verbose,
+        "% Converting MLDS to C...\n", !IO),
+    output_c_mlds(ProgressStream, MLDS, Globals, tod_target,
+        "", Succeeded, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Finished converting MLDS to C.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
+
+mlds_to_java(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+
+    maybe_write_string(ProgressStream, Verbose,
+        "% Converting MLDS to Java...\n", !IO),
+    output_java_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Finished converting MLDS to Java.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
+
+mlds_to_csharp(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+
+    maybe_write_string(ProgressStream, Verbose,
+        "% Converting MLDS to C#...\n", !IO),
+    output_csharp_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Finished converting MLDS to C#.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_mlds_back_end.
