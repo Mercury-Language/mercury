@@ -208,6 +208,8 @@
 
 :- pred pred_info_get_pf_sym_name_pred_form_arity(pred_info::in,
     pf_sym_name_pred_form_arity::out) is det.
+:- pred pred_info_get_pf_sym_name_user_arity(pred_info::in,
+    pf_sym_name_user_arity::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -849,6 +851,12 @@ pred_info_get_pf_sym_name_pred_form_arity(PredInfo, PFSymNameArity) :-
     PredFormArity = pred_info_pred_form_arity(PredInfo),
     PFSymNameArity =
         pf_sym_name_pred_form_arity(PredOrFunc, SymName, PredFormArity).
+
+pred_info_get_pf_sym_name_user_arity(PredInfo, PFSymNameArity) :-
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_sym_name(PredInfo, SymName),
+    UserArity = pred_info_user_arity(PredInfo),
+    PFSymNameArity = pf_sym_name_user_arity(PredOrFunc, SymName, UserArity).
 
 %---------------------------------------------------------------------------%
 %
