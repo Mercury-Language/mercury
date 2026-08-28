@@ -345,20 +345,29 @@
 
 %---------------------%
 
+:- type sharing_reuse_info
+    --->    sharing_reuse_info(
+                maybe_sharing   :: maybe(structure_sharing_domain_and_status),
+                maybe_reuse     :: maybe(structure_reuse_domain_and_status),
+
+                % These two fields record sharing and reuse information
+                % from any `.opt' or `.trans_opt' file. This information
+                % needs to be processed at the beginning of structure
+                % sharing/reuse analysis. After that, this field is of no use.
+                maybe_imported_sharing  :: maybe(imported_sharing),
+                maybe_imported_reuse    :: maybe(imported_reuse)
+            ).
+
 :- type structure_sharing_domain_and_status
     --->    structure_sharing_domain_and_status(
                 structure_sharing_domain,
                 analysis_status
             ).
 
-:- type structure_sharing_info
-    --->    structure_sharing_info(
-                maybe_sharing   :: maybe(structure_sharing_domain_and_status),
-                maybe_imported_sharing      :: maybe(imported_sharing)
-                % Records the sharing information from any `.opt' or
-                % `.trans_opt' file. This information needs to be processed at
-                % the beginning of structure sharing analysis. After that,
-                % this field is of no use.
+:- type structure_reuse_domain_and_status
+    --->    structure_reuse_domain_and_status(
+                structure_reuse_domain,
+                analysis_status
             ).
 
     % Sharing information is expressed in terms of head variables and the
@@ -382,27 +391,6 @@
                 s_sharing         :: structure_sharing_domain
             ).
 
-:- func structure_sharing_info_init = structure_sharing_info.
-
-%---------------------%
-
-:- type structure_reuse_domain_and_status
-    --->    structure_reuse_domain_and_status(
-                structure_reuse_domain,
-                analysis_status
-            ).
-
-:- type structure_reuse_info
-    --->    structure_reuse_info(
-                maybe_reuse     :: maybe(structure_reuse_domain_and_status),
-
-                maybe_imported_reuse  :: maybe(imported_reuse)
-                % Records the reuse information from any `.opt' or
-                % `.trans_opt' file. This information needs to be processed
-                % at the beginning of structure reuse analysis. After that
-                % this field is of no use.
-            ).
-
     % Same rationale as for imported_sharing.
     %
 :- type imported_reuse
@@ -417,7 +405,7 @@
                 r_reuse           :: structure_reuse_domain
             ).
 
-:- func structure_reuse_info_init = structure_reuse_info.
+:- func sharing_reuse_info_init = sharing_reuse_info.
 
 %---------------------------------------------------------------------------%
 
@@ -425,9 +413,7 @@
 
 %---------------------------------------------------------------------------%
 
-structure_sharing_info_init = structure_sharing_info(no, no).
-
-structure_reuse_info_init = structure_reuse_info(no, no).
+sharing_reuse_info_init = sharing_reuse_info(no, no, no, no).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.proc_info_types.

@@ -190,10 +190,12 @@ process_imported_sharing_in_procs(!PredInfo) :-
 process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
         map.lookup(!.ProcTable, ProcId, !:ProcInfo),
-        ( if
-            proc_info_get_imported_structure_sharing(!.ProcInfo,
-                ImpHeadVars, ImpTypes, ImpSharing)
-        then
+        proc_info_get_sharing_reuse_info(!.ProcInfo, SharingReuseInfo0),
+        MaybeImportedSharing0 = SharingReuseInfo0 ^ maybe_imported_sharing,
+        (
+            MaybeImportedSharing0 = yes(ImportedSharing0),
+            ImportedSharing0 =
+                imported_sharing(ImpHeadVars, ImpTypes, ImpSharing),
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
             map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
@@ -212,13 +214,14 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
             ),
             % Optimality does not apply to `--intermodule-optimisation'
             % system, only `--intermodule-analysis'.
-            proc_info_set_structure_sharing(
-                structure_sharing_domain_and_status(Sharing, optimal),
-                !ProcInfo),
-            proc_info_reset_imported_structure_sharing(!ProcInfo),
+            SharingReuseInfo1 = SharingReuseInfo0 ^ maybe_sharing :=
+                yes(structure_sharing_domain_and_status(Sharing, optimal)),
+            SharingReuseInfo = SharingReuseInfo1 ^ maybe_imported_sharing
+                := no,
+            proc_info_set_sharing_reuse_info(SharingReuseInfo, !ProcInfo),
             map.det_update(ProcId, !.ProcInfo, !ProcTable)
-        else
-            true
+        ;
+            MaybeImportedSharing0 = no
         )
     ).
 
@@ -283,9 +286,11 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
             structure_sharing_answer_to_domain(yes(PPId), HeadVarTypes,
                 !.ProcInfo, Answer, Sharing),
-            proc_info_set_structure_sharing(
-                structure_sharing_domain_and_status(Sharing, ResultStatus),
-                !ProcInfo),
+            proc_info_get_sharing_reuse_info(!.ProcInfo, SharingReuseInfo0),
+            SharingReuseInfo = SharingReuseInfo0 ^ maybe_sharing :=
+                yes(structure_sharing_domain_and_status(Sharing,
+                    ResultStatus)),
+            proc_info_set_sharing_reuse_info(SharingReuseInfo, !ProcInfo),
             map.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
             MaybeBestResult = no
@@ -403,9 +408,10 @@ save_sharing_in_module_info(PPId, SharingAs_Status, !ModuleInfo) :-
     SharingAs_Status = sharing_as_and_status(SharingAs, Status),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
     SharingDomain = to_structure_sharing_domain(SharingAs),
-    proc_info_set_structure_sharing(
-        structure_sharing_domain_and_status(SharingDomain, Status),
-        ProcInfo0, ProcInfo),
+    proc_info_get_sharing_reuse_info(ProcInfo0, SharingReuseInfo0),
+    SharingReuseInfo = SharingReuseInfo0 ^ maybe_sharing :=
+        yes(structure_sharing_domain_and_status(SharingDomain, Status)),
+    proc_info_set_sharing_reuse_info(SharingReuseInfo, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 :- pred analyse_scc(io.text_output_stream::in, module_info::in, scc::in,

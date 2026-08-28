@@ -2180,7 +2180,8 @@ load_structure_sharing_table_2(ModuleInfo, PredId, !SharingTable) :-
 
 load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_structure_sharing(ProcInfo, MaybePublicSharing),
+    proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+    MaybePublicSharing = SharingReuseInfo ^ maybe_sharing,
     (
         MaybePublicSharing = yes(
             structure_sharing_domain_and_status(PublicSharing, Status)),

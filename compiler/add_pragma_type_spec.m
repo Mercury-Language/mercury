@@ -41,6 +41,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
@@ -495,8 +496,10 @@ add_forcing_caller_of_pred(PredId, PredInfo0, PredFormArity, TypeSpecInfo0,
     proc_info::in, proc_info::out) is det.
 
 reset_imported_structure_sharing_reuse(!ProcInfo) :-
-    proc_info_reset_imported_structure_sharing(!ProcInfo),
-    proc_info_reset_imported_structure_reuse(!ProcInfo).
+    proc_info_get_sharing_reuse_info(!.ProcInfo, SharingReuseInfo0),
+    SharingReuseInfo1 = SharingReuseInfo0 ^ maybe_imported_sharing := no,
+    SharingReuseInfo  = SharingReuseInfo1 ^ maybe_imported_reuse := no,
+    proc_info_set_sharing_reuse_info(SharingReuseInfo, !ProcInfo).
 
 :- func tvar_subst_desc(tvar_subst) = pair(int, mer_type).
 

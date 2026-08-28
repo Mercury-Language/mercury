@@ -746,8 +746,7 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
     proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-    proc_info_get_structure_sharing(ProcInfo, MaybeStructureSharing),
-    proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuse),
+    proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_cse_nopull_contexts(ProcInfo, CseNoPullContexts),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
@@ -794,8 +793,7 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
     ),
 
     format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
-        MaybeStructureSharing, MaybeStructureReuse,
-        MaybeUntupleInfo, !State),
+        SharingReuseInfo, MaybeUntupleInfo, !State),
     format_proc_deleted_callee_set(DeletedCallCalleeSet, !State),
     format_pred_proc_var_name_remap(vns_var_table(VarTable),
         VarNameRemap, !State),
@@ -1271,17 +1269,15 @@ format_proc_termination_info(MaybeArgSize, MaybeTermination, !State) :-
 %---------------------%
 
 :- pred format_proc_opt_info(hlds_dump_options::in, var_table::in, tvarset::in,
-    var_name_print::in, maybe(structure_sharing_domain_and_status)::in,
-    maybe(structure_reuse_domain_and_status)::in, maybe(untuple_proc_info)::in,
+    var_name_print::in, sharing_reuse_info::in, maybe(untuple_proc_info)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
-        MaybeStructureSharing, MaybeStructureReuse, MaybeUntupleInfo,
-        !State) :-
+        SharingReuseInfo, MaybeUntupleInfo, !State) :-
     DumpStructSharing = DumpOptions ^ dump_struct_sharing_info,
     ( if
         DumpStructSharing = yes,
-        MaybeStructureSharing = yes(StructureSharing)
+        SharingReuseInfo ^ maybe_sharing = yes(StructureSharing)
     then
         string.builder.append_string("% structure sharing: \n", !State),
         StructureSharing =
@@ -1294,7 +1290,7 @@ format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
     DumpUseReuse = DumpOptions ^ dump_use_reuse_info,
     ( if
         DumpUseReuse = yes,
-        MaybeStructureReuse = yes(StructureReuse)
+        SharingReuseInfo ^ maybe_reuse = yes(StructureReuse)
     then
         string.builder.append_string("% structure reuse: \n", !State),
         StructureReuse =

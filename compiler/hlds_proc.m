@@ -110,8 +110,7 @@
     maybe(deep_profile_proc_info)::out, maybe(arg_size_info)::out,
     maybe(termination_info)::out, termination2_info::out,
     maybe(proc_exception_info)::out, maybe(proc_trailing_info)::out,
-    maybe(proc_mm_tabling_info)::out, structure_sharing_info::out,
-    structure_reuse_info::out) is det.
+    maybe(proc_mm_tabling_info)::out, sharing_reuse_info::out) is det.
 
 :- pred proc_create(list(prog_var)::in,
     hlds_goal::in, var_table::in, rtti_varmaps::in,
@@ -131,8 +130,8 @@
     maybe(deep_profile_proc_info)::in, maybe(arg_size_info)::in,
     maybe(termination_info)::in, termination2_info::in,
     maybe(proc_exception_info)::in, maybe(proc_trailing_info)::in,
-    maybe(proc_mm_tabling_info)::in, structure_sharing_info::in,
-    structure_reuse_info::in, proc_info::out) is det.
+    maybe(proc_mm_tabling_info)::in, sharing_reuse_info::in,
+    proc_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -142,41 +141,6 @@
 :- pred proc_info_set_body(var_table::in,
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_structure_sharing(proc_info::in,
-    maybe(structure_sharing_domain_and_status)::out) is det.
-
-:- pred proc_info_set_structure_sharing(
-    structure_sharing_domain_and_status::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_imported_structure_sharing(proc_info::in,
-    list(prog_var)::out, list(mer_type)::out, structure_sharing_domain::out)
-    is semidet.
-
-:- pred proc_info_set_imported_structure_sharing(list(prog_var)::in,
-    list(mer_type)::in, structure_sharing_domain::in, proc_info::in,
-    proc_info::out) is det.
-
-:- pred proc_info_reset_imported_structure_sharing(proc_info::in,
-    proc_info::out) is det.
-
-:- pred proc_info_get_structure_reuse(proc_info::in,
-    maybe(structure_reuse_domain_and_status)::out) is det.
-
-:- pred proc_info_set_structure_reuse(structure_reuse_domain_and_status::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_imported_structure_reuse(proc_info::in,
-    list(prog_var)::out, list(mer_type)::out, structure_reuse_domain::out)
-    is semidet.
-
-:- pred proc_info_set_imported_structure_reuse(list(prog_var)::in,
-    list(mer_type)::in, structure_reuse_domain::in,
-    proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_reset_imported_structure_reuse(proc_info::in,
-    proc_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -264,6 +228,8 @@
     maybe(proc_trailing_info)::out) is det.
 :- pred proc_info_get_mm_tabling_info(proc_info::in,
     maybe(proc_mm_tabling_info)::out) is det.
+:- pred proc_info_get_sharing_reuse_info(proc_info::in,
+    sharing_reuse_info::out) is det.
 
 :- pred proc_info_set_headvars(list(prog_var)::in,
     proc_info::in, proc_info::out) is det.
@@ -353,6 +319,8 @@
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_mm_tabling_info(maybe(proc_mm_tabling_info)::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_sharing_reuse_info(sharing_reuse_info::in,
+    proc_info::in, proc_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -427,8 +395,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
     MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
     MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
-    SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init,
+    SharingReuseInfo = sharing_reuse_info_init,
 
     ProcSubInfo = proc_sub_info(
         MainContext,
@@ -466,8 +433,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MaybeExceptionInfo,
         MaybeTrailingInfo,
         MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
+        SharingReuseInfo),
 
     % argument HeadVars
     % argument Goal
@@ -554,8 +520,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
     MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
     MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
     MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
-    SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init,
+    SharingReuseInfo = sharing_reuse_info_init,
 
     ProcSubInfo = proc_sub_info(
         MainContext,
@@ -593,8 +558,7 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types, InstVarSet,
         MaybeExceptionInfo,
         MaybeTrailingInfo,
         MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
+        SharingReuseInfo),
 
     init_var_table(VarTable0),
     make_fresh_prefix_named_vars_from_types(ModuleInfo, "HeadVar__", 1,
@@ -668,7 +632,7 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
         MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
         MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
-        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo) :-
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingReuseInfo) :-
     ProcInfo = proc_info(
         HeadVars,
         Goal,
@@ -718,8 +682,7 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeExceptionInfo,
         MaybeTrailingInfo,
         MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo).
+        SharingReuseInfo).
 
 proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         InstVarSet, DeclaredModes, Modes, MaybeArgLives,
@@ -733,8 +696,7 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
         MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
         MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
-        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo,
-        ProcInfo) :-
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingReuseInfo, ProcInfo) :-
     ProcSubInfo = proc_sub_info(
         MainContext,
         ItemNumber,
@@ -771,8 +733,7 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeExceptionInfo,
         MaybeTrailingInfo,
         MaybeMMTablingInfo,
-        SharingInfo,
-        ReuseInfo),
+        SharingReuseInfo),
     ProcInfo = proc_info(
         HeadVars,
         Goal,
@@ -797,54 +758,6 @@ proc_info_set_body(VarTable, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
     !ProcInfo ^ proc_head_vars := HeadVars,
     !ProcInfo ^ proc_body := Goal,
     !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
-
-proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
-    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_sharing.
-
-proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
-        yes(Sharing).
-
-proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
-    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing,
-    MaybeImportedSharing = yes(ImportedSharing),
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
-
-proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
-        !ProcInfo) :-
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
-    MaybeImportedSharing = yes(ImportedSharing),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := MaybeImportedSharing.
-
-proc_info_reset_imported_structure_sharing(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
-        ^ maybe_imported_sharing := no.
-
-proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
-    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
-
-proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
-        := yes(Reuse).
-
-proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
-    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse,
-    MaybeImportedReuse = yes(ImportedReuse),
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
-
-proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
-    MaybeImportedReuse = yes(ImportedReuse),
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
-        MaybeImportedReuse.
-
-proc_info_reset_imported_structure_reuse(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
-        ^ maybe_imported_reuse := no.
 
 %---------------------------------------------------------------------------%
 %
@@ -1134,13 +1047,9 @@ proc_info_reset_imported_structure_reuse(!ProcInfo) :-
                 psi_trailing_info               :: maybe(proc_trailing_info),
                 psi_mm_tabling_info             :: maybe(proc_mm_tabling_info),
 
-                % Structure sharing information as obtained by the structure
-                % sharing analysis.
-                psi_structure_sharing           :: structure_sharing_info,
-
-                % Structure reuse conditions obtained by the structure reuse
-                % analysis (CTGC).
-                psi_structure_reuse             :: structure_reuse_info
+                % Structure sharing and reuse information as obtained by
+                % structure sharing/reuse analysis (CTGC).
+                psi_sharing_reuse_info          :: sharing_reuse_info
         ).
 
 proc_info_get_headvars(PI, X) :-
@@ -1236,6 +1145,8 @@ proc_info_get_trailing_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_trailing_info.
 proc_info_get_mm_tabling_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_mm_tabling_info.
+proc_info_get_sharing_reuse_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_sharing_reuse_info.
 
 proc_info_set_headvars(X, !PI) :-
     !PI ^ proc_head_vars := X.
@@ -1324,6 +1235,8 @@ proc_info_set_trailing_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_trailing_info := X.
 proc_info_set_mm_tabling_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_mm_tabling_info := X.
+proc_info_set_sharing_reuse_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_sharing_reuse_info := X.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_proc.

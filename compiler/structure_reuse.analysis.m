@@ -526,11 +526,12 @@ process_imported_reuse_in_procs(!PredInfo) :-
 
 process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
-        ( if
-            proc_info_get_imported_structure_reuse(!.ProcInfo,
-                ImpHeadVars, ImpTypes, ImpReuse)
-        then
+        map.lookup(!.ProcTable, ProcId, !:ProcInfo),
+        proc_info_get_sharing_reuse_info(!.ProcInfo, SharingReuseInfo0),
+        MaybeImportedReuse0 = SharingReuseInfo0 ^ maybe_imported_reuse,
+        (
+            MaybeImportedReuse0 = yes(ImportedReuse0),
+            ImportedReuse0 = imported_reuse(ImpHeadVars, ImpTypes, ImpReuse),
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
             map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
@@ -549,12 +550,13 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
             ),
             % Optimality does not apply to `--intermodule-optimisation'
             % system, only `--intermodule-analysis'.
-            proc_info_set_structure_reuse(
-                structure_reuse_domain_and_status(Reuse, optimal), !ProcInfo),
-            proc_info_reset_imported_structure_reuse(!ProcInfo),
+            SharingReuseInfo1 = SharingReuseInfo0 ^ maybe_reuse :=
+                yes(structure_reuse_domain_and_status(Reuse, optimal)),
+            SharingReuseInfo = SharingReuseInfo1 ^ maybe_imported_reuse := no,
+            proc_info_set_sharing_reuse_info(SharingReuseInfo, !ProcInfo),
             map.det_update(ProcId, !.ProcInfo, !ProcTable)
-        else
-            true
+        ;
+            MaybeImportedReuse0 = no
         )
     ).
 
@@ -750,7 +752,9 @@ save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :-
     Domain_Status = structure_reuse_domain_and_status(ReuseDomain, Status),
 
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-    proc_info_set_structure_reuse(Domain_Status, ProcInfo0, ProcInfo),
+    proc_info_get_sharing_reuse_info(ProcInfo0, SharingReuseInfo0),
+    SharingReuseInfo = SharingReuseInfo0 ^ maybe_reuse := yes(Domain_Status),
+    proc_info_set_sharing_reuse_info(SharingReuseInfo, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 :- pred annotate_in_use_information(module_info::in,

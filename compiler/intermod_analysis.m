@@ -781,7 +781,8 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
         ShouldWrite = should_write,
-        proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
+        proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+        MaybeSharingStatus = SharingReuseInfo ^ maybe_sharing,
         MaybeSharingStatus = yes(SharingStatus)
     then
         proc_info_get_var_table(ProcInfo, VarTable),
@@ -832,7 +833,8 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
         ShouldWrite = should_write,
-        proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
+        proc_info_get_sharing_reuse_info(ProcInfo, SharingReuseInfo),
+        MaybeStructureReuseDomain = SharingReuseInfo ^ maybe_reuse,
         MaybeStructureReuseDomain = yes(StructureReuseDomain)
     then
         proc_info_get_var_table(ProcInfo, VarTable),

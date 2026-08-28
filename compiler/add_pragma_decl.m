@@ -89,6 +89,7 @@
 :- import_module hlds.pred_info_types.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -919,8 +920,13 @@ add_pragma_struct_sharing(SharingInfo, !ModuleInfo, !ErrSpecs):-
             MaybePredId = ok1(PredId),
             PFNameArity =
                 pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
-            ProcTransform = proc_info_set_imported_structure_sharing(HeadVars,
-                Types, SharingDomain),
+            ImportedSharing = imported_sharing(HeadVars, Types, SharingDomain),
+            ProcTransform =
+                ( pred(PI0::in, PI::out) is det :-
+                    proc_info_get_sharing_reuse_info(PI0, SR0),
+                    SR = SR0 ^ maybe_imported_sharing := yes(ImportedSharing),
+                    proc_info_set_sharing_reuse_info(SR, PI0, PI)
+                ),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
                 "structure_sharing", Context, ProcTransform,
                 !ModuleInfo, !ErrSpecs)
@@ -959,8 +965,13 @@ add_pragma_struct_reuse(ReuseInfo, !ModuleInfo, !ErrSpecs):-
             MaybePredId = ok1(PredId),
             PFNameArity =
                 pf_sym_name_user_arity(PredOrFunc, SymName, UserArity),
-            ProcTransform = proc_info_set_imported_structure_reuse(HeadVars,
-                Types, ReuseDomain),
+            ImportedReuse = imported_reuse(HeadVars, Types, ReuseDomain),
+            ProcTransform =
+                ( pred(PI0::in, PI::out) is det :-
+                    proc_info_get_sharing_reuse_info(PI0, SR0),
+                    SR = SR0 ^ maybe_imported_reuse := yes(ImportedReuse),
+                    proc_info_set_sharing_reuse_info(SR, PI0, PI)
+                ),
             transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
                 "structure_reuse", Context, ProcTransform, !ModuleInfo,
                 !ErrSpecs)

@@ -49,6 +49,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.pred_table.
+:- import_module hlds.proc_info_types.
 :- import_module hlds.status.
 :- import_module hlds.type_util.
 :- import_module hlds.var_table_hlds.
@@ -671,9 +672,11 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
     proc_info_set_goal(Goal, !NewProcInfo),
 
     % Remove any imported structure sharing and reuse information for the
-    % original procedure as they won't be (directly) applicable.
-    proc_info_reset_imported_structure_sharing(!NewProcInfo),
-    proc_info_reset_imported_structure_reuse(!NewProcInfo),
+    % original procedure, as they won't be (directly) applicable.
+    proc_info_get_sharing_reuse_info(!.NewProcInfo, SharingReuseInfo0),
+    SharingReuseInfo1 = SharingReuseInfo0 ^ maybe_imported_sharing := no,
+    SharingReuseInfo =  SharingReuseInfo1 ^ maybe_imported_reuse := no,
+    proc_info_set_sharing_reuse_info(SharingReuseInfo, !NewProcInfo),
 
     proc_info_get_var_table(!.NewProcInfo, VarTable7),
     lookup_var_types(VarTable7, ExtraHeadVars, ExtraHeadVarTypes0),
