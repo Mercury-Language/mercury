@@ -12,6 +12,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.make_hlds.unravel_info.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -238,15 +239,18 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Renaming, Goal, HLDSGoal,
     % It is an error for the left or right hand side of a unification
     % to be !A (although it may be !.A or !:A).
     ( if TermA = functor(atom("!"), [variable(StateVarA, _)], _) then
-        report_svar_unify_error(Context, StateVarA, !SVarState, !UrInfo),
+        report_svar_unify_error(Context, StateVarA, !UrInfo),
+        make_svar_magically_known(StateVarA, !SVarState, !UrInfo),
         ( if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
-            report_svar_unify_error(Context, StateVarB, !SVarState, !UrInfo)
+            report_svar_unify_error(Context, StateVarB, !UrInfo),
+            make_svar_magically_known(StateVarB, !SVarState, !UrInfo)
         else
             true
         ),
         HLDSGoal = true_goal_with_context(Context)
     else if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
-        report_svar_unify_error(Context, StateVarB, !SVarState, !UrInfo),
+        report_svar_unify_error(Context, StateVarB, !UrInfo),
+        make_svar_magically_known(StateVarB, !SVarState, !UrInfo),
         HLDSGoal = true_goal_with_context(Context)
     else
         unravel_unification(TermA, TermB, Context, umc_explicit, [],

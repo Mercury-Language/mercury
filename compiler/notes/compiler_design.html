@@ -757,7 +757,13 @@ with the help of
 superhomogeneous_lambda.m (which handles the conversion of lambda expressions)
 and superhomogeneous_util.m (which provides utility predicates).
 <li>
+unravel_info.m defines the unravel_info type,
+which defines the state of the conversion into superhomogeneous form.
+<li>
 state_var.m expands away state variable syntax.
+<li>
+delete_copy_goals.m performs a post-pass
+that cleans up the output of state_var.m.
 <li>
 field_access.m expands away field access syntax.
 <li>

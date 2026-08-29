@@ -28,6 +28,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous_util.
+:- import_module hlds.make_hlds.unravel_info.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

@@ -49,6 +49,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.make_hlds.unravel_info.
 :- import_module hlds.pred_proc_id.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.

@@ -18,6 +18,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.make_hlds.unravel_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.

@@ -41,6 +41,7 @@
 :- include_module make_hlds_types.
 :- include_module qual_info.
 :- include_module state_var.
+:- include_module unravel_info.
 
 :- implementation.
 
@@ -60,6 +61,7 @@
 :- include_module add_solver.
 :- include_module add_type.
 :- include_module check_field_access_functions.
+:- include_module delete_copy_goals.
 :- include_module field_access.
 :- include_module goal_expr_to_goal.
 :- include_module make_hlds_separate_items.
