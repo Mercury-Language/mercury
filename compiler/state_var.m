@@ -126,8 +126,8 @@
     --->    hlds_goal_svar_state(hlds_goal, svar_state).
 
     % The state of the currently visible state variables. The state gets
-    % updated differently along differently execution paths. When execution
-    % paths rejoin, you need to create the state after the rejoin from the
+    % updated differently along different execution paths. When execution
+    % paths rejoin, we need to create the state after the rejoin from the
     % states being rejoined (which is what we use hlds_goal_svar_state for)
     % using their last common ancestor state as a basis.
 :- type svar_state.
