@@ -120,6 +120,12 @@
     --->    should_not_write
     ;       should_write.
 
+:- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+:- pred should_write_reuse_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
 :- pred should_write_exception_info(module_info::in, pred_id::in, proc_id::in,
     pred_info::in, should_write_for::in, maybe_should_write::out) is det.
 
@@ -127,12 +133,6 @@
     pred_info::in, should_write_for::in, maybe_should_write::out) is det.
 
 :- pred should_write_mm_tabling_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
-
-:- pred should_write_reuse_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
-
-:- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
     pred_info::in, should_write_for::in, maybe_should_write::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -335,38 +335,45 @@ gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
 
 format_analysis_pragmas(TermInfos, TermInfos2, SharingInfos, ReuseInfos,
         Exceptions, TrailingInfos, MMTablingInfos, !State) :-
+    % Write TermInfos.
     maybe_format_block_start_blank_line(string.builder.handle, TermInfos,
         !State),
     list.foldl(
         mercury_format_pragma_termination(string.builder.handle,
             output_mercury),
         TermInfos, !State),
+    % Write Term2Infos.
     maybe_format_block_start_blank_line(string.builder.handle, TermInfos2,
         !State),
     list.foldl(
         mercury_format_pragma_termination2(string.builder.handle,
             output_mercury),
         TermInfos2, !State),
+    % Write SharingInfos.
     maybe_format_block_start_blank_line(string.builder.handle, SharingInfos,
         !State),
     list.foldl(
         mercury_format_pragma_struct_sharing(string.builder.handle,
             output_debug),
         SharingInfos, !State),
+    % Write ReuseInfos.
     maybe_format_block_start_blank_line(string.builder.handle, ReuseInfos,
         !State),
     list.foldl(
         mercury_format_pragma_struct_reuse(string.builder.handle,
             output_debug),
         ReuseInfos, !State),
+    % Write Exceptions.
     maybe_format_block_start_blank_line(string.builder.handle, Exceptions,
         !State),
     list.foldl(mercury_format_pragma_exceptions(string.builder.handle),
         Exceptions, !State),
+    % Write TrailingInfos.
     maybe_format_block_start_blank_line(string.builder.handle, TrailingInfos,
         !State),
     list.foldl(mercury_format_pragma_trailing(string.builder.handle),
         TrailingInfos, !State),
+    % Write MMTablingInfos.
     maybe_format_block_start_blank_line(string.builder.handle, MMTablingInfos,
         !State),
     list.foldl(mercury_format_pragma_mm_tabling(string.builder.handle),
@@ -954,6 +961,62 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        % XXX If PredInfo is not a unify or compare pred, then all its
+        % procedures must share the same status.
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_index_or_compare_pred(PredInfo),
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            % XXX These should be allowed, but the predicate declaration for
+            % the specialized predicate is not produced before the structure
+            % sharing pragmas are read in, resulting in an undefined predicate
+            % error.
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        % XXX If PredInfo is not a unify or compare pred, then all its
+        % procedures must share the same status.
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_index_or_compare_pred(PredInfo),
+
+        % Don't write out info for reuse versions of procedures.
+        pred_info_get_origin(PredInfo, PredOrigin),
+        PredOrigin \=
+            origin_pred_transform(pred_transform_structure_reuse, _, _),
+
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            % XXX These should be allowed, but the predicate declaration for
+            % the specialized predicate is not produced before the structure
+            % reuse pragmas are read in, resulting in an undefined predicate
+            % error.
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
 should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
         WhatFor, ShouldWrite) :-
     ( if
@@ -1032,62 +1095,6 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             pred_info_get_markers(PredInfo, Markers),
             not marker_is_present(Markers, marker_class_instance_method),
             not marker_is_present(Markers, marker_named_class_instance_method)
-        )
-    then
-        ShouldWrite = should_write
-    else
-        ShouldWrite = should_not_write
-    ).
-
-should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
-        ShouldWrite) :-
-    ( if
-        % XXX If PredInfo is not a unify or compare pred, then all its
-        % procedures must share the same status.
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_index_or_compare_pred(PredInfo),
-
-        % Don't write out info for reuse versions of procedures.
-        pred_info_get_origin(PredInfo, PredOrigin),
-        PredOrigin \=
-            origin_pred_transform(pred_transform_structure_reuse, _, _),
-
-        (
-            WhatFor = for_analysis_framework
-        ;
-            WhatFor = for_pragma,
-            % XXX These should be allowed, but the predicate declaration for
-            % the specialized predicate is not produced before the structure
-            % reuse pragmas are read in, resulting in an undefined predicate
-            % error.
-            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
-            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds)
-        )
-    then
-        ShouldWrite = should_write
-    else
-        ShouldWrite = should_not_write
-    ).
-
-should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
-        ShouldWrite) :-
-    ( if
-        % XXX If PredInfo is not a unify or compare pred, then all its
-        % procedures must share the same status.
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_index_or_compare_pred(PredInfo),
-        (
-            WhatFor = for_analysis_framework
-        ;
-            WhatFor = for_pragma,
-            % XXX These should be allowed, but the predicate declaration for
-            % the specialized predicate is not produced before the structure
-            % sharing pragmas are read in, resulting in an undefined predicate
-            % error.
-            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
-            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds)
         )
     then
         ShouldWrite = should_write
