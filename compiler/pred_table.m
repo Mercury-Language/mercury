@@ -436,7 +436,6 @@
             ).
 
 :- type accessibility_table == map(pred_id, name_accessibility).
-
 :- type name_accessibility
     --->    access(
                 % Is this predicate accessible by its unqualified name?
@@ -447,14 +446,11 @@
                 accessible_by_partially_qualified_names :: bool
             ).
 
-:- type name_index == map(string, list(pred_id)).
+:- type name_index == multi_map(string, pred_id).
 
+:- type name_arity_index == multi_map(name_user_arity, pred_id).
 :- type name_user_arity
     --->    name_user_arity(string, user_arity).
-:- type name_arity_index == map(name_user_arity, list(pred_id)).
-
-:- type module_and_name
-    --->    module_and_name(module_name, string).
 
     % First search on module and name, then search on arity. We need these
     % two levels because typecheck.m, when processing higher order terms,
@@ -463,6 +459,8 @@
     %
 :- type module_name_arity_index ==
     map(module_and_name, multi_map(user_arity, pred_id)).
+:- type module_and_name
+    --->    module_and_name(module_name, string).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -472,11 +470,11 @@ predicate_table_init(PredicateTable) :-
     NextPredId = initial_pred_id,
     ValidPredIds = set_tree234.init,
     map.init(AccessibilityTable),
-    map.init(Pred_N_Index),
-    map.init(Pred_NA_Index),
+    multi_map.init(Pred_N_Index),
+    multi_map.init(Pred_NA_Index),
     map.init(Pred_MNA_Index),
-    map.init(Func_N_Index),
-    map.init(Func_NA_Index),
+    multi_map.init(Func_N_Index),
+    multi_map.init(Func_NA_Index),
     map.init(Func_MNA_Index),
     PredicateTable = predicate_table(PredIdTable, NextPredId,
         ValidPredIds, AccessibilityTable,
@@ -643,48 +641,23 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 
 predicate_table_remove_from_index(Module, Name, UserArity, PredId,
         !N, !NA, !MNA) :-
-    do_remove_from_index(Name, PredId, !N),
-    do_remove_from_index(name_user_arity(Name, UserArity), PredId, !NA),
-    do_remove_from_m_n_a_index(module_and_name(Module, Name), UserArity,
+    multi_map.delete(Name, PredId, !N),
+    multi_map.delete(name_user_arity(Name, UserArity), PredId, !NA),
+    remove_from_m_n_a_index(module_and_name(Module, Name), UserArity,
         PredId, !MNA).
 
-:- pred do_remove_from_index(T::in, pred_id::in,
-    map(T, list(pred_id))::in, map(T, list(pred_id))::out) is det.
-
-do_remove_from_index(T, PredId, !Index) :-
-    ( if map.search(!.Index, T, NamePredIds0) then
-        list.delete_all(NamePredIds0, PredId, NamePredIds),
-        (
-            NamePredIds = [],
-            map.delete(T, !Index)
-        ;
-            NamePredIds = [_ | _],
-            map.det_update(T, NamePredIds, !Index)
-        )
-    else
-        true
-    ).
-
-:- pred do_remove_from_m_n_a_index(module_and_name::in, user_arity::in,
+:- pred remove_from_m_n_a_index(module_and_name::in, user_arity::in,
     pred_id::in, module_name_arity_index::in, module_name_arity_index::out)
     is det.
 
-do_remove_from_m_n_a_index(ModuleAndName, UserArity, PredId, !MNA) :-
-    map.lookup(!.MNA, ModuleAndName, UserArities0),
-    map.lookup(UserArities0, UserArity, PredIds0),
-    list.delete_all(PredIds0, PredId, PredIds),
-    (
-        PredIds = [],
-        map.delete(UserArity, UserArities0, UserArities),
-        ( if map.is_empty(UserArities) then
-            map.delete(ModuleAndName, !MNA)
-        else
-            map.det_update(ModuleAndName, UserArities, !MNA)
-        )
-    ;
-        PredIds = [_ | _],
-        map.det_update(UserArity, PredIds, UserArities0, UserArities),
-        map.det_update(ModuleAndName, UserArities, !MNA)
+remove_from_m_n_a_index(ModuleAndName, UserArity, PredId, !MNA) :-
+    map.lookup(!.MNA, ModuleAndName, UserAritiesToPredIdMap0),
+    multi_map.delete(UserArity, PredId,
+        UserAritiesToPredIdMap0, UserAritiesToPredIdMap),
+    ( if multi_map.is_empty(UserAritiesToPredIdMap) then
+        map.delete(ModuleAndName, !MNA)
+    else
+        map.det_update(ModuleAndName, UserAritiesToPredIdMap, !MNA)
     ).
 
 %---------------------------------------------------------------------------%
@@ -959,8 +932,8 @@ predicate_table_lookup_pred_module_name(PredicateTable, IsFullyQualified,
     ( if map.search(Pred_MNA_Index, ModuleAndName, Arities) then
         map.values(Arities, PredIdLists),
         list.condense(PredIdLists, PredIds0),
-        maybe_filter_pred_ids_matching_module(IsFullyQualified,
-            Module, PredicateTable, PredIds0, PredIds)
+        maybe_filter_pred_ids_matching_module(PredicateTable,
+            IsFullyQualified, Module, PredIds0, PredIds)
     else
         PredIds = []
     ).
@@ -976,8 +949,8 @@ predicate_table_lookup_func_module_name(PredicateTable, IsFullyQualified,
     ( if map.search(Func_MNA_Index, ModuleAndName, Arities) then
         map.values(Arities, PredIdLists),
         list.condense(PredIdLists, PredIds0),
-        maybe_filter_pred_ids_matching_module(IsFullyQualified,
-            Module, PredicateTable, PredIds0, PredIds)
+        maybe_filter_pred_ids_matching_module(PredicateTable,
+            IsFullyQualified, Module, PredIds0, PredIds)
     else
         PredIds = []
     ).
@@ -1030,8 +1003,8 @@ predicate_table_lookup_pred_m_n_ua(PredicateTable, IsFullyQualified,
         map.search(P_MNA_Index, ModuleAndName, ArityIndex),
         map.search(ArityIndex, UserArity, !:PredIds)
     then
-        maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
-            PredicateTable, !PredIds)
+        maybe_filter_pred_ids_matching_module(PredicateTable,
+            IsFullyQualified, Module, !PredIds)
     else
         !:PredIds = []
     ).
@@ -1044,22 +1017,25 @@ predicate_table_lookup_func_m_n_ua(PredicateTable, IsFullyQualified,
         map.search(F_MNA_Index, ModuleAndName, ArityIndex),
         map.search(ArityIndex, UserArity, !:PredIds)
     then
-        maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
-            PredicateTable, !PredIds)
+        maybe_filter_pred_ids_matching_module(PredicateTable,
+            IsFullyQualified, Module, !PredIds)
     else
         !:PredIds = []
     ).
 
-:- pred maybe_filter_pred_ids_matching_module(is_fully_qualified::in,
-    module_name::in, predicate_table::in,
+:- pred maybe_filter_pred_ids_matching_module( predicate_table::in,
+    is_fully_qualified::in, module_name::in,
     list(pred_id)::in, list(pred_id)::out) is det.
 
-maybe_filter_pred_ids_matching_module(may_be_partially_qualified, _, _,
-        !PredIds).
-maybe_filter_pred_ids_matching_module(is_fully_qualified, ModuleName,
-        PredicateTable, !PredIds) :-
-    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
-    list.filter(pred_id_matches_module(PredIdTable, ModuleName), !PredIds).
+maybe_filter_pred_ids_matching_module(PredicateTable, IsFullyQualified,
+        ModuleName, !PredIds) :-
+    (
+        IsFullyQualified = may_be_partially_qualified
+    ;
+        IsFullyQualified = is_fully_qualified,
+        predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+        list.filter(pred_id_matches_module(PredIdTable, ModuleName), !PredIds)
+    ).
 
 :- pred pred_id_matches_module(pred_id_table::in, module_name::in, pred_id::in)
     is semidet.
