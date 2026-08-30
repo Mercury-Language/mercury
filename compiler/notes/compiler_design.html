@@ -1684,7 +1684,7 @@ that require definitive evaluation methods (e.g. inlining).
 <li>
 The next pass of this stage converts lambda expressions
 into higher-order predicate terms
-that refer to freshly introduced separate predicates (lambda.m).
+that refer to freshly introduced separate predicates (expand_lambdas.m).
 This pass needs to come after unique_modes.m
 to ensure that the modes we give to the introduced predicates are correct.
 It also needs to come after table_gen.m
@@ -1734,34 +1734,38 @@ The next pass is termination analysis.
 The compiler contains <em>two</em> separate termination analysis systems,
 which are based on different principles.
 <p>
-The modules involved in the first system are:
+The first system is based on the idea of
+computing the set of "output supplier inputs", meaning
+the inputs on whose size the sizes of the output outputs depends.
+The modules of this system,
+which are in the termination.term_osi package, are
     <ul>
     <li>
-    termination.m is the control module.
+    term_osi_main.m is the control module.
     It sets the argument size and termination properties
     of builtin and compiler generated procedures,
     invokes term_pass1.m and term_pass2.m,
     and writes .trans_opt files and error messages as appropriate.
     <li>
-    term_pass1.m analyzes the argument size properties
+    term_osi_pass1.m analyzes the argument size properties
     of user-defined procedures,
     <li>
-    term_pass2.m analyzes the termination properties
+    term_osi_pass2.m analyzes the termination properties
     of user-defined procedures.
     <li>
-    term_traversal.m contains code common to the two passes.
+    term_osi_traversal.m contains code common to the two passes.
     <li>
-    term_errors.m defines the various kinds of termination errors
+    term_osi_errors.m defines the various kinds of termination errors
     and prints the messages appropriate for each.
     <li>
-    term_util.m defines the main types used in termination analysis
+    term_osi_util.m defines the main types used in termination analysis
     and contains utility predicates.
-    <li>
-    post_term_analysis.m contains error checking routines and optimizations
-    that depend upon the information obtained by termination analysis.
     </ul>
 <p>
-The modules involved in the second system are:
+The second system is based on the polyhedra that result
+from the conjunction of several linear constraints,
+The modules of this system,
+which are in the termination.term_constr package, are
 <p>
     <ul>
     <li>
@@ -1787,6 +1791,12 @@ The modules involved in the second system are:
     <li>
     term_constr_errors.m generates error messages for termination problems.
     </ul>
+<p>
+The termination package also contains two other modules:
+term_norm.m, which defines the metrics we can use
+to measure the sizes of terms (inputs and outputs), and
+term_post_analysis.m, which  contains error checking routines and optimizations
+that depend upon the information obtained by termination analysis.
 <li>
 Trailing analysis (trailing_analysis.mi) annotates each module with information
 about whether the procedures in the module modify the trail or not.
