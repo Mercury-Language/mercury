@@ -61,6 +61,7 @@
 :- import_module termination.term_osi.term_osi_pass2.
 :- import_module termination.term_osi.term_osi_util.
 :- import_module termination.term_post_analysis.
+:- import_module termination.term_util.
 
 :- import_module bool.
 :- import_module map.

@@ -80,8 +80,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module termination.term_osi.  % ZZZ
-:- import_module termination.term_osi.term_osi_util.
+:- import_module termination.term_util.
 
 :- import_module bool.
 :- import_module cord.

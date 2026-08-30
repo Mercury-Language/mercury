@@ -1792,11 +1792,19 @@ which are in the termination.term_constr package, are
     term_constr_errors.m generates error messages for termination problems.
     </ul>
 <p>
-The termination package also contains two other modules:
-term_norm.m, which defines the metrics we can use
-to measure the sizes of terms (inputs and outputs), and
-term_post_analysis.m, which  contains error checking routines and optimizations
-that depend upon the information obtained by termination analysis.
+The termination package also contains three other modules:
+    <ul>
+    <li>
+    term_norm.m, which defines the metrics that
+    both the term_osi and term_constr packages use
+    to measure the sizes of terms (inputs and outputs),
+    <li>
+    term_util.m, which defines utility predicates needed by
+    both the term_osi and term_constr packages, and
+    <li>
+    term_post_analysis.m, which contains error checking routines
+    that depend upon the information obtained by termination analysis.
+    </ul>
 <li>
 Trailing analysis (trailing_analysis.mi) annotates each module with information
 about whether the procedures in the module modify the trail or not.

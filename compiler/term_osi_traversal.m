@@ -119,6 +119,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
+:- import_module termination.term_util.
 
 :- import_module bool.
 :- import_module int.

@@ -77,8 +77,7 @@
 :- import_module termination.term_constr.term_constr_errors.
 :- import_module termination.term_constr.term_constr_main_types.
 :- import_module termination.term_constr.term_constr_util.
-:- import_module termination.term_osi.  % ZZZ
-:- import_module termination.term_osi.term_osi_util.
+:- import_module termination.term_util.
 
 :- import_module bool.
 :- import_module int.

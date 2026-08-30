@@ -66,6 +66,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
 :- import_module termination.term_osi.term_osi_traversal.
+:- import_module termination.term_util.
 
 :- import_module bag.
 :- import_module bool.

@@ -8,9 +8,9 @@
 %
 % This package contains our two termination analysis systems.
 %
-% At the moment, they are wholly separate, but they do contain
-% some very similar code. If these are ever factored out, this package
-% is the natural home of the results.
+% The two systems' code bases are *almost* wholly separate, but
+% they do contain some shared code. This package is the natural home
+% for that shared code.
 %
 %-----------------------------------------------------------------------------%
 
@@ -25,6 +25,7 @@
 :- implementation.
 
 :- include_module term_post_analysis.
+:- include_module term_util.
 
 %-----------------------------------------------------------------------------%
 :- end_module termination.

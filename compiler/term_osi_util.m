@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: term_util.m.
+% File: term_osi_util.m.
 % Main author: crs.
 %
 % This module:
@@ -23,12 +23,9 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_proc.
 :- import_module hlds.pred_proc_id.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
 :- import_module termination.term_norm.
@@ -137,14 +134,6 @@
 
 %---------------------%
 
-    % Succeed if all arguments of the given procedure of the given predicate
-    % are either input or zero size.
-    %
-:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
-    proc_info::in) is semidet.
-
-%---------------------%
-
     % This predicate sets the argument size info of a given a list of
     % procedures.
     %
@@ -172,53 +161,17 @@
     prog_context::in, maybe(arg_size_info)::out) is det.
 
 %---------------------------------------------------------------------------%
-
-:- pred get_context_from_scc(module_info::in, scc::in, prog_context::out)
-    is det.
-
-%---------------------------------------------------------------------------%
-
-    % Succeeds if the foreign proc attributes imply that a procedure is
-    % terminating.
-    %
-:- pred attributes_imply_termination(foreign_proc_attributes::in)
-    is semidet.
-
-%---------------------------------------------------------------------------%
-
-:- type maybe_believe_check_termination
-    --->    do_not_believe_check_termination
-    ;       do_believe_check_termination.
-
-    % When we process imported predicates, should we believe that
-    % the presence of a 'check_termination' pragma, or rather the pred marker
-    % indicating the presence of such a pragma, guarantees that (in the absence
-    % of an error from that pragma) the predicate will actually terminate?
-    %
-    % The check_termination pragma will be checked by the compiler
-    % when it compiles the source file that the predicate was imported from.
-    % However, when we make .opt files, we do not check whether predicates
-    % with check_termination pragmas actually terminate, so we cannot assume
-    % that they do, since any violations of that assumption will *not* be
-    % reported.
-    %
-:- pred should_we_believe_check_termination_markers(module_info::in,
-    maybe_believe_check_termination::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc.
 :- import_module hlds.inst_test.
 :- import_module hlds.mode_test.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.op_mode.
 :- import_module parse_tree.prog_type_test.
 
 :- import_module require.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -343,30 +296,6 @@ pred_proc_id_terminates(ModuleInfo, PPId) :-
 
 %---------------------------------------------------------------------------%
 
-all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_get_arg_types(PredInfo, TypeList),
-    proc_info_get_argmodes(ProcInfo, ModeList),
-    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
-
-:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
-    module_info::in) is semidet.
-
-all_args_input_or_zero_size_2([], [], _).
-all_args_input_or_zero_size_2([], [_|_], _) :-
-    unexpected($pred, "unmatched lists").
-all_args_input_or_zero_size_2([_|_], [], _) :-
-    unexpected($pred, "unmatched lists").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
-    ( if mode_is_input(ModuleInfo, Mode) then
-        % The variable is an input variables, so its size is irrelevant.
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    else
-        term_norm.zero_size_type(ModuleInfo, Type),
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ).
-
-%---------------------------------------------------------------------------%
-
 set_pred_proc_ids_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
@@ -400,40 +329,6 @@ add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
 add_context_to_arg_size_info(yes(infinite(_)), Context,
     yes(infinite([term_error(Context, imported_pred)]))).
-
-%---------------------------------------------------------------------------%
-
-get_context_from_scc(ModuleInfo, SCC, Context) :-
-    set.to_sorted_list(SCC, SCCProcs),
-    (
-        SCCProcs = [proc(PredId, _) | _],
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_context(PredInfo, Context)
-    ;
-        SCCProcs = [],
-        unexpected($pred, "empty SCC")
-    ).
-
-%---------------------------------------------------------------------------%
-
-attributes_imply_termination(Attributes) :-
-    (
-        get_terminates(Attributes) = proc_terminates
-    ;
-        get_terminates(Attributes) = depends_on_mercury_calls,
-        get_may_call_mercury(Attributes) = proc_will_not_call_mercury
-    ).
-
-%---------------------------------------------------------------------------%
-
-should_we_believe_check_termination_markers(ModuleInfo, Believe) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _) then
-        Believe = do_not_believe_check_termination
-    else
-        Believe = do_believe_check_termination
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module termination.term_osi.term_osi_util.
