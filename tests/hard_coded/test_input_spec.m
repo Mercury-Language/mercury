@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% Test the operation of input_spec pragmas.
+% Test the operation of input_mode_spec pragmas.
 %
 %---------------------------------------------------------------------------%
 
@@ -47,8 +47,8 @@ main(!IO) :-
 :- inst aux_d for aux/0
     --->    aux_d.
 
-:- pragma input_spec(control, add_to_in_mode, [ctrl_a, ctrl_b]).
-:- pragma input_spec(aux,     replace_in_mode, [aux_c, aux_d]).
+:- pragma input_mode_spec(control, add_to_in_mode, [ctrl_a, ctrl_b]).
+:- pragma input_mode_spec(aux,     replace_in_mode, [aux_c, aux_d]).
 
 %---------------------------------------------------------------------------%
 

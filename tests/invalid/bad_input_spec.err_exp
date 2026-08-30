@@ -1,34 +1,34 @@
-bad_input_spec.m:050: Error: an [38;5;87m`:- pragma input_spec' declaration[39;49m must have
-bad_input_spec.m:050:   [38;5;203mthree arguments.[39;49m
-bad_input_spec.m:051: In the third argument of `:- pragma input_spec'
+bad_input_spec.m:050: Error: an [38;5;87m`:- pragma input_mode_spec' declaration[39;49m must
+bad_input_spec.m:050:   have [38;5;203mthree arguments.[39;49m
+bad_input_spec.m:051: In the third argument of `:- pragma input_mode_spec'
 bad_input_spec.m:051:   declaration:
 bad_input_spec.m:051:   error: expected a [38;5;40mnonempty list of inst names,[39;49m got an
 bad_input_spec.m:051:   [38;5;203mempty list.[39;49m
-bad_input_spec.m:052: In the second argument of `:- pragma input_spec'
+bad_input_spec.m:052: In the second argument of `:- pragma input_mode_spec'
 bad_input_spec.m:052:   declaration:
 bad_input_spec.m:052:   error: expected either [38;5;40mreplace_in_mode[39;49m or
 bad_input_spec.m:052:   [38;5;40madd_to_in_mode,[39;49m got [38;5;203madd_to_in_mod.[39;49m
-bad_input_spec.m:052: In the third argument of `:- pragma input_spec'
+bad_input_spec.m:052: In the third argument of `:- pragma input_mode_spec'
 bad_input_spec.m:052:   declaration:
 bad_input_spec.m:052:   error: expected a nonempty [38;5;40mlist of inst names,[39;49m but [38;5;203m9[39;49m is
 bad_input_spec.m:052:   not an inst name.
-bad_input_spec.m:053: In the third argument of `:- pragma input_spec'
+bad_input_spec.m:053: In the third argument of `:- pragma input_mode_spec'
 bad_input_spec.m:053:   declaration:
 bad_input_spec.m:053:   error: expected a nonempty [38;5;40mlist of inst names,[39;49m but [38;5;203m42[39;49m
 bad_input_spec.m:053:   and [38;5;203m"fortytwo"[39;49m are not inst names.
 bad_input_spec.m:054: Error: the type constructor [38;5;87m`au'/0[39;49m has [38;5;203mno visible[39;49m
 bad_input_spec.m:054:   [38;5;203mdefinition.[39;49m
-bad_input_spec.m:054: In `:- pragma input_spec' declaration:
+bad_input_spec.m:054: In `:- pragma input_mode_spec' declaration:
 bad_input_spec.m:054:   error: the type [38;5;87m`au'/0[39;49m is [38;5;203mundefined.[39;49m
 bad_input_spec.m:054:   [38;5;226m(Did you mean `aux'?)[39;49m
 bad_input_spec.m:055: Error: the type being specialized [38;5;40mmust be a ground type,[39;49m
 bad_input_spec.m:055:   but it contains the type variable [38;5;203mT.[39;49m
-bad_input_spec.m:056: In `:- pragma input_spec' declaration:
+bad_input_spec.m:056: In `:- pragma input_mode_spec' declaration:
 bad_input_spec.m:056:   error: the inst [38;5;87m`au_c'/0[39;49m is [38;5;203mundefined.[39;49m
 bad_input_spec.m:056:   [38;5;226m(Did you mean `aux_c'?)[39;49m
-bad_input_spec.m:056: In `:- pragma input_spec' declaration:
+bad_input_spec.m:056: In `:- pragma input_mode_spec' declaration:
 bad_input_spec.m:056:   error: the inst [38;5;87m`aux_'/0[39;49m is [38;5;203mundefined.[39;49m
 bad_input_spec.m:056:   [38;5;226m(Did you mean `aux_c' or `aux_d'?)[39;49m
-bad_input_spec.m:057: Error: duplicate `:- pragma input_spec' declaration for
-bad_input_spec.m:057:   [38;5;87mbad_input_spec.aux.[39;49m
+bad_input_spec.m:057: Error: duplicate `:- pragma input_mode_spec' declaration
+bad_input_spec.m:057:   for [38;5;87mbad_input_spec.aux.[39;49m
 bad_input_spec.m:056:   The previous declaration was here.

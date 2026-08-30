@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% Test errors in input_spec pragmas.
+% Test errors in input_mode_spec pragmas.
 %
 %---------------------------------------------------------------------------%
 
@@ -47,14 +47,14 @@ main(!IO) :-
 :- inst aux_d for aux/0
     --->    aux_d.
 
-:- pragma input_spec(aux,     replace_in_mode).
-:- pragma input_spec(aux,     replace_in_mode, []).
-:- pragma input_spec(control, add_to_in_mod, [9, ctrl_b]).
-:- pragma input_spec(control, add_to_in_mode, [42, "fortytwo", ctrl_b]).
-:- pragma input_spec(au,      replace_in_mode, [aux_c, aux_d]).
-:- pragma input_spec(list(T), replace_in_mode, [aux_c, aux_d]).
-:- pragma input_spec(aux,     replace_in_mode, [au_c, aux_]).
-:- pragma input_spec(aux,     replace_in_mode, [aux_c, aux_d]).
+:- pragma input_mode_spec(aux,     replace_in_mode).
+:- pragma input_mode_spec(aux,     replace_in_mode, []).
+:- pragma input_mode_spec(control, add_to_in_mod, [9, ctrl_b]).
+:- pragma input_mode_spec(control, add_to_in_mode, [42, "fortytwo", ctrl_b]).
+:- pragma input_mode_spec(au,      replace_in_mode, [aux_c, aux_d]).
+:- pragma input_mode_spec(list(T), replace_in_mode, [aux_c, aux_d]).
+:- pragma input_mode_spec(aux,     replace_in_mode, [au_c, aux_]).
+:- pragma input_mode_spec(aux,     replace_in_mode, [aux_c, aux_d]).
 
 %---------------------------------------------------------------------------%
 

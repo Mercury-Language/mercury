@@ -576,7 +576,7 @@ replace_in_parse_tree_plain_opt(Params,
         replace_in_decl_pragma_type_spec, TypeSpecs0, TypeSpecs,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(Params, MaybeRecord,
-        replace_in_decl_pragma_input_spec, InputSpecs0, InputSpecs,
+        replace_in_decl_pragma_input_mode_spec, InputSpecs0, InputSpecs,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreePlainOpt = parse_tree_plain_opt(
@@ -1340,10 +1340,10 @@ replace_in_decl_pragma_info(Params, MaybeRecord, DeclPragma0, DeclPragma,
             TypeSpec0, TypeSpec, !RecompInfo, !UsedModules, Specs),
         DeclPragma = decl_pragma_type_spec(TypeSpec)
     ;
-        DeclPragma0 = decl_pragma_input_spec(InputSpec0),
-        replace_in_decl_pragma_input_spec(Params, MaybeRecord,
+        DeclPragma0 = decl_pragma_input_mode_spec(InputSpec0),
+        replace_in_decl_pragma_input_mode_spec(Params, MaybeRecord,
             InputSpec0, InputSpec, !RecompInfo, !UsedModules, Specs),
-        DeclPragma = decl_pragma_input_spec(InputSpec)
+        DeclPragma = decl_pragma_input_mode_spec(InputSpec)
     ;
         ( DeclPragma0 = decl_pragma_obsolete_pred(_)
         ; DeclPragma0 = decl_pragma_obsolete_proc(_)
@@ -1457,13 +1457,14 @@ replace_in_decl_pragma_type_spec(Params, MaybeRecord,
 
 %---------------------%
 
-:- pred replace_in_decl_pragma_input_spec(equiv_params::in,
+:- pred replace_in_decl_pragma_input_mode_spec(equiv_params::in,
     maybe_record_sym_name_use::in,
-    decl_pragma_input_spec_info::in, decl_pragma_input_spec_info::out,
+    decl_pragma_input_mode_spec_info::in,
+    decl_pragma_input_mode_spec_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_eqv_modules::in, used_eqv_modules::out, list(err_spec)::out) is det.
 
-replace_in_decl_pragma_input_spec(Params, MaybeRecord,
+replace_in_decl_pragma_input_mode_spec(Params, MaybeRecord,
         InputSpecInfo0, InputSpecInfo,
         RecompInfo, RecompInfo, !UsedModules, []) :-
     % RecompInfo is unused, but its presence is required
@@ -1471,7 +1472,7 @@ replace_in_decl_pragma_input_spec(Params, MaybeRecord,
     %
     % The XXX at the start of replace_in_decl_pragma_type_spec_constr
     % applies here as well.
-    InputSpecInfo0 = decl_pragma_input_spec_info(ContainingModuleName,
+    InputSpecInfo0 = decl_pragma_input_mode_spec_info(ContainingModuleName,
         Type0, ReplaceOrAdd, OoMInstCtors, OoMInsts0,
         GatheredItemIds0, TVarSet0, Context, SeqNum),
     ModuleName = Params ^ ep_module_name,
@@ -1489,7 +1490,7 @@ replace_in_decl_pragma_input_spec(Params, MaybeRecord,
     ;
         ItemRecompDeps = item_recomp_deps(_, GatheredItemIds)
     ),
-    InputSpecInfo = decl_pragma_input_spec_info(ContainingModuleName,
+    InputSpecInfo = decl_pragma_input_mode_spec_info(ContainingModuleName,
         Type, ReplaceOrAdd, OoMInstCtors, OoMInsts,
         GatheredItemIds, TVarSet, Context, SeqNum).
 

@@ -90,7 +90,7 @@
     ims_list(item_decl_marker_info)::out,
     list(decl_pragma_type_spec_constr_info)::out,
     list(decl_pragma_type_spec_info)::out,
-    ims_list(decl_pragma_input_spec_info)::out,
+    ims_list(decl_pragma_input_mode_spec_info)::out,
     list(decl_pragma_termination_info)::out,
     list(decl_pragma_termination2_info)::out,
     list(decl_pragma_struct_sharing_info)::out,
@@ -155,7 +155,8 @@
                 ia_decl_type_spec_constr
                                     :: cord(decl_pragma_type_spec_constr_info),
                 ia_decl_type_spec   :: cord(decl_pragma_type_spec_info),
-                ia_decl_input_spec  :: ims_cord(decl_pragma_input_spec_info),
+                ia_decl_input_spec  ::
+                                ims_cord(decl_pragma_input_mode_spec_info),
                 ia_decl_term        :: cord(decl_pragma_termination_info),
                 ia_decl_term2       :: cord(decl_pragma_termination2_info),
                 ia_decl_str_sharing :: cord(decl_pragma_struct_sharing_info),

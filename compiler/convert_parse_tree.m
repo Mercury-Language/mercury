@@ -1091,8 +1091,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list(item_impl_marker_info_opt)::in, list(item_impl_marker_info_opt)::out,
     list(decl_pragma_type_spec_info)::in,
         list(decl_pragma_type_spec_info)::out,
-    list(decl_pragma_input_spec_info)::in,
-        list(decl_pragma_input_spec_info)::out,
+    list(decl_pragma_input_mode_spec_info)::in,
+        list(decl_pragma_input_mode_spec_info)::out,
     list(decl_pragma_termination_info)::in,
         list(decl_pragma_termination_info)::out,
     list(decl_pragma_termination2_info)::in,
@@ -1161,7 +1161,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             DeclPragma = decl_pragma_type_spec(TypeSpec),
             !:TypeSpecs = [TypeSpec | !.TypeSpecs]
         ;
-            DeclPragma = decl_pragma_input_spec(InputSpec),
+            DeclPragma = decl_pragma_input_mode_spec(InputSpec),
             !:InputSpecs = [InputSpec | !.InputSpecs]
         ;
             DeclPragma = decl_pragma_termination(Term),
@@ -1421,7 +1421,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
             ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_type_spec(_)
             ; DeclPragma = decl_pragma_type_spec_constr(_)
-            ; DeclPragma = decl_pragma_input_spec(_)
+            ; DeclPragma = decl_pragma_input_mode_spec(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .trans_opt file may not contain")] ++

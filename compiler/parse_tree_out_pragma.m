@@ -76,8 +76,9 @@
 :- pred mercury_format_pragma_type_spec(S::in, output_lang::in,
     decl_pragma_type_spec_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-:- pred mercury_format_pragma_input_spec(S::in, output_lang::in,
-    decl_pragma_input_spec_info::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_pragma_input_mode_spec(S::in, output_lang::in,
+    decl_pragma_input_mode_spec_info::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 :- pred mercury_format_pragma_unused_args(S::in,
     gen_pragma_unused_args_info::in, U::di, U::uo) is det <= pt_output(S, U).
@@ -194,8 +195,8 @@ mercury_format_item_decl_pragma(Info, Stream, DeclPragma, !IO) :-
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         mercury_format_pragma_type_spec(Stream, Lang, TypeSpec, !IO)
     ;
-        DeclPragma = decl_pragma_input_spec(InputSpec),
-        mercury_format_pragma_input_spec(Stream, Lang, InputSpec, !IO)
+        DeclPragma = decl_pragma_input_mode_spec(InputSpec),
+        mercury_format_pragma_input_mode_spec(Stream, Lang, InputSpec, !IO)
     ;
         DeclPragma = decl_pragma_oisu(OISU),
         mercury_format_pragma_oisu(OISU, Stream, !IO)
@@ -1081,18 +1082,18 @@ mercury_format_tvar_subst(VarSet, TVarSubst, S, !U) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output an input_spec pragma.
+% Output an input_mode_spec pragma.
 %
 
-mercury_format_pragma_input_spec(S, _Lang, InputSpec, !U) :-
-    InputSpec = decl_pragma_input_spec_info(_ContainingModuleName,
+mercury_format_pragma_input_mode_spec(S, _Lang, InputSpec, !U) :-
+    InputSpec = decl_pragma_input_mode_spec_info(_ContainingModuleName,
         Type, ReplaceOrAdd, OoMInstCtors, _OoMInsts, _, TVarSet, _, _),
     InstCtors = one_or_more_to_list(OoMInstCtors),
     InstStrs0 = list.map(get_zero_arity_inst_ctor_name, InstCtors),
     list.sort(InstStrs0, InstStrs),
     InstsStr = string.join_list(", ", InstStrs),
     IndentStr = "    ",
-    add_string(":- pragma input_spec(", S, !U),
+    add_string(":- pragma input_mode_spec(", S, !U),
     mercury_format_type(TVarSet, print_name_only, Type, S, !U),
     add_string(", ", S, !U),
     (

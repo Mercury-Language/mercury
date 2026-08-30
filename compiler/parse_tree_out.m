@@ -910,7 +910,7 @@ mercury_format_parse_tree_plain_opt(Info, S, ParseTree, !U) :-
     list.foldl(mercury_format_item_impl_marker(S),
         coerce(ImplMarkers), !U),
     list.foldl(mercury_format_pragma_type_spec(S, Lang), TypeSpecs, !U),
-    list.foldl(mercury_format_pragma_input_spec(S, Lang), InputSpecs, !U),
+    list.foldl(mercury_format_pragma_input_mode_spec(S, Lang), InputSpecs, !U),
     list.foldl(mercury_format_item_clause(Info, S), Clauses, !U),
     list.foldl(mercury_format_item_foreign_proc(S, Lang), ForeignProcs, !U),
     list.foldl(mercury_format_item_promise(Info, S), Promises, !U),

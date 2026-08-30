@@ -254,8 +254,8 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
-        PragmaName = "input_spec",
-        parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm,
+        PragmaName = "input_mode_spec",
+        parse_pragma_input_mode_spec(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "fact_table",
@@ -2128,20 +2128,20 @@ name_anonymous_variable(NamedVarNames, AnonVar, !Counter, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 %
-% Parse input_spec pragmas.
+% Parse input_mode_spec pragmas.
 %
 
-:- pred parse_pragma_input_spec(module_name::in, varset::in, term::in,
+:- pred parse_pragma_input_mode_spec(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
+parse_pragma_input_mode_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     ( if PragmaTerms = [TypeTerm, ReplaceOrAddTerm, InstsTerm] then
         TypeContextPieces = cord.from_list(
-            [words("In the first argument of"), pragma_decl("input_spec"),
+            [words("In the first argument of"), pragma_decl("input_mode_spec"),
             words("declaration:"), nl]),
-        parse_type(no_allow_ho_inst_info(wnhii_pragma_input_spec),
+        parse_type(no_allow_ho_inst_info(wnhii_pragma_input_mode_spec),
             VarSet, TypeContextPieces, TypeTerm, MaybeType),
         ( if
             ReplaceOrAddTerm = term.functor(atom(RoAStr), [], _),
@@ -2154,7 +2154,7 @@ parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             ReplaceOrAddTermStr = mercury_term_to_string_vs(VarSet,
                 print_name_only, ReplaceOrAddTerm),
             RoAPieces = [words("In the second argument of"),
-                pragma_decl("input_spec"), words("declaration:"), nl,
+                pragma_decl("input_mode_spec"), words("declaration:"), nl,
                 words("error: expected either")] ++
                 color_as_correct([fixed("replace_in_mode")]) ++
                 [words("or")] ++
@@ -2169,7 +2169,7 @@ parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         ( if list_term_to_term_list(InstsTerm, InstTerms) then
             ListContextPieces = [words("In the third argument of"),
-                pragma_decl("input_spec"), words("declaration:"), nl],
+                pragma_decl("input_mode_spec"), words("declaration:"), nl],
             list.filter_map(term_to_inst_ctor, InstTerms,
                 InstCtors, BadInstTerms),
             (
@@ -2215,7 +2215,7 @@ parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             InstsTermStr = mercury_term_to_string_vs(VarSet,
                 print_name_only, InstsTerm),
             ListPieces = [words("In the third argument of"),
-                pragma_decl("input_spec"), words("declaration:"), nl,
+                pragma_decl("input_mode_spec"), words("declaration:"), nl,
                 words("error: expected a nonempty")] ++
                 color_as_correct([words("list of inst names,")]) ++
                 [words("got")] ++
@@ -2234,10 +2234,10 @@ parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 (func(inst_ctor(SN, _)) = defined_inst(user_inst(SN, []))),
             OoMInsts = one_or_more.map(InstCtorToInst, OoMInstCtors),
             varset.coerce(VarSet, TVarSet),
-            InputSpec = decl_pragma_input_spec_info(ModuleName, Type,
+            InputSpec = decl_pragma_input_mode_spec_info(ModuleName, Type,
                 ReplaceOrAdd, OoMInstCtors, OoMInsts,
                 set.init, TVarSet, Context, SeqNum),
-            Item = item_decl_pragma(decl_pragma_input_spec(InputSpec)),
+            Item = item_decl_pragma(decl_pragma_input_mode_spec(InputSpec)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeType) ++
@@ -2250,7 +2250,7 @@ parse_pragma_input_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         %     HeadTypeSubstTerm, TailTypeSubstTerms,
         %     TVarSubsts, [], TypeSpecs)
     else
-        Spec = report_pragma_arity_error(ErrorTerm, "input_spec",
+        Spec = report_pragma_arity_error(ErrorTerm, "input_mode_spec",
             "three arguments"),
         MaybeIOM = error1(one_or_more(Spec, []))
     ).

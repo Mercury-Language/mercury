@@ -332,7 +332,7 @@ gather_stats_in_item_decl_pragma(DeclPragma, !ItemStats) :-
         ( DeclPragma = decl_pragma_format_call(_)
         ; DeclPragma = decl_pragma_type_spec(_)
         ; DeclPragma = decl_pragma_type_spec_constr(_)
-        ; DeclPragma = decl_pragma_input_spec(_)
+        ; DeclPragma = decl_pragma_input_mode_spec(_)
         ; DeclPragma = decl_pragma_obsolete_pred(_)
         ; DeclPragma = decl_pragma_obsolete_proc(_)
         ; DeclPragma = decl_pragma_oisu(_)

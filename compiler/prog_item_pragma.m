@@ -40,7 +40,7 @@
     ;       decl_pragma_format_call(decl_pragma_format_call_info)
     ;       decl_pragma_type_spec_constr(decl_pragma_type_spec_constr_info)
     ;       decl_pragma_type_spec(decl_pragma_type_spec_info)
-    ;       decl_pragma_input_spec(decl_pragma_input_spec_info)
+    ;       decl_pragma_input_mode_spec(decl_pragma_input_mode_spec_info)
     ;       decl_pragma_oisu(decl_pragma_oisu_info)
     ;       decl_pragma_termination(decl_pragma_termination_info)
     ;       decl_pragma_termination2(decl_pragma_termination2_info)
@@ -225,8 +225,8 @@
 
 %---------------------%
 
-:- type decl_pragma_input_spec_info
-    --->    decl_pragma_input_spec_info(
+:- type decl_pragma_input_mode_spec_info
+    --->    decl_pragma_input_mode_spec_info(
                 % This pragma tells the compiler to replace code
                 % that switches on values of a control type at runtime
                 % with code that switches on those values at compile time.
@@ -244,7 +244,7 @@
                 %   :- inst chain for action/0
                 %       --->    chain_gc_stack_frames.
                 %
-                % input_spec pragma for type action with insts
+                % input_mode_spec pragma for type action with insts
                 % hoist and chain can replace a mode that contains
                 % an "in" argument of the action type with two modes
                 % that contain "in(hoist)" and "in(chain)" respectively.
@@ -258,7 +258,7 @@
                 % in this module.
                 %
                 % If and when we start --intermod-opt to include
-                % input_spec pragmas in .opt files, we may also
+                % input_mode_spec pragmas in .opt files, we may also
                 % need to record the section (interface vs implementation)
                 % in which the pragma occurred.
                 ispec_module_name       :: module_name,
@@ -697,7 +697,7 @@ get_decl_pragma_context(DeclPragma) = Context :-
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         Context = TypeSpec ^ tspec_context
     ;
-        DeclPragma = decl_pragma_input_spec(InputSpec),
+        DeclPragma = decl_pragma_input_mode_spec(InputSpec),
         Context = InputSpec ^ ispec_context
     ;
         DeclPragma = decl_pragma_oisu(OISU),

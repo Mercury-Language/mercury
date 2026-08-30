@@ -1929,8 +1929,8 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info) :-
             SpecPredName, Subst, TVarSet, Items, Context, SeqNum),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
     ;
-        Pragma0 = decl_pragma_input_spec(InputSpecInfo0),
-        InputSpecInfo0 = decl_pragma_input_spec_info(ContainingModuleName,
+        Pragma0 = decl_pragma_input_mode_spec(InputSpecInfo0),
+        InputSpecInfo0 = decl_pragma_input_mode_spec_info(ContainingModuleName,
             Type0, ReplaceOrAdd, OoMInstCtors0, OoMInsts0,
             RecompItems, TVarSet, Context, SeqNum),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
@@ -1939,10 +1939,10 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info) :-
             OoMInstCtors0, OoMInstCtors, !Info),
         one_or_more.map_foldl(qualify_inst(InInt, ErrorContext),
             OoMInsts0, OoMInsts, !Info),
-        InputSpecInfo = decl_pragma_input_spec_info(ContainingModuleName,
+        InputSpecInfo = decl_pragma_input_mode_spec_info(ContainingModuleName,
             Type, ReplaceOrAdd, OoMInstCtors, OoMInsts,
             RecompItems, TVarSet, Context, SeqNum),
-        Pragma = decl_pragma_input_spec(InputSpecInfo)
+        Pragma = decl_pragma_input_mode_spec(InputSpecInfo)
     ;
         Pragma0 = decl_pragma_oisu(OISUInfo0),
         OISUInfo0 = decl_pragma_oisu_info(TypeCtor0, CreatorPreds,

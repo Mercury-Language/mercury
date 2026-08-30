@@ -977,7 +977,7 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         % when we add this pragma to the HLDS.
         MaybePredOrFuncId = no
     ;
-        DeclPragma = decl_pragma_input_spec(_InputSpec),
+        DeclPragma = decl_pragma_input_mode_spec(_InputSpec),
         % XXX Like decl_pragma_type_spec_constr, this kind of pragma
         % applies to all predicates/functions that have arguments
         % of the specified type.
@@ -1476,12 +1476,12 @@ is_decl_pragma_changed(DeclPragma1, DeclPragma2, Changed) :-
             is_type_subst_changed(TVarSet1, TVarSet2, TypeSubst1, TypeSubst2,
                 unchanged)
         ;
-            DeclPragma1 = decl_pragma_input_spec(TypeSpec1),
-            DeclPragma2 = decl_pragma_input_spec(TypeSpec2),
-            TypeSpec1 = decl_pragma_input_spec_info(ContainingModule,
+            DeclPragma1 = decl_pragma_input_mode_spec(TypeSpec1),
+            DeclPragma2 = decl_pragma_input_mode_spec(TypeSpec2),
+            TypeSpec1 = decl_pragma_input_mode_spec_info(ContainingModule,
                 Type1, ReplaceOrAdd, OoMInstCtors, OoMInsts, _,
                 TVarSet1, _, _),
-            TypeSpec2 = decl_pragma_input_spec_info(ContainingModule,
+            TypeSpec2 = decl_pragma_input_mode_spec_info(ContainingModule,
                 Type2, ReplaceOrAdd, OoMInstCtors, OoMInsts, _,
                 TVarSet2, _, _),
             type_list_is_unchanged(TVarSet1, TVarSet2, [Type1], [Type2],
