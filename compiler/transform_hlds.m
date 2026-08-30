@@ -32,15 +32,6 @@
 
 :- include_module closure_analysis.
 
-% The first termination analysis system.
-:- include_module termination.
-    :- include_module term_util.
-
-% The second termination analysis system.
-:- include_module term_constr_main.
-    :- include_module term_constr_main_types.
-    :- include_module term_constr_util.
-
 :- include_module exception_analysis.
 :- include_module trailing_analysis.
 :- include_module tabling_analysis.
@@ -96,22 +87,6 @@
     :- include_module intermod_info.
     :- include_module intermod_order_pred_info.
     :- include_module intermod_status.
-
-% The first termination analysis system.
-    :- include_module post_term_analysis.
-    :- include_module term_pass1.
-    :- include_module term_pass2.
-    :- include_module term_traversal.
-    :- include_module term_errors.
-    :- include_module term_norm.
-
-% The second termination analysis system.
-    :- include_module term_constr_initial.
-    :- include_module term_constr_build.        % pass 1
-    :- include_module term_constr_fixpoint.     % pass 1
-    :- include_module term_constr_pass2.        % pass 2
-    :- include_module term_constr_data.
-    :- include_module term_constr_errors.
 
 % Deforestation, also called partial deduction (hence the "pd" prefix").
     :- include_module constraint.

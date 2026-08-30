@@ -30,7 +30,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_initial.
+:- module termination.term_constr.term_constr_initial.
 :- interface.
 
 :- import_module hlds.
@@ -73,11 +73,12 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_constr_main_types.
-:- import_module transform_hlds.term_constr_util.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_errors.
+:- import_module termination.term_constr.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_util.
+:- import_module termination.term_osi.  % ZZZ
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module bool.
 :- import_module int.
@@ -705,5 +706,5 @@ initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
     initialise_size_var_maps(ProcIds, !ProcTable).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_initial.
+:- end_module termination.term_constr.term_constr_initial.
 %---------------------------------------------------------------------------%

@@ -107,7 +107,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_data.
+:- module termination.term_constr.term_constr_data.
 
 :- interface.
 
@@ -119,7 +119,7 @@
 :- import_module libs.polyhedron.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module transform_hlds.term_constr_errors.
+:- import_module termination.term_constr.term_constr_errors.
 
 :- import_module bool.
 :- import_module io.
@@ -777,5 +777,5 @@ indent_line(Stream, N, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_data.
+:- end_module termination.term_constr.term_constr_data.
 %---------------------------------------------------------------------------%

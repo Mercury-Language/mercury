@@ -477,7 +477,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.vartypes.
-:- import_module transform_hlds.
 
 :- import_module pair.
 :- import_module require.

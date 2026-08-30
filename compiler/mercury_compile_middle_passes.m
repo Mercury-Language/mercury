@@ -72,6 +72,11 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.write_error_spec.
+:- import_module termination.
+:- import_module termination.term_constr.
+:- import_module termination.term_constr.term_constr_main.
+:- import_module termination.term_osi.
+:- import_module termination.term_osi.term_osi_main.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module transform_hlds.
 :- import_module transform_hlds.accumulator.
@@ -112,8 +117,6 @@
 :- import_module transform_hlds.stm_expand.
 :- import_module transform_hlds.table_gen.
 :- import_module transform_hlds.tabling_analysis.
-:- import_module transform_hlds.term_constr_main.
-:- import_module transform_hlds.termination.
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.tupling.
 :- import_module transform_hlds.unneeded_code.

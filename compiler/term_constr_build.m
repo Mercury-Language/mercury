@@ -20,14 +20,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_build.
+:- module termination.term_constr.term_constr_build.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
-:- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_norm.
+:- import_module termination.term_constr.term_constr_errors.
+:- import_module termination.term_norm.
 
 :- import_module bool.
 :- import_module list.
@@ -84,9 +84,9 @@
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_main_types.
-:- import_module transform_hlds.term_constr_util.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_util.
 
 :- import_module int.
 :- import_module map.
@@ -1304,5 +1304,5 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_build.
+:- end_module termination.term_constr.term_constr_build.
 %---------------------------------------------------------------------------%

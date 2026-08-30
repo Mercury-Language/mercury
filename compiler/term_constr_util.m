@@ -14,7 +14,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_util.
+:- module termination.term_constr.term_constr_util.
 :- interface.
 
 :- import_module hlds.
@@ -28,8 +28,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_main_types.
 
 :- import_module bool.
 :- import_module io.
@@ -214,8 +214,8 @@
 :- import_module hlds.type_util.
 :- import_module libs.rat.
 :- import_module parse_tree.prog_type.
-:- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_norm.
+:- import_module termination.term_constr.term_constr_errors.
+:- import_module termination.term_norm.
 
 :- import_module pair.
 :- import_module require.
@@ -484,5 +484,5 @@ dump_size_varset_loop(Stream, VarSet, [Var | Vars], !IO) :-
     dump_size_varset_loop(Stream, VarSet, Vars, !IO).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_util.
+:- end_module termination.term_constr.term_constr_util.
 %---------------------------------------------------------------------------%

@@ -15,15 +15,15 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_main_types.
+:- module termination.term_constr.term_constr_main_types.
 :- interface.
 
 :- import_module libs.
 :- import_module libs.polyhedron.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_errors.
 
 :- import_module list.
 :- import_module maybe.
@@ -222,5 +222,5 @@ term2_info_set_head_vars(X, !Term2Info) :-
     !Term2Info ^ t2i_head_vars := X.
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_main_types.
+:- end_module termination.term_constr.term_constr_main_types.
 %---------------------------------------------------------------------------%

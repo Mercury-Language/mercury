@@ -17,7 +17,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_util.
+:- module termination.term_osi.term_osi_util.
 :- interface.
 
 :- import_module hlds.
@@ -31,8 +31,8 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_errors.
-:- import_module transform_hlds.term_norm.
+:- import_module termination.term_norm.
+:- import_module termination.term_osi.term_osi_errors.
 
 :- import_module bag.
 :- import_module bool.
@@ -436,5 +436,5 @@ should_we_believe_check_termination_markers(ModuleInfo, Believe) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_util.
+:- end_module termination.term_osi.term_osi_util.
 %---------------------------------------------------------------------------%

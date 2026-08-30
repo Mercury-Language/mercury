@@ -14,7 +14,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_norm.
+:- module termination.term_norm.
 :- interface.
 
 :- import_module hlds.
@@ -544,5 +544,5 @@ zero_size_type_category(CtorCat, ZeroSize) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_norm.
+:- end_module termination.term_norm.
 %---------------------------------------------------------------------------%

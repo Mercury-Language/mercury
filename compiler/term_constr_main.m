@@ -28,9 +28,9 @@
 %   This pass fills in the argument size and termination properties of
 %   builtin predicates, and also sets the termination properties of
 %   predicates that have either termination pragmas, or have termination
-%   assertions among their foreign_proc attributes. It also sets up
-%   information imported from `.opt' and `.trans_opt' files.
-%   XXX "sets up" in what sense?
+%   assertions among their foreign_proc attributes. It also incorporates
+%   information imported from termination2 pragmas in `.opt' and `.trans_opt'
+%   files into our data structures.
 %
 %   This pass is in term_constr_initial.m.
 %
@@ -77,7 +77,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_main.
+:- module termination.term_constr.term_constr_main.
 :- interface.
 
 :- import_module hlds.
@@ -107,14 +107,14 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.term_constr_build.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_constr_fixpoint.
-:- import_module transform_hlds.term_constr_initial.
-:- import_module transform_hlds.term_constr_main_types.
-:- import_module transform_hlds.term_constr_pass2.
-:- import_module transform_hlds.term_norm.
+:- import_module termination.term_constr.term_constr_build.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_errors.
+:- import_module termination.term_constr.term_constr_fixpoint.
+:- import_module termination.term_constr.term_constr_initial.
+:- import_module termination.term_constr.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_pass2.
+:- import_module termination.term_norm.
 
 :- import_module bool.
 :- import_module maybe.
@@ -345,5 +345,5 @@ proc_needs_ar_built(ModuleInfo, PPId) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_main.
+:- end_module termination.term_constr.term_constr_main.
 %---------------------------------------------------------------------------%

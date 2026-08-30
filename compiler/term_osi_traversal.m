@@ -18,7 +18,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_traversal.
+:- module termination.term_osi.term_osi_traversal.
 :- interface.
 
 :- import_module hlds.
@@ -28,9 +28,9 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_errors.
-:- import_module transform_hlds.term_norm.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_norm.
+:- import_module termination.term_osi.term_osi_errors.
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module bag.
 :- import_module list.
@@ -745,5 +745,5 @@ params_get_max_paths(Params, X) :-
     X = Params ^ term_trav_max_paths.
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_traversal.
+:- end_module termination.term_osi.term_osi_traversal.
 %---------------------------------------------------------------------------%

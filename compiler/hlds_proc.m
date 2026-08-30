@@ -31,9 +31,11 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.
-:- import_module transform_hlds.term_constr_main_types.
-:- import_module transform_hlds.term_util.
+:- import_module termination.
+:- import_module termination.term_constr.
+:- import_module termination.term_constr.term_constr_main_types.
+:- import_module termination.term_osi.
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module list.
 :- import_module map.

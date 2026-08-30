@@ -107,8 +107,9 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.
-:- import_module transform_hlds.term_util.
+:- import_module termination.
+:- import_module termination.term_osi.
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -19,7 +19,7 @@
 %
 %----------------------------------------------------------------------------%
 
-:- module transform_hlds.post_term_analysis.
+:- module termination.term_post_analysis.
 :- interface.
 
 :- import_module hlds.
@@ -306,5 +306,5 @@ generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%
-:- end_module transform_hlds.post_term_analysis.
+:- end_module termination.term_post_analysis.
 %----------------------------------------------------------------------------%

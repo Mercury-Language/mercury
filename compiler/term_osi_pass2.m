@@ -16,13 +16,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_pass2.
+:- module termination.term_osi.term_osi_pass2.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.pred_proc_id.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_osi.term_osi_util.
 
 %---------------------------------------------------------------------------%
 
@@ -45,8 +45,8 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.term_errors.
-:- import_module transform_hlds.term_traversal.
+:- import_module termination.term_osi.term_osi_errors.
+:- import_module termination.term_osi.term_osi_traversal.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -631,5 +631,5 @@ zero_or_positive_weight_cycles_from_neighbour(CallWeights,
 map_to_no(_, no).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_pass2.
+:- end_module termination.term_osi.term_osi_pass2.
 %---------------------------------------------------------------------------%

@@ -12,7 +12,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_errors.
+:- module termination.term_constr.term_constr_errors.
 :- interface.
 
 :- import_module hlds.
@@ -80,7 +80,8 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_osi.  % ZZZ
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module bool.
 :- import_module cord.
@@ -323,5 +324,5 @@ term2_error_kind_is_direct(ErrorKind) = IsDirect :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_errors.
+:- end_module termination.term_constr.term_constr_errors.
 %---------------------------------------------------------------------------%

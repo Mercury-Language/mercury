@@ -15,18 +15,18 @@
 %
 % NOTE: the code in this module should not refer to things in the HLDS
 % (with the exception of the termination2_info slots in the
-%  proc_sub_info structure)
+% proc_sub_info structure)
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_fixpoint.
+:- module termination.term_constr.term_constr_fixpoint.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.pred_proc_id.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_errors.
 
 :- import_module list.
 :- import_module set.
@@ -68,8 +68,8 @@
 :- import_module libs.lp_rational.
 :- import_module libs.options.
 :- import_module libs.polyhedron.
-:- import_module transform_hlds.term_constr_main_types.
-:- import_module transform_hlds.term_constr_util.
+:- import_module termination.term_constr.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_util.
 
 :- import_module bool.
 :- import_module int.
@@ -490,5 +490,5 @@ fixpoint_options_init(Widening, MaxMatrixSize) =
     fixpoint_options(Widening, MaxMatrixSize).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_fixpoint.
+:- end_module termination.term_constr.term_constr_fixpoint.
 %---------------------------------------------------------------------------%

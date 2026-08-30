@@ -21,14 +21,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_pass1.
+:- module termination.term_osi.term_osi_pass1.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.pred_proc_id.
-:- import_module transform_hlds.term_errors.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_osi.term_osi_errors.
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module list.
 :- import_module pair.
@@ -65,7 +65,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_traversal.
+:- import_module termination.term_osi.term_osi_traversal.
 
 :- import_module bag.
 :- import_module bool.
@@ -472,5 +472,5 @@ pred_proc_var(PPId, Var, !Varset, !PPVars) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_pass1.
+:- end_module termination.term_osi.term_osi_pass1.
 %---------------------------------------------------------------------------%

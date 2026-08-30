@@ -19,13 +19,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_constr_pass2.
+:- module termination.term_constr.term_constr_pass2.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.pred_proc_id.
-:- import_module transform_hlds.term_constr_main_types.
+:- import_module termination.term_constr.term_constr_main_types.
 
 %---------------------------------------------------------------------------%
 
@@ -58,9 +58,9 @@
 :- import_module libs.rat.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_constr_util.
+:- import_module termination.term_constr.term_constr_data.
+:- import_module termination.term_constr.term_constr_errors.
+:- import_module termination.term_constr.term_constr_util.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -703,5 +703,5 @@ write_edge(Stream, ModuleInfo, SizeVarSet, Edge, !IO) :-
     io.write_string(Stream, " :- \n\n", !IO).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_constr_pass2.
+:- end_module termination.term_constr.term_constr_pass2.
 %---------------------------------------------------------------------------%

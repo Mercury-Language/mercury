@@ -89,7 +89,8 @@
 :- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_norm.
+:- import_module termination.
+:- import_module termination.term_norm.
 
 :- import_module assoc_list.
 :- import_module bool.

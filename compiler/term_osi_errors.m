@@ -15,7 +15,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.term_errors.
+:- module termination.term_osi.term_osi_errors.
 :- interface.
 
 :- import_module hlds.
@@ -173,7 +173,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.term_util.
+:- import_module termination.term_osi.term_osi_util.
 
 :- import_module cord.
 :- import_module int.
@@ -626,5 +626,5 @@ term_error_kind_is_fatal_error(ErrorKind) = IsFatal :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.term_errors.
+:- end_module termination.term_osi.term_osi_errors.
 %---------------------------------------------------------------------------%

@@ -251,9 +251,11 @@
 :- import_module hlds.proc_info_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module termination.
+:- import_module termination.term_constr.
+:- import_module termination.term_constr.term_constr_main_types.
 :- import_module transform_hlds.
 :- import_module transform_hlds.exception_analysis.
-:- import_module transform_hlds.term_constr_main_types.
 
 :- import_module int.
 :- import_module maybe.
