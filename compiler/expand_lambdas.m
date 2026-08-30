@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: lambda.m.
+% File: expand_lambdas.m.
 % Main author: fjh.
 %
 % This module does lambda expansion, which means that it replaces each
@@ -69,7 +69,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.lambda.
+:- module transform_hlds.expand_lambdas.
 :- interface.
 
 :- import_module hlds.
@@ -990,5 +990,5 @@ lambda_info_set_recompute_nonlocals(X, !Info) :-
     !Info ^ li_recompute_nonlocals := X.
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.lambda.
+:- end_module transform_hlds.expand_lambdas.
 %---------------------------------------------------------------------------%

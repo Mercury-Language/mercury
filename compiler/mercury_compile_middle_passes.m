@@ -96,6 +96,7 @@
 :- import_module transform_hlds.distance_granularity.
 :- import_module transform_hlds.equiv_type_hlds.
 :- import_module transform_hlds.exception_analysis.
+:- import_module transform_hlds.expand_lambdas.
 :- import_module transform_hlds.float_regs.
 :- import_module transform_hlds.granularity.
 :- import_module transform_hlds.higher_order.
@@ -104,7 +105,6 @@
 :- import_module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.intermod_analysis.
-:- import_module transform_hlds.lambda.
 :- import_module transform_hlds.lco.
 :- import_module transform_hlds.loop_inv.
 :- import_module transform_hlds.mmc_analysis.

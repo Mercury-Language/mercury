@@ -178,7 +178,7 @@
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module transform_hlds.lambda.
+:- import_module transform_hlds.expand_lambdas.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1665,7 +1665,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     assoc_list.from_corresponding_lists(CallVars, ArgModes, CallVarsArgModes),
     RHS = rhs_lambda_goal(Purity, ho_ground, PredOrFunc,
         LambdaNonLocals, CallVarsArgModes, Determinism, CallGoal),
-    lambda.expand_lambda(reg_wrapper_proc(RegR_HeadVars), LHSVar, RHS,
+    expand_lambda(reg_wrapper_proc(RegR_HeadVars), LHSVar, RHS,
         UnifyMode, Unification0, UnifyContext, UnifyGoalExpr, !Info),
 
     % Create the unification goal for Var.

@@ -27,7 +27,7 @@
 
 :- include_module complexity.
 
-:- include_module (lambda).
+:- include_module expand_lambdas.
 :- include_module stm_expand.
 
 :- include_module closure_analysis.
