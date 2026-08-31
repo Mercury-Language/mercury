@@ -52,11 +52,11 @@
             % at the given source location, which a later compiler pass
             % will transform into a separate procedure.
 
-            % A switch arm context records the fact that we are inside
-            % a switch on the given variable, and specifically, we are
-            % inside the arm of that switch that is for the given cons_ids.
 :- type switch_arm
     --->    switch_arm(
+                % A switch arm context records the fact that we are inside
+                % a switch on the given variable, and specifically, we are
+                % inside the arm of that switch that is for the given cons_ids.
                 prog_var,
                 set(cons_id)
             ).
