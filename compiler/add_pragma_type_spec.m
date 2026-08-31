@@ -102,6 +102,7 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
             ModesOrArity = moa_arity(UserArity),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ),
+        % There should be at most one PredId in PredIds.
         predicate_table_lookup_pf_sym_name_name_pfa(PredTable,
             is_fully_qualified, PredOrFunc, SymName, PredFormArity, PredIds),
         predicate_table_lookup_pf_sym_name(PredTable, is_fully_qualified,
@@ -114,6 +115,7 @@ add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo,
         MaybePredOrFunc = no,
         predicate_table_lookup_sym_name_arity(PredTable, is_fully_qualified,
             SymName, UserArity, PredIds),
+        % There should be at most two PredId in PredIds, one pred, one func.
         predicate_table_lookup_sym_name(PredTable, is_fully_qualified,
             SymName, AllArityPredIds)
     ),
