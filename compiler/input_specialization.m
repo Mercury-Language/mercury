@@ -157,7 +157,12 @@
 %   contents of the table :-)
 %
 % type_spec
-%   We do not yet have code to handle these pragmas correctly.
+%   At least until the implementation of type specialization is simplified,
+%   we do not let a predicate be subject to both input specialization
+%   and type specialization. Type specialization pragmas add an entry
+%   to a table for each predicate they apply to; when this module finds
+%   this entry for a predicate that input specialization *could* apply to,
+%   it generates an error message instead.
 %
 %---------------------------------------------------------------------------%
 
@@ -242,7 +247,7 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId,
             (
                 UserMade = user_made_pred(_, _, _),
                 input_specialize_in_pred_if_possible(!.ModuleInfo, InModuleMap,
-                    PredInfo0, MaybeNewPredInfo, !Specs),
+                    PredId, PredInfo0, MaybeNewPredInfo, !Specs),
                 (
                     MaybeNewPredInfo = no
                 ;
@@ -281,11 +286,11 @@ maybe_input_specialize_in_pred(InputSpecTable, PredId,
     ).
 
 :- pred input_specialize_in_pred_if_possible(module_info::in,
-    input_spec_in_module_map::in, pred_info::in, maybe(pred_info)::out,
-    list(diag_spec)::in, list(diag_spec)::out) is det.
+    input_spec_in_module_map::in, pred_id::in, pred_info::in,
+    maybe(pred_info)::out, list(diag_spec)::in, list(diag_spec)::out) is det.
 
 input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap,
-        PredInfo0, MaybeNewPredInfo, !Specs) :-
+        PredId, PredInfo0, MaybeNewPredInfo, !Specs) :-
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     find_args_to_specialize(InModuleMap, 1, ArgTypes, ArgsToSpec),
     (
@@ -293,7 +298,7 @@ input_specialize_in_pred_if_possible(ModuleInfo, InModuleMap,
         MaybeNewPredInfo = no
     ;
         ArgsToSpec = [HeadArgToSpec | TailArgsToSpec],
-        report_any_incompatibilities(PredInfo0, PredSpecs),
+        report_any_incompatibilities(ModuleInfo, PredId, PredInfo0, PredSpecs),
         (
             PredSpecs = [],
             input_specialize_in_pred(ModuleInfo, HeadArgToSpec, TailArgsToSpec,
@@ -329,10 +334,10 @@ find_args_to_specialize(InModuleMap, ArgNum, [ArgType | ArgTypes],
 
 %---------------------------------------------------------------------------%
 
-:- pred report_any_incompatibilities(pred_info::in, list(diag_spec)::out)
-    is det.
+:- pred report_any_incompatibilities(module_info::in,
+    pred_id::in, pred_info::in, list(diag_spec)::out) is det.
 
-report_any_incompatibilities(PredInfo0, Specs) :-
+report_any_incompatibilities(ModuleInfo, PredId, PredInfo0, Specs) :-
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.foldl4(acc_proc_eval_methods_structs, ProcTable0,
         [], NormalProcIds, [], TabledProcIds, no, Sharing, no, Reuse),
@@ -360,7 +365,7 @@ report_any_incompatibilities(PredInfo0, Specs) :-
         TabledPieces = [words("Error:")] ++ TabledPredPieces ++
             [words("could have its modes input specialized, but")] ++
             color_as_incorrect(ProcsDesc) ++
-            [words("and input specialization and tabling"),
+            [words("and input mode specialization and tabling"),
             words("are mutually exclusive."), nl],
         TabledSpec = spec($pred, severity_error, phase_input_spec,
             Context, TabledPieces),
@@ -377,8 +382,8 @@ report_any_incompatibilities(PredInfo0, Specs) :-
             [words("could have its modes input specialized, but")] ++
             color_as_incorrect(
                 [words("it has a structure_sharing pragma,")]) ++
-            [words("and input specialization and structure sharing analysis"),
-            words("are mutually exclusive."), nl],
+            [words("and input mode specialization and"),
+            words("structure sharing analysis are mutually exclusive."), nl],
         SharingSpec = spec($pred, severity_error, phase_input_spec,
             Context, SharingPieces),
         SharingSpecs = [SharingSpec]
@@ -393,8 +398,8 @@ report_any_incompatibilities(PredInfo0, Specs) :-
         ReusePieces = [words("Error:")] ++ ReusePredPieces ++
             [words("could have its modes input specialized, but")] ++
             color_as_incorrect([words("it has a structure_reuse pragma,")]) ++
-            [words("and input specialization and structure reuse analysis"),
-            words("are mutually exclusive."), nl],
+            [words("and input mode specialization and"),
+            words("structure reuse analysis are mutually exclusive."), nl],
         ReuseSpec = spec($pred, severity_error, phase_input_spec,
             Context, ReusePieces),
         ReuseSpecs = [ReuseSpec]
@@ -402,7 +407,23 @@ report_any_incompatibilities(PredInfo0, Specs) :-
         Reuse = no,
         ReuseSpecs = []
     ),
-    Specs = TabledSpecs ++ SharingSpecs ++ ReuseSpecs.
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, _, _, PragmaMap),
+    ( if map.search(PragmaMap, PredId, _) then
+        TypeSpecPredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo0),
+        TypeSpecPieces = [words("Error:")] ++ TypeSpecPredPieces ++
+            [words("could have its modes input specialized, but")] ++
+            color_as_incorrect([words("it has a type_spec pragma,")]) ++
+            [words("and input mode specialization and type specialization"),
+            words("are mutually exclusive."), nl],
+        TypeSpecSpec = spec($pred, severity_error, phase_input_spec,
+            Context, TypeSpecPieces),
+        TypeSpecSpecs = [TypeSpecSpec]
+    else
+        TypeSpecSpecs = []
+    ),
+    Specs = TabledSpecs ++ SharingSpecs ++ ReuseSpecs ++ TypeSpecSpecs.
 
 :- pred acc_proc_eval_methods_structs(proc_id::in, proc_info::in,
     list(proc_id)::in, list(proc_id)::out,

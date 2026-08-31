@@ -173,6 +173,9 @@
                 % implemented, and works. Reimplementing it would not be
                 % worthwhile, unless some new functionality was easier
                 % to approach that way.
+                %
+                % XXX Applying both type and input mode specialization to
+                % the same predicate is an example of such "new functionality".
                 forcing_preds       :: set(pred_id),
 
                 % Map from predicates for which the user requested a type
