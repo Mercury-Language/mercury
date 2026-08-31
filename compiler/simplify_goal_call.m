@@ -969,26 +969,45 @@ arg_is_unsigned_zero(ModuleName, Arg, ZeroStr) :-
     proc_info::in, hlds_goal_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-maybe_generate_error_for_input_spec_replaced_procedure(PredInfo, ProcInfo,
-        GoalInfo, !Info) :-
-    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+maybe_generate_error_for_input_spec_replaced_procedure(
+        CalleePredInfo, CalleeProcInfo, GoalInfo, !Info) :-
+    proc_info_get_maybe_input_spec(CalleeProcInfo, CalleeMaybeInputSpec),
     (
-        ( MaybeInputSpec = not_involved_in_input_spec
-        ; MaybeInputSpec = input_spec_original_proc_kept(_)
-        ; MaybeInputSpec = input_specialized_proc(_)
+        ( CalleeMaybeInputSpec = not_involved_in_input_spec
+        ; CalleeMaybeInputSpec = input_spec_original_proc_kept(_)
+        ; CalleeMaybeInputSpec = input_specialized_proc(_)
         )
     ;
-        MaybeInputSpec = input_spec_original_proc_logically_deleted(_),
-        Context = goal_info_get_context(GoalInfo),
-        Phase = phase_simplify(report_in_any_mode),
-        PredPieces = describe_one_pred_info_name(yes(color_subject),
-            should_module_qualify, [], PredInfo),
-        Pieces = [words("Error: call to")] ++ PredPieces ++
-            [words("in a mode that was")] ++
-            color_as_incorrect([words("replaced")]) ++
-            [words("by input mode specialization."), nl],
-        Spec = spec($pred, severity_error, Phase, Context, Pieces),
-        simplify_info_add_message(Spec, !Info)
+        CalleeMaybeInputSpec = input_spec_original_proc_logically_deleted(_),
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        simplify_info_get_pred_proc_id(!.Info, CallerPredProcId),
+        module_info_pred_proc_info(ModuleInfo, CallerPredProcId,
+            _CallerPredInfo, CallerProcInfo),
+        proc_info_get_maybe_input_spec(CallerProcInfo, CallerMaybeInputSpec),
+        (
+            ( CallerMaybeInputSpec = not_involved_in_input_spec
+            ; CallerMaybeInputSpec = input_spec_original_proc_kept(_)
+            ; CallerMaybeInputSpec = input_specialized_proc(_)
+            ),
+            Context = goal_info_get_context(GoalInfo),
+            Phase = phase_simplify(report_in_any_mode),
+            CalleePredPieces = describe_one_pred_info_name(yes(color_subject),
+                should_module_qualify, [], CalleePredInfo),
+            Pieces = [words("Error: call to")] ++ CalleePredPieces ++
+                [words("in a mode that was")] ++
+                color_as_incorrect([words("replaced")]) ++
+                [words("by input mode specialization."), nl],
+            Spec = spec($pred, severity_error, Phase, Context, Pieces),
+            simplify_info_add_message(Spec, !Info)
+        ;
+            CallerMaybeInputSpec =
+                input_spec_original_proc_logically_deleted(_)
+            % If the caller is logically deleted, then this call is also
+            % logically deleted. Reporting it as an would prevent the
+            % successful compilation of a whole module possibly full of
+            % input specialized procedures just because their original
+            % versions invoke each other.
+        )
     ).
 
 %---------------------------------------------------------------------------%
