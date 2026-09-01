@@ -226,7 +226,7 @@ modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
 
 %---------------------%
 
-:- func should_report_duplicate_inst_or_mode(new_instmode_status) = bool.
+:- func should_report_duplicate_inst_or_mode(instmode_status) = bool.
 
 should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
     (

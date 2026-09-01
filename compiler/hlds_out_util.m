@@ -860,7 +860,7 @@ instance_import_status_to_string(InstanceStatus) =
 pred_import_status_to_string(pred_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
 
-:- func instmode_status_to_string(new_instmode_status) = string.
+:- func instmode_status_to_string(instmode_status) = string.
 
 instmode_status_to_string(InstModeStatus) = Str :-
     (
@@ -889,7 +889,7 @@ instmode_status_to_string(InstModeStatus) = Str :-
         )
     ).
 
-:- func typeclass_status_to_string(new_typeclass_status) = string.
+:- func typeclass_status_to_string(typeclass_status) = string.
 
 typeclass_status_to_string(TypeClassStatus) = Str :-
     (
@@ -924,7 +924,7 @@ typeclass_status_to_string(TypeClassStatus) = Str :-
         )
     ).
 
-:- func instance_status_to_string(new_instance_status) = string.
+:- func instance_status_to_string(instance_status) = string.
 
 instance_status_to_string(InstanceStatus) = Str :-
     (

@@ -43,10 +43,10 @@
     --->    type_status(old_import_status).
 
 :- type inst_status
-    --->    inst_status(new_instmode_status).
+    --->    inst_status(instmode_status).
 
 :- type mode_status
-    --->    mode_status(new_instmode_status).
+    --->    mode_status(instmode_status).
 
     % NOTE Any replacement for this type should take into account
     % the possibility that a predicate may be declared to be external
@@ -55,18 +55,11 @@
 :- type pred_status
     --->    pred_status(old_import_status).
 
-% The new_{typeclass,instance}_status types and these equivalences
-% should go away after a transitional period.
-
-:- type typeclass_status == new_typeclass_status.
-
-:- type instance_status == new_instance_status.
-
 %---------------------------------------------------------------------------%
 
     % The type that should represent the import/export status of both
     % insts and modes, once we transition away from using old_import_status.
-:- type new_instmode_status
+:- type instmode_status
     --->    instmode_defined_in_this_module(instmode_export)
     ;       instmode_defined_in_other_module(instmode_import).
 
@@ -97,7 +90,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type new_typeclass_status
+:- type typeclass_status
     --->    typeclass_defined_in_this_module(typeclass_export)
     ;       typeclass_defined_in_other_module(typeclass_import).
 
@@ -171,7 +164,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type new_instance_status
+:- type instance_status
     --->    instance_defined_in_this_module(instance_export)
     ;       instance_defined_in_other_module(instance_import).
 
@@ -390,11 +383,11 @@
 
     % Exported to add_class.m.
     %
-:- func new_typeclass_status_to_old(new_typeclass_status) = old_import_status.
+:- func new_typeclass_status_to_old(typeclass_status) = old_import_status.
 
     % Exported to check_typeclass.m.
     %
-:- func new_instance_status_to_old(new_instance_status) = old_import_status.
+:- func new_instance_status_to_old(instance_status) = old_import_status.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -433,7 +426,7 @@ instance_status_is_exported(InstanceStatus) = IsExported :-
 
 %---------------------%
 
-:- func instmode_status_is_exported(new_instmode_status) = bool.
+:- func instmode_status_is_exported(instmode_status) = bool.
 
 instmode_status_is_exported(InstModeStatus) = IsExported :-
     (
@@ -454,7 +447,7 @@ instmode_status_is_exported(InstModeStatus) = IsExported :-
 
 %---------------------%
 
-:- func new_typeclass_status_is_exported(new_typeclass_status) = bool.
+:- func new_typeclass_status_is_exported(typeclass_status) = bool.
 
 new_typeclass_status_is_exported(TypeClassStatus) = IsExported :-
     (
@@ -476,7 +469,7 @@ new_typeclass_status_is_exported(TypeClassStatus) = IsExported :-
 
 %---------------------%
 
-:- func new_instance_status_is_exported(new_instance_status) = bool.
+:- func new_instance_status_is_exported(instance_status) = bool.
 
 new_instance_status_is_exported(InstanceStatus) = IsExported :-
     (
@@ -542,7 +535,7 @@ instance_status_is_exported_to_non_submodules(InstanceStatus) = IsExported :-
 
 %---------------------%
 
-:- func instmode_status_is_exported_to_non_submodules(new_instmode_status)
+:- func instmode_status_is_exported_to_non_submodules(instmode_status)
     = bool.
 
 instmode_status_is_exported_to_non_submodules(InstModeStatus) = IsExported :-
@@ -564,8 +557,8 @@ instmode_status_is_exported_to_non_submodules(InstModeStatus) = IsExported :-
 
 %---------------------%
 
-:- func new_typeclass_status_is_exported_to_non_submodules(
-    new_typeclass_status) = bool.
+:- func new_typeclass_status_is_exported_to_non_submodules(typeclass_status)
+    = bool.
 
 new_typeclass_status_is_exported_to_non_submodules(Status) = IsExported :-
     (
@@ -588,8 +581,8 @@ new_typeclass_status_is_exported_to_non_submodules(Status) = IsExported :-
 
 %---------------------%
 
-:- func new_instance_status_is_exported_to_non_submodules(
-    new_instance_status) = bool.
+:- func new_instance_status_is_exported_to_non_submodules( instance_status)
+    = bool.
 
 new_instance_status_is_exported_to_non_submodules(Status) = IsExported :-
     (
@@ -773,7 +766,7 @@ instance_status_defined_in_impl_section(InstanceStatus) = InImplSection :-
 
 %---------------------%
 
-:- func instmode_status_defined_in_impl_section(new_instmode_status) = bool.
+:- func instmode_status_defined_in_impl_section(instmode_status) = bool.
 
 instmode_status_defined_in_impl_section(NewInstModeStatus)
         = NewIsDefnImplSection :-
@@ -795,8 +788,7 @@ instmode_status_defined_in_impl_section(NewInstModeStatus)
 
 %---------------------%
 
-:- func new_typeclass_status_defined_in_impl_section(new_typeclass_status)
-    = bool.
+:- func new_typeclass_status_defined_in_impl_section(typeclass_status) = bool.
 
 new_typeclass_status_defined_in_impl_section(Status) = IsDefnImplSection :-
     (
@@ -818,8 +810,7 @@ new_typeclass_status_defined_in_impl_section(Status) = IsDefnImplSection :-
 
 %---------------------%
 
-:- func new_instance_status_defined_in_impl_section(new_instance_status)
-    = bool.
+:- func new_instance_status_defined_in_impl_section(instance_status) = bool.
 
 new_instance_status_defined_in_impl_section(Status) = IsDefnImplSection :-
     (
@@ -877,8 +868,8 @@ typeclass_make_status_abstract(Status, AbstractStatus) :-
 
 %---------------------%
 
-:- pred new_typeclass_status_make_status_abstract(new_typeclass_status::in,
-    new_typeclass_status::out) is det.
+:- pred new_typeclass_status_make_status_abstract(typeclass_status::in,
+    typeclass_status::out) is det.
 
 new_typeclass_status_make_status_abstract(Status, AbstractStatus) :-
     (
@@ -987,8 +978,8 @@ instance_combine_status(StatusA, StatusB, Status) :-
 
 %---------------------%
 
-:- pred new_typeclass_combine_status(new_typeclass_status::in,
-    new_typeclass_status::in, new_typeclass_status::out) is semidet.
+:- pred new_typeclass_combine_status(typeclass_status::in,
+    typeclass_status::in, typeclass_status::out) is semidet.
 
 new_typeclass_combine_status(StatusA, StatusB, Status) :-
     require_complete_switch [StatusA]
@@ -1065,8 +1056,8 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
 
 %---------------------%
 
-:- pred new_instance_combine_status(new_instance_status::in,
-    new_instance_status::in, new_instance_status::out) is semidet.
+:- pred new_instance_combine_status(instance_status::in, instance_status::in,
+    instance_status::out) is semidet.
 
 new_instance_combine_status(StatusA, StatusB, Status) :-
     require_complete_switch [StatusA]
@@ -1249,7 +1240,7 @@ item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus) :-
 %---------------------%
 
 :- pred item_mercury_status_to_instmode_status(item_mercury_status::in,
-    new_instmode_status::out) is det.
+    instmode_status::out) is det.
 
 item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
     (
@@ -1283,7 +1274,7 @@ item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
 %---------------------%
 
 :- pred item_mercury_status_to_new_typeclass_status(item_mercury_status::in,
-    new_typeclass_status::out) is det.
+    typeclass_status::out) is det.
 
 item_mercury_status_to_new_typeclass_status(ItemMercuryStatus,
         TypeClassStatus) :-
@@ -1332,7 +1323,7 @@ item_mercury_status_to_new_typeclass_status(ItemMercuryStatus,
 %---------------------%
 
 :- pred item_mercury_status_to_new_instance_status(item_mercury_status::in,
-    new_instance_status::out) is det.
+    instance_status::out) is det.
 
 item_mercury_status_to_new_instance_status(ItemMercuryStatus,
         InstanceStatus) :-

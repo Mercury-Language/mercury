@@ -55,7 +55,7 @@ pred_status_to_write(pred_status(OldStatus)) = ToWrite :-
 
 %---------------------------------------------------------------------------%
 
-:- func instmode_status_to_write(new_instmode_status) = bool.
+:- func instmode_status_to_write(instmode_status) = bool.
 
 instmode_status_to_write(InstModeStatus) = ToWrite :-
     (
@@ -74,7 +74,7 @@ instmode_status_to_write(InstModeStatus) = ToWrite :-
         ToWrite = no
     ).
 
-:- func new_typeclass_status_to_write(new_typeclass_status)
+:- func new_typeclass_status_to_write(typeclass_status)
     = maybe(typeclass_export).
 
 new_typeclass_status_to_write(Status) = ToWrite :-
@@ -95,8 +95,7 @@ new_typeclass_status_to_write(Status) = ToWrite :-
         ToWrite = no
     ).
 
-:- func new_instance_status_to_write(new_instance_status)
-    = maybe(instance_export).
+:- func new_instance_status_to_write(instance_status) = maybe(instance_export).
 
 new_instance_status_to_write(Status) = ToWrite :-
     (
