@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020, 2022, 2024-2025 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020, 2022, 2024-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1494,7 +1494,7 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
-        VarRval, CaseSolns, OutVars, OutTypes, 
+        VarRval, CaseSolns, OutVars, OutTypes,
         CanFail, EndLabel, EndBranch, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_simple_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using

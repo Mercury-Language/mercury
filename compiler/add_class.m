@@ -295,8 +295,8 @@ class_fundeps_are_identical(OldFunDeps, FunDeps) :-
     module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
-module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
-        ItemMercuryStatus, NeedQual, ClassDecls, MethodInfos,
+module_declare_class_method_preds(ClassName, ClassParamVars,
+        TypeClassStatus, ItemMercuryStatus, NeedQual, ClassDecls, MethodInfos,
         !ModuleInfo, !Specs) :-
     % We process ClassDecls in three stages.
     %
