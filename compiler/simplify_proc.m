@@ -44,6 +44,7 @@
     %
 :- pred simplify_pred_procs(io.text_output_stream::in,
     simplify_tasks::in, pred_id::in, list(proc_id)::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
     diag_spec_accumulator::in, diag_spec_accumulator::out) is det.
 
@@ -126,21 +127,22 @@
 
 %---------------------------------------------------------------------------%
 
-simplify_pred_procs(_, _, _, [], !PredInfo, !ModuleInfo, !Specs).
-simplify_pred_procs(ProgressStream, SimplifyTasks, PredId,
-        [ProcId | ProcIds], !PredInfo, !ModuleInfo, !Specs) :-
+simplify_pred_procs(_, _, _, [],
+        !InputSpecDeletePPIds, !PredInfo, !ModuleInfo, !Specs).
+simplify_pred_procs(ProgressStream, SimplifyTasks, PredId, [ProcId | ProcIds],
+        !InputSpecDeletePPIds, !PredInfo, !ModuleInfo, !Specs) :-
     simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
-        !PredInfo, !ModuleInfo, !Specs),
+        !InputSpecDeletePPIds, !PredInfo, !ModuleInfo, !Specs),
     simplify_pred_procs(ProgressStream, SimplifyTasks, PredId, ProcIds,
-        !PredInfo, !ModuleInfo, !Specs).
+        !InputSpecDeletePPIds, !PredInfo, !ModuleInfo, !Specs).
 
 :- pred simplify_pred_proc(io.text_output_stream::in, simplify_tasks::in,
-    pred_id::in, proc_id::in, pred_info::in, pred_info::out,
-    module_info::in, module_info::out,
+    pred_id::in, proc_id::in, list(pred_proc_id)::in, list(pred_proc_id)::out,
+    pred_info::in, pred_info::out, module_info::in, module_info::out,
     diag_spec_accumulator::in, diag_spec_accumulator::out) is det.
 
 simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
-        !PredInfo, !ModuleInfo, !Specs) :-
+        !InputSpecDeletePPIds, !PredInfo, !ModuleInfo, !Specs) :-
     % XXX It is strange that simplify_proc prints progress messages,
     % but simplify_pred_proc does not.
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
@@ -165,6 +167,17 @@ simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
         module_info_set_has_user_event(!ModuleInfo)
     ;
         HasUserEvent = has_no_user_event
+    ),
+    proc_info_get_maybe_input_spec(ProcInfo, MaybeInputSpec),
+    (
+        ( MaybeInputSpec = not_involved_in_input_spec
+        ; MaybeInputSpec = input_spec_original_proc_kept(_)
+        ; MaybeInputSpec = input_specialized_proc(_)
+        )
+    ;
+        MaybeInputSpec = input_spec_original_proc_logically_deleted(_),
+        PPId = proc(PredId, ProcId),
+        !:InputSpecDeletePPIds = [PPId | !.InputSpecDeletePPIds]
     ),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, !PredInfo),

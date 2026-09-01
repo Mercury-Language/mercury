@@ -1493,7 +1493,15 @@ simplify_pred(ProgressStream, SimplifyTasks0, PredId,
     ),
     PredSpecsAcc0 = init_diag_spec_accumulator,
     simplify_pred_procs(ProgressStream, SimplifyTasks, PredId, ProcIds,
-        !PredInfo, !ModuleInfo, PredSpecsAcc0, PredSpecsAcc),
+        [], InputSpecDeletePPIds, !PredInfo, !ModuleInfo,
+        PredSpecsAcc0, PredSpecsAcc),
+    AfterFrontEnd = SimplifyTasks ^ do_after_front_end,
+    (
+        AfterFrontEnd = not_after_front_end
+    ;
+        AfterFrontEnd = after_front_end,
+        list.foldl(delete_specified_proc, InputSpecDeletePPIds, !ModuleInfo)
+    ),
     PredSpecs = diag_spec_accumulator_to_list(PredSpecsAcc),
     !:Specs = PredSpecs ++ !.Specs,
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -1501,6 +1509,16 @@ simplify_pred(ProgressStream, SimplifyTasks0, PredId,
     trace [io(!IO)] (
         maybe_report_stats(ProgressStream, Statistics, !IO)
     ).
+
+:- pred delete_specified_proc(pred_proc_id::in,
+    module_info::in, module_info::out) is det.
+
+delete_specified_proc(proc(PredId, ProcId), !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.delete(ProcId, ProcTable0, ProcTable),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 

@@ -154,9 +154,8 @@ add_decl_pragmas_type_spec([Pragma | Pragmas], !ModuleInfo, !QualInfo,
 add_decl_pragmas_input_mode_spec([], !ModuleInfo, !ErrSpecsWarnSpecs).
 add_decl_pragmas_input_mode_spec([ImsList | ImsLists],
         !ModuleInfo, !ErrSpecs) :-
-    ImsList = ims_sub_list(ItemMercuryStatus, Pragmas),
-    list.foldl2(add_pragma_input_mode_spec(ItemMercuryStatus), Pragmas,
-        !ModuleInfo, !ErrSpecs),
+    ImsList = ims_sub_list(_ItemMercuryStatus, Pragmas),
+    list.foldl2(add_pragma_input_mode_spec, Pragmas, !ModuleInfo, !ErrSpecs),
     add_decl_pragmas_input_mode_spec(ImsLists, !ModuleInfo, !ErrSpecs).
 
 add_decl_pragmas_termination([], !ModuleInfo, !ErrSpecs).
@@ -212,8 +211,7 @@ add_decl_pragma(ProgressStream, ItemMercuryStatus, Pragma,
             !ErrSpecs, !WarnSpecs)
     ;
         Pragma = decl_pragma_input_mode_spec(InputSpecInfo),
-        add_pragma_input_mode_spec(ItemMercuryStatus, InputSpecInfo,
-            !ModuleInfo, !ErrSpecs)
+        add_pragma_input_mode_spec(InputSpecInfo, !ModuleInfo, !ErrSpecs)
     ;
         Pragma = decl_pragma_oisu(OISUInfo),
         add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !ErrSpecs)
@@ -393,12 +391,11 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo,
 
 %---------------------%
 
-:- pred add_pragma_input_mode_spec(item_mercury_status::in,
-    decl_pragma_input_mode_spec_info::in, module_info::in, module_info::out,
+:- pred add_pragma_input_mode_spec(decl_pragma_input_mode_spec_info::in,
+    module_info::in, module_info::out,
     list(err_spec)::in, list(err_spec)::out) is det.
 
-add_pragma_input_mode_spec(ItemMercuryStatus, InputSpec,
-        !ModuleInfo, !ErrSpecs) :-
+add_pragma_input_mode_spec(InputSpec, !ModuleInfo, !ErrSpecs) :-
     % XXX If we ever want to get smart recompilation working, we may
     % have to do something with _RecompIds. What we do for type_spec pragmas
     % may, or may not, be appropriate for input spec pragmas as well.
@@ -407,35 +404,6 @@ add_pragma_input_mode_spec(ItemMercuryStatus, InputSpec,
         TVarSet, Context, _),
     some [!InputSpecs] (
         !:InputSpecs = [],
-        (
-            ItemMercuryStatus = item_defined_in_other_module(_)
-        ;
-            ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-            (
-                ItemExport = item_export_anywhere,
-                (
-                    ReplaceOrAdd = replace_in_mode,
-                    StatusPieces = [words("Error: a"),
-                        pragma_decl("input_mode_spec"), words("declaration"),
-                        words("that occurs in the interface of its module"),
-                        words("is not allowed to specify")] ++
-                        color_as_incorrect([words("replace_in_mode,")]) ++
-                        [words("as this would contradict"),
-                        words("the mode declarations of the"),
-                        words("predicates and/or functions"),
-                        words("in its public interface."), nl],
-                    StatusSpec = spec($pred, severity_error, phase_pt2h,
-                        Context, StatusPieces),
-                    !:InputSpecs = [StatusSpec | !.InputSpecs]
-                ;
-                    ReplaceOrAdd = add_to_in_mode
-                )
-            ;
-                ( ItemExport = item_export_nowhere
-                ; ItemExport = item_export_only_submodules
-                )
-            )
-        ),
         module_info_get_type_table(!.ModuleInfo, TypeTable),
         check_input_mode_spec_type(TypeTable, Type,
             [], UnknownTypeCtors, [], NonDuTypeCtors, bag.init, TVars),
