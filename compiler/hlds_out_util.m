@@ -910,20 +910,11 @@ typeclass_status_to_string(TypeClassStatus) = Str :-
     ;
         TypeClassStatus = typeclass_defined_in_other_module(TypeClassImport),
         (
-            TypeClassImport = typeclass_import_full_own_int,
-            Str = "other_module(full_own_int)"
+            TypeClassImport = typeclass_import_full_self_or_anc(_),
+            Str = "other_module(full_self_or_anc)"
         ;
-            TypeClassImport = typeclass_import_full_own_imp,
-            Str = "other_module(full_own_imp)"
-        ;
-            TypeClassImport = typeclass_import_full_int0_int,
-            Str = "other_module(full_int0_int)"
-        ;
-            TypeClassImport = typeclass_import_full_int0_imp,
-            Str = "other_module(full_int0_imp)"
-        ;
-            TypeClassImport = typeclass_import_full_by_ancestor,
-            Str = "other_module(full_by_ancestor)"
+            TypeClassImport = typeclass_import_full_int0(_),
+            Str = "other_module(full_int0)"
         ;
             TypeClassImport = typeclass_import_full_opt,
             Str = "other_module(full_opt)"

@@ -126,23 +126,48 @@
             % is why there is no export mirror of typeclass_import_full_opt.
 
     % XXX TYPECLASS_STATUS Are any of these "full"s lies?
-    % XXX TYPECLASS_STATUS We need *some* of the distinctions between
-    % import locations, but do we need them *all*?
-    % No, we do not. We could merge these three into one function symbol:
-    %   typeclass_import_full_own_int
-    %   typeclass_import_full_own_imp
-    %   typeclass_import_full_by_ancestor
-    % and these two into one function symbol:
-    %   typeclass_import_full_int0_int
-    %   typeclass_import_full_int0_imp
 :- type typeclass_import
-    --->    typeclass_import_full_own_int
-    ;       typeclass_import_full_own_imp
-    ;       typeclass_import_full_int0_int
-    ;       typeclass_import_full_int0_imp
-    ;       typeclass_import_full_by_ancestor
+    --->    typeclass_import_full_self_or_anc(import_locn_self_or_anc)
+    ;       typeclass_import_full_int0(import_locn_int0)
+            % We include the import locations in the above two function
+            % symbols for a single reason, which is to be able to turn
+            % a typeclass status to a predicate status. This capabilility
+            % is needed by add_class.m when it decides the status of the
+            % predicates/functions representing the class's methods.
+            %
+            % If the typeclass_status that add_class.m wants to turn into
+            % a pred_status were a typeclass_status computed directly
+            % from an item_mercury_status, we could simply convert that
+            % same item_mercury_status into a pred_status. But this is
+            % not the case: the typeclass_status in question will in general
+            % be computed by combining two (or sometimes more) typeclass
+            % statuses. Including the import_locn here is simpler than
+            % recording for each typeclass not just its typeclass_status,
+            % but its corresponding pred_status as well.
+            %
+            % I (zs) think it very likely that when we finally switch
+            % to a purpose-specific pred_status type, the distinctions that
+            % the import_locns recorded here enable in the pred_status
+            % values corresponding to them will turn out not to matter.
+            % After all, distinctions that matter most with predicates
+            % are where they should be *exported*, but that question arises
+            % only for predicates defined in the current module,
+            % which is NOT what typeclass_import status values are about.
+            %
+            % I am not even sure whether we need as many as four alternatives
+            % in the typeclass_import type; I think it is quite likely
+            % that two could suffice (full imported vs abstract imported).
     ;       typeclass_import_full_opt
     ;       typeclass_import_abstract.
+
+:- type import_locn_self_or_anc =< import_locn
+    --->    import_locn_implementation
+    ;       import_locn_interface
+    ;       import_locn_import_by_ancestor.
+
+:- type import_locn_int0 =< import_locn
+    --->    import_locn_ancestor_int0_interface
+    ;       import_locn_ancestor_int0_implementation.
 
 %---------------------------------------------------------------------------%
 
@@ -880,11 +905,8 @@ new_typeclass_status_make_status_abstract(Status, AbstractStatus) :-
             ),
             AbstractStatus = Status
         ;
-            ( Import = typeclass_import_full_own_int
-            ; Import = typeclass_import_full_own_imp
-            ; Import = typeclass_import_full_int0_int
-            ; Import = typeclass_import_full_int0_imp
-            ; Import = typeclass_import_full_by_ancestor
+            ( Import = typeclass_import_full_self_or_anc(_)
+            ; Import = typeclass_import_full_int0(_)
             ),
             AbstractImport = typeclass_import_abstract,
             AbstractStatus = typeclass_defined_in_other_module(AbstractImport)
@@ -975,27 +997,18 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
         StatusB = typeclass_defined_in_other_module(ImportB),
         require_complete_switch [ImportA]
         (
-            ( ImportA = typeclass_import_full_own_int
-            ; ImportA = typeclass_import_full_own_imp
-            ; ImportA = typeclass_import_full_by_ancestor
-            ),
+            ImportA = typeclass_import_full_self_or_anc(_),
             (
-                ( ImportB = typeclass_import_full_own_int
-                ; ImportB = typeclass_import_full_own_imp
-                ; ImportB = typeclass_import_full_int0_int
-                ; ImportB = typeclass_import_full_int0_imp
-                ; ImportB = typeclass_import_full_by_ancestor
+                ( ImportB = typeclass_import_full_self_or_anc(_)
+                ; ImportB = typeclass_import_full_int0(_)
                 ),
                 Import = ImportB
             ;
                 ImportB = typeclass_import_abstract,
-                % XXX TYPECLASS_STATUS I (zs) think this should be ImportA,
-                % but it does not seem to matter.
-                Import = typeclass_import_full_own_imp
+                Import = ImportA
             )
         ;
-            ( ImportA = typeclass_import_full_int0_int
-            ; ImportA = typeclass_import_full_int0_imp
+            ( ImportA = typeclass_import_full_int0(_)
             ; ImportA = typeclass_import_full_opt
             ),
             Import = ImportA
@@ -1003,11 +1016,8 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
             ImportA = typeclass_import_abstract,
             require_complete_switch [ImportB]
             (
-                ( ImportB = typeclass_import_full_own_int
-                ; ImportB = typeclass_import_full_own_imp
-                ; ImportB = typeclass_import_full_int0_int
-                ; ImportB = typeclass_import_full_int0_imp
-                ; ImportB = typeclass_import_full_by_ancestor
+                ( ImportB = typeclass_import_full_self_or_anc(_)
+                ; ImportB = typeclass_import_full_int0(_)
                 ),
                 Import = ImportB
             ;
@@ -1040,15 +1050,15 @@ new_typeclass_combine_status(StatusA, StatusB, Status) :-
                 Export = ExportB
             )
         ;
-            ExportA = typeclass_export_gen_full_sub_full,
-            Export = typeclass_export_gen_full_sub_full
-        ;
             ExportA = typeclass_export_gen_abs_sub_full,
             ( if ExportB = typeclass_export_gen_full_sub_full then
                 Export = typeclass_export_gen_full_sub_full
             else
                 Export = typeclass_export_gen_abs_sub_full
             )
+        ;
+            ExportA = typeclass_export_gen_full_sub_full,
+            Export = typeclass_export_gen_full_sub_full
         ),
         Status = typeclass_defined_in_this_module(Export)
     ).
@@ -1296,20 +1306,18 @@ item_mercury_status_to_new_typeclass_status(ItemMercuryStatus,
             ItemImport = item_import_int_concrete(ImportLocn),
             require_complete_switch [ImportLocn]
             (
-                ImportLocn = import_locn_interface,
-                TypeClassImport = typeclass_import_full_own_int
+                ( ImportLocn = import_locn_interface
+                ; ImportLocn = import_locn_implementation
+                ; ImportLocn = import_locn_import_by_ancestor
+                ),
+                IL = coerce(ImportLocn),
+                TypeClassImport = typeclass_import_full_self_or_anc(IL)
             ;
-                ImportLocn = import_locn_implementation,
-                TypeClassImport = typeclass_import_full_own_imp
-            ;
-                ImportLocn = import_locn_ancestor_int0_interface,
-                TypeClassImport = typeclass_import_full_int0_int
-            ;
-                ImportLocn = import_locn_ancestor_int0_implementation,
-                TypeClassImport = typeclass_import_full_int0_imp
-            ;
-                ImportLocn = import_locn_import_by_ancestor,
-                TypeClassImport = typeclass_import_full_by_ancestor
+                ( ImportLocn = import_locn_ancestor_int0_interface
+                ; ImportLocn = import_locn_ancestor_int0_implementation
+                ),
+                IL = coerce(ImportLocn),
+                TypeClassImport = typeclass_import_full_int0(IL)
             )
         ;
             ItemImport = item_import_int_abstract,
@@ -1412,20 +1420,11 @@ new_typeclass_status_to_old(New) = Old :-
     ;
         New = typeclass_defined_in_other_module(Import),
         (
-            Import = typeclass_import_full_own_int,
-            Old = status_imported(import_locn_interface)
+            Import = typeclass_import_full_self_or_anc(ImportLocn),
+            Old = status_imported(coerce(ImportLocn))
         ;
-            Import = typeclass_import_full_own_imp,
-            Old = status_imported(import_locn_implementation)
-        ;
-            Import = typeclass_import_full_int0_int,
-            Old = status_imported(import_locn_ancestor_int0_interface)
-        ;
-            Import = typeclass_import_full_int0_imp,
-            Old = status_imported(import_locn_ancestor_int0_implementation)
-        ;
-            Import = typeclass_import_full_by_ancestor,
-            Old = status_imported(import_locn_import_by_ancestor)
+            Import = typeclass_import_full_int0(ImportLocn),
+            Old = status_imported(coerce(ImportLocn))
         ;
             Import = typeclass_import_full_opt,
             Old = status_opt_imported
