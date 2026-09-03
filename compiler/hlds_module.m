@@ -1019,7 +1019,7 @@
                 % - by unused_imports.m to decide what import_module and/or
                 %   use_module declarations to warn about;
                 %
-                % - by xml_documentation to prettyprint a module as XML;
+                % - by xml_documentation.m to prettyprint a module as XML;
                 %
                 % and possibly more.
                 %
@@ -1409,6 +1409,8 @@ module_info_optimize(!ModuleInfo) :-
     module_info::in, module_info::out) is det.
 % :- pred module_info_set_atomics_per_line_number(map(int, counter)::in,
 %     module_info::in, module_info::out) is det.
+:- pred module_info_set_avail_module_map(avail_module_map::in,
+    module_info::in, module_info::out) is det.
 :- pred module_info_set_avail_module_sets(avail_module_sets::in,
     module_info::in, module_info::out) is det.
 
@@ -1639,6 +1641,8 @@ module_info_set_loop_invs_per_line_number(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_loop_invs_per_line_number := X.
 % module_info_set_atomics_per_line_number(X, !MI) :-
 %     !MI ^ mi_rare_info ^ mri_atomics_per_line_number := X.
+module_info_set_avail_module_map(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_avail_module_map := X.
 module_info_set_avail_module_sets(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_avail_module_sets := X.
 module_info_set_used_eqv_modules(X, !MI) :-
@@ -1904,7 +1908,7 @@ module_add_avail_module(ModuleName, NewSection, NewImportOrUse,
         MaybeContext = yes(Context),
         NewAvails = [avail_module(NewSection, NewImportOrUse, Context)]
     ),
-    AvailMap0 = !.MI ^ mi_rare_info ^ mri_avail_module_map,
+    module_info_get_avail_module_map(!.MI, AvailMap0),
     ( if map.search(AvailMap0, ModuleName, OldEntry) then
         OldEntry = avail_module_entry(OldSection, OldImportOrUse, OldAvails),
         % XXX: If one of the entries (new or old) is a use_module in the
@@ -1923,7 +1927,7 @@ module_add_avail_module(ModuleName, NewSection, NewImportOrUse,
         NewEntry = avail_module_entry(NewSection, NewImportOrUse, NewAvails),
         map.det_insert(ModuleName, NewEntry, AvailMap0, AvailMap)
     ),
-    !MI ^ mi_rare_info ^ mri_avail_module_map := AvailMap.
+    module_info_set_avail_module_map(AvailMap, !MI).
 
 :- pred combine_old_new_avail_attrs(module_section::in, module_section::in,
     import_or_use::in, import_or_use::in,
