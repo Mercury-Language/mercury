@@ -149,6 +149,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_error_util.

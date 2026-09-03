@@ -191,6 +191,7 @@
 
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.inst_test.
 :- import_module hlds.instmap.

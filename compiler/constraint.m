@@ -53,6 +53,7 @@
 :- implementation.
 
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.inst_match.
 :- import_module libs.

@@ -64,6 +64,7 @@
 :- implementation.
 
 :- import_module check_hlds.det_util.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_markers.
 :- import_module mdbcomp.
 

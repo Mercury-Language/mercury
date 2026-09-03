@@ -166,6 +166,7 @@
 :- import_module check_hlds.simplify.opt_format_call_errors.
 :- import_module check_hlds.simplify.parse_string_format.
 :- import_module check_hlds.simplify.simplify_goal_call.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_markers.

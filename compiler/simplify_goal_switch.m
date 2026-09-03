@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014-2025 The Mercury team.
+% Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -36,6 +36,7 @@
 
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.simplify.simplify_goal.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.inst_lookup.

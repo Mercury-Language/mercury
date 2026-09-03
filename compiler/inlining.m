@@ -163,6 +163,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.

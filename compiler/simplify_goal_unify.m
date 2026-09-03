@@ -36,6 +36,7 @@
 :- import_module check_hlds.proc_requests.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.

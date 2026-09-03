@@ -93,6 +93,7 @@
 :- include_module goal_refs.
 :- include_module goal_reorder.
 :- include_module goal_transform.
+:- include_module goal_list_util.
 :- include_module goal_util.
 :- include_module goal_vars.
 :- include_module headvar_names.

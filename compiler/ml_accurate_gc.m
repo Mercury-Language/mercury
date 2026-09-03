@@ -83,6 +83,7 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.

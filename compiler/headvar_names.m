@@ -49,6 +49,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.

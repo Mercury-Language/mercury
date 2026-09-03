@@ -1,19 +1,19 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % Copyright (C) 2014-2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_goal.m.
 % Main authors: fjh, conway.
 %
 % The module defines the part of the HLDS that deals with goals.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_goal.
 :- interface.
@@ -44,8 +44,8 @@
 :- import_module set.
 :- import_module term_context.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type hlds_goal
     --->    hlds_goal(
@@ -53,11 +53,8 @@
                 hg_info             :: hlds_goal_info
             ).
 
-:- func get_hlds_goal_expr(hlds_goal) = hlds_goal_expr.
-:- func get_hlds_goal_info(hlds_goal) = hlds_goal_info.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The types that represent the kinds of goals in the internal form of
 % Mercury programs.
@@ -257,527 +254,9 @@
 :- inst goal_plain_call for hlds_goal/0
     --->    hlds_goal(goal_expr_plain_call, ground).
 
-:- type conj_type
-    --->    plain_conj
-    ;       parallel_conj.
-
-    % These `shorthand' goals are implemented by HLDS --> HLDS transformations
-    % that replaces them with equivalent non-shorthand goals.
-    %
-:- type shorthand_goal_expr
-    --->    bi_implication(
-                % bi-implication (A <=> B)
-                %
-                % Note that ordinary implications (A => B) and reverse
-                % implications (A <= B) are expanded out before we construct
-                % the HLDS. We cannot do that for bi-implications, because
-                % if expansion of bi-implications is done before implicit
-                % quantification, then the quantification would be wrong.
-                %
-                % bi_implications are expanded out by quantification.m.
-
-                hlds_goal,
-                hlds_goal
-            )
-
-    ;       atomic_goal(
-                % An atomic goal that will be executed atomically against
-                % all running threads using the stm system.
-
-                % The type of atomic goal. Either a top level atomic goal,
-                % or a nested atomic goal. This isn't known until after
-                % typechecking.
-                atomic_goal_type    :: atomic_goal_type,
-
-                % The variables representing the initial and final versions
-                % of the outer state. For top level atomic goals, of type
-                % io.state; for nested atomic goals, of type stm_builtin.stm.
-                atomic_outer        :: atomic_interface_vars,
-
-                % The variables representing the initial and final versions
-                % of the inner state (always of type stm_builtin.stm).
-                atomic_inner        :: atomic_interface_vars,
-
-                % List of output variables specified with `var(...)`.
-                % These variables should be free when the atomic goal
-                % is started and ground when the atomic goal is complete.
-                atomic_output_vars  :: maybe(list(prog_var)),
-
-                % The main atomic transaction goal. If any or_else goals
-                % also exist, this goal is the first or_else alternative.
-                atomic_main_goal    :: hlds_goal,
-
-                % Any later or_else alternative goals.
-                orelse_alternatives :: list(hlds_goal),
-
-                % The same as atomic_inner, but for each corresponding goal
-                % in orelse_alternatives. Begins as an empty list, but is
-                % filled in when quantification renames the inner stm state
-                % variables apart in each of the or_else alternatives.
-                orelse_inners       :: list(atomic_interface_vars)
-            )
-
-    ;       try_goal(
-                % A try goal.
-
-                % The variables holding the initial and final I/O states for
-                % the goal to be executed in the `try' proper, i.e. not
-                % inclusive of the I/O states that may be in the arms following
-                % the try. Will be `no' if no `io(_)' component was specified.
-                try_maybe_io        :: maybe(try_io_state_vars),
-
-                % The variable that will hold the result of the `try' or
-                % `try_io' call.
-                try_result_var      :: prog_var,
-
-                % A "pre-transformed" version of the entire try goal.
-                % See try_expand.m for details.
-                try_goal            :: hlds_goal
-            ).
-
-:- type atomic_interface_vars
-    --->    atomic_interface_vars(
-                atomic_initial  :: prog_var,
-                atomic_final    :: prog_var
-            ).
-
-:- type try_io_state_vars
-    --->    try_io_state_vars(
-                try_io_initial  :: prog_var,
-                try_io_final    :: prog_var
-            ).
-
-    % If an atomic goal has type unknown_atomic_goal_type, then the conversion
-    % predicates to and from the inner variables have not been added yet to the
-    % main and orelse goals. If the type is top_level_atomic_goal or
-    % nested_atomic_goal, then the conversion predicates *have* been added.
-:- type atomic_goal_type
-    --->    unknown_atomic_goal_type
-    ;       top_level_atomic_goal
-    ;       nested_atomic_goal.
-
-:- type catch_part
-    --->    catch_part(
-                catch_expr  :: hlds_goal_expr,
-                catch_goal  :: hlds_goal
-            ).
-
-    % Who created an existential quantification: the user, or the compiler?
-    % The distinction matters to warn_singletons in make_hlds_warn.m, which
-    %
-    % - wants to warn about "some [B] ( <only reference to A> ), but
-    % - wants NOT to warn about "some [A] ( <some reference to A> ).
-    %
-    % This means that treating a compiler-generated "some [A] ..." wrapper
-    % around some code could cause the compiler not to generate a warning
-    % that, based on the code seen by the user, it *should* generate.
-    %
-    % The code of make_hlds_warn.m runs during the make-the-HLDS phase
-    % of the compiler. There is, as of 2023 jun 9, no later phase of the
-    % compiler that cares about this distinction.
-:- type quant_creator
-    --->    user_quant
-    ;       compiler_quant.
-
-    % We classify each scope that we create from the expansion of a ground term
-    % above a certain size into one of these four categories.
-    % The categories are
-    %
-    % - from_ground_term_construct for scopes that construct a ground term,
-    % - from_ground_term_construct for scopes that take an existing ground
-    %   term and test whether it has a given shape,
-    % - from_ground_term_other for scopes that are neither construct nor
-    %   deconstruct in that they do not guarantee the invariants of either
-    %   (perhaps some parts of the term are matched and some parts are bound),
-    % - from_ground_term_initial for scopes that have not yet been classified
-    %   into one of the above three categories.
-    %
-    % Many parts of the compiler have special code for handling
-    % from_ground_term_construct scopes, code that avoids scanning the code
-    % inside the scope. This can be a very big win, since that code can be
-    % huge. To make this special casing possible, from_ground_term_construct
-    % scopes promise the following invariants.
-    %
-    % 1. The only nonlocal variable of the scope is the one listed in the
-    %    scope_reason.
-    % 2. The shape of the code inside the scope is a plain conjunction of
-    %    unifications, all of which have rhs_functor as their right hand side.
-    % 3. These unifications are construct unifications whose construct_how
-    %    field says construct_statically, and in which the nonlocals,
-    %    instmap_delta and determinism fields of the goal_info are
-    %    correctly filled in. The nonlocals will be all the variables in the
-    %    unification, the instmap delta will say that the value being
-    %    constructed is ground (not unique, because it is static), and the
-    %    determinism says that the goal is det. The goal_info of the
-    %    conjunction will be filled in similarly.
-    % 4. None of these unifications constructs a higher order value.
-    % 5. The unifications are ordered such that a variable constructed by
-    %    all unifications except the last occurs exactly once outside
-    %    its constructing unification, and that occurrence will be as a functor
-    %    argument of a later unification (bottom up order).
-    %
-    % From_ground_term_deconstruct scopes obey invariants 1 and 2, and they
-    % also obey invariant 6:
-    %
-    % 6. The unifications are ordered such that a variable on the LHS of
-    %    all unifications except the first occurs exactly once outside that
-    %    unification, as a functor argument on the RHS of an *earlier*
-    %    unification (top down order).
-    %
-    % From_ground_term_initial scopes obey invariant 1, and they obey weak
-    % forms of invariants 2 and 6. The difference is that some of the
-    % "unifications" may include things that look like function symbols
-    % but are in fact function calls. When typecheck.m discovers that this
-    % applies to a unification, it does not remove the scope or change its
-    % kind. The post_typecheck phase, executed as part of the purity pass,
-    % will eventually change the kind to from_ground_term_other.
-    %
-    % For now, we don't optimize from_ground_term_other scopes, so there are
-    % no invariants required of them.
-    %
-    % Up to the first invocation of mode analysis, all from_ground_term scopes
-    % will have kind from_ground_term_initial. After that, they will have
-    % one of the three other kinds.
-    %
-    % If any later compiler pass modifies a from_ground_term_construct scope
-    % in a way that invalidates these invariants, it must set the kind field
-    % of the scope to from_ground_term_other (or from_ground_term_deconstruct).
-    % If the original scope had the from_head feature, the code that does this
-    % must also attach that feature to all the subgoals of the modified scope,
-    % unless we can be sure that it is executed *after* switch detection,
-    % which is the only pass that looks for from_head features, and which looks
-    % in all scopes *except* from_ground_term_construct scopes.
-    %
-    % An alternative design would be to have the mode checker turn any scope
-    % that it currently keeps as from_ground_term_construct into a new kind
-    % of generic call, one which basically says "this goal binds this variable
-    % to this ground term", with the ground term represented as a ground term,
-    % not as a bunch of construction unifications. The advantage of this
-    % approach would be that we could delete the local variables of these
-    % scopes (of which there can be hundreds of thousands) from the maps stored
-    % in the fields of the pred_info and proc_info (such as the varset and the
-    % var_types), making lookups and other operations on those maps
-    % significantly faster. The drawback would be the need for totally new code
-    % in most parts of the compiler to handle this new kind of goal.
-    % Using from_ground_term_construct, on the other hand, allows us to keep
-    % using the existing code for scopes in e.g. the type checker and the code
-    % generator. Because of this tradeoff, we currently *do* replace
-    % from_ground_term_construct scopes with construct unification using
-    % a ground_term_const cons_id, but only during the simplification pass
-    % after semantic analysis, and only if option settings allow this
-    % replacement.
-    %
-:- type from_ground_term_kind
-    --->    from_ground_term_initial
-    ;       from_ground_term_construct
-    ;       from_ground_term_deconstruct
-    ;       from_ground_term_other.
-
-:- type scope_reason
-    --->    exist_quant(list(prog_var), quant_creator)
-            % The goal inside the scope construct has the listed variables
-            % existentially quantified. The compiler may do whatever
-            % preserves this fact.
-
-    ;       disable_warnings(goal_warning, list(goal_warning))
-            % Do not generate any of the listed (one or more) warnings
-            % for any goal inside this scope.
-
-    ;       promise_solutions(list(prog_var), promise_solutions_kind)
-            % Even though the code inside the scope may have multiple
-            % solutions, the creator of the scope (which may be the user
-            % or a compiler pass) promises that all these solutions are
-            % equivalent relative to the relevant equality theory.
-            % (This need not be an equality theory known to the compiler.)
-            % The scope goal will therefore act as a single solution
-            % context, and the determinism of the scope() goal itself
-            % will indicate that it cannot succeed more than once.
-            %
-            % The promise is valid only if the list of outputs of the goal
-            % inside the scope is a subset of the variables listed here.
-            % If it is not valid, the compiler must emit an error message.
-
-    ;       promise_purity(purity)
-            % The goal inside the scope implements an interface of the
-            % specified purity, even if its implementation uses less pure
-            % components.
-            %
-            % Works the same way as a promise_pure or promise_semipure
-            % pragma, except that it applies to arbitrary goals and not
-            % just whole procedure bodies.
-
-    ;       require_detism(determinism)
-            % Require the wrapped subgoal to have the specified determinism.
-            % If it does not, report an error.
-            % This scope reason should not exist after the first invocation
-            % of simplification.
-
-    ;       require_complete_switch(prog_var)
-            % Require the wrapped subgoal to be a switch on the given variable
-            % that has an arm for every function symbol that the variable
-            % could be bound to at this point in the code. If it does not,
-            % or if the wrapped subgoal is not a switch on the given variable,
-            % then report an error.
-            % This scope reason should not exist after the first invocation
-            % of simplification.
-
-    ;       require_switch_arms_detism(prog_var, determinism)
-            % Require the wrapped subgoal to be a switch on the given variable,
-            % and require every arm of that switch to have a determinism
-            % that promises at least as much as the specified determinism.
-            % If either condition is not satisfied, report an error.
-            % This scope reason should not exist after the first invocation
-            % of simplification.
-
-    ;       commit(force_pruning)
-            % This scope exists to delimit a piece of code
-            % with at_most_many components but with no outputs,
-            % whose overall determinism is thus at_most_one,
-            % or a piece of code that cannot succeed but some of whose
-            % components are at_most_many (regardless of the number of
-            % outputs).
-            %
-            % If the argument is force_pruning, then the outer goal will
-            % succeed at most once even if the inner goal is impure.
-
-    ;       barrier(removable)
-            % The scope exists to prevent other compiler passes from
-            % arbitrarily moving computations in or out of the scope.
-            % This kind of scope can only be introduced by program
-            % transformations.
-            %
-            % The argument says whether other compiler passes are allowed
-            % to delete the scope.
-            %
-            % A non-removable explicit quantification may be introduced
-            % to keep related goals together where optimizations that
-            % separate the goals can only result in worse behaviour.
-            %
-            % A barrier says nothing about the determinism of either
-            % the inner or the outer goal, or about pruning.
-
-    ;       from_ground_term(prog_var, from_ground_term_kind)
-            % The goal inside the scope, which should be a conjunction,
-            % results from the conversion of one ground term to
-            % superhomogeneous form. The variable specifies what the
-            % compiler calls that ground term.
-            %
-            % This kind of scope is intended to be meaningful after
-            % mode analysis only if Kind = from_ground_term_construct.
-
-    ;       trace_goal(
-                trace_compiletime   :: maybe(trace_expr(trace_compiletime)),
-                trace_runtime       :: maybe(trace_expr(trace_runtime)),
-                trace_maybe_io      :: maybe(string),
-                trace_mutable_vars  :: list(trace_mutable_var_hlds),
-                trace_quant_vars    :: list(prog_var)
-            )
-            % The goal inside the scope is trace code that is executed only
-            % conditionally, and should have no effect on the semantics of
-            % the program even if executed.
-            %
-            % The trace goal is removed by simplification if the compile time
-            % condition isn't true. If it is true, the code generator will
-            % generate code that will execute the goal inside the scope
-            % only if the runtime condition is satisfied.
-            %
-            % The maybe_io and mutable_vars fields are only advisory in the
-            % HLDS, since they are fully processed when the corresponding goal
-            % in the parse tree is converted to HLDS.
-
-    ;       loop_control(
-                lc_lc_var               :: prog_var,
-                lc_lcs_var              :: prog_var,
-                lc_use_parent_stack     :: lc_use_parent_stack
-            ).
-            % The goal inside the scope will be spawned off because the loop
-            % control transformation has been applied to this predicate.
-            %
-            % The goal will be executed by a different context, and the code
-            % generator must use the parent stack pointer to communicate with
-            % the parent.
-            %
-            % lc_lc_var identifies the variable that points to the loop
-            % control structure.
-            %
-            % lc_lcs_var identifies the variable that points to the slot in the
-            % loop control structure that should be used to spawn off the work
-            % within this scope.
-
-:- type promise_solutions_kind
-    --->    equivalent_solutions
-    ;       equivalent_solution_sets
-    ;       equivalent_solution_sets_arbitrary.
-
-:- type removable
-    --->    removable
-    ;       not_removable.
-
-:- type force_pruning
-    --->    do_not_force_pruning
-    ;       force_pruning.
-
-:- type trace_mutable_var_hlds
-    --->    trace_mutable_var_hlds(
-                tmvh_mutable_name       :: string,
-                tmvh_state_var_name     :: string
-            ).
-
-:- type is_first_disjunct
-    --->    is_first_disjunct
-    ;       is_not_first_disjunct.
-
-:- type lc_use_parent_stack
-    --->    lc_use_parent_stack_frame
-    ;       lc_create_frame_on_child_stack.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
-% Information for calls.
-%
-
-    % For all of our current builtin predicates and functions
-    % (such as those that do arithmetic), we generate inline instructions.
-    % In the past, we had some builtins (such as call/N) for which
-    % we generated a call to an out-of-line procedure, but there is
-    % no prospect of any new builtins ever requiring that treatment.
-    % Therefore currently all builtins are inline builtins.
-    %
-:- type builtin_state
-    --->    inline_builtin
-    ;       not_builtin.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for call_foreign_proc.
-%
-
-    % In the usual case, the arguments of a foreign_proc are the arguments
-    % of the call to the predicate whose implementation is in the foreign
-    % language. Each such argument is described by a foreign_arg.
-    %
-    % The arg_var field gives the identity of the actual parameter.
-    %
-    % The arg_name_mode field gives the foreign variable name and the original
-    % mode declaration for the argument; a no means that the argument is not
-    % used by the foreign code. (In particular, the type_info variables
-    % introduced by polymorphism.m might be represented in this way.)
-    %
-    % The arg_type field gives the original types of the arguments.
-    % (With inlining, the actual type may be an instance of the original type.)
-    %
-:- type foreign_arg
-    --->    foreign_arg(
-                arg_var         :: prog_var,
-                arg_name_mode   :: maybe(foreign_arg_name_mode),
-                arg_type        :: mer_type,
-                arg_box_policy  :: box_policy
-            ).
-
-:- func foreign_arg_var(foreign_arg) = prog_var.
-:- func foreign_arg_maybe_name_mode(foreign_arg) =
-    maybe(foreign_arg_name_mode).
-:- func foreign_arg_type(foreign_arg) = mer_type.
-:- func foreign_arg_box(foreign_arg) = box_policy.
-
-:- pred make_foreign_args(list(prog_var)::in,
-    list(foreign_arg_name_mode_box)::in, list(mer_type)::in,
-    list(foreign_arg)::out) is det.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for generic_calls.
-%
-
-:- type generic_call
-    --->    higher_order(
-                ho_call_var     :: prog_var,
-                ho_call_purity  :: purity,
-
-                % call/N (pred) or apply/N (func)
-                ho_call_kind    :: pred_or_func,
-
-                % The number of arguments (including the higher-order term)
-                ho_call_arity   :: pred_form_arity,
-
-                % If this higher order call occurs in the source code,
-                % was it written as using a variable as the predicate or
-                % function name (using the syntax P(A, B, C) for predicate
-                % calls or C = F(A, B) for functions), or was it written
-                % using the builtin operations call(P, A, B, C) or
-                % C = apply(F, A, B)? We use this information to decide
-                % whether to refer to e.g. as being argument 1, or argument 2.
-                %
-                % If this higher order call does not occur in the source
-                % code, then the value of this field does not matter, since
-                % it *should* be constructed free of any errors.
-                ho_syntax       :: higher_order_syntax
-            )
-
-    ;       class_method(
-                % The variable that holds the typeclass_info for the instance.
-                method_tci      :: prog_var,
-
-                % The number of the called method.
-                method_num      :: method_proc_num,
-
-                % The name and arity of the class.
-                method_class_id :: class_id,
-
-                % The name of the called method.
-                method_name     :: pf_sym_name_pred_form_arity
-            )
-
-    ;       event_call(
-                event_name      :: string
-            )
-
-    ;       cast(
-                % A cast generic_call with two arguments, Input and Output,
-                % assigns `Input' to `Output', performing a cast of this kind.
-                cast_kind       :: cast_kind
-            ).
-
-:- type higher_order_syntax
-    --->    hos_call_or_apply   % call(Pred, A, B, C) or apply(Func, A, B, C)
-    ;       hos_var.            % Pred(A, B, C)       or Func(A, B, C)
-
-    % The various kinds of casts that we can do.
-    %
-:- type cast_kind
-    --->    unsafe_type_cast
-            % An unsafe type cast between ground values.
-
-    ;       unsafe_type_inst_cast
-            % An unsafe type and inst cast.
-
-    ;       equiv_type_cast
-            % A safe type cast between equivalent types, in either direction.
-
-    ;       exists_cast
-            % A safe cast between an internal type_info or typeclass_info
-            % variable, for which the bindings of existential type variables
-            % are known statically, to an external type_info or typeclass_info
-            % head variable, for which they are not. These are used instead of
-            % assignments so that the simplification pass does not attempt
-            % to merge the two variables, which could lead to inconsistencies
-            % in the rtti_varmaps.
-
-    ;       subtype_coerce.
-            % A coerce expression.
-
-    % Get a description of a generic_call goal.
-    %
-:- pred generic_call_to_id(generic_call::in, generic_call_id::out) is det.
-
-    % Determine whether a generic_call is calling
-    % a predicate or a function.
-    %
-:- func generic_call_pred_or_func(generic_call) = pred_or_func.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for unifications.
+% The types needed to represent unifications.
 %
 
     % Initially all unifications are represented as
@@ -789,7 +268,7 @@
     % Until that pass, the compiler should pay attention *only* to the RHS
     % field.
     %
-    % The lambda pass in the middle end replaces all rhs_lambda_goal
+    % The expand_lambda pass in the middle end replaces all rhs_lambda_goal
     % unifications with construct unifications using a closure_cons cons_id.
 :- type unify_rhs
     --->    rhs_var(prog_var)
@@ -835,29 +314,24 @@
     --->    is_not_exist_constr
     ;       is_exist_constr.
 
-    % This type contains the fields of a construct unification that are needed
-    % only rarely. If a value of this type is bound to no_construct_sub_info,
-    % this means the same as construct_sub_info(no, no), but takes less space.
-    % This matters because a module has lots of construct unifications.
-:- type construct_sub_info
-    --->    construct_sub_info(
-                % The argument numbers to take the address of.
-                take_address_args       :: maybe(list(int)),
+%---------------------%
 
-                % The value `yes' tells the code generator to reserve an extra
-                % slot, at offset -1, to hold an integer giving the size of
-                % the term. The argument specifies the value to be put into
-                % this slot, either as an integer constant or as the value
-                % of a given variable.
-                %
-                % The value `no' means there is no extra slot, and is the
-                % default.
-                %
-                % The content of this slot is not meaningful before the
-                % size_prof pass has been run.
-                term_size_slot          :: maybe(term_size_value)
-            )
-    ;       no_construct_sub_info.
+    % A unify mode specifies four instantiation states:
+    %
+    % - the initial instantiation state of the LHS (li),
+    % - the final   instantiation state of the LHS (lf),
+    % - the initial instantiation state of the RHS (ri) and
+    % - the final   instantiation state of the RHS (rf).
+    %
+    % The most unifications, the two final instantiation states are the same
+    % (ground, either with or without further information), but in some cases
+    % they may be different: for example, one could be unique and the other
+    % clobbered.
+    %
+:- type unify_mode
+    --->    unify_modes_li_lf_ri_rf(mer_inst, mer_inst, mer_inst, mer_inst).
+
+%---------------------%
 
 :- type unification
 
@@ -1002,100 +476,7 @@
 :- inst unification_complicated_unify for unification/0
     --->    complicated_unify(ground, ground, ground).
 
-:- type term_size_value
-    --->    known_size(
-                int                     % The cell being created has this size.
-            )
-    ;       dynamic_size(
-                prog_var                % This variable contains the size of
-                                        % the cell being created.
-            ).
-
-    % `can_cgc' iff the cell is available for compile time garbage collection.
-    % Compile time garbage collection is when the compiler recognises that
-    % a memory cell is no longer needed and can be safely deallocated
-    % (by inserting an explicit call to free).
-    %
-:- type can_cgc
-    --->    can_cgc
-    ;       cannot_cgc.
-
-    % A unify_context describes the location in the original source
-    % code of a unification, for use in error messages.
-    %
-:- type unify_context
-    --->    unify_context(
-                unify_main_context,
-                list(unify_sub_context)
-            ).
-
-    % A unify_main_context describes overall location of the
-    % unification within a clause
-    %
-:- type unify_main_context
-    --->    umc_explicit
-            % An explicit call to =/2.
-
-    ;       umc_head(
-            % A unification in an argument of a clause head.
-
-                int         % The argument number (first argument == no. 1)
-            )
-
-    ;       umc_head_result
-            % A unification in the function result term of a clause head.
-
-    ;       umc_call(
-                % A unification in an argument of a predicate call.
-
-                call_id,    % The name and arity of the predicate.
-                int         % The argument number (first arg == 1).
-            )
-
-    ;       umc_implicit(
-                % A unification added by some syntactic transformation
-                % (e.g. for handling state variables).
-
-                string      % Used to explain the source of the unification.
-            ).
-
-:- type call_id
-    --->    plain_call_id(pf_sym_name_pred_form_arity)
-            % The call is a plain call, and the argument specifies the callee.
-    ;       generic_call_id(var_name_source, generic_call).
-            % The call is a generic call, specified by the second argument.
-            % If it is a higher order call, then the second argument will
-            % specify the variable holding the identity of the callee.
-            % The var_name_source is needed to convert this variable
-            % to a printable name in diagnotics.
-
-:- type generic_call_id
-    --->    gcid_higher_order(purity, pred_or_func, pred_form_arity)
-    ;       gcid_class_method(class_id, pf_sym_name_pred_form_arity)
-    ;       gcid_event_call(string)
-    ;       gcid_cast(cast_kind).
-
-    % A unify_sub_context describes the location of sub-unification
-    % (which is unifying one argument of a term) within a particular
-    % unification.
-    %
-:- type unify_sub_context
-    --->    unify_sub_context(
-                cons_id,    % The functor.
-                int         % The argument number (first arg == 1).
-            ).
-
-    % A call_unify_context is used for unifications that get turned into
-    % calls to out-of-line unification predicates, and functions. It records
-    % which part of the original source code the unification (which may be
-    % a function application) occurred in.
-    %
-:- type call_unify_context
-    --->    call_unify_context(
-                prog_var,       % The LHS of the unification.
-                unify_rhs,      % The RHS of the unification.
-                unify_context   % The context of the unification.
-            ).
+%---------------------%
 
     % Information on how to construct the cell for a construction unification.
     % It is meaningful only if the argument list is not empty.
@@ -1196,6 +577,8 @@
                 list(needs_update)
             ).
 
+%---------------------%
+
     % Cells marked `cell_is_shared' can be allocated in read-only memory,
     % and can be shared.
     % Cells marked `cell_is_unique' must be writeable, and therefore
@@ -1206,24 +589,288 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
-    % A unify mode specifies four instantiation states:
-    %
-    % - the initial instantiation state of the LHS (li),
-    % - the final instantiation state of the LHS (lf),
-    % - the initial instantiation state of the RHS (ri) and
-    % - the final instantiation state of the RHS (rf).
-    %
-    % The most unifications, the two final instantiation states are the same
-    % (ground, either with or without further information), but in some cases
-    % they may be different: for example, one could be unique and the other
-    % clobbered.
-    %
-:- type unify_mode
-    --->    unify_modes_li_lf_ri_rf(mer_inst, mer_inst, mer_inst, mer_inst).
+%---------------------%
 
-%-----------------------------------------------------------------------------%
+    % This type contains the fields of a construct unification that are needed
+    % only rarely. If a value of this type is bound to no_construct_sub_info,
+    % this means the same as construct_sub_info(no, no), but takes less space.
+    % This matters because a module has lots of construct unifications.
+:- type construct_sub_info
+    --->    construct_sub_info(
+                % The argument numbers to take the address of.
+                take_address_args       :: maybe(list(int)),
+
+                % The value `yes' tells the code generator to reserve an extra
+                % slot, at offset -1, to hold an integer giving the size of
+                % the term. The argument specifies the value to be put into
+                % this slot, either as an integer constant or as the value
+                % of a given variable.
+                %
+                % The value `no' means there is no extra slot, and is the
+                % default.
+                %
+                % The content of this slot is not meaningful before the
+                % size_prof pass has been run.
+                term_size_slot          :: maybe(term_size_value)
+            )
+    ;       no_construct_sub_info.
+
+:- type term_size_value
+    --->    known_size(
+                % The cell being created has this size.
+                int
+            )
+    ;       dynamic_size(
+                % This variable contains the size of the cell being created.
+                prog_var
+            ).
+
+%---------------------%
+
+    % `can_cgc' iff the cell is available for compile time garbage collection.
+    % Compile time garbage collection is when the compiler recognises that
+    % a memory cell is no longer needed and can be safely deallocated
+    % (by inserting an explicit call to free).
+    %
+:- type can_cgc
+    --->    can_cgc
+    ;       cannot_cgc.
+
+%---------------------%
+
+    % A unify_context describes the location in the original source
+    % code of a unification, for use in error messages.
+    %
+:- type unify_context
+    --->    unify_context(
+                unify_main_context,
+                list(unify_sub_context)
+            ).
+
+    % A unify_main_context describes overall location of the
+    % unification within a clause
+    %
+:- type unify_main_context
+    --->    umc_explicit
+            % An explicit call to =/2.
+
+    ;       umc_head(
+                % A unification in an argument of a clause head.
+
+                int         % The argument number (first argument == no. 1)
+            )
+
+    ;       umc_head_result
+            % A unification in the function result term of a clause head.
+
+    ;       umc_call(
+                % A unification in an argument of a predicate call.
+
+                call_id,    % The name and arity of the predicate.
+                int         % The argument number (first arg == 1).
+            )
+
+    ;       umc_implicit(
+                % A unification added by some syntactic transformation
+                % (e.g. for handling state variables).
+
+                string      % Used to explain the source of the unification.
+            ).
+
+:- type call_id
+    --->    plain_call_id(pf_sym_name_pred_form_arity)
+            % The call is a plain call, and the argument specifies the callee.
+    ;       generic_call_id(var_name_source, generic_call).
+            % The call is a generic call, specified by the second argument.
+            % If it is a higher order call, then the second argument will
+            % specify the variable holding the identity of the callee.
+            % The var_name_source is needed to convert this variable
+            % to a printable name in diagnotics.
+
+    % A unify_sub_context describes the location of sub-unification
+    % (which is unifying one argument of a term) within a particular
+    % unification.
+    %
+:- type unify_sub_context
+    --->    unify_sub_context(
+                cons_id,    % The functor.
+                int         % The argument number (first arg == 1).
+            ).
+
+%---------------------------------------------------------------------------%
 %
-% Information for switches.
+% The types needed to represent plain calls.
+%
+
+    % For all of our current builtin predicates and functions
+    % (such as those that do arithmetic), we generate inline instructions.
+    % In the past, we had some builtins (such as call/N) for which
+    % we generated a call to an out-of-line procedure, but there is
+    % no prospect of any new builtins ever requiring that treatment.
+    % Therefore currently all builtins are inline builtins.
+    %
+:- type builtin_state
+    --->    inline_builtin
+    ;       not_builtin.
+
+    % A call_unify_context is used for unifications that get turned into
+    % calls to out-of-line unification predicates, and functions. It records
+    % which part of the original source code the unification (which may be
+    % a function application) occurred in.
+    %
+:- type call_unify_context
+    --->    call_unify_context(
+                prog_var,       % The LHS of the unification.
+                unify_rhs,      % The RHS of the unification.
+                unify_context   % The context of the unification.
+            ).
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent generic calls.
+%
+
+:- type generic_call
+    --->    higher_order(
+                ho_call_var     :: prog_var,
+                ho_call_purity  :: purity,
+
+                % call/N (pred) or apply/N (func)
+                ho_call_kind    :: pred_or_func,
+
+                % The number of arguments (including the higher-order term)
+                ho_call_arity   :: pred_form_arity,
+
+                % If this higher order call occurs in the source code,
+                % was it written as using a variable as the predicate or
+                % function name (using the syntax P(A, B, C) for predicate
+                % calls or C = F(A, B) for functions), or was it written
+                % using the builtin operations call(P, A, B, C) or
+                % C = apply(F, A, B)? We use this information to decide
+                % whether to refer to e.g. as being argument 1, or argument 2.
+                %
+                % If this higher order call does not occur in the source
+                % code, then the value of this field does not matter, since
+                % it *should* be constructed free of any errors.
+                ho_syntax       :: higher_order_syntax
+            )
+
+    ;       class_method(
+                % The variable that holds the typeclass_info for the instance.
+                method_tci      :: prog_var,
+
+                % The number of the called method.
+                method_num      :: method_proc_num,
+
+                % The name and arity of the class.
+                method_class_id :: class_id,
+
+                % The name of the called method.
+                method_name     :: pf_sym_name_pred_form_arity
+            )
+
+    ;       event_call(
+                event_name      :: string
+            )
+
+    ;       cast(
+                % A cast generic_call with two arguments, Input and Output,
+                % assigns `Input' to `Output', performing a cast of this kind.
+                cast_kind       :: cast_kind
+            ).
+
+:- type higher_order_syntax
+    --->    hos_call_or_apply   % call(Pred, A, B, C) or apply(Func, A, B, C)
+    ;       hos_var.            % Pred(A, B, C)       or Func(A, B, C)
+
+    % The various kinds of casts that we can do.
+    %
+:- type cast_kind
+    --->    unsafe_type_cast
+            % An unsafe type cast between ground values.
+
+    ;       unsafe_type_inst_cast
+            % An unsafe type and inst cast.
+
+    ;       equiv_type_cast
+            % A safe type cast between equivalent types, in either direction.
+
+    ;       exists_cast
+            % A safe cast between an internal type_info or typeclass_info
+            % variable, for which the bindings of existential type variables
+            % are known statically, to an external type_info or typeclass_info
+            % head variable, for which they are not. These are used instead of
+            % assignments so that the simplification pass does not attempt
+            % to merge the two variables, which could lead to inconsistencies
+            % in the rtti_varmaps.
+
+    ;       subtype_coerce.
+            % A coerce expression.
+
+:- type generic_call_id
+    --->    gcid_higher_order(purity, pred_or_func, pred_form_arity)
+    ;       gcid_class_method(class_id, pf_sym_name_pred_form_arity)
+    ;       gcid_event_call(string)
+    ;       gcid_cast(cast_kind).
+
+    % Get a description of a generic_call goal.
+    %
+:- pred generic_call_to_id(generic_call::in, generic_call_id::out) is det.
+
+    % Determine whether a generic_call is calling
+    % a predicate or a function.
+    %
+:- func generic_call_pred_or_func(generic_call) = pred_or_func.
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent foreign procedure calls.
+%
+
+    % In the usual case, the arguments of a foreign_proc are the arguments
+    % of the call to the predicate whose implementation is in the foreign
+    % language. Each such argument is described by a foreign_arg.
+    %
+    % The arg_var field gives the identity of the actual parameter.
+    %
+    % The arg_name_mode field gives the foreign variable name and the original
+    % mode declaration for the argument; a no means that the argument is not
+    % used by the foreign code. (In particular, the type_info variables
+    % introduced by polymorphism.m might be represented in this way.)
+    %
+    % The arg_type field gives the original types of the arguments.
+    % (With inlining, the actual type may be an instance of the original type.)
+    %
+:- type foreign_arg
+    --->    foreign_arg(
+                arg_var         :: prog_var,
+                arg_name_mode   :: maybe(foreign_arg_name_mode),
+                arg_type        :: mer_type,
+                arg_box_policy  :: box_policy
+            ).
+
+:- func foreign_arg_var(foreign_arg) = prog_var.
+:- func foreign_arg_maybe_name_mode(foreign_arg) =
+    maybe(foreign_arg_name_mode).
+:- func foreign_arg_type(foreign_arg) = mer_type.
+:- func foreign_arg_box(foreign_arg) = box_policy.
+
+:- pred make_foreign_args(list(prog_var)::in,
+    list(foreign_arg_name_mode_box)::in, list(mer_type)::in,
+    list(foreign_arg)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent conjunctions.
+%
+
+:- type conj_type
+    --->    plain_conj
+    ;       parallel_conj.
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent switches.
 %
 
 :- type case
@@ -1235,11 +882,6 @@
                 % The code of the switch arm.
                 case_goal                   :: hlds_goal
             ).
-
-    % An id number that uniquely identifies each tagged case.
-    % We assign tagged cases consecutive id numbers, starting at zero.
-:- type case_id
-    --->    case_id(int).
 
 :- type tagged_case
     --->    tagged_case(
@@ -1255,13 +897,415 @@
                 tagged_case_goal            :: hlds_goal
             ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+    % An id number that uniquely identifies each tagged case.
+    % We assign tagged cases consecutive id numbers, starting at zero.
+:- type case_id
+    --->    case_id(int).
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent scopes.
+%
+
+:- type scope_reason
+    --->    exist_quant(list(prog_var), quant_creator)
+            % The goal inside the scope construct has the listed variables
+            % existentially quantified. The compiler may do whatever
+            % preserves this fact.
+
+    ;       disable_warnings(goal_warning, list(goal_warning))
+            % Do not generate any of the listed (one or more) warnings
+            % for any goal inside this scope.
+
+    ;       promise_solutions(list(prog_var), promise_solutions_kind)
+            % Even though the code inside the scope may have multiple
+            % solutions, the creator of the scope (which may be the user
+            % or a compiler pass) promises that all these solutions are
+            % equivalent relative to the relevant equality theory.
+            % (This need not be an equality theory known to the compiler.)
+            % The scope goal will therefore act as a single solution
+            % context, and the determinism of the scope() goal itself
+            % will indicate that it cannot succeed more than once.
+            %
+            % The promise is valid only if the list of outputs of the goal
+            % inside the scope is a subset of the variables listed here.
+            % If it is not valid, the compiler must emit an error message.
+
+    ;       promise_purity(purity)
+            % The goal inside the scope implements an interface of the
+            % specified purity, even if its implementation uses less pure
+            % components.
+            %
+            % Works the same way as a promise_pure or promise_semipure
+            % pragma, except that it applies to arbitrary goals and not
+            % just whole procedure bodies.
+
+    ;       require_detism(determinism)
+            % Require the wrapped subgoal to have the specified determinism.
+            % If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
+    ;       require_complete_switch(prog_var)
+            % Require the wrapped subgoal to be a switch on the given variable
+            % that has an arm for every function symbol that the variable
+            % could be bound to at this point in the code. If it does not,
+            % or if the wrapped subgoal is not a switch on the given variable,
+            % then report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
+    ;       require_switch_arms_detism(prog_var, determinism)
+            % Require the wrapped subgoal to be a switch on the given variable,
+            % and require every arm of that switch to have a determinism
+            % that promises at least as much as the specified determinism.
+            % If either condition is not satisfied, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
+    ;       commit(force_pruning)
+            % This scope exists to delimit a piece of code
+            % with at_most_many components but with no outputs,
+            % whose overall determinism is thus at_most_one,
+            % or a piece of code that cannot succeed but some of whose
+            % components are at_most_many (regardless of the number of
+            % outputs).
+            %
+            % If the argument is force_pruning, then the outer goal will
+            % succeed at most once even if the inner goal is impure.
+
+    ;       barrier(removable)
+            % The scope exists to prevent other compiler passes from
+            % arbitrarily moving computations in or out of the scope.
+            % This kind of scope can only be introduced by program
+            % transformations.
+            %
+            % The argument says whether other compiler passes are allowed
+            % to delete the scope.
+            %
+            % A non-removable explicit quantification may be introduced
+            % to keep related goals together where optimizations that
+            % separate the goals can only result in worse behaviour.
+            %
+            % A barrier says nothing about the determinism of either
+            % the inner or the outer goal, or about pruning.
+
+    ;       from_ground_term(prog_var, from_ground_term_kind)
+            % The goal inside the scope, which should be a conjunction,
+            % results from the conversion of one ground term to
+            % superhomogeneous form. The variable specifies what the
+            % compiler calls that ground term.
+            %
+            % This kind of scope is intended to be meaningful after
+            % mode analysis only if Kind = from_ground_term_construct.
+
+    ;       trace_goal(
+                trace_compiletime   :: maybe(trace_expr(trace_compiletime)),
+                trace_runtime       :: maybe(trace_expr(trace_runtime)),
+                trace_maybe_io      :: maybe(string),
+                trace_mutable_vars  :: list(trace_mutable_var_hlds),
+                trace_quant_vars    :: list(prog_var)
+            )
+            % The goal inside the scope is trace code that is executed only
+            % conditionally, and should have no effect on the semantics of
+            % the program even if executed.
+            %
+            % The trace goal is removed by simplification if the compile time
+            % condition isn't true. If it is true, the code generator will
+            % generate code that will execute the goal inside the scope
+            % only if the runtime condition is satisfied.
+            %
+            % The maybe_io and mutable_vars fields are only advisory in the
+            % HLDS, since they are fully processed when the corresponding goal
+            % in the parse tree is converted to HLDS.
+
+    ;       loop_control(
+                lc_lc_var               :: prog_var,
+                lc_lcs_var              :: prog_var,
+                lc_use_parent_stack     :: lc_use_parent_stack
+            ).
+            % The goal inside the scope will be spawned off because the loop
+            % control transformation has been applied to this predicate.
+            %
+            % The goal will be executed by a different context, and the code
+            % generator must use the parent stack pointer to communicate with
+            % the parent.
+            %
+            % lc_lc_var identifies the variable that points to the loop
+            % control structure.
+            %
+            % lc_lcs_var identifies the variable that points to the slot in the
+            % loop control structure that should be used to spawn off the work
+            % within this scope.
+
+%---------------------%
+
+    % Who created an existential quantification: the user, or the compiler?
+    % The distinction matters to warn_singletons in make_hlds_warn.m, which
+    %
+    % - wants to warn about "some [B] ( <only reference to A> ), but
+    % - wants NOT to warn about "some [A] ( <some reference to A> ).
+    %
+    % This means that treating a compiler-generated "some [A] ..." wrapper
+    % around some code could cause the compiler not to generate a warning
+    % that, based on the code seen by the user, it *should* generate.
+    %
+    % The code of make_hlds_warn.m runs during the make-the-HLDS phase
+    % of the compiler. There is, as of 2023 jun 9, no later phase of the
+    % compiler that cares about this distinction.
+:- type quant_creator
+    --->    user_quant
+    ;       compiler_quant.
+
+%---------------------%
+
+:- type promise_solutions_kind
+    --->    equivalent_solutions
+    ;       equivalent_solution_sets
+    ;       equivalent_solution_sets_arbitrary.
+
+%---------------------%
+
+:- type force_pruning
+    --->    do_not_force_pruning
+    ;       force_pruning.
+
+%---------------------%
+
+:- type removable
+    --->    removable
+    ;       not_removable.
+
+%---------------------%
+
+    % We classify each scope that we create from the expansion of a ground term
+    % above a certain size into one of these four categories.
+    % The categories are
+    %
+    % - from_ground_term_construct for scopes that construct a ground term,
+    % - from_ground_term_construct for scopes that take an existing ground
+    %   term and test whether it has a given shape,
+    % - from_ground_term_other for scopes that are neither construct nor
+    %   deconstruct in that they do not guarantee the invariants of either
+    %   (perhaps some parts of the term are matched and some parts are bound),
+    % - from_ground_term_initial for scopes that have not yet been classified
+    %   into one of the above three categories.
+    %
+    % Many parts of the compiler have special code for handling
+    % from_ground_term_construct scopes, code that avoids scanning the code
+    % inside the scope. This can be a very big win, since that code can be
+    % huge. To make this special casing possible, from_ground_term_construct
+    % scopes promise the following invariants.
+    %
+    % 1. The only nonlocal variable of the scope is the one listed in the
+    %    scope_reason.
+    % 2. The shape of the code inside the scope is a plain conjunction of
+    %    unifications, all of which have rhs_functor as their right hand side.
+    % 3. These unifications are construct unifications whose construct_how
+    %    field says construct_statically, and in which the nonlocals,
+    %    instmap_delta and determinism fields of the goal_info are
+    %    correctly filled in. The nonlocals will be all the variables in the
+    %    unification, the instmap delta will say that the value being
+    %    constructed is ground (not unique, because it is static), and the
+    %    determinism says that the goal is det. The goal_info of the
+    %    conjunction will be filled in similarly.
+    % 4. None of these unifications constructs a higher order value.
+    % 5. The unifications are ordered such that a variable constructed by
+    %    all unifications except the last occurs exactly once outside
+    %    its constructing unification, and that occurrence will be as a functor
+    %    argument of a later unification (bottom up order).
+    %
+    % From_ground_term_deconstruct scopes obey invariants 1 and 2, and they
+    % also obey invariant 6:
+    %
+    % 6. The unifications are ordered such that a variable on the LHS of
+    %    all unifications except the first occurs exactly once outside that
+    %    unification, as a functor argument on the RHS of an *earlier*
+    %    unification (top down order).
+    %
+    % From_ground_term_initial scopes obey invariant 1, and they obey weak
+    % forms of invariants 2 and 6. The difference is that some of the
+    % "unifications" may include things that look like function symbols
+    % but are in fact function calls. When typecheck.m discovers that this
+    % applies to a unification, it does not remove the scope or change its
+    % kind. The post_typecheck phase, executed as part of the purity pass,
+    % will eventually change the kind to from_ground_term_other.
+    %
+    % For now, we don't optimize from_ground_term_other scopes, so there are
+    % no invariants required of them.
+    %
+    % Up to the first invocation of mode analysis, all from_ground_term scopes
+    % will have kind from_ground_term_initial. After that, they will have
+    % one of the three other kinds.
+    %
+    % If any later compiler pass modifies a from_ground_term_construct scope
+    % in a way that invalidates these invariants, it must set the kind field
+    % of the scope to from_ground_term_other (or from_ground_term_deconstruct).
+    % If the original scope had the from_head feature, the code that does this
+    % must also attach that feature to all the subgoals of the modified scope,
+    % unless we can be sure that it is executed *after* switch detection,
+    % which is the only pass that looks for from_head features, and which looks
+    % in all scopes *except* from_ground_term_construct scopes.
+    %
+    % An alternative design would be to have the mode checker turn any scope
+    % that it currently keeps as from_ground_term_construct into a new kind
+    % of generic call, one which basically says "this goal binds this variable
+    % to this ground term", with the ground term represented as a ground term,
+    % not as a bunch of construction unifications. The advantage of this
+    % approach would be that we could delete the local variables of these
+    % scopes (of which there can be hundreds of thousands) from the maps stored
+    % in the fields of the pred_info and proc_info (such as the varset and the
+    % var_types), making lookups and other operations on those maps
+    % significantly faster. The drawback would be the need for totally new code
+    % in most parts of the compiler to handle this new kind of goal.
+    % Using from_ground_term_construct, on the other hand, allows us to keep
+    % using the existing code for scopes in e.g. the type checker and the code
+    % generator. Because of this tradeoff, we currently *do* replace
+    % from_ground_term_construct scopes with construct unification using
+    % a ground_term_const cons_id, but only during the simplification pass
+    % after semantic analysis, and only if option settings allow this
+    % replacement.
+    %
+:- type from_ground_term_kind
+    --->    from_ground_term_initial
+    ;       from_ground_term_construct
+    ;       from_ground_term_deconstruct
+    ;       from_ground_term_other.
+
+%---------------------%
+
+:- type trace_mutable_var_hlds
+    --->    trace_mutable_var_hlds(
+                tmvh_mutable_name       :: string,
+                tmvh_state_var_name     :: string
+            ).
+
+%---------------------%
+
+:- type lc_use_parent_stack
+    --->    lc_use_parent_stack_frame
+    ;       lc_create_frame_on_child_stack.
+
+%---------------------------------------------------------------------------%
+%
+% The types needed to represent shorthand goals.
+%
+
+
+    % These `shorthand' goals are implemented by HLDS --> HLDS transformations
+    % that replaces them with equivalent non-shorthand goals.
+    %
+:- type shorthand_goal_expr
+    --->    bi_implication(
+                % bi-implication (A <=> B)
+                %
+                % Note that ordinary implications (A => B) and reverse
+                % implications (A <= B) are expanded out before we construct
+                % the HLDS. We cannot do that for bi-implications, because
+                % if expansion of bi-implications is done before implicit
+                % quantification, then the quantification would be wrong.
+                %
+                % bi_implications are expanded out by quantification.m.
+
+                hlds_goal,
+                hlds_goal
+            )
+
+    ;       atomic_goal(
+                % An atomic goal that will be executed atomically against
+                % all running threads using the stm system.
+
+                % The type of atomic goal. Either a top level atomic goal,
+                % or a nested atomic goal. This isn't known until after
+                % typechecking.
+                atomic_goal_type    :: atomic_goal_type,
+
+                % The variables representing the initial and final versions
+                % of the outer state. For top level atomic goals, of type
+                % io.state; for nested atomic goals, of type stm_builtin.stm.
+                atomic_outer        :: atomic_interface_vars,
+
+                % The variables representing the initial and final versions
+                % of the inner state (always of type stm_builtin.stm).
+                atomic_inner        :: atomic_interface_vars,
+
+                % List of output variables specified with `var(...)`.
+                % These variables should be free when the atomic goal
+                % is started and ground when the atomic goal is complete.
+                atomic_output_vars  :: maybe(list(prog_var)),
+
+                % The main atomic transaction goal. If any or_else goals
+                % also exist, this goal is the first or_else alternative.
+                atomic_main_goal    :: hlds_goal,
+
+                % Any later or_else alternative goals.
+                orelse_alternatives :: list(hlds_goal),
+
+                % The same as atomic_inner, but for each corresponding goal
+                % in orelse_alternatives. Begins as an empty list, but is
+                % filled in when quantification renames the inner stm state
+                % variables apart in each of the or_else alternatives.
+                orelse_inners       :: list(atomic_interface_vars)
+            )
+
+    ;       try_goal(
+                % A try goal.
+
+                % The variables holding the initial and final I/O states for
+                % the goal to be executed in the `try' proper, i.e. not
+                % inclusive of the I/O states that may be in the arms following
+                % the try. Will be `no' if no `io(_)' component was specified.
+                try_maybe_io        :: maybe(try_io_state_vars),
+
+                % The variable that will hold the result of the `try' or
+                % `try_io' call.
+                try_result_var      :: prog_var,
+
+                % A "pre-transformed" version of the entire try goal.
+                % See try_expand.m for details.
+                try_goal            :: hlds_goal
+            ).
+
+%---------------------%
+
+    % If an atomic goal has type unknown_atomic_goal_type, then the conversion
+    % predicates to and from the inner variables have not been added yet to the
+    % main and orelse goals. If the type is top_level_atomic_goal or
+    % nested_atomic_goal, then the conversion predicates *have* been added.
+:- type atomic_goal_type
+    --->    unknown_atomic_goal_type
+    ;       top_level_atomic_goal
+    ;       nested_atomic_goal.
+
+:- type atomic_interface_vars
+    --->    atomic_interface_vars(
+                atomic_initial  :: prog_var,
+                atomic_final    :: prog_var
+            ).
+
+%---------------------%
+
+:- type try_io_state_vars
+    --->    try_io_state_vars(
+                try_io_initial  :: prog_var,
+                try_io_final    :: prog_var
+            ).
+
+:- type catch_part
+    --->    catch_part(
+                catch_expr  :: hlds_goal_expr,
+                catch_goal  :: hlds_goal
+            ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Information for all kinds of goals.
 %
 
 :- type hlds_goal_info.
+
+%---------------------------------------------------------------------------%
 
     % Stuff specific to a back-end. At the moment, only the LLDS back-end
     % annotates the HLDS.
@@ -1271,6 +1315,8 @@
                 llds_code_gen           :: llds_code_gen_details
             ).
 
+%---------------------%
+
     % This type stores the possible values of a higher order variable
     % at a particular point, as determined by the closure analysis
     % (see closure_analysis.m.) If a variable does not have an entry
@@ -1278,53 +1324,7 @@
     %
 :- type higher_order_value_map == map(prog_var, set(pred_proc_id)).
 
-:- type rbmm_goal_info
-    --->    rbmm_goal_info(
-                % The first three fields partition the nonlocal variables
-                % of the goal that represent regions.
-                %
-                % - The first gives the set of regions that are created
-                %   by code inside the goal.
-                % - The second gives the set of regions that were created
-                %   before the goal, and are removed (though not necessarily
-                %   destroyed) by code inside the goal.
-                % - The third gives the set of regions that were created before
-                %   the goal and are *not* removed by code inside the goal.
-
-                created_regions         :: set(prog_var),
-                removed_regions         :: set(prog_var),
-                carried_regions         :: set(prog_var),
-
-                % Regions that exist before the goal (i.e. removed or carried
-                % regions) that may be allocated into inside the goal.
-                allocated_into_regions  :: set(prog_var),
-
-                % Regions that exist before the goal (i.e. removed or carried
-                % regions) that may be read from inside the goal.
-                used_regions            :: set(prog_var)
-            ).
-
-:- func rbmm_info_init = rbmm_goal_info.
-
-:- type mode_constr_goal_info
-    --->    mode_constr_goal_info(
-                % Inst_graph nodes that are reachable from variables
-                % that occur in the goal.
-                mci_occurring_vars          :: set_of_progvar,
-
-                % Inst_graph nodes produced by this goal.
-                mci_producing_vars          :: set_of_progvar,
-
-                % Inst_graph nodes consumed by this goal.
-                mci_consuming_vars          :: set_of_progvar,
-
-                % The variables that this goal makes visible.
-                mci_make_visible_vars       :: set_of_progvar,
-
-                % The variables that this goal needs to be visible
-                % before it is executed.
-                mci_need_visible_vars       :: set_of_progvar
-            ).
+%---------------------%
 
     % Information about compile-time garbage collection.
 :- type ctgc_goal_info
@@ -1430,7 +1430,59 @@
 
 :- type missed_message == string.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+:- type rbmm_goal_info
+    --->    rbmm_goal_info(
+                % The first three fields partition the nonlocal variables
+                % of the goal that represent regions.
+                %
+                % - The first gives the set of regions that are created
+                %   by code inside the goal.
+                % - The second gives the set of regions that were created
+                %   before the goal, and are removed (though not necessarily
+                %   destroyed) by code inside the goal.
+                % - The third gives the set of regions that were created before
+                %   the goal and are *not* removed by code inside the goal.
+
+                created_regions         :: set(prog_var),
+                removed_regions         :: set(prog_var),
+                carried_regions         :: set(prog_var),
+
+                % Regions that exist before the goal (i.e. removed or carried
+                % regions) that may be allocated into inside the goal.
+                allocated_into_regions  :: set(prog_var),
+
+                % Regions that exist before the goal (i.e. removed or carried
+                % regions) that may be read from inside the goal.
+                used_regions            :: set(prog_var)
+            ).
+
+:- func rbmm_info_init = rbmm_goal_info.
+
+%---------------------%
+
+:- type mode_constr_goal_info
+    --->    mode_constr_goal_info(
+                % Inst_graph nodes that are reachable from variables
+                % that occur in the goal.
+                mci_occurring_vars          :: set_of_progvar,
+
+                % Inst_graph nodes produced by this goal.
+                mci_producing_vars          :: set_of_progvar,
+
+                % Inst_graph nodes consumed by this goal.
+                mci_consuming_vars          :: set_of_progvar,
+
+                % The variables that this goal makes visible.
+                mci_make_visible_vars       :: set_of_progvar,
+
+                % The variables that this goal needs to be visible
+                % before it is executed.
+                mci_need_visible_vars       :: set_of_progvar
+            ).
+
+%---------------------%
 
     % Information about the goal used by the deep profiler.
     %
@@ -1469,7 +1521,7 @@
     --->    port_counts_give_coverage_after
     ;       no_port_counts_give_coverage_after.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Access predicates for the hlds_goal_info data structure.
 % For documentation on the meaning of the fields that these
@@ -1558,7 +1610,7 @@
 :- pred goal_info_set_code_gen_nonlocals(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type contains_trace_goal
     --->    contains_trace_goal
@@ -1598,7 +1650,7 @@
     hlds_goal::in, hlds_goal::out) is det.
 :- pred goal_has_feature(hlds_goal::in, goal_feature::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The rename_var* predicates take a structure and a mapping from var -> var
 % and apply that translation. If a var in the input structure does not
@@ -1651,135 +1703,17 @@
 :- pred incremental_rename_vars_in_goal(prog_var_renaming::in,
     incremental_rename_map::in, hlds_goal::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
-%
-% Miscellaneous utility procedures for dealing with HLDS goals.
-%
-
-    % Convert a goal to a list of conjuncts.
-    % If the goal is a conjunction, then return its conjuncts,
-    % otherwise return the goal as a singleton list.
-    %
-:- pred goal_to_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
-
-    % Convert a goal to a list of parallel conjuncts.
-    % If the goal is a parallel conjunction, then return its conjuncts,
-    % otherwise return the goal as a singleton list.
-    %
-:- pred goal_to_par_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
-
-    % Convert a goal to a list of disjuncts.
-    % If the goal is a disjunction, then return its disjuncts,
-    % otherwise return the goal as a singleton list.
-    %
-:- pred goal_to_disj_list(hlds_goal::in, list(hlds_goal)::out) is det.
-
-    % Convert a list of conjuncts to a goal.
-    % If the list contains only one goal, then return that goal,
-    % otherwise return the conjunction of the conjuncts,
-    % with the specified goal_info.
-    %
-:- pred conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
-    hlds_goal::out) is det.
-
-    % Convert a list of parallel conjuncts to a goal.
-    % If the list contains only one goal, then return that goal,
-    % otherwise return the parallel conjunction of the conjuncts,
-    % with the specified goal_info.
-    %
-:- pred par_conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
-    hlds_goal::out) is det.
-
-    % Convert a list of disjuncts to a goal.
-    % If the list contains only one goal, then return that goal,
-    % otherwise return the disjunction of the disjuncts,
-    % with the specified goal_info.
-    %
-:- pred disj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
-    hlds_goal::out) is det.
-
-    % Takes a goal and a list of goals, and conjoins them
-    % (with a potentially blank goal_info).
-    %
-:- pred conjoin_goal_and_goal_list(hlds_goal::in, list(hlds_goal)::in,
-    hlds_goal::out) is det.
-
-    % Conjoin two goals (with a potentially blank goal_info).
-    %
-:- pred conjoin_goals(hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
-
-    % Negate a goal, eliminating double negations as we go.
-    %
-:- pred negate_goal(hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
-
-    % Return the union of all the nonlocals of a list of goals.
-    %
-:- pred goal_list_nonlocals(list(hlds_goal)::in, set_of_progvar::out) is det.
-
-    % Compute the instmap_delta resulting from applying
-    % all the instmap_deltas of the given goals.
-    %
-:- pred goal_list_instmap_delta(list(hlds_goal)::in, instmap_delta::out)
-    is det.
-
-    % Compute the determinism of a list of goals.
-    %
-:- pred goal_list_determinism(list(hlds_goal)::in, determinism::out) is det.
-
-    % Compute the purity of a list of goals.
-:- pred goal_list_purity(list(hlds_goal)::in, purity::out) is det.
-
-    % Change the contexts of the goal_infos of all the sub-goals
-    % of the given goal. This is used to ensure that error messages
-    % for automatically generated unification procedures have a useful
-    % context.
-    %
-:- pred set_goal_contexts(prog_context::in, hlds_goal::in, hlds_goal::out)
-    is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module parse_tree.prog_detism.
 
 :- import_module io.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
-
-get_hlds_goal_expr(Goal) = Goal ^ hg_expr.
-get_hlds_goal_info(Goal) = Goal ^ hg_info.
-
-foreign_arg_var(Arg) = Arg ^ arg_var.
-foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.
-foreign_arg_type(Arg) = Arg ^ arg_type.
-foreign_arg_box(Arg) = Arg ^ arg_box_policy.
-
-make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
-    ( if
-        Vars = [Var | VarsTail],
-        NamesModesBoxes = [NameModeBox | NamesModesBoxesTail],
-        Types = [Type | TypesTail]
-    then
-        make_foreign_args(VarsTail, NamesModesBoxesTail, TypesTail, ArgsTail),
-        NameModeBox = foreign_arg_name_mode_box(MaybeNameMode, Box),
-        Arg = foreign_arg(Var, MaybeNameMode, Type, Box),
-        Args = [Arg | ArgsTail]
-    else if
-        Vars = [],
-        NamesModesBoxes = [],
-        Types = []
-    then
-        Args = []
-    else
-        unexpected($pred, "unmatched lists")
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates dealing with generic_calls.
 %
@@ -1812,12 +1746,42 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
         PredOrFunc = pf_predicate
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Predicates dealing with foreign procedure calls.
+%
+
+foreign_arg_var(Arg) = Arg ^ arg_var.
+foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.
+foreign_arg_type(Arg) = Arg ^ arg_type.
+foreign_arg_box(Arg) = Arg ^ arg_box_policy.
+
+make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
+    ( if
+        Vars = [Var | VarsTail],
+        NamesModesBoxes = [NameModeBox | NamesModesBoxesTail],
+        Types = [Type | TypesTail]
+    then
+        make_foreign_args(VarsTail, NamesModesBoxesTail, TypesTail, ArgsTail),
+        NameModeBox = foreign_arg_name_mode_box(MaybeNameMode, Box),
+        Arg = foreign_arg(Var, MaybeNameMode, Type, Box),
+        Args = [Arg | ArgsTail]
+    else if
+        Vars = [],
+        NamesModesBoxes = [],
+        Types = []
+    then
+        Args = []
+    else
+        unexpected($pred, "unmatched lists")
+    ).
+
+%---------------------------------------------------------------------------%
 
 rbmm_info_init =
     rbmm_goal_info(set.init, set.init, set.init, set.init, set.init).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Information stored with all kinds of goals.
 %
@@ -1920,7 +1884,7 @@ rbmm_info_init =
 %  8    1761371   2616953  40.229%  context
 %  9        174         3  98.305%  ho_values
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma inline(pred(goal_info_init/1)).
 
@@ -1998,7 +1962,7 @@ impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     goal_info_add_feature(feature_not_impure_for_determinism,
         GoalInfo0, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_info_get_determinism(GoalInfo) = X :-
     X = GoalInfo ^ gi_determinism.
@@ -2077,7 +2041,7 @@ goal_info_set_maybe_mode_constr(X, !GoalInfo) :-
 goal_info_set_maybe_dp_info(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_maybe_dp := X.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
@@ -2088,7 +2052,7 @@ goal_info_get_code_gen_nonlocals(GoalInfo) =
 goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
     goal_info_set_nonlocals(NonLocals, !GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 worst_contains_trace(contains_trace_goal, contains_trace_goal) =
     contains_trace_goal.
@@ -2132,7 +2096,7 @@ goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal) :-
         ContainsTraceGoal = contains_no_trace_goal
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_info_add_feature(NewFeature, !GoalInfo) :-
     Features0 = goal_info_get_features(!.GoalInfo),
@@ -2158,7 +2122,7 @@ goal_info_has_feature(GoalInfo, Feature) :-
     Features = goal_info_get_features(GoalInfo),
     set.member(Feature, Features).
 
-%----------------%
+%---------------------%
 
 goal_add_feature(NewFeature, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
@@ -2178,7 +2142,7 @@ goal_remove_feature(OldFeature, Goal0, Goal) :-
 goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Rename predicates.
 %
@@ -2213,7 +2177,7 @@ rename_vars_in_cases(Must, Subn, [Case0 | Cases0], [Case | Cases]) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     rename_vars_in_cases(Must, Subn, Cases0, Cases).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
     (
@@ -2397,7 +2361,7 @@ rename_var_in_call_unify_context(Must, Subn,
         MaybeCallUnifyContext = yes(CallUnifyContext)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
     !.GoalInfo = goal_info(Detism, Purity, InstMapDelta0, NonLocals0,
@@ -2500,7 +2464,7 @@ rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
             FieldNeedUpdates)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Incremental rename predicates.
 %
@@ -2576,7 +2540,7 @@ incremental_rename_vars_in_cases(Subn, SubnUpdates,
     Case = case(MainConsId, OtherConsIds, Goal),
     incremental_rename_vars_in_cases(Subn, SubnUpdates, Cases0, Cases).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred incremental_rename_vars_in_goal_expr(prog_var_renaming::in,
     incremental_rename_map::in,
@@ -2750,7 +2714,7 @@ incremental_rename_var_in_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
             NonLocals, VarsModes, Det, Goal)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates used to implement both incremental and non-incremental renames.
 %
@@ -2885,200 +2849,6 @@ rename_generic_call(Must, Subn, Call0, Call) :-
 %     rename_var(Must, Subn, Var, NewVar),
 %     rename_var_pair_list(Must, Subn, VarItems, NewVarItems).
 
-%-----------------------------------------------------------------------------%
-%
-% Miscellaneous utility procedures for dealing with HLDS goals.
-%
-
-goal_to_conj_list(Goal, ConjList) :-
-    ( if Goal = hlds_goal(conj(plain_conj, List), _) then
-        ConjList = List
-    else
-        ConjList = [Goal]
-    ).
-
-goal_to_par_conj_list(Goal, ConjList) :-
-    ( if Goal = hlds_goal(conj(parallel_conj, List), _) then
-        ConjList = List
-    else
-        ConjList = [Goal]
-    ).
-
-goal_to_disj_list(Goal, DisjList) :-
-    ( if Goal = hlds_goal(disj(List), _) then
-        DisjList = List
-    else
-        DisjList = [Goal]
-    ).
-
-conj_list_to_goal(ConjList, GoalInfo, Goal) :-
-    ( if ConjList = [Goal0] then
-        Goal = Goal0
-    else
-        Goal = hlds_goal(conj(plain_conj, ConjList), GoalInfo)
-    ).
-
-par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
-    ( if ConjList = [Goal0] then
-        Goal = Goal0
-    else
-        Goal = hlds_goal(conj(parallel_conj, ConjList), GoalInfo)
-    ).
-
-disj_list_to_goal(DisjList, GoalInfo, Goal) :-
-    ( if DisjList = [Goal0] then
-        Goal = Goal0
-    else
-        Goal = hlds_goal(disj(DisjList), GoalInfo)
-    ).
-
-conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    ( if GoalExpr0 = conj(plain_conj, GoalList0) then
-        GoalList = GoalList0 ++ Goals,
-        GoalExpr = conj(plain_conj, GoalList)
-    else
-        GoalExpr = conj(plain_conj, [Goal0 | Goals])
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo0).
-
-conjoin_goals(Goal1, Goal2, Goal) :-
-    ( if Goal2 = hlds_goal(conj(plain_conj, Goals2), _) then
-        GoalList = Goals2
-    else
-        GoalList = [Goal2]
-    ),
-    conjoin_goal_and_goal_list(Goal1, GoalList, Goal).
-
-negate_goal(Goal, GoalInfo, NegatedGoal) :-
-    ( if
-        % Eliminate double negations.
-        Goal = hlds_goal(negation(Goal1), _)
-    then
-        NegatedGoal = Goal1
-    else if
-        % Convert negated conjunctions of negations into disjunctions.
-        Goal = hlds_goal(conj(plain_conj, NegatedGoals), _),
-        all_negated(NegatedGoals, UnnegatedGoals)
-    then
-        NegatedGoal = hlds_goal(disj(UnnegatedGoals), GoalInfo)
-    else
-        NegatedGoal = hlds_goal(negation(Goal), GoalInfo)
-    ).
-
-:- pred all_negated(list(hlds_goal)::in, list(hlds_goal)::out) is semidet.
-
-all_negated([], []).
-all_negated([hlds_goal(negation(Goal), _) | NegatedGoals], [Goal | Goals]) :-
-    all_negated(NegatedGoals, Goals).
-all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
-        Goals) :-
-    all_negated(NegatedConj, Goals1),
-    all_negated(NegatedGoals, Goals2),
-    Goals = Goals1 ++ Goals2.
-
-%-----------------------------------------------------------------------------%
-
-goal_list_nonlocals(Goals, NonLocals) :-
-    GoalNonLocals = list.map(goal_get_nonlocals, Goals),
-    set_of_var.union_list(GoalNonLocals, NonLocals).
-
-goal_list_instmap_delta(Goals, InstMapDelta) :-
-    ApplyDelta =
-        ( pred(Goal::in, Delta0::in, Delta::out) is det :-
-            Goal = hlds_goal(_, GoalInfo),
-            Delta1 = goal_info_get_instmap_delta(GoalInfo),
-            instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta)
-        ),
-    instmap_delta_init_reachable(InstMapDelta0),
-    list.foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
-
-goal_list_determinism(Goals, Determinism) :-
-    ComputeDeterminism =
-        ( pred(Goal::in, Det0::in, Det::out) is det :-
-            Goal = hlds_goal(_, GoalInfo),
-            Det1 = goal_info_get_determinism(GoalInfo),
-            det_conjunction_detism(Det0, Det1, Det)
-        ),
-    list.foldl(ComputeDeterminism, Goals, detism_det, Determinism).
-
-goal_list_purity(Goals, GoalsPurity) :-
-    ComputePurity =
-        ( pred(Goal::in, Purity0::in, Purity::out) is det :-
-            Goal = hlds_goal(_, GoalInfo),
-            Purity1 = goal_info_get_purity(GoalInfo),
-            worst_purity(Purity0, Purity1) = Purity
-        ),
-    list.foldl(ComputePurity, Goals, purity_pure, GoalsPurity).
-
-%-----------------------------------------------------------------------------%
-
-set_goal_contexts(Context, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    (
-        GoalExpr0 = conj(ConjType, SubGoals0),
-        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
-        GoalExpr = conj(ConjType, SubGoals)
-    ;
-        GoalExpr0 = disj(SubGoals0),
-        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
-        GoalExpr = disj(SubGoals)
-    ;
-        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        set_goal_contexts(Context, Cond0, Cond),
-        set_goal_contexts(Context, Then0, Then),
-        set_goal_contexts(Context, Else0, Else),
-        GoalExpr = if_then_else(Vars, Cond, Then, Else)
-    ;
-        GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map(set_case_contexts(Context), Cases0, Cases),
-        GoalExpr = switch(Var, CanFail, Cases)
-    ;
-        GoalExpr0 = scope(Reason, SubGoal0),
-        set_goal_contexts(Context, SubGoal0, SubGoal),
-        GoalExpr = scope(Reason, SubGoal)
-    ;
-        GoalExpr0 = negation(SubGoal0),
-        set_goal_contexts(Context, SubGoal0, SubGoal),
-        GoalExpr = negation(SubGoal)
-    ;
-        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = generic_call(_, _, _, _, _)
-        ; GoalExpr0 = unify(_, _, _, _, _)
-        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = shorthand(ShortHand0),
-        (
-            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal0, OrElseGoals0, OrElseInners),
-            set_goal_contexts(Context, MainGoal0, MainGoal),
-            list.map(set_goal_contexts(Context), OrElseGoals0, OrElseGoals),
-            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-                MainGoal, OrElseGoals, OrElseInners)
-        ;
-            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            set_goal_contexts(Context, SubGoal0, SubGoal),
-            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
-        ;
-            ShortHand0 = bi_implication(LHS0, RHS0),
-            set_goal_contexts(Context, LHS0, LHS),
-            set_goal_contexts(Context, RHS0, RHS),
-            ShortHand = bi_implication(LHS, RHS)
-        ),
-        GoalExpr = shorthand(ShortHand)
-    ),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-:- pred set_case_contexts(prog_context::in, case::in, case::out) is det.
-
-set_case_contexts(Context, Case0, Case) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    set_goal_contexts(Context, Goal0, Goal),
-    Case = case(MainConsId, OtherConsIds, Goal).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_goal.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

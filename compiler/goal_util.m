@@ -10,7 +10,8 @@
 % File: goal_util.m.
 % Main author: conway.
 %
-% This module provides various utility procedures for manipulating HLDS goals.
+% Utility operations dealing with single goals.
+% (Utility operations dealing with lists of goals are in goal_list_util.m.)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -143,6 +144,12 @@
 
 %---------------------------------------------------------------------------%
 
+:- type is_first_disjunct
+    --->    is_first_disjunct
+    ;       is_not_first_disjunct.
+
+%---------------------------------------------------------------------------%
+
 :- type is_leaf
     --->    is_leaf
     ;       is_not_leaf.
@@ -178,20 +185,6 @@
     % Return an indication of the size of the list of clauses.
     %
 :- pred clause_list_size(list(clause)::in, int::out) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Create a conjunction of the specified type using the specified two goals.
-    % This fills in the hlds_goal_info.
-    %
-:- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in,
-    hlds_goal::out) is det.
-
-    % Create a conjunction of the specified type using the specified goals,
-    % This fills in the hlds_goal_info.
-    %
-:- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
-    hlds_goal::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -248,6 +241,22 @@
 
 :- pred foreign_proc_uses_variable(pragma_foreign_proc_impl::in, string::in)
     is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % Negate a goal, eliminating double negations as we go.
+    %
+:- pred negate_goal(hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Change the contexts of the goal_infos of all the sub-goals
+    % of the given goal. This is used to ensure that error messages
+    % for automatically generated unification procedures have a useful
+    % context.
+    %
+:- pred set_goal_contexts(prog_context::in, hlds_goal::in, hlds_goal::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -666,35 +675,6 @@ goal_expr_size(GoalExpr, Size) :-
 
 %---------------------------------------------------------------------------%
 
-create_conj(GoalA, GoalB, Type, ConjGoal) :-
-    create_conj_from_list([GoalA, GoalB], Type, ConjGoal).
-
-create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
-    (
-        Conjuncts = [HeadGoal | TailGoals],
-        (
-            TailGoals = [ _ | _ ],
-            ConjGoalExpr = conj(ConjType, Conjuncts),
-            goal_list_nonlocals(Conjuncts, NonLocals),
-            goal_list_instmap_delta(Conjuncts, InstMapDelta),
-            goal_list_determinism(Conjuncts, Detism),
-            goal_list_purity(Conjuncts, Purity),
-            HeadGoal = hlds_goal(_, HeadGoalInfo),
-            Context = goal_info_get_context(HeadGoalInfo),
-            goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
-                ConjGoalInfo),
-            ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo)
-        ;
-            TailGoals = [],
-            ConjGoal = HeadGoal
-        )
-    ;
-        Conjuncts = [],
-        unexpected($pred, "empty conjunction")
-    ).
-
-%---------------------------------------------------------------------------%
-
 generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
         TIArgVars, NonTIArgVars, InstMapDelta0, ModeNo, Detism, Purity,
         Features, Context, Goal) :-
@@ -786,6 +766,103 @@ generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
 foreign_proc_uses_variable(Impl, VarName) :-
     Impl = fp_impl_ordinary(ForeignBody, _),
     string.sub_string_search(ForeignBody, VarName, _).
+
+%---------------------------------------------------------------------------%
+
+negate_goal(Goal, GoalInfo, NegatedGoal) :-
+    ( if
+        % Eliminate double negations.
+        Goal = hlds_goal(negation(Goal1), _)
+    then
+        NegatedGoal = Goal1
+    else if
+        % Convert negated conjunctions of negations into disjunctions.
+        Goal = hlds_goal(conj(plain_conj, NegatedGoals), _),
+        all_negated(NegatedGoals, UnnegatedGoals)
+    then
+        NegatedGoal = hlds_goal(disj(UnnegatedGoals), GoalInfo)
+    else
+        NegatedGoal = hlds_goal(negation(Goal), GoalInfo)
+    ).
+
+:- pred all_negated(list(hlds_goal)::in, list(hlds_goal)::out) is semidet.
+
+all_negated([], []).
+all_negated([hlds_goal(negation(Goal), _) | NegatedGoals], [Goal | Goals]) :-
+    all_negated(NegatedGoals, Goals).
+all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
+        Goals) :-
+    all_negated(NegatedConj, Goals1),
+    all_negated(NegatedGoals, Goals2),
+    Goals = Goals1 ++ Goals2.
+
+%---------------------------------------------------------------------------%
+
+set_goal_contexts(Context, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    (
+        GoalExpr0 = conj(ConjType, SubGoals0),
+        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
+        GoalExpr = conj(ConjType, SubGoals)
+    ;
+        GoalExpr0 = disj(SubGoals0),
+        list.map(set_goal_contexts(Context), SubGoals0, SubGoals),
+        GoalExpr = disj(SubGoals)
+    ;
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        set_goal_contexts(Context, Cond0, Cond),
+        set_goal_contexts(Context, Then0, Then),
+        set_goal_contexts(Context, Else0, Else),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        GoalExpr0 = switch(Var, CanFail, Cases0),
+        list.map(set_case_contexts(Context), Cases0, Cases),
+        GoalExpr = switch(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = scope(Reason, SubGoal0),
+        set_goal_contexts(Context, SubGoal0, SubGoal),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        set_goal_contexts(Context, SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal)
+    ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
+        ; GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal0, OrElseGoals0, OrElseInners),
+            set_goal_contexts(Context, MainGoal0, MainGoal),
+            list.map(set_goal_contexts(Context), OrElseGoals0, OrElseGoals),
+            ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
+                MainGoal, OrElseGoals, OrElseInners)
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            set_goal_contexts(Context, SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
+            ShortHand0 = bi_implication(LHS0, RHS0),
+            set_goal_contexts(Context, LHS0, LHS),
+            set_goal_contexts(Context, RHS0, RHS),
+            ShortHand = bi_implication(LHS, RHS)
+        ),
+        GoalExpr = shorthand(ShortHand)
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred set_case_contexts(prog_context::in, case::in, case::out) is det.
+
+set_case_contexts(Context, Case0, Case) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    set_goal_contexts(Context, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.goal_util.

@@ -169,6 +169,7 @@
 :- implementation.
 
 :- import_module hlds.assertion.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_reorder.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.

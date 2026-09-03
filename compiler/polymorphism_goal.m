@@ -46,6 +46,7 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_class.

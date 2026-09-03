@@ -43,6 +43,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.

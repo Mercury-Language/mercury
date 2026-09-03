@@ -54,6 +54,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_list_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc.
 :- import_module hlds.instmap.

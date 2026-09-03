@@ -47,6 +47,7 @@
 :- import_module check_hlds.find_bind_var.
 :- import_module check_hlds.scout_disjunctions.
 :- import_module check_hlds.switch_candidates.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_desc.

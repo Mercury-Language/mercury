@@ -42,7 +42,7 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.globals.

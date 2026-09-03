@@ -125,6 +125,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_list_util.
 :- import_module hlds.inst_lookup.
 :- import_module hlds.type_util.
 :- import_module mdbcomp.sym_name.

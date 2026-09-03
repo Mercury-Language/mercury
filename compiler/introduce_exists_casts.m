@@ -37,6 +37,7 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.

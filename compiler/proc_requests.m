@@ -106,6 +106,7 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_transform.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc.

@@ -168,6 +168,7 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_reorder.
 :- import_module hlds.goal_vars.
 :- import_module hlds.hlds_pred.

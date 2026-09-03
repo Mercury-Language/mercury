@@ -55,6 +55,7 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_reorder.
 :- import_module hlds.goal_util.
 :- import_module hlds.goal_vars.

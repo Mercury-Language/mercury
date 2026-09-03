@@ -98,9 +98,9 @@
 
 :- implementation.
 
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_refs.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.

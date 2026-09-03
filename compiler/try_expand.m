@@ -230,6 +230,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism_type_info.
+:- import_module hlds.goal_list_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
