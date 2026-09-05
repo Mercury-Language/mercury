@@ -607,7 +607,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --subtype-int2-2026-08-09 \
+            --input-mode-spec-2026-09-01 \
             --warn-include-and-non-include \
             --no-warn-unused-types \
             --no-ssdb \

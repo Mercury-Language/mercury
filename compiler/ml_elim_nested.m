@@ -475,6 +475,10 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma input_mode_spec(action, replace_in_mode, [hoist, chain]).
+
+%---------------------------------------------------------------------------%
+
 ml_elim_nested(Target, Action, MLDS0, MLDS) :-
     MLDS0 = mlds(ModuleName, Imports, GlobalData0, TypeDefns, EnumDefns,
         EnvDefns0, TableStructDefns, ProcDefns0, InitPreds, FinalPreds,
@@ -496,14 +500,10 @@ ml_elim_nested(Target, Action, MLDS0, MLDS) :-
         EnvDefns, TableStructDefns, ProcDefns, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums).
 
-:- pred ml_elim_nested_defns_in_funcs(mlds_target_lang, action,
-    mlds_module_name, list(mlds_function_defn),
-    cord(mlds_function_defn), cord(mlds_function_defn),
-    cord(mlds_env_defn), cord(mlds_env_defn)).
-:- mode ml_elim_nested_defns_in_funcs(in, in(hoist), in, in,
-    in, out, in, out) is det.
-:- mode ml_elim_nested_defns_in_funcs(in, in(chain), in, in,
-    in, out, in, out) is det.
+:- pred ml_elim_nested_defns_in_funcs(mlds_target_lang::in, action::in,
+    mlds_module_name::in, list(mlds_function_defn)::in,
+    cord(mlds_function_defn)::in, cord(mlds_function_defn)::out,
+    cord(mlds_env_defn)::in, cord(mlds_env_defn)::out) is det.
 
 ml_elim_nested_defns_in_funcs(_, _, _, [], !FuncDefnsCord, !ClassDefnsCord).
 ml_elim_nested_defns_in_funcs(Target, Action, ModuleName,
@@ -541,14 +541,10 @@ ml_elim_nested_defns_in_funcs(Target, Action, ModuleName,
     % Extract out the code to trace these variables, putting it in a function
     % whose address is stored in the shadow stack frame.
     %
-:- pred ml_elim_nested_defns_in_func(mlds_target_lang, action,
-    mlds_module_name, mlds_function_defn,
-    cord(mlds_function_defn), cord(mlds_function_defn),
-    cord(mlds_env_defn), cord(mlds_env_defn)).
-:- mode ml_elim_nested_defns_in_func(in, in(hoist), in, in,
-    in, out, in, out) is det.
-:- mode ml_elim_nested_defns_in_func(in, in(chain), in, in,
-    in, out, in, out) is det.
+:- pred ml_elim_nested_defns_in_func(mlds_target_lang::in, action::in,
+    mlds_module_name::in, mlds_function_defn::in,
+    cord(mlds_function_defn)::in, cord(mlds_function_defn)::out,
+    cord(mlds_env_defn)::in, cord(mlds_env_defn)::out) is det.
 
 ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         !FuncDefnsCord, !EnvDefnsCord) :-
@@ -595,7 +591,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
             % and the nested functions. Also generate the GC tracing function,
             % if Action = chain_gc_stack_frames.
             ml_create_env(Target, Action, EnvName, EnvId, Locals, Context,
-                ModuleName, Name, EnvDefn, EnvDefns, InitEnv,
+                ModuleName, Name, EnvDefn, EnvDefns, InitEnvStmts,
                 GCTraceFuncDefns),
             list.map_foldl(ml_insert_init_env(Action, EnvId),
                 NestedFuncs0, NestedFuncs,
@@ -631,7 +627,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 EnvPtrTypeName = elim_info_get_env_ptr_type_name(ElimInfo),
                 ml_maybe_copy_args(Action, ElimInfo, Arguments0,
                     FuncBodyStmt0, EnvId, EnvPtrTypeName, Context,
-                    _ArgsToCopy, CodeToCopyArgs),
+                    _ArgsToCopy, CopyArgsStmts),
 
                 % Insert code to unlink this stack frame before doing any tail
                 % calls or returning from the function, either explicitly
@@ -641,23 +637,24 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 % calls.
                 (
                     Action = hoist_nested_funcs,
-                    FuncBodyStmt2 = FuncBodyStmt1
+                    FuncBodyStmt2 = FuncBodyStmt1,
+                    UnchainFrameStmts = []
                 ;
                     Action = chain_gc_stack_frames,
                     add_unchain_stack_to_stmt(Action,
-                        FuncBodyStmt1, FuncBodyStmt2, ElimInfo, _ElimInfo)
-                ),
-                % Add a final unlink statement at the end of the function,
-                % if needed. This is only needed if the function has no
-                % return values -- if there is a return value, then the
-                % function must exit with an explicit return statement.
-                ( if
-                    Action = chain_gc_stack_frames,
-                    RetValues = []
-                then
-                    UnchainFrame = [ml_gen_unchain_frame(Context, ElimInfo)]
-                else
-                    UnchainFrame = []
+                        FuncBodyStmt1, FuncBodyStmt2, ElimInfo, _ElimInfo),
+                    % Add a final unlink statement at the end of the function,
+                    % if needed. This is only needed if the function has no
+                    % return values -- if there is a return value, then the
+                    % function must exit with an explicit return statement.
+                    (
+                        RetValues = [],
+                        UnchainFrameStmts =
+                            [ml_gen_unchain_frame(Context, ElimInfo)]
+                    ;
+                        RetValues = [_ | _],
+                        UnchainFrameStmts = []
+                    )
                 ),
 
                 % Insert the definition and initialization of the environment
@@ -665,8 +662,8 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
                 % body, and append the final unlink statement (if any)
                 % at the end.
                 % XXX MLDS_DEFN
-                FuncBodyStmts = InitEnv ++ CodeToCopyArgs ++
-                    [FuncBodyStmt2] ++ UnchainFrame,
+                FuncBodyStmts = InitEnvStmts ++ CopyArgsStmts ++
+                    [FuncBodyStmt2] ++ UnchainFrameStmts,
                 FuncBodyStmt =
                     ml_gen_block(EnvDefns, [], FuncBodyStmts, Context)
             )
@@ -699,10 +696,8 @@ strip_gc_statement(Argument0) = Argument :-
     % Add any arguments which are used in nested functions
     % to the ei_local_vars field in the elim_info.
     %
-:- pred ml_maybe_add_args(action, mlds_stmt, prog_context,
-    list(mlds_argument), elim_info, elim_info).
-:- mode ml_maybe_add_args(in(hoist), in, in, in, in, out) is det.
-:- mode ml_maybe_add_args(in(chain), in, in, in, in, out) is det.
+:- pred ml_maybe_add_args(action::in, mlds_stmt::in, prog_context::in,
+    list(mlds_argument)::in, elim_info::in, elim_info::out) is det.
 
 ml_maybe_add_args(_, _, _, [], !Info).
 ml_maybe_add_args(Action, FuncBody, Context, [Arg | Args], !Info) :-
@@ -721,11 +716,9 @@ ml_maybe_add_args(Action, FuncBody, Context, [Arg | Args], !Info) :-
     % Generate code to copy any arguments which are used in nested functions
     % to the environment struct.
     %
-:- pred ml_maybe_copy_args(action, elim_info, list(mlds_argument), mlds_stmt,
-    mlds_env_id, mlds_type, prog_context,
-    list(mlds_local_var_defn), list(mlds_stmt)).
-:- mode ml_maybe_copy_args(in(hoist), in, in, in, in, in, in, out, out) is det.
-:- mode ml_maybe_copy_args(in(chain), in, in, in, in, in, in, out, out) is det.
+:- pred ml_maybe_copy_args(action::in, elim_info::in, list(mlds_argument)::in,
+    mlds_stmt::in, mlds_env_id::in, mlds_type::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out) is det.
 
 ml_maybe_copy_args(_, _, [], _, _, _, _, [], []).
 ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, EnvId,
@@ -1296,10 +1289,9 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 % Also, for Action = chain_gc_stack_frames, add code to save and restore
 % the stack chain pointer at any `try_commit' statements.
 
-:- pred flatten_function_body(action, mlds_function_body, mlds_function_body,
-    elim_info, elim_info).
-:- mode flatten_function_body(in(hoist), in, out, in, out) is det.
-:- mode flatten_function_body(in(chain), in, out, in, out) is det.
+:- pred flatten_function_body(action::in,
+    mlds_function_body::in, mlds_function_body::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_function_body(Action, Body0, Body, !Info) :-
     (
@@ -1311,19 +1303,17 @@ flatten_function_body(Action, Body0, Body, !Info) :-
         Body = body_defined_here(Stmt)
     ).
 
-:- pred flatten_maybe_statement(action, maybe(mlds_stmt), maybe(mlds_stmt),
-    elim_info, elim_info).
-:- mode flatten_maybe_statement(in(hoist), in, out, in, out) is det.
-:- mode flatten_maybe_statement(in(chain), in, out, in, out) is det.
+:- pred flatten_maybe_statement(action::in,
+    maybe(mlds_stmt)::in, maybe(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_maybe_statement(_, no, no, !Info).
 flatten_maybe_statement(Action, yes(Stmt0), yes(Stmt), !Info) :-
     flatten_statement(Action, Stmt0, Stmt, !Info).
 
-:- pred flatten_gc_statement(action, mlds_gc_statement, mlds_gc_statement,
-    elim_info, elim_info).
-:- mode flatten_gc_statement(in(hoist), in, out, in, out) is det.
-:- mode flatten_gc_statement(in(chain), in, out, in, out) is det.
+:- pred flatten_gc_statement(action::in,
+    mlds_gc_statement::in, mlds_gc_statement::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_gc_statement(Action, GCStmt0, GCStmt, !Info) :-
     (
@@ -1339,19 +1329,17 @@ flatten_gc_statement(Action, GCStmt0, GCStmt, !Info) :-
         GCStmt = gc_initialiser(Stmt)
     ).
 
-:- pred flatten_statements(action, list(mlds_stmt), list(mlds_stmt),
-    elim_info, elim_info).
-:- mode flatten_statements(in(hoist), in, out, in, out) is det.
-:- mode flatten_statements(in(chain), in, out, in, out) is det.
+:- pred flatten_statements(action::in,
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_statements(_, [], [], !Info).
 flatten_statements(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
     flatten_statement(Action, Stmt0, Stmt, !Info),
     flatten_statements(Action, Stmts0, Stmts, !Info).
 
-:- pred flatten_statement(action, mlds_stmt, mlds_stmt, elim_info, elim_info).
-:- mode flatten_statement(in(hoist), in, out, in, out) is det.
-:- mode flatten_statement(in(chain), in, out, in, out) is det.
+:- pred flatten_statement(action::in, mlds_stmt::in, mlds_stmt::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_statement(Action, Stmt0, Stmt, !Info) :-
     (
@@ -1424,20 +1412,17 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         Stmt = ml_stmt_atomic(AtomicStmt, Context)
     ).
 
-:- pred flatten_cases(action, list(mlds_switch_case), list(mlds_switch_case),
-    elim_info, elim_info).
-:- mode flatten_cases(in(hoist), in, out, in, out) is det.
-:- mode flatten_cases(in(chain), in, out, in, out) is det.
+:- pred flatten_cases(action::in,
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_cases(_, [], [], !Info).
 flatten_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
     flatten_case(Action, Case0, Case, !Info),
     flatten_cases(Action, Cases0, Cases, !Info).
 
-:- pred flatten_case(action, mlds_switch_case, mlds_switch_case,
-    elim_info, elim_info).
-:- mode flatten_case(in(hoist), in, out, in, out) is det.
-:- mode flatten_case(in(chain), in, out, in, out) is det.
+:- pred flatten_case(action::in, mlds_switch_case::in, mlds_switch_case::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
@@ -1446,10 +1431,9 @@ flatten_case(Action, Case0, Case, !Info) :-
     flatten_statement(Action, Stmt0, Stmt, !Info),
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
-:- pred flatten_default(action, mlds_switch_default, mlds_switch_default,
-    elim_info, elim_info).
-:- mode flatten_default(in(hoist), in, out, in, out) is det.
-:- mode flatten_default(in(chain), in, out, in, out) is det.
+:- pred flatten_default(action::in,
+    mlds_switch_default::in, mlds_switch_default::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_default(Action, Default0, Default, !Info) :-
     (
@@ -1490,8 +1474,9 @@ flatten_default(Action, Default0, Default, !Info) :-
 :- inst try_commit for mlds_stmt/0
     --->    ml_stmt_try_commit(ground, ground, ground, ground).
 
-:- pred save_and_restore_stack_chain(mlds_stmt::in(try_commit),
-    mlds_stmt::out, elim_info::in, elim_info::out) is det.
+:- pred save_and_restore_stack_chain(
+    mlds_stmt::in(try_commit), mlds_stmt::out,
+    elim_info::in, elim_info::out) is det.
 
 save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
     elim_info_allocate_saved_stack_chain_id(Id, !ElimInfo),
@@ -1523,10 +1508,9 @@ save_and_restore_stack_chain(Stmt0, Stmt, !ElimInfo) :-
 % statements. Return the remaining (non-hoisted) definitions, the list of
 % assignment statements, and the updated elim_info.
 
-:- pred flatten_nested_function_defns(action,
-    list(mlds_function_defn), list(mlds_function_defn), elim_info, elim_info).
-:- mode flatten_nested_function_defns(in(hoist), in, out, in, out) is det.
-:- mode flatten_nested_function_defns(in(chain), in, out, in, out) is det.
+:- pred flatten_nested_function_defns(action::in,
+    list(mlds_function_defn)::in, list(mlds_function_defn)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_nested_function_defns(_, [], [], !Info).
 flatten_nested_function_defns(Action,
@@ -1537,10 +1521,9 @@ flatten_nested_function_defns(Action,
         !Info),
     FuncDefns = HeadFuncDefns ++ TailFuncDefns.
 
-:- pred flatten_nested_function_defn(action,
-    mlds_function_defn, list(mlds_function_defn), elim_info, elim_info).
-:- mode flatten_nested_function_defn(in(hoist), in, out, in, out) is det.
-:- mode flatten_nested_function_defn(in(chain), in, out, in, out) is det.
+:- pred flatten_nested_function_defn(action::in,
+    mlds_function_defn::in, list(mlds_function_defn)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
     FuncDefn0 = mlds_function_defn(Name, Context, Flags0, PredProcId, Params,
@@ -1548,11 +1531,11 @@ flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
     % Recursively flatten the nested function.
     flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
-    % Mark the function as private / one_copy, rather than as
-    % local / per_instance, if we are about to hoist it out to the
-    % top level.
     (
         Action = hoist_nested_funcs,
+        % Mark the function as private / one_copy, rather than as
+        % local / per_instance, if we are about to hoist it out to the
+        % top level.
         Flags = mlds_function_decl_flags(func_private, one_copy)
     ;
         Action = chain_gc_stack_frames,
@@ -1581,14 +1564,10 @@ flatten_nested_function_defn(Action, FuncDefn0, FuncDefns, !Info) :-
         FuncDefns = [FuncDefn]
     ).
 
-:- pred flatten_nested_local_var_defns(action,
-    list(mlds_local_var_defn), list(mlds_local_var_defn),
-    list(mlds_function_defn), list(mlds_stmt), list(mlds_stmt),
-    elim_info, elim_info).
-:- mode flatten_nested_local_var_defns(in(hoist), in, out, in, in, out,
-    in, out) is det.
-:- mode flatten_nested_local_var_defns(in(chain), in, out, in, in, out,
-    in, out) is det.
+:- pred flatten_nested_local_var_defns(action::in,
+    list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
+    list(mlds_function_defn)::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_nested_local_var_defns(_, [], [], _, _, [], !Info).
 flatten_nested_local_var_defns(Action,
@@ -1603,14 +1582,11 @@ flatten_nested_local_var_defns(Action,
     LocalVarDefns = HeadLocalVarDefns ++ TailLocalVarDefns,
     InitStmts = HeadInitStmts ++ TailInitStmts.
 
-:- pred flatten_nested_local_var_defn(action,
-    mlds_local_var_defn, list(mlds_local_var_defn), list(mlds_local_var_defn),
-    list(mlds_function_defn), list(mlds_stmt), list(mlds_stmt),
-    elim_info, elim_info).
-:- mode flatten_nested_local_var_defn(in(hoist), in, in, out, in, in, out,
-    in, out) is det.
-:- mode flatten_nested_local_var_defn(in(chain), in, in, out, in, in, out,
-    in, out) is det.
+:- pred flatten_nested_local_var_defn(action::in,
+    mlds_local_var_defn::in,
+    list(mlds_local_var_defn)::in, list(mlds_local_var_defn)::out,
+    list(mlds_function_defn)::in, list(mlds_stmt)::in, list(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
         HeadLocalVarDefns, FuncDefns, Stmts, InitStmts, !Info) :-
@@ -1664,10 +1640,9 @@ flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
     % ei_local_vars field of the elim_info, meaning that it should be added
     % to the environment struct.
     %
-:- pred ml_should_add_local_var_to_env(action, mlds_local_var_name,
-    mlds_gc_statement, list(mlds_function_defn), list(mlds_stmt)).
-:- mode ml_should_add_local_var_to_env(in(hoist), in, in, in, in) is semidet.
-:- mode ml_should_add_local_var_to_env(in(chain), in, in, in, in) is semidet.
+:- pred ml_should_add_local_var_to_env(action::in, mlds_local_var_name::in,
+    mlds_gc_statement::in, list(mlds_function_defn)::in, list(mlds_stmt)::in)
+    is semidet.
 
 ml_should_add_local_var_to_env(Action, VarName, GCStmt,
         FuncDefns, FollowingStmts) :-
@@ -1724,10 +1699,8 @@ ml_function_defn_contains_var(QualVarName, FuncDefn) :-
 % Recursively process the specified construct, calling use_envptr_in_var on
 % every variable inside it.
 
-:- pred use_envptr_in_initializers(action, elim_info,
-    list(mlds_initializer), list(mlds_initializer)).
-:- mode use_envptr_in_initializers(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_initializers(in(chain), in, in, out) is det.
+:- pred use_envptr_in_initializers(action::in, elim_info::in,
+    list(mlds_initializer)::in, list(mlds_initializer)::out) is det.
 
 use_envptr_in_initializers(_, _, [], []).
 use_envptr_in_initializers(Action, Info,
@@ -1735,10 +1708,8 @@ use_envptr_in_initializers(Action, Info,
     use_envptr_in_initializer(Action, Info, Initializer0, Initializer),
     use_envptr_in_initializers(Action, Info, Initializers0, Initializers).
 
-:- pred use_envptr_in_initializer(action, elim_info,
-    mlds_initializer, mlds_initializer).
-:- mode use_envptr_in_initializer(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_initializer(in(chain), in, in, out) is det.
+:- pred use_envptr_in_initializer(action::in, elim_info::in,
+    mlds_initializer::in, mlds_initializer::out) is det.
 
 use_envptr_in_initializer(Action, Info, Initializer0, Initializer) :-
     (
@@ -1758,10 +1729,8 @@ use_envptr_in_initializer(Action, Info, Initializer0, Initializer) :-
         Initializer = init_array(Elements)
     ).
 
-:- pred use_envptr_in_atomic_stmt(action, elim_info,
-    mlds_atomic_statement, mlds_atomic_statement).
-:- mode use_envptr_in_atomic_stmt(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_atomic_stmt(in(chain), in, in, out) is det.
+:- pred use_envptr_in_atomic_stmt(action::in, elim_info::in,
+    mlds_atomic_statement::in, mlds_atomic_statement::out) is det.
 
 use_envptr_in_atomic_stmt(Action, Info, Atomic0, Atomic) :-
     (
@@ -1815,20 +1784,16 @@ use_envptr_in_atomic_stmt(Action, Info, Atomic0, Atomic) :-
         Atomic = outline_foreign_proc(Lang, Vs, Lvals, Code)
     ).
 
-:- pred use_envptr_in_case_conds(action, elim_info,
-    list(mlds_case_match_cond), list(mlds_case_match_cond)).
-:- mode use_envptr_in_case_conds(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_case_conds(in(chain), in, in, out) is det.
+:- pred use_envptr_in_case_conds(action::in, elim_info::in,
+    list(mlds_case_match_cond)::in, list(mlds_case_match_cond)::out) is det.
 
 use_envptr_in_case_conds(_, _, [], []).
 use_envptr_in_case_conds(Action, Info, [Cond0 | Conds0], [Cond | Conds]) :-
     use_envptr_in_case_cond(Action, Info, Cond0, Cond),
     use_envptr_in_case_conds(Action, Info, Conds0, Conds).
 
-:- pred use_envptr_in_case_cond(action, elim_info,
-    mlds_case_match_cond, mlds_case_match_cond).
-:- mode use_envptr_in_case_cond(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_case_cond(in(chain), in, in, out) is det.
+:- pred use_envptr_in_case_cond(action::in, elim_info::in,
+    mlds_case_match_cond::in, mlds_case_match_cond::out) is det.
 
 use_envptr_in_case_cond(Action, Info, Cond0, Cond) :-
     (
@@ -1842,10 +1807,8 @@ use_envptr_in_case_cond(Action, Info, Cond0, Cond) :-
         Cond = match_range(Low, High)
     ).
 
-:- pred use_envptr_in_target_code_components(action, elim_info,
-    list(target_code_component), list(target_code_component)).
-:- mode use_envptr_in_target_code_components(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_target_code_components(in(chain), in, in, out) is det.
+:- pred use_envptr_in_target_code_components(action::in, elim_info::in,
+    list(target_code_component)::in, list(target_code_component)::out) is det.
 
 use_envptr_in_target_code_components(_, _, [], []).
 use_envptr_in_target_code_components(Action, Info,
@@ -1855,10 +1818,8 @@ use_envptr_in_target_code_components(Action, Info,
     use_envptr_in_target_code_components(Action, Info,
         Components0, Components).
 
-:- pred use_envptr_in_target_code_component(action, elim_info,
-    target_code_component, target_code_component).
-:- mode use_envptr_in_target_code_component(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_target_code_component(in(chain), in, in, out) is det.
+:- pred use_envptr_in_target_code_component(action::in, elim_info::in,
+    target_code_component::in, target_code_component::out) is det.
 
 use_envptr_in_target_code_component(Action, Info, Component0, Component) :-
     (
@@ -1879,9 +1840,8 @@ use_envptr_in_target_code_component(Action, Info, Component0, Component) :-
         Component = target_code_output(Lval)
     ).
 
-:- pred use_envptr_in_trail_op(action, elim_info, trail_op, trail_op).
-:- mode use_envptr_in_trail_op(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_trail_op(in(chain), in, in, out) is det.
+:- pred use_envptr_in_trail_op(action::in, elim_info::in,
+    trail_op::in, trail_op::out) is det.
 
 use_envptr_in_trail_op(Action, Info, Op0, Op) :-
     (
@@ -1907,10 +1867,8 @@ use_envptr_in_trail_op(Action, Info, Op0, Op) :-
         Op = prune_tickets_to(Rval)
     ).
 
-:- pred use_envptr_in_typed_rvals(action, elim_info,
-    list(mlds_typed_rval), list(mlds_typed_rval)).
-:- mode use_envptr_in_typed_rvals(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_typed_rvals(in(chain), in, in, out) is det.
+:- pred use_envptr_in_typed_rvals(action::in, elim_info::in,
+    list(mlds_typed_rval)::in, list(mlds_typed_rval)::out) is det.
 
 use_envptr_in_typed_rvals(_, _, [], []).
 use_envptr_in_typed_rvals(Action, Info,
@@ -1920,19 +1878,16 @@ use_envptr_in_typed_rvals(Action, Info,
     TypedRval = ml_typed_rval(Rval, Type),
     use_envptr_in_typed_rvals(Action, Info, TypedRvals0, TypedRvals).
 
-:- pred use_envptr_in_rvals(action, elim_info,
-    list(mlds_rval), list(mlds_rval)).
-:- mode use_envptr_in_rvals(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_rvals(in(chain), in, in, out) is det.
+:- pred use_envptr_in_rvals(action::in, elim_info::in,
+    list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
 use_envptr_in_rvals(_, _, [], []).
 use_envptr_in_rvals(Action, Info, [Rval0 | Rvals0], [Rval | Rvals]) :-
     use_envptr_in_rval(Action, Info, Rval0, Rval),
     use_envptr_in_rvals(Action, Info, Rvals0, Rvals).
 
-:- pred use_envptr_in_rval(action, elim_info, mlds_rval, mlds_rval).
-:- mode use_envptr_in_rval(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_rval(in(chain), in, in, out) is det.
+:- pred use_envptr_in_rval(action::in, elim_info::in,
+    mlds_rval::in, mlds_rval::out) is det.
 
 use_envptr_in_rval(Action, Info, Rval0, Rval) :-
     (
@@ -1981,19 +1936,16 @@ use_envptr_in_rval(Action, Info, Rval0, Rval) :-
         Rval = Rval0
     ).
 
-:- pred use_envptr_in_lvals(action, elim_info,
-    list(mlds_lval), list(mlds_lval)).
-:- mode use_envptr_in_lvals(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_lvals(in(chain), in, in, out) is det.
+:- pred use_envptr_in_lvals(action::in, elim_info::in,
+    list(mlds_lval)::in, list(mlds_lval)::out) is det.
 
 use_envptr_in_lvals(_, _, [], []).
 use_envptr_in_lvals(Action, Info, [X0 | Xs0], [X | Xs]) :-
     use_envptr_in_lval(Action, Info, X0, X),
     use_envptr_in_lvals(Action, Info, Xs0, Xs).
 
-:- pred use_envptr_in_lval(action, elim_info, mlds_lval, mlds_lval).
-:- mode use_envptr_in_lval(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_lval(in(chain), in, in, out) is det.
+:- pred use_envptr_in_lval(action::in, elim_info::in,
+    mlds_lval::in, mlds_lval::out) is det.
 
 use_envptr_in_lval(Action, Info, Lval0, Lval) :-
     (
@@ -2014,10 +1966,8 @@ use_envptr_in_lval(Action, Info, Lval0, Lval) :-
         use_envptr_in_var(Action, Info, Var0, VarType, Lval)
     ).
 
-:- pred use_envptr_in_local_vars(action, elim_info,
-    list(mlds_local_var_name), list(mlds_local_var_name)).
-:- mode use_envptr_in_local_vars(in(hoist), in, in, out) is det.
-:- mode use_envptr_in_local_vars(in(chain), in, in, out) is det.
+:- pred use_envptr_in_local_vars(action::in, elim_info::in,
+    list(mlds_local_var_name)::in, list(mlds_local_var_name)::out) is det.
 
 use_envptr_in_local_vars(_, _, [], []).
 use_envptr_in_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0],
@@ -2048,9 +1998,8 @@ use_envptr_in_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0],
 % have been pulled out. It assumes the locals don't actually change during
 % the process. I think this should be safe. (schmidt)
 
-:- pred use_envptr_in_gc_statements(action, elim_info, elim_info).
-:- mode use_envptr_in_gc_statements(in(hoist), in, out) is det.
-:- mode use_envptr_in_gc_statements(in(chain), in, out) is det.
+:- pred use_envptr_in_gc_statements(action::in,
+    elim_info::in, elim_info::out) is det.
 
 use_envptr_in_gc_statements(Action, !Info) :-
     % We must preserve the order for the Java backend, otherwise the generated
@@ -2061,20 +2010,13 @@ use_envptr_in_gc_statements(Action, !Info) :-
         LocalsCord0, LocalsCord, !Info),
     elim_info_set_local_vars(LocalsCord, !Info).
 
-:- pred use_envptr_in_gc_statements_defn(action,
-    mlds_local_var_defn, mlds_local_var_defn, elim_info, elim_info).
-% We need this predicate to have a single mode for cord.map_foldl.
-:- mode use_envptr_in_gc_statements_defn(in, in, out, in, out) is det.
+:- pred use_envptr_in_gc_statements_defn(action::in,
+    mlds_local_var_defn::in, mlds_local_var_defn::out,
+    elim_info::in, elim_info::out) is det.
 
 use_envptr_in_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     Defn0 = mlds_local_var_defn(Name, Context, Type, Init, GCStmt0),
-    (
-        Action = hoist_nested_funcs,
-        flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
-    ;
-        Action = chain_gc_stack_frames,
-        flatten_gc_statement(Action, GCStmt0, GCStmt, !Info)
-    ),
+    flatten_gc_statement(Action, GCStmt0, GCStmt, !Info),
     Defn = mlds_local_var_defn(Name, Context, Type, Init, GCStmt).
 
 %---------------------------------------------------------------------------%
@@ -2082,10 +2024,8 @@ use_envptr_in_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     % Change up any references to local vars in the containing function
     % to go via the environment pointer.
     %
-:- pred use_envptr_in_var(action, elim_info, mlds_local_var_name, mlds_type,
-    mlds_lval).
-:- mode use_envptr_in_var(in(hoist), in, in, in, out) is det.
-:- mode use_envptr_in_var(in(chain), in, in, in, out) is det.
+:- pred use_envptr_in_var(action::in, elim_info::in, mlds_local_var_name::in,
+    mlds_type::in, mlds_lval::out) is det.
 
 use_envptr_in_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
     Locals = elim_info_get_local_vars(Info),
@@ -2316,31 +2256,25 @@ function_defn_contains_matching_defn(Filter, FuncDefn) :-
     % Add code to unlink the stack chain before any explicit returns or
     % tail calls.
     %
-:- pred add_unchain_stack_to_maybe_statement(action,
-    maybe(mlds_stmt), maybe(mlds_stmt), elim_info, elim_info).
-% :- mode add_unchain_stack_to_maybe_statement(in(hoist), in, out, in, out)
-%     is det.
-:- mode add_unchain_stack_to_maybe_statement(in(chain), in, out, in, out)
-    is det.
+:- pred add_unchain_stack_to_maybe_statement(action::in(chain),
+    maybe(mlds_stmt)::in, maybe(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_maybe_statement(_, no, no, !Info).
 add_unchain_stack_to_maybe_statement(Action, yes(Stmt0), yes(Stmt), !Info) :-
     add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info).
 
-:- pred add_unchain_stack_to_stmts(action,
-    list(mlds_stmt), list(mlds_stmt), elim_info, elim_info).
-% :- mode add_unchain_stack_to_stmts(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_stmts(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_stmts(action::in(chain),
+    list(mlds_stmt)::in, list(mlds_stmt)::out,
+    elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_stmts(_, [], [], !Info).
 add_unchain_stack_to_stmts(Action, [Stmt0 | Stmts0], [Stmt | Stmts], !Info) :-
     add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
     add_unchain_stack_to_stmts(Action, Stmts0, Stmts, !Info).
 
-:- pred add_unchain_stack_to_stmt(action,
-    mlds_stmt, mlds_stmt, elim_info, elim_info).
-% :- mode add_unchain_stack_to_stmt(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_stmt(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_stmt(action::in(chain),
+    mlds_stmt::in, mlds_stmt::out, elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
     (
@@ -2410,20 +2344,18 @@ add_unchain_stack_to_call(Info, Stmt0, RetLvals, CallKind, Context, Stmt) :-
         Stmt = Stmt0
     ).
 
-:- pred add_unchain_stack_to_cases(action,
-    list(mlds_switch_case), list(mlds_switch_case), elim_info, elim_info).
-% :- mode add_unchain_stack_to_cases(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_cases(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_cases(action::in(chain),
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out,
+    elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_cases(_, [], [], !Info).
 add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
     add_unchain_stack_to_case(Action, Case0, Case, !Info),
     add_unchain_stack_to_cases(Action, Cases0, Cases, !Info).
 
-:- pred add_unchain_stack_to_case(action,
-    mlds_switch_case, mlds_switch_case, elim_info, elim_info).
-% :- mode add_unchain_stack_to_case(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_case(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_case(action::in(chain),
+    mlds_switch_case::in, mlds_switch_case::out,
+    elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
@@ -2432,10 +2364,9 @@ add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
     add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
-:- pred add_unchain_stack_to_default(action,
-    mlds_switch_default, mlds_switch_default, elim_info, elim_info).
-% :- mode add_unchain_stack_to_default(in(hoist), in, out, in, out) is det.
-:- mode add_unchain_stack_to_default(in(chain), in, out, in, out) is det.
+:- pred add_unchain_stack_to_default(action::in(chain),
+    mlds_switch_default::in, mlds_switch_default::out,
+    elim_info::in, elim_info::out) is det.
 
 add_unchain_stack_to_default(Action, Default0, Default, !Info) :-
     (
