@@ -808,6 +808,8 @@
 :- import_module require.
 :- import_module string.
 
+%---------------------------------------------------------------------------%
+
     % The module_info, module_sub_info and module_rare_info types
     % constitute a single logical data structure that has been split
     % into three parts for efficiency purposes.
