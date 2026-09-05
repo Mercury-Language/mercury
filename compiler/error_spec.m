@@ -63,7 +63,7 @@
 %
 % no_ctxt_spec(Id, Severity, Phase, Pieces) is shorthand for
 % (and equivalent in every respect to) gen_spec(Id, Severity, Phase,
-% error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
+% gen_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
 %
 % The Id field, which is present in all these alternatives, is totally
 % ignored when printing diag_specs. Its job is something completely different:
