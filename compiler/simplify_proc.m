@@ -94,10 +94,12 @@
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module check_hlds.simplify.split_switch_arms.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_proc_util.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.proc_info_types.
 :- import_module hlds.quantification.
@@ -107,6 +109,7 @@
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -195,7 +198,7 @@ simplify_proc(MaybeProgressStream, ProgressStream, SimplifyTasks,
         )
     ),
     simplify_proc_return_msgs(ProgressStream, SimplifyTasks, PredId, ProcId,
-        _, !ProcInfo, !ModuleInfo).
+        _Specs, !ProcInfo, !ModuleInfo).
 
 simplify_goal_update_vars_in_proc(ProgressStream, SimplifyTasks,
         PredId, ProcId, InstMap0, CostDelta, !Goal, !ProcInfo, !ModuleInfo) :-
@@ -355,7 +358,11 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, ArgModes),
         find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable,
-            HeadVars, ArgModes, !ModuleInfo)
+            HeadVars, ArgModes, !ModuleInfo),
+        % ZZZ We ignore the new !:Specs until we fix
+        % tests/typeclasses;/extra_type_info.
+        check_typeclass_records(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
+            RttiVarMaps, !.Specs, _)
     else
         VarTable = VarTable1
     ),
@@ -466,6 +473,59 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
         proc_info_set_goal(Goal, !ProcInfo)
     else
         true
+    ).
+
+:- pred check_typeclass_records(module_info::in, pred_id::in, proc_id::in,
+    proc_info::in, rtti_varmaps::in,
+    list(diag_spec)::in, list(diag_spec)::out) is det.
+
+check_typeclass_records(ModuleInfo, PredId, ProcId, ProcInfo, RttiVarMaps,
+        !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, body_typeinfo_liveness,
+        BodyTypeInfoLiveness),
+    (
+        BodyTypeInfoLiveness = no
+    ;
+        BodyTypeInfoLiveness = yes,
+        check_whether_typeclass_records_are_complete(RttiVarMaps,
+            MaybeComplete),
+        (
+            MaybeComplete = typeclass_records_are_complete
+        ;
+            MaybeComplete = typeclass_records_are_not_complete,
+            ProcPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+                output_debug, yes(color_subject), should_module_qualify, [],
+                proc(PredId, ProcId)),
+            % We say "debugging enabled", because this is by far
+            % the most common way for body_typeinfo_liveness to be set.
+            % Both alternatives, the use of .agc grades and manual setting
+            % of the option, are extremely rare.
+            MainPieces = [words("Sorry: he compiler cannot compile")] ++
+                ProcPieces ++ [words("with debugging enabled."),
+                words("This is due to a known limitation that concerns"),
+                words("the mapping between typeclass on the one hand,"),
+                words("and the hidden, compiler-generated variables"),
+                words("storing information about them on the other hand."),
+                nl],
+            VerbosePieces =
+                [words("The limitation occurs when the definition"),
+                words("of a predicate or function contains"),
+                words("both the deconstructions of terms"),
+                words("that contain existentially typed arguments,"),
+                words("and branched code, such as if-then-elses,"),
+                words("disjunctions and/or switches."),
+                words("You can work around the limitation"),
+                words("by moving such deconstruction unifications"),
+                words("to helper predicates that contain no branching."), nl],
+            Msg = simple_msg(Context,
+                [always(MainPieces),
+                verbose_only(verbose_once, VerbosePieces)]),
+            Phase = phase_simplify(report_in_any_mode),
+            proc_info_get_context(ProcInfo, Context),
+            Spec = gen_spec($pred, severity_error, Phase, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        )
     ).
 
 %---------------------------------------------------------------------------%

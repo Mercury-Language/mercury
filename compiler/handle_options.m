@@ -521,6 +521,8 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
 
     % XXX deforestation and constraint propagation do not perform folding
     % on polymorphic predicates correctly with --body-typeinfo-liveness.
+    % XXX The check of BodyTypeInfoLiveness is done too soon, since code
+    % that we execute later can turn it ON even if it is currently OFF.
     globals.lookup_bool_option(!.Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness),
     globals.lookup_bool_option(!.Globals, reorder_conj, ReorderConj),
@@ -528,8 +530,6 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         AllowSrcChangesDebug = allow_src_changes,
         % --no-reorder-conj implies --no-deforestation,
         ReorderConj = bool.yes,
-        % XXX The folding done by deforestation on polymorphic predicates
-        % does not respect --body-typeinfo-liveness.
         BodyTypeInfoLiveness = bool.no
     then
         OT_Deforest = OT_Deforest0

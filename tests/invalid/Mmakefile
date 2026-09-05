@@ -296,6 +296,7 @@ BORING_SINGLEMODULE_PROGS = \
 	switch_arm_multi_not_det \
 	tc_err_1 \
 	tc_err_2 \
+	tci_liveness_abort \
 	test_may_duplicate \
 	test_may_export_body \
 	test_promise_equivalent_clauses \

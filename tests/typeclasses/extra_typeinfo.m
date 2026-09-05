@@ -50,8 +50,8 @@
 main(!IO) :-
     L1 = [[1, 2, 3], [4, 5, 6]],
     L2 = [[7, 8, 9], [10, 11, 12]],
-    io.write(L1, !IO),
-    io.write(L2, !IO),
+    io.write_line(L1, !IO),
+    io.write_line(L2, !IO),
     ( if call_foldl(L1, L2, L) then
         io.write_line(L, !IO)
     else
@@ -59,7 +59,7 @@ main(!IO) :-
     ).
 
 call_foldl(In, Out0, Out) :-
-    % This calls foldl so that the original type variables in foldl
+    % This calls list_foldl so that the original type variables in foldl
     % get mapped to non-variable types, so higher_order.m needs to add
     % extra argument type_infos for the type variables in the types
     % of the specialised arguments.
@@ -72,8 +72,8 @@ call_foldl(In, Out0, Out) :-
 list_foldl(_P, [], T, T, U, U).
 list_foldl(P, [V | Vs], T0, T, U0, U) :-
     call(P, V),
-    foo_pred(T),
-    list_foldl(P, Vs, T0, T, U0, U).
+    list_foldl(P, Vs, T0, T, U0, U),
+    foo_pred(T).
 
 :- instance foo(int) where [
     pred(foo_pred/1) is nothing

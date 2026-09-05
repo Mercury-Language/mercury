@@ -1,0 +1,30 @@
+tci_liveness_abort.m:020: Sorry: due to a known limitation, the compiler cannot
+tci_liveness_abort.m:020:   compile predicate [38;5;87m`tci_liveness_abort.test1'/4[39;49m with
+tci_liveness_abort.m:020:   debugging enabled. The limitation concerns the
+tci_liveness_abort.m:020:   mapping between typeclass on the one hand, and the
+tci_liveness_abort.m:020:   hidden, compiler-generated variables storing
+tci_liveness_abort.m:020:   information about them on the other hand.
+tci_liveness_abort.m:020:
+tci_liveness_abort.m:020:   The limitation occurs when the definition of a
+tci_liveness_abort.m:020:   predicate or function contains both the
+tci_liveness_abort.m:020:   deconstructions of terms that contain existentially
+tci_liveness_abort.m:020:   typed arguments, and branched code, such as
+tci_liveness_abort.m:020:   if-then-elses, disjunctions and/or switches. You
+tci_liveness_abort.m:020:   can work around the limitation by moving such
+tci_liveness_abort.m:020:   deconstruction unifications to helper predicates
+tci_liveness_abort.m:020:   that contain no branching.
+tci_liveness_abort.m:022: Sorry: due to a known limitation, the compiler cannot
+tci_liveness_abort.m:022:   compile predicate [38;5;87m`tci_liveness_abort.test2'/3[39;49m with
+tci_liveness_abort.m:022:   debugging enabled. The limitation concerns the
+tci_liveness_abort.m:022:   mapping between typeclass on the one hand, and the
+tci_liveness_abort.m:022:   hidden, compiler-generated variables storing
+tci_liveness_abort.m:022:   information about them on the other hand.
+tci_liveness_abort.m:022:
+tci_liveness_abort.m:022:   The limitation occurs when the definition of a
+tci_liveness_abort.m:022:   predicate or function contains both the
+tci_liveness_abort.m:022:   deconstructions of terms that contain existentially
+tci_liveness_abort.m:022:   typed arguments, and branched code, such as
+tci_liveness_abort.m:022:   if-then-elses, disjunctions and/or switches. You
+tci_liveness_abort.m:022:   can work around the limitation by moving such
+tci_liveness_abort.m:022:   deconstruction unifications to helper predicates
+tci_liveness_abort.m:022:   that contain no branching.
