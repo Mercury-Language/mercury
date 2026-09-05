@@ -33,6 +33,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -159,6 +160,89 @@
     % Return an empty rtti_varmaps structure.
     %
 :- pred rtti_varmaps_init(rtti_varmaps::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% The components of rtti_var_maps.
+%
+
+    % A tci_constraint_to_var_map records, for each type class constraint,
+    % which variable contains the typeclass_info for that constraint.
+    % XXX This is a LIMITATION: on different branches, the same constraint
+    % may need to be mapped to different variables.
+    %
+    % The constraints covered by this map are
+    % - those which are passed in as head arguments, and
+    % - those which are produced as existential constraints
+    %   from calls or deconstructions.
+    % These are constraints for which it is safe to reuse the variable
+    % associated with the constraint.
+    %
+:- type tci_constraint_to_var_map == map(prog_constraint, prog_var).
+
+    % A tvar_to_ti_locn_map is a map which, for each type variable,
+    % records where the type_info for that type variable is stored.
+    %
+    % XXX This doesn't record the information that we want. For a constraint
+    % such as foo(list(T)) we can't properly record the location of the
+    % type_info for T, since it does not occupy a slot in the typeclass_info
+    % directly, but is inside the type_info for list(T).
+    %
+    % XXX Even the information that is recorded has the wrong key. Consider
+    % a conjunction between:
+    %
+    % - a call that returns an existentially typed result, and
+    % - a goal that uses that existentially typed variable.
+    %
+    % Let us say that the conjunction looks like
+    %
+    %   gen_result(X_1, TypeInfo_for_T_2), use_result(TypeInfo_for_T_2, X_1).
+    %
+    % This conjunction can be duplicated, e.g. by switch detection (it could be
+    % in a switch arm that is guarded by a disjunction that handles different
+    % values of the switched-on variable differently) or by tabling.
+    % (This is what happens in Mantis bug #154.)
+    %
+    % In such cases, the renamed-apart duplicated goal would be something like
+    %
+    %   gen_result(X_3, TypeInfo_for_T_4), use_result(TypeInfo_for_T_4, X_3).
+    %
+    % Yet the rtti_var_map for the procedure would say that X_3 is of the same
+    % type as X_1, which means that the compiler would think that X_1 and X_3
+    % use the same type_info variable to represent their types. This would be
+    % TypeInfo_for_T_2, even though it won't exist on the execution branch
+    % containing the copied version of the goal.
+    %
+    % I (zs) can see two possible fixes.
+    %
+    % - First, we could have tvar_to_ti_locn_map map each tvar to one_or_more
+    %   type_info_locns, exactly one of which would be available on every
+    %   execution path. It would be the responsibility of other parts of the
+    %   compiler to pick the right one.
+    %
+    % - Second, instead of mapping prog_vars to types, and the tvars in those
+    %   types to the prog_vars holding their type_infos, we could map each
+    %   prog_var directly to a {tvar -> typeinfo progvar} map.
+    %
+:- type tvar_to_ti_locn_map == map(tvar, type_info_locn).
+
+    % Every program variable which holds a type_info is a key in this map.
+    % The value associated with a given key is the type that the type_info
+    % is for.
+    %
+:- type ti_var_to_type_map == map(prog_var, mer_type).
+
+    % Every program variable which holds a typeclass_info is a key in this map.
+    % The value associated with a given key is the prog_constraint that
+    % the typeclass_info is for.
+    %
+:- type tci_var_to_constraint_map == map(prog_var, prog_constraint).
+
+    % This predicate is intended to be used *only* for HLDS dumps.
+    %
+:- pred rtti_varmaps_components(rtti_varmaps::in,
+    tvar_to_ti_locn_map::out, ti_var_to_type_map::out,
+    tci_constraint_to_var_map::out, tci_var_to_constraint_map::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -370,7 +454,6 @@
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 
-:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set_tree234.
@@ -444,78 +527,6 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
                 rv_tci_var_to_constr_map    :: tci_var_to_constraint_map
             ).
 
-    % A tci_constraint_to_var_map records, for each type class constraint,
-    % which variable contains the typeclass_info for that constraint.
-    % XXX This is a LIMITATION: on different branches, the same constraint
-    % may need to be mapped to different variables.
-    %
-    % The constraints covered by this map are
-    % - those which are passed in as head arguments, and
-    % - those which are produced as existential constraints
-    %   from calls or deconstructions.
-    % These are constraints for which it is safe to reuse the variable
-    % associated with the constraint.
-    %
-:- type tci_constraint_to_var_map == map(prog_constraint, prog_var).
-
-    % A tvar_to_ti_locn_map is a map which, for each type variable,
-    % records where the type_info for that type variable is stored.
-    %
-    % XXX This doesn't record the information that we want. For a constraint
-    % such as foo(list(T)) we can't properly record the location of the
-    % type_info for T, since it does not occupy a slot in the typeclass_info
-    % directly, but is inside the type_info for list(T).
-    %
-    % XXX Even the information that is recorded has the wrong key. Consider
-    % a conjunction between:
-    %
-    % - a call that returns an existentially typed result, and
-    % - a goal that uses that existentially typed variable.
-    %
-    % Let us say that the conjunction looks like
-    %
-    %   gen_result(X_1, TypeInfo_for_T_2), use_result(TypeInfo_for_T_2, X_1).
-    %
-    % This conjunction can be duplicated, e.g. by switch detection (it could be
-    % in a switch arm that is guarded by a disjunction that handles different
-    % values of the switched-on variable differently) or by tabling.
-    % (This is what happens in Mantis bug #154.)
-    %
-    % In such cases, the renamed-apart duplicated goal would be something like
-    %
-    %   gen_result(X_3, TypeInfo_for_T_4), use_result(TypeInfo_for_T_4, X_3).
-    %
-    % Yet the rtti_var_map for the procedure would say that X_3 is of the same
-    % type as X_1, which means that the compiler would think that X_1 and X_3
-    % use the same type_info variable to represent their types. This would be
-    % TypeInfo_for_T_2, even though it won't exist on the execution branch
-    % containing the copied version of the goal.
-    %
-    % I (zs) can see two possible fixes.
-    %
-    % - First, we could have tvar_to_ti_locn_map map each tvar to one_or_more
-    %   type_info_locns, exactly one of which would be available on every
-    %   execution path. It would be the responsibility of other parts of the
-    %   compiler to pick the right one.
-    %
-    % - Second, instead of mapping prog_vars to types, and the tvars in those
-    %   types to the prog_vars holding their type_infos, we could map each
-    %   prog_var directly to a {tvar -> typeinfo progvar} map.
-    %
-:- type tvar_to_ti_locn_map == map(tvar, type_info_locn).
-
-    % Every program variable which holds a type_info is a key in this map.
-    % The value associated with a given key is the type that the type_info
-    % is for.
-    %
-:- type ti_var_to_type_map == map(prog_var, mer_type).
-
-    % Every program variable which holds a typeclass_info is a key in this map.
-    % The value associated with a given key is the prog_constraint that
-    % the typeclass_info is for.
-    %
-:- type tci_var_to_constraint_map == map(prog_var, prog_constraint).
-
 %---------------------------------------------------------------------------%
 
 rtti_varmaps_init(RttiVarMaps) :-
@@ -523,6 +534,13 @@ rtti_varmaps_init(RttiVarMaps) :-
     map.init(TIVarToTypeMap),
     map.init(ConstraintToVarMap),
     map.init(VarToConstraintMap),
+    RttiVarMaps = rtti_varmaps(TVarToLocnMap, TIVarToTypeMap,
+        ConstraintToVarMap, VarToConstraintMap).
+
+%---------------------------------------------------------------------------%
+
+rtti_varmaps_components(RttiVarMaps, TVarToLocnMap, TIVarToTypeMap,
+        ConstraintToVarMap, VarToConstraintMap) :-
     RttiVarMaps = rtti_varmaps(TVarToLocnMap, TIVarToTypeMap,
         ConstraintToVarMap, VarToConstraintMap).
 
@@ -1008,17 +1026,6 @@ check_whether_typeclass_records_are_complete(RttiVarMaps, MaybeComplete) :-
     ( if map.is_empty(VarToConstraintMap) then
         MaybeComplete = typeclass_records_are_complete
     else
-        trace [io(!IO)] (
-            map.to_sorted_assoc_list(VarToConstraintMap0, VarToConstraintAL0),
-            map.to_sorted_assoc_list(VarToConstraintMap, VarToConstraintAL),
-            io.stderr_stream(StdErr, !IO),
-            io.write_string(StdErr, "\nVarToConstraintAL0:\n", !IO),
-            list.foldl(io.write_line(StdErr), VarToConstraintAL0, !IO),
-            io.nl(StdErr, !IO),
-            io.write_string(StdErr, "\nVarToConstraintAL:\n", !IO),
-            list.foldl(io.write_line(StdErr), VarToConstraintAL, !IO),
-            io.nl(StdErr, !IO)
-        ),
         MaybeComplete = typeclass_records_are_not_complete
     ).
 

@@ -88,6 +88,9 @@
 :- pred strip_module_names_from_type_list(strip_what_module_names::in,
     maybe_set_default_func::in,
     list(mer_type)::in, list(mer_type)::out) is det.
+:- pred strip_module_names_from_constraint(strip_what_module_names::in,
+    maybe_set_default_func::in,
+    prog_constraint::in, prog_constraint::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -355,6 +358,14 @@ strip_module_names_from_type(StripWhat, SetDefaultFunc, Type0, Type) :-
 strip_module_names_from_type_list(StripWhat, SetDefaultFunc, Types0, Types) :-
     list.map(strip_module_names_from_type(StripWhat, SetDefaultFunc),
         Types0, Types).
+
+strip_module_names_from_constraint(StripWhat, SetDefaultFunc,
+        Constraint0, Constraint) :-
+    Constraint0 = constraint(ClassSymName0, ArgTypes0),
+    strip_module_names_from_sym_name(StripWhat, ClassSymName0, ClassSymName),
+    list.map(strip_module_names_from_type(StripWhat, SetDefaultFunc),
+        ArgTypes0, ArgTypes),
+    Constraint = constraint(ClassSymName, ArgTypes).
 
 %---------------------------------------------------------------------------%
 

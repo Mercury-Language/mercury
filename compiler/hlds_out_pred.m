@@ -411,13 +411,12 @@ format_obsolete_in_favour_of(ObsoleteInFavourOf, !State) :-
 
 format_pred_types(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
         ProofMap, ConstraintMap, ExternalTypeParams, !State) :-
-    format_rtti_varmaps(VarNamePrint, TVarSet, VarTable, RttiVarMaps, !State),
+    format_rtti_varmaps(TVarSet, VarTable, RttiVarMaps, !State),
     ( if map.is_empty(ProofMap) then
         true
     else
         format_constraint_proof_map(0u, VarNamePrint, TVarSet,
-            ProofMap, !State),
-        string.builder.append_string("\n", !State)
+            ProofMap, !State)
     ),
     ( if map.is_empty(ConstraintMap) then
         true
@@ -774,7 +773,7 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
         [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !State),
 
     format_var_types(VarNamePrint, TVarSet, VarTable, !State),
-    format_rtti_varmaps(VarNamePrint, TVarSet, VarTable, RttiVarMaps, !State),
+    format_rtti_varmaps(TVarSet, VarTable, RttiVarMaps, !State),
 
     format_proc_flags(CanProcess, IsAddressTaken,
         HasParallelConj, HasUserEvent, !State),
@@ -890,7 +889,8 @@ format_var_types_loop(VarNamePrint, TypeVarSet,
         [Var - Entry | VarsEntries], !State) :-
     Entry = vte(Name, Type, IsDummy),
     term.var_to_int(Var, VarNum),
-    VarStr = mercury_var_raw_to_string(VarNamePrint, Var, Name),
+    % We print the number separately at the start of the line anyway.
+    VarStr = mercury_var_raw_to_string(print_name_only, Var, Name),
     TypeStr = mercury_type_to_string(TypeVarSet, VarNamePrint, Type),
     (
         IsDummy = is_dummy_type,
@@ -905,66 +905,100 @@ format_var_types_loop(VarNamePrint, TypeVarSet,
 
 %---------------------%
 
-:- pred format_rtti_varmaps(var_name_print::in, tvarset::in, var_table::in,
-    rtti_varmaps::in,
+:- pred format_rtti_varmaps(tvarset::in, var_table::in, rtti_varmaps::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_rtti_varmaps(VarNamePrint, TVarSet, VarTable, RttiVarMaps, !State) :-
-    string.builder.append_string("% type_info varmap:\n", !State),
-    rtti_varmaps_tvars(RttiVarMaps, TypeVars),
-    list.foldl(
-        format_type_info_locn(VarNamePrint, TVarSet, VarTable, RttiVarMaps),
-        TypeVars, !State),
-    string.builder.append_string("% typeclass_info varmap:\n", !State),
-    rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
-    list.foldl(
-        format_typeclass_info_var(VarNamePrint, TVarSet, VarTable,
-            RttiVarMaps),
-        Constraints, !State),
-    string.builder.append_string("% rtti_var_info:\n", !State),
+format_rtti_varmaps(TVarSet, VarTable, RttiVarMaps, !State) :-
+    rtti_varmaps_components(RttiVarMaps, TVarToLocnMap, TIVarToTypeMap,
+        ConstraintToVarMap, VarToConstraintMap),
+    VarNamePrint = print_name_and_num,
+    string.builder.append_string("% RTTI varmaps\n", !State),
+
+    string.builder.append_string("% tvar_to_ti_locn_map:\n", !State),
+    map.foldl(
+        format_tvar_to_type_info_locn(VarNamePrint, TVarSet, VarTable),
+        TVarToLocnMap, !State),
+
+    string.builder.append_string("% ti_var_to_type_map:\n", !State),
+    map.foldl(
+        format_ti_var_to_type(VarNamePrint, TVarSet, VarTable),
+        TIVarToTypeMap, !State),
+
+    string.builder.append_string("% tci_constraint_to_var_map:\n", !State),
+    map.foldl(
+        format_constraint_to_var(VarNamePrint, TVarSet, VarTable),
+        ConstraintToVarMap, !State),
+
+    string.builder.append_string("% tci_var_to_constraint_map:\n", !State),
+    map.foldl(
+        format_var_to_constraint(VarNamePrint, TVarSet, VarTable),
+        VarToConstraintMap, !State),
+
+    % The information printed below is synthesized from the info above.
+    string.builder.append_string("% rtti_prog_vars:\n", !State),
     rtti_varmaps_rtti_prog_vars(RttiVarMaps, ProgVars),
     list.foldl(
         format_rtti_var_info(VarNamePrint, TVarSet, VarTable, RttiVarMaps),
         ProgVars, !State).
 
-:- pred format_type_info_locn(var_name_print::in,
-    tvarset::in, var_table::in, rtti_varmaps::in, tvar::in,
+:- pred format_tvar_to_type_info_locn(var_name_print::in,
+    tvarset::in, var_table::in, tvar::in, type_info_locn::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_type_info_locn(VarNamePrint, TVarSet, VarTable, RttiVarMaps, TVar,
+format_tvar_to_type_info_locn(VarNamePrint, TVarSet, VarTable, TVar, Locn,
         !State) :-
     TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
-    term.var_to_int(TVar, TVarNum),
-    string.builder.format("%% %s(number %d) -> ",
-        [s(TVarStr), i(TVarNum)], !State),
-    rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
+    string.builder.format("%%    %-10s -> ", [s(TVarStr)], !State),
     (
         Locn = type_info(Var),
         VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
-        string.builder.format("type_info(%s)", [s(VarStr)], !State)
+        string.builder.format("type_info(%s)\n", [s(VarStr)], !State)
     ;
         Locn = typeclass_info(Var, Index),
         VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
-        string.builder.format("typeclass_info(%s, %d)",
+        string.builder.format("typeclass_info(%s, %d)\n",
             [s(VarStr), i(Index)], !State)
-    ),
-    term.var_to_int(Var, VarNum),
-    string.builder.format(" (number %d)\n", [i(VarNum)], !State).
+    ).
 
-:- pred format_typeclass_info_var(var_name_print::in, tvarset::in,
-    var_table::in, rtti_varmaps::in, prog_constraint::in,
+:- pred format_ti_var_to_type(var_name_print::in,
+    tvarset::in, var_table::in, prog_var::in, mer_type::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_typeclass_info_var(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
-        Constraint, !State) :-
-    string.builder.append_string("% ", !State),
-    mercury_format_constraint(TVarSet, VarNamePrint, Constraint,
-        string.builder.handle, !State),
-    string.builder.append_string(" -> ", !State),
-    rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var),
-    mercury_format_var(VarTable, VarNamePrint, Var,
-        string.builder.handle, !State),
-    string.builder.append_string("\n", !State).
+format_ti_var_to_type(VarNamePrint, TVarSet, VarTable, TIVar, Type0, !State) :-
+    strip_module_names_from_type(strip_all_module_names, set_default_func,
+        Type0, Type),
+    TIVarStr = mercury_var_to_string(VarTable, VarNamePrint, TIVar),
+    TypeStr = mercury_type_to_string(TVarSet, VarNamePrint, Type),
+    string.builder.format("%%    %-34s -> %s\n",
+        [s(TIVarStr), s(TypeStr)], !State).
+
+:- pred format_constraint_to_var(var_name_print::in,
+    tvarset::in, var_table::in, prog_constraint::in, prog_var::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_constraint_to_var(VarNamePrint, TVarSet, VarTable, Constraint0, Var,
+        !State) :-
+    strip_module_names_from_constraint(strip_all_module_names,
+        set_default_func, Constraint0, Constraint),
+    ConstraintStr = mercury_constraint_to_string(TVarSet, VarNamePrint,
+        Constraint),
+    VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
+    string.builder.format("%%    %-34s -> %s\n",
+        [s(ConstraintStr), s(VarStr)], !State).
+
+:- pred format_var_to_constraint(var_name_print::in,
+    tvarset::in, var_table::in, prog_var::in, prog_constraint::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_var_to_constraint(VarNamePrint, TVarSet, VarTable, Var, Constraint0,
+        !State) :-
+    strip_module_names_from_constraint(strip_all_module_names,
+        set_default_func, Constraint0, Constraint),
+    VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
+    ConstraintStr = mercury_constraint_to_string(TVarSet, VarNamePrint,
+        Constraint),
+    string.builder.format("%%    %-34s -> %s\n",
+        [s(VarStr), s(ConstraintStr)], !State).
 
 :- pred format_rtti_var_info(var_name_print::in,
     tvarset::in, var_table::in, rtti_varmaps::in, prog_var::in,
@@ -972,19 +1006,21 @@ format_typeclass_info_var(VarNamePrint, TVarSet, VarTable, RttiVarMaps,
 
 format_rtti_var_info(VarNamePrint, TVarSet, VarTable, RttiVarMaps, Var,
         !State) :-
-    term.var_to_int(Var, VarNum),
-    VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
-    string.builder.format("%% %s (number %d) -> ",
-        [s(VarStr), i(VarNum)], !State),
     rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
+    VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
+    string.builder.format("%%    %-34s -> ", [s(VarStr)], !State),
     (
-        VarInfo = type_info_var(Type),
-        string.builder.append_string("type_info for ", !State),
+        VarInfo = type_info_var(Type0),
+        strip_module_names_from_type(strip_all_module_names, set_default_func,
+            Type0, Type),
+        string.builder.append_string("ti for ", !State),
         mercury_format_type(TVarSet, VarNamePrint, Type,
             string.builder.handle, !State)
     ;
-        VarInfo = typeclass_info_var(Constraint),
-        string.builder.append_string("typeclass_info for ", !State),
+        VarInfo = typeclass_info_var(Constraint0),
+        strip_module_names_from_constraint(strip_all_module_names,
+            set_default_func, Constraint0, Constraint),
+        string.builder.append_string("tci for ", !State),
         mercury_format_constraint(TVarSet, VarNamePrint, Constraint,
             string.builder.handle, !State)
     ;
