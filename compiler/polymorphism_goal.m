@@ -53,7 +53,6 @@
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_proc.
 :- import_module hlds.pred_proc_id.
 :- import_module hlds.quantification.
 :- import_module hlds.type_util.
@@ -337,8 +336,8 @@ polymorphism_process_unify(GoalExpr0, GoalInfo0, Goal, !Info) :-
         assoc_list.keys(ArgVarsModes, ArgVars),
         % Currently we don't allow lambda goals to be existentially typed.
         ExistQVars = [],
-        requantify_lambda_goal(LambdaNonLocals0, ArgVars,
-            ExistQVars, LambdaGoal1, LambdaGoal,
+        requantify_lambda_goal(LambdaNonLocals0, ArgVars, ExistQVars,
+            LambdaGoal1, LambdaGoal,
             LambdaTiTciVars, PossibleNonLocalTiTciVars, !Info),
         LambdaNonLocals1 =
             set_of_var.to_sorted_list(LambdaTiTciVars) ++
@@ -745,265 +744,6 @@ requantify_lambda_goal(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
 
 %---------------------------------------------------------------------------%
 %
-% Process plain or foreign calls.
-%
-
-    % XXX document me
-    %
-    % XXX the following code ought to be rewritten to handle
-    % existential/universal type_infos and type_class_infos
-    % in a more consistent manner.
-    %
-:- pred polymorphism_process_plain_or_foreign_call(pred_id::in,
-    list(prog_var)::in, hlds_goal_info::in, hlds_goal_info::out,
-    list(prog_var)::out, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
-
-polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
-        CallGoalInfo0, CallGoalInfo, ExtraVars, ExtraGoals, !Info) :-
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    poly_info_get_var_table(!.Info, CallerVarTable),
-    poly_info_get_typevarset(!.Info, CallerTVarSet0),
-
-    % The order of the added variables is important, and must match the
-    % order specified at the top of this file.
-    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-    pred_info_get_arg_types(CalleePredInfo, CalleeTVarSet, CalleeExistQVars,
-        CalleeArgTypes),
-    pred_info_get_tvar_kind_map(CalleePredInfo, CalleeKindMap),
-    pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
-
-    % CallerVarTable, CallerTVarSet* etc come from the caller.
-    % CalleeTVarSet, CalleeArgTypes, CalleeExistQVars, etc come
-    % directly from the callee.
-    % ParentArgTypes, ParentExistQVars etc come from a version
-    % of the callee that has been renamed apart from the caller.
-    %
-    % The difference between e.g. CalleeArgTypes and ParentArgTypes is the
-    % application of CalleeToParentTypeRenaming, which maps the type variables
-    % in the callee to new type variables in the caller. Adding the new type
-    % variables to CallerTVarSet0 yields CallerTVarSet.
-    ( if varset.is_empty(CalleeTVarSet) then
-        % Optimize a common case.
-        map.init(CalleeToParentTypeRenaming),
-        CallerTVarSet = CallerTVarSet0,
-        ParentArgTypes = CalleeArgTypes,
-        ParentKindMap = CalleeKindMap,
-        ParentTVars = [],
-        ParentExistQVars = []
-    else
-        % This merge might be a performance bottleneck?
-        tvarset_merge_renaming(CallerTVarSet0, CalleeTVarSet, CallerTVarSet,
-            CalleeToParentTypeRenaming),
-        apply_renaming_to_types(CalleeToParentTypeRenaming,
-            CalleeArgTypes, ParentArgTypes),
-        type_vars_in_types(ParentArgTypes, ParentTVars),
-        apply_renaming_to_tvar_kind_map(CalleeToParentTypeRenaming,
-            CalleeKindMap, ParentKindMap),
-        apply_renaming_to_tvars(CalleeToParentTypeRenaming,
-            CalleeExistQVars, ParentExistQVars)
-    ),
-
-    ( if
-        (
-            % Optimize for the common case of nonpolymorphic call
-            % with no constraints.
-            ParentTVars = [],
-            CalleeClassContext = univ_exist_constraints([], [])
-        ;
-            % Some builtins don't need or want the type_info.
-            CalleeModule = pred_info_module(CalleePredInfo),
-            CalleeName = pred_info_name(CalleePredInfo),
-            pred_info_get_orig_arity(CalleePredInfo,
-                pred_form_arity(CalleePFAInt)),
-            no_type_info_builtin(CalleeModule, CalleeName, CalleePFAInt)
-        )
-    then
-        CallGoalInfo = CallGoalInfo0,
-        ExtraGoals = [],
-        ExtraVars = []
-    else
-        poly_info_set_typevarset(CallerTVarSet, !Info),
-
-        % Compute which "parent" type variables are constrained
-        % by the type class constraints.
-        apply_renaming_to_univ_exist_constraints(CalleeToParentTypeRenaming,
-            CalleeClassContext, ParentClassContext),
-        ParentClassContext = univ_exist_constraints(ParentUnivConstraints,
-            ParentExistConstraints),
-        constraint_list_get_tvars(ParentUnivConstraints,
-            ParentUnivConstrainedTVars),
-        constraint_list_get_tvars(ParentExistConstraints,
-            ParentExistConstrainedTVars),
-
-        % Calculate the set of unconstrained type vars. Split these into
-        % existential and universal type vars.
-        list.remove_dups(ParentTVars, ParentUnconstrainedTVars0),
-        list.delete_elems(ParentUnconstrainedTVars0,
-            ParentUnivConstrainedTVars, ParentUnconstrainedTVars1),
-        list.delete_elems(ParentUnconstrainedTVars1,
-            ParentExistConstrainedTVars, ParentUnconstrainedTVars),
-        list.delete_elems(ParentUnconstrainedTVars, ParentExistQVars,
-            ParentUnconstrainedUnivTVars),
-        list.delete_elems(ParentUnconstrainedTVars,
-            ParentUnconstrainedUnivTVars, ParentUnconstrainedExistTVars),
-
-        % Calculate the "parent to actual" binding.
-        lookup_var_types(CallerVarTable, CallArgVars0, ActualArgTypes),
-        type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
-            ParentToActualTypeSubst),
-
-        % Make the universally quantified typeclass_infos for the call.
-        poly_info_get_constraint_map(!.Info, ConstraintMap),
-        GoalId = goal_info_get_goal_id(CallGoalInfo0),
-        list.length(ParentUnivConstraints, NumUnivConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
-            NumUnivConstraints, ActualUnivConstraints),
-        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
-            ParentExistQVars, ActualExistQVarTypes),
-        ( if
-            prog_type.type_list_to_var_list(ActualExistQVarTypes,
-                ActualExistQVars0)
-        then
-            ActualExistQVars = ActualExistQVars0
-        else
-            unexpected($pred, "existq_tvar bound")
-        ),
-        CallContext = goal_info_get_context(CallGoalInfo0),
-        make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
-            CallContext, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
-        assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
-
-        % Make variables to hold any existentially quantified typeclass_infos
-        % in the call, insert them into the typeclass_info map.
-        list.length(ParentExistConstraints, NumExistConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
-            NumExistConstraints, ActualExistConstraints),
-        make_existq_typeclass_info_vars(ActualExistConstraints, CallContext,
-            ExtraExistClassVars, ExtraExistClassGoals, !Info),
-
-        % Make variables to hold typeinfos for unconstrained universal type
-        % vars.
-        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
-            ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
-        polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
-            CallContext, ExtraUnivTypeInfoVarsMCAs,
-            ExtraUnivTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs, ExtraUnivTypeInfoVars),
-
-        % Make variables to hold typeinfos for unconstrained existential type
-        % vars.
-        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
-            ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
-        polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
-            CallContext, ExtraExistTypeInfoVarsMCAs,
-            ExtraExistTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraExistTypeInfoVarsMCAs, ExtraExistTypeInfoVars),
-
-        % Add up the extra vars and goals.
-        ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals
-            ++ ExtraUnivTypeInfoGoals ++ ExtraExistTypeInfoGoals,
-        ExtraVars = ExtraUnivTypeInfoVars ++ ExtraExistTypeInfoVars
-            ++ ExtraUnivClassVars ++ ExtraExistClassVars,
-
-        % Update the nonlocals.
-        CallNonLocals0 = goal_info_get_nonlocals(CallGoalInfo0),
-        set_of_var.insert_list(ExtraVars, CallNonLocals0, CallNonLocals),
-        goal_info_set_nonlocals(CallNonLocals, CallGoalInfo0, CallGoalInfo)
-    ).
-
-%---------------------%
-
-    % Add the type_info variables for a new call goal. This predicate assumes
-    % that process_module has already been run so the called pred has already
-    % been processed.
-    %
-    % XXX This predicate does not yet handle calls whose arguments include
-    % existentially quantified types or type class constraints.
-    %
-    % XXX This predicate is unused.
-    %
-:- pred polymorphism_process_new_call(pred_info::in, proc_info::in,
-    pred_id::in, proc_id::in, list(prog_var)::in, builtin_state::in,
-    maybe(call_unify_context)::in, sym_name::in, hlds_goal_info::in,
-    hlds_goal::out, poly_info::in, poly_info::out) is det.
-:- pragma consider_used(pred(polymorphism_process_new_call/12)).
-
-polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
-        CallArgs0, BuiltinState, MaybeCallUnifyContext, SymName,
-        GoalInfo0, Goal, !Info) :-
-    poly_info_get_typevarset(!.Info, TVarSet0),
-    poly_info_get_var_table(!.Info, VarTable0),
-    lookup_var_types(VarTable0, CallArgs0, ActualArgTypes0),
-    pred_info_get_arg_types(CalleePredInfo, PredTVarSet, _PredExistQVars,
-        PredArgTypes),
-    proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
-    proc_info_get_rtti_varmaps(CalleeProcInfo, CalleeRttiVarMaps),
-
-    % Work out how many type_info args we need to prepend.
-    NCallArgs0 = list.length(ActualArgTypes0),
-    NPredArgs  = list.length(PredArgTypes),
-    NExtraArgs = NPredArgs - NCallArgs0,
-    ( if
-        list.drop(NExtraArgs, PredArgTypes, OrigPredArgTypes0),
-        list.take(NExtraArgs, CalleeHeadVars, CalleeExtraHeadVars0)
-    then
-        OrigPredArgTypes = OrigPredArgTypes0,
-        CalleeExtraHeadVars = CalleeExtraHeadVars0
-    else
-        unexpected($pred, "extra args not found")
-    ),
-
-    % Work out the bindings of type variables in the call.
-    tvarset_merge_renaming(TVarSet0, PredTVarSet, TVarSet,
-        PredToParentRenaming),
-    apply_renaming_to_types(PredToParentRenaming,
-        OrigPredArgTypes, OrigParentArgTypes),
-    type_list_subsumes_det(OrigParentArgTypes, ActualArgTypes0,
-        ParentToActualTSubst),
-    poly_info_set_typevarset(TVarSet, !Info),
-
-    % Look up the type variables that the type_infos in the caller are for,
-    % and apply the type bindings to calculate the types that the caller
-    % should pass type_infos for.
-    GetTypeInfoTypes =
-        ( pred(ProgVar::in, TypeInfoType::out) is det :-
-            rtti_varmaps_var_info(CalleeRttiVarMaps, ProgVar, VarInfo),
-            (
-                VarInfo = type_info_var(TypeInfoType)
-            ;
-                VarInfo = typeclass_info_var(_),
-                unexpected($pred,
-                    "unsupported: constraints on initialisation preds")
-            ;
-                VarInfo = non_rtti_var,
-                unexpected($pred,
-                    "missing rtti_var_info for initialisation pred")
-            )
-        ),
-    list.map(GetTypeInfoTypes, CalleeExtraHeadVars, PredTypeInfoTypes),
-    apply_renaming_to_types(PredToParentRenaming,
-        PredTypeInfoTypes, ParentTypeInfoTypes),
-    apply_rec_subst_to_types(ParentToActualTSubst,
-        ParentTypeInfoTypes, ActualTypeInfoTypes),
-
-    % Construct goals to make the required type_infos.
-    Ctxt = term_context.dummy_context,
-    polymorphism_do_make_type_info_vars(ActualTypeInfoTypes, Ctxt,
-        ExtraArgsConstArgs, ExtraGoals, !Info),
-    assoc_list.keys(ExtraArgsConstArgs, ExtraArgs),
-    CallArgs = ExtraArgs ++ CallArgs0,
-    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    NonLocals1 = set_of_var.list_to_set(ExtraArgs),
-    set_of_var.union(NonLocals0, NonLocals1, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    CallGoalExpr = plain_call(PredId, ProcId, CallArgs, BuiltinState,
-        MaybeCallUnifyContext, SymName),
-    CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
-    conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
-
-%---------------------------------------------------------------------------%
-%
 % Code that is unique to processing plain calls.
 %
 
@@ -1173,6 +913,175 @@ foreign_proc_add_typeinfo(InOut, Mode, Impl, TypeVarSet, TVar, MaybeArgNameBox,
 
 %---------------------------------------------------------------------------%
 %
+% Process plain or foreign calls.
+%
+
+    % XXX document me
+    %
+    % XXX the following code ought to be rewritten to handle
+    % existential/universal type_infos and type_class_infos
+    % in a more consistent manner.
+    %
+:- pred polymorphism_process_plain_or_foreign_call(pred_id::in,
+    list(prog_var)::in, hlds_goal_info::in, hlds_goal_info::out,
+    list(prog_var)::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
+
+polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
+        CallGoalInfo0, CallGoalInfo, ExtraVars, ExtraGoals, !Info) :-
+    poly_info_get_module_info(!.Info, ModuleInfo),
+    poly_info_get_var_table(!.Info, CallerVarTable),
+    poly_info_get_typevarset(!.Info, CallerTVarSet0),
+
+    % The order of the added variables is important, and must match the
+    % order specified at the top of this file.
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    pred_info_get_arg_types(CalleePredInfo, CalleeTVarSet, CalleeExistQVars,
+        CalleeArgTypes),
+    pred_info_get_tvar_kind_map(CalleePredInfo, CalleeKindMap),
+    pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
+
+    % CallerVarTable, CallerTVarSet* etc come from the caller.
+    % CalleeTVarSet, CalleeArgTypes, CalleeExistQVars, etc come
+    % directly from the callee.
+    % ParentArgTypes, ParentExistQVars etc come from a version
+    % of the callee that has been renamed apart from the caller.
+    %
+    % The difference between e.g. CalleeArgTypes and ParentArgTypes is the
+    % application of CalleeToParentTypeRenaming, which maps the type variables
+    % in the callee to new type variables in the caller. Adding the new type
+    % variables to CallerTVarSet0 yields CallerTVarSet.
+    ( if varset.is_empty(CalleeTVarSet) then
+        % Optimize a common case.
+        map.init(CalleeToParentTypeRenaming),
+        CallerTVarSet = CallerTVarSet0,
+        ParentArgTypes = CalleeArgTypes,
+        ParentKindMap = CalleeKindMap,
+        ParentTVars = [],
+        ParentExistQVars = []
+    else
+        % This merge might be a performance bottleneck?
+        tvarset_merge_renaming(CallerTVarSet0, CalleeTVarSet, CallerTVarSet,
+            CalleeToParentTypeRenaming),
+        apply_renaming_to_types(CalleeToParentTypeRenaming,
+            CalleeArgTypes, ParentArgTypes),
+        type_vars_in_types(ParentArgTypes, ParentTVars),
+        apply_renaming_to_tvar_kind_map(CalleeToParentTypeRenaming,
+            CalleeKindMap, ParentKindMap),
+        apply_renaming_to_tvars(CalleeToParentTypeRenaming,
+            CalleeExistQVars, ParentExistQVars)
+    ),
+
+    ( if
+        (
+            % Optimize for the common case of nonpolymorphic call
+            % with no constraints.
+            ParentTVars = [],
+            CalleeClassContext = univ_exist_constraints([], [])
+        ;
+            % Some builtins don't need or want the type_info.
+            CalleeModule = pred_info_module(CalleePredInfo),
+            CalleeName = pred_info_name(CalleePredInfo),
+            pred_info_get_orig_arity(CalleePredInfo,
+                pred_form_arity(CalleePFAInt)),
+            no_type_info_builtin(CalleeModule, CalleeName, CalleePFAInt)
+        )
+    then
+        CallGoalInfo = CallGoalInfo0,
+        ExtraGoals = [],
+        ExtraVars = []
+    else
+        poly_info_set_typevarset(CallerTVarSet, !Info),
+
+        % Compute which "parent" type variables are constrained
+        % by the type class constraints.
+        apply_renaming_to_univ_exist_constraints(CalleeToParentTypeRenaming,
+            CalleeClassContext, ParentClassContext),
+        ParentClassContext = univ_exist_constraints(ParentUnivConstraints,
+            ParentExistConstraints),
+        constraint_list_get_tvars(ParentUnivConstraints,
+            ParentUnivConstrainedTVars),
+        constraint_list_get_tvars(ParentExistConstraints,
+            ParentExistConstrainedTVars),
+
+        % Calculate the set of unconstrained type vars. Split these into
+        % existential and universal type vars.
+        list.remove_dups(ParentTVars, ParentUnconstrainedTVars0),
+        list.delete_elems(ParentUnconstrainedTVars0,
+            ParentUnivConstrainedTVars, ParentUnconstrainedTVars1),
+        list.delete_elems(ParentUnconstrainedTVars1,
+            ParentExistConstrainedTVars, ParentUnconstrainedTVars),
+        list.delete_elems(ParentUnconstrainedTVars, ParentExistQVars,
+            ParentUnconstrainedUnivTVars),
+        list.delete_elems(ParentUnconstrainedTVars,
+            ParentUnconstrainedUnivTVars, ParentUnconstrainedExistTVars),
+
+        % Calculate the "parent to actual" binding.
+        lookup_var_types(CallerVarTable, CallArgVars0, ActualArgTypes),
+        type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
+            ParentToActualTypeSubst),
+
+        % Make the universally quantified typeclass_infos for the call.
+        poly_info_get_constraint_map(!.Info, ConstraintMap),
+        GoalId = goal_info_get_goal_id(CallGoalInfo0),
+        list.length(ParentUnivConstraints, NumUnivConstraints),
+        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
+            NumUnivConstraints, ActualUnivConstraints),
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
+            ParentExistQVars, ActualExistQVarTypes),
+        ( if
+            prog_type.type_list_to_var_list(ActualExistQVarTypes,
+                ActualExistQVars0)
+        then
+            ActualExistQVars = ActualExistQVars0
+        else
+            unexpected($pred, "existq_tvar bound")
+        ),
+        CallContext = goal_info_get_context(CallGoalInfo0),
+        make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
+            CallContext, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
+        assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
+
+        % Make variables to hold any existentially quantified typeclass_infos
+        % in the call, insert them into the typeclass_info map.
+        list.length(ParentExistConstraints, NumExistConstraints),
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
+            NumExistConstraints, ActualExistConstraints),
+        make_existq_typeclass_info_vars(ActualExistConstraints, CallContext,
+            ExtraExistClassVars, ExtraExistClassGoals, !Info),
+
+        % Make variables to hold typeinfos for unconstrained universal type
+        % vars.
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
+            ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
+        polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
+            CallContext, ExtraUnivTypeInfoVarsMCAs,
+            ExtraUnivTypeInfoGoals, !Info),
+        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs, ExtraUnivTypeInfoVars),
+
+        % Make variables to hold typeinfos for unconstrained existential type
+        % vars.
+        apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
+            ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
+        polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
+            CallContext, ExtraExistTypeInfoVarsMCAs,
+            ExtraExistTypeInfoGoals, !Info),
+        assoc_list.keys(ExtraExistTypeInfoVarsMCAs, ExtraExistTypeInfoVars),
+
+        % Add up the extra vars and goals.
+        ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals
+            ++ ExtraUnivTypeInfoGoals ++ ExtraExistTypeInfoGoals,
+        ExtraVars = ExtraUnivTypeInfoVars ++ ExtraExistTypeInfoVars
+            ++ ExtraUnivClassVars ++ ExtraExistClassVars,
+
+        % Update the nonlocals.
+        CallNonLocals0 = goal_info_get_nonlocals(CallGoalInfo0),
+        set_of_var.insert_list(ExtraVars, CallNonLocals0, CallNonLocals),
+        goal_info_set_nonlocals(CallNonLocals, CallGoalInfo0, CallGoalInfo)
+    ).
+
+%---------------------------------------------------------------------------%
+%
 % Process scopes.
 %
 
@@ -1319,7 +1228,6 @@ polymorphism_process_cases([Case0 | Cases0], [Case | Cases], InitialSnapshot,
     Case = case(MainConsId, OtherConsIds, Goal),
     polymorphism_process_cases(Cases0, Cases, InitialSnapshot, !Info).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism_goal.
 %---------------------------------------------------------------------------%
