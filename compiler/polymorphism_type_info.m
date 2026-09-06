@@ -248,10 +248,10 @@
 :- implementation.
 
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
+:- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -908,6 +908,16 @@ polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,
         VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
     Goals = IndexGoals ++ ExtractGoals,
     poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info).
+
+%---------------------------------------------------------------------------%
+
+    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
+    %
+:- func type_ctor_info_cons_id(type_ctor) = cons_id.
+
+type_ctor_info_cons_id(TypeCtor) = ConsId :-
+    type_ctor_module_name_arity(TypeCtor, ModuleName, Name, Arity),
+    ConsId = type_ctor_info_const(ModuleName, Name, Arity).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism_type_info.

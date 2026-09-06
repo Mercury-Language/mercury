@@ -76,11 +76,11 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.type_rename.
@@ -173,6 +173,8 @@ make_typeclass_info_var(Constraint, Seen, ExistQVars, Context,
         Goals = []
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred make_typeclass_info_from_proof(prog_constraint::in,
     list(prog_constraint)::in, constraint_proof::in, existq_tvars::in,
     prog_context::in, pair(prog_var, maybe(const_struct_arg))::out,
@@ -193,6 +195,8 @@ make_typeclass_info_from_proof(Constraint, Seen, Proof,
         make_typeclass_info_from_instance(Constraint, Seen, InstanceNum,
             ExistQVars, Context, TypeClassInfoVarMCA, Goals, !Info)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred make_typeclass_info_from_subclass(prog_constraint::in,
     list(prog_constraint)::in, prog_constraint::in, existq_tvars::in,
@@ -349,6 +353,8 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             )
         )
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred make_typeclass_info_from_instance(prog_constraint::in,
     list(prog_constraint)::in, instance_id::in, existq_tvars::in,
@@ -580,8 +586,8 @@ do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars, Context,
         poly_info_get_num_reuses(!.Info, NumReuses),
         poly_info_set_num_reuses(NumReuses + 2, !Info)
     else
-        BaseConsId = base_typeclass_info_cons_id(InstanceTable,
-            Constraint, instance_id(InstanceNum), InstanceTypes),
+        get_base_typeclass_info_cons_id(InstanceTable, Constraint,
+            instance_id(InstanceNum), InstanceTypes, BaseConsId),
         materialize_base_typeclass_info_var(Constraint, BaseConsId, BaseVar,
             BaseGoals, !Info),
         construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
@@ -647,6 +653,8 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
         MCA = yes(ConstArg),
         ConstOrVarArg = cova_const(ConstArg)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred construct_typeclass_info(prog_constraint::in,
     prog_var::in, cons_id::in,
@@ -957,6 +965,8 @@ is_unseen_or_in_type_info_tvar(RttiVarMaps, TypeVar) :-
         true
     ).
 
+%---------------------------------------------------------------------------%
+
 :- type tci_var_kind
     --->    base_typeclass_info_kind
     ;       typeclass_info_kind.
@@ -1044,11 +1054,11 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         % Create the construction unification to initialize the variable.
         ConsId = typeclass_info_const(InstanceIdConstNum),
         RHS = rhs_functor(ConsId, is_not_exist_constr, []),
-        Unification = construct(Var, ConsId, [], [],
-            construct_statically(born_static), cell_is_shared,
-            no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
         UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+        ConstructHow = construct_statically(born_static),
+        Unification = construct(Var, ConsId, [], [], ConstructHow,
+            cell_is_shared, no_construct_sub_info),
         % XXX The UnifyContext is wrong.
         UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
@@ -1061,6 +1071,26 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Goals = [Goal]
     ).
+
+%---------------------------------------------------------------------------%
+
+    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
+    %
+:- pred get_base_typeclass_info_cons_id(instance_table::in,
+    prog_constraint::in, instance_id::in, list(mer_type)::in,
+    cons_id::out) is det.
+
+get_base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceId,
+        InstanceTypes, ConsId) :-
+    Constraint = constraint(ClassSymName, ConstraintArgTypes),
+    ClassId = class_id(ClassSymName, list.length(ConstraintArgTypes)),
+    map.lookup(InstanceTable, ClassId, InstanceList),
+    InstanceId = instance_id(InstanceNum),
+    list.det_index1(InstanceList, InstanceNum, InstanceDefn),
+    InstanceModuleName = InstanceDefn ^ instdefn_module,
+    make_instance_string(InstanceTypes, InstanceString),
+    ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
+        InstanceNum, InstanceString).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism_type_class_info.

@@ -16,7 +16,6 @@
 :- module hlds.hlds_code_util.
 :- interface.
 
-:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -34,15 +33,6 @@
     % in the given type.
     %
 :- func cons_id_to_tag(module_info, cons_id) = cons_tag.
-
-    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
-    %
-:- func type_ctor_info_cons_id(type_ctor) = cons_id.
-
-    % Given a type_ctor, return the cons_id that represents its type_ctor_info.
-    %
-:- func base_typeclass_info_cons_id(instance_table,
-    prog_constraint, instance_id, list(mer_type)) = cons_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,7 +55,6 @@
 
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.mode_util.
-:- import_module hlds.pred_name.
 :- import_module hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
@@ -75,7 +64,6 @@
 
 :- import_module char.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -196,24 +184,6 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
     ).
 
 %-----------------------------------------------------------------------------%
-
-type_ctor_info_cons_id(TypeCtor) = ConsId :-
-    type_ctor_module_name_arity(TypeCtor, ModuleName, Name, Arity),
-    ConsId = type_ctor_info_const(ModuleName, Name, Arity).
-
-base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceId,
-        InstanceTypes) = ConsId :-
-    Constraint = constraint(ClassName, ConstraintArgTypes),
-    ClassId = class_id(ClassName, list.length(ConstraintArgTypes)),
-    map.lookup(InstanceTable, ClassId, InstanceList),
-    InstanceId = instance_id(InstanceNum),
-    list.det_index1(InstanceList, InstanceNum, InstanceDefn),
-    InstanceModuleName = InstanceDefn ^ instdefn_module,
-    make_instance_string(InstanceTypes, InstanceString),
-    ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
-        InstanceNum, InstanceString).
-
-%----------------------------------------------------------------------------%
 
 get_procedure_matching_argmodes(ModuleInfo, ProcTable, Modes0,
         MatchingProcId, MatchingProcInfo) :-
