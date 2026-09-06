@@ -582,7 +582,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         % XXX The strings ('z') and ('\n') should always denote
         % the last letter of the alphabet and the newline character
         % respectively. We need to decide whether forms such as (z)
-        % and 'z' should acceptable too. I (zs) think that 'z' should
+        % and 'z' should be acceptable too. I (zs) think that 'z' should
         % be acceptable to the scanner and parser (which currently it isn't),
         % but (z) should not be.
         Str = "(" ++ term_io.quoted_char_to_string(Char) ++ ")"
@@ -605,57 +605,18 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         Str = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             PredConsId, ArgVars)
     ;
-        ConsId = type_ctor_info_const(Module, Name, Arity),
-        Str = string.format("type_ctor_info(%s, %s, %d)",
-            [s(escaped_sym_name_to_string(Module)), s(Name), i(Arity)])
-    ;
-        ConsId = base_typeclass_info_const(Module, ClassId, _, Instance),
-        ClassId = class_id(Name, Arity),
-        ClassIdStr = string.format("class_id(%s, %d)",
-            [s(escaped_sym_name_to_string(Name)), i(Arity)]),
-        Str = string.format("base_typeclass_info(%s, %s, %s)",
-            [s(escaped_sym_name_to_string(Module)),
-            s(ClassIdStr), s(Instance)])
-    ;
-        ConsId = type_info_cell_constructor(_),
-        Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
-            next_to_graphic_token,
-            term.atom("type_info_cell_constructor"), ArgVars)
-    ;
-        ConsId = typeclass_info_cell_constructor,
-        Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
-            next_to_graphic_token,
-            term.atom("typeclass_info_cell_constructor"), ArgVars)
-    ;
-        ConsId = type_info_const(TIConstNum),
-        Str = string.format("type_info_const(%d)", [i(TIConstNum)])
-    ;
-        ConsId = typeclass_info_const(TCIConstNum),
-        Str = string.format("typeclass_info_const(%d)", [i(TCIConstNum)])
-    ;
-        ConsId = ground_term_const(ConstNum, SubConsId),
-        SubStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
-            VarNamePrint, SubConsId, []),
-        Str = string.format("ground_term_const(%d, %s)",
-            [i(ConstNum), s(SubStr)])
-    ;
-        ConsId = tabling_info_const(ShroudedPredProcId),
-        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        proc_id_to_int(ProcId, ProcIdInt),
-        Str = string.format("tabling_info_const(%s, mode %d)",
-            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
-    ;
-        ConsId = table_io_entry_desc(ShroudedPredProcId),
-        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        proc_id_to_int(ProcId, ProcIdInt),
-        Str = string.format("table_io_entry_desc(%s, mode %d)",
-            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
-    ;
-        ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
-        proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        proc_id_to_int(ProcId, ProcIdInt),
-        Str = string.format("deep_profiling_proc_layout(%s mode %d)",
-            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
+        ( ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ),
+        Str = maybe_quoted_cons_id_and_arity_to_string(ConsId)
     ).
 
 cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)

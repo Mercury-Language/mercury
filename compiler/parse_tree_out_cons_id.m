@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2023-2024, 2026 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -315,50 +315,58 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
     ;
         ConsId = closure_cons(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "closure_cons<pred " ++ int_to_string(PredId) ++
-            " proc " ++ int_to_string(ProcId) ++ ">"
+        string.format("<closure_cons(pred %d, proc %d)>",
+            [i(PredId), i(ProcId)], String)
     ;
-        ConsId = type_ctor_info_const(Module, Ctor, Arity),
-        String =
-            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
-            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
+        ConsId = type_ctor_info_const(ModuleName, CtorName, Arity),
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        string.format("<type_ctor_info(%s.%s, %d)>",
+            [s(ModuleNameStr), s(CtorName), i(Arity)], String)
     ;
-        ConsId = base_typeclass_info_const(_, _, _, _),
-        String = "<base_typeclass_info>"
+        ConsId = base_typeclass_info_const(ModuleName, ClassId,
+            InstanceNum, EncodedInstanceStr),
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        ClassId = class_id(ClassSymName, Arity),
+        ClassSymNameStr = sym_name_to_string(ClassSymName),
+        string.format("<base_typeclass_info(%s, %s/%d, #%d, %s)>",
+            [s(ModuleNameStr), s(ClassSymNameStr), i(Arity),
+            i(InstanceNum), s(EncodedInstanceStr)], String)
     ;
-        ConsId = type_info_cell_constructor(_),
-        String = "<type_info_cell_constructor>"
+        ConsId = type_info_cell_constructor(TypeCtor),
+        TypeCtor = type_ctor(SymName, Arity),
+        SymNameStr = sym_name_to_string(SymName),
+        string.format("<type_info_cell_constructor(%s/%d)>",
+            [s(SymNameStr), i(Arity)], String)
     ;
         ConsId = typeclass_info_cell_constructor,
         String = "<typeclass_info_cell_constructor>"
     ;
-        ConsId = type_info_const(_),
-        String = "<type_info_const>"
+        ConsId = type_info_const(N),
+        string.format("<type_info_const(%d)>", [i(N)], String)
     ;
-        ConsId = typeclass_info_const(_),
-        String = "<typeclass_info_const>"
+        ConsId = typeclass_info_const(N),
+        string.format("<typeclass_info_const(%d)>", [i(N)], String)
     ;
-        ConsId = ground_term_const(_, _),
-        String = "<ground_term_const>"
+        ConsId = ground_term_const(N, SubConsId),
+        SubConsIdStr = cons_id_and_arity_to_string_maybe_quoted(MangleCons,
+            QuoteCons, StripQual, SubConsId),
+        string.format("<ground_term_const(%d, %s)>",
+            [i(N), s(SubConsIdStr)], String)
     ;
         ConsId = tabling_info_const(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<tabling_info " ++ int_to_string(PredId) ++
-            ", " ++ int_to_string(ProcId) ++ ">"
+        string.format("<tabling_info(pred %d, proc %d)>",
+            [i(PredId), i(ProcId)], String)
     ;
         ConsId = table_io_entry_desc(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
-            int_to_string(ProcId) ++ ">"
+        string.format("<table_io_entry_desc(pred %d, proc %d)>",
+            [i(PredId), i(ProcId)], String)
     ;
         ConsId = deep_profiling_proc_layout(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
-            int_to_string(ProcId) ++ ">"
+        string.format("<deep_profiling_proc_layout(pred %d, proc %d)>",
+            [i(PredId), i(ProcId)], String)
     ).
 
 :- func du_ctor_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
