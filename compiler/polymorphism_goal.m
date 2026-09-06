@@ -98,27 +98,11 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = unify(_, _, _, _, _),
         polymorphism_process_unify(GoalExpr0, GoalInfo0, Goal, !Info)
     ;
-        GoalExpr0 = plain_call(PredId, _, ArgVars0, _, _, _),
-        polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
-            ExtraVars, ExtraGoals, !Info),
-        ArgVars = ExtraVars ++ ArgVars0,
-        CallExpr = GoalExpr0 ^ call_args := ArgVars,
-        Call = hlds_goal(CallExpr, GoalInfo),
-        GoalList = ExtraGoals ++ [Call],
-        conj_list_to_goal(GoalList, GoalInfo0, Goal)
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        polymorphism_process_plain_call(GoalExpr0, GoalInfo0, Goal, !Info)
     ;
-        GoalExpr0 = call_foreign_proc(_, PredId, _, _, _, _, _),
-        poly_info_get_module_info(!.Info, ModuleInfo),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        PredModule = pred_info_module(PredInfo),
-        PredName = pred_info_name(PredInfo),
-        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
-        ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
-            Goal = Goal0
-        else
-            polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
-                Goal, !Info)
-        )
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        polymorphism_process_foreign_proc(GoalExpr0, GoalInfo0, Goal, !Info)
     ;
         % We don't need to add type_infos for higher order calls, since the
         % type_infos are added when the closures are constructed, not when
@@ -761,7 +745,7 @@ requantify_lambda_goal(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
 
 %---------------------------------------------------------------------------%
 %
-% Process plain calls.
+% Process plain or foreign calls.
 %
 
     % XXX document me
@@ -770,80 +754,81 @@ requantify_lambda_goal(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
     % existential/universal type_infos and type_class_infos
     % in a more consistent manner.
     %
-:- pred polymorphism_process_call(pred_id::in, list(prog_var)::in,
-    hlds_goal_info::in, hlds_goal_info::out,
+:- pred polymorphism_process_plain_or_foreign_call(pred_id::in,
+    list(prog_var)::in, hlds_goal_info::in, hlds_goal_info::out,
     list(prog_var)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
-        ExtraVars, ExtraGoals, !Info) :-
-    poly_info_get_var_table(!.Info, VarTable),
-    poly_info_get_typevarset(!.Info, TypeVarSet0),
+polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
+        CallGoalInfo0, CallGoalInfo, ExtraVars, ExtraGoals, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo),
+    poly_info_get_var_table(!.Info, CallerVarTable),
+    poly_info_get_typevarset(!.Info, CallerTVarSet0),
 
     % The order of the added variables is important, and must match the
     % order specified at the top of this file.
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-        PredArgTypes),
-    pred_info_get_tvar_kind_map(PredInfo, PredKindMap),
-    pred_info_get_class_context(PredInfo, PredClassContext),
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    pred_info_get_arg_types(CalleePredInfo, CalleeTVarSet, CalleeExistQVars,
+        CalleeArgTypes),
+    pred_info_get_tvar_kind_map(CalleePredInfo, CalleeKindMap),
+    pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
 
-    % VarTable, TypeVarSet* etc come from the caller.
-    % PredTypeVarSet, PredArgTypes, PredExistQVars, etc come
+    % CallerVarTable, CallerTVarSet* etc come from the caller.
+    % CalleeTVarSet, CalleeArgTypes, CalleeExistQVars, etc come
     % directly from the callee.
     % ParentArgTypes, ParentExistQVars etc come from a version
     % of the callee that has been renamed apart from the caller.
     %
-    % The difference between e.g. PredArgTypes and ParentArgTypes is the
-    % application of PredToParentTypeRenaming, which maps the type variables
+    % The difference between e.g. CalleeArgTypes and ParentArgTypes is the
+    % application of CalleeToParentTypeRenaming, which maps the type variables
     % in the callee to new type variables in the caller. Adding the new type
-    % variables to TypeVarSet0 yields TypeVarSet.
-    ( if varset.is_empty(PredTypeVarSet) then
+    % variables to CallerTVarSet0 yields CallerTVarSet.
+    ( if varset.is_empty(CalleeTVarSet) then
         % Optimize a common case.
-        map.init(PredToParentTypeRenaming),
-        TypeVarSet = TypeVarSet0,
-        ParentArgTypes = PredArgTypes,
-        ParentKindMap = PredKindMap,
+        map.init(CalleeToParentTypeRenaming),
+        CallerTVarSet = CallerTVarSet0,
+        ParentArgTypes = CalleeArgTypes,
+        ParentKindMap = CalleeKindMap,
         ParentTVars = [],
         ParentExistQVars = []
     else
         % This merge might be a performance bottleneck?
-        tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet,
-            PredToParentTypeRenaming),
-        apply_renaming_to_types(PredToParentTypeRenaming,
-            PredArgTypes, ParentArgTypes),
+        tvarset_merge_renaming(CallerTVarSet0, CalleeTVarSet, CallerTVarSet,
+            CalleeToParentTypeRenaming),
+        apply_renaming_to_types(CalleeToParentTypeRenaming,
+            CalleeArgTypes, ParentArgTypes),
         type_vars_in_types(ParentArgTypes, ParentTVars),
-        apply_renaming_to_tvar_kind_map(PredToParentTypeRenaming,
-            PredKindMap, ParentKindMap),
-        apply_renaming_to_tvars(PredToParentTypeRenaming,
-            PredExistQVars, ParentExistQVars)
+        apply_renaming_to_tvar_kind_map(CalleeToParentTypeRenaming,
+            CalleeKindMap, ParentKindMap),
+        apply_renaming_to_tvars(CalleeToParentTypeRenaming,
+            CalleeExistQVars, ParentExistQVars)
     ),
 
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
     ( if
         (
             % Optimize for the common case of nonpolymorphic call
             % with no constraints.
             ParentTVars = [],
-            PredClassContext = univ_exist_constraints([], [])
+            CalleeClassContext = univ_exist_constraints([], [])
         ;
             % Some builtins don't need or want the type_info.
-            no_type_info_builtin(PredModule, PredName, PredFormArityInt)
+            CalleeModule = pred_info_module(CalleePredInfo),
+            CalleeName = pred_info_name(CalleePredInfo),
+            pred_info_get_orig_arity(CalleePredInfo,
+                pred_form_arity(CalleePFAInt)),
+            no_type_info_builtin(CalleeModule, CalleeName, CalleePFAInt)
         )
     then
-        GoalInfo = GoalInfo0,
+        CallGoalInfo = CallGoalInfo0,
         ExtraGoals = [],
         ExtraVars = []
     else
-        poly_info_set_typevarset(TypeVarSet, !Info),
+        poly_info_set_typevarset(CallerTVarSet, !Info),
 
         % Compute which "parent" type variables are constrained
         % by the type class constraints.
-        apply_renaming_to_univ_exist_constraints(PredToParentTypeRenaming,
-            PredClassContext, ParentClassContext),
+        apply_renaming_to_univ_exist_constraints(CalleeToParentTypeRenaming,
+            CalleeClassContext, ParentClassContext),
         ParentClassContext = univ_exist_constraints(ParentUnivConstraints,
             ParentExistConstraints),
         constraint_list_get_tvars(ParentUnivConstraints,
@@ -864,13 +849,13 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             ParentUnconstrainedUnivTVars, ParentUnconstrainedExistTVars),
 
         % Calculate the "parent to actual" binding.
-        lookup_var_types(VarTable, ArgVars0, ActualArgTypes),
+        lookup_var_types(CallerVarTable, CallArgVars0, ActualArgTypes),
         type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
             ParentToActualTypeSubst),
 
         % Make the universally quantified typeclass_infos for the call.
         poly_info_get_constraint_map(!.Info, ConstraintMap),
-        GoalId = goal_info_get_goal_id(GoalInfo0),
+        GoalId = goal_info_get_goal_id(CallGoalInfo0),
         list.length(ParentUnivConstraints, NumUnivConstraints),
         lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumUnivConstraints, ActualUnivConstraints),
@@ -884,9 +869,9 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         else
             unexpected($pred, "existq_tvar bound")
         ),
-        Context = goal_info_get_context(GoalInfo0),
+        CallContext = goal_info_get_context(CallGoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
-            Context, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
+            CallContext, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
         assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
 
         % Make variables to hold any existentially quantified typeclass_infos
@@ -894,7 +879,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         list.length(ParentExistConstraints, NumExistConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistConstraints, ActualExistConstraints),
-        make_existq_typeclass_info_vars(ActualExistConstraints, Context,
+        make_existq_typeclass_info_vars(ActualExistConstraints, CallContext,
             ExtraExistClassVars, ExtraExistClassGoals, !Info),
 
         % Make variables to hold typeinfos for unconstrained universal type
@@ -902,20 +887,18 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedUnivTVars, ActualUnconstrainedUnivTypes),
         polymorphism_do_make_type_info_vars(ActualUnconstrainedUnivTypes,
-            Context, ExtraUnivTypeInfoVarsMCAs,
+            CallContext, ExtraUnivTypeInfoVarsMCAs,
             ExtraUnivTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs,
-            ExtraUnivTypeInfoVars),
+        assoc_list.keys(ExtraUnivTypeInfoVarsMCAs, ExtraUnivTypeInfoVars),
 
         % Make variables to hold typeinfos for unconstrained existential type
         % vars.
         apply_rec_subst_to_tvars(ParentKindMap, ParentToActualTypeSubst,
             ParentUnconstrainedExistTVars, ActualUnconstrainedExistTypes),
         polymorphism_do_make_type_info_vars(ActualUnconstrainedExistTypes,
-            Context, ExtraExistTypeInfoVarsMCAs,
+            CallContext, ExtraExistTypeInfoVarsMCAs,
             ExtraExistTypeInfoGoals, !Info),
-        assoc_list.keys(ExtraExistTypeInfoVarsMCAs,
-            ExtraExistTypeInfoVars),
+        assoc_list.keys(ExtraExistTypeInfoVarsMCAs, ExtraExistTypeInfoVars),
 
         % Add up the extra vars and goals.
         ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals
@@ -924,9 +907,9 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             ++ ExtraUnivClassVars ++ ExtraExistClassVars,
 
         % Update the nonlocals.
-        NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set_of_var.insert_list(ExtraVars, NonLocals0, NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
+        CallNonLocals0 = goal_info_get_nonlocals(CallGoalInfo0),
+        set_of_var.insert_list(ExtraVars, CallNonLocals0, CallNonLocals),
+        goal_info_set_nonlocals(CallNonLocals, CallGoalInfo0, CallGoalInfo)
     ).
 
 %---------------------%
@@ -1021,73 +1004,101 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 
 %---------------------------------------------------------------------------%
 %
-% Process foreign proc calls.
+% Code that is unique to processing plain calls.
 %
 
-:- pred polymorphism_process_foreign_proc(pred_info::in,
-    hlds_goal_expr::in(bound(call_foreign_proc(ground,ground,ground,ground,
-    ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
-    poly_info::in, poly_info::out) is det.
+:- pred polymorphism_process_plain_call(
+    hlds_goal_expr::in(goal_expr_plain_call),
+    hlds_goal_info::in, hlds_goal::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
-        Goal, !Info) :-
-    % Insert the type_info vars into the argname map, so that the foreign_proc
-    % can refer to the type_info variable for type T as `TypeInfo_for_T'.
-    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
-        Args0, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
-    ArgVars0 = list.map(foreign_arg_var, Args0),
-    polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
-        ExtraVars, ExtraGoals, !Info),
-    polymorphism_process_foreign_proc_args(PredInfo, Impl,
-        ExtraVars, ExtraArgs),
-    Args = ExtraArgs ++ Args0,
+polymorphism_process_plain_call(CallGoalExpr0, CallGoalInfo0, Goal, !Info) :-
+    CallGoalExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgVars0,
+        Builtin0, MaybeUC0, CallSymName0),
+    polymorphism_process_plain_or_foreign_call(CalleePredId, CallArgVars0,
+        CallGoalInfo0, CallGoalInfo, ExtraVars, ExtraGoals, !Info),
+    CallArgVars = ExtraVars ++ CallArgVars0,
+    CallGoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgVars,
+        Builtin0, MaybeUC0, CallSymName0),
+    CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
+    conj_list_to_goal(ExtraGoals ++ [CallGoal], CallGoalInfo0, Goal).
 
-    % Plug it all back together.
-    CallExpr = call_foreign_proc(Attributes, PredId, ProcId,
-        Args, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
-    Call = hlds_goal(CallExpr, GoalInfo),
-    GoalList = ExtraGoals ++ [Call],
-    conj_list_to_goal(GoalList, GoalInfo0, Goal).
+%---------------------------------------------------------------------------%
+%
+% Code that is unique to processing foreign proc calls.
+%
+
+:- pred polymorphism_process_foreign_proc(
+    hlds_goal_expr::in(goal_expr_foreign_proc),
+    hlds_goal_info::in, hlds_goal::out, poly_info::in, poly_info::out) is det.
+
+polymorphism_process_foreign_proc(CallGoalExpr0, CallGoalInfo0, Goal, !Info) :-
+    CallGoalExpr0 = call_foreign_proc(Attributes, CalleePredId, CalleeProcId,
+        Args0, CallExtraArgs, MaybeTraceRuntimeCond, Impl),
+    poly_info_get_module_info(!.Info, ModuleInfo),
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    CalleeModule = pred_info_module(CalleePredInfo),
+    CalleeName = pred_info_name(CalleePredInfo),
+    pred_info_get_orig_arity(CalleePredInfo, pred_form_arity(CalleePFA)),
+    ( if no_type_info_builtin(CalleeModule, CalleeName, CalleePFA) then
+        Goal = hlds_goal(CallGoalExpr0, CallGoalInfo0)
+    else
+        % Insert the type_info vars into the argname map, so that
+        % the foreign_proc can refer to the type_info variable for type T
+        % as `TypeInfo_for_T'.
+        ArgVars0 = list.map(foreign_arg_var, Args0),
+        polymorphism_process_plain_or_foreign_call(CalleePredId, ArgVars0,
+            CallGoalInfo0, CallGoalInfo, ExtraVars, ExtraGoals, !Info),
+        polymorphism_process_foreign_proc_args(CalleePredInfo, Impl,
+            ExtraVars, ExtraArgs),
+        Args = ExtraArgs ++ Args0,
+
+        % Plug it all back together.
+        CallGoalExpr = call_foreign_proc(Attributes,
+            CalleePredId, CalleeProcId, Args, CallExtraArgs,
+            MaybeTraceRuntimeCond, Impl),
+        CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
+        conj_list_to_goal(ExtraGoals ++ [CallGoal], CallGoalInfo0, Goal)
+    ).
 
 :- pred polymorphism_process_foreign_proc_args(pred_info::in,
     pragma_foreign_proc_impl::in, list(prog_var)::in, list(foreign_arg)::out)
     is det.
 
-polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
-    pred_info_get_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
-        PredArgTypes),
+polymorphism_process_foreign_proc_args(CalleePredInfo, Impl, Vars, Args) :-
+    pred_info_get_arg_types(CalleePredInfo, CalleeTVarSet, CalleeExistQVars,
+        CalleeArgTypes),
 
     % Find out which variables are constrained (so that we don't add
     % type_infos for them).
-    pred_info_get_class_context(PredInfo,
+    pred_info_get_class_context(CalleePredInfo,
         univ_exist_constraints(UnivCs, ExistCs)),
     UnivVars0 = list.map(get_constrained_vars, UnivCs),
     list.condense(UnivVars0, UnivConstrainedVars),
     ExistVars0 = list.map(get_constrained_vars, ExistCs),
     list.condense(ExistVars0, ExistConstrainedVars),
 
-    type_vars_in_types(PredArgTypes, PredTypeVars0),
-    list.remove_dups(PredTypeVars0, PredTypeVars1),
-    list.delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
-    list.delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
+    type_vars_in_types(CalleeArgTypes, CalleeTVars0),
+    list.remove_dups(CalleeTVars0, CalleeTVars1),
+    list.delete_elems(CalleeTVars1, UnivConstrainedVars, CalleeTVars2),
+    list.delete_elems(CalleeTVars2, ExistConstrainedVars, CalleeTVars),
 
     % The argument order is described at the top of polymorphism.m.
 
     in_mode(In),
     out_mode(Out),
 
-    list.map(foreign_proc_add_typeclass_info(Out, Impl, PredTypeVarSet),
+    list.map(foreign_proc_add_typeclass_info(Out, Impl, CalleeTVarSet),
         ExistCs, ExistTypeClassArgInfos),
-    list.map(foreign_proc_add_typeclass_info(In, Impl, PredTypeVarSet),
+    list.map(foreign_proc_add_typeclass_info(In, Impl, CalleeTVarSet),
         UnivCs, UnivTypeClassArgInfos),
     TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
 
-    list.filter(list.contains(ExistQVars), PredTypeVars,
+    list.filter(list.contains(CalleeExistQVars), CalleeTVars,
         ExistUnconstrainedVars, UnivUnconstrainedVars),
 
-    list.map_foldl(foreign_proc_add_typeinfo("Out", Out, Impl, PredTypeVarSet),
+    list.map_foldl(foreign_proc_add_typeinfo("Out", Out, Impl, CalleeTVarSet),
         ExistUnconstrainedVars, ExistTypeArgInfos, 1, _),
-    list.map_foldl(foreign_proc_add_typeinfo("In", In, Impl, PredTypeVarSet),
+    list.map_foldl(foreign_proc_add_typeinfo("In", In, Impl, CalleeTVarSet),
         UnivUnconstrainedVars, UnivTypeArgInfos, 1, _),
     TypeInfoArgInfos = UnivTypeArgInfos ++ ExistTypeArgInfos,
 
@@ -1095,7 +1106,7 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 
     % Insert type_info/typeclass_info types for all the inserted
     % type_info/typeclass_info vars into the argument type list.
-    TypeInfoTypes = list.map((func(_) = type_info_type), PredTypeVars),
+    TypeInfoTypes = list.map((func(_) = type_info_type), CalleeTVars),
     TypeClassInfoType = typeclass_info_type,
     list.length(UnivCs, NumUnivCs),
     list.length(ExistCs, NumExistCs),
