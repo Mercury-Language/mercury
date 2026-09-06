@@ -154,7 +154,7 @@ gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
     list.length(ClassDefn ^ classdefn_supers, NumSuperClasses),
-    list.length(ClassDefn ^ classdefn_vars, ClassArity).
+    list.length(ClassDefn ^ classdefn_tparams, ClassArity).
 
 %----------------------------------------------------------------------------%
 :- end_module backend_libs.base_typeclass_info.

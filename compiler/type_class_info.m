@@ -108,13 +108,13 @@ generate_class_decl(ModuleInfo, ClassId - ClassDefn, !RttiDatas) :-
 
 generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
     TCName = generate_class_name(ClassId),
-    ClassVars = ClassDefn ^ classdefn_vars,
-    ClassVarSet = ClassDefn ^ classdefn_tvarset,
-    list.map(varset.lookup_name(ClassVarSet), ClassVars, VarNames),
+    ClassTParams = ClassDefn ^ classdefn_tparams,
+    ClassTVarSet = ClassDefn ^ classdefn_tvarset,
+    list.map(varset.lookup_name(ClassTVarSet), ClassTParams, TVarNames),
     MethodInfos = ClassDefn ^ classdefn_method_infos,
     MethodPredProcIds = method_infos_to_pred_proc_ids(MethodInfos),
     MethodIds = list.map(generate_method_id(ModuleInfo), MethodPredProcIds),
-    TCId = tc_id(TCName, VarNames, MethodIds).
+    TCId = tc_id(TCName, TVarNames, MethodIds).
 
 :- func generate_method_id(module_info, pred_proc_id) = tc_method_id.
 

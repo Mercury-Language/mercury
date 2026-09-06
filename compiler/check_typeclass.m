@@ -309,7 +309,7 @@ find_class_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
 find_class_cycles_2(Path0, ClassId, ClassParamTVars, FunDepAncestors,
         !ClassTable, !Visited, !Cycles) :-
     map.lookup(!.ClassTable, ClassId, ClassDefn0),
-    ClassParamTVars = ClassDefn0 ^ classdefn_vars,
+    ClassParamTVars = ClassDefn0 ^ classdefn_tparams,
     Kinds = ClassDefn0 ^ classdefn_kinds,
     ( if set.member(ClassId, !.Visited) then
         ( if
@@ -2264,7 +2264,7 @@ acc_induced_fundeps_for_constraint(ClassTable, TVarSet, Constraint,
     ;
         ClassAncestors = [_ | _],
         ClassTVarSet = ClassDefn ^ classdefn_tvarset,
-        ClassParams = ClassDefn ^ classdefn_vars,
+        ClassParams = ClassDefn ^ classdefn_tparams,
 
         % We can ignore the resulting tvarset, since any new variables
         % will become bound when the arguments are bound. (This follows
@@ -2792,7 +2792,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
 
 report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         !Specs) :-
-    Params = ClassDefn ^ classdefn_vars,
+    Params = ClassDefn ^ classdefn_tparams,
     TVarSet = ClassDefn ^ classdefn_tvarset,
     ContextA = InstanceA ^ instdefn_context,
     ContextB = InstanceB ^ instdefn_context,

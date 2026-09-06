@@ -59,8 +59,8 @@
                 classdefn_tvarset           :: tvarset,
                 classdefn_kinds             :: tvar_kind_map,
 
-                % ClassVars.
-                classdefn_vars              :: list(tvar),
+                % Class parameters.
+                classdefn_tparams           :: list(tvar),
 
                 % SuperClasses.
                 %
@@ -655,7 +655,7 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
     ;
         ClassAncestors = [_ | _],
         ClassTVarSet = ClassDefn ^ classdefn_tvarset,
-        ClassParams = ClassDefn ^ classdefn_vars,
+        ClassParams = ClassDefn ^ classdefn_tparams,
 
         % We can ignore the resulting tvarset, since any new variables
         % will become bound when the arguments are bound. (This follows
@@ -750,10 +750,10 @@ update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
 
     tvarset_merge_renaming(TVarSet, ClassDefn ^ classdefn_tvarset, _,
         Renaming),
+    apply_renaming_to_tvars(Renaming,
+        ClassDefn ^ classdefn_tparams, RenamedParams),
     apply_renaming_to_prog_constraints(Renaming,
         ClassDefn ^ classdefn_supers, RenamedSupers),
-    apply_renaming_to_tvars(Renaming, ClassDefn ^ classdefn_vars,
-        RenamedParams),
     map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
     apply_subst_to_prog_constraints(Subst, RenamedSupers, Supers),
 

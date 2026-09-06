@@ -936,8 +936,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- mode int_type_module_name(in, out) is det.
 :- mode int_type_module_name(out, in) is semidet.
 
-:- type type_term == term(tvar_type).
-
 :- type tvar_type
     --->    type_var.
 
@@ -960,16 +958,17 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     %
 :- type existq_tvars == list(tvar).
 
-    % Similar to varset.merge_subst but produces a tvar_renaming
-    % instead of a substitution, which is more suitable for types.
+    % varset.merge_renaming, as applied to type variables.
     %
 :- pred tvarset_merge_renaming(tvarset::in, tvarset::in, tvarset::out,
     tvar_renaming::out) is det.
 
-    % As above, but behaves like varset.merge_subst_without_names.
+    % varset.merge_renaming_without_names, as applied to type variables.
     %
 :- pred tvarset_merge_renaming_without_names(tvarset::in, tvarset::in,
     tvarset::out, tvar_renaming::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 

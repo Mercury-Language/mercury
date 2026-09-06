@@ -200,9 +200,12 @@ make_typeclass_info_from_proof(Constraint, Seen, Proof,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
-        ExistQVars, Context, TypeClassInfoVar - MaybeTCIConstArg, Goals,
-        !Info) :-
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        ExistQVars, Context, TypeClassInfoVarMCA, Goals, !Info) :-
+    trace [
+        compile_time(flag("debug_poly_caches")),
+        run_time(env("DEBUG_POLY_CACHES")),
+        io(!IO)]
+    (
         poly_info_get_selected_pred(SelectedPred, !IO),
         poly_info_get_indent_level(Level, !IO),
         (
@@ -213,8 +216,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             IndentStr = string.duplicate_char(' ', Level * 4),
             poly_info_set_indent_level(Level + 1, !IO),
 
-            io.format(Stream,
-                "%smake_typeclass_info_from_subclass\n",
+            io.format(Stream, "%smake_typeclass_info_from_subclass\n",
                 [s(IndentStr)], !IO),
             io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
             io.write_line(Stream, Constraint, !IO),
@@ -224,8 +226,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             else
                 io.write_line(Stream, Seen, !IO)
             ),
-            io.format(Stream, "%sSubClassConstraint: ",
-                [s(IndentStr)], !IO),
+            io.format(Stream, "%sSubClassConstraint: ", [s(IndentStr)], !IO),
             io.write_line(Stream, SubClassConstraint, !IO),
             io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
             io.write_line(Stream, ExistQVars, !IO),
@@ -249,19 +250,13 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
     map.lookup(ClassTable, SubClassId, SubClassDefn),
 
     % Work out which superclass typeclass_info to take.
-    map.from_corresponding_lists(SubClassDefn ^ classdefn_vars, SubClassTypes,
-        SubTypeSubst),
+    SubClassTParams = SubClassDefn ^ classdefn_tparams,
+    map.from_corresponding_lists(SubClassTParams, SubClassTypes, SubTypeSubst),
     apply_subst_to_prog_constraints(SubTypeSubst,
         SubClassDefn ^ classdefn_supers, SuperClasses),
-    ( if
-        list.index1_of_first_occurrence(SuperClasses, Constraint,
-            SuperClassIndexPrime)
-    then
-        SuperClassIndex = SuperClassIndexPrime
-    else
-        % We shouldn't have got this far if the constraints were not satisfied.
-        unexpected($pred, "constraint not in constraint list")
-    ),
+    % We shouldn't have got this far if Constraint is not in SuperClasses.
+    SuperClassIndex =
+        list.det_index1_of_first_occurrence(SuperClasses, Constraint),
 
     (
         SubClassMCA = yes(SubClassConstArg),
@@ -273,8 +268,8 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             poly_info_get_const_struct_db(!.Info, ConstStructDb),
             lookup_const_struct_num(ConstStructDb, SubClassConstNum,
                 SubClassConstStruct),
-            SubClassConstStruct = const_struct(SubClassConsId, SubClassArgs,
-                _, _, _),
+            SubClassConstStruct =
+                const_struct(SubClassConsId, SubClassArgs, _, _, _),
             ( if
                 SubClassConsId = typeclass_info_cell_constructor,
                 SubClassArgs = [BTCIArg | OtherArgs],
@@ -291,13 +286,17 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             then
                 materialize_typeclass_info_var(Constraint, SelectedConstNum,
                     TypeClassInfoVar, Goals, !Info),
-                MaybeTCIConstArg = yes(SelectedArg)
+                TypeClassInfoVarMCA = TypeClassInfoVar - yes(SelectedArg)
             else
                 unexpected($pred, "unexpected typeclass info structure")
             )
         ),
 
-        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        trace [
+            compile_time(flag("debug_poly_caches")),
+            run_time(env("DEBUG_POLY_CACHES")),
+            io(!IO)]
+        (
             poly_info_get_selected_pred(SelectedPred, !IO),
             poly_info_get_indent_level(Level, !IO),
             poly_info_set_indent_level(Level - 1, !IO),
@@ -309,8 +308,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
                 IndentStr = string.duplicate_char(' ', (Level-1) * 4),
                 io.format(Stream, "%ssubclass constant result ",
                     [s(IndentStr)], !IO),
-                io.write_line(Stream,
-                    TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                io.write_line(Stream, TypeClassInfoVarMCA, !IO),
                 io.nl(Stream, !IO)
             )
         )
@@ -318,6 +316,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         SubClassMCA = no,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, _TypeClassInfoVarType, !Info),
+        TypeClassInfoVarMCA = TypeClassInfoVar - no,
         get_poly_const(SuperClassIndex, IndexVar, IndexGoals, !Info),
 
         % We extract the superclass typeclass_info by inserting a call
@@ -328,9 +327,12 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             instmap_delta_bind_no_var, only_mode, detism_det, purity_pure, [],
             term_context.dummy_context, SuperClassGoal),
         Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
-        MaybeTCIConstArg = no,
 
-        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        trace [
+            compile_time(flag("debug_poly_caches")),
+            run_time(env("DEBUG_POLY_CACHES")),
+            io(!IO)]
+        (
             poly_info_get_selected_pred(SelectedPred, !IO),
             poly_info_get_indent_level(Level, !IO),
             poly_info_set_indent_level(Level - 1, !IO),
@@ -342,8 +344,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
                 IndentStr = string.duplicate_char(' ', (Level-1) * 4),
                 io.format(Stream, "%ssubclass computed result ",
                     [s(IndentStr)], !IO),
-                io.write_line(Stream,
-                    TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                io.write_line(Stream, TypeClassInfoVarMCA, !IO),
                 io.nl(Stream, !IO)
             )
         )
@@ -358,7 +359,11 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
 make_typeclass_info_from_instance(Constraint, Seen, InstanceId, ExistQVars,
         Context, TypeClassInfoVarMCA, Goals, !Info) :-
     InstanceId = instance_id(InstanceNum),
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+    trace [
+        compile_time(flag("debug_poly_caches")),
+        run_time(env("DEBUG_POLY_CACHES")),
+        io(!IO)]
+    (
         poly_info_get_selected_pred(SelectedPred, !IO),
         poly_info_get_indent_level(Level, !IO),
         (
@@ -398,7 +403,11 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceId, ExistQVars,
         TypeClassInfoVarMCA =
             TypeClassInfoVar - yes(csa_const_struct(InstanceIdConstNum)),
 
-        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        trace [
+            compile_time(flag("debug_poly_caches")),
+            run_time(env("DEBUG_POLY_CACHES")),
+            io(!IO)]
+        (
             poly_info_get_selected_pred(SelectedPred, !IO),
             poly_info_get_indent_level(Level, !IO),
             poly_info_set_indent_level(Level - 1, !IO),
@@ -425,7 +434,11 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceId, ExistQVars,
     else
         do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars,
             Context, TypeClassInfoVarMCA, Goals, !Info),
-        trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        trace [
+            compile_time(flag("debug_poly_caches")),
+            run_time(env("DEBUG_POLY_CACHES")),
+            io(!IO)]
+        (
             poly_info_get_selected_pred(SelectedPred, !IO),
             poly_info_get_indent_level(Level, !IO),
             poly_info_set_indent_level(Level - 1, !IO),
@@ -465,8 +478,8 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceId, ExistQVars,
 do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars, Context,
         TypeClassInfoVarMCA, Goals, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_instance_table(ModuleInfo, InstanceTable),
     module_info_get_class_table(ModuleInfo, ClassTable),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     poly_info_get_typevarset(!.Info, TypeVarSet),
     poly_info_get_proof_map(!.Info, ProofMap0),
 
@@ -768,14 +781,14 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
     poly_info_get_proof_map(!.Info, ProofMap),
 
     poly_info_get_typevarset(!.Info, TVarSet0),
+    ClassTParams0 = ClassDefn ^ classdefn_tparams,
     SuperClasses0 = ClassDefn ^ classdefn_supers,
-    ClassVars0 = ClassDefn ^ classdefn_vars,
     ClassTVarSet = ClassDefn ^ classdefn_tvarset,
     tvarset_merge_renaming(TVarSet0, ClassTVarSet, TVarSet1, Renaming),
     poly_info_set_typevarset(TVarSet1, !Info),
 
-    apply_renaming_to_tvars(Renaming, ClassVars0, ClassVars),
-    map.from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
+    apply_renaming_to_tvars(Renaming, ClassTParams0, ClassTParams),
+    map.from_corresponding_lists(ClassTParams, InstanceTypes, TypeSubst),
 
     apply_renaming_to_prog_constraints(Renaming,
         SuperClasses0, SuperClasses1),

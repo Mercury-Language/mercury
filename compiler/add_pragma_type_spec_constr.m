@@ -235,8 +235,9 @@ build_class_constraint_map(ProgressStream, ClassTable, ApplyToSupers,
             ApplyToSupers = do_not_apply_to_supers
         ;
             ApplyToSupers = apply_to_supers,
-            ClassTVars = ClassDefn ^ classdefn_vars,
-            map.from_corresponding_lists(ClassTVars, VarOrGroundTypes, Subst0),
+            ClassTParams = ClassDefn ^ classdefn_tparams,
+            map.from_corresponding_lists(ClassTParams, VarOrGroundTypes,
+                Subst0),
             Supers = ClassDefn ^ classdefn_supers,
             list.foldl(
                 build_superclass_constraint_map(ProgressStream, ClassTable,
@@ -301,8 +302,8 @@ build_superclass_constraint_map(ProgressStream, ClassTable, PragmaTVarSet,
             io.write_string(ProgressStream, EntryStr, !IO)
         ),
 
-        ClassTVars = ClassDefn ^ classdefn_vars,
-        map.from_corresponding_lists(ClassTVars, VarOrGroundTypes, Subst),
+        ClassTParams = ClassDefn ^ classdefn_tparams,
+        map.from_corresponding_lists(ClassTParams, VarOrGroundTypes, Subst),
         Supers = ClassDefn ^ classdefn_supers,
         list.foldl(
             build_superclass_constraint_map(ProgressStream, ClassTable,

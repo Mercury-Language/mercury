@@ -789,22 +789,22 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
 
         Context = ClassDefn ^ classdefn_context,
         TVarset = ClassDefn ^ classdefn_tvarset,
-        Vars = ClassDefn ^ classdefn_vars,
+        TParams = ClassDefn ^ classdefn_tparams,
 
         XmlName = name_to_xml(Name),
-        XmlClassVars = xml_list("class_vars",
-            type_param_to_xml(TVarset), Vars),
+        XmlClassTParams = xml_list("class_vars",
+            type_param_to_xml(TVarset), TParams),
         XmlSupers = xml_list("superclasses",
             prog_constraint_to_xml(TVarset), ClassDefn ^ classdefn_supers),
         XmlFundeps = xml_list("fundeps",
-            fundep_to_xml(TVarset, Vars), ClassDefn ^ classdefn_fundeps),
+            fundep_to_xml(TVarset, TParams), ClassDefn ^ classdefn_fundeps),
         XmlMethods = class_methods_to_xml(C, PredTable,
             ClassDefn ^ classdefn_method_infos),
         XmlVisibility = typeclass_visibility_to_xml(TypeClassStatus),
         XmlContext = prog_context_to_xml(Context),
 
         Xml0 = elem("typeclass", [attr("id", Id)],
-            [XmlName, XmlClassVars, XmlSupers,
+            [XmlName, XmlClassTParams, XmlSupers,
             XmlFundeps, XmlMethods, XmlVisibility, XmlContext]),
 
         Xml = maybe_add_comment(C, Context, Xml0),
@@ -816,17 +816,17 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
 
 :- func fundep_to_xml(tvarset, list(tvar), hlds_class_fundep) = xml.
 
-fundep_to_xml(TVarset, Vars, fundep(Domain, Range)) = Xml :-
-    XmlDomain = fundep_to_xml_2("domain", TVarset, Vars, Domain),
-    XmlRange = fundep_to_xml_2("range", TVarset, Vars, Range),
+fundep_to_xml(TVarset, TParams, fundep(Domain, Range)) = Xml :-
+    XmlDomain = fundep_to_xml_2("domain", TVarset, TParams, Domain),
+    XmlRange = fundep_to_xml_2("range", TVarset, TParams, Range),
     Xml = elem("fundep", [], [XmlDomain, XmlRange]).
 
 :- func fundep_to_xml_2(string, tvarset, list(tvar), set(hlds_class_argpos))
     = xml.
 
-fundep_to_xml_2(Tag, TVarset, Vars, Set) =
+fundep_to_xml_2(Tag, TVarset, TParams, Set) =
     xml_list(Tag, type_param_to_xml(TVarset),
-        restrict_list_elements(Set, Vars)).
+        restrict_list_elements(Set, TParams)).
 
 :- func class_methods_to_xml(line_type_map, pred_id_table, list(method_info))
     = xml.
