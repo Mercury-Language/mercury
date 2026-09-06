@@ -339,7 +339,7 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, VarSet0) :-
     transform_polyhedra(Polys, Matrix0, PolyInfo0, PolyInfo),
     PolyInfo = polyhedra_info(VarMaps, Sigmas, VarSet),
     add_sigma_constraints(Sigmas, Matrix0, Matrix1),
-    Matrix   = add_last_constraints(Matrix1, VarMaps),
+    Matrix = add_last_constraints(Matrix1, VarMaps),
     AppendValues =
         ( func(Map, Varlist0) = Varlist :-
             Varlist = Varlist0 ++ map.values(Map)
@@ -365,11 +365,12 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, VarSet0) :-
             ProjectionResult = pr_res_ok(!:Hull),
             restore_equalities(!Hull),
             % XXX We should try removing this call to simplify constraints.
-            %     It seems unnecessary.
+            % It seems unnecessary.
             !:Hull = simplify_constraints(!.Hull),
-            ( if remove_some_entailed_constraints(VarSet, !Hull)
-            then ConvexHull = eqns(!.Hull)
-            else ConvexHull = empty_poly
+            ( if remove_some_entailed_constraints(VarSet, !Hull) then
+                ConvexHull = eqns(!.Hull)
+            else
+                ConvexHull = empty_poly
             )
         )
     ).
